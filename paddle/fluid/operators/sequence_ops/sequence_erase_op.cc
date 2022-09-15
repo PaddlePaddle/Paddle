@@ -62,17 +62,17 @@ class SequenceEraseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Sequence Erase Operator.
 
-Sequence erase operator erases tokens specified by Attr(tokens) from the input 
-sequences Input(X), and outputs the remaining data and modifies the LoD 
+Sequence erase operator erases tokens specified by Attr(tokens) from the input
+sequences Input(X), and outputs the remaining data and modifies the LoD
 information at the same time. For example, given a 2-D LoDTensor
 
     X = [[2, 2, 6, 1, 3, 9, 6, 1, 0, 1]]^T
 
 with lod = [[0, 3, 6, 10]], there are three sequences in the input:
-   
+
      X1 = [[2, 2, 6]]^T, X2 = [[1, 3, 9]]^T and X3 = [[6, 1, 0, 1]]^T.
 
-If the tokens to be erased are Attr(tokens) = [2, 3, 5], after the erasing 
+If the tokens to be erased are Attr(tokens) = [2, 3, 5], after the erasing
 operation, the three sequences become
 
     X1' = [[6]]^T, X2' = [[1, 9]]^T and X3' = [[6, 1, 0, 1]]^T.
@@ -83,8 +83,8 @@ Hence the LoDTensor Output(Out) should be
 
 with lod = [[0, 1, 3, 7]].
 
-An example usage for this operator is to remove the special tokens when 
-computing the edit distance between two strings, such as blank, start token, 
+An example usage for this operator is to remove the special tokens when
+computing the edit distance between two strings, such as blank, start token,
 and end token.
 )DOC");
   }

@@ -29,7 +29,7 @@ class TestConvElementwiseAddActPass(PassAutoScanTest):
     """
     x_var   f_var(persistable)
       \       /
-         conv2d 
+         conv2d
            |
         conv2d_var    y_var(persistable)
             \          /

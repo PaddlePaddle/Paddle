@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/operators/stft_op.h"
 
-#include "paddle/fluid/operators/spectral_helper.h"
-
 namespace paddle {
 namespace operators {
 class StftOp : public framework::OperatorWithKernel {

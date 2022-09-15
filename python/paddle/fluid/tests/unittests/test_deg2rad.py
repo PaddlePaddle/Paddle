@@ -53,7 +53,7 @@ class TestDeg2radAPI(unittest.TestCase):
         paddle.disable_static()
         x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
         result1 = paddle.deg2rad(x1)
-        self.assertEqual(np.allclose(self.out_np, result1.numpy()), True)
+        np.testing.assert_allclose(self.out_np, result1.numpy(), rtol=1e-05)
 
         paddle.enable_static()
 
@@ -71,6 +71,6 @@ class TestDeg2radAPI2(TestDeg2radAPI):
 
         x2 = paddle.to_tensor(180)
         result2 = paddle.deg2rad(x2)
-        self.assertEqual(np.allclose(np.pi, result2.numpy()), True)
+        np.testing.assert_allclose(np.pi, result2.numpy(), rtol=1e-05)
 
         paddle.enable_static()

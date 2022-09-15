@@ -53,7 +53,7 @@ class TestPool3D_API(unittest.TestCase):
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], result_np))
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_avg_dygraph_results(self, place):
         with fluid.dygraph.guard(place):
@@ -68,13 +68,13 @@ class TestPool3D_API(unittest.TestCase):
                                              pool_type='avg',
                                              padding_algorithm="SAME")
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             avg_pool3d_dg = paddle.nn.layer.AvgPool3D(kernel_size=2,
                                                       stride=None,
                                                       padding="SAME")
             result = avg_pool3d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_avg_dygraph_padding_results(self, place):
         with fluid.dygraph.guard(place):
@@ -94,7 +94,7 @@ class TestPool3D_API(unittest.TestCase):
                                                  ceil_mode=False,
                                                  exclusive=False)
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             avg_pool3d_dg = paddle.nn.layer.AvgPool3D(kernel_size=2,
                                                       stride=None,
@@ -102,7 +102,7 @@ class TestPool3D_API(unittest.TestCase):
                                                       ceil_mode=False,
                                                       exclusive=True)
             result = avg_pool3d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_avg_dygraph_ceilmode_results(self, place):
         with fluid.dygraph.guard(place):
@@ -120,14 +120,14 @@ class TestPool3D_API(unittest.TestCase):
                                                  paddings=[0, 0, 0],
                                                  ceil_mode=True)
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             avg_pool3d_dg = paddle.nn.layer.AvgPool3D(kernel_size=2,
                                                       stride=None,
                                                       padding=0,
                                                       ceil_mode=True)
             result = avg_pool3d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -147,7 +147,7 @@ class TestPool3D_API(unittest.TestCase):
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], result_np))
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_max_dygraph_results(self, place):
         with fluid.dygraph.guard(place):
@@ -161,12 +161,12 @@ class TestPool3D_API(unittest.TestCase):
                                              paddings=[0, 0, 0],
                                              pool_type='max')
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
             max_pool3d_dg = paddle.nn.layer.MaxPool3D(kernel_size=2,
                                                       stride=None,
                                                       padding=0)
             result = max_pool3d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_dygraph_ndhwc_results(self, place):
         with fluid.dygraph.guard(place):
@@ -186,9 +186,10 @@ class TestPool3D_API(unittest.TestCase):
                                              paddings=[0, 0, 0],
                                              pool_type='max')
 
-            self.assertTrue(
-                np.allclose(np.transpose(result.numpy(), [0, 4, 1, 2, 3]),
-                            result_np))
+            np.testing.assert_allclose(np.transpose(result.numpy(),
+                                                    [0, 4, 1, 2, 3]),
+                                       result_np,
+                                       rtol=1e-05)
 
     def check_max_dygraph_ceilmode_results(self, place):
         with fluid.dygraph.guard(place):
@@ -206,14 +207,14 @@ class TestPool3D_API(unittest.TestCase):
                                                  paddings=[0, 0, 0],
                                                  ceil_mode=True)
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             max_pool3d_dg = paddle.nn.layer.MaxPool3D(kernel_size=2,
                                                       stride=None,
                                                       padding=0,
                                                       ceil_mode=True)
             result = max_pool3d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_dygraph_padding_results(self, place):
         with fluid.dygraph.guard(place):
@@ -231,14 +232,14 @@ class TestPool3D_API(unittest.TestCase):
                                                  paddings=[1, 1, 1],
                                                  ceil_mode=False)
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             max_pool3d_dg = paddle.nn.layer.MaxPool3D(kernel_size=2,
                                                       stride=None,
                                                       padding=1,
                                                       ceil_mode=False)
             result = max_pool3d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_dygraph_stride_is_none(self, place):
         with fluid.dygraph.guard(place):
@@ -257,12 +258,12 @@ class TestPool3D_API(unittest.TestCase):
                                              pool_type='max',
                                              padding_algorithm="SAME")
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
             max_pool3d_dg = paddle.nn.layer.MaxPool3D(kernel_size=2,
                                                       stride=2,
                                                       padding=0)
             result = max_pool3d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_dygraph_padding(self, place):
         with fluid.dygraph.guard(place):
@@ -277,16 +278,16 @@ class TestPool3D_API(unittest.TestCase):
                                              paddings=[0, 0, 0],
                                              pool_type='max')
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
             max_pool3d_dg = paddle.nn.layer.MaxPool3D(kernel_size=2,
                                                       stride=2,
                                                       padding=0)
             result = max_pool3d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             padding = [0, 0, 0, 0, 0, 0]
             result = max_pool3d(input, kernel_size=2, stride=2, padding=padding)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_avg_divisor(self, place):
         with fluid.dygraph.guard(place):
@@ -305,12 +306,12 @@ class TestPool3D_API(unittest.TestCase):
                                              paddings=[0, 0, 0],
                                              pool_type='avg')
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
             avg_pool3d_dg = paddle.nn.layer.AvgPool3D(kernel_size=2,
                                                       stride=2,
                                                       padding=0)
             result = avg_pool3d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             padding = [0, 0, 0, 0, 0, 0]
             result = avg_pool3d(input,
@@ -318,7 +319,7 @@ class TestPool3D_API(unittest.TestCase):
                                 stride=2,
                                 padding=padding,
                                 divisor_override=8)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def test_pool3d(self):
         for place in self.places:
@@ -333,7 +334,7 @@ class TestPool3D_API(unittest.TestCase):
             self.check_max_dygraph_ndhwc_results(place)
             self.check_max_dygraph_ceilmode_results(place)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_pool3d()
 
@@ -503,7 +504,7 @@ class TestPool3DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_size_out_of_range)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_error_api()
 

@@ -15,6 +15,7 @@
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
+from .common import gradient_synchronization
 from .common import register_distributed_operator_impl, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
@@ -347,7 +348,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             else:
                 batch_dim_mappings.append(dims_mapping[1])
         for arg_name in op_desc.output_arg_names():
-            if op_desc.type() == "fill_zeros_like":
+            if op_desc.type() == 'fill_any_like':
                 input_tensor = dist_op.get_serial_input(
                     op_desc.input_arg_names()[0])
                 if input_tensor.is_parameter:
@@ -386,7 +387,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     dims_mapping[1] = compatible_dim_mapping
                     changed = True
         for arg_name in op_desc.output_arg_names():
-            if op_desc.type() == "fill_zeros_like":
+            if op_desc.type() == 'fill_any_like':
                 input_tensor = dist_op.get_serial_input(
                     op_desc.input_arg_names()[0])
                 if input_tensor.is_parameter:
@@ -537,87 +538,26 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for output_name in backward_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
-        # check if need gradient allreduce
-        # if there is a non-gradient & non-parameter input and its batch dimension is splited,
-        # we need insert gradient allreduce for the gradient of parameter in its output
-        need_gradient_allreduce = False
+        # data parallel gradient synchronization
+        act_grad_names = []
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not is_parameter_related(
                         varname, main_block):
+                    act_grad_names.append(varname)
 
-                    # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
-                    process_mesh = dist_attr.process_mesh
-                    var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
+        out_grad_names = []
+        for output_name in backward_op.desc.output_names():
+            for varname in backward_op.desc.output(output_name):
+                if varname in kwargs["grad_var_to_var"]:
+                    fwd_name = kwargs["grad_var_to_var"][varname]
+                    if fwd_name not in main_block.vars:
+                        continue
+                    if is_parameter_related(fwd_name, main_block):
+                        out_grad_names.append(varname)
 
-                    # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-                    if rank_id not in process_mesh.processes:
-                        rank_id = _get_corresponding_rank(
-                            ctx, process_mesh, rank_id)
-
-                    # NOTE: consider that the variable's shape is None
-                    mesh_shape = process_mesh.topology
-                    batch_size_axis = var_dim_mapping[0] if len(
-                        var_dim_mapping) > 0 else -1
-                    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
-                        need_gradient_allreduce = True
-                        group_ranks = _get_comm_group(process_mesh.processes,
-                                                      process_mesh.topology,
-                                                      batch_size_axis, rank_id)
-                        dp_degree = len(group_ranks)
-                        dp_group = new_process_group(group_ranks)
-                        break
-
-        if need_gradient_allreduce:
-            allreduce_vars = []
-            for output_name in backward_op.desc.output_names():
-                for varname in backward_op.desc.output(output_name):
-                    if varname in kwargs["grad_var_to_var"]:
-                        fwd_name = kwargs["grad_var_to_var"][varname]
-                        if fwd_name not in main_block.vars:
-                            continue
-                        if is_parameter_related(fwd_name, main_block):
-                            allreduce_vars.append(varname)
-
-            if len(allreduce_vars) > 0:
-
-                for varname in allreduce_vars:
-                    added_ops = []
-
-                    grad_var = main_block.var(varname)
-                    allreduce_op = main_block.append_op(
-                        type='c_allreduce_sum',
-                        inputs={'X': [grad_var]},
-                        outputs={'Out': [grad_var]},
-                        attrs={
-                            'ring_id': dp_group.id,
-                            'use_calc_stream': True,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
-                    added_ops.append(allreduce_op)
-
-                    if ctx.gradient_scale:
-                        scale_op = main_block.append_op(
-                            type='scale',
-                            inputs={'X': grad_var},
-                            outputs={'Out': grad_var},
-                            attrs={
-                                'scale': 1.0 / dp_degree,
-                                OP_ROLE_KEY: OpRole.Backward
-                            })
-                        added_ops.append(scale_op)
-
-                    dims_mapping = ctx.get_tensor_dist_attr_for_program(
-                        grad_var).dims_mapping
-                    process_mesh = dist_attr.process_mesh
-                    for op in added_ops:
-                        op_attr = OperatorDistributedAttribute()
-                        op_attr.process_mesh = process_mesh
-                        op_attr.set_output_dims_mapping(grad_var.name,
-                                                        dims_mapping)
-                        op_attr.set_input_dims_mapping(grad_var.name,
-                                                       dims_mapping)
-                        ctx.set_op_dist_attr_for_program(op, op_attr)
+        gradient_synchronization(ctx, backward_op, act_grad_names,
+                                 out_grad_names, rank_id)
 
 
 register_distributed_operator_impl(

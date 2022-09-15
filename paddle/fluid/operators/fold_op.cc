@@ -12,7 +12,13 @@
  *     See the License for the specific language governing permissions and
  *     limitations under the License. */
 
-#include "paddle/fluid/operators/fold_op.h"
+#include <memory>
+#include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,216 +26,6 @@ namespace operators {
 class FoldOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"),
-        true,
-        platform::errors::NotFound("Input(X) of FoldOp should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Y"),
-        true,
-        platform::errors::NotFound("Output(Y) of FoldOp should not be null"));
-    auto in_dims = ctx->GetInputDim("X");
-    std::vector<int> output_sizes =
-        ctx->Attrs().Get<std::vector<int>>("output_sizes");
-    std::vector<int> kernel_sizes =
-        ctx->Attrs().Get<std::vector<int>>("kernel_sizes");
-    std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    std::vector<int> dilations =
-        ctx->Attrs().Get<std::vector<int>>("dilations");
-
-    PADDLE_ENFORCE_EQ(
-        output_sizes.size(),
-        2,
-        platform::errors::InvalidArgument(
-            "It is expected output_size equals to 2, but got size %d",
-            output_sizes.size()));
-    PADDLE_ENFORCE_EQ(
-        kernel_sizes.size(),
-        2,
-        platform::errors::InvalidArgument(
-            "It is expected kernel_size equals to 2, but got size %d",
-            kernel_sizes.size()));
-    PADDLE_ENFORCE_EQ(
-        strides.size(),
-        2,
-        platform::errors::InvalidArgument(
-            "It is expected strides_size equals to 2, but got size %d",
-            strides.size()));
-    PADDLE_ENFORCE_EQ(
-        paddings.size(),
-        4,
-        platform::errors::InvalidArgument(
-            "It is expected paddings_size equals to 4, but got size %d",
-            paddings.size()));
-    PADDLE_ENFORCE_EQ(
-        dilations.size(),
-        2,
-        platform::errors::InvalidArgument(
-            "It is expected dilations_size equals to 2, but got size %d",
-            dilations.size()));
-
-    int output_height = output_sizes[0];
-    int output_width = output_sizes[1];
-    int kernel_height = kernel_sizes[0];
-    int kernel_width = kernel_sizes[1];
-    int dilation_height = dilations[0];
-    int dilation_width = dilations[1];
-    int stride_height = strides[0];
-    int stride_width = strides[1];
-
-    // check kernel_sizes
-    PADDLE_ENFORCE_GT(kernel_height,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The `kernel_sizes` should be greater than zero, "
-                          "but received kernel_height: %d kernel_width: %d.",
-                          kernel_sizes[0],
-                          kernel_sizes[1]));
-    PADDLE_ENFORCE_GT(kernel_width,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The `kernel_sizes` should be greater than zero, "
-                          "but received kernel_height: %d kernel_width: %d.",
-                          kernel_sizes[0],
-                          kernel_sizes[1]));
-    // check strides
-    PADDLE_ENFORCE_GT(stride_height,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The `strides` should be greater than zero, "
-                          "but received strides_height: %d strides_width: %d.",
-                          strides[0],
-                          strides[1]));
-    PADDLE_ENFORCE_GT(stride_width,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The `strides` should be greater than zero, "
-                          "but received strides_height: %d strides_width: %d.",
-                          strides[0],
-                          strides[1]));
-    // check dilations
-    PADDLE_ENFORCE_GT(output_height,
-                      1,
-                      platform::errors::InvalidArgument(
-                          "The `output_height` should be greater than one, "
-                          "but received output_height: %d .",
-                          output_height));
-    PADDLE_ENFORCE_GT(output_width,
-                      1,
-                      platform::errors::InvalidArgument(
-                          "The `output_width` should be greater than one, "
-                          "but received output_width: %d .",
-                          output_width));
-    // check output size
-    PADDLE_ENFORCE_GT(
-        dilation_height,
-        0,
-        platform::errors::InvalidArgument(
-            "The `dilations` should be greater than zero, "
-            "but received dilations_height: %d dilations_width: %d.",
-            dilations[0],
-            dilations[1]));
-    PADDLE_ENFORCE_GT(
-        dilation_width,
-        0,
-        platform::errors::InvalidArgument(
-            "The `dilations` should be greater than zero, "
-            "but received dilations_height: %d dilations_width: %d.",
-            dilations[0],
-            dilations[1]));
-
-    std::vector<int> out_dims;
-    // batch_size
-    out_dims.push_back(in_dims[0]);
-    // output_plane
-    int output_channels = in_dims[1] / (kernel_width * kernel_height);
-    out_dims.push_back(output_channels);
-
-    int blocks_height = (output_sizes[0] + 2 * paddings[0] -
-                         (dilations[0] * (kernel_sizes[0] - 1) + 1)) /
-                            strides[0] +
-                        1;
-    int blocks_width = (output_sizes[1] + 2 * paddings[1] -
-                        (dilations[1] * (kernel_sizes[1] - 1) + 1)) /
-                           strides[1] +
-                       1;
-
-    // check output height and width
-    PADDLE_ENFORCE_GT(
-        blocks_height,
-        0,
-        platform::errors::InvalidArgument(
-            "The sliding blocks calculated from input spatial size (%d, %d), "
-            "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), "
-            "is (%d, %d), which should be a positive integer.",
-            in_dims[2],
-            in_dims[3],
-            kernel_sizes[0],
-            kernel_sizes[1],
-            strides[0],
-            strides[1],
-            dilations[0],
-            dilations[1],
-            output_height,
-            output_width));
-
-    PADDLE_ENFORCE_GT(
-        blocks_width,
-        0,
-        platform::errors::InvalidArgument(
-            "The sliding blocks calculated from input spatial size (%d, %d), "
-            "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), "
-            "is (%d, %d), which should be a positive integer.",
-            in_dims[2],
-            in_dims[3],
-            kernel_sizes[0],
-            kernel_sizes[1],
-            strides[0],
-            strides[1],
-            dilations[0],
-            dilations[1],
-            output_height,
-            output_width));
-
-    PADDLE_ENFORCE_EQ(
-        blocks_height * blocks_width,
-        in_dims[2],
-        platform::errors::InvalidArgument(
-            "Given input output_size (%d, %d), "
-            "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), "
-            "which should be expected size of input's dimension "
-            "2 to match the calculated number of %d * %d = %d, but got %d",
-            output_height,
-            output_width,
-            kernel_sizes[0],
-            kernel_sizes[1],
-            strides[0],
-            strides[1],
-            dilations[0],
-            dilations[1],
-            blocks_height,
-            blocks_width,
-            blocks_height * blocks_width,
-            in_dims[2]));
-
-    PADDLE_ENFORCE_EQ(
-        in_dims[1] % (kernel_sizes[0] * kernel_sizes[1]),
-        0,
-        platform::errors::InvalidArgument(
-            "Expected size of input's dimension 1 to be divisible by the"
-            "product of kernel_size, but got input.size(1)=%d and "
-            "kernel_size=( %d"
-            ", %d).",
-            in_dims[1],
-            kernel_sizes[0],
-            kernel_sizes[1]));
-
-    out_dims.push_back(output_height);
-    out_dims.push_back(output_width);
-    ctx->SetOutputDim("Y", phi::make_ddim(out_dims));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -274,9 +70,9 @@ class FoldOpMaker : public framework::OpProtoAndCheckerMaker {
 **Fold Operator**
 
 This Operator is used to combines an array of sliding local blocks into a large containing
-tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
-combined value in the resulting large tensor by summing all values from all containing blocks. 
-Unfold extracts the values in the local blocks by copying from the large tensor. So, if the 
+tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each
+combined value in the resulting large tensor by summing all values from all containing blocks.
+Unfold extracts the values in the local blocks by copying from the large tensor. So, if the
 blocks overlap, they are not inverses of each other.
     )DOC");
   }
@@ -285,22 +81,6 @@ blocks overlap, they are not inverses of each other.
 class FoldGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Y")),
-        true,
-        platform::errors::NotFound("The gradient of Y should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"),
-        true,
-        platform::errors::NotFound("The input X should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")),
-        true,
-        platform::errors::NotFound("The gradient of X should not be null"));
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -332,18 +112,19 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(FoldGradOpNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(fold,
+                            FoldInferShapeFunctor,
+                            PD_INFER_META(phi::FoldInferMeta));
 REGISTER_OPERATOR(fold,
                   ops::FoldOp,
                   ops::FoldOpMaker,
                   ops::FoldGradMaker<paddle::framework::OpDesc>,
-                  ops::FoldGradMaker<paddle::imperative::OpBase>);
+                  ops::FoldGradMaker<paddle::imperative::OpBase>,
+                  FoldInferShapeFunctor);
+DECLARE_INFER_SHAPE_FUNCTOR(fold_grad,
+                            FoldGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(fold_grad,
                   ops::FoldGradOp,
-                  ops::FoldGradOpNoNeedBufferVarsInferer);
-
-REGISTER_OP_CPU_KERNEL(fold,
-                       ops::FoldOpKernel<phi::CPUContext, float>,
-                       ops::FoldOpKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(fold_grad,
-                       ops::FoldGradOpKernel<phi::CPUContext, float>,
-                       ops::FoldGradOpKernel<phi::CPUContext, double>);
+                  ops::FoldGradOpNoNeedBufferVarsInferer,
+                  FoldGradInferShapeFunctor);

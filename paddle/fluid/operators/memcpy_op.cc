@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -110,10 +113,12 @@ class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                  "1: dst is on CUDAPlace. "
                  "2: dst is on CUDAPinnedPlace. "
                  "3: dst is on XPUPlace. "
-                 "4: dst is on NPUPlace. ");
+                 "4: dst is on NPUPlace. "
+                 "5: dst is on NPUPinnerPlace. "
+                 "6: dst is on CustomDevicePlace");
     AddComment(R"DOC(
     Memcpy Operator.
-    By now, it ONLY supports the memcopy between CUDAPinnedPlace <-> CUDAPlace or 
+    By now, it ONLY supports the memcopy between CUDAPinnedPlace <-> CUDAPlace or
     NPUPlace <-> CPUPlace, and used as an internal op by Recompute-Offload.
     You would have to update it if you want other more capacities.
 
@@ -128,43 +133,19 @@ raise error if the type is not listed above.
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+DECLARE_INFER_SHAPE_FUNCTOR(memcpy,
+                            MemcpyInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 REGISTER_OPERATOR(
     memcpy,
     ops::MemcpyOp,
     ops::MemcpyOpProtoMaker,
     ops::MemcpyInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL_FUNCTOR(memcpy,
-                               float,
-                               ops::MemcpyKernel,
-                               double,
-                               ops::MemcpyKernel,
-                               int,
-                               ops::MemcpyKernel,
-                               int64_t,
-                               ops::MemcpyKernel,
-                               bool,
-                               ops::MemcpyKernel,
-                               plat::float16,
-                               ops::MemcpyKernel);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(memcpy,
-                                float,
-                                ops::MemcpyKernel,
-                                double,
-                                ops::MemcpyKernel,
-                                int,
-                                ops::MemcpyKernel,
-                                int64_t,
-                                ops::MemcpyKernel,
-                                bool,
-                                ops::MemcpyKernel,
-                                plat::float16,
-                                ops::MemcpyKernel);
-#endif
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    MemcpyInferShapeFunctor);
 
 #ifdef PADDLE_WITH_ASCEND_CL
 REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy,

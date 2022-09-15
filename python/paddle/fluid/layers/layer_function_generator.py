@@ -24,7 +24,7 @@ from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'generate_layer_fn', 'generate_activation_fn', 'generate_inplace_fn',
@@ -260,14 +260,13 @@ def generate_activation_fn(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
-        final_state_op_type = "final_state_%s" % op_type
-        if in_dygraph_mode() and hasattr(_C_ops, final_state_op_type):
-            op = getattr(_C_ops, final_state_op_type)
+        if in_dygraph_mode() and hasattr(_C_ops, op_type):
+            op = getattr(_C_ops, op_type)
             return op(x)
         # TODO(dev): Because some ops' yaml has not been migrated.
         # Replace it with _in_legacy_dygraph while all yaml work is done.
         if _non_static_mode():
-            op = getattr(_C_ops, op_type)
+            op = getattr(_legacy_C_ops, op_type)
             return op(x)
 
         if op_type not in ["abs", "exp", "square"]:
@@ -308,7 +307,7 @@ def generate_inplace_fn(inplace_op_type):
 
     def func(x, name=None):
         if _non_static_mode():
-            op = getattr(_C_ops, inplace_op_type)
+            op = getattr(_legacy_C_ops, inplace_op_type)
             return op(x)
         warnings.warn(
             "In static mode, {}() is the same as {}() and does not perform inplace operation."
@@ -394,7 +393,7 @@ def templatedoc(op_type=None):
 
 def add_sample_code(func, sample_code):
     """
-    Append sample code for dynamically generated functions. 
+    Append sample code for dynamically generated functions.
 
     Args:
        func: The function of the function to be append sample code to.

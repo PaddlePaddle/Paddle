@@ -642,12 +642,16 @@ def _addup_repetitive_outputs_(op_descs,
     return op_descs
 
 
-def _remove_no_grad_branch_(op_descs, no_grad_set, grad_op_id_to_fwd_op=None):
+def _remove_no_grad_branch_(op_descs,
+                            no_grad_set,
+                            grad_op_id_to_fwd_op=None,
+                            target_vars=[]):
     """
     Remove unnecessary grad ops
     A grad op can be removed in two cases:
         1. all outputs of the grad op are in 'no_grad_set'
         2. all grad inputs of the grad op are in 'no_grad_set'
+    NOTE: we will skip target_vars's grad name.
     """
 
     def _op_can_be_removed_(op_desc, no_grad_set):
@@ -658,16 +662,18 @@ def _remove_no_grad_branch_(op_descs, no_grad_set, grad_op_id_to_fwd_op=None):
                 name for name in op_desc.input_arg_names()
                 if name.find(core.grad_var_suffix()) != -1
         ], no_grad_set):
-            no_grad_set.update(out_arg_names)
+            no_grad_set.update(set(out_arg_names) - target_grad_var_names)
             return True
         return False
 
     # Remove ops whose outputs are all in no_grad_dict
+    target_grad_var_names = set(
+        [var.name + core.grad_var_suffix() for var in target_vars])
     op_descs = [
         op_desc for op_desc in op_descs
         if not _op_can_be_removed_(op_desc, no_grad_set)
     ]
-    # Insert fill_zeros_like_op
+    # Insert fill_any_like_op with value 0
     to_insert = []
     for idx, op_desc in enumerate(op_descs):
         for arg in op_desc.input_arg_names():
@@ -676,8 +682,11 @@ def _remove_no_grad_branch_(op_descs, no_grad_set, grad_op_id_to_fwd_op=None):
                 x_in = _strip_grad_suffix_(arg)
                 # the reason should be: arg can be input of another grad op
                 # and the op is a not-to-remove op
-                new_op_desc = _create_op_desc_("fill_zeros_like", {"X": [x_in]},
-                                               {"Out": [arg]}, {})
+                new_op_desc = _create_op_desc_("fill_any_like", {"X": [x_in]},
+                                               {"Out": [arg]}, {
+                                                   'value': 0,
+                                                   'dtype': -1
+                                               })
                 # update the mapping between fwd and bwd
                 if grad_op_id_to_fwd_op is not None and grad_op_id_to_fwd_op.get(
                         op_desc.original_id(), None) is not None:
@@ -824,6 +833,7 @@ def serialize_op_decs(op_desc):
 
 def _append_backward_ops_with_checkpoints_(block,
                                            ops,
+                                           target_vars,
                                            target_block,
                                            no_grad_dict,
                                            grad_to_var,
@@ -835,6 +845,7 @@ def _append_backward_ops_with_checkpoints_(block,
     Args:
         block(Block): the block where forward ops are
         ops(Op): the forward operators whose forward recomputation backward ops need to be added
+        target_vars(list[Tensor]): the loss vars we want to calculate gradient.
         target_block(Block): the block which is going to hold new generated grad ops
         no_grad_dict(dict):
             key(int) block index
@@ -1070,7 +1081,7 @@ def _append_backward_ops_with_checkpoints_(block,
     # 4) remove no grad branch as it is in _remove_no_grad_branch_
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
                                             no_grad_dict[block.idx],
-                                            grad_op_id_to_fwd_op)
+                                            grad_op_id_to_fwd_op, target_vars)
     added_descs = _add_descs_to_block(grad_op_descs, target_block,
                                       grad_op_id_to_fwd_op)
     return program_stat, checkpoints_name, vars_should_be_hold, recompute_segments
@@ -1140,6 +1151,7 @@ def _rename_grad_name_(name, grad_order):
 
 def _append_backward_ops_(block,
                           ops,
+                          target_vars,
                           target_block,
                           no_grad_dict,
                           grad_to_var,
@@ -1155,6 +1167,7 @@ def _append_backward_ops_(block,
     Args:
         block(Block): the block where forward ops are
         ops(Op): the forward operators whose backward ops need to be added
+        target_vars(list[Tensor]): the loss vars we want to calculate gradient.
         target_block(Block): the block which is going to hold new generated grad ops
         no_grad_dict(dict):
             key(int)  block index
@@ -1212,6 +1225,7 @@ def _append_backward_ops_(block,
             sub_block_path = op_path_dict[op._block_attr_id("sub_block")]
             _append_backward_ops_(sub_block,
                                   sub_block_path,
+                                  target_vars,
                                   grad_sub_block,
                                   no_grad_dict,
                                   grad_to_var,
@@ -1330,7 +1344,7 @@ def _append_backward_ops_(block,
     # if all inputs of the grad op are in no_grad_set, just remove this op
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
                                             no_grad_dict[block.idx],
-                                            grad_op_id_to_fwd_op)
+                                            grad_op_id_to_fwd_op, target_vars)
 
     # remove some backward ops
     not_need_ops = _find_not_need_ops(grad_op_descs, ops, input_grad_names_set)
@@ -1395,11 +1409,11 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
     ops_to_remove = []
     '''
-    NOTE(paddle-dev): while_grad op may hold some inputs which are not found 
-    in the parent/forward block, and they are also the outputs of while_grad 
-    op. These kinds of inputs are the recursive outputs inside while_grad op. 
-    They should be considered as "already created" when scanning the inner 
-    ops of while_grad ops.  
+    NOTE(paddle-dev): while_grad op may hold some inputs which are not found
+    in the parent/forward block, and they are also the outputs of while_grad
+    op. These kinds of inputs are the recursive outputs inside while_grad op.
+    They should be considered as "already created" when scanning the inner
+    ops of while_grad ops.
     '''
     parent_op = _find_parent_op_(block)
     parent_op_vars = []
@@ -1438,7 +1452,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             continue
         else:
             '''
-            If the output is not empty and there is any grad input, find 
+            If the output is not empty and there is any grad input, find
             whether there is any existing input. If not, just remove it.
             '''
             if grad_var_ins:
@@ -1450,11 +1464,11 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                 if not existing_grad_var_ins:
                     '''
                     FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
-                    in recurrent op. The input of this op does not even exist in 
-                    the program! Therefore, any dependency analysis would not 
+                    in recurrent op. The input of this op does not even exist in
+                    the program! Therefore, any dependency analysis would not
                     work to this op! If I do not add the following code, this op
-                    would be pruned, and the calculation result would be wrong. 
-                    Maybe we should re-design this op later...  
+                    would be pruned, and the calculation result would be wrong.
+                    Maybe we should re-design this op later...
                     '''
                     if op_desc.type() not in ['rnn_memory_helper_grad']:
                         ops_to_remove.append(op_idx)
@@ -1765,6 +1779,7 @@ def append_backward(loss,
                 _append_backward_ops_with_checkpoints_(
                     root_block,
                     op_path,
+                    [loss],
                     root_block,
                     no_grad_dict,
                     grad_to_var,
@@ -1774,6 +1789,7 @@ def append_backward(loss,
             _append_backward_ops_(
                 block,  # the block where forward ops are in
                 op_path,
+                [loss],
                 target_grad_block,
                 no_grad_dict,
                 grad_to_var,
@@ -2135,6 +2151,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     grad_info_map = dict()
     _append_backward_ops_(block,
                           op_path,
+                          targets,
                           block,
                           no_grad_dict,
                           grad_to_var,
@@ -2189,7 +2206,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         will be None.
 
     Examples:
-    
+
         .. code-block:: python
           :name: code-example
             import paddle

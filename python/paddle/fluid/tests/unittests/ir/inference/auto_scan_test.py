@@ -136,9 +136,12 @@ class AutoScanTest(unittest.TestCase):
                 "The output shapes are not equal, the baseline shape is " +
                 str(baseline[key].shape) + ', but got ' + str(arr.shape))
             diff = abs(baseline[key] - arr)
-            self.assertTrue(
-                np.allclose(baseline[key], arr, atol=atol, rtol=rtol),
-                "Output has diff, Maximum absolute error: {}".format(
+            np.testing.assert_allclose(
+                baseline[key],
+                arr,
+                rtol=rtol,
+                atol=atol,
+                err_msg='Output has diff, Maximum absolute error: {}'.format(
                     np.amax(diff)))
 
     @abc.abstractmethod
@@ -502,7 +505,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     class TensorRTParam:
         '''
-        TensorRT subgraph engine parameters. 
+        TensorRT subgraph engine parameters.
         '''
 
         def __init__(self, workspace_size, max_batch_size, min_subgraph_size,
@@ -516,7 +519,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     class DynamicShapeParam:
         '''
-         Prepare TensorRT subgraph engine dynamic shape parameters. 
+         Prepare TensorRT subgraph engine dynamic shape parameters.
          '''
 
         def __init__(self, min_input_shape, max_input_shape, opt_input_shape,
@@ -538,8 +541,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
         self.dynamic_shape = self.DynamicShapeParam({}, {}, {}, False)
         self.num_percent_cases = float(
             os.getenv('TEST_NUM_PERCENT_CASES', default='1.0'))
-        # Choose different tests by week
-        np.random.seed(int(time.strftime("%W")))
+
+        # Use a seperate random generator for skipping tests
+        self.skip_rng = np.random.default_rng(int(time.strftime("%W")))
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
         config = paddle_infer.Config()
@@ -555,17 +559,26 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 precision_mode=self.trt_param.precision,
                 use_static=self.trt_param.use_static,
                 use_calib_mode=self.trt_param.use_calib_mode)
-            if len(self.dynamic_shape.min_input_shape
-                   ) != 0 and self.dynamic_shape.min_input_shape.keys(
-                   ) == self.dynamic_shape.max_input_shape.keys(
-                   ) and self.dynamic_shape.min_input_shape.keys(
-                   ) == self.dynamic_shape.opt_input_shape.keys():
+            if self.dynamic_shape.min_input_shape and (
+                    self.dynamic_shape.min_input_shape.keys() ==
+                    self.dynamic_shape.max_input_shape.keys() ==
+                    self.dynamic_shape.opt_input_shape.keys()):
                 config.set_trt_dynamic_shape_info(
                     self.dynamic_shape.min_input_shape,
                     self.dynamic_shape.max_input_shape,
                     self.dynamic_shape.opt_input_shape,
                     self.dynamic_shape.disable_trt_plugin_fp16)
         return config
+
+    def assert_tensors_near(self, atol: float, rtol: float,
+                            tensor: Dict[str, np.array],
+                            baseline: Dict[str, np.array]):
+        for key, arr in tensor.items():
+            self.assertEqual(
+                baseline[key].shape, arr.shape,
+                'The output shapes are not equal, the baseline shape is ' +
+                str(baseline[key].shape) + ', but got ' + str(arr.shape))
+            np.testing.assert_allclose(baseline[key], arr, rtol=rtol, atol=atol)
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
         last_passed_program = os.path.join(
@@ -579,14 +592,14 @@ class TrtLayerAutoScanTest(AutoScanTest):
         ]
         trt_engine_size = sum(op_types)
         paddle_op_size = op_size - trt_engine_size
-        self.assertTrue(
-            trt_engine_size == trt_engine_num,
-            'trt_engine_num is {}, but got {}!'.format(trt_engine_size,
-                                                       trt_engine_num))
-        self.assertTrue(
-            paddle_op_size == paddle_op_num,
-            'paddle_op_num is {}, but got {}!'.format(paddle_op_size,
-                                                      paddle_op_num))
+        self.assertEqual(
+            trt_engine_num, trt_engine_size,
+            'Expected trt_engine_num is {}, but got {}!'.format(
+                trt_engine_num, trt_engine_size))
+        self.assertEqual(
+            paddle_op_num, paddle_op_size,
+            'Expected paddle_op_num is {}, but got {}!'.format(
+                paddle_op_num, paddle_op_size))
 
     def inference_config_str(self, config: paddle_infer.Config) -> str:
         dic = {}
@@ -602,18 +615,16 @@ class TrtLayerAutoScanTest(AutoScanTest):
         return str(dic)
 
     def run_test(self, quant=False, skip_baseline=False, *args, **kwargs):
-        status = True
-        run_flags = []
-        for prog_config in self.sample_program_configs(*args, **kwargs):
-            # In CI, only run 10% cases
-            if np.random.rand() < self.num_percent_cases:
-                run_flags.append(True)
-            else:
-                run_flags.append(False)
+        all_passes = True
 
-        for prog_config, run_flags in zip(
-                self.sample_program_configs(*args, **kwargs), run_flags):
-            if not run_flags:
+        def random_to_skip():
+            if self.skip_rng.random() < self.num_percent_cases:
+                return False
+            return True
+
+        for prog_config in self.sample_program_configs(*args, **kwargs):
+
+            if random_to_skip():
                 continue
 
             # if program is invalid, we should skip that cases.
@@ -657,29 +668,31 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 else:
                     raise NotImplementedError
 
-                if quant and pred_config.tensorrt_precision_mode(
-                ) != paddle_infer.PrecisionType.Int8:
+                if pred_config.tensorrt_precision_mode(
+                ) != paddle_infer.PrecisionType.Int8 and quant:
                     continue
                 if pred_config.tensorrt_precision_mode(
                 ) == paddle_infer.PrecisionType.Int8 and not quant:
                     continue
 
                 ignore_flag = False
-                for ignore_info in self.ignore_cases:
-                    if ignore_info[0](prog_config, pred_config):
+                for teller, reason, note in self.ignore_cases:
+                    if teller(prog_config, pred_config):
                         ignore_flag = True
-                        if ignore_info[1] == IgnoreReasons.TRT_NOT_IMPLEMENTED:
+                        if reason == IgnoreReasons.TRT_NOT_IMPLEMENTED:
                             self.ignore_log(
-                                "[TRT_NOT_IMPLEMENTED] " + ignore_info[2] +
-                                ' ' + ' vs ' +
-                                self.inference_config_str(pred_config))
-                        elif ignore_info[1] == IgnoreReasons.TRT_NOT_SUPPORT:
-                            self.ignore_log(
-                                "[TRT_NOT_SUPPORT] " + ignore_info[2] + ' ' +
-                                ' vs ' + self.inference_config_str(pred_config))
+                                '[TRT_NOT_IMPLEMENTED] {} vs {}'.format(
+                                    note,
+                                    self.inference_config_str(pred_config)))
+                        elif reason == IgnoreReasons.TRT_NOT_SUPPORT:
+                            self.ignore_log('[TRT_NOT_SUPPORT] {} vs {}'.format(
+                                note, self.inference_config_str(pred_config)))
                         else:
                             raise NotImplementedError
                         break
+
+                if ignore_flag:
+                    continue
 
                 try:
                     pred_config_deserialize = paddle_infer.Config(pred_config)
@@ -688,24 +701,23 @@ class TrtLayerAutoScanTest(AutoScanTest):
                                              pred_config, feed_data))
                     self.assert_tensors_near(atol, rtol, results[-1],
                                              results[0])
-                    if not ignore_flag:
-                        self.assert_op_size(nodes_num[0], nodes_num[1])
+                    trt_engine_num, paddle_op_num = nodes_num
+                    self.assert_op_size(trt_engine_num, paddle_op_num)
+
                     # deserialize test
-                    if nodes_num[0] > 0:
+                    if trt_engine_num > 0:
                         self.run_test_config(model, params, prog_config,
                                              pred_config_deserialize, feed_data)
+
+                    self.success_log('RUN predictor_config {} done'.format(
+                        self.inference_config_str(pred_config)))
                 except Exception as e:
                     self.fail_log(
                         self.inference_config_str(pred_config) +
                         '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
-                    if not ignore_flag:
-                        status = False
-                    continue
-                self.success_log('RUN predictor_config ' +
-                                 self.inference_config_str(pred_config) +
-                                 ' done')
+                    all_passes = False
 
-        self.assertTrue(status)
+        self.assertTrue(all_passes)
 
     # TODO(wilber): just for backward compatible
     def add_skip_case(self, teller: [

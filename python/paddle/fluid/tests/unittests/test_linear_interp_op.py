@@ -316,7 +316,7 @@ class TestResizeLinearAPI(unittest.TestCase):
                                       align_mode=1,
                                       align_corners=False)
         for res in results:
-            self.assertTrue(np.allclose(res, expect_res))
+            np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
 
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
@@ -341,7 +341,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
                                       align_mode=1,
                                       align_corners=False)
 
-            self.assertTrue(np.allclose(interp.numpy(), expect))
+            np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
 
 
 class TestResizeLinearOpUint8(OpTest):

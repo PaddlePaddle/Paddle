@@ -17,7 +17,7 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
 from ..fluid.dygraph import no_grad
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import warnings
 from ..fluid.layer_helper import LayerHelper
 from ..fluid import unique_name
@@ -54,8 +54,8 @@ class SGD(Optimizer):
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
-                :ref:`api_guide_Name` . 
-        
+                :ref:`api_guide_Name` .
+
     Examples:
         .. code-block:: python
 
@@ -143,12 +143,12 @@ class SGD(Optimizer):
 
         lr = self._create_param_lr(param_and_grad)
         if in_dygraph_mode():
-            _C_ops.final_state_sgd_(param_and_grad[0], lr, param_and_grad[1],
-                                    master_weight, find_master)
+            _C_ops.sgd_(param_and_grad[0], lr, param_and_grad[1], master_weight,
+                        find_master)
             return None
         if _in_legacy_dygraph():
-            _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
-                       param_and_grad[0], master_weight)
+            _legacy_C_ops.sgd(param_and_grad[0], lr, param_and_grad[1],
+                              master_weight, param_and_grad[0], master_weight)
             return None
 
         assert isinstance(block, framework.Block)

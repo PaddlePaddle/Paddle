@@ -363,9 +363,9 @@ class API_TestSplit(unittest.TestCase):
             },
                                   fetch_list=[x0, x1, x2])
             ex_x0, ex_x1, ex_x2 = np.split(input1, 3, axis=2)
-            self.assertTrue(np.allclose(ex_x0, r0))
-            self.assertTrue(np.allclose(ex_x1, r1))
-            self.assertTrue(np.allclose(ex_x2, r2))
+            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
+            np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
 
 
 class API_TestSplit2(unittest.TestCase):
@@ -380,9 +380,9 @@ class API_TestSplit2(unittest.TestCase):
             r0, r1, r2, = exe.run(feed={"data1": input1},
                                   fetch_list=[x0, x1, x2])
             ex_x0, ex_x1, ex_x2 = np.split(input1, 3, axis=2)
-            self.assertTrue(np.allclose(ex_x0, r0))
-            self.assertTrue(np.allclose(ex_x1, r1))
-            self.assertTrue(np.allclose(ex_x2, r2))
+            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
+            np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
 
 
 class API_TestSplit3(unittest.TestCase):
@@ -396,8 +396,8 @@ class API_TestSplit3(unittest.TestCase):
             input1 = np.random.random([1, 10]).astype('float64')
             r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
             ex_x0, ex_x1 = np.split(input1, (3, ), axis=1)
-            self.assertTrue(np.allclose(ex_x0, r0))
-            self.assertTrue(np.allclose(ex_x1, r1))
+            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
 
 
 class API_TestSplit4(unittest.TestCase):
@@ -417,8 +417,112 @@ class API_TestSplit4(unittest.TestCase):
             },
                              fetch_list=[x0, x1])
             ex_x0, ex_x1 = np.split(input1, (3, ), axis=1)
-            self.assertTrue(np.allclose(ex_x0, r0))
-            self.assertTrue(np.allclose(ex_x1, r1))
+            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
+
+
+class API_TestSplit5(unittest.TestCase):
+
+    def test_out(self):
+        for use_cuda in ([False, True]
+                         if core.is_compiled_with_cuda() else [False]):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                input_1 = np.random.random([5, 4]).astype("int32")
+                # input is a variable which shape is [5, 4]
+                input = paddle.to_tensor(input_1)
+                n = paddle.full([1], 5, dtype='int32')
+                out = paddle.split(input, [n])
+                exe = paddle.static.Executor(place=place)
+                re = exe.run(fetch_list=[out])
+                re = re[0]
+                ex_out = np.split(input_1, [5])
+                ex_out = ex_out[0]
+                np.testing.assert_allclose(ex_out, re, rtol=1e-05)
+
+
+class API_TestSplit6(unittest.TestCase):
+
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
+            x0, x1 = paddle.split(data, num_or_sections=[1, 1], axis=0)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input1 = np.random.random([2, 10]).astype('float64')
+            r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
+            ex_x0, ex_x1 = np.split(input1, (1, ), axis=0)
+            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
+
+
+class API_TestDygraphFluidSplit(unittest.TestCase):
+
+    def test_out1(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
+            with _test_eager_guard():
+                # input is a variable which shape is [4, 6, 6]
+                input = paddle.to_tensor(input_1)
+                input.stop_gradient = False
+                x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=1)
+                eager_x0_out = x0.numpy()
+                eager_x1_out = x1.numpy()
+                eager_x2_out = x2.numpy()
+                loss = x0.sum()
+                loss.backward()
+                manul_grad = np.zeros_like(input_1)
+                manul_grad[:, :2, :] = 1
+                np.testing.assert_allclose(input.gradient(),
+                                           manul_grad,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
+                np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
+                np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
+
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+    def test_out2(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            x0, x1, x2 = fluid.layers.split(input, [2, 2, 2], dim=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
+            with _test_eager_guard():
+                # input is a variable which shape is [4, 6, 6]
+                input = paddle.to_tensor(input_1)
+                input.stop_gradient = False
+                x0, x1, x2 = fluid.layers.split(input, [2, 2, 2], dim=1)
+                eager_x0_out = x0.numpy()
+                eager_x1_out = x1.numpy()
+                eager_x2_out = x2.numpy()
+                loss = x0.sum()
+                loss.backward()
+                manul_grad = np.zeros_like(input_1)
+                manul_grad[:, :2, :] = 1
+                np.testing.assert_allclose(input.gradient(),
+                                           manul_grad,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
+                np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
+                np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
+
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
 
 class API_TestDygraphSplit(unittest.TestCase):
@@ -446,14 +550,16 @@ class API_TestDygraphSplit(unittest.TestCase):
                 loss.backward()
                 manul_grad = np.zeros_like(input_1)
                 manul_grad[:, :2, :] = 1
-                self.assertTrue(np.allclose(input.gradient(), manul_grad))
-                self.assertTrue(np.allclose(ex_x0, eager_x0_out))
-                self.assertTrue(np.allclose(ex_x1, eager_x1_out))
-                self.assertTrue(np.allclose(ex_x2, eager_x2_out))
+                np.testing.assert_allclose(input.gradient(),
+                                           manul_grad,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
+                np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
+                np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
 
-        self.assertTrue(np.allclose(ex_x0, x0_out))
-        self.assertTrue(np.allclose(ex_x1, x1_out))
-        self.assertTrue(np.allclose(ex_x2, x2_out))
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_out2(self):
         with fluid.dygraph.guard():
@@ -465,9 +571,28 @@ class API_TestDygraphSplit(unittest.TestCase):
             x1_out = x1.numpy()
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
-        self.assertTrue(np.allclose(ex_x0, x0_out))
-        self.assertTrue(np.allclose(ex_x1, x1_out))
-        self.assertTrue(np.allclose(ex_x2, x2_out))
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+    def test_out3(self):
+        with fluid.dygraph.guard():
+            np.random.seed(2021)
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            out_dy = paddle.split(input, [6], axis=1)
+            out_dy = out_dy[0]
+            out_dy_np = out_dy.numpy()
+            ex_out = np.split(input_1, [6], axis=1)
+            ex_out = ex_out[0]
+            with _test_eager_guard():
+                input = paddle.to_tensor(input_1)
+                out_eager = paddle.split(input, [6], axis=1)
+                out_eager = out_eager[0]
+                out_eager_np = out_dy.numpy()
+                np.testing.assert_allclose(ex_out, out_eager_np, rtol=1e-05)
+        np.testing.assert_allclose(ex_out, out_dy_np, rtol=1e-05)
 
     def test_out_tensor_input(self):
         with fluid.dygraph.guard():
@@ -482,9 +607,9 @@ class API_TestDygraphSplit(unittest.TestCase):
             x1_out = x1.numpy()
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
-        self.assertTrue(np.allclose(ex_x0, x0_out))
-        self.assertTrue(np.allclose(ex_x1, x1_out))
-        self.assertTrue(np.allclose(ex_x2, x2_out))
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_axis_tensor_input(self):
         with fluid.dygraph.guard():
@@ -499,9 +624,24 @@ class API_TestDygraphSplit(unittest.TestCase):
             x1_out = x1.numpy()
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
-        self.assertTrue(np.allclose(ex_x0, x0_out))
-        self.assertTrue(np.allclose(ex_x1, x1_out))
-        self.assertTrue(np.allclose(ex_x2, x2_out))
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+    def func_negative_one_section(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            num1 = paddle.full(shape=[1], fill_value=1, dtype='int32')
+            x0 = paddle.split(input, num_or_sections=[-1], axis=num1)
+            x0_out = x0[0].numpy()
+        np.testing.assert_array_equal(x0_out, input.numpy())
+
+    def test_negative_one_section(self):
+        with _test_eager_guard():
+            self.func_negative_one_section()
+        self.func_negative_one_section()
 
 
 class API_TestEmptySplit(unittest.TestCase):
@@ -519,10 +659,11 @@ class API_TestEmptySplit(unittest.TestCase):
                 5,
                 5,
             ])
-        self.assertTrue(np.allclose(ex_x0, x0_out))
-        self.assertTrue(np.allclose(ex_x1, x1_out))
-        self.assertTrue(np.allclose(ex_x2, x2_out))
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

@@ -17,12 +17,18 @@
 #include <algorithm>
 #include <atomic>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/jit/property.pb.h"
 
 namespace paddle {
+namespace framework {
+class Variable;
+}
 namespace jit {
+
+using Variable = paddle::framework::Variable;
 
 class Property {
  public:
@@ -43,32 +49,53 @@ class Property {
   const proto::PropertyVals *Proto() const { return &property_; }
 
   int Size() const;
+  std::vector<std::string> Names() const;
+  std::unordered_map<std::string, std::shared_ptr<Variable>> Values();
 
   void SetFloat(const float &f);
   void SetFloat(const std::string &name, const float &f);
 
+  float GetFloat(const std::string &name) const;
+  float GetFloat(const int &idx) const;
+
   void SetFloats(const std::vector<float> &v);
   void SetFloats(const std::string &name, const std::vector<float> &v);
 
-  float GetFloat(const std::string &name) const;
-  float GetFloat(const int &idx) const;
+  std::vector<float> GetFloats(const std::string &name);
 
   void SetInt64(const int64_t &i);
   void SetInt64(const std::string &name, const int64_t &i);
 
+  int64_t GetInt64(const std::string &name);
+
   void SetInt64s(const std::vector<int64_t> &v);
   void SetInt64s(const std::string &name, const std::vector<int64_t> &v);
+
+  std::vector<int> GetInt64s(const std::string &name);
 
   void SetString(const std::string &s);
   void SetString(const std::string &name, const std::string &s);
 
+  std::string GetString(const std::string &name);
+
   void SetStrings(const std::vector<std::string> &v);
   void SetStrings(const std::string &name, const std::vector<std::string> &v);
+
+  std::vector<std::string> GetStrings(const std::string &name);
+
+  void Deserialization(const std::string &path);
+
+  void Serialization(const std::string &path);
 
   // The Id() and OriginalId() are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
+
+ private:
+  void DeserializationFromString(const std::string &str);
+
+  std::string SerializationToString();
 
  private:
   proto::PropertyVals property_;

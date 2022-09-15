@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,8 +38,8 @@ class MBConvBlock(nn.Layer):
         self._block_args = block_args
         self._bn_mom = global_params.batch_norm_momentum
         self._bn_eps = global_params.batch_norm_epsilon
-        self.has_se = (self._block_args.se_ratio is not None) and (
-            0 < self._block_args.se_ratio <= 1)
+        self.has_se = (self._block_args.se_ratio
+                       is not None) and (0 < self._block_args.se_ratio <= 1)
         self.id_skip = block_args.id_skip  # skip connection and drop connect
 
         # Get static or dynamic convolution depending on image size
@@ -49,13 +49,13 @@ class MBConvBlock(nn.Layer):
         inp = self._block_args.input_filters  # number of input channels
         oup = self._block_args.input_filters * self._block_args.expand_ratio  # number of output channels
         if self._block_args.expand_ratio != 1:
-            self._expand_conv = Conv2d(
-                in_channels=inp,
-                out_channels=oup,
-                kernel_size=1,
-                bias_attr=False)
-            self._bn0 = nn.BatchNorm2D(
-                num_features=oup, momentum=self._bn_mom, epsilon=self._bn_eps)
+            self._expand_conv = Conv2d(in_channels=inp,
+                                       out_channels=oup,
+                                       kernel_size=1,
+                                       bias_attr=False)
+            self._bn0 = nn.BatchNorm2D(num_features=oup,
+                                       momentum=self._bn_mom,
+                                       epsilon=self._bn_eps)
 
         # Depthwise convolution phase
         k = self._block_args.kernel_size
@@ -67,32 +67,31 @@ class MBConvBlock(nn.Layer):
             kernel_size=k,
             stride=s,
             bias_attr=False)
-        self._bn1 = nn.BatchNorm2D(
-            num_features=oup, momentum=self._bn_mom, epsilon=self._bn_eps)
+        self._bn1 = nn.BatchNorm2D(num_features=oup,
+                                   momentum=self._bn_mom,
+                                   epsilon=self._bn_eps)
 
         # Squeeze and Excitation layer, if desired
         if self.has_se:
-            num_squeezed_channels = max(1,
-                                        int(self._block_args.input_filters *
-                                            self._block_args.se_ratio))
-            self._se_reduce = Conv2d(
-                in_channels=oup,
-                out_channels=num_squeezed_channels,
-                kernel_size=1)
-            self._se_expand = Conv2d(
-                in_channels=num_squeezed_channels,
-                out_channels=oup,
-                kernel_size=1)
+            num_squeezed_channels = max(
+                1,
+                int(self._block_args.input_filters * self._block_args.se_ratio))
+            self._se_reduce = Conv2d(in_channels=oup,
+                                     out_channels=num_squeezed_channels,
+                                     kernel_size=1)
+            self._se_expand = Conv2d(in_channels=num_squeezed_channels,
+                                     out_channels=oup,
+                                     kernel_size=1)
 
         # Output phase
         final_oup = self._block_args.output_filters
-        self._project_conv = Conv2d(
-            in_channels=oup,
-            out_channels=final_oup,
-            kernel_size=1,
-            bias_attr=False)
-        self._bn2 = nn.BatchNorm2D(
-            num_features=final_oup, momentum=self._bn_mom, epsilon=self._bn_eps)
+        self._project_conv = Conv2d(in_channels=oup,
+                                    out_channels=final_oup,
+                                    kernel_size=1,
+                                    bias_attr=False)
+        self._bn2 = nn.BatchNorm2D(num_features=final_oup,
+                                   momentum=self._bn_mom,
+                                   epsilon=self._bn_eps)
         self._swish = nn.Hardswish()
 
     def forward(self, inputs, drop_connect_rate=None):
@@ -121,8 +120,9 @@ class MBConvBlock(nn.Layer):
         input_filters, output_filters = self._block_args.input_filters, self._block_args.output_filters
         if self.id_skip and self._block_args.stride == 1 and input_filters == output_filters:
             if drop_connect_rate:
-                x = drop_connect(
-                    x, prob=drop_connect_rate, training=self.training)
+                x = drop_connect(x,
+                                 prob=drop_connect_rate,
+                                 training=self.training)
             x = x + inputs  # skip connection
         return x
 
@@ -162,10 +162,14 @@ class EfficientNet(nn.Layer):
         in_channels = 3  # rgb
         out_channels = round_filters(
             32, self._global_params)  # number of output channels
-        self._conv_stem = Conv2d(
-            in_channels, out_channels, kernel_size=3, stride=2, bias_attr=False)
-        self._bn0 = nn.BatchNorm2D(
-            num_features=out_channels, momentum=bn_mom, epsilon=bn_eps)
+        self._conv_stem = Conv2d(in_channels,
+                                 out_channels,
+                                 kernel_size=3,
+                                 stride=2,
+                                 bias_attr=False)
+        self._bn0 = nn.BatchNorm2D(num_features=out_channels,
+                                   momentum=bn_mom,
+                                   epsilon=bn_eps)
 
         # Build blocks
         self._blocks = nn.LayerList([])
@@ -186,16 +190,19 @@ class EfficientNet(nn.Layer):
                 block_args = block_args._replace(
                     input_filters=block_args.output_filters, stride=1)
             for _ in range(block_args.num_repeat - 1):
-                self._blocks.append(
-                    MBConvBlock(block_args, self._global_params))
+                self._blocks.append(MBConvBlock(block_args,
+                                                self._global_params))
 
         # Head
         in_channels = block_args.output_filters  # output of final block
         out_channels = round_filters(1280, self._global_params)
-        self._conv_head = Conv2d(
-            in_channels, out_channels, kernel_size=1, bias_attr=False)
-        self._bn1 = nn.BatchNorm2D(
-            num_features=out_channels, momentum=bn_mom, epsilon=bn_eps)
+        self._conv_head = Conv2d(in_channels,
+                                 out_channels,
+                                 kernel_size=1,
+                                 bias_attr=False)
+        self._bn1 = nn.BatchNorm2D(num_features=out_channels,
+                                   momentum=bn_mom,
+                                   epsilon=bn_eps)
 
         # Final linear layer
         self._avg_pooling = nn.AdaptiveAvgPool2D(1)
@@ -253,20 +260,21 @@ class EfficientNet(nn.Layer):
                         advprop=False,
                         num_classes=1000,
                         in_channels=3):
-        model = cls.from_name(
-            model_name, override_params={'num_classes': num_classes})
-        load_pretrained_weights(
-            model, model_name, load_fc=(num_classes == 1000), advprop=advprop)
+        model = cls.from_name(model_name,
+                              override_params={'num_classes': num_classes})
+        load_pretrained_weights(model,
+                                model_name,
+                                load_fc=(num_classes == 1000),
+                                advprop=advprop)
         if in_channels != 3:
             Conv2d = get_same_padding_conv2d(
                 image_size=model._global_params.image_size)
             out_channels = round_filters(32, model._global_params)
-            model._conv_stem = Conv2d(
-                in_channels,
-                out_channels,
-                kernel_size=3,
-                stride=2,
-                bias_attr=False)
+            model._conv_stem = Conv2d(in_channels,
+                                      out_channels,
+                                      kernel_size=3,
+                                      stride=2,
+                                      bias_attr=False)
         return model
 
     @classmethod
@@ -280,5 +288,5 @@ class EfficientNet(nn.Layer):
         """ Validates model name. """
         valid_models = ['efficientnet-b' + str(i) for i in range(9)]
         if model_name not in valid_models:
-            raise ValueError('model_name should be one of: ' + ', '.join(
-                valid_models))
+            raise ValueError('model_name should be one of: ' +
+                             ', '.join(valid_models))

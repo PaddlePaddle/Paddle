@@ -16,7 +16,7 @@ import paddle
 
 
 class Exponential(paddle.distribution.ExponentialFamily):
-    """mock exponential distribution, which support computing entropy and 
+    """mock exponential distribution, which support computing entropy and
        kl use bregman divergence
     """
     _mean_carrier_measure = 0

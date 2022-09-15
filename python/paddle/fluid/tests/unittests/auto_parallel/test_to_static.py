@@ -23,10 +23,12 @@ import paddle.nn.functional as F
 import paddle.distributed.auto_parallel as auto
 import paddle.distributed.fleet as fleet
 
+from paddle import LazyGuard
 from paddle.io import Dataset
 from paddle.static import InputSpec
 from paddle.fluid.framework import _non_static_mode
 from paddle.distributed.auto_parallel.engine import Engine
+from paddle.distributed.auto_parallel.helper import ProgramHelper
 
 batch_size = 4
 batch_num = 30
@@ -85,6 +87,45 @@ class MLPLayer(nn.Layer):
         return out
 
 
+class TestWholeProgram(unittest.TestCase):
+
+    def test_apply_optimzier(self):
+        paddle.disable_static()
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       dropout_ratio=0.1,
+                       initializer_range=0.02)
+        metrics = paddle.metric.Accuracy()
+        loss = paddle.nn.CrossEntropyLoss()
+        optimizer = paddle.optimizer.SGD(learning_rate=0.00001,
+                                         parameters=mlp.parameters())
+        inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
+        labels = InputSpec([batch_size], 'int64', 'label')
+
+        program_helper = ProgramHelper(mlp, loss, [metrics], [inputs], [labels])
+        paddle.enable_static()
+        # step 1: build program
+        program_helper.build_program(mode='train')
+        program_helper.build_program(mode='eval')
+        # support easily to switch mode
+        program_helper.to('train')
+
+        forward_ops = program_helper.main_program.block(0).ops
+        self.assertEqual(len(forward_ops), 21)
+
+        # step 2: apply optimzer to generate whole program
+        optimize_ops, _ = program_helper.apply_optimizer(optimizer)
+        all_ops = program_helper.main_program.block(0).ops
+        sgd_ops = [
+            op for op in program_helper.main_program.block(0).ops
+            if op.type == 'sgd'
+        ]
+        self.assertEqual(len(all_ops), 41)
+        self.assertEqual(len(optimize_ops), len(sgd_ops))
+
+        program_helper.reset()
+
+
 class TestToStatic(unittest.TestCase):
 
     def test_to_static(self):
@@ -116,6 +157,30 @@ class TestToStatic(unittest.TestCase):
         engine.fit(dataset, batch_size=batch_size)
         engine.evaluate(dataset, batch_size=batch_size)
         engine.predict(dataset, batch_size=batch_size)
+
+
+class TestLazyInit(unittest.TestCase):
+
+    def test_lazy_init(self):
+
+        with LazyGuard():
+            mlp = MLPLayer(hidden_size=hidden_size,
+                           intermediate_size=4 * hidden_size,
+                           dropout_ratio=0.1,
+                           initializer_range=0.02)
+            loss = paddle.nn.CrossEntropyLoss()
+
+        metrics = paddle.metric.Accuracy()
+        loss = paddle.nn.CrossEntropyLoss()
+        inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
+        labels = InputSpec([batch_size], 'int64', 'label')
+
+        program_helper = ProgramHelper(mlp, loss, [metrics], [inputs], [labels])
+        program_helper.build_program(mode='train')
+        ops = program_helper.startup_program.block(0).ops
+        vars = program_helper.startup_program.block(0).vars
+        assert len(vars.keys()) == len(ops)
+        program_helper.reset()
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ import contextlib
 
 import paddle
 from paddle.fluid import core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
 from ...utils.recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
@@ -107,7 +107,7 @@ def _initialize_recompute_hcg(hcg):
 
 def _all_gather(tensor, group=None, use_calc_stream=True):
     """
-    The main difference with paddle.distributed.all_gather: 
+    The main difference with paddle.distributed.all_gather:
     no need to pass in tensor_list, the returned tensor is spliced
     """
     if group is not None and not group.is_member():
@@ -115,8 +115,8 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     nranks = paddle.distributed.collective._get_global_group(
     ).nranks if group is None else group.nranks
-    return _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
-                              'ring_id', ring_id, 'nranks', nranks)
+    return _legacy_C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
+                                     'ring_id', ring_id, 'nranks', nranks)
 
 
 def _split_activation(tensor):

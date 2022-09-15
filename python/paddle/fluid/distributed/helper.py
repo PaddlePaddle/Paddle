@@ -15,7 +15,7 @@
 
 class FileSystem(object):
     """
-    A file system that support hadoop client desc. 
+    A file system that support hadoop client desc.
 
     Args:
         fs_type (string): fs_type, for example is "afs"

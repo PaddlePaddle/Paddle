@@ -161,7 +161,7 @@ def _copy_context(ref_dist_context):
 
 class OptimizationTuner:
     """
-    OptimizationTuner is used to manage the tuning procedure of hyper-parameters (configs) 
+    OptimizationTuner is used to manage the tuning procedure of hyper-parameters (configs)
     of Optimization Pass in AutoParallel.
     """
 
@@ -266,7 +266,7 @@ class OptimizationTuner:
             config["input_data"] = self._baseline_dist_context.serial_feed_vars["inputs"] \
                 + self._baseline_dist_context.serial_feed_vars["labels"]
             if config["use_pure_fp16"]:
-                config["base_opt"] = dist_context.optimizer
+                config["base_opt"] = dist_context.serial_optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply([main_program], [startup_program],
                                               pass_context)
@@ -368,6 +368,10 @@ class OptimizationTuner:
             str(self.device_id),
             "--ctx_filename",
             ctx_path,
+            "--profile_start_step",
+            str(self._config.profile_start_step),
+            "--profile_end_step",
+            str(self._config.profile_end_step),
         ])
         cmd_args = "-m paddle.distributed.auto_parallel.tuner.profiler" + " " + profile_args
         cmd = [sys.executable, "-u"] + coverage_args + shlex.split(cmd_args)
@@ -462,7 +466,7 @@ class OptimizationTuner:
         Return the best optimization configuration found in the tuning.
 
         Returns:
-            A object of fleet.DistributedStrategy with best configuration.       
+            A object of fleet.DistributedStrategy with best configuration.
         """
         assert self._best_iter >= 0, "The best configuration is not found yet !"
         best_trial = self._finished_trials[self._best_iter]
@@ -477,7 +481,7 @@ class OptimizationTuner:
         summary_ = """
 Tuning Result Summary
 Run total {} trials with {} min.
-The best trial is: [{}], whose configuration is following: 
+The best trial is: [{}], whose configuration is following:
         """.format(len(self._finished_trials),
                    (time.time() - self._tuning_start_time) / 60,
                    best_trial.name)
@@ -504,8 +508,8 @@ The best trial is: [{}], whose configuration is following:
 
     def tune(self):
         """
-        Performs the search for best hyperparameter configuations 
-        for the selected optimization pass(es). 
+        Performs the search for best hyperparameter configuations
+        for the selected optimization pass(es).
         """
 
         # step1: collect model info which might be used for

@@ -113,7 +113,8 @@ PD_REGISTER_KERNEL(less_than,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(less_equal,
                    KPS,
                    ALL_LAYOUT,
@@ -123,7 +124,8 @@ PD_REGISTER_KERNEL(less_equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(greater_than,
                    KPS,
                    ALL_LAYOUT,
@@ -133,7 +135,8 @@ PD_REGISTER_KERNEL(greater_than,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(greater_equal,
                    KPS,
                    ALL_LAYOUT,
@@ -143,7 +146,8 @@ PD_REGISTER_KERNEL(greater_equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(equal,
                    KPS,
                    ALL_LAYOUT,
@@ -153,7 +157,8 @@ PD_REGISTER_KERNEL(equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(not_equal,
                    KPS,
                    ALL_LAYOUT,
@@ -163,7 +168,8 @@ PD_REGISTER_KERNEL(not_equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(equal_all,
                    KPS,

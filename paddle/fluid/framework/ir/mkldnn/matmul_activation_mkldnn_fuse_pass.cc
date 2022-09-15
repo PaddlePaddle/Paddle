@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = paddle::platform::GetSupportedActivations();
-  std::vector<std::string> matmul_types = {"matmul"};
+  auto matmul_types = {"matmul", "matmul_v2"};
 
   for (const auto& matmul_type : matmul_types)
     for (auto& act_type : act_types) {
@@ -88,8 +88,9 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
   gpd(graph, handler);
   AddStatis(found_matmul_activation_count);
   if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
-    PrettyLogDetail("---    fused %d matmul with %s activation",
+    PrettyLogDetail("---    fused %d %s with %s activation",
                     found_matmul_activation_count,
+                    matmul_type,
                     act_type);
   }
 }
@@ -102,6 +103,11 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
+      .AddInput(
+          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
+      .IsTensor()
+      .IsOptional()
+      .End()
       .AddOutput("Out")
       .IsTensor()
       .End()
@@ -112,6 +118,28 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .IsType<bool>()
       .End()
       .AddAttr("transpose_Y")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddInput(
+          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
       .IsType<bool>()
       .End();
 
@@ -267,6 +295,7 @@ REGISTER_PASS_CAPABILITY(matmul_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("matmul", 1)
+            .EQ("matmul_v2", 0)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)

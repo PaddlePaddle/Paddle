@@ -38,58 +38,7 @@ static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
                         "shape of Input(%s) = [%s].",
                         dim));
 
-  // if mkldnn reshape+transpose+matmul fuse activated
   if (!shape.empty() && !axis.empty()) {
-    PADDLE_ENFORCE_GE(
-        shape.size(),
-        2,
-        platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_LE(
-        shape.size(),
-        4,
-        platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_EQ(
-        shape.size(),
-        axis.size(),
-        platform::errors::InvalidArgument(
-            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
-            "must be equal.",
-            input_name,
-            input_name));
-
-    int num_negative = std::count(shape.begin(), shape.end(), -1);
-    PADDLE_ENFORCE_LE(num_negative,
-                      1,
-                      platform::errors::InvalidArgument(
-                          "The max number of -1 in fused_reshape_%s is 1 "
-                          "but received %d.",
-                          input_name,
-                          num_negative));
-
-    auto it_zero = std::find(shape.begin(), shape.end(), 0);
-    if (it_zero != shape.end()) {
-      for (uint64_t i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-          PADDLE_ENFORCE_LT(i,
-                            dim.size(),
-                            platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_%s ",
-                                "should be less than output dim size, ",
-                                "but the index is %d and output dim size is %d",
-                                input_name,
-                                i,
-                                dim.size()));
-          shape[i] = dim.at(i);
-        }
-      }
-    }
-
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -113,12 +62,12 @@ class MatMulV2Op : public framework::OperatorWithKernel {
                       0,
                       platform::errors::InvalidArgument(
                           "The Input(X) dims size must be greater than 0,"
-                          " but reviced dims size is 0. "));
+                          " but received dims size is 0. "));
     PADDLE_ENFORCE_GT(ndims_y,
                       0,
                       platform::errors::InvalidArgument(
                           "The Input(Y) dims size must be greater than 0,"
-                          " but reviced dims size is 0. "));
+                          " but received dims size is 0. "));
 
     bool x_broadcasted = false, y_broadcasted = false;
     if (ndims_x == 1) {
@@ -169,13 +118,11 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     auto ddim_out = phi::make_ddim(new_dims);
 
 #ifdef PADDLE_WITH_MKLDNN
-    //  if mkldnn matmul_v2+transpose+reshape fuse activated
-    auto reshape_out = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto transpose_out =
-        ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+    auto shape = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+    auto axis = ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
 
-    if (!reshape_out.empty() && !transpose_out.empty()) {
-      ddim_out = ddim_out.transpose(transpose_out).reshape(reshape_out);
+    if (!shape.empty() && !axis.empty()) {
+      ddim_out = ddim_out.transpose(axis).reshape(shape);
     }
 #endif
 
@@ -213,9 +160,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
-      // op
-      // previously)
-      // then we also need to rotate shape NHWC -> NCWH
+      // op previously) then we also need to rotate shape NHWC -> NCWH
       if ((expected_kernel_type.data_layout_ ==
            framework::DataLayout::kMKLDNN) &&
           (tensor.layout() != framework::DataLayout::kMKLDNN) &&
@@ -247,47 +192,9 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "Set true to transpose the last two dimensions of Y before "
                   "doing multiplication")
         .SetDefault(false);
-    AddAttr<std::vector<int>>(
-        "fused_reshape_Out",
-        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
-              "it's a shape atribute of fused reshape for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>(
-        "fused_transpose_Out",
-        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
-              "it's a axis atribute of fused transpose for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_reshape_X",
-                              R"DOC(Shape of fused reshape of `X` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_reshape_Y",
-                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_transpose_X",
-                              R"DOC(Axis of fused transpose of `X` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_transpose_Y",
-                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
     AddComment(
-        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
-        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)). 
+        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
+        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
         In addition, it also follows the broadcast rule which is similar as
         numpy.matmul.
 )DOC");

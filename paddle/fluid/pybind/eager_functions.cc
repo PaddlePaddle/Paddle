@@ -25,6 +25,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_node.h"
+#include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
@@ -333,8 +334,7 @@ static std::vector<paddle::any> CastAttrsToTragetType(
                         src.size()));
   for (size_t i = 0; i < src.size(); i++) {
     size_t end = attrs_names[i].find(": ");
-    std::string type_name =
-        attrs_names[i].substr(end + 2, attrs_names.size() - end - 2);
+    std::string type_name = attrs_names[i].substr(end + 2);
     if (type_name == "int") {
       if (src[i].type() == typeid(bool)) {
         res.emplace_back(static_cast<int>(paddle::any_cast<bool>(src[i])));
@@ -373,8 +373,9 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
-  std::shared_ptr<jit::BaseFunction> function =
-      CastPyArg2BaseFunction(PyTuple_GET_ITEM(args, 0), 0);
+
+  std::shared_ptr<jit::Function> function =
+      CastPyArg2JitFunction(PyTuple_GET_ITEM(args, 0), 0);
   std::vector<paddle::experimental::Tensor> ins =
       CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   std::vector<paddle::experimental::Tensor> outs = (*function)(ins);
@@ -523,8 +524,8 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
       std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_indices.impl());
   auto dense_elements =
       std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
-  // TODO(zhangkaihuo): After create SparseTensor, call coalesced() to sort and
-  // merge duplicate indices
+  // TODO(zhangkaihuo): After creating SparseCooTensor, call coalesced() to sort
+  // and merge duplicate indices
   std::shared_ptr<phi::SparseCooTensor> coo_tensor =
       std::make_shared<phi::SparseCooTensor>(
           *dense_indices, *dense_elements, phi::make_ddim(dense_shape));
@@ -537,7 +538,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
   autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
   if (!autograd_meta->GetMutableGradNode()) {
     VLOG(3) << "Tensor(" << name
-            << ") have not GradNode, add GradNodeAccumulation for it.";
+            << ") doesn't have GradNode, add GradNodeAccumulation to it.";
     autograd_meta->SetGradNode(
         std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
   }
@@ -591,6 +592,29 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
   return ToPyObject(tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+static PyObject* eager_api_register_saved_tensors_hooks(PyObject* self,
+                                                        PyObject* args,
+                                                        PyObject* kwargs) {
+  EAGER_TRY
+  if (egr::Controller::Instance().HasGrad()) {
+    auto pack_hook = PyTuple_GET_ITEM(args, 0);
+    auto unpack_hook = PyTuple_GET_ITEM(args, 1);
+    egr::SavedTensorsHooks::GetInstance().SetHooks(pack_hook, unpack_hook);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_api_reset_saved_tensors_hooks(PyObject* self,
+                                                     PyObject* args,
+                                                     PyObject* kwargs) {
+  EAGER_TRY
+  egr::SavedTensorsHooks::GetInstance().ResetHooks();
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* eager_api_async_read(PyObject* self,
                                       PyObject* args,
@@ -870,10 +894,13 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
   PyObject* obj = PyTuple_GET_ITEM(args, 0);
   auto array = py::cast<py::array>(py::handle(obj));
 
-  int device_id = 0;
-  PyObject* Py_device_id = PyTuple_GET_ITEM(args, 1);
-  if (Py_device_id) {
-    device_id = CastPyArg2AttrLong(Py_device_id, 1);
+  Py_ssize_t args_num = PyTuple_Size(args);
+  int64_t device_id = 0;
+  if (args_num > 1) {
+    PyObject* Py_device_id = PyTuple_GET_ITEM(args, 1);
+    if (Py_device_id) {
+      device_id = CastPyArg2AttrLong(Py_device_id, 1);
+    }
   }
 
   if (py::isinstance<py::array_t<int32_t>>(array)) {
@@ -960,6 +987,14 @@ PyMethodDef variable_functions[] = {
      NULL},
     {"sparse_csr_tensor",
      (PyCFunction)(void (*)(void))eager_api_sparse_csr_tensor,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"register_saved_tensors_hooks",
+     (PyCFunction)(void (*)(void))eager_api_register_saved_tensors_hooks,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"reset_saved_tensors_hooks",
+     (PyCFunction)(void (*)(void))eager_api_reset_saved_tensors_hooks,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 /**sparse functions**/

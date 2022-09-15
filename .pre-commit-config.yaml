@@ -25,6 +25,8 @@ repos:
     -   id: end-of-file-fixer
     -   id: sort-simple-yaml
         files: (api|backward|api_[a-z_]+)\.yaml$
+    -   id: trailing-whitespace
+        files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists.txt)$
 -   repo: local
     hooks:
     -   id: clang-format
@@ -64,6 +66,13 @@ repos:
             (?x)^(
                 paddle/utils/.*
             )$
+-   repo: local
+    hooks:
+    -   id: auto-generate-cmakelists
+        name: auto-generate-cmakelists
+        entry: bash ./tools/gen_ut_cmakelists.hook
+        language: system
+        files: testslist.csv$
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:

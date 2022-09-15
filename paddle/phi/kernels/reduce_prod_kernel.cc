@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void ProdKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const std::vector<int64_t>& dims,
+                const IntArray& dims,
                 bool keep_dim,
                 DenseTensor* out) {
   bool reduce_all = false;
@@ -39,6 +39,10 @@ PD_REGISTER_KERNEL(
     prod, GPU, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t) {}
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(prod, KPS, ALL_LAYOUT, phi::ProdKernel, float) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(prod, XPU, ALL_LAYOUT, phi::ProdKernel, float) {}
 #endif

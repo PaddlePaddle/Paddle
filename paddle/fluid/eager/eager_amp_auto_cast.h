@@ -45,7 +45,7 @@ inline paddle::experimental::Tensor Cast(
     const bool trace_backward = true) {
   if (input.is_sparse_coo_tensor() || input.is_sparse_csr_tensor()) {
     if (trace_backward) {
-      return sparse::cast_final_state_dygraph_function(
+      return sparse::cast_ad_func(
           input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
     } else {
       return paddle::experimental::sparse::cast(
@@ -53,7 +53,7 @@ inline paddle::experimental::Tensor Cast(
     }
   } else {
     if (trace_backward) {
-      return cast_final_state_dygraph_function(input, dst_dtype);
+      return cast_ad_func(input, dst_dtype);
     } else {
       return paddle::experimental::cast(input, dst_dtype);
     }
@@ -123,6 +123,20 @@ inline paddle::optional<paddle::experimental::Tensor> EagerAmpAutoCast(
         input_name, *input, dst_dtype, op_name, trace_backward);
   }
   return paddle::none;
+}
+
+inline paddle::optional<std::vector<paddle::experimental::Tensor>>
+EagerAmpAutoCasts(
+    const std::string& inputs_name,
+    const paddle::optional<std::vector<paddle::experimental::Tensor>>& inputs,
+    const paddle::experimental::DataType& dst_dtype,
+    std::string op_name,
+    bool trace_backward = true) {
+  if (inputs) {
+    return EagerAmpAutoCasts(
+        inputs_name, *inputs, dst_dtype, op_name, trace_backward);
+  }
+  return paddle::optional<std::vector<paddle::experimental::Tensor>>();
 }
 
 }  // namespace egr

@@ -34,7 +34,7 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
         "information in the following format: item_id(shape=1), "
         "layer_id(shape=1), parent_id(shape=1), child_id(shape=child_nums)");
     AddAttr<int>("child_nums",
-                 "child_nums(int)",
+                 "child_nums(int)"
                  "The child nums of one node, if the node hasn't enough child, "
                  "it should padding 0 until child nums equal to child_nums");
     AddOutput("Child",
@@ -49,7 +49,7 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(2);
     AddComment(R"DOC("
      **Tdm Child**
-     According to the input node_id on the given tree, return the corresponding child node_id and 
+     According to the input node_id on the given tree, return the corresponding child node_id and
       whether child is a leaf node by LeafMask.")DOC");
   }
 };

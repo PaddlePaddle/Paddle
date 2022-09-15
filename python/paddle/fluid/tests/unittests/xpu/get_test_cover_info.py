@@ -88,9 +88,13 @@ xpu_test_op_type_white_list = [
     'dropout_float16',
     'dropout_grad_float16',
     "grad_add_float32",  # no api for grad_add, skip
+    "lamb_float16",
     "lars_momentum_float32",
     "resnet_unit",
-    "resnet_unit_grad"
+    "resnet_unit_grad",
+    "c_embedding_float32",  # unittests of collective ops do not using xpu testing framework
+    "c_sync_comm_stream_float32",
+    "c_sync_calc_stream_float32",
 ]
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
@@ -245,13 +249,13 @@ def create_test_class(func_globals,
                       test_class,
                       test_type,
                       test_grad=True,
-                      ignore_deivce_version=[],
-                      test_deivce_version=[]):
+                      ignore_device_version=[],
+                      test_device_version=[]):
     xpu_version = core.get_xpu_device_version(0)
-    if xpu_version in ignore_deivce_version:
+    if xpu_version in ignore_device_version:
         return
 
-    if len(test_deivce_version) != 0 and xpu_version not in test_deivce_version:
+    if len(test_device_version) != 0 and xpu_version not in test_device_version:
         return
 
     test_class_obj = test_class()

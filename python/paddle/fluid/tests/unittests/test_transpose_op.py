@@ -21,6 +21,9 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import paddle.fluid.core as core
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -458,13 +461,13 @@ class TestMoveAxis(unittest.TestCase):
             exe = paddle.static.Executor()
             out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
 
-        self.assertEqual(np.array_equal(out_np, expected), True)
+        np.testing.assert_array_equal(out_np, expected)
 
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
         out = paddle.moveaxis(x, [0, 4, 3, 2], [1, 3, 2, 0])
         self.assertEqual(out.shape, [4, 2, 5, 7, 3])
-        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        np.testing.assert_array_equal(out.numpy(), expected)
         paddle.enable_static()
 
     def test_moveaxis2(self):
@@ -478,13 +481,13 @@ class TestMoveAxis(unittest.TestCase):
             exe = paddle.static.Executor()
             out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
 
-        self.assertEqual(np.array_equal(out_np, expected), True)
+        np.testing.assert_array_equal(out_np, expected)
 
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
         out = x.moveaxis(-2, -1)
         self.assertEqual(out.shape, [2, 5, 3])
-        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        np.testing.assert_array_equal(out.numpy(), expected)
         paddle.enable_static()
 
     def test_moveaxis3(self):
@@ -524,6 +527,80 @@ class TestMoveAxis(unittest.TestCase):
         # each element of dst must be in the range of [-4, 3)
         with self.assertRaises(AssertionError):
             paddle.moveaxis(x, [2, 1], [10, 3])
+
+
+class TestTransposeDoubleGradCheck(unittest.TestCase):
+
+    def transpose_wrapper(self, x):
+        return paddle.transpose(x[0], [1, 0, 2])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [2, 3, 4], False, dtype)
+        data.persistable = True
+        out = paddle.transpose(data, [1, 0, 2])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(self.transpose_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestTransposeTripleGradCheck(unittest.TestCase):
+
+    def transpose_wrapper(self, x):
+        return paddle.transpose(x[0], [1, 0, 2])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [2, 3, 4], False, dtype)
+        data.persistable = True
+        out = paddle.transpose(data, [1, 0, 2])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(self.transpose_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == '__main__':

@@ -26,7 +26,7 @@ import numpy as np
 import time
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []
 
@@ -152,7 +152,7 @@ class Adam(Optimizer):
                     'beta1': 0.8
                 }],
                 weight_decay=0.01,
-                beta1=0.9)                   
+                beta1=0.9)
             out.backward()
             adam.step()
             adam.clear_grad()
@@ -342,7 +342,7 @@ class Adam(Optimizer):
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
 
-            _, _, _, _, _, _ = _C_ops.final_state_adam_(
+            _, _, _, _, _, _ = _C_ops.adam_(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, master_weight, found_inf, _beta1,
                 _beta2, self._epsilon, self._lazy_mode, 1000, find_master,
@@ -356,7 +356,7 @@ class Adam(Optimizer):
                 self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
-            _, _, _, _, _, _ = _C_ops.adam(
+            _, _, _, _, _, _ = _legacy_C_ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, master_weight, param_and_grad[0],
                 moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
@@ -426,7 +426,7 @@ class Adam(Optimizer):
             .. code-block:: python
 
                 import paddle
-                
+
                 a = paddle.rand([2,13], dtype="float32")
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
@@ -521,7 +521,7 @@ class Adam(Optimizer):
 
     def _append_optimize_multi_tensor_op(self, target_block,
                                          parameters_and_grads):
-        """ 
+        """
         For Multi Tensor, append optimize merged_operator to block.
         """
         assert isinstance(target_block, framework.Block)
@@ -583,18 +583,28 @@ class Adam(Optimizer):
                     self._beta2, Variable) else self._beta2.numpy().item(0)
 
                 if framework._non_static_mode():
-                    _, _, _, _, _, _ = _C_ops.merged_adam(
-                        self._param_dict[key], grad_dict[key], lr_dict[key],
-                        self._moment1_dict[key], self._moment2_dict[key],
-                        self._beta1_pow_acc_dict[key],
-                        self._beta2_pow_acc_dict[key],
-                        self._master_weight_dict[key], self._param_dict[key],
-                        self._moment1_dict[key], self._moment2_dict[key],
-                        self._beta1_pow_acc_dict[key],
-                        self._beta2_pow_acc_dict[key],
-                        self._master_weight_dict[key], 'epsilon', self._epsilon,
-                        'beta1', _beta1, 'beta2', _beta2, 'multi_precision',
-                        find_master)
+                    if in_dygraph_mode():
+                        _, _, _, _, _, _ = _C_ops.merged_adam_(
+                            self._param_dict[key], grad_dict[key], lr_dict[key],
+                            self._moment1_dict[key], self._moment2_dict[key],
+                            self._beta1_pow_acc_dict[key],
+                            self._beta2_pow_acc_dict[key],
+                            self._master_weight_dict[key], _beta1, _beta2,
+                            self._epsilon, find_master, False)
+                    else:
+                        _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
+                            self._param_dict[key], grad_dict[key], lr_dict[key],
+                            self._moment1_dict[key], self._moment2_dict[key],
+                            self._beta1_pow_acc_dict[key],
+                            self._beta2_pow_acc_dict[key],
+                            self._master_weight_dict[key],
+                            self._param_dict[key], self._moment1_dict[key],
+                            self._moment2_dict[key],
+                            self._beta1_pow_acc_dict[key],
+                            self._beta2_pow_acc_dict[key],
+                            self._master_weight_dict[key], 'epsilon',
+                            self._epsilon, 'beta1', _beta1, 'beta2', _beta2,
+                            'multi_precision', find_master)
                 else:
                     inputs = {
                         "Param": self._param_dict[key],

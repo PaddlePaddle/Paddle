@@ -67,6 +67,19 @@ template struct SetConstant<paddle::platform::XPUDeviceContext,
                             phi::dtype::complex<float>>;
 template struct SetConstant<paddle::platform::XPUDeviceContext,
                             phi::dtype::complex<double>>;
+
+template struct SetConstant<phi::XPUContext, phi::dtype::float16>;
+template struct SetConstant<phi::XPUContext, phi::dtype::bfloat16>;
+template struct SetConstant<phi::XPUContext, float>;
+template struct SetConstant<phi::XPUContext, double>;
+template struct SetConstant<phi::XPUContext, uint8_t>;
+template struct SetConstant<phi::XPUContext, int16_t>;
+template struct SetConstant<phi::XPUContext, int>;
+template struct SetConstant<phi::XPUContext, int64_t>;
+template struct SetConstant<phi::XPUContext, bool>;
+template struct SetConstant<phi::XPUContext, phi::dtype::complex<float>>;
+template struct SetConstant<phi::XPUContext, phi::dtype::complex<double>>;
+
 #endif
 
 #define DEFINE_CPU_TRANS(RANK)                                            \
@@ -256,21 +269,6 @@ template struct ColwiseSum<phi::CPUContext, int64_t>;
 
 template struct RowwiseMean<phi::CPUContext, float>;
 template struct RowwiseMean<phi::CPUContext, double>;
-
-template <typename T>
-struct ElementwiseAddTo<phi::CPUContext, T> {
-  void operator()(phi::CPUContext* ctx,
-                  const paddle::framework::Tensor& src,
-                  paddle::framework::Tensor* dst) {
-    auto in = paddle::framework::EigenVector<T>::Flatten(src);
-    auto out = paddle::framework::EigenVector<T>::Flatten(*dst);
-    auto& place = *(ctx->eigen_device());
-    out.device(place) = out + in;
-  }
-};
-
-template struct ElementwiseAddTo<phi::CPUContext, phi::dtype::float16>;
-template struct ElementwiseAddTo<phi::CPUContext, phi::dtype::bfloat16>;
 
 template <typename T>
 struct RowwiseAdd<phi::CPUContext, T> {

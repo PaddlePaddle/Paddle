@@ -125,7 +125,7 @@ struct DimensionsTransform {
 
   // To judge whether shape of any input tensors is sequential
   // 1-value-dimensions, and metric the length of it.
-  int GetSequentialOneDimLength(int *swap_index) {
+  bool FindSequentialOneDim(int *swap_index) {
     int index = 0;
     int max_one_length = 0;
     for (int j = 0; j < N; ++j) {
@@ -144,16 +144,16 @@ struct DimensionsTransform {
           }
         }
       }
-      max_one_length =
-          seq_one_length > max_one_length ? seq_one_length : max_one_length;
       index = seq_one_length > max_one_length ? j : index;
+      max_one_length = std::max(seq_one_length, max_one_length);
     }
 
-    if (max_one_length > 1) {
+    bool has_seq_one = max_one_length > 1;
+    if (has_seq_one) {
       std::swap(in_dims[0], in_dims[index]);
       *swap_index = index;
     }
-    return max_one_length;
+    return has_seq_one;
   }
 
  public:
@@ -213,9 +213,10 @@ struct DimensionsTransform {
         }
       }
     };
-    int swap_idx = 0;
-    int max_one_length = GetSequentialOneDimLength(&swap_idx);
-    if (max_one_length > 1) {
+    for (auto i = 0; i < dim_size; ++i) {
+      int swap_idx = 0;
+      bool has_seq_one = FindSequentialOneDim(&swap_idx);
+      if (!has_seq_one) break;
       merge_ptr = merge_sequential_one_dims;
       MergeDimensions<MergeFunctor>(merge_ptr, N);
       std::swap(in_dims[swap_idx], in_dims[0]);
@@ -223,13 +224,13 @@ struct DimensionsTransform {
   }
 };
 
-template <typename InT, typename OutT, int NumOuts = 1>
+template <typename InT, typename OutT>
 int GetVecsize(const std::vector<const DenseTensor *> &ins,
                std::vector<DenseTensor *> *outs) {
   int in_vec_size = 4;
   int out_vec_size = 4;
-  if (NumOuts > 1) {
-    for (int i = 0; i < NumOuts; ++i) {
+  if (outs->size() > 1) {
+    for (auto i = 1; i < outs->size(); ++i) {
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
           (*outs)[0]->dims(),
@@ -266,10 +267,10 @@ __device__ __forceinline__ void LoadData(
   // numel : whole num of output
   // num: how many data will be deal with in this time
   if (need_broadcast) {
-    kps::ReadDataBc<T, VecSize, 1, 1, IsBoundary>(
+    kps::ReadDataBc<T, VecSize, 1, IsBoundary>(
         dst, src, block_offset, config, numel, read_lens);
   } else {
-    kps::ReadData<T, VecSize, 1, 1, IsBoundary>(
+    kps::ReadData<T, VecSize, 1, IsBoundary>(
         dst, src + block_offset, num, read_lens);
   }
 }
@@ -295,7 +296,7 @@ __device__ void VectorizedBroadcastKernelImpl(
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
-  for (int i = 0; i < Arity; i++) {
+  for (int i = 0; i < Arity; ++i) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f), read_lens);
     LoadData<InT, VecSize, IsBoundary>(args[i],
                                        ins[i],
@@ -433,7 +434,7 @@ void LaunchBroadcastKernel(
     outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
 
-  for (int i = 0; i < Arity; i++) {
+  for (int i = 0; i < Arity; ++i) {
     use_broadcast[i] = (ins[i]->numel() != numel);
     ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
   }
@@ -508,7 +509,6 @@ void BroadcastKernelForDifferentVecSize(
                                    "functions is %d.",
                                    outs->size(),
                                    NumOuts));
-
   // mergedim and get vec_size
   const auto merge_dims = DimensionsTransform(ins, (*outs)[0]->dims(), axis);
   phi::Array<kps::details::BroadcastConfig, kArity> configs;
@@ -532,7 +532,7 @@ void BroadcastKernelForDifferentVecSize(
   bool is_optimize = configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-  for (int i = 0; i < kArity; i++) {
+  for (int i = 0; i < kArity; ++i) {
     // get the broadcast config,
     // if data shape is[m, n], then you should set data_dim = {n, m}
     // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
@@ -541,7 +541,7 @@ void BroadcastKernelForDifferentVecSize(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
   }
-  int vec_size = GetVecsize<InT, OutT, NumOuts>(ins, outs);
+  int vec_size = GetVecsize<InT, OutT>(ins, outs);
 #endif
 
   switch (vec_size) {

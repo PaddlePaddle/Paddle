@@ -46,9 +46,10 @@ class BenchmarkSuite(OpTest):
             actual_t = np.array(item_gpu_out)
             var_name = variable if isinstance(
                 variable, six.string_types) else variable.name
-            self.assertTrue(
-                np.allclose(actual_t, expect_t, atol=atol), "Output (" +
-                var_name + ") has diff" + str(actual_t) + "\n" + str(expect_t))
+            np.testing.assert_allclose(actual_t,
+                                       expect_t,
+                                       rtol=1e-05,
+                                       atol=atol)
             self.assertListEqual(actual.lod(), expect.lod(),
                                  "Output (" + var_name + ") has different lod")
 

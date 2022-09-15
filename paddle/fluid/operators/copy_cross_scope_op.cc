@@ -140,9 +140,9 @@ class CopyCrossScopeOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<int>("num_micro_batches", "Number of micro batches for pipeline.");
     AddComment(R"DOC(
-      This op is used by pipeline to copy tensors across micro batch scopes. 
-      Copy the variable value of the giving Id's micro scope to the micro scope of Id + 1 position. 
-      If need to copy back to the main scope, using to_main_scope option to copy the variable value of 
+      This op is used by pipeline to copy tensors across micro batch scopes.
+      Copy the variable value of the giving Id's micro scope to the micro scope of Id + 1 position.
+      If need to copy back to the main scope, using to_main_scope option to copy the variable value of
       the current micro scope to the main scope.
     )DOC");
   }

@@ -54,11 +54,12 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("pad_value",
                    "(float, default 0.0) "
                    "The value to fill the padded areas.")
-        .SetDefault(0.0f);
+        .SetDefault(0.0f)
+        .SupportTensor();
     AddComment(R"DOC(
 Pad Operator.
 
-Pad input into output, as specified by paddings and pad_value. 
+Pad input into output, as specified by paddings and pad_value.
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
 Given:

@@ -72,16 +72,12 @@ class AddMMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The first input tensor for mul.");
     AddInput("Y", "(Tensor), The second input tensor for mul.");
     AddOutput("Out", "(Tensor), The output tensor of addmm op.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<float>("Alpha", "coefficient of x*y.").SetDefault(1.0f);
     AddAttr<float>("Beta", "coefficient of input.").SetDefault(1.0f);
     AddComment(R"DOC(
 AddMM Operator.
 This operator is used to perform matrix multiplication for input $x$ and $y$ with coefficient $alpha$.
-$input$ with coefficient $beta$ is added to the final result. 
+$input$ with coefficient $beta$ is added to the final result.
 The equation is:
 
 $$Out = alpha * x * y + beta * input$$

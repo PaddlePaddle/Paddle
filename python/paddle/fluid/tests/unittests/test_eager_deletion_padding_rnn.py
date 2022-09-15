@@ -616,7 +616,7 @@ class PaddingRNNTestBase(unittest.TestCase):
                                     parallel=True,
                                     use_program_cache=True):
         '''
-        Test that train ppl of padding mode is same to that of static mode 
+        Test that train ppl of padding mode is same to that of static mode
         '''
         config = RNNConfig('test', 'padding')
         with fluid.scope_guard(fluid.Scope()):
@@ -624,8 +624,7 @@ class PaddingRNNTestBase(unittest.TestCase):
         config = RNNConfig('test', 'static')
         with fluid.scope_guard(fluid.Scope()):
             static_rnn_ppl = self.train(config, parallel, use_program_cache)
-        self.assertTrue(
-            np.isclose(padding_rnn_ppl, static_rnn_ppl, rtol=0.001).all())
+        np.testing.assert_allclose(padding_rnn_ppl, static_rnn_ppl, rtol=0.001)
 
 
 class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):

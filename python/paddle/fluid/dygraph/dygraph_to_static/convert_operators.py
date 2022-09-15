@@ -25,6 +25,15 @@ from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, lo
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME
 from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, Dygraph2StaticException
+from paddle.fluid.dygraph.dygraph_to_static.utils import GetterSetterHelper
+from paddle.fluid.layers.utils import copy_mutable_vars
+
+
+def convert_attr(x, attr):
+    if isinstance(x, Variable) and attr == "size":
+        return x.size()
+    else:
+        return getattr(x, attr)
 
 
 def indexable(x, code=None):
@@ -66,14 +75,22 @@ def _unpack_by_structure_paddle(target, structure):
     return ret
 
 
-def convert_while_loop(cond, body, getter, setter):
+def convert_while_loop(cond,
+                       body,
+                       getter,
+                       setter,
+                       return_name_ids=None,
+                       push_pop_names=None):
     """
     A function representation of a Python ``while`` statement.
 
     Args:
         cond(Callable): A callable object that returns a boolean variable to control whether to execute the loop body. It takes ``loop_vars`` as arguments.
         body(Callable): A callable object that returns a tuple or list of variables with the same arguments ``loops_vars`` as ``cond`` .
-        loop_vars(list|tuple): A list or tuple of variables passed to ``cond`` and ``body`` .
+        get_args(callable): Get all arguments that needed in true_fn and false_fn.
+        set_args(callable): Update arguments that modified in trure_fn and false_fn.
+        return_name_ids(list[string], optional): the returned names.
+        push_pop_names(list[string], optional): the names on which called .append() or .pop().
 
     Returns:
         A list or tuple of variables which returned by ``body``.
@@ -83,21 +100,44 @@ def convert_while_loop(cond, body, getter, setter):
     # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
     pred = cond()
     if isinstance(pred, Variable):
-        _run_paddle_while(cond, body, getter, setter)
+        _run_paddle_while(cond, body, getter, setter, return_name_ids,
+                          push_pop_names)
     else:
         _run_py_while(cond, body, getter, setter)
 
 
-def _run_paddle_while(cond, body, getter, setter):
+def _convert_tensor_arrray_if_necessary(setterhelper, push_pop_names):
+    push_pop_vars = setterhelper.get(push_pop_names)
+    if push_pop_vars is None:
+        return
+
+    def maybe_to_tensor_array(v):
+        if isinstance(v, list):
+            return create_array("float32", initialized_list=v)
+        else:
+            return v
+
+    setterhelper.set(push_pop_names,
+                     [maybe_to_tensor_array(v) for v in push_pop_vars])
+
+
+def _run_paddle_while(cond, body, getter, setter, return_name_ids,
+                      push_pop_names):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
+    helper = GetterSetterHelper(getter, setter, return_name_ids, push_pop_names)
+    _convert_tensor_arrray_if_necessary(helper, push_pop_names)
+
     def new_body_fn(*args):
         """ wrap the body() and add return value for `while_loop`
+            the args may be differ from getter().
         """
+        mutable_loop_vars = args
+        helper.set(return_name_ids, mutable_loop_vars)
         body()
-        return getter()
+        return helper.get(return_name_ids)
 
     def new_cond_fn(*args):
-        """ cond is a zero-args function, which is not 
+        """ cond is a zero-args function, which is not
             compatible with `while_loop`.
         """
         return cond()
@@ -105,12 +145,13 @@ def _run_paddle_while(cond, body, getter, setter):
     # UndefinedVar will become data layer not check variable with value=NO_VALUE_MAGIC.
     loop_vars = [
         to_static_variable(var) if not isinstance(var, UndefinedVar) else var
-        for var in getter()
+        for var in helper.get(return_name_ids)
     ]
-    setter(loop_vars)  # change the non-local var to variable
+    helper.set(return_name_ids,
+               loop_vars)  # change the non-local var to variable
     # variable maybe modified to inner var. change it into
     loop_vars = control_flow.while_loop(new_cond_fn, new_body_fn, loop_vars)
-    setter(loop_vars)  # change the non-local var to variable
+    helper.set(return_name_ids, loop_vars)
     return loop_vars
 
 
@@ -252,8 +293,13 @@ def _run_py_logical_not(x):
     return not x
 
 
-def convert_ifelse(pred, true_fn, false_fn, get_args, set_args,
-                   return_name_ids):
+def convert_ifelse(pred,
+                   true_fn,
+                   false_fn,
+                   get_args,
+                   set_args,
+                   return_name_ids,
+                   push_pop_names=None):
     """
     A function representation of a Python ``if/else`` statement.
 
@@ -263,6 +309,8 @@ def convert_ifelse(pred, true_fn, false_fn, get_args, set_args,
         false_fn(callable): A callable to be performed if ``pred`` is false.
         get_args(callable): Get all arguments that needed in true_fn and false_fn.
         set_args(callable): Update arguments that modified in trure_fn and false_fn.
+        return_name_ids(list[string], optional): the returned names.
+        push_pop_names(list[string], optional): the names on which called .append() or .pop().
 
     Returns:
         ``true_fn()`` if the predicate ``pred`` is true else ``false_fn()`` .
@@ -270,7 +318,7 @@ def convert_ifelse(pred, true_fn, false_fn, get_args, set_args,
     """
     if isinstance(pred, Variable):
         out = _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
-                               return_name_ids)
+                               return_name_ids, push_pop_names)
     else:
         out = _run_py_ifelse(pred, true_fn, false_fn, get_args, set_args,
                              return_name_ids)
@@ -279,25 +327,30 @@ def convert_ifelse(pred, true_fn, false_fn, get_args, set_args,
 
 
 def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
-                     return_name_ids):
+                     return_name_ids, push_pop_names):
     """
     Paddle cond API will evaluate both ture_fn and false_fn codes.
     """
+    helper = GetterSetterHelper(get_args, set_args, return_name_ids,
+                                push_pop_names)
+    _convert_tensor_arrray_if_necessary(helper, push_pop_names)
     pred = cast_bool_if_necessary(pred)
-    init_args = get_args()
+    init_args = helper.get(return_name_ids)
 
     def new_true_fn():
-        set_args(init_args)
+        #init args may contain mutable python container like [var, 2], we copy then like in while_loop
+        helper.set(return_name_ids, copy_mutable_vars(init_args))
         ret = true_fn()
         # IfExpr will return a non-None return value, so we just return ret.
         # We assume normal return has no return value.
-        if ret is None: return get_args()
+        if ret is None: return helper.get(return_name_ids)
         else: return ret
 
     def new_false_fn():
-        set_args(init_args)
+        #init args may contain mutable python container like [var, 2], we copy then like in while_loop
+        helper.set(return_name_ids, copy_mutable_vars(init_args))
         ret = false_fn()
-        if ret is None: return get_args()
+        if ret is None: return helper.get(return_name_ids)
         else: return ret
 
     try:
@@ -314,6 +367,8 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
                 "Your if/else have different number of return value. TODO: add link to modifty. {}"
                 .format(str(e)))
         raise e
+    get_args = lambda: helper.get(return_name_ids)
+    set_args = lambda vs: helper.set(return_name_ids, vs)
     return _recover_args_state(cond_outs, get_args, set_args, return_name_ids)
 
 
@@ -414,6 +469,8 @@ def convert_len(var):
             # Note: Length of var may be known ahead of time in dygraph,
             # but it probably represents batch size which can be variant.
             # so we return a variable dynamically inferred from var.shape.
+            if var.shape[0] > 0 and var.type == core.VarDesc.VarType.LOD_TENSOR:
+                return var.shape[0]
             return nn.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             return control_flow.array_length(var)
@@ -438,7 +495,7 @@ def convert_zip(*args):
 
 # TODO(xiongkun): delete when list<variable> is ready.
 class VariableTuple:
-    """ 
+    """
         this class will cause enumerate can't be wrapped by other iterator change function.
         this will be fixed when list<Variable> is producted.
         VariableTuple can only deal with variables which is fixed.
@@ -447,7 +504,10 @@ class VariableTuple:
     def __init__(self, var, start=0):
         self.var = var
         self.len = convert_len(var)
-        self.rag = paddle_range(start, start + self.len, 1, paddle.int64)
+        if isinstance(self.len, Variable):
+            self.rag = paddle_range(start, start + self.len, 1, paddle.int64)
+        else:
+            self.rag = range(start, start + self.len)
 
     def __getitem__(self, idx):
         return self.rag[idx], self.var[idx]
@@ -517,7 +577,7 @@ def convert_shape_compare(left, *args):
         Python like "a op1 b and b op2 c and ... ".
         If the variables to compare are Paddle Variables, we will do elementwise
         comparsion first and then reduce to a boolean whose numel is 1.
-        
+
     """
     args_len = len(args)
     assert args_len >= 2, "convert_shape_compare needs at least one right compare variable"

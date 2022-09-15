@@ -174,7 +174,7 @@ class CuSparseSpMatDescriptor {
   explicit CuSparseSpMatDescriptor(const phi::SparseCsrTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    PD_VISIT_INTEGRAL_TYPES(
+    PD_VISIT_BASE_INTEGRAL_TYPES(
         x.non_zero_crows().dtype(), "Csr CuSparseSpMatDescriptor", ([&] {
           CreateCsrDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
         }));
@@ -184,7 +184,7 @@ class CuSparseSpMatDescriptor {
   explicit CuSparseSpMatDescriptor(const phi::SparseCooTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    PD_VISIT_INTEGRAL_TYPES(
+    PD_VISIT_BASE_INTEGRAL_TYPES(
         x.non_zero_indices().dtype(), "Coo CuSparseSpMatDescriptor", ([&] {
           CreateCooDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
         }));
@@ -337,8 +337,10 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                           &buffer_size);
   });
 
-  paddle::memory::allocation::AllocationPtr tmp_buffer =
-      paddle::memory::Alloc(dev_ctx_, buffer_size);
+  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
   void* tmp_buffer_ptr = tmp_buffer->ptr();
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpMM(handle,
@@ -383,8 +385,10 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                           &buffer_size);
   });
 
-  paddle::memory::allocation::AllocationPtr tmp_buffer =
-      paddle::memory::Alloc(dev_ctx_, buffer_size);
+  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
   void* tmp_buffer_ptr = tmp_buffer->ptr();
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpMV(handle,
@@ -431,8 +435,10 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                            &buffer_size);
   });
 
-  paddle::memory::allocation::AllocationPtr tmp_buffer =
-      paddle::memory::Alloc(dev_ctx_, buffer_size);
+  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
   void* tmp_buffer_ptr = tmp_buffer->ptr();
 
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {

@@ -22,7 +22,7 @@ def GenerateFileStructureForFinalDygraph(eager_dir):
     |- generated
     |  |- CMakeLists.txt
     |  |  "add_subdirectory(forwards), add_subdirectory(backwards)"
-    |  
+    |
     |  |- forwards
     |     |- "dygraph_functions.cc"
     |     |- "dygraph_functions.h"
@@ -59,7 +59,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
     |- generated
     |  |- CMakeLists.txt
     |  |  "add_subdirectory(forwards), add_subdirectory(nodes)"
-    |  
+    |
     |  |- forwards
     |     |- "dygraph_forward_functions.cc"
     |     |- CMakeLists.txt
@@ -70,7 +70,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
     |     |- "nodes.h"
     |     |- CMakeLists.txt
     |     |  "cc_library(dygraph_node SRCS nodes.cc DEPS ${eager_deps} ${fluid_deps})"
-    | 
+    |
     |  |- dygraph_forward_api.h
     """
     # Directory Generation
@@ -124,7 +124,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
                 ".tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes"
                 + str(i + 1) + ".cc\"\n")
 
-        f.write("  DEPENDS eager_codegen\n")
+        f.write("  DEPENDS legacy_eager_codegen\n")
         f.write("  VERBATIM)\n")
 
         f.write("cc_library(dygraph_node SRCS ")
@@ -154,7 +154,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
         f.write(
             "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_returns_info.tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_returns_info.cc\"\n"
         )
-        f.write("  DEPENDS eager_codegen\n")
+        f.write("  DEPENDS legacy_eager_codegen\n")
         f.write("  VERBATIM)\n")
 
         f.write("cc_library(dygraph_function SRCS ")

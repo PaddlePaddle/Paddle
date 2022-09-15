@@ -41,21 +41,20 @@ endif()
 if(WITH_XPU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op_xpu.cc)
-  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op_xpu.cc)
-  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc
-                    generate_proposals_v2_op_xpu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc)
+  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
 elseif(WITH_MLU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op_mlu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc)
 elseif(WITH_ASCEND_CL)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op_npu.cc)
-  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu
-                    prior_box_op_npu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op_npu.cc)
 else()
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op.cu)
-  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu)
+  detection_library(prior_box_op SRCS prior_box_op.cc)
   # detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
 endif()
 
@@ -93,10 +92,9 @@ if(WITH_GPU OR WITH_ROCM)
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc
                     generate_proposals_op.cu DEPS ${TMPDEPS})
   detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc
-                    generate_proposals_v2_op.cu DEPS ${TMPDEPS})
-  detection_library(
-    distribute_fpn_proposals_op SRCS distribute_fpn_proposals_op.cc
-    distribute_fpn_proposals_op.cu DEPS ${TMPDEPS})
+                    DEPS ${TMPDEPS})
+  detection_library(distribute_fpn_proposals_op SRCS
+                    distribute_fpn_proposals_op.cc DEPS ${TMPDEPS})
   detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc
                     collect_fpn_proposals_op.cu DEPS ${TMPDEPS})
 else()
@@ -123,9 +121,5 @@ cc_test(
   mask_util_test
   SRCS mask_util_test.cc
   DEPS memory mask_util)
-cc_library(
-  gpc
-  SRCS gpc.cc
-  DEPS op_registry)
 detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
                   mask_util)

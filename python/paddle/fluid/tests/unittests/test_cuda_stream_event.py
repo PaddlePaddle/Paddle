@@ -112,8 +112,8 @@ class TestCUDAEvent(unittest.TestCase):
 
 class TestStreamGuard(unittest.TestCase):
     '''
-    Note: 
-        The asynchronous execution property of CUDA Stream can only be tested offline. 
+    Note:
+        The asynchronous execution property of CUDA Stream can only be tested offline.
     '''
 
     def test_stream_guard_normal(self):
@@ -128,7 +128,7 @@ class TestStreamGuard(unittest.TestCase):
                 # kernels to be completed on windows.
                 s.synchronize()
 
-            self.assertTrue(np.array_equal(np.array(c), np.array(d)))
+            np.testing.assert_array_equal(np.array(c), np.array(d))
 
     def test_stream_guard_default_stream(self):
         if paddle.is_compiled_with_cuda():

@@ -65,6 +65,23 @@ def dyfunc_with_third_library_logging(x_v):
     return x_v
 
 
+class A:
+
+    @staticmethod
+    def add(a, b):
+        """
+        dygraph mode, return a numpy object.
+        static mode, return a variable object.
+        """
+        return paddle.to_tensor(a.numpy() + b.numpy())
+
+
+@paddle.jit.to_static
+def dyfunc_with_staticmethod(x_v):
+    a = A()
+    return a.add(x_v, x_v)
+
+
 class TestRecursiveCall1(unittest.TestCase):
 
     def setUp(self):
@@ -91,9 +108,12 @@ class TestRecursiveCall1(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
         dygraph_res = self.get_dygraph_output()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph res is {}\nstatic_res is {}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph res is {}\nstatic_res is {}'.format(
+                dygraph_res, static_res))
 
 
 lambda_fun = lambda x: x
@@ -176,15 +196,19 @@ class TestRecursiveCall2(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph is {}\n static_res is \n{}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestThirdPartyLibrary(TestRecursiveCall2):
 
     def set_func(self):
         self.dygraph_func = dyfunc_with_third_library_logging
+
+
+class TestStaticMethod(TestRecursiveCall2):
+
+    def set_func(self):
+        self.dygraph_func = dyfunc_with_staticmethod
 
 
 # Situation 2 : test not_to_static
