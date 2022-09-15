@@ -21,11 +21,9 @@ from paddle.fluid.framework import _test_eager_guard
 class TestTranspose(unittest.TestCase):
     # x: sparse, out: sparse
     def check_result(self, x_shape, dims, format):
-        print(x_shape, dims, format)
         with _test_eager_guard():
             mask = paddle.randint(0, 2, x_shape).astype("float32")
             origin_x = paddle.rand(x_shape, dtype='float32') * mask
-
             dense_x = origin_x.detach()
             dense_x.stop_gradient = False
             dense_out = paddle.transpose(dense_x, dims)
@@ -36,12 +34,12 @@ class TestTranspose(unittest.TestCase):
                 sp_x = origin_x.detach().to_sparse_csr()
             sp_x.stop_gradient = False
             sp_out = paddle.incubate.sparse.transpose(sp_x, dims)
+
             np.testing.assert_allclose(sp_out.to_dense().numpy(),
                                        dense_out.numpy(),
                                        rtol=1e-05)
-
-            dense_out.mean().backward()
-            sp_out.mean().backward()
+            dense_out.backward()
+            sp_out.backward()
             np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
                                        (dense_x.grad * mask).numpy(),
                                        rtol=1e-05)
@@ -66,8 +64,6 @@ class TestTranspose(unittest.TestCase):
         self.check_result([6, 2, 3], [1, 2, 0], 'coo')
         self.check_result([6, 2, 3], [1, 2, 0], 'csr')
 
-    @unittest.skipIf(paddle.is_compiled_with_cuda(),
-                     "cuda randint not supported")
     def test_transpose_nd(self):
         self.check_result([8, 3, 4, 4, 5, 3], [5, 3, 4, 1, 0, 2], 'coo')
         # Randint now only supports access to dimension 0 to 9.
