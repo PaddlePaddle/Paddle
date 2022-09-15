@@ -18,7 +18,7 @@ from __future__ import print_function
 from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, ast_to_source_code, is_paddle_api
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, ast_to_source_code, is_paddle_api, Dygraph2StaticException
 import warnings
 
 import re
@@ -94,7 +94,7 @@ class DecoratorTransformer(BaseTransformer):
                     rematch = re.match(r'\_jst\.Call\((.+?)\)\((.*)\)',
                                        deco_full_name)
                     if not rematch:
-                        raise NotImplementedError(
+                        raise Dygraph2StaticException(
                             '@{}: transform decorator with param failed during dy2static'
                             .format(deco_full_name))
                     re_name = rematch.group(1)
@@ -106,7 +106,7 @@ class DecoratorTransformer(BaseTransformer):
                     # paddle api will not be transformed to '_jst.Call'
                     rematch = re.match(r'(.+?)\((.*)\)', deco_full_name)
                     if not rematch:
-                        raise NotImplementedError(
+                        raise Dygraph2StaticException(
                             '@{}: transform decorator with param failed during dy2static'
                             .format(deco_full_name))
                     re_name = rematch.group(1)
