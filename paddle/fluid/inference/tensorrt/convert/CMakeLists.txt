@@ -82,7 +82,7 @@ if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
 endif()
 
-if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
        preln_emb_eltwise_layernorm.cc)
 endif()
