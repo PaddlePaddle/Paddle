@@ -196,7 +196,8 @@ class MatMulV2MKLDNNHandler
       out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
     }
 
-    if (!IsInt8<OT>() && !IsBfloat16<OT>() && is_output_fused) {
+    // TODO(jczaja): Why not for int8??
+    if (!IsInt8<OT>() && is_output_fused) {
       out_strides = FakeTransposeStrides(out_ddims);
     }
 

@@ -29,12 +29,12 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
     """
     x_var   w(persistable) bias_var(persistable)
       \     |              /
-          fc     
+          fc
           |
       fc_out_var  bias_var(persistable)
             \        /
           elementwise_add  bias_var(persistable)  scale_var(persistable)
-                  \            |                       /                    
+                  \            |                       /
                            layer_norm
                          /      |         \
                         Y    mean_var  variance_var

@@ -116,17 +116,17 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
 **RoIAlign Operator**
 
 Region of interest align (also known as RoI align) is to perform
-bilinear interpolation on inputs of nonuniform sizes to obtain 
+bilinear interpolation on inputs of nonuniform sizes to obtain
 fixed-size feature maps (e.g. 7*7)
 
 Dividing each region proposal into equal-sized sections with
 the pooled_width and pooled_height. Location remains the origin
 result.
 
-In each ROI bin, the value of the four regularly sampled locations 
+In each ROI bin, the value of the four regularly sampled locations
 are computed directly through bilinear interpolation. The output is
 the mean of four locations.
-Thus avoid the misaligned problem.   
+Thus avoid the misaligned problem.
     )DOC");
   }
 };

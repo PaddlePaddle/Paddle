@@ -183,7 +183,7 @@ class ResNet(nn.Layer):
         Block (BasicBlock|BottleneckBlock): Block module of model.
         depth (int, optional): Layers of ResNet, Default: 50.
         width (int, optional): Base width per convolution group for each convolution block, Default: 64.
-        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
         groups (int, optional): Number of groups for each convolution block, Default: 1.
@@ -495,7 +495,7 @@ def resnet152(pretrained=False, **kwargs):
 def resnext50_32x4d(pretrained=False, **kwargs):
     """ResNeXt-50 32x4d model from
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
-    
+
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
@@ -530,7 +530,7 @@ def resnext50_32x4d(pretrained=False, **kwargs):
 def resnext50_64x4d(pretrained=False, **kwargs):
     """ResNeXt-50 64x4d model from
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
-    
+
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
@@ -565,7 +565,7 @@ def resnext50_64x4d(pretrained=False, **kwargs):
 def resnext101_32x4d(pretrained=False, **kwargs):
     """ResNeXt-101 32x4d model from
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
-    
+
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
@@ -601,7 +601,7 @@ def resnext101_32x4d(pretrained=False, **kwargs):
 def resnext101_64x4d(pretrained=False, **kwargs):
     """ResNeXt-101 64x4d model from
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
-    
+
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
@@ -637,7 +637,7 @@ def resnext101_64x4d(pretrained=False, **kwargs):
 def resnext152_32x4d(pretrained=False, **kwargs):
     """ResNeXt-152 32x4d model from
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
-    
+
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
@@ -673,7 +673,7 @@ def resnext152_32x4d(pretrained=False, **kwargs):
 def resnext152_64x4d(pretrained=False, **kwargs):
     """ResNeXt-152 64x4d model from
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
-    
+
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.

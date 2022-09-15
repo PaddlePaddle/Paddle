@@ -95,7 +95,7 @@ boxes in 'Y' are shared by all instance of the batched inputs of X.
 Given two boxes A and B, the calculation of IOU is as follows:
 
 $$
-IOU(A, B) = 
+IOU(A, B) =
 \\frac{area(A\\cap B)}{area(A)+area(B)-area(A\\cap B)}
 $$
 

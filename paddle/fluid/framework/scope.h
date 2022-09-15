@@ -179,12 +179,9 @@ class Scope : public ScopeBase {
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
-#ifndef PADDLE_ON_INFERENCE
-
  private:
   mutable phi::RWLock kids_lock_;
   mutable phi::RWLock vars_lock_;
-#endif
 };
 
 // Generate some debug string about the inherience structure of scope, quite

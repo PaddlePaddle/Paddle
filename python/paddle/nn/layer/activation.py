@@ -28,7 +28,7 @@ class CELU(Layer):
     CELU Activation.
 
     .. math::
-    
+
         CELU(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
 
     Parameters:
@@ -44,7 +44,7 @@ class CELU(Layer):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.to_tensor([[-1. ,6.], [1., 15.6]])
             m = paddle.nn.CELU(0.2)
             out = m(x)
@@ -140,7 +140,7 @@ class GELU(Layer):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
 
             x = paddle.to_tensor([[-1, 0.5],[1, 1.5]])
@@ -231,7 +231,7 @@ class Hardswish(Layer):
                 \frac{x(x+3)}{6} &, & \text{otherwise}
                 \end{array}
             \right.
-            
+
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -982,7 +982,7 @@ class Mish(Layer):
             \end{cases}
 
         Mish(x) = x * \tanh(softplus(x))
-    
+
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -990,7 +990,7 @@ class Mish(Layer):
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
-    
+
     Examples:
 
         .. code-block:: python

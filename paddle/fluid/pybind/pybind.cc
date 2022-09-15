@@ -1038,7 +1038,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("name"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           its parent scope. Return None if not found.
 
            Args:
                name (str): the variable name.
@@ -1053,7 +1053,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           its parent scope. Return None if not found.
 
            Args:
                name (str): the variable names to be erase.
@@ -1248,12 +1248,12 @@ All parameter, weight, gradient are variables in Paddle.
       R"DOC(
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
-              
+
             Args:
                    program (ProgramDesc): The original program.
 
              Returns:
-                   tuple(ProgramDesc, map<int, int>): The first part is 
+                   tuple(ProgramDesc, map<int, int>): The first part is
                    the pruned program desc, and the second part is a map
                    which contains the id pair of pruned block and corresponding
                    origin block.
@@ -1873,7 +1873,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("tensor"),
           R"DOC(
              Append a LoDensor to LoDTensorArray.
-              
+
              Args:
                    tensor (LoDTensor): The LoDTensor to be appended.
 
@@ -2547,7 +2547,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
-#ifndef PADDLE_ON_INFERENCE
+#ifndef PADDLE_NO_PYTHON
   BindDistributed(&m);
 #endif
 #ifdef PADDLE_WITH_ASCEND
