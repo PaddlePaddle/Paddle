@@ -14,7 +14,6 @@
 
 #pragma once
 #include <error.h>
-#include <mpi.h>
 #include <iostream>
 #include <string>
 #include "paddle/fluid/framework/data_type.h"
@@ -22,6 +21,12 @@
 #include "paddle/fluid/platform/enforce.h"
 
 #include "paddle/fluid/distributed/collective/Types.h"
+
+#ifdef HOST
+#undef HOST
+#endif
+
+#include <mpi.h>
 
 namespace paddle {
 namespace distributed {
