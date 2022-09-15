@@ -160,6 +160,11 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       swap_x_y = true;
     }
 
+    std::vector<float> scales{1.0};
+    if (swap_x_y) {
+      scales[0] = (BINARY_OP == dnnl::algorithm::binary_add) ? 1 : -1;
+    }
+
     int axis = ctx.Attr<int>("axis");
 
     auto tz = phi::vectorize<int64_t>(dout->dims());
@@ -185,10 +190,6 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
             dx, dout->mem_desc(), ctx.GetPlace());
 
         dnnl::primitive_attr reorder_attr;
-        std::vector<float> scales{1.0};
-        if (swap_x_y) {
-          scales[0] = (BINARY_OP == dnnl::algorithm::binary_add) ? 1 : -1;
-        }
         reorder_attr.set_output_scales(0, scales);
         auto reorder_p = reorder_handler.AcquireReorder(
             dst_memory, reorder_src_memory_p, reorder_attr);
@@ -243,10 +244,6 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
               dy, dout->mem_desc(), ctx.GetPlace());
 
           dnnl::primitive_attr reorder_attr;
-          std::vector<float> scales{1.0};
-          if (!swap_x_y) {
-            scales[0] = (BINARY_OP == dnnl::algorithm::binary_add) ? 1 : -1;
-          }
           reorder_attr.set_output_scales(0, scales);
 
           auto reorder_p = reorder_handler.AcquireReorder(
@@ -344,11 +341,8 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         // Broadcasting
         if (BINARY_OP == dnnl::algorithm::binary_sub) {
           dnnl::post_ops po;
-          if (swap_x_y) {
-            po.append_eltwise(1.0f, dnnl::algorithm::eltwise_linear, 1.0f, 0);
-          } else {
-            po.append_eltwise(1.0f, dnnl::algorithm::eltwise_linear, -1.0f, 0);
-          }
+          po.append_eltwise(
+              1.0f, dnnl::algorithm::eltwise_linear, scales[0], 0);
           broadcast_reduction_attr.set_post_ops(po);
         }
 
