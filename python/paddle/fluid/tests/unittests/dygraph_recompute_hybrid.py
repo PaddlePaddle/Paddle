@@ -77,7 +77,7 @@ class Naive_fc_net(paddle.nn.Layer):
     def forward(self, inputs):
         for i in range(len(self.layers)):
             if i in self.recompute_blocks:
-                inputs = fleet.recompute_hybrid(
+                inputs = paddle.incubate.distributed.fleet.recompute_hybrid(
                     {
                         "mp_group": fleet.fleet._hcg.get_model_parallel_group(),
                         "offload": self.offload,

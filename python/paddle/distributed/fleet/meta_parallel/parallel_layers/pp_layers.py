@@ -638,7 +638,7 @@ class PipelineLayer(Layer):
                     input = (input, )
 
                 if self._need_recompute(funcs, input):
-                    input = fleet.recompute_hybrid(
+                    input = paddle.incubate.distributed.fleet.recompute_hybrid(
                         self.recompute_ctx,
                         self.forward_function(start_idx, end_idx), *input)
                 else:

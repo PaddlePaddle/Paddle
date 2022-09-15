@@ -18,6 +18,7 @@ from .ps_util import DistributedInfer  # noqa: F401
 from paddle.distributed import fleet
 import paddle.utils.deprecated as deprecated
 
+import paddle
 from . import log_util  # noqa: F401
 from . import hybrid_parallel_util  # noqa: F401
 
@@ -31,4 +32,5 @@ __all__ = [  #noqa
             level=1,
             reason="Please use new recompute API(fleet.recompute) ")
 def recompute(function, *args, **kwargs):
-    return fleet.recompute(function, *args, **kwargs)
+    return paddle.incubate.distributed.fleet.recompute(function, *args,
+                                                       **kwargs)

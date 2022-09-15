@@ -91,17 +91,18 @@ class Naive_fc_net(paddle.nn.Layer):
     def forward(self, inputs):
 
         if self.use_fleet_sq and not self.use_raw_recompute:
-            return fleet.recompute_sequential({"segments": self.segments},
-                                              self.runfuncs, inputs)
+            return paddle.incubate.distributed.fleet.recompute_sequential(
+                {"segments": self.segments}, self.runfuncs, inputs)
 
         if self.use_raw_recompute:
-            inputs = fleet.recompute(self.layers[0], inputs)
+            inputs = paddle.incubate.distributed.fleet.recompute(
+                self.layers[0], inputs)
             return self.layers[1](inputs)
 
         for i in range(len(self.layers)):
             if i in self.recompute_blocks:
-                inputs = fleet.recompute(self.layers[i], inputs,
-                                         **self.recompute_kwargs)
+                inputs = paddle.incubate.distributed.fleet.recompute(
+                    self.layers[i], inputs, **self.recompute_kwargs)
             else:
                 inputs = self.layers[i](inputs)
 
@@ -206,7 +207,7 @@ class TestPyLayer(unittest.TestCase):
                                       pure_fp16=pure_fp16)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
-        # recompute using fleet.recompute_sequential, segments=1
+        # recompute using paddle.incubate.distributed.fleet.recompute_sequential, segments=1
         loss, param, grad = run_model(recompute_block=[],
                                       use_fleet_sq=True,
                                       enable_autocast=enable_autocast,
@@ -220,7 +221,7 @@ class TestPyLayer(unittest.TestCase):
             use_raw_recompute=True,
             pure_fp16=pure_fp16)
 
-        # recompute using fleet.recompute_sequential, segments=2
+        # recompute using paddle.incubate.distributed.fleet.recompute_sequential, segments=2
         loss, param, grad = run_model(recompute_block=[],
                                       use_fleet_sq=True,
                                       segments=2,

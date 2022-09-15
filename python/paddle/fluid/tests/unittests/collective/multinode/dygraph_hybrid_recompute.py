@@ -99,7 +99,7 @@ class RecomputeMatmulBlock(nn.Layer):
 
     def forward(self, x):
         if self.mp:
-            return fleet.recompute(self.layers, x)
+            return paddle.incubate.distributed.fleet.recompute(self.layers, x)
         else:
             return self.layers(x)
 
