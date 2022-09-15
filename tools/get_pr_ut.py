@@ -376,10 +376,10 @@ class PRChecker(object):
                                 print('{}/added_ut'.format(PADDLE_ROOT))
                                 print("tempfilename:", tempfilename)
                                 print("filepath:", filepath)
-                                print("---------------")
+                                print("--------------------")
                                 for i in utfile:
                                     print(i)
-                                print("---------------")
+                                print("---------------------")
                                 if tempfilename.strip().split(".")[0] in utfile:
                                     print("code go here")
                                     f_judge_in_added_ut = True
