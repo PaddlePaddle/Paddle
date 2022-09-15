@@ -799,7 +799,11 @@ Attribute OpDesc::GetAttr(const std::string &name, bool with_attr_var) const {
     PADDLE_ENFORCE_EQ(
         HasAttrVar(it->second),
         false,
-        platform::errors::NotFound("Attribute %s is not found.", name));
+        platform::errors::NotFound(
+            "Attribute %s with constant value is not found, but found it with "
+            "Variable(s) type, which maybe not supported in some scenarios "
+            "currently, such as TensorRT et.al",
+            name));
   }
   return it->second;
 }
@@ -994,16 +998,25 @@ void OpDesc::Flush() {
 
     std::vector<std::pair<std::string, Attribute>> sorted_attrs{attrs_.begin(),
                                                                 attrs_.end()};
+
+    std::vector<std::pair<std::string, Attribute>> sorted_runtime_attrs{
+        runtime_attrs_.begin(), runtime_attrs_.end()};
+
     std::sort(
         sorted_attrs.begin(),
         sorted_attrs.end(),
+        [](std::pair<std::string, Attribute> a,
+           std::pair<std::string, Attribute> b) { return a.first < b.first; });
+    std::sort(
+        sorted_runtime_attrs.begin(),
+        sorted_runtime_attrs.end(),
         [](std::pair<std::string, Attribute> a,
            std::pair<std::string, Attribute> b) { return a.first < b.first; });
 
     for (auto &attr : sorted_attrs) {
       set_attr_desc(attr.first, attr.second);
     }
-    for (auto &attr : runtime_attrs_) {
+    for (auto &attr : sorted_runtime_attrs) {
       set_attr_desc(attr.first, attr.second);
     }
 

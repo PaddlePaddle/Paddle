@@ -181,7 +181,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_api_impl$|\
 ^test_tensordot$|\
-^disable_wingpu_test$"
+^disable_win_inference_test$"
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -252,6 +252,7 @@ NIGHTLY_MODE=$1
 PRECISION_TEST=$2
 WITH_GPU=$3
 
+# Step1: Print disable_ut_quickly
 export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
     nightly_label=""
@@ -271,8 +272,7 @@ else
     disable_ut_quickly=''
 fi
 
-# check added ut
-
+# Step2: Check added ut
 set +e
 cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
 bash $PADDLE_ROOT/tools/check_added_ut_win.sh
@@ -288,9 +288,10 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         exit 8;
     fi
 fi
+
+
+# Step3: Get precision UT and intersect with parallel UT, generate tools/*_new file
 set -e
-
-
 if [ ${WITH_GPU:-OFF} == "ON" ];then
     export CUDA_VISIBLE_DEVICES=0
 
@@ -437,27 +438,9 @@ function show_ut_retry_result() {
     fi
 }
 
+# Step4: Run UT gpu or cpu
 set +e
-
 export FLAGS_call_stack_level=2
-
-# if nvcc --version | grep 11.2; then
-#     echo "Only test added_ut and inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
-#     export CUDA_VISIBLE_DEVICES=0
-#     tmpfile=$tmp_dir/$RANDOM
-#     inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
-#     (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
-#     wait;
-#     collect_failed_tests
-#     set -e
-#     rm -f $tmp_dir/*
-#     if [[ "$failed_test_lists" != "" ]]; then
-#         unittests_retry
-#         show_ut_retry_result
-#     fi
-#     exit 0;
-# fi
-
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
 
     single_ut_mem_0_startTime_s=`date +%s`

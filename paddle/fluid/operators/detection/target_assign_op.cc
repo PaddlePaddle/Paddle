@@ -131,7 +131,7 @@ If id = MatchIndices[i][j] > 0,
     Out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
     OutWeight[i][j] = 1.
 
-Otherwise, 
+Otherwise,
 
     Out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
     OutWeight[i][j] = 0.
