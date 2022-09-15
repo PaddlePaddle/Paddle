@@ -50,8 +50,8 @@ CHECK_LAYER = dict()  # Help to check layer's id -> layer's name
 
 
 class ShardingStage3(nn.Layer):
-    """ 
-    A wrapper for Sharding Stage3 Layer in Dygraph. 
+    """
+    A wrapper for Sharding Stage3 Layer in Dygraph.
 
     .. warning: ShardingStage3 encapsulates the layer strategy and integrates it into the nn.Layer.
 

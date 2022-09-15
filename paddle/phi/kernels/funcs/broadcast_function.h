@@ -213,9 +213,10 @@ struct DimensionsTransform {
         }
       }
     };
-    int swap_idx = 0;
-    bool has_seq_one = FindSequentialOneDim(&swap_idx);
-    if (has_seq_one) {
+    for (auto i = 0; i < dim_size; ++i) {
+      int swap_idx = 0;
+      bool has_seq_one = FindSequentialOneDim(&swap_idx);
+      if (!has_seq_one) break;
       merge_ptr = merge_sequential_one_dims;
       MergeDimensions<MergeFunctor>(merge_ptr, N);
       std::swap(in_dims[swap_idx], in_dims[0]);

@@ -107,24 +107,30 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
             if attrs[0]['iou_aware'] == True:
                 channel = 3 * (attrs[0]['class_num'] + 6)
                 self.dynamic_shape.min_input_shape = {
-                    "scale_input": [1, channel, 12, 12]
+                    "yolo_box_input": [1, channel, 12, 12],
+                    "imgsize": [1, 2]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "scale_input": [4, channel, 24, 24]
+                    "yolo_box_input": [4, channel, 24, 24],
+                    "imgsize": [4, 2]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "scale_input": [1, channel, 24, 24]
+                    "yolo_box_input": [1, channel, 24, 24],
+                    "imgsize": [1, 2]
                 }
             else:
                 channel = 3 * (attrs[0]['class_num'] + 5)
                 self.dynamic_shape.min_input_shape = {
-                    "scale_input": [1, channel, 12, 12]
+                    "yolo_box_input": [1, channel, 12, 12],
+                    "imgsize": [1, 2]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "scale_input": [4, channel, 24, 24]
+                    "yolo_box_input": [4, channel, 24, 24],
+                    "imgsize": [4, 2]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "scale_input": [1, channel, 24, 24]
+                    "yolo_box_input": [1, channel, 24, 24],
+                    "imgsize": [1, 2]
                 }
 
         def clear_dynamic_shape():

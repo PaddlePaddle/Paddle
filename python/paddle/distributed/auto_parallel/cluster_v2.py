@@ -49,14 +49,14 @@ class LinkType(IntEnum):
 
 class DeviceMesh(core.DeviceMesh):
     r"""
-    The class `DeviceMesh` describes the topology of physical devices. 
+    The class `DeviceMesh` describes the topology of physical devices.
 
     Args:
         mesh (list|numpy.array): an N-dimensional array describes the toplogy
             of logical processes.
         dim_names (list, optional): the i-th element of this list gives the name of the
             i-th dimension.
-    
+
     Returns:
         None
 
@@ -65,9 +65,9 @@ class DeviceMesh(core.DeviceMesh):
 
             import paddle
             import paddle.distributed as dist
-            
+
             paddle.enable_static()
-            
+
             mesh = dist.DeviceMesh([[2, 4, 5], [0, 1, 3]])
             assert mesh.shape == [2, 3]
             assert mesh.device_ids == [2, 4, 5, 0, 1, 3]

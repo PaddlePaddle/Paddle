@@ -145,7 +145,7 @@ For some basics of chunking, please refer to
 ChunkEvalOp computes the precision, recall, and F1-score of chunk detection,
 and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
 Here is a NER example of labeling for these tagging schemes:
-   
+
           Li     Ming    works  at  Agricultural   Bank   of    China  in  Beijing.
    IO     I-PER  I-PER   O      O   I-ORG          I-ORG  I-ORG I-ORG  O   I-LOC
    IOB    B-PER  I-PER   O      O   B-ORG          I-ORG  I-ORG I-ORG  O   B-LOC
@@ -158,13 +158,13 @@ and LOC(LOCATION), and we can see that the labels have the form <tag type>-<chun
 Since the calculations actually use label ids rather than labels, extra attention
 should be paid when mapping labels to ids to make CheckEvalOp work. The key point
 is that the listed equations are satisfied by ids.
-   
+
    tag_type = label % num_tag_type
    chunk_type = label / num_tag_type
 
 where `num_tag_type` is the num of tag types in the tagging scheme, `num_chunk_type`
 is the num of chunk types, and `tag_type` get its value from the following table.
-   
+
    Scheme Begin Inside End   Single
     plain   0     -      -     -
     IOB     0     1      -     -

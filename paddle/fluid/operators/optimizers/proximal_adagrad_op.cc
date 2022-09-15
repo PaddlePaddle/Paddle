@@ -119,9 +119,9 @@ param = sign(prox\_param) / (1 + learning\_rate * l2) *
         \max(|prox\_param| - learning\_rate * l1 , 0)
 $$
 
-The paper that proposed Proximal GD: 
+The paper that proposed Proximal GD:
 (http://papers.nips.cc/paper/3793-efficient-learning-using-forward-backward-splitting.pdf)
-Here, we use the adagrad learning rate as specified here: 
+Here, we use the adagrad learning rate as specified here:
 (http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
 
 )DOC");
