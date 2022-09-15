@@ -272,8 +272,7 @@ class PRChecker(object):
             % (PADDLE_ROOT, all_ut_file))
         #determine whether filename is in all_ut_case
         with open(all_ut_file, 'r') as f:
-            all_ut_case = f.read()
-            if filename in all_ut_case:
+            if filename.split(".")[0] in f:
                 return True
             else:
                 return False
@@ -365,18 +364,14 @@ class PRChecker(object):
                     elif 'tests/unittests/xpu' in f_judge or 'tests/unittests/npu' in f_judge or 'op_npu.cc' in f_judge:
                         ut_list.append('xpu_npu_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
-                    elif f_judge.endswith(('.h', '.cu', '.cc', 'py')):
+                    elif f_judge.endswith(('.h', '.cu', '.cc', '.py')):
                         #determine whether the new added file is a member of added_ut
                         if file_dict[f] in ['added']:
                             f_judge_in_added_ut = False
                             with open('{}/added_ut'.format(
                                     PADDLE_ROOT)) as utfile:
-                                print("utfile:", utfile)
-                                added_ut_list = utfile.read()
-                                print("added_ut_list:", added_ut_list)
-                                if f_judge in added_ut_list:
+                                if f_judge.split(".")[0] in utfile:
                                     f_judge_in_added_ut = True
-                            print("f_judge_in_added_ut:", f_judge_in_added_ut)
                             if f_judge_in_added_ut == True:
                                 print(
                                     "Adding new unit tests not hit mapFiles: %s"
@@ -390,7 +385,7 @@ class PRChecker(object):
                                 ut_list.append('comment_placeholder')
                                 onlyCommentsFilesOrXpu.append(f_judge)
                             if self.file_is_unnit_test(f_judge):
-                                ut_list.append(f_judge)
+                                ut_list.append(f_judge.split(".")[0])
                             else:
                                 notHitMapFiles.append(f_judge)
                     else:
