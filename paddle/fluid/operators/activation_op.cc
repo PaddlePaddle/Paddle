@@ -607,7 +607,7 @@ class LogitOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1e-6f) the epsilon for input clamp bound")
         .SetDefault(1e-6f);
     AddComment(R"DOC(
-Logit Operator. 
+Logit Operator.
 
 this function is defined as follow:
 $ logit=ln\left ( {\frac {x} {1-x}} \right ) $

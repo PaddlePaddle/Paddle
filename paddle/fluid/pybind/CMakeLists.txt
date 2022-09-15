@@ -41,7 +41,8 @@ set(PYBIND_DEPS
     new_profiler
     auto_parallel
     jit_layer
-    jit_property)
+    jit_property
+    saved_tensors_hooks)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
