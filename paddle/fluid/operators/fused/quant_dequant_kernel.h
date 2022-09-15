@@ -53,7 +53,7 @@ void quantize_kernel_launcher(const T* input,
                               const float scale,
                               const int m,
                               const int n,
-                              cudaStream_t stream) {
+                              gpuStream_t stream) {
   // TODO(minghaoBD): optimize the kennel launch times when m==1 or n==1
   dim3 grid((n + 31) / 32, (m + 31) / 32);
   dim3 block(32, 32);
@@ -88,7 +88,7 @@ void dequantize_kernel_launcher(const int32_t* input,
                                 T* output,
                                 const int batch_size,    // m
                                 const int hidden_units,  // n
-                                cudaStream_t stream,
+                                gpuStream_t stream,
                                 const float quant_in_scale,
                                 const float* quant_out_scale_data,
                                 const int quant_out_scale_offset) {
