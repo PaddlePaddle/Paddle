@@ -698,8 +698,7 @@ EmbLayerNormVarSeqlenPluginBaseCreator::getFieldNames() noexcept {
   return &mFC;
 }
 
-bool initializeFields(char const* name,
-                      nvinfer1::PluginFieldCollection const* fc,
+bool initializeFields(nvinfer1::PluginFieldCollection const* fc,
                       nvinfer1::Weights& beta,
                       nvinfer1::Weights& gamma,
                       std::vector<nvinfer1::Weights>& IdsEmb) {
@@ -747,7 +746,7 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginHFaceCreator::createPlugin(
   nvinfer1::Weights beta;
   nvinfer1::Weights gamma;
   std::vector<nvinfer1::Weights> IdsEmb;
-  bool output_fp16 = initializeFields(name, fc, beta, gamma, IdsEmb);
+  bool output_fp16 = initializeFields(fc, beta, gamma, IdsEmb);
 
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
   EmbLayerNormVarSeqlenPluginHFace* p = new EmbLayerNormVarSeqlenPluginHFace(
@@ -767,7 +766,7 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginMTronCreator::createPlugin(
   nvinfer1::Weights beta;
   nvinfer1::Weights gamma;
   std::vector<nvinfer1::Weights> IdsEmb;
-  bool output_fp16 = initializeFields(name, fc, beta, gamma, IdsEmb);
+  bool output_fp16 = initializeFields(fc, beta, gamma, IdsEmb);
 
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
   EmbLayerNormVarSeqlenPluginMTron* p = new EmbLayerNormVarSeqlenPluginMTron(
