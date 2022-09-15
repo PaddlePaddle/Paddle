@@ -216,47 +216,12 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInputX();
     AddInputY();
     AddOpOutput();
-
     AddAttr<int>("axis",
                  "(int, default -1). If X.dimension != Y.dimension,"
                  "Y.dimension must be a subsequence of x.dimension. And axis "
                  "is the start dimension index "
                  "for broadcasting Y onto X. ")
         .SetDefault(-1);
-    AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>("x_data_format", "This parameter is no longer used.")
-        .SetDefault("")
-        .AsExtra();
-    AddAttr<std::string>("y_data_format", "This parameter is no longer used.")
-        .SetDefault("")
-        .AsExtra();
-    AddAttr<bool>(
-        "use_quantizer",
-        "(bool, default false) "
-        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
-    /* int8 parameters */
-    AddAttr<float>("Scale_x",
-                   "(float, default 1.0f), The quantize scale of X tensor")
-        .SetDefault(1.0f)
-        .AsExtra();
-    AddAttr<float>("Scale_y",
-                   "(float, default 1.0f), The quantize scale of Y tensor")
-        .SetDefault(1.0f)
-        .AsExtra();
-    AddAttr<float>("Scale_out",
-                   "(float, default 1.0f), The quantize scale of output data")
-        .SetDefault(1.0f)
-        .AsExtra();
     AddOpComment();
   }
 
