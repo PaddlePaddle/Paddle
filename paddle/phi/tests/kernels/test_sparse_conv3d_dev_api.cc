@@ -28,7 +28,6 @@ limitations under the License. */
 
 namespace phi {
 namespace tests {
-#if 0
 
 std::vector<int> flatten(const std::vector<std::vector<int>>& in) {
   std::vector<int> out;
@@ -123,6 +122,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                                1,
                                                subm,
                                                "Conv3d",
+                                               false,
                                                &rulebook,
                                                &counter);
 
@@ -211,6 +211,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                                1,
                                                subm,
                                                "Conv3d",
+                                               false,
                                                &d_rulebook,
                                                &d_counter);
   SparseCooTensor tmp_d_out = sparse::Coalesce<T>(dev_ctx_gpu, d_out);
@@ -830,6 +831,5 @@ TEST(DEV_API, sparse_conv3d_subm) {
              kernel_grad,
              true);
 }
-#endif
 }  // namespace tests
 }  // namespace phi

@@ -27,29 +27,29 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/slice.h"
 #endif
 
-#include "glog/logging.h"
 #include <inttypes.h>
+#include "glog/logging.h"
 
 namespace phi {
 namespace sparse {
 
 __global__ void pi64(int64_t* p, int len, int group_num) {
   printf("\n");
-  for(int i=0;i<len;i++) {
-    printf("%lld,",*(p+i));
-    if((i+1)%group_num == 0) {
+  for (int i = 0; i < len; i++) {
+    printf("%lld,", *(p + i));
+    if ((i + 1) % group_num == 0) {
       printf("\n");
     }
   }
   printf("\n");
 }
 
-template<typename T>
-__global__ void pp(T ** p, int len, int group_num) {
+template <typename T>
+__global__ void pp(T** p, int len, int group_num) {
   printf("\n");
-  for(int i=0;i<len;i++) {
-    printf("%p,",*(p+i));
-    if((i+1)%group_num == 0) {
+  for (int i = 0; i < len; i++) {
+    printf("%p,", *(p + i));
+    if ((i + 1) % group_num == 0) {
       printf("\n");
     }
   }
@@ -59,11 +59,11 @@ __global__ void pp(T ** p, int len, int group_num) {
 template <typename T>
 void AlignFeaturesChannel(const GPUContext& dev_ctx,
                           const SparseCooTensor& x,
-                          SparseCooTensor& aligned_x,
+                          SparseCooTensor* const aligned_x,
                           int channel_idx,
                           int padding_num) {
   if (padding_num <= 0) {
-    aligned_x = x;
+    *aligned_x = x;
     return;
   }
   if (padding_num > 0) {
@@ -79,7 +79,7 @@ void AlignFeaturesChannel(const GPUContext& dev_ctx,
         &aligned_features);
     DDim aligned_dims(x.dims());
     aligned_dims[channel_idx] += padding_num;
-    aligned_x =
+    *aligned_x =
         SparseCooTensor(x.non_zero_indices(), aligned_features, aligned_dims);
   }
 }
@@ -87,11 +87,11 @@ void AlignFeaturesChannel(const GPUContext& dev_ctx,
 template <typename T>
 void AlignKernelChannel(const GPUContext& dev_ctx,
                         const DenseTensor& kernel,
-                        DenseTensor& aligned_kernel,
+                        DenseTensor* const aligned_kernel,
                         int channel_idx,
                         int padding_num) {
   if (padding_num <= 0) {
-    aligned_kernel = kernel;
+    *aligned_kernel = kernel;
     return;
   }
   if (padding_num > 0) {
@@ -109,14 +109,14 @@ void AlignKernelChannel(const GPUContext& dev_ctx,
         dev_ctx,
         std::vector<const DenseTensor*>{&kernel, &paddings},
         channel_idx,
-        &aligned_kernel);
+        aligned_kernel);
   }
 }
 
 template <typename T>
 void AlignKernelChannels(const GPUContext& dev_ctx,
                          const DenseTensor& kernel,
-                         DenseTensor& aligned_kernel,
+                         DenseTensor* const aligned_kernel,
                          int channel_in_idx,
                          int channel_out_idx,
                          int in_padding_num,
@@ -125,10 +125,10 @@ void AlignKernelChannels(const GPUContext& dev_ctx,
   AlignKernelChannel<T>(
       dev_ctx, kernel, aligned_in_kernel, channel_in_idx, in_padding_num);
   AlignKernelChannel<T>(dev_ctx,
-                     aligned_in_kernel,
-                     aligned_kernel,
-                     channel_out_idx,
-                     out_padding_num);
+                        aligned_in_kernel,
+                        *aligned_kernel,
+                        channel_out_idx,
+                        out_padding_num);
 }
 #endif
 template <typename T, typename IntT>
@@ -232,86 +232,96 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
   const T* kernel_ptr = kernel.data<T>();
 
-  if (cutlass) {
-    thrust::host_vector<cutlass::gemm::GemmCoord> h_shape(kernel_size);
-    thrust::host_vector<const T*> h_ptr_B(kernel_size);
-    thrust::host_vector<T*> h_ptr_D(kernel_size);
-    thrust::host_vector<const IntT*> h_ptr_gather_A_indices(kernel_size);
+#ifdef PADDLE_WITH_CUTLASS
+  // currently, only support data type == fp32 and indices type == int32_t using
+  // cutlass
+  if constexpr (std::is_same<T, float>::value &&
+                std::is_same<IntT, int32_t>::value) {
+    if (cutlass && in_channels % 4 == 0 && out_channels % 4 == 0) {
+      thrust::host_vector<cutlass::gemm::GemmCoord> h_shape(kernel_size);
+      thrust::host_vector<const T*> h_ptr_B(kernel_size);
+      thrust::host_vector<T*> h_ptr_D(kernel_size);
+      thrust::host_vector<const IntT*> h_ptr_gather_A_indices(kernel_size);
 
-    int group_count = 0;
-    int group_idx = 0;
+      int group_count = 0;
+      int group_idx = 0;
 
-    for (int i = 0; i < kernel_size; i++) {
-      if (h_counter_ptr[i] <= 0) {
-        continue;
+      for (int i = 0; i < kernel_size; i++) {
+        if (h_counter_ptr[i] <= 0) {
+          continue;
+        }
+        group_count++;
+        int M = h_counter_ptr[i];
+        int K = in_channels;
+        int N = out_channels;
+        h_shape[group_idx] = cutlass::gemm::GemmCoord(M, N, K);
+
+        const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+        T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
+        h_ptr_B[group_idx] = tmp_kernel_ptr;
+        h_ptr_D[group_idx] = tmp_out_ptr;
+        h_ptr_gather_A_indices[group_idx] = rulebook_ptr + h_offsets_ptr[i];
+        group_idx++;
       }
-      group_count++;
-      int M = h_counter_ptr[i];
-      int K = in_channels;
-      int N = out_channels;
-      h_shape[group_idx] = cutlass::gemm::GemmCoord(M,N,K);
 
-      const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-      T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
-      h_ptr_B[group_idx] = tmp_kernel_ptr;
-      h_ptr_D[group_idx] = tmp_out_ptr;
-      h_ptr_gather_A_indices[group_idx] = rulebook_ptr + h_offsets_ptr[i];
-      group_idx++;
+      thrust::device_vector<cutlass::gemm::GemmCoord> shape = h_shape;
+      thrust::device_vector<const T*> ptr_B = h_ptr_B;
+      thrust::device_vector<T*> ptr_D = h_ptr_D;
+      thrust::device_vector<const IntT*> ptr_gather_A_indices =
+          h_ptr_gather_A_indices;
+      thrust::device_vector<T*> ptr_A(kernel_size,
+                                      const_cast<T*>(x.values().data<T>()));
+      thrust::device_vector<int64_t> lda(kernel_size, (int64_t)in_channels);
+      thrust::device_vector<int64_t> ldb(kernel_size, (int64_t)out_channels);
+      thrust::device_vector<int64_t> ldd(kernel_size, (int64_t)out_channels);
+
+      using ElementA = T;
+      using ElementB = T;
+      using ElementAccumulator = T;
+      using ElementComputeEpilogue = T;
+      using ElementOutput = T;
+      using LayoutA = cutlass::layout::RowMajor;
+      using LayoutB = cutlass::layout::RowMajor;
+      using LayoutOutput = cutlass::layout::RowMajor;
+      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 128, 16>;
+      using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 16>;
+      using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 8>;
+      constexpr bool GatherA = true;
+      constexpr int NumStages = 3;
+      // group-gather-gemm fusion
+      group_gemm<ElementA,
+                 ElementB,
+                 ElementAccumulator,
+                 ElementComputeEpilogue,
+                 ElementOutput,
+                 LayoutA,
+                 LayoutB,
+                 LayoutOutput,
+                 IntT,
+                 ShapeMMAThreadBlock,
+                 ShapeMMAWarp,
+                 ShapeMMAOp,
+                 NumStages,
+                 GatherA>(
+          thrust::raw_pointer_cast(ptr_A.data()),
+          const_cast<T**>(thrust::raw_pointer_cast(ptr_B.data())),
+          nullptr,
+          thrust::raw_pointer_cast(ptr_D.data()),
+          thrust::raw_pointer_cast(shape.data()),
+          thrust::raw_pointer_cast(lda.data()),
+          thrust::raw_pointer_cast(ldb.data()),
+          nullptr,
+          thrust::raw_pointer_cast(ldd.data()),
+          thrust::raw_pointer_cast(ptr_gather_A_indices.data()),
+          group_count,
+          static_cast<T>(1),
+          static_cast<T>(0));
     }
-
-    thrust::device_vector<cutlass::gemm::GemmCoord> shape = h_shape;
-    thrust::device_vector<const T*> ptr_B = h_ptr_B;
-    thrust::device_vector<T*> ptr_D = h_ptr_D;
-    thrust::device_vector<const IntT*> ptr_gather_A_indices =
-        h_ptr_gather_A_indices;
-    thrust::device_vector<T*> ptr_A(kernel_size, const_cast<T*>(x.values().data<T>()));
-    thrust::device_vector<int64_t> lda(kernel_size, (int64_t)in_channels);
-    thrust::device_vector<int64_t> ldb(kernel_size, (int64_t)out_channels);
-    thrust::device_vector<int64_t> ldd(kernel_size, (int64_t)out_channels);
-
-
-    using ElementA = T;
-    using ElementB = T;
-    using ElementAccumulator = T;
-    using ElementComputeEpilogue = T;
-    using ElementOutput = T;
-    using LayoutA = cutlass::layout::RowMajor;
-    using LayoutB = cutlass::layout::RowMajor;
-    using LayoutOutput = cutlass::layout::RowMajor;
-    using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 128, 16>;
-    using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 16>;
-    using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 8>;
-    constexpr bool GatherA = true;
-    constexpr int NumStages = 3;
-    // group-gather-gemm fusion
-    group_gemm<ElementA,
-               ElementB,
-               ElementAccumulator,
-               ElementComputeEpilogue,
-               ElementOutput,
-               LayoutA,
-               LayoutB,
-               LayoutOutput,
-               IntT,
-               ShapeMMAThreadBlock,
-               ShapeMMAWarp,
-               ShapeMMAOp,
-               NumStages,
-               GatherA>(thrust::raw_pointer_cast(ptr_A.data()),
-                          const_cast<T**>(thrust::raw_pointer_cast(ptr_B.data())),
-                          nullptr,
-                          thrust::raw_pointer_cast(ptr_D.data()),
-                          thrust::raw_pointer_cast(shape.data()),
-                          thrust::raw_pointer_cast(lda.data()),
-                          thrust::raw_pointer_cast(ldb.data()),
-                          nullptr,
-                          thrust::raw_pointer_cast(ldd.data()),
-                          thrust::raw_pointer_cast(ptr_gather_A_indices.data()),
-                          group_count,
-                          static_cast<T>(1),
-                          static_cast<T>(0));
-
-  } else {
+  }
+  if (!cutlass || !std::is_same<T, float>::value ||
+      !std::is_same<IntT, int32_t>::value || in_channels % 4 != 0 ||
+      out_channels % 4 != 0) {
+#endif
     // 2. gather
     phi::DenseTensor in_features =
         phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
@@ -351,7 +361,9 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                 static_cast<T>(0),
                 tmp_out_ptr);
     }
+#ifdef PADDLE_WITH_CUTLASS
   }
+#endif
 
   auto* out_values = out->mutable_values();
   T* out_values_ptr = out_values->data<T>();
@@ -391,21 +403,6 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
-#ifdef PADDLE_WITH_CUTLASS
-  Conv3dCooGPUKernel<T, int32_t>(dev_ctx,
-                                 x,
-                                 kernel,
-                                 paddings,
-                                 dilations,
-                                 strides,
-                                 groups,
-                                 subm,
-                                 key,
-                                 cutlass,
-                                 out,
-                                 rulebook,
-                                 counter);
-#else
   PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooGPUKernel", ([&] {
                                  Conv3dCooGPUKernel<T, data_t>(dev_ctx,
                                                                x,
@@ -421,7 +418,6 @@ void Conv3dCooKernel(const Context& dev_ctx,
                                                                rulebook,
                                                                counter);
                                }));
-#endif
 }
 
 }  // namespace sparse
@@ -431,12 +427,8 @@ PD_REGISTER_KERNEL(conv3d_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::Conv3dCooKernel,
-#ifdef PADDLE_WITH_CUTLASS
-                   float) {
-#else
                    float,
                    double,
                    phi::dtype::float16) {
-#endif
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

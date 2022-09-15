@@ -204,6 +204,6 @@ void Conv3dCooKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    conv3d_coo, CPU, ALL_LAYOUT, phi::sparse::Conv3dCooKernel, double) {
+    conv3d_coo, CPU, ALL_LAYOUT, phi::sparse::Conv3dCooKernel, float, double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

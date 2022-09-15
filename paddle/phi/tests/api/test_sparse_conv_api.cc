@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 
-#if 0
 PD_DECLARE_KERNEL(conv3d_coo, CPU, ALL_LAYOUT);
 
 template <typename T>
@@ -174,4 +173,3 @@ TEST(API, sparse_conv2d) {
              strides,
              dilations);
 }
-#endif
