@@ -12,21 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# if(NOT WITH_TENSORRT)
-#   return()
-# endif()
-
-# if(WITH_ARM OR WIN32)
-#   message(STATUS "The current FasterTransformer support linux only, return.")
-#   return()
-# endif()
-# message(STATUS "CUDA detected: " ${CMAKE_CUDA_COMPILER_VERSION})
-# if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-#   message(
-#     STATUS "The current FasterTransformer support CUDA>=11.0 only, return.")
-#   return()
-# endif()
-
 include(ExternalProject)
 set(FASTER_TRANSFORMER_PATH
     "${THIRD_PARTY_PATH}/fastertransformer"

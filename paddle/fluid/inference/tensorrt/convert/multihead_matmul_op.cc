@@ -655,19 +655,19 @@ class MultiheadMatMulOpConverter : public OpConverter {
             with_fastertransformer_window_mha = true;
           }
 #endif
-          bool is_BiasQK_directInput =
+          bool is_biasqk_directInput =
               op_desc.HasAttr("BiasQK_directInput")
                   ? PADDLE_GET_CONST(bool,
                                      op_desc.GetAttr("BiasQK_directInput"))
                   : false;
-          bool has_BiasQK_mask =
+          bool has_biasqk_mask =
               (op_desc.Inputs().find("BiasQK_mask") == op_desc.Inputs().end())
                   ? false
                   : true;
           nvinfer1::Weights biasqk_mask_const_nvWeight;
-          nvinfer1::ILayer* biasQK_mask_constLayer = nullptr;
+          nvinfer1::ILayer* biasqk_mask_constLayer = nullptr;
           nvinfer1::ITensor* input_bias_qk_mask = nullptr;
-          if (has_BiasQK_mask) {
+          if (has_biasqk_mask) {
             if (with_fastertransformer_window_mha) {
               // with fastertransformer window mha,
               // is the biasqk_mask is the third input of QkvToContextPlugin
@@ -716,49 +716,49 @@ class MultiheadMatMulOpConverter : public OpConverter {
                            nvinfer1::DataType::kHALF) {
                   biasqk_mask_const_nvWeight = biasqk_mask_const_weight.get();
                 }
-                biasQK_mask_constLayer =
+                biasqk_mask_constLayer =
                     TRT_ENGINE_ADD_LAYER(engine_,
                                          Constant,
                                          biasqk_mask_dims,
                                          biasqk_mask_const_nvWeight);
-                biasQK_mask_constLayer->setOutputType(
+                biasqk_mask_constLayer->setOutputType(
                     0, nvinfer1::DataType::kHALF);
-                biasQK_mask_constLayer->setPrecision(nvinfer1::DataType::kHALF);
+                biasqk_mask_constLayer->setPrecision(nvinfer1::DataType::kHALF);
               } else {
                 auto biasqk_mask_const_weight =
                     engine_->GetFp32TrtWeight(biasqk_mask_name, *biasqk_mask_t);
-                biasQK_mask_constLayer =
+                biasqk_mask_constLayer =
                     TRT_ENGINE_ADD_LAYER(engine_,
                                          Constant,
                                          biasqk_mask_dims,
                                          biasqk_mask_const_weight.get());
-                biasQK_mask_constLayer->setOutputType(
+                biasqk_mask_constLayer->setOutputType(
                     0, nvinfer1::DataType::kFLOAT);
-                biasQK_mask_constLayer->setPrecision(
+                biasqk_mask_constLayer->setPrecision(
                     nvinfer1::DataType::kFLOAT);
               }
               // set the output configuration of constant layer
               // that warp the biasqk_mask
-              biasQK_mask_constLayer->getOutput(0)->setName(
+              biasqk_mask_constLayer->getOutput(0)->setName(
                   biasqk_mask_constlayer_outputname.c_str());
               engine_->SetITensor(
-                  biasQK_mask_constLayer->getOutput(0)->getName(),
-                  biasQK_mask_constLayer->getOutput(0));
+                  biasqk_mask_constLayer->getOutput(0)->getName(),
+                  biasqk_mask_constLayer->getOutput(0));
               op_desc.SetInput(
                   "BiasQK_mask",
-                  {biasQK_mask_constLayer->getOutput(0)->getName()});
+                  {biasqk_mask_constLayer->getOutput(0)->getName()});
               input_bias_qk_mask =
                   engine_->GetITensor(op_desc.Input("BiasQK_mask").front());
             }
           }
           // add a constant layer that warp weight biasqk as trt layer output
-          nvinfer1::ILayer* biasQK_constLayer = nullptr;
+          nvinfer1::ILayer* biasqk_constLayer = nullptr;
           // add a weight to hold biasqk as input of constant layer
           nvinfer1::Weights biasqk_const_nvWeight;
-          if (is_BiasQK_directInput) {
+          if (is_biasqk_directInput) {
             // if biasqk is direct link into multihead_matmul as weight (swin)
             // add a constant layer to warp it as trt layer output (ITensor).
-            if (!with_fastertransformer_window_mha && has_BiasQK_mask) {
+            if (!with_fastertransformer_window_mha && has_biasqk_mask) {
               // has biasqk mask and not with with_fastertransformer_window_mha
               // folding biasqk_mask into biasqk
               VLOG(3) << "fold biasqk_mask into biasqk";
@@ -830,12 +830,12 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                     std::move(folded_biasqk_t));
 
                 biasqk_const_nvWeight.values = folded_biasqk_d;
-                biasQK_constLayer = TRT_ENGINE_ADD_LAYER(engine_,
+                biasqk_constLayer = TRT_ENGINE_ADD_LAYER(engine_,
                                                          Constant,
                                                          folded_biasqk_dims_nv1,
                                                          biasqk_const_nvWeight);
-                biasQK_constLayer->setOutputType(0, nvinfer1::DataType::kHALF);
-                biasQK_constLayer->setPrecision(nvinfer1::DataType::kHALF);
+                biasqk_constLayer->setOutputType(0, nvinfer1::DataType::kHALF);
+                biasqk_constLayer->setPrecision(nvinfer1::DataType::kHALF);
               } else {
                 // fp32
                 // in fp32 mode, fold biasqk/biasqk_mask
@@ -861,26 +861,26 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 engine_->SetWeights(biasqk_constlayer_outputname + "_fp32",
                                     std::move(folded_biasqk_t));
                 biasqk_const_nvWeight.values = folded_biasqk_d;
-                biasQK_constLayer = TRT_ENGINE_ADD_LAYER(engine_,
+                biasqk_constLayer = TRT_ENGINE_ADD_LAYER(engine_,
                                                          Constant,
                                                          folded_biasqk_dims_nv1,
                                                          biasqk_const_nvWeight);
-                biasQK_constLayer->setOutputType(0, nvinfer1::DataType::kFLOAT);
-                biasQK_constLayer->setPrecision(nvinfer1::DataType::kFLOAT);
+                biasqk_constLayer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+                biasqk_constLayer->setPrecision(nvinfer1::DataType::kFLOAT);
               }
               // set the output configuration of constant layer
               // that warp the folded biasqk
-              biasQK_constLayer->getOutput(0)->setName(
+              biasqk_constLayer->getOutput(0)->setName(
                   biasqk_constlayer_outputname.c_str());
-              engine_->SetITensor(biasQK_constLayer->getOutput(0)->getName(),
-                                  biasQK_constLayer->getOutput(0));
+              engine_->SetITensor(biasqk_constLayer->getOutput(0)->getName(),
+                                  biasqk_constLayer->getOutput(0));
               op_desc.SetInput("BiasQK",
-                               {biasQK_constLayer->getOutput(0)->getName()});
+                               {biasqk_constLayer->getOutput(0)->getName()});
               // after folding, there is no individual BiasQK_mask
-              // set has_BiasQK_mask to false
-              has_BiasQK_mask = false;
+              // set has_biasqk_mask to false
+              has_biasqk_mask = false;
             } else {
-              // else for !with_fastertransformer_window_mha && has_BiasQK_mask
+              // else for !with_fastertransformer_window_mha && has_biasqk_mask
               // warp bias_qk as a constant layer without folding
               auto biasqk_name = op_desc.Input("BiasQK").front();
               auto biasqk_constlayer_outputname = biasqk_name + "_cl";
@@ -922,27 +922,27 @@ class MultiheadMatMulOpConverter : public OpConverter {
                            nvinfer1::DataType::kHALF) {
                   biasqk_const_nvWeight = biasqk_const_weight.get();
                 }
-                biasQK_constLayer = TRT_ENGINE_ADD_LAYER(
+                biasqk_constLayer = TRT_ENGINE_ADD_LAYER(
                     engine_, Constant, biasqk_dims, biasqk_const_nvWeight);
-                biasQK_constLayer->setOutputType(0, nvinfer1::DataType::kHALF);
-                biasQK_constLayer->setPrecision(nvinfer1::DataType::kHALF);
+                biasqk_constLayer->setOutputType(0, nvinfer1::DataType::kHALF);
+                biasqk_constLayer->setPrecision(nvinfer1::DataType::kHALF);
               } else {
                 // in fp32 mode
                 auto biasqk_const_weight =
                     engine_->GetFp32TrtWeight(biasqk_name, *biasqk_t);
-                biasQK_constLayer = TRT_ENGINE_ADD_LAYER(
+                biasqk_constLayer = TRT_ENGINE_ADD_LAYER(
                     engine_, Constant, biasqk_dims, biasqk_const_weight.get());
-                biasQK_constLayer->setOutputType(0, nvinfer1::DataType::kFLOAT);
-                biasQK_constLayer->setPrecision(nvinfer1::DataType::kFLOAT);
+                biasqk_constLayer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+                biasqk_constLayer->setPrecision(nvinfer1::DataType::kFLOAT);
               }
               // set the output configuration of constant layer
               // that warp the biasqk
-              biasQK_constLayer->getOutput(0)->setName(
+              biasqk_constLayer->getOutput(0)->setName(
                   biasqk_constlayer_outputname.c_str());
-              engine_->SetITensor(biasQK_constLayer->getOutput(0)->getName(),
-                                  biasQK_constLayer->getOutput(0));
+              engine_->SetITensor(biasqk_constLayer->getOutput(0)->getName(),
+                                  biasqk_constLayer->getOutput(0));
               op_desc.SetInput("BiasQK",
-                               {biasQK_constLayer->getOutput(0)->getName()});
+                               {biasqk_constLayer->getOutput(0)->getName()});
             }
           }
 
@@ -1071,14 +1071,14 @@ class MultiheadMatMulOpConverter : public OpConverter {
             with_fp16 = true;
           }
 
-          if (!with_fastertransformer_window_mha && has_BiasQK_mask) {
+          if (!with_fastertransformer_window_mha && has_biasqk_mask) {
             PADDLE_THROW(platform::errors::Fatal(
                 "When fastertransformer_window_mha is not available, the "
                 "BiasQK_mask need to be folded into BiasQk, but got "
-                "has_BiasQK_mask = true."));
+                "has_biasqk_mask = true."));
           }
 
-          if (has_BiasQK_mask) {
+          if (has_biasqk_mask) {
             plugin_inputs.push_back(input_bias_qk_mask);
           }
 
@@ -1089,10 +1089,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
                   head_size,
                   scale,
                   with_fp16,
-                  has_BiasQK_mask,
+                  has_biasqk_mask,
                   window_number,
                   with_fastertransformer_window_mha);
-          if (!has_BiasQK_mask) {
+          if (!has_biasqk_mask) {
             layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
           } else {
             layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 3, plugin);
