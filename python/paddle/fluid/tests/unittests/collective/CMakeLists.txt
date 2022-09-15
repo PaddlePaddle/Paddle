@@ -268,17 +268,26 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
+    test_communication_stream_allreduce_api MODULES
+    test_communication_stream_allreduce_api ENVS
+    "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
+  set_tests_properties(test_communication_stream_allreduce_api
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
+    test_communication_stream_sendrecv_api MODULES
+    test_communication_stream_sendrecv_api ENVS
+    "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
+  set_tests_properties(test_communication_stream_sendrecv_api
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
     test_eager_dist_api MODULES test_eager_dist_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT "120" LABELS
                                                       "RUN_TYPE=DIST")
-endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
-  py_test_modules(
-    test_new_group_api MODULES test_new_group_api ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_new_group_api PROPERTIES TIMEOUT "120" LABELS
-                                                     "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU
     OR WITH_ROCM
@@ -298,11 +307,10 @@ if((WITH_GPU
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_communication_stream_allreduce_api MODULES
-    test_communication_stream_allreduce_api ENVS
-    "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
-  set_tests_properties(test_communication_stream_allreduce_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+    test_new_group_api MODULES test_new_group_api ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_new_group_api PROPERTIES TIMEOUT "120" LABELS
+                                                     "RUN_TYPE=DIST")
 endif()
 if((WITH_ROCM OR WITH_GPU) AND (LINUX))
   bash_test_modules(
