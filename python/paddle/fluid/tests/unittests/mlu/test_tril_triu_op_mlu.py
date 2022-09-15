@@ -132,7 +132,7 @@ for _op_type in ['tril', 'triu']:
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):
-    """ test case by using API and has -1 dimension 
+    """ test case by using API and has -1 dimension
     """
 
     def test_api(self):

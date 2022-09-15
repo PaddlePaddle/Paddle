@@ -23,12 +23,12 @@ from .trial import OptimizationTunerTrial as Trial
 
 class AlgorithmBase(ABC):
     """
-    An Tuning alogrithm is a class to find out an optimal configuration 
-    given the selected tuning optimization pass(es) and the arguments to be tuned. 
+    An Tuning alogrithm is a class to find out an optimal configuration
+    given the selected tuning optimization pass(es) and the arguments to be tuned.
     Different optimization pass(es) will correspond to a different algorithm,
     where different search space **pruning rules** will applied.
 
-    In another word, the key "algorithm" for this class is the 
+    In another word, the key "algorithm" for this class is the
     search space pruning rules specific for the given optimization scenario.
     """
     _REGISTERED_ALGORITHMS = {}
@@ -52,9 +52,9 @@ class AlgorithmBase(ABC):
 
     def collect_model_info(self, main_prog, startup_prog):
         """
-        Collect the model static info (from programs) that could be used to 
-        pruning candidate trials and saving tuning time.For instance, 
-        model info like number of model parameters and activation memory could be 
+        Collect the model static info (from programs) that could be used to
+        pruning candidate trials and saving tuning time.For instance,
+        model info like number of model parameters and activation memory could be
         used to prune candidated trial and decide the next trial.
         """
         pass
@@ -70,7 +70,7 @@ class AlgorithmBase(ABC):
     @abstractmethod
     def update(self, results):
         """
-        Update the algorthim with the results of last trial. Using this information is used to 
+        Update the algorthim with the results of last trial. Using this information is used to
         pruning the search space of the future trial.
         """
         pass

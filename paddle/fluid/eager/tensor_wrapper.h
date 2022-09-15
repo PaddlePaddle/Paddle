@@ -100,10 +100,10 @@ class TensorWrapper {
 
     std::shared_ptr<GradNodeBase> new_grad_node = weak_grad_node_.lock();
     if (new_grad_node) {
-      VLOG(3) << "Recovered TensorWrapper with GradNode "
+      VLOG(7) << "Recovered TensorWrapper with GradNode "
               << new_grad_node->name() << " addr: " << new_grad_node.get();
     } else {
-      VLOG(3) << "Recovered TensorWrapper with Empty GradNode";
+      VLOG(7) << "Recovered TensorWrapper with Empty GradNode";
     }
     auto* intermediate_autograd_meta =
         EagerUtils::nullable_autograd_meta(intermidiate_tensor_);
@@ -129,7 +129,7 @@ class TensorWrapper {
  private:
   void check_inplace_version() {
     if (no_need_buffer_) {
-      VLOG(6) << "There's no need to check inplace_version because "
+      VLOG(7) << "There's no need to check inplace_version because "
                  "no_need_buffer_ is true.";
       return;
     }
@@ -154,10 +154,10 @@ class TensorWrapper {
               intermidiate_tensor_.name(),
               tensor_version,
               wrapper_version_snapshot));
-      VLOG(6) << " The wrapper_version_snapshot of Tensor '"
+      VLOG(7) << " The wrapper_version_snapshot of Tensor '"
               << intermidiate_tensor_.name() << "' is [ "
               << wrapper_version_snapshot << " ]";
-      VLOG(6) << " The tensor_version of Tensor '"
+      VLOG(7) << " The tensor_version of Tensor '"
               << intermidiate_tensor_.name() << "' is [ " << tensor_version
               << " ]";
     }
