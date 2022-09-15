@@ -45,7 +45,7 @@ inline paddle::experimental::Tensor Cast(
     const bool trace_backward = true) {
   if (input.is_sparse_coo_tensor() || input.is_sparse_csr_tensor()) {
     if (trace_backward) {
-      return sparse::cast_dygraph_function(
+      return sparse::cast_ad_func(
           input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
     } else {
       return paddle::experimental::sparse::cast(
@@ -53,7 +53,7 @@ inline paddle::experimental::Tensor Cast(
     }
   } else {
     if (trace_backward) {
-      return cast_dygraph_function(input, dst_dtype);
+      return cast_ad_func(input, dst_dtype);
     } else {
       return paddle::experimental::cast(input, dst_dtype);
     }

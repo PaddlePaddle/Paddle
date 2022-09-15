@@ -354,13 +354,13 @@ def recompute(function, *args, **kwargs):
     recompute intermediate activations to save then memory.
 
     Parameters:
-        function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model  
-              whose intermediate activations will be released to save memory in forward stage and will be recomputed 
-              in backward stage for gradient calculation. 
-        *args(Tensor): inputs to the function.    
-        **kwargs(Dict): Kwargs should only contain the key-value pair of preserve_rng_state, which is used to 
-              indicate whether to save the forward rng. If it is True, then the last forward rng value will be 
-              restored when the forward recalculation of backpropagation is performed. The default 
+        function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model
+              whose intermediate activations will be released to save memory in forward stage and will be recomputed
+              in backward stage for gradient calculation.
+        *args(Tensor): inputs to the function.
+        **kwargs(Dict): Kwargs should only contain the key-value pair of preserve_rng_state, which is used to
+              indicate whether to save the forward rng. If it is True, then the last forward rng value will be
+              restored when the forward recalculation of backpropagation is performed. The default
               preserve_rng_state is True.
 
     Returns:
@@ -484,9 +484,9 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
                    the key 'preserve_rng_state' (bool, optional, default=True) indicate whether to save the forward rng. If it is True, then the last forward rng value will be
                    restored when the forward recalculation of backpropagation is performed. and some keys such as 'mp_group', 'offload' and 'partition' are invalid here,
                    they are useful in 'recompute_hybrid' API.
-        functions(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model  
-              whose intermediate activations will be released to save memory in forward stage and will be recomputed 
-              in backward stage for gradient calculation. 
+        functions(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model
+              whose intermediate activations will be released to save memory in forward stage and will be recomputed
+              in backward stage for gradient calculation.
         *args(Tensor): inputs(tuple) to the function.
         **kwargs(Dict): inputs(dict) to the function.
 

@@ -27,7 +27,7 @@ class Generator(core.Generator):
         Create a generator object which manages the random number generation. ( Experimental Feature )
 
         Parameters:
-            place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str,optional): The place to allocate Tensor. Can be  
+            place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str,optional): The place to allocate Tensor. Can be
                 CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
                 string, it can be ``cpu`` and ``gpu:x``, where ``x`` is the index of the GPUs.
 

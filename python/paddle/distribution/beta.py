@@ -21,11 +21,11 @@ class Beta(exponential_family.ExponentialFamily):
     r"""
     Beta distribution parameterized by alpha and beta.
 
-    In probability theory and statistics, the beta distribution is a family of 
-    continuous probability distributions defined on the interval [0, 1] 
-    parameterized by two positive shape parameters, denoted by alpha and beta, 
-    that appear as exponents of the random variable and control the shape of 
-    the distribution. The generalization to multiple variables is called a 
+    In probability theory and statistics, the beta distribution is a family of
+    continuous probability distributions defined on the interval [0, 1]
+    parameterized by two positive shape parameters, denoted by alpha and beta,
+    that appear as exponents of the random variable and control the shape of
+    the distribution. The generalization to multiple variables is called a
     Dirichlet distribution.
 
     The probability density function (pdf) is
@@ -38,18 +38,18 @@ class Beta(exponential_family.ExponentialFamily):
 
     .. math::
 
-        B(\alpha, \beta) = \int_{0}^{1} t^{\alpha - 1} (1-t)^{\beta - 1}\mathrm{d}t 
+        B(\alpha, \beta) = \int_{0}^{1} t^{\alpha - 1} (1-t)^{\beta - 1}\mathrm{d}t
 
 
     Args:
-        alpha (float|Tensor): Alpha parameter. It supports broadcast semantics. 
-            The value of alpha must be positive. When the parameter is a tensor, 
-            it represents multiple independent distribution with 
+        alpha (float|Tensor): Alpha parameter. It supports broadcast semantics.
+            The value of alpha must be positive. When the parameter is a tensor,
+            it represents multiple independent distribution with
             a batch_shape(refer to ``Distribution`` ).
-        beta (float|Tensor): Beta parameter. It supports broadcast semantics. 
-            The value of beta must be positive(>0). When the parameter is tensor, 
-            it represent multiple independent distribution with 
-            a batch_shape(refer to ``Distribution`` ). 
+        beta (float|Tensor): Beta parameter. It supports broadcast semantics.
+            The value of beta must be positive(>0). When the parameter is tensor,
+            it represent multiple independent distribution with
+            a batch_shape(refer to ``Distribution`` ).
 
     Examples:
 
@@ -114,7 +114,7 @@ class Beta(exponential_family.ExponentialFamily):
 
         Args:
             value (Tensor): Value to be evaluated.
-        
+
         Returns:
             Tensor: Probability.
         """
@@ -125,7 +125,7 @@ class Beta(exponential_family.ExponentialFamily):
 
         Args:
             value (Tensor): Value to be evaluated
-        
+
         Returns:
             Tensor: Log probability.
         """

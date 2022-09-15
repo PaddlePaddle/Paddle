@@ -60,18 +60,18 @@ def _number_count(numbers, upper_range):
 
 def _assign_pos(x, cum_count):
     """
-    Assign pos decides which tokens should be fetched belong to 
+    Assign pos decides which tokens should be fetched belong to
     specially expert orderingly.
-    
+
     Args:
         x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
-        cum_count (Tensor): The cumulative sum tokens of counters. Every element in the list must be a Tensor whose 
+        cum_count (Tensor): The cumulative sum tokens of counters. Every element in the list must be a Tensor whose
             data type should be int64.
-  
+
     Returns:
-        out (Tensor): Assemble numbers in the order of counters. 
-    
+        out (Tensor): Assemble numbers in the order of counters.
+
     Examples:
         .. code-block:: python
 
@@ -185,10 +185,10 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
         gate_idx (Tensor): Represents the gate_id sequence corresponding to the input data with type int32, int64.
         expert_count (Tensor): The quantity value counted on the gate_id sequence of the input data with type int32, int64.
         n_worker(int，optional): The number of workers on the trainer with type int64.
-  
+
     Returns:
         new_gate_idx (Tensor): The gate_id sequence corresponding to the new input data after passing through prune.
-    
+
     Examples:
         .. code-block:: python
 

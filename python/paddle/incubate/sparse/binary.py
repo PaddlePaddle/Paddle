@@ -30,13 +30,13 @@ _int_dtype_ = [
 @dygraph_only
 def matmul(x, y, name=None):
     """
-    Note:    
+    Note:
         This API is only supported from ``CUDA 11.0`` .
 
-    Applies matrix multiplication of two Tensors. 
-    
+    Applies matrix multiplication of two Tensors.
+
     The supported input/output Tensor layout are as follows:
-    
+
     Note:
         x[SparseCsrTensor] @ y[SparseCsrTensor] -> out[SparseCsrTensor]
         x[SparseCsrTensor] @ y[DenseTensor] -> out[DenseTensor]
@@ -46,14 +46,14 @@ def matmul(x, y, name=None):
     It supports backward propagation.
 
     Dimensions `x` and `y` must be >= 2D. Automatic broadcasting of Tensor is not supported.
-    the shape of `x` should be `[*, M, K]` , and the shape of `y` should be `[*, K, N]` , where `*` 
+    the shape of `x` should be `[*, M, K]` , and the shape of `y` should be `[*, K, N]` , where `*`
     is zero or more batch dimensions.
 
     Args:
         x (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
         y (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor/DenseTensor. The data type can be float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         Tensor: Its layout is determined by that of `x` and `y` .
 
@@ -68,9 +68,9 @@ def matmul(x, y, name=None):
             cols = [1, 2, 0]
             values = [1., 2., 3.]
             csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, [3, 3])
-            # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
-            #        crows=[0, 1, 2, 3], 
-            #        cols=[1, 2, 0], 
+            # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 1, 2, 3],
+            #        cols=[1, 2, 0],
             #        values=[1., 2., 3.])
             dense = paddle.ones([3, 2])
             out = paddle.incubate.sparse.matmul(csr, dense)
@@ -83,9 +83,9 @@ def matmul(x, y, name=None):
             indices = [[0, 1, 2], [1, 2, 0]]
             values = [1., 2., 3.]
             coo = paddle.incubate.sparse.sparse_coo_tensor(indices, values, [3, 3])
-            # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
+            # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
             #        indices=[[0, 1, 2],
-            #                 [1, 2, 0]], 
+            #                 [1, 2, 0]],
             #        values=[1., 2., 3.])
             dense = paddle.ones([3, 2])
             out = paddle.incubate.sparse.matmul(coo, dense)
@@ -100,13 +100,13 @@ def matmul(x, y, name=None):
 @dygraph_only
 def masked_matmul(x, y, mask, name=None):
     """
-    Note:    
+    Note:
         This API is only supported from ``CUDA 11.3`` .
 
-    Applies matrix multiplication of two Dense Tensors. 
-    
+    Applies matrix multiplication of two Dense Tensors.
+
     The supported input/output Tensor layout are as follows:
-    
+
     Note:
         x[DenseTensor] @ y[DenseTensor] * mask[SparseCooTensor] -> out[SparseCooTensor]
         x[DenseTensor] @ y[DenseTensor] * mask[SparseCsrTensor] -> out[SparseCsrTensor]
@@ -148,9 +148,9 @@ def masked_matmul(x, y, mask, name=None):
             y = paddle.rand([5, 4])
 
             out = paddle.incubate.sparse.masked_matmul(x, y, mask)
-            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
-            #        crows=[0, 2, 3, 5], 
-            #        cols=[1, 3, 2, 0, 1], 
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 2, 3, 5],
+            #        cols=[1, 3, 2, 0, 1],
             #        values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
 
     """
@@ -160,11 +160,11 @@ def masked_matmul(x, y, mask, name=None):
 @dygraph_only
 def mv(x, vec, name=None):
     """
-    Note:    
+    Note:
         This API is only supported from ``CUDA 11.0`` .
 
-    Applies matrix-vector product of Sparse Matrix 'x' and Dense vector 'vec' . 
-    
+    Applies matrix-vector product of Sparse Matrix 'x' and Dense vector 'vec' .
+
     The supported input/output Tensor layout are as follows:
 
     Note:
@@ -173,38 +173,38 @@ def mv(x, vec, name=None):
 
     It supports backward propagation.
 
-    The shape of `x` should be `[M, N]` , and the shape of `y` should be `[N]` , 
+    The shape of `x` should be `[M, N]` , and the shape of `y` should be `[N]` ,
     and the shape of `out` will be `[M]` .
 
     Args:
         x (Tensor): The input 2D tensor. It must be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
         y (Tensor): The input 1D tensor. It must be DenseTensor vector. The data type can be float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         Tensor: 1D Tensor.
 
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
-            from paddle.fluid.framework import _test_eager_guard 
+            from paddle.fluid.framework import _test_eager_guard
             paddle.seed(100)
 
             # csr @ dense -> dense
-            with _test_eager_guard():         
+            with _test_eager_guard():
                 crows = [0, 2, 3, 5]
                 cols = [1, 3, 2, 0, 1]
                 values = [1., 2., 3., 4., 5.]
                 dense_shape = [3, 4]
                 csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
-                #        crows=[0, 2, 3, 5], 
-                #        cols=[1, 3, 2, 0, 1], 
+                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+                #        crows=[0, 2, 3, 5],
+                #        cols=[1, 3, 2, 0, 1],
                 #        values=[1., 2., 3., 4., 5.])
                 vec = paddle.randn([4])
-                
+
                 out = paddle.incubate.sparse.mv(csr, vec)
                 # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [-3.85499096, -2.42975140, -1.75087738])

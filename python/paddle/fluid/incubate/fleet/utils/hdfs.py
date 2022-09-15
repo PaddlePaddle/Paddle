@@ -119,8 +119,8 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def ls_dir(self, fs_path):
-        """	
-        list directory under fs_path, and only give the pure name, not include the fs_path	
+        """
+        list directory under fs_path, and only give the pure name, not include the fs_path
         """
         if not self.is_exist(fs_path):
             return [], []

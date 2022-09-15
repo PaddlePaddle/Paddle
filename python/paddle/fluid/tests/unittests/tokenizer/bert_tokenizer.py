@@ -43,7 +43,7 @@ class BasicTokenizer(object):
         Tokenizes a piece of text using basic tokenizer.
         Args:
             text (str): A piece of text.
-        Returns: 
+        Returns:
             list(str): A list of tokens.
         Examples:
             .. code-block::
@@ -389,7 +389,7 @@ class BertTokenizer(PretrainedTokenizer):
         End-to-end tokenization for BERT models.
         Args:
             text (str): The text to be tokenized.
-        
+
         Returns:
             list: A list of string representing converted tokens.
         """
@@ -404,7 +404,7 @@ class BertTokenizer(PretrainedTokenizer):
         Converts a string to a list of tokens.
         Args:
             text (str): The text to be tokenized.
-        
+
         Returns:
             List(str): A list of string representing converted tokens.
         Examples:
@@ -412,7 +412,7 @@ class BertTokenizer(PretrainedTokenizer):
                 from paddlenlp.transformers import BertTokenizer
                 berttokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
                 tokens = berttokenizer.tokenize('He was a puppeteer')
-                
+
                 '''
                 ['he', 'was', 'a', 'puppet', '##eer']
                 '''
@@ -439,8 +439,8 @@ class BertTokenizer(PretrainedTokenizer):
     def build_inputs_with_special_tokens(self, token_ids_0, token_ids_1=None):
         """
         Build model inputs from a sequence or a pair of sequence for sequence classification tasks by concatenating and
-        adding special tokens. 
-        
+        adding special tokens.
+
         A BERT sequence has the following format:
         - single sequence:      ``[CLS] X [SEP]``
         - pair of sequences:        ``[CLS] A [SEP] B [SEP]``
@@ -462,7 +462,7 @@ class BertTokenizer(PretrainedTokenizer):
                                              token_ids_0,
                                              token_ids_1=None):
         """
-        Create a mask from the two sequences passed to be used in a sequence-pair classification task. 
+        Create a mask from the two sequences passed to be used in a sequence-pair classification task.
         A BERT sequence pair mask has the following format:
         ::
             0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1
@@ -495,7 +495,7 @@ class BertTokenizer(PretrainedTokenizer):
                 A list of `inputs_ids` for the first sequence.
             token_ids_1 (List[int], optinal):
                 Optional second list of IDs for sequence pairs. Defaults to None.
-            already_has_special_tokens (bool, optional): Whether or not the token list is already 
+            already_has_special_tokens (bool, optional): Whether or not the token list is already
                 formatted with special tokens for the model. Defaults to None.
         Returns:
             List[int]: The list of integers either be 0 or 1: 1 for a special token, 0 for a sequence token.

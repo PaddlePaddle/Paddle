@@ -103,10 +103,10 @@ def generate_extra_info(op_compat_yaml_path, ops_extra_info_path):
                 api_extra_attr_checkers = ",\n      ".join(
                     attr_checker_func_list)
                 extra_map_str_list.append(
-                    f"{{\"{get_op_name(op_compat_args['api'])}\", {{ {api_extra_attr_map} }}}}"
+                    f"{{\"{get_op_name(op_compat_args['op'])}\", {{ {api_extra_attr_map} }}}}"
                 )
                 extra_checker_str_list.append(
-                    f"{{\"{get_op_name(op_compat_args['api'])}\", {{ {api_extra_attr_checkers} }}}}"
+                    f"{{\"{get_op_name(op_compat_args['op'])}\", {{ {api_extra_attr_checkers} }}}}"
                 )
                 if 'backward' in op_compat_args:
                     for bw_item in op_compat_args['backward'].split(','):

@@ -27,9 +27,9 @@ import hypothesis.strategies as st
 
 class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
     """
-        x_var   f_var(persistable)   
+        x_var   f_var(persistable)
             \       /
-                conv2d 
+                conv2d
                 |
                 conv2d_var    y_var(persistable)
                     \          /

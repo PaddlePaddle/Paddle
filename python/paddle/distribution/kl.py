@@ -35,7 +35,7 @@ def kl_divergence(p, q):
 
     .. math::
 
-        KL(p||q) = \int p(x)log\frac{p(x)}{q(x)} \mathrm{d}x 
+        KL(p||q) = \int p(x)log\frac{p(x)}{q(x)} \mathrm{d}x
 
     Args:
         p (Distribution): ``Distribution`` object.
@@ -64,11 +64,11 @@ def kl_divergence(p, q):
 def register_kl(cls_p, cls_q):
     """Decorator for register a KL divergence implemention function.
 
-    The ``kl_divergence(p, q)`` function will search concrete implemention 
-    functions registered by ``register_kl``, according to multi-dispatch pattern. 
-    If an implemention function is found, it will return the result, otherwise, 
-    it will raise ``NotImplementError`` exception. Users can register 
-    implemention funciton by the decorator. 
+    The ``kl_divergence(p, q)`` function will search concrete implemention
+    functions registered by ``register_kl``, according to multi-dispatch pattern.
+    If an implemention function is found, it will return the result, otherwise,
+    it will raise ``NotImplementError`` exception. Users can register
+    implemention funciton by the decorator.
 
     Args:
         cls_p(Distribution): Subclass derived from ``Distribution``.

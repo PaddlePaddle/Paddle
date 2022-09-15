@@ -236,7 +236,7 @@ class DatasetFolder(Dataset):
             dir (string): Root directory path.
 
         Returns:
-            tuple: (classes, class_to_idx) where classes are relative to (dir), 
+            tuple: (classes, class_to_idx) where classes are relative to (dir),
                     and class_to_idx is a dictionary.
 
         """

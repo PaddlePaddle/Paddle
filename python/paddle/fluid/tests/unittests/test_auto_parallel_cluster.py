@@ -82,7 +82,7 @@ cluster_json = """
           "source_global_id": 1,
           "target_global_id": 2,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 0,

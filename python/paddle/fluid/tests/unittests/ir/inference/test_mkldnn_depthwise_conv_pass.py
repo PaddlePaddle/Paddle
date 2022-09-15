@@ -30,9 +30,9 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
     '''
     conv_input   conv_weight_var(persistable)
       \       /
-         conv_op     
+         conv_op
           |
-      conv_out_var  
+      conv_out_var
     '''
 
     def test(self):

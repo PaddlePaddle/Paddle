@@ -33,7 +33,7 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
            |                   =>              |
          scale                             scale_out
            ｜
-        scale_out 
+        scale_out
     """
 
     def sample_predictor_configs(self, program_config):

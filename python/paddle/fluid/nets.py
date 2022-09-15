@@ -201,7 +201,7 @@ def img_conv_group(input,
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
-            
+
             img = fluid.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
                                                   conv_padding=1,
@@ -265,22 +265,22 @@ def sequence_conv_pool(input,
     """
 	:api_attr: Static Graph
 
-    **This api takes input as an LoDTensor. If input is a Tensor, please use** 
+    **This api takes input as an LoDTensor. If input is a Tensor, please use**
     :ref:`api_fluid_nets_simple_img_conv_pool` **instead**
 
-    The sequence_conv_pool is composed of :ref:`api_fluid_layers_sequence_conv` 
+    The sequence_conv_pool is composed of :ref:`api_fluid_layers_sequence_conv`
     and :ref:`api_fluid_layers_sequence_pool` .
 
     Args:
-        input (Variable): 2-D LoDTensor, the input of sequence_conv, 
-            which supports variable-time length input sequence. 
+        input (Variable): 2-D LoDTensor, the input of sequence_conv,
+            which supports variable-time length input sequence.
             The underlying of input is a matrix with shape
             (T, N), where T is the total time steps in this mini-batch and N is
             the input_hidden_size. The data type is float32 or float64.
         num_filters(int): The number of filter.
         filter_size (int): The filter size.
         param_attr (ParamAttr): The parameters of the sequence_conv Layer. Default: None.
-        act (str|None): Activation type for Sequence_conv Layer. 
+        act (str|None): Activation type for Sequence_conv Layer.
                         If set to None, no activation will be applied. Default: "sigmoid".
         pool_type (str): Pooling type can be :math:`max` for max-pooling, :math:`average` for
             average-pooling, :math:`sum` for sum-pooling, :math:`sqrt` for sqrt-pooling.
@@ -292,7 +292,7 @@ def sequence_conv_pool(input,
             is not set, the bias is initialized zero. Default: None.
 
     Returns:
-        The final result after sequence_conv and sequence_pool. 
+        The final result after sequence_conv and sequence_pool.
         It is a 2-D Tensor, with the same data type as :attr:`input`
 
     Return Type:
@@ -333,8 +333,8 @@ def glu(input, dim=-1):
     r"""
 	:api_attr: Static Graph
 
-    The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` , 
-    :ref:`api_fluid_layers_sigmoid`  and :ref:`api_fluid_layers_elementwise_mul` . 
+    The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` ,
+    :ref:`api_fluid_layers_sigmoid`  and :ref:`api_fluid_layers_elementwise_mul` .
     Specifically, GLU will plit the input into two equal-sized parts,
     :math:`a` and :math:`b`, along the given dimension and then compute as
     following:
@@ -347,8 +347,8 @@ def glu(input, dim=-1):
     <https://arxiv.org/pdf/1612.08083.pdf>`_.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor. 
-                          The supported data types include float32, float64 
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+                          The supported data types include float32, float64
                           and float16 (only for GPU).
         dim (int, optional): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`. Default -1.
@@ -362,7 +362,7 @@ def glu(input, dim=-1):
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
-            
+
             data = fluid.data(
                 name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
@@ -444,7 +444,7 @@ def scaled_dot_product_attention(queries,
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
-            
+
             queries = fluid.data(name="queries", shape=[3, 5, 9], dtype="float32")
             keys = fluid.data(name="keys", shape=[3, 6, 9], dtype="float32")
             values = fluid.data(name="values", shape=[3, 6, 10], dtype="float32")
