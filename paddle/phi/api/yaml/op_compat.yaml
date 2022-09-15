@@ -611,13 +611,13 @@
 - op : pool2d
   backward : pool2d_grad
   extra :
-    attrs : [ bool use_cudnn = false, bool use_mkldnn = false, bool use_quantizer = false,
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false,
               str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : pool3d
   backward : pool3d_grad
   extra :
-    attrs : [bool use_cudnn = false, bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : stack
   backward : stack_grad

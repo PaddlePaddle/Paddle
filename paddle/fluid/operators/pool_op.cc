@@ -206,7 +206,11 @@ void Pool2dOpMaker::Make() {
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
   // TODO(dzhwinter): need to registered layout transform function
-
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
+      .SetDefault(false)
+      .AsExtra();
   AddComment(R"DOC(
 This operation calculates the pooling output based on
 the input, pooling_type and pool_size, pool_stride, pool_padding parameters.
@@ -398,8 +402,11 @@ void Pool3dOpMaker::Make() {
       "\"SAME\",\"VALID\". Set to \"EXPLICIT\" for explicit padding. "
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
-  // TODO(dzhwinter): need to registered layout transform function
-
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
+      .SetDefault(false)
+      .AsExtra();
   AddComment(R"DOC(
 This operation calculates the output based on
 the input, pooling_type, pool_size, pool_stride, and pool_padding parameters.
