@@ -39,11 +39,11 @@ class AddMMOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    int customized_type_value =
-        framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      int customized_type_value =
+          framework::OpKernelType::kDefaultCustomizedTypeValue;
       if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
           input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
         customized_type_value = kMULMKLDNNINT8;
@@ -55,11 +55,7 @@ class AddMMOp : public framework::OperatorWithKernel {
                                      customized_type_value);
     }
 #endif
-    return framework::OpKernelType(input_data_type,
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout,
-                                   framework::LibraryType::kPlain,
-                                   customized_type_value);
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
