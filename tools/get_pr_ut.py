@@ -271,14 +271,12 @@ class PRChecker(object):
             "cd %s/build && ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > %s"
             % (PADDLE_ROOT, all_ut_file))
         #determine whether filename is in all_ut_case
-        f = open(all_ut_file, 'r')
-        all_ut_case = f.read().strip().split('\n')
-        if filename in all_ut_case:
-            f.close()
-            return True
-        else:
-            f.close()
-            return False
+        with open(all_ut_file, 'r') as f:
+            all_ut_case = f.read()
+            if filename in all_ut_case:
+                return True
+            else:
+                return False
 
     def get_pr_ut(self):
         """ Get unit tests in pull request. """
@@ -373,11 +371,13 @@ class PRChecker(object):
                             f_judge_in_added_ut = False
                             with open('{}/added_ut'.format(
                                     PADDLE_ROOT)) as utfile:
-                                added_ut_list = utfile.read().strip().split(
-                                    '\n')
+                                print("utfile:", utfile)
+                                added_ut_list = utfile.read()
+                                print("added_ut_list:", added_ut_list)
                                 if f_judge in added_ut_list:
                                     f_judge_in_added_ut = True
-                            if f_judge_in_added_ut != False:
+                            print("f_judge_in_added_ut:", f_judge_in_added_ut)
+                            if f_judge_in_added_ut == True:
                                 print(
                                     "Adding new unit tests not hit mapFiles: %s"
                                     % f_judge)
