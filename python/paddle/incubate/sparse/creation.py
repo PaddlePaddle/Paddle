@@ -72,7 +72,7 @@ def sparse_coo_tensor(indices,
                       place=None,
                       stop_gradient=True):
     r"""
-    Constructs a sparse ``paddle.Tensor`` in coordinate format according to the indices 
+    Constructs a sparse ``paddle.Tensor`` in coordinate format according to the indices
     and values of the specified non-zero elements.
 
     Args:
@@ -81,15 +81,15 @@ def sparse_coo_tensor(indices,
         values(list|tuple|ndarray|Tensor): Initial values for the tensor.
             Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor.
         shape(list|tuple, optional): The shape of the sparse tensor also represents the shape of
-            original dense tensor. If not provided the smallest shape will be inferred to 
+            original dense tensor. If not provided the smallest shape will be inferred to
             hold all elements.
-        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' , 
+        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
-            'complex64' , 'complex128'. Default: None, infers dtype from ``data`` 
+            'complex64' , 'complex128'. Default: None, infers dtype from ``data``
             except for python float number which gets dtype from ``get_default_type`` .
-        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be  
-            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is 
-            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs. 
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
+            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
@@ -97,9 +97,9 @@ def sparse_coo_tensor(indices,
 
     Raises:
         TypeError: If the data type of ``values`` is not list, tuple, numpy.ndarray, paddle.Tensor
-        ValueError: If ``values`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]. If the ``indices`` is not a 2-D. 
+        ValueError: If ``values`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]. If the ``indices`` is not a 2-D.
         TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
-        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string. 
+        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string.
 
     Examples:
 
@@ -179,28 +179,28 @@ def sparse_csr_tensor(crows,
                       place=None,
                       stop_gradient=True):
     r"""
-    Constructs a sparse ``paddle.Tensor`` in CSR(Compressed Sparse Row) format according to the 
+    Constructs a sparse ``paddle.Tensor`` in CSR(Compressed Sparse Row) format according to the
     ``crows``, ``cols`` and ``values``.
     Currently, the crows and cols of each batch must be incrementd.
 
     Args:
-        crows(list|tuple|ndarray|Tensor): 1-D array, each element in the rows represents the 
-            starting position of the first non-zero element of each row in values. 
-            Can be a list, tuple, numpy\.ndarray, paddle\.Tensor. 
+        crows(list|tuple|ndarray|Tensor): 1-D array, each element in the rows represents the
+            starting position of the first non-zero element of each row in values.
+            Can be a list, tuple, numpy\.ndarray, paddle\.Tensor.
         cols(list|tuple|ndarray|Tensor): 1-D array, the column of non-zero elements.
-            Can be a list, tuple, numpy\.ndarray, paddle\.Tensor. 
+            Can be a list, tuple, numpy\.ndarray, paddle\.Tensor.
         values(list|tuple|ndarray|Tensor): 1-D array, the non-zero elements.
             Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor.
         shape(list|tuple, optional): The shape of the sparse tensor also represents the shape of
-            original dense tensor. 
+            original dense tensor.
             hold all elements.
-        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' , 
+        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
-            'complex64' , 'complex128'. Default: None, infers dtype from ``data`` 
+            'complex64' , 'complex128'. Default: None, infers dtype from ``data``
             except for python float number which gets dtype from ``get_default_type`` .
-        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be  
-            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is 
-            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs. 
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
+            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
@@ -208,9 +208,9 @@ def sparse_csr_tensor(crows,
 
     Raises:
         TypeError: If the data type of ``values`` is not list, tuple, numpy.ndarray, paddle.Tensor
-        ValueError: If ``values`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]. If the ``crow``, ``cols`` and ``values`` is not a 2-D. 
+        ValueError: If ``values`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]. If the ``crow``, ``cols`` and ``values`` is not a 2-D.
         TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
-        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string. 
+        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string.
 
     Examples:
 

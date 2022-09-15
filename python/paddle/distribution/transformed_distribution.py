@@ -20,8 +20,8 @@ from paddle.distribution import independent
 
 
 class TransformedDistribution(distribution.Distribution):
-    r"""    
-    Applies a sequence of Transforms to a base distribution. 
+    r"""
+    Applies a sequence of Transforms to a base distribution.
 
     Args:
         base (Distribution): The base distribution.
@@ -30,12 +30,12 @@ class TransformedDistribution(distribution.Distribution):
     Examples:
 
         .. code-block:: python
-        
-            import paddle 
+
+            import paddle
             from paddle.distribution import transformed_distribution
 
             d = transformed_distribution.TransformedDistribution(
-                paddle.distribution.Normal(0., 1.), 
+                paddle.distribution.Normal(0., 1.),
                 [paddle.distribution.AffineTransform(paddle.to_tensor(1.), paddle.to_tensor(2.))]
             )
 

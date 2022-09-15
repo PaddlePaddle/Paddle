@@ -29,7 +29,7 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
     """
      x_var    y_var(persistable)
        \       /
-        matmul_v2  
+        matmul_v2
     """
 
     def sample_predictor_configs(self, program_config):

@@ -750,7 +750,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     def _get_previous_trainers(self):
         """
-        invoked by heter worker 
+        invoked by heter worker
         """
         if not self._role_is_generated:
             self._generate_role()
@@ -761,7 +761,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     def _get_next_trainers(self):
         """
-        invoked by heter worker 
+        invoked by heter worker
         """
         if not self._role_is_generated:
             self._generate_role()

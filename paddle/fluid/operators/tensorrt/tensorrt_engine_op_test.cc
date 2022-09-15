@@ -159,6 +159,8 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
 
   // Execute them.
   LOG(INFO) << "engine_op run";
+  inference::tensorrt::OpTeller::Global().SetOpConverterType(
+      "fc", inference::tensorrt::OpConverterType::Default);
   engine_op->Run(scope, place);
 }
 

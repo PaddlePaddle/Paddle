@@ -30,10 +30,10 @@ def check_initial_inverse_hessian_estimate(H0):
     r"""Check whether the specified initial_inverse_hessian_estimate is symmetric and positive definite.
         Raise errors when precondition not met.
 
-    Note: 
+    Note:
         In static graph can not raise error directly, so use py_func make raise_func as a op,
         and use paddle.static.nn.cond to decide if put the op in net.
-        cholesky is the fast way to check positive definition, but in static graph can not catch 
+        cholesky is the fast way to check positive definition, but in static graph can not catch
         exception to raise value error, so use eigvals rather than cholesky in static graph.
     """
     is_symmetric = paddle.all(paddle.equal(H0, H0.t()))
@@ -78,13 +78,13 @@ def check_initial_inverse_hessian_estimate(H0):
 
 def _value_and_gradient(f, x, v=None):
     r"""Compute function value and gradient of f at x.
-    
+
     Args:
         f (Callable): the objective function.
         x (Tensor): the input tensor.
     Returns:
         value: a tensor that holds the function value.
-        gradient: a tensor that holds the function gradients.  
+        gradient: a tensor that holds the function gradients.
     """
     # use detach to cut off relation between x and original graph
     x = x.detach()

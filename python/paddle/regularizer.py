@@ -20,23 +20,23 @@ import paddle.fluid as fluid
 class L1Decay(fluid.regularizer.L1Decay):
     r"""
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
-    
-    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
-    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
-    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
-    higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined 
+
+    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ).
+    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in
+    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has
+    higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined
     in its ParamAttr, then the regularizer in Optimizer will be ignored. Otherwise the  regularizer
     in Optimizer will be used.
-    
+
     In the implementation, the loss function of L1 Weight Decay Regularization is as follows:
-	
+
     .. math::
 
         loss = coeff * reduce\_sum(abs(x))
 
     Args:
         coeff(float, optional): regularization coeff. Default:0.0.
-	
+
     Examples:
         .. code-block:: python
 
@@ -82,14 +82,14 @@ class L1Decay(fluid.regularizer.L1Decay):
 class L2Decay(fluid.regularizer.L2Decay):
     r"""
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
-    
-    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
-    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
-    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
-    higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined 
+
+    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ).
+    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in
+    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has
+    higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined
     in its ParamAttr, then the regularizer in Optimizer will be ignored. Otherwise the  regularizer
     in Optimizer will be used.
-    
+
     In the implementation, the loss function of L2 Weight Decay Regularization is as follows:
 
     .. math::
@@ -98,7 +98,7 @@ class L2Decay(fluid.regularizer.L2Decay):
 
     Args:
         regularization_coeff(float, optional): regularization coeff. Default:0.0
-	
+
     Examples:
         .. code-block:: python
 

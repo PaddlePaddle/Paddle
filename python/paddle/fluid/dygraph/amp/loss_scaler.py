@@ -49,19 +49,19 @@ class AmpScaler(object):
     `unscale_()` is used to unscale the gradients of parameters, multiplies the gradients of parameters by 1/(scale ratio)
     `minimize()` is similar as `optimizer.minimize()`, performs parameters updating, and it will update the loss_scaling.
 
-    Commonly, it is used together with `amp_guard` to achieve Auto-Mixed-Precision in 
+    Commonly, it is used together with `amp_guard` to achieve Auto-Mixed-Precision in
     imperative mode.
 
     Args:
         enable(bool, optional): Enable loss scaling or not. Default is True.
         init_loss_scaling (float, optional): The initial loss scaling factor. Default is 2**15.
-        incr_ratio(float, optional): The multiplier to use when increasing the loss 
+        incr_ratio(float, optional): The multiplier to use when increasing the loss
                         scaling. Default is 2.0.
-        decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing 
+        decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing
                         the loss scaling. Default is 0.5.
-        incr_every_n_steps(int, optional): Increases loss scaling every n consecutive 
+        incr_every_n_steps(int, optional): Increases loss scaling every n consecutive
                                 steps with finite gradients. Default is 1000.
-        decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n 
+        decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n
                                     accumulated steps with nan or inf gradients. Default is 2.
         use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
     Returns:
@@ -86,7 +86,7 @@ class AmpScaler(object):
                 loss = fluid.layers.reduce_mean(conv)
                 scaled = scaler.scale(loss)
                 scaled.backward()
-                scaler.minimize(optimizer, scaled)         
+                scaler.minimize(optimizer, scaled)
     """
 
     @dygraph_only
@@ -143,14 +143,14 @@ class AmpScaler(object):
 
     def scale(self, var):
         """
-        Multiplies a variable(Tensor) by the scale factor and returns scaled outputs.  
+        Multiplies a variable(Tensor) by the scale factor and returns scaled outputs.
         If this instance of :class:`AmpScaler` is not enabled, output are returned unmodified.
 
         Args:
             var (Variable):  The variable to scale.
         Returns:
             The scaled variable or original variable.
-        
+
         Examples:
 
             .. code-block:: python
@@ -170,7 +170,7 @@ class AmpScaler(object):
                         loss = fluid.layers.reduce_mean(conv)
                         scaled = scaler.scale(loss)
                         scaled.backward()
-                        scaler.minimize(optimizer, scaled) 
+                        scaler.minimize(optimizer, scaled)
         """
         check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
 
@@ -182,7 +182,7 @@ class AmpScaler(object):
     def minimize(self, optimizer, *args, **kwargs):
         """
         This function is similar as `Optimizer.minimize()`, which performs parameters updating.
-        
+
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
         Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
@@ -212,7 +212,7 @@ class AmpScaler(object):
                         loss = fluid.layers.reduce_mean(conv)
                         scaled = scaler.scale(loss)
                         scaled.backward()
-                        scaler.minimize(optimizer, scaled) 
+                        scaler.minimize(optimizer, scaled)
         """
         if not self._enable:
             return optimizer.minimize(*args, **kwargs)
@@ -241,7 +241,7 @@ class AmpScaler(object):
 
     def _unscale(self, optimizer):
         """
-        Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).  
+        Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).
         If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
         Args:
             optimizer(Optimizer):  The optimizer used to update parameters.
@@ -496,7 +496,7 @@ class AmpScaler(object):
     def load_state_dict(self, state_dict):
         """
         Loads the scaler state.
-        
+
         Args:
            state_dict(dict): scaler state.  Should be an object returned from a call to `AmpScaler.state_dict()`.
         """
