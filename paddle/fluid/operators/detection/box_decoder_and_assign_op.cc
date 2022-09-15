@@ -189,7 +189,7 @@ Decode the target bounding box with the prior_box information.
 The Decoding schema is described below:
 
     $$
-    ox = (pw \\times pxv \\times tx + px) - \\frac{tw}{2} 
+    ox = (pw \\times pxv \\times tx + px) - \\frac{tw}{2}
     $$
     $$
     oy = (ph \\times pyv \\times ty + py) - \\frac{th}{2}
@@ -205,11 +205,11 @@ where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, width
 and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
 prior_box's (anchor) center coordinates, width and height. `pxv`, `pyv`, `pwv`,
 `phv` denote the variance of the prior_box and `ox`, `oy`, `ow`, `oh` denote the
-decoded coordinates, width and height in decode_box. 
+decoded coordinates, width and height in decode_box.
 
 decode_box is obtained after box decode, then assigning schema is described below:
 
-For each prior_box, use the best non-background class's decoded values to 
+For each prior_box, use the best non-background class's decoded values to
 update the prior_box locations and get output_assign_box. So, the shape of
 output_assign_box is the same as PriorBox.
 )DOC");

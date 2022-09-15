@@ -3,6 +3,12 @@
   extra :
     attrs : [bool use_cudnn = false, bool use_mkldnn = false]
 
+- op : add (elementwise_add)
+  backward : add_grad (elementwise_add_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
 - op : acosh
   backward : acosh_grad
   extra :
@@ -193,6 +199,12 @@
   outputs :
     out : Out
 
+- op : divide (elementwise_div)
+  backward : divide_grad (elementwise_div)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
 - op : dot
   inputs :
     {x : X, y : Y}
@@ -208,6 +220,12 @@
   backward : dropout_nd_grad
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+
+- op : elementwise_pow
+  backward : elementwise_pow_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : elu
   backward : elu_grad
@@ -248,6 +266,23 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : floor_divide (elementwise_floordiv)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- op : fmax (elementwise_fmax)
+  backward : fmax_grad (elementwise_fmax_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- op : fmin (elementwise_fmin)
+  backward : fmin_grad (elementwise_fmin_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
 - op : floor
   backward : floor_grad
   extra :
@@ -263,6 +298,11 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_cudnn = false]
 
+- op : grad_add
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
 - op : grid_sampler
   backward : grid_sampler_grad
   extra :
@@ -272,6 +312,12 @@
   backward : gru_grad
   extra :
     attrs : [bool is_test = false]
+
+- op : heaviside (elementwise_heaviside)
+  backward : heaviside_grad (elementwise_heaviside_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : hard_swish
   backward : hard_swish_grad
@@ -345,6 +391,24 @@
     attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
              str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
              'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}',]
+
+- op : maximum (elementwise_max)
+  backward : maximum_grad (elementwise_max_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- op : maximum (elementwise_min)
+  backward : maximum_grad (elementwise_min_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- op : multiply (elementwise_mul)
+  backward : multiply_grad (elementwise_mul_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : mish
   backward : mish_grad
@@ -435,6 +499,11 @@
   backward : reduce_sum_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : remainder (elementwise_mod)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : relu
   backward : relu_grad
@@ -545,6 +614,12 @@
   backward : stack_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : subtract (elementwise_sub)
+  backward : subtract_grad (elementwise_sub_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : swish
   backward : swish_grad
