@@ -174,7 +174,7 @@ def GetDygraphLogName(string):
         arr = filter(None, text.split('_'))
         res = ''
         for i in arr:
-            res = res + i[0].upper() + i[1:]
+            res = res + i.lower()
         return res
 
     string = str2Hump(string)

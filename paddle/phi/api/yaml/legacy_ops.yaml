@@ -1464,13 +1464,16 @@
   backward : linear_interp_grad
 
 - op : linspace
-  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
   output : Tensor(out)
   infer_meta :
     func : LinspaceInferMeta
+    param: [start, stop, number, dtype]
   kernel :
     func : linspace
+    param: [start, stop, number, dtype]
     data_type : dtype
+    backend : place
 
 - op : log
   args : (Tensor x)

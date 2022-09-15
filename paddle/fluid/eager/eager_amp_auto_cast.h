@@ -87,7 +87,7 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     const std::string& op_name,
     bool trace_backward = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
-          << " input(" << input_name << ") dst_dtype("
+          << " input(" << egr::EagerUtils::TensorStr(input) << " to dst_dtype("
           << paddle::framework::DataType2String(dst_dtype) << ").";
   if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
     if (op_name == "run_program") {
@@ -107,6 +107,7 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     }
   }
   if (NeedCast(input, dst_dtype)) {
+    VLOG(6) << "Input : " << input.impl() << "NeedCast";
     return Cast(input, dst_dtype, trace_backward);
   }
   return input;

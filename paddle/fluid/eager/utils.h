@@ -257,8 +257,7 @@ class EagerUtils {
     } else {
       tensor_name_str = t.name();
     }
-    const char* TENSOR_INFO_TEMPLATE =
-        "{ Type: [ \"%s\" ], Dtype:[ \"%s\" ], Place:[ \"%s\" ] }";
+    const char* TENSOR_INFO_TEMPLATE = "Type: %s, Dtype: %s, Place: %s";
     std::string tensor_info_str = "";
     if (t.defined()) {
       if (t.initialized()) {
@@ -277,13 +276,13 @@ class EagerUtils {
     }
     if (VLOG_IS_ON(6)) {
       const char* TENSOR_PRINT_TEMPLATE =
-          "{ Name:[ \"%s\" ], Initialized: [ \"%d\" ], Ptr: [ \"%d\" ] "
-          "TensorInfo: [ \"%s\" ], ADInfo:[ \"%s\" ] }";
+          "{Name: %s, Initialized: %d, Ptr: %d "
+          "TensorInfo: [ %s ], ADInfo:[ %s ]}";
       auto* ad_meta = nullable_autograd_meta(t);
-      if (!ad_meta && !(ad_meta->WeakGrad().lock().get())) {
+      if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
         std::string ad_info_str = "";
         const char* AD_INFO_TEMPLATE =
-            "{ Grad: [ \"%s\" ],  GradNode: [ %s ], StopGradient: [ %d ] }";
+            "Grad: [ %s ],  GradNode: [ %s ], StopGradient: [ %d ]";
         ad_info_str += paddle::string::Sprintf(AD_INFO_TEMPLATE,
                                                TensorStr(ad_meta->Grad()),
                                                GradNodeStr(t),
@@ -304,8 +303,8 @@ class EagerUtils {
       }
     } else if (VLOG_IS_ON(5)) {
       const char* TENSOR_PRINT_TEMPLATE =
-          "{ Name:[ \"%s\" ], Initialized: [ \"%d\" ], Ptr: [ \"%d\" ] "
-          "TensorInfo: [ \"%s\" ] }";
+          "{Name: %s, Initialized: %d , Ptr: %d "
+          "TensorInfo: [ %s ]}";
       return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                      tensor_name_str,
                                      t.initialized(),
@@ -313,7 +312,7 @@ class EagerUtils {
                                      tensor_info_str);
     } else if (VLOG_IS_ON(4)) {
       const char* TENSOR_PRINT_TEMPLATE =
-          "{ Name:[ \"%s\" ], Initialized: [ \"%d\" ], Ptr: [ \"%d\" ] }";
+          "{ Name: %s, Initialized: %d, Ptr: %d }";
       return paddle::string::Sprintf(
           TENSOR_PRINT_TEMPLATE, tensor_name_str, t.initialized(), t.impl());
     } else {
@@ -324,10 +323,10 @@ class EagerUtils {
   static const std::string GradNodeStr(const egr::GradNodeBase& node) {
     if (VLOG_IS_ON(6)) {
       const char* GRAD_NODE_TEMPLATE =
-          " { BackwardOutMeta: [ %s ], BackwardInMeta: [ %s ] }";
+          "BackwardOutMeta: [ %s ], BackwardInMeta: [ %s ]";
       const char* GRAD_SLOT_META_TEMPLATE = " {SlotSize: [%d]: %s} ";
       const char* SLOT_INFO_TEMPLATE =
-          " {SlotID: [\"%s\"], StopGradients: [ %s ], Edges[ %s ] }";
+          "SlotID: %s, StopGradients: %s, Edges[ %s ]";
       auto out_metas = node.OutputMeta();
       auto in_metas = node.InputMeta();
       std::string out_slot_str = "";
@@ -372,8 +371,8 @@ class EagerUtils {
           GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
     } else if (VLOG_IS_ON(5)) {
       const char* GRAD_NODE_TEMPLATE =
-          " { BackwardOutMeta: [ %s ], BackwardInMeta: [ %s ] }";
-      const char* GRAD_SLOT_META_TEMPLATE = "SlotSize: [\"%d\"]";
+          "BackwardOutMeta: [ %s ], BackwardInMeta: [ %s ]";
+      const char* GRAD_SLOT_META_TEMPLATE = "SlotSize: %d";
       std::string out_meta_str = paddle::string::Sprintf(
           GRAD_SLOT_META_TEMPLATE, node.OutputMeta().size());
       std::string in_meta_str = paddle::string::Sprintf(
@@ -387,7 +386,7 @@ class EagerUtils {
 
   static const std::string GradNodeStr(const paddle::experimental::Tensor& t) {
     auto* ad_meta = nullable_autograd_meta(t);
-    if (ad_meta && !(ad_meta->GetMutableGradNode().get())) {
+    if (ad_meta && (ad_meta->GetMutableGradNode().get())) {
       return GradNodeStr((*ad_meta->GetMutableGradNode().get()));
     } else {
       return "None";
