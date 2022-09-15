@@ -29,7 +29,7 @@ import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.distributed.passes import new_pass, PassContext
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
 from paddle.distributed.auto_parallel.completion import Completer

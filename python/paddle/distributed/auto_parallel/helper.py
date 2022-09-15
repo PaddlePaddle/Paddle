@@ -19,7 +19,7 @@ import paddle
 
 from paddle.nn import Layer
 from paddle.jit import to_static, not_to_static
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 from paddle.fluid.framework import Operator, Parameter, _non_static_mode
 from paddle.fluid.framework import program_guard
 from paddle.fluid.executor import global_scope

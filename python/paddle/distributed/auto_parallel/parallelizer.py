@@ -24,7 +24,7 @@ import pickle
 import time
 import paddle
 from paddle.fluid.backward import append_backward
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
 from paddle.fluid import program_guard

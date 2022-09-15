@@ -19,7 +19,7 @@ from enum import Enum
 import paddle
 
 from paddle.optimizer import Optimizer
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 from paddle.fluid.framework import in_dygraph_mode
 
 # Old version

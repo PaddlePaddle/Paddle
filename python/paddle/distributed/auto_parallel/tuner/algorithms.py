@@ -16,7 +16,7 @@ import copy
 from abc import ABC, abstractmethod
 import logging
 
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 from .trial import TrialStatus
 from .trial import OptimizationTunerTrial as Trial
 

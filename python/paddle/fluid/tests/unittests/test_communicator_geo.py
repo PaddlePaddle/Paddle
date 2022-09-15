@@ -28,7 +28,7 @@ import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 
-from paddle.distributed.utils import find_free_ports
+from paddle.distributed.utils.launch_utils import find_free_ports
 
 paddle.enable_static()
 

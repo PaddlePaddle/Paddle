@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 import unittest
 import paddle.fluid.layers as layers
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+import paddle.distributed.utils.moe_utils as moe_utils
 
 
 class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
@@ -51,8 +52,9 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
                                              in_feat).astype("float32")
             local_input_buf = paddle.to_tensor(local_input_buf)
             local_input_buf.stop_gradient = False
-            output = paddle.distributed.utils.global_gather(
-                local_input_buf, local_expert_count, global_expert_count)
+            output = moe_utils.global_gather(local_input_buf,
+                                             local_expert_count,
+                                             global_expert_count)
             output.stop_gradient = False
             c = output * output
             c.stop_gradient = False

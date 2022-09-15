@@ -22,7 +22,7 @@ from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import _non_static_mode, unique_name
 from paddle.distributed.passes import new_pass
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 
 from .reshard import Resharder
 from .partitioner import Partitioner

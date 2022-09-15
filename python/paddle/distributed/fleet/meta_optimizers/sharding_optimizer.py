@@ -30,15 +30,8 @@ from .sharding.prune import ProgramDeps
 from .sharding import utils
 # FIXME: import *
 from .sharding.utils import *
-
 import logging
-
-logger = logging.getLogger(__name__)
-formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
-                              datefmt='%Y-%m-%d %H:%M:%S')
-ch = logging.StreamHandler()
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+from ..utils.log_util import logger
 
 __all__ = []
 

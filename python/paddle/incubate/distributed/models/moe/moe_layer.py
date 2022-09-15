@@ -26,7 +26,7 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.distributed.utils import global_scatter, global_gather
+from paddle.distributed.utils.moe_utils import global_scatter, global_gather
 from paddle.distributed import alltoall, all_gather
 
 from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
