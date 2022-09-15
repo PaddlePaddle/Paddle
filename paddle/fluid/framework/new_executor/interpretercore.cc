@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
@@ -28,7 +29,7 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/device_manager.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
@@ -104,7 +105,7 @@ InterpreterCore::~InterpreterCore() {
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(place_.device);
   }
@@ -138,14 +139,16 @@ interpreter::CostInfo InterpreterCore::DryRun(
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(place_.device);
   }
 #endif
+
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
+
   bool is_build = is_build_;
   Prepare(feed_names, feed_tensors, is_build);
 
@@ -180,15 +183,18 @@ paddle::framework::FetchList InterpreterCore::Run(
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(place_.device);
   }
 #endif
+
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
+
   if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, create_local_scope_);
 
@@ -591,16 +597,61 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
   }
 }
 
+inline void SetDeviceId(const platform::Place& place) {
+  // TODO(zhiqiu): reduce the cost
+  if (platform::is_gpu_place(place)) {
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Cannot run operator on place %s, please recompile paddle or "
+        "reinstall Paddle with CUDA support.",
+        place));
+#else
+    auto dev_id = place.device;
+    platform::SetDeviceId(dev_id);
+#endif
+  } else if (platform::is_xpu_place(place)) {
+#ifndef PADDLE_WITH_XPU
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Cannot run operator on place %s, please recompile paddle or "
+        "reinstall Paddle with XPU support.",
+        place));
+#else
+    auto dev_id = place.device;
+    platform::SetXPUDeviceId(dev_id);
+#endif
+  } else if (platform::is_npu_place(place)) {
+#ifndef PADDLE_WITH_ASCEND_CL
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Cannot run operator on place %s, please recompile paddle or "
+        "reinstall Paddle with NPU support.",
+        place));
+#else
+    auto dev_id = place.device;
+    platform::SetNPUDeviceId(dev_id);
+#endif
+  } else if (platform::is_custom_place(place)) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Cannot run operator on place %s, please recompile paddle or "
+        "reinstall Paddle with CustomDevice support.",
+        place));
+#else
+    phi::DeviceManager::SetDevice(place);
+#endif
+  }
+}
+
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = create_local_scope_ ? var_scope_.GetMutableLocalScope()
                                            : var_scope_.GetMutableScope();
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
+
+  SetDeviceId(place);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place)) {
-    auto dev_id = place.device;
-    platform::SetNPUDeviceId(dev_id);
     // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
     // values, but only through special `float_status` to checks whether
     // the operation is overflow. More about `float_status`, see:

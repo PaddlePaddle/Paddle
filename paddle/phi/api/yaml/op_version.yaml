@@ -1,0 +1,15 @@
+- op : trace
+  version :
+    - checkpoint : Upgrade trace add a new attribute [axis2]
+      action :
+        - add_attr : axis1
+          comment : The added attribute 'axis1' is not yet registered.
+          default : std::vector<float>{0.0f}
+        - add_attr :
+          name : axis2
+          comment : The added attribute 'axis2' is not yet registered.
+          default : std::vector<float>{1.0f}
+        - delete_attr : dim1
+          comment : The attribute 'dim1' is not recommend according to the specification 2.0.
+        - delete_attr : dim2
+          comment : The attribute 'dim2' is not recommend according to the specification 2.0.

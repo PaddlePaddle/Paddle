@@ -28,13 +28,13 @@ def viterbi_decode(potentials,
                    name=None):
     """
     Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path.
- 
+
     Args:
         potentials (Tensor): The input tensor of unary emission. This is a 3-D
-            tensor with shape of [batch_size, sequence_length, num_tags]. The data type is float32 or float64. 
+            tensor with shape of [batch_size, sequence_length, num_tags]. The data type is float32 or float64.
         transition_params (Tensor): The input tensor of transition matrix. This is a 2-D
-            tensor with shape of [num_tags, num_tags]. The data type is float32 or float64. 
-        lengths (Tensor):  The input tensor of length of each sequence. This is a 1-D tensor with shape of [batch_size]. The data type is int64. 
+            tensor with shape of [num_tags, num_tags]. The data type is float32 or float64.
+        lengths (Tensor):  The input tensor of length of each sequence. This is a 1-D tensor with shape of [batch_size]. The data type is int64.
         include_bos_eos_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
             as start tag, the second to last row and the second to last column of transitions will be considered as stop tag. Defaults to ``True``.
         name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
@@ -91,8 +91,8 @@ def viterbi_decode(potentials,
 
 
 class ViterbiDecoder(Layer):
-    """ 
-    Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path. 
+    """
+    Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path.
 
     Args:
         transitions (`Tensor`): The transition matrix.  Its dtype is float32 and has a shape of `[num_tags, num_tags]`.
@@ -102,10 +102,10 @@ class ViterbiDecoder(Layer):
             refer to :ref:`api_guide_Name`.
 
     Shape:
-        potentials (Tensor): The input tensor of unary emission. This is a 3-D tensor with shape of 
-            [batch_size, sequence_length, num_tags]. The data type is float32 or float64. 
+        potentials (Tensor): The input tensor of unary emission. This is a 3-D tensor with shape of
+            [batch_size, sequence_length, num_tags]. The data type is float32 or float64.
         lengths (Tensor):  The input tensor of length of each sequence. This is a 1-D tensor with shape of
-            [batch_size]. The data type is int64. 
+            [batch_size]. The data type is int64.
 
     Returns:
         scores(Tensor): The output tensor containing the score for the Viterbi sequence. The shape is [batch_size]

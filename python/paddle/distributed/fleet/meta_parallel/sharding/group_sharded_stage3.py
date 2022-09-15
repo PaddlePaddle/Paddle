@@ -33,7 +33,7 @@ from .group_sharded_utils import Type, GroupShardedClipGrad, device_guard
 
 def _all_gather(tensor, buffer_size, group):
     """
-    The main difference with paddle.distributed.all_gather: 
+    The main difference with paddle.distributed.all_gather:
     no need to pass in tensor_list, the returned tensor is spliced
     """
 
@@ -58,8 +58,8 @@ CHECK_LAYER = dict()  # Help to check layer's id -> layer's name
 
 
 class GroupShardedStage3(nn.Layer):
-    """ 
-    A wrapper for Sharding Stage3 Layer in Dygraph. 
+    """
+    A wrapper for Sharding Stage3 Layer in Dygraph.
 
     .. warning: GroupShardedStage3 encapsulates the layer strategy and integrates it into the nn.Layer.
 

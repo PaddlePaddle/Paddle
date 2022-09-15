@@ -26,6 +26,7 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_fp32_input, _k
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _valid_types, find_true_post_op, find_true_prev_op
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _is_in_black_varnames, _dtype_to_str, _rename_arg
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
+from ..auto_parallel.utils import is_forward_op, is_backward_op, is_loss_op
 
 world_process_group = get_world_process_group()
 
@@ -222,21 +223,33 @@ class AMPState(object):
         loss_op = get_loss_op(self._block)
         loss_op_index = find_op_index(self._block.desc, loss_op.desc)
 
+        appended_grad_times = 0
         idx = loss_op_index + 1
         while idx < len(ops):
             num_cast_ops = 0
             grad_op = ops[idx]
+
+            # NOTE: the map in `grad_var_to_var` may be changed when the var is casted,
+            # which will affect the dist_op to insert allreduce_sum op.
+            op_dist_attr = dist_context.get_op_dist_attr_for_program(grad_op)
+            if is_backward_op(grad_op) and (is_forward_op(ops[idx - 1])
+                                            or is_loss_op(ops[idx - 1])):
+                if not op_dist_attr.is_recompute:
+                    appended_grad_times += 1
+
             grad_op_orig_id = grad_op.desc.original_id()
             dist_op_context = dist_context.dist_op_context
             if grad_op_orig_id in dist_op_context.grad_op_id_to_op_id:
                 if self._is_fp16_op(grad_op_orig_id) == False:  # fp32
                     num_cast_ops = self._insert_cast_op_backward(
                         grad_op, idx, core.VarDesc.VarType.FP16,
-                        core.VarDesc.VarType.FP32, dist_context)
+                        core.VarDesc.VarType.FP32, dist_context,
+                        appended_grad_times)
                 elif self._is_fp16_op(grad_op_orig_id) == True:  # fp16
                     num_cast_ops = self._insert_cast_op_backward(
                         grad_op, idx, core.VarDesc.VarType.FP32,
-                        core.VarDesc.VarType.FP16, dist_context)
+                        core.VarDesc.VarType.FP16, dist_context,
+                        appended_grad_times)
             elif grad_op.type == "sum":
                 in_var_name = grad_op.desc.input_arg_names()[0]
                 src_dtype = self._block.var(in_var_name).dtype
@@ -258,7 +271,7 @@ class AMPState(object):
         _update_backward_cast_ops(params_grads, dist_context)
 
     def _insert_cast_op_backward(self, grad_op, idx, src_dtype, dst_dtype,
-                                 dist_context):
+                                 dist_context, appended_grad_times):
         """ only for backward cast """
 
         def _keep_fp32_input(op, in_name):
@@ -301,7 +314,9 @@ class AMPState(object):
                         consume_op_attr.set_input_dist_attr(
                             cast_name, in_var_dist_attr)
                     else:
-                        assert in_var.dtype == dst_dtype
+                        assert in_var.dtype == dst_dtype, "op [{}] expect input [{}] to be dtype [{}] BUT got [{}]. {}".format(
+                            grad_op.type, in_name, dst_dtype, in_var.dtype,
+                            str(grad_op))
 
         for out_name in grad_op.output_names:
             if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_output(
@@ -328,7 +343,10 @@ class AMPState(object):
                             grad_op)
                         fwd_cast_name = self._var_name_dict[fwd_op_id][
                             out_var_name_prefix]
-                        cast_name = fwd_cast_name + "@GRAD"
+                        suffix = ""
+                        if "@RENAME" in out_var_name:
+                            suffix = out_var_name[out_var_name.find("@RENAME"):]
+                        cast_name = fwd_cast_name + "@GRAD" + suffix
                         cast_var = self._block.vars.get(cast_name)
                         if cast_var is None or cast_var.dtype != dst_dtype:
                             grad_op.desc._rename_output(out_var_name, cast_name)
@@ -347,6 +365,8 @@ class AMPState(object):
                                 stop_gradient=out_var.stop_gradient)
                             set_var_dist_attr(dist_context, cast_var,
                                               ref_mapping, ref_mesh)
+                            dist_op_context.grad_var_to_var[
+                                appended_grad_times][cast_name] = fwd_cast_name
 
                             cast_op = self._block._insert_op(
                                 idx + 1,

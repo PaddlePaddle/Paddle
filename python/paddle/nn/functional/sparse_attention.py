@@ -30,52 +30,52 @@ def sparse_attention(query,
                      name=None):
     r"""
     This operator sparsify the Attention matrix in Transformer module
-    to achieve the effect of reducing memory consumption and computation. 
-    The sparse layout is expressed in CSR format and contains two parameters, 
-    ``offset`` and ``columns``. The equation is: 
+    to achieve the effect of reducing memory consumption and computation.
+    The sparse layout is expressed in CSR format and contains two parameters,
+    ``offset`` and ``columns``. The equation is:
 
     .. math::
 
         result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
 
-    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module. 
-    The dimensions of the three parameters are the same. 
+    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
+    The dimensions of the three parameters are the same.
     ``d`` represents the size of the last dimension of the three parameters.
 
-    Warning:    
+    Warning:
         This API is only used in ``CUDA 11.3`` and above versions.
 
     Args:
-        query(Tensor): The query tensor in the Attention module. 
-                        4-D tensor with shape: 
-                        [batch_size, num_heads, seq_len, head_dim]. 
+        query(Tensor): The query tensor in the Attention module.
+                        4-D tensor with shape:
+                        [batch_size, num_heads, seq_len, head_dim].
                         The dtype can be float32 and float64.
-        key(Tensor): The key tensor in the Attention module. 
-                        4-D tensor with shape: 
-                        [batch_size, num_heads, seq_len, head_dim]. 
+        key(Tensor): The key tensor in the Attention module.
+                        4-D tensor with shape:
+                        [batch_size, num_heads, seq_len, head_dim].
                         The dtype can be float32 and float64.
-        value(Tensor): The value tensor in the Attention module. 
-                        4-D tensor with shape:  
-                        [batch_size, num_heads, seq_len, head_dim]. 
+        value(Tensor): The value tensor in the Attention module.
+                        4-D tensor with shape:
+                        [batch_size, num_heads, seq_len, head_dim].
                         The dtype can be float32 and float64.
-        sparse_csr_offset(Tensor): The sparsity feature in the Attention module 
-                        is expressed in the CSR format, and the offset represents 
+        sparse_csr_offset(Tensor): The sparsity feature in the Attention module
+                        is expressed in the CSR format, and the offset represents
                         the number of non-zero elements in each row of the matrix.
-                        3-D tensor with shape:   
-                        [batch_size, num_heads, seq_len + 1]. 
+                        3-D tensor with shape:
+                        [batch_size, num_heads, seq_len + 1].
                         The dtype should be int32.
-        sparse_csr_columns(Tensor): The sparsity feature in the Attention module 
-                        is expressed in the CSR format, and the columns represent 
+        sparse_csr_columns(Tensor): The sparsity feature in the Attention module
+                        is expressed in the CSR format, and the columns represent
                         the column index values of non-zero elements in the matrix.
-                        3-D tensor with shape:  
-                        [batch_size, num_heads, sparse_nnz]. 
+                        3-D tensor with shape:
+                        [batch_size, num_heads, sparse_nnz].
                         The dtype should be int32.
-        key_padding_mask(Tensor, optional):The key padding mask tensor in the Attention module. 
-                        2-D tensor with shape: [batch_size, seq_len]. 
+        key_padding_mask(Tensor, optional):The key padding mask tensor in the Attention module.
+                        2-D tensor with shape: [batch_size, seq_len].
                         The dtype can be float32 and float64.
                         A value of 0 means that the position is masked.
-        attn_mask(Tensor, optional):The attention mask tensor in the Attention module. 
-                        2-D tensor with shape: [seq_len, seq_len]. 
+        attn_mask(Tensor, optional):The attention mask tensor in the Attention module.
+                        2-D tensor with shape: [seq_len, seq_len].
                         The dtype can be float32 and float64.
                         A value of 0 means that the position is masked.
         name(str, optional): The default value is None. Normally there is no need for user
@@ -84,7 +84,7 @@ def sparse_attention(query,
 
     Returns:
         4-D tensor with shape:
-        [batch_size, num_heads, seq_len, head_dim]. 
+        [batch_size, num_heads, seq_len, head_dim].
         The dtype can be float32 or float64.
 
     Examples:
@@ -113,31 +113,31 @@ def sparse_attention(query,
             print(sparse_csr_columns_data.shape)
             # (1, 1, 8)
             paddle.disable_static()
-            query = paddle.to_tensor(query_data, stop_gradient=False, 
+            query = paddle.to_tensor(query_data, stop_gradient=False,
                             place=paddle.CUDAPlace(0))
-            key = paddle.to_tensor(key_data, stop_gradient=False, 
+            key = paddle.to_tensor(key_data, stop_gradient=False,
                             place=paddle.CUDAPlace(0))
-            value = paddle.to_tensor(value_data, stop_gradient=False, 
+            value = paddle.to_tensor(value_data, stop_gradient=False,
                             place=paddle.CUDAPlace(0))
-            offset = paddle.to_tensor(sparse_csr_offset_data, stop_gradient=False, 
+            offset = paddle.to_tensor(sparse_csr_offset_data, stop_gradient=False,
                             place=paddle.CUDAPlace(0))
-            columns = paddle.to_tensor(sparse_csr_columns_data, stop_gradient=False, 
+            columns = paddle.to_tensor(sparse_csr_columns_data, stop_gradient=False,
                             place=paddle.CUDAPlace(0))
-            key_padding_mask = paddle.to_tensor(key_padding_mask_data, stop_gradient=False, 
+            key_padding_mask = paddle.to_tensor(key_padding_mask_data, stop_gradient=False,
                             place=paddle.CUDAPlace(0))
-            attention_mask = paddle.to_tensor(attention_mask_data, stop_gradient=False, 
+            attention_mask = paddle.to_tensor(attention_mask_data, stop_gradient=False,
                             place=paddle.CUDAPlace(0))
-            output_mask = paddle.nn.functional.sparse_attention(query, key, 
-                            value, offset, columns, 
+            output_mask = paddle.nn.functional.sparse_attention(query, key,
+                            value, offset, columns,
                             key_padding_mask=key_padding_mask, attn_mask=attention_mask)
             print(output_mask)
             # [[[[0.        , 1.        ],
             #    [1.99830270, 2.99830270],
             #    [0.        , 1.        ],
             #    [0.        , 1.        ]]]]
-            output = paddle.nn.functional.sparse_attention(query, key, 
+            output = paddle.nn.functional.sparse_attention(query, key,
                             value, offset, columns)
-            print(output) 
+            print(output)
             # [[[[1.60885942, 2.60885954],
             #       [1.99830270, 2.99830270],
             #       [1.60885942, 2.60885954],

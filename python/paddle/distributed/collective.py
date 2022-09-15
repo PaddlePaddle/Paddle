@@ -87,6 +87,10 @@ class Group():
     def process_group(self):
         return self.pg
 
+    @property
+    def world_size(self):
+        return self.nranks if self.rank >= 0 else -1
+
     def __repr__(self):
         debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
             self.rank, self.nranks, self.id)
@@ -552,10 +556,10 @@ def destroy_process_group(group=None):
     Destroy a given group for communication
 
     Args:
-        group (ProcessGroup, optional): The group to be destroyed. All of process groups, including 
-                                        the default group, will be destroyed and the distributed 
+        group (ProcessGroup, optional): The group to be destroyed. All of process groups, including
+                                        the default group, will be destroyed and the distributed
                                         environment will be deinitialized.
-    
+
     Returns : None
 
     Examples:
@@ -749,7 +753,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
     Reduce a tensor over all ranks so that all get the result.
     As shown below, one process is started with a GPU and the data of this process is represented
-    by its group rank. The reduce operator is sum. Through all_reduce operator, 
+    by its group rank. The reduce operator is sum. Through all_reduce operator,
     each GPU will have the sum of the data from all GPUs.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allreduce.png
@@ -1113,6 +1117,9 @@ def all_gather_object(object_list, obj, group=None):
     ), "all_gather_object doesn't support static graph mode."
 
     tensor, len_of_tensor = _convert_object_to_tensor(obj)
+    if paddle.get_device() != "cpu":
+        len_of_tensor = len_of_tensor._copy_to(
+            paddle.framework._current_expected_place(), False)
 
     # gather len_of_tensor from all ranks
     list_len_of_tensor = []
@@ -1248,10 +1255,10 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             data type of the input Tensors.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculation stream (True) or communication stream. Default: True.
-    
+
     Returns:
         None.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1345,16 +1352,16 @@ def alltoall_single(in_tensor,
     Args:
         in_tensor (Tensor): Input tensor. The data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         out_tensor (Tensor): Output Tensor. The data type should be the same as the data type of the input Tensor.
-        in_split_sizes (list[int], optional): Split sizes of ``in_tensor`` for dim[0]. If not given, dim[0] of ``in_tensor`` 
+        in_split_sizes (list[int], optional): Split sizes of ``in_tensor`` for dim[0]. If not given, dim[0] of ``in_tensor``
             must be divisible by group size and ``in_tensor`` will be scattered averagely to all participators. Default: None.
-        out_split_sizes (list[int], optional): Split sizes of ``out_tensor`` for dim[0]. If not given, dim[0] of ``out_tensor`` 
+        out_split_sizes (list[int], optional): Split sizes of ``out_tensor`` for dim[0]. If not given, dim[0] of ``out_tensor``
             must be divisible by group size and ``out_tensor`` will be gathered averagely from all participators. Default: None.
         group (Group, optional): The group instance return by ``new_group`` or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculation stream (True) or communication stream. Default: True.
-    
+
     Returns:
         None, if ``use_calc_stream`` is set to ``True``; ``Task`` of ``group``, if ``use_calc_stream`` is set to ``False``.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1436,7 +1443,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         dst (int): The destination rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
-    
+
     Returns:
         None.
 
@@ -1501,7 +1508,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
-    
+
     Returns:
         None.
 
@@ -1582,11 +1589,11 @@ def isend(tensor, dst, group=None):
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         dst (int): The destination rank.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-    
+
     Returns:
         A distributed task object.
 
-    Warning:    
+    Warning:
         This API only supports the dygraph mode.
 
     Examples:
@@ -1620,7 +1627,7 @@ def isend(tensor, dst, group=None):
         assert group_dst_rank >= 0, ("dst rank out of group, need global rank")
         return group.process_group.send(tensor, group_dst_rank)
     else:
-        raise RuntimeError("Don't support static graph mode currently.")
+        raise RuntimeError("Only support eager dygraph mode.")
 
 
 def irecv(tensor, src=None, group=None):
@@ -1636,7 +1643,7 @@ def irecv(tensor, src=None, group=None):
     Returns:
         A distributed task object.
 
-    Warning:    
+    Warning:
         This API only supports the dygraph mode.
 
     Examples:
@@ -1669,7 +1676,7 @@ def irecv(tensor, src=None, group=None):
         assert group_src_rank >= 0, ("src rank out of group, need global rank")
         return group.process_group.recv(tensor, group_src_rank)
     else:
-        raise RuntimeError("Don't support static graph mode currently.")
+        raise RuntimeError("Only support eager dygraph mode.")
 
 
 class P2POp(object):
@@ -1685,7 +1692,7 @@ class P2POp(object):
             The type of ``op`` is either ``paddle.distributed.isend`` or ``paddle.distributed.irecv``.
         tensor (Tensor): Tensor to send or receive.
         peer (int): The destination or source rank.
-        group (Group, optional): The group instance return by new_group or None for global 
+        group (Group, optional): The group instance return by new_group or None for global
             default group. Default: None.
 
     """
@@ -1734,7 +1741,7 @@ def batch_isend_irecv(p2p_op_list):
     """
     Send or Receive a batch of tensors asynchronously and return a list of requests.
 
-    Process each of the point-to-point operations in ``p2p_op_list`` and return the 
+    Process each of the point-to-point operations in ``p2p_op_list`` and return the
     corresponding tasks. NCCL are currently supported.
 
     Args:
@@ -1745,9 +1752,9 @@ def batch_isend_irecv(p2p_op_list):
 
     Returns:
         A list of distributed tasks returned by calling the corresponding
-        op in the op_list. 
+        op in the op_list.
 
-    Warning:    
+    Warning:
         This API only supports the dygraph mode.
 
     Examples:
@@ -1775,7 +1782,7 @@ def batch_isend_irecv(p2p_op_list):
 
             for task in tasks:
                 task.wait()
-            
+
             print(recv_t)
             # paddle.tensor([1, 2])     # Rank-0
             # paddle.tensor([0, 1])     # Rank-1
@@ -1816,15 +1823,15 @@ def reduce_scatter(tensor,
         tensor_list (list[Tensor]): List of tensors to reduce and scatter. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
-        group (Group, optional): The group instance return by new_group or None for global 
+        group (Group, optional): The group instance return by new_group or None for global
             default group. Default: None.
         use_calc_stream (bool, optional): Whether this op should be an async op.
 
     Returns:
         Async task handle, if use_calc_stream is set to False.
         None, if use_calc_stream or if not part of the group.
-    
-    Warning:    
+
+    Warning:
         This API only supports the dygraph mode.
 
 
@@ -1881,7 +1888,7 @@ def _reduce_scatter_base(output,
 
     Args:
         output (Tensor): Output tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
-        input (Tensor): Input tensor that is of size output tensor size times world size. Its data type 
+        input (Tensor): Input tensor that is of size output tensor size times world size. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,

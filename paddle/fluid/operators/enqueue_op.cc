@@ -65,7 +65,7 @@ class EnqueueOp : public framework::OperatorBase {
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 
-    std::vector<LoDTensor> lod_tensor_vec;
+    paddle::framework::LoDTensorArray lod_tensor_vec;
     lod_tensor_vec.emplace_back(*in_tensor);
     queue_holder->GetQueue()->Push(lod_tensor_vec);
   }
