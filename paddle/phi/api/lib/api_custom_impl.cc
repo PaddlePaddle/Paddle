@@ -63,13 +63,14 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     }
   }
 
+  const std::string kernel_name = (is_sr_kernel ? "add_n_sr" : "add_n");
+
   VLOG(6) << "add_n API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      (is_sr_kernel ? "add_n_sr" : "add_n"),
-      {kernel_backend, kernel_layout, kernel_data_type});
+      kernel_name, {kernel_backend, kernel_layout, kernel_data_type});
   const auto& kernel = kernel_result.kernel;
-  VLOG(6) << "add_n kernel: " << kernel;
+  VLOG(6) << kernel_name << " kernel: " << kernel;
   auto* dev_ctx = GetDeviceContextByBackend(
       kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 

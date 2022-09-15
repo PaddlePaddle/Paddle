@@ -109,3 +109,7 @@ cc_test(
   test_strings_lower_upper_api
   SRCS test_strings_lower_upper_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
+cc_test(
+  test_add_n_api
+  SRCS test_add_n_api.cc
+  DEPS ${COMMON_API_TEST_DEPS})
