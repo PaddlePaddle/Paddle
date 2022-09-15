@@ -98,8 +98,8 @@ void KernelContext::AssignOutputRange(std::pair<int, int>&& range, size_t idx) {
     output_range_.emplace_back(range);
   } else {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
-        "Invalid idx when trying to set InputRange, "
-        "index is `%d`, it is greater than the size(%d) of InputRange.",
+        "Invalid idx when trying to set OutputRange, "
+        "index is `%d`, it is greater than the size(%d) of OutputRange.",
         idx,
         output_range_.size()));
   }

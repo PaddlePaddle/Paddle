@@ -131,7 +131,7 @@ enum class AttributeType {
   FLOAT32,
   FLOAT64,
   STRING,
-  BOOLS,
+  BOOLS, // append "S" to "BOOL" to represent a vector of bool type
   INT32S,
   INT64S,
   FLOAT32S,
@@ -261,9 +261,9 @@ struct KernelResult {
 };
 
 /**
- * Note: Each Computation need a basic kernel map that named by kernel_name.
+ * Note: Each Computation need a basic kernel map that is named by kernel_name.
  *       Such as for scale op, KernelMap contains a `scale` kernel map,
- *       if it still need other overload kernel, the op name can be
+ *       if it still needs other overloaded kernel, the op name can be
  *       `scale.***`.
  */
 class KernelFactory {

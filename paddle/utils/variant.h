@@ -3,7 +3,7 @@
 // Modify the following points:
 // 1. modify namespace mpark to namespace paddle
 // 2. add type() member function for variant class
-// 3. remove the visitation implementation under the branhch with
+// 3. remove the visitation implementation under the branch with
 // MPARK_CPP14_CONSTEXPR defined since lib::cpp14::array could not be converted
 // to std::initializer_list in Paddle's compilation
 // 4. decorate PYBIND11_HIDDEN for struct value_visitor

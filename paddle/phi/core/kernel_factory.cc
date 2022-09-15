@@ -126,7 +126,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
       true,
       phi::errors::NotFound(
-          "The kernel with key %s of kernel `%s` is not registered.",
+          "The kernel with key %s of kernel name `%s` is not registered.",
           kernel_key,
           kernel_name));
 
@@ -146,14 +146,14 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
         kernel_iter,
         iter->second.end(),
         phi::errors::NotFound(
-            "The kernel with key %s of kernel `%s` is not registered and"
-            " fail to fallback to CPU one.",
+            "The kernel with key %s of kernel name `%s` is not registered and"
+            " fail to fallback to CPU backend.",
             kernel_key,
             kernel_name));
 
     VLOG(3) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
             << ", expected_kernel_key:" << kernel_key
-            << ", fallbacking to CPU one!";
+            << ", fallbacking to CPU backend!";
 
     return {kernel_iter->second, true};
   }
@@ -246,10 +246,12 @@ std::ostream& operator<<(std::ostream& os, AttributeType attr_type) {
 
 // print kernel info with json format:
 // {
-//   "(CPU, Undefined(AnyLayout), complex64)": {
-//   "input": ["CPU, NCHW, complex64", "CPU, NCHW, complex64"],
-//   "output": ["CPU, NCHW, complex64"],
-//   "attribute": ["i"]
+//   "(CPU, Undefined(AnyLayout), complex64)": 
+//   {
+//       "input": ["CPU, NCHW, complex64", "CPU, NCHW, complex64"],
+//       "output": ["CPU, NCHW, complex64"],
+//       "attribute": ["i"]
+//   }
 // }
 std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
   // input
@@ -261,7 +263,7 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
        << in_def.dtype << "\"";
     need_comma = true;
   }
-  os << "],";
+  os << "],\n";
 
   // output
   os << "\"output\":[";
@@ -272,17 +274,17 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
        << out_def.dtype << "\"";
     need_comma = true;
   }
-  os << "],";
+  os << "],\n";
 
   // attr
   os << "\"attribute\":[";
   need_comma = false;
-  for (auto& arg_def : kernel.args_def().attribute_defs()) {
+  for (auto& attr_def : kernel.args_def().attribute_defs()) {
     if (need_comma) os << ",";
-    os << "\"" << arg_def.type_index << "\"";
+    os << "\"" << attr_def.type_index << "\"";
     need_comma = true;
   }
-  os << "]}";
+  os << "]}\n";
 
   return os;
 }
