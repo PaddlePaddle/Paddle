@@ -98,9 +98,9 @@ The Encoding schema described below:
 
     oy = (ty - py) / ph / pyv
 
-    ow = log(abs(tw / pw)) / pwv 
+    ow = log(abs(tw / pw)) / pwv
 
-    oh = log(abs(th / ph)) / phv 
+    oh = log(abs(th / ph)) / phv
 
 The Decoding schema described below:
 
@@ -116,11 +116,11 @@ where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, width
 and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
 priorbox's (anchor) center coordinates, width and height. `pxv`, `pyv`, `pwv`,
 `phv` denote the variance of the priorbox and `ox`, `oy`, `ow`, `oh` denote the
-encoded/decoded coordinates, width and height. 
+encoded/decoded coordinates, width and height.
 
-During Box Decoding, two modes for broadcast are supported. Say target box has 
+During Box Decoding, two modes for broadcast are supported. Say target box has
 shape [N, M, 4], and the shape of prior box can be [N, 4] or [M, 4]. Then prior
-box will broadcast to target box along the assigned axis. 
+box will broadcast to target box along the assigned axis.
 )DOC");
   }
 };

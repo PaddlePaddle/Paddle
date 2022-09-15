@@ -249,7 +249,7 @@ option(WITH_SYSTEM_BLAS "Use system blas library" OFF)
 option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
-       OFF)
+       ON)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"

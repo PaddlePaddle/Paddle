@@ -136,7 +136,7 @@ def logical_or(x, y, out=None, name=None):
 
     .. note::
         ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
-    
+
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
         y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
@@ -305,7 +305,7 @@ def equal_all(x, y, name=None):
     """
     Returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
 
-    Note: 
+    Note:
         The output has no gradient.
 
     Args:
@@ -428,7 +428,7 @@ def equal(x, y, name=None):
 
     This layer returns the truth value of :math:`x == y` elementwise.
 
-    Note: 
+    Note:
         The output has no gradient.
 
     Args:
@@ -439,7 +439,7 @@ def equal(x, y, name=None):
 
     Returns:
         Tensor: output Tensor, it's shape is the same as the input's Tensor,
-        and the data type is bool. The result of this op is stop_gradient. 
+        and the data type is bool. The result of this op is stop_gradient.
 
     Examples:
         .. code-block:: python
@@ -489,7 +489,7 @@ def greater_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
-    Note: 
+    Note:
         The output has no gradient.
 
     Args:
@@ -541,7 +541,7 @@ def greater_than(x, y, name=None):
     """
     Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
-    Note: 
+    Note:
         The output has no gradient.
 
     Args:
@@ -592,7 +592,7 @@ def less_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
-    Note: 
+    Note:
         The output has no gradient.
 
     Args:
@@ -645,7 +645,7 @@ def less_than(x, y, name=None):
     """
     Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
 
-    Note: 
+    Note:
         The output has no gradient.
 
     Args:
@@ -697,8 +697,8 @@ def less_than(x, y, name=None):
 def not_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
-    
-    Note: 
+
+    Note:
         The output has no gradient.
 
     Args:
@@ -769,7 +769,7 @@ def is_tensor(x):
             input3 = [1, 4]
             check = paddle.is_tensor(input3)
             print(check)  #False
-            
+
     """
     return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
 
@@ -821,7 +821,7 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
 def bitwise_and(x, y, out=None, name=None):
     """
     ${comment}
-    
+
     Args:
         x (Tensor): ${x_comment}
         y (Tensor): ${y_comment}
@@ -829,7 +829,7 @@ def bitwise_and(x, y, out=None, name=None):
 
     Returns:
         Tensor: ${out_comment}
-        
+
     Examples:
         .. code-block:: python
 
@@ -853,7 +853,7 @@ def bitwise_and(x, y, out=None, name=None):
 def bitwise_or(x, y, out=None, name=None):
     """
     ${comment}
-    
+
     Args:
         x (Tensor): ${x_comment}
         y (Tensor): ${y_comment}
@@ -922,7 +922,7 @@ def bitwise_not(x, out=None, name=None):
     Args:
         x(Tensor):  ${x_comment}
         out(Tensor): ${out_comment}
-    
+
     Returns:
         Tensor: ${out_comment}
 

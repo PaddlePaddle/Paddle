@@ -70,9 +70,9 @@ class FoldOpMaker : public framework::OpProtoAndCheckerMaker {
 **Fold Operator**
 
 This Operator is used to combines an array of sliding local blocks into a large containing
-tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
-combined value in the resulting large tensor by summing all values from all containing blocks. 
-Unfold extracts the values in the local blocks by copying from the large tensor. So, if the 
+tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each
+combined value in the resulting large tensor by summing all values from all containing blocks.
+Unfold extracts the values in the local blocks by copying from the large tensor. So, if the
 blocks overlap, they are not inverses of each other.
     )DOC");
   }

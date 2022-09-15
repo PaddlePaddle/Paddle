@@ -94,7 +94,7 @@ def set_grad_enabled(mode):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             x = paddle.ones([3, 2])
             x.stop_gradient = False
@@ -127,9 +127,9 @@ def is_grad_enabled():
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
-            
+
             # Dygraph gradient calculation mode is enabled by default.
             paddle.is_grad_enabled() # True
 

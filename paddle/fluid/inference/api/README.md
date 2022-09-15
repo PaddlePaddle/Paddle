@@ -9,7 +9,7 @@ You can easily deploy a model trained by Paddle following the steps as below:
 
 ## The APIs
 
-All the released APIs are located in the `paddle_inference_api.h` header file. 
+All the released APIs are located in the `paddle_inference_api.h` header file.
 The stable APIs are wrapped by `namespace paddle`, the unstable APIs are protected by `namespace paddle::contrib`.
 
 ## Write some codes

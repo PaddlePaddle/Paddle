@@ -39,13 +39,13 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 - **开发便捷的产业级深度学习框架**
 
     飞桨深度学习框架采用基于编程逻辑的组网范式，对于普通开发者而言更容易上手，符合他们的开发习惯。同时支持声明式和命令式编程，兼具开发的灵活性和高性能。网络结构自动设计，模型效果超越人类专家。
-    
+
 
 - **支持超大规模深度学习模型的训练**
 
     飞桨突破了超大规模深度学习模型训练技术，实现了支持千亿特征、万亿参数、数百节点的开源大规模训练平台，攻克了超大规模深度学习模型的在线学习难题，实现了万亿规模参数模型的实时更新。
     [查看详情](https://github.com/PaddlePaddle/Fleet)
-    
+
 
 - **支持多端多平台的高性能推理部署工具**
 
@@ -66,14 +66,14 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 - [使用指南](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html)
 
    或许您想从深度学习基础开始学习飞桨
-  
+
 - [应用实践](https://www.paddlepaddle.org.cn/documentation/docs/zh/tutorial/index_cn.html)
 
-  
+
 - [API Reference](https://www.paddlepaddle.org.cn/documentation/docs/zh/api/index_cn.html)
 
    新的API支持代码更少更简洁的程序
-   
+
 
 - [贡献方式](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/08_contribution/index_cn.html)
 
@@ -84,7 +84,7 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 - 欢迎您通过[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)来提交问题、报告与建议
 - QQ群: 441226485 (PaddlePaddle)
 - [论坛](https://aistudio.baidu.com/paddle/forum): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验, 营造良好的论坛氛围
-    
+
 ## 课程
 
 - [服务器部署](https://aistudio.baidu.com/aistudio/course/introduce/19084): 详细介绍高性能服务器端部署实操，包含本地端及服务化Serving部署等

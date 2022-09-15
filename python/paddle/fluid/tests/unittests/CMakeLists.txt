@@ -18,9 +18,6 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_grad_clip")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps_gpu_ctr")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
@@ -527,9 +524,6 @@ if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
   list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -805,7 +799,7 @@ py_test_modules(
 # it is found that windows CI will run all the training unittests with the ON_INFER option turned on,
 # which will not appear in other CIs. The calculation behavior of some ops in inference mode is
 # inconsistent with that in non-inference mode.
-if(NOT ON_INFER)
+if(WITH_PYTHON)
   py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES
                   test_parallel_executor_seresnext_base_cpu)
   py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES

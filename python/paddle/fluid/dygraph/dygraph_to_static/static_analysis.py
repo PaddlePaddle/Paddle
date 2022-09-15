@@ -408,11 +408,11 @@ class StaticAnalysisVisitor(object):
     def _get_func_argument_type(self, parent_node_wrapper, node):
         """
         Returns type information by parsing annotation or default values.
-        
+
         For example:
             1. parse by default values.
                 foo(x, y=1, z='s') -> x: UNKNOWN, y: INT, z: STR
-            
+
             2. parse by Py3 type annotation.
                 foo(x: Tensor, y: int, z: str) -> x: Tensor, y: INT, z: STR
 

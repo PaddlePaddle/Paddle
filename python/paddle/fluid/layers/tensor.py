@@ -71,7 +71,7 @@ def create_tensor(dtype, name=None, persistable=False):
     Args:
         dtype(string|numpy.dtype): the data type of Tensor to be created, the
             data type is bool, float16, float32, float64, int8, int16, int32 and int64.
-        name(string, optional): The default value is None.  Normally there is no need for 
+        name(string, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
         persistable(bool): Set the persistable flag of the create tensor.
             default value is False.
@@ -281,7 +281,7 @@ def concat(input, axis=0, name=None):
 
     Args:
         input(list|tuple|Tensor): ``input`` can be Tensor, Tensor list or Tensor tuple which is with data type
-            bool, float16, float32, float64, int32, int64. All the Tensors in ``input`` must have the same data type. 
+            bool, float16, float32, float64, int32, int64. All the Tensors in ``input`` must have the same data type.
         axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with data type int or a Tensor with shape [1] and data type int32 or int64.
             The effective range is [-R, R), where R is Rank(x). When ``axis < 0``, it works the same way
@@ -731,10 +731,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             If ``shape`` is an Tensor, it should be an 1-D Tensor with date type int32 or int64.
         dtype(np.dtype|str): Data type of the output Tensor which can
             be float16, float32, float64, uint8, int16, int32, int64.
-        value(bool|float|int|Tensor): The constant value used to initialize 
+        value(bool|float|int|Tensor): The constant value used to initialize
             the Tensor to be created. If ``value`` is an Tensor, it should be an 1-D Tensor.
         force_cpu(bool, optional): data should be on CPU if it's true, default value is False.
-        out(Tensor, optional): Optional output which can be any created 
+        out(Tensor, optional): Optional output which can be any created
             Tensor that meets the requirements to store the result of operation.
             if ``out`` is None, a new Tensor will be create to store the result.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
@@ -759,7 +759,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
           # attr shape is a Tensor.
           shape = fluid.layers.fill_constant([2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
-          
+
           # attr value is a Tensor.
           val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
           data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
@@ -877,7 +877,7 @@ def fill_constant_batch_size_like(input,
             according the input.
         dtype(np.dtype|core.VarDesc.VarType|str): The data type of created Tensor which
             can be float32, float64, int32, int64.
-        value(float|int): The constant value used to initialize the Tensor to be created. 
+        value(float|int): The constant value used to initialize the Tensor to be created.
         input_dim_idx(int): When the value is 0 and the input is LoDTensor, the output_dim_idx
             dimension of the created Tensor is set to the batch_size value of input.
             The default value is 0.
@@ -1176,7 +1176,7 @@ def ones(shape, dtype, force_cpu=False):
 
           import paddle.fluid as fluid
           data0 = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
-          
+
           # shape is a Tensor
           shape = fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
           data1 = fluid.layers.ones(shape=shape, dtype='int32') #[[1, 1], [1, 1]]
@@ -1207,7 +1207,7 @@ def zeros(shape, dtype, force_cpu=False, name=None):
 
           import paddle.fluid as fluid
           data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
-          
+
           # shape is a Tensor
           shape = fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
           data1 = fluid.layers.zeros(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
@@ -1377,10 +1377,10 @@ def has_inf(x):
 
     Returns:
        Tensor: The tensor storing the output, only a bool value, indicating that whether there is infinity number in x or not.
-    
+
     Examples:
         .. code-block:: python
-          
+
           import paddle
           data = paddle.randn(shape=[4, 32, 32], dtype="float32")
           res = paddle.fluid.layers.has_inf(data)
@@ -1406,10 +1406,10 @@ def has_nan(x):
 
     Returns:
        Tensor: The tensor variable storing the output, only a bool value, indicating that whether there is NAN in x or not.
-    
+
     Examples:
         .. code-block:: python
-    
+
           import paddle
           data = paddle.randn(shape=[2,3], dtype="float32")
           res = paddle.fluid.layers.has_nan(data)
@@ -1485,7 +1485,7 @@ def range(start, end, step, dtype, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
-    Returns: 
+    Returns:
         Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
             taken with common difference ``step`` beginning from ``start``. Its
             data type is set by ``dtype``.
@@ -1571,13 +1571,13 @@ def linspace(start, stop, num, dtype=None, name=None):
             or a Tensor of shape [1] with data type int32.
         dtype(np.dtype|str, optional): The data type of output tensor, it could be
             int32, int64, float32 and float64. Default: if None, the data type is float32.
-        name(str, optional): Normally there is no need for user to set this property. 
+        name(str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.Default: None.
 
     Returns:
         Tensor: the output data type will be float32, float64. The 1-D tensor with fixed number of evenly spaced values, \
         the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
-        the value with input :attr:`start`. 
+        the value with input :attr:`start`.
 
     Examples:
         .. code-block:: python
@@ -1656,7 +1656,7 @@ def linspace(start, stop, num, dtype=None, name=None):
 
 def zeros_like(x, out=None):
     """
-    This OP creates a zeros tensor which has identical shape and dtype 
+    This OP creates a zeros tensor which has identical shape and dtype
     with `x`.
 
     Args:
@@ -1723,7 +1723,7 @@ def diag(diagonal):
 
           # [[3, 0, 0]
           #  [0, 4, 0]
-          #  [0, 0, 5] 
+          #  [0, 0, 5]
 
           import paddle.fluid as fluid
           import numpy as np
@@ -1756,7 +1756,7 @@ def eye(num_rows,
         dtype='float32',
         name=None):
     """
-    This function constructs a or a batch of 2-D tensor with ones on the diagonal and zeros elsewhere. 
+    This function constructs a or a batch of 2-D tensor with ones on the diagonal and zeros elsewhere.
 
     Args:
         num_rows(int): the number of rows in each batch tensor.
@@ -1853,7 +1853,7 @@ def ones_like(x, out=None):
     """
     **ones_like**
 
-    This function creates a ones tensor which has identical shape and dtype 
+    This function creates a ones tensor which has identical shape and dtype
     with `x`.
 
     Args:

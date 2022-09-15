@@ -1106,7 +1106,7 @@ class DownpourOptimizer(DistributedOptimizer):
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
-            program_mode (str|"all_reduce"): grad action for grogram when use_ps_gpu. 
+            program_mode (str|"all_reduce"): grad action for grogram when use_ps_gpu.
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.

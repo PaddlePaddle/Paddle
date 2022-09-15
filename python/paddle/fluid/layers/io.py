@@ -54,13 +54,13 @@ def data(name,
     This operator creates the global variable. The global variables can be
     accessed by all the following operators in the graph.
 
-    Note: 
-        :code:`paddle.fluid.layers.data` is deprecated as it will be removed in 
+    Note:
+        :code:`paddle.fluid.layers.data` is deprecated as it will be removed in
         a later version. Please use :code:`paddle.fluid.data` .
 
         This :code:`paddle.fluid.layers.data` set shape and dtype at compile
         time but does NOT check the shape or the dtype of fed data, the
-        :code:`paddle.fluid.data` checks the shape and the dtype of data fed 
+        :code:`paddle.fluid.data` checks the shape and the dtype of data fed
         by Executor or ParallelExecutor during run time.
 
         To feed variable size inputs, users can feed variable size inputs
@@ -77,12 +77,12 @@ def data(name,
        name(str): The name/alias of the variable, see :ref:`api_guide_Name`
             for more details.
        shape(list|tuple): Tuple declaring the shape. If :code:`append_batch_size` is
-            True and there is no -1 inside :code:`shape`, it should be 
+            True and there is no -1 inside :code:`shape`, it should be
             considered as the shape of the each sample. Otherwise, it should
-            be considered as the shape of the batched data.  
+            be considered as the shape of the batched data.
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
-            For example if shape=[1], the resulting shape is [-1, 1]. This will 
+            For example if shape=[1], the resulting shape is [-1, 1]. This will
             be useful to set different batch size at run time.
           2. If shape contains -1, such as shape=[1, -1].
             append_batch_size will be enforced to be be False (ineffective)
@@ -91,11 +91,11 @@ def data(name,
        dtype(np.dtype|VarType|str): The type of the data. Supported dtype: bool,
             float16, float32, float64, int8, int16, int32, int64, uint8.
        type(VarType): The output type. Supported dtype: VarType.LOD_TENSOR,
-            VarType.SELECTED_ROWS, VarType.NCCL_ID. Default: VarType.LOD_TENSOR. 
+            VarType.SELECTED_ROWS, VarType.NCCL_ID. Default: VarType.LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
             Default: 0.
        stop_gradient(bool): A boolean that mentions whether gradient should flow.
-            Default: True. 
+            Default: True.
 
     Returns:
         The global variable that gives access to the data.
@@ -571,24 +571,24 @@ def py_reader(capacity,
     This operator returns a Reader Variable.
     The Reader provides :code:`decorate_paddle_reader()` and
     :code:`decorate_tensor_provider()` to set a Python generator as the data
-    source and feed the data from the data source to the Reader Variable. 
-    When :code:`Executor::Run()` is invoked in C++ side, the data from the 
+    source and feed the data from the data source to the Reader Variable.
+    When :code:`Executor::Run()` is invoked in C++ side, the data from the
     generator would be read automatically. Unlike :code:`DataFeeder.feed()`,
-    the data reading process and :code:`Executor::Run()` process can run in 
+    the data reading process and :code:`Executor::Run()` process can run in
     parallel using :code:`py_reader`. The :code:`start()` method of the Reader
-    should be called when each pass begins, while the :code:`reset()` method 
+    should be called when each pass begins, while the :code:`reset()` method
     should be called when the pass ends and :code:`fluid.core.EOFException` raises.
 
     Note:
-       :code:`Program.clone()` method cannot clone :code:`py_reader`. You can 
+       :code:`Program.clone()` method cannot clone :code:`py_reader`. You can
        refer to :ref:`api_fluid_Program` for more details.
-       
+
        The :code:`read_file` call needs to be in the program block of :code:`py_reader`.
        You can refer to :ref:`api_fluid_layers_read_file` for more details.
 
     Args:
        capacity(int): The buffer capacity maintained by :code:`py_reader`.
-       shapes(list|tuple): List of tuples which declaring data shapes. shapes[i] 
+       shapes(list|tuple): List of tuples which declaring data shapes. shapes[i]
             represents the i-th data shape.
        dtypes(list|tuple): List of strings which declaring data type. Supported dtype:
             bool, float16, float32, float64, int8, int16, int32, int64, uint8.
@@ -596,8 +596,8 @@ def py_reader(capacity,
        name(basestring): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-       use_double_buffer(bool): Whether use double buffer or not. The double buffer is 
-            for pre-reading the data of the next batch and copy the data asynchronously 
+       use_double_buffer(bool): Whether use double buffer or not. The double buffer is
+            for pre-reading the data of the next batch and copy the data asynchronously
             from CPU to GPU. Default is True.
 
     Returns:
@@ -608,9 +608,9 @@ def py_reader(capacity,
 
     Examples:
        1. The basic usage of :code:`py_reader` is as follows:
-       
+
        .. code-block:: python
-    
+
          import paddle
          import paddle.fluid as fluid
          import paddle.dataset.mnist as mnist
@@ -649,7 +649,7 @@ def py_reader(capacity,
        :code:`py_reader` should be created with different names, e.g.:
 
        .. code-block:: python
-    
+
          import paddle
          import paddle.fluid as fluid
          import paddle.dataset.mnist as mnist
@@ -843,15 +843,15 @@ def double_buffer(reader, place=None, name=None):
     Args:
         reader (Variable): The Reader Variable need to be wrapped.
         place (Place|str, optional): The place of target data, such as CPU, GPU, and if use GPU, it's necessary to point out which card is involved. Default is the sample place of executor perform.
-            if ``place`` is string, It can be ``cpu``, ``gpu:x``, where ``x`` is the ndex of the GPUs. 
-        name (str, optional): Variable name. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None. 
+            if ``place`` is string, It can be ``cpu``, ``gpu:x``, where ``x`` is the ndex of the GPUs.
+        name (str, optional): Variable name. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
         Variable(Reader): wrapped reader with double buffer.
 
     Examples:
         ..  code-block:: python
-          
+
             import paddle.fluid as fluid
             reader = fluid.layers.py_reader(capacity=64,
                                             shapes=[(-1, 1, 28, 28), (-1, 1)],
@@ -889,7 +889,7 @@ def read_file(reader):
 
     Examples:
         .. code-block:: python
-          
+
            import paddle.fluid as fluid
            reader = fluid.layers.py_reader(capacity=64,
                                            shapes=[(-1, 1, 28, 28), (-1, 1)],
