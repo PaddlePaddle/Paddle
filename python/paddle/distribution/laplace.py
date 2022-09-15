@@ -29,8 +29,7 @@ class Laplace(distribution.Distribution):
     The probability density function (pdf) is
 
     .. math::
-
-        pdf(x; \mu, \sigma) = \frac{1}{2 * \sigma} * e^{\frac {-|x - \mu|}{\sigma}}
+        pdf(x; \mu, \sigma) = \frac{1}{2 * \sigma} * e^{\frac{-|x - \mu|}{\sigma}}
 
     In the above equation:
 
@@ -88,12 +87,11 @@ class Laplace(distribution.Distribution):
 
     @property
     def stddev(self):
-        """Standard deviation.
+        r"""Standard deviation.
 
         The stddev is 
 
         .. math::
-
             stddev = \sqrt{2} * \sigma
 
         In the above equation:
@@ -112,7 +110,6 @@ class Laplace(distribution.Distribution):
         The variance is 
 
         .. math::
-
             variance = 2 * \sigma^2
         
         In the above equation:
@@ -148,12 +145,11 @@ class Laplace(distribution.Distribution):
         return loc, scale, value
 
     def log_prob(self, value):
-        """Log probability density/mass function.
+        r"""Log probability density/mass function.
 
         The log_prob is
 
         .. math::
-
             log\_prob(value) = \frac{-log(2 * \sigma) - |value - \mu|}{\sigma}
         
         In the above equation:
@@ -169,6 +165,7 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
+
                             import paddle
 
                             m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
@@ -184,12 +181,11 @@ class Laplace(distribution.Distribution):
         return (log_scale - paddle.abs(value - loc) / scale)
 
     def entropy(self):
-        """Entropy of Laplace distribution.
+        r"""Entropy of Laplace distribution.
 
         The entropy is:
 
         .. math::
-
             entropy() = 1 + log(2 * \sigma)
 
         In the above equation:
@@ -201,6 +197,7 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
+
                             import paddle
 
                             m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
@@ -211,12 +208,11 @@ class Laplace(distribution.Distribution):
         return 1 + paddle.log(2 * self.scale)
 
     def cdf(self, value):
-        """Cumulative distribution function.
+        r"""Cumulative distribution function.
 
         The cdf is
 
         .. math::
-
             cdf(value) = 0.5 - 0.5 * sign(value - \mu) * e^\frac{-|(\mu - \sigma)|}{\sigma}
 
         In the above equation:
@@ -232,6 +228,7 @@ class Laplace(distribution.Distribution):
         
         Examples:
             .. code-block:: python
+
                             import paddle
 
                             m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
@@ -247,12 +244,11 @@ class Laplace(distribution.Distribution):
         return 0.5 - iterm
 
     def icdf(self, value):
-        """Inverse Cumulative distribution function.
+        r"""Inverse Cumulative distribution function.
 
         The icdf is 
 
         .. math::
-
             cdf^{-1}(value)= \mu - \sigma * sign(value - 0.5) * ln(1 - 2 * |value-0.5|)
 
         In the above equation:
@@ -268,6 +264,7 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
+
                             import paddle
 
                             m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
@@ -282,7 +279,7 @@ class Laplace(distribution.Distribution):
         return (loc - scale * (term).sign() * paddle.log1p(-2 * term.abs()))
 
     def sample(self, shape=()):
-        """Generate samples of the specified shape.
+        r"""Generate samples of the specified shape.
 
         Args:
             shape(tuple[int]): The shape of generated samples.
@@ -292,6 +289,7 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
+
                             import paddle
 
                             m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
@@ -307,7 +305,7 @@ class Laplace(distribution.Distribution):
             return self.rsample(shape)
 
     def rsample(self, shape):
-        """Reparameterized sample.
+        r"""Reparameterized sample.
 
         Args:
             shape(tuple[int]): The shape of generated samples.
@@ -317,6 +315,7 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
+
                             import paddle
 
                             m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
@@ -359,20 +358,17 @@ class Laplace(distribution.Distribution):
         return eps
 
     def kl_divergence(self, other):
-        """Calculate the KL divergence KL(self || other) with two Laplace instances.
+        r"""Calculate the KL divergence KL(self || other) with two Laplace instances.
 
         The kl_divergence between two Laplace distribution is
 
         .. math::
-
             KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = 0.5 (ratio^2 + (\frac{diff}{\sigma_1})^2 - 1 - 2 \ln {ratio})
 
         .. math::
-
             ratio = \frac{\sigma_0}{\sigma_1}
 
         .. math::
-
             diff = \mu_1 - \mu_0
 
         In the above equation:
@@ -392,6 +388,7 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
+
                             import paddle
                             
                             m1 = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
