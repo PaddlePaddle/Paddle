@@ -512,8 +512,7 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       return framework::OpKernelType(data_type,
                                      ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
