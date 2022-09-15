@@ -1406,23 +1406,21 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 amp_logic_str = "\n VLOG(7) << \" No AMP for {} because it has no input. \"; ".format(
                     forward_ad_function_name)
             self.forward_definition_str += FORWARD_ONLY_FUNCTION_TEMPLATE.format(
-                returns_type_str,
-                forward_ad_function_name, inputs_args_definition_str,
-                GetDygraphLogName(forward_api_name), dygraph_event_str,
+                returns_type_str, forward_ad_function_name,
+                inputs_args_definition_str, forward_api_name, dygraph_event_str,
                 amp_logic_str, layout_logic_str, forward_api_name,
                 before_log_str, forward_call_str, get_outputs_str,
-                GetDygraphLogName(forward_api_name), log_str, returns_str)
+                forward_api_name, log_str, returns_str)
         else:
             self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
-                returns_type_str,
-                forward_ad_function_name, inputs_args_definition_str,
-                GetDygraphLogName(forward_api_name), dygraph_event_str,
+                returns_type_str, forward_ad_function_name,
+                inputs_args_definition_str, forward_api_name, dygraph_event_str,
                 amp_logic_str, layout_logic_str, inputs_autograd_meta_str,
                 forward_api_name, before_log_str, forward_call_str,
                 check_nan_inf_str, get_outputs_str, outputs_autograd_meta_str,
                 compute_require_grad_args_str, check_inplace_str,
-                bump_inplace_version_str, node_creation_str,
-                GetDygraphLogName(forward_api_name), log_str, returns_str)
+                bump_inplace_version_str, node_creation_str, forward_api_name,
+                log_str, returns_str)
 
         self.forward_declaration_str += f"{returns_type_str} {forward_ad_function_name}({inputs_args_declaration_str});\n"
 
@@ -1929,13 +1927,13 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         log_str = AFTER_LOG_PRINT_TEMPLATE.format(var_str)
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
-            grad_node_name, GetDygraphLogName(self.backward_api_name),
-            fill_zero_str, get_grad_in_args_str, grad_function_prepare_str,
+            grad_node_name, self.backward_api_name, fill_zero_str,
+            get_grad_in_args_str, grad_function_prepare_str,
             compute_require_next_grad_str, inplace_check_str,
             inplace_for_grad_outs_str, self.backward_api_name, before_log_str,
             grad_function_call_str, check_nan_inf_str,
             outputs_autograd_meta_str, next_grad_node_creation_str,
-            GetDygraphLogName(self.backward_api_name), log_str, returns_str)
+            self.backward_api_name, log_str, returns_str)
 
     def run(self):
         super().run()
