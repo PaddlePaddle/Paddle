@@ -189,7 +189,7 @@ void QuantDequantMkldnnPass::CollectInputScalesFromQuantize(
       auto* scale_data = scale_tensor->data<float>();
       float scale = 1.0 / scale_data[0];
       if (std::isinf(scale) || std::isnan(scale)) {
-        scale = 0.0;
+        continue;
       }
 
       if (!var_quant_scales->count(x_var_name)) {
@@ -528,10 +528,14 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
     for (int i = 0; i < weight_dims[0]; i++) {
       int begin_n = i * step_n;
       for (int j = begin_n; j < begin_n + step_n; j++) {
-        for (int k = 0; k < size; k++) {
-          int begin_c = k * step_c;
-          for (int m = begin_c; m < begin_c + step_c; m++) {
-            weight_data[m] *= scales[k];
+        if (weight_dims.size() == 2) {
+          weight_data[j] *= scales[j - begin_n];
+        } else {
+          for (int k = 0; k < size; k++) {
+            int begin_c = k * step_c;
+            for (int m = begin_c; m < begin_c + step_c; m++) {
+              weight_data[m] *= scales[k];
+            }
           }
         }
       }
