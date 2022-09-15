@@ -31,6 +31,6 @@ for file in $files; do
     fi
 done
 
-exit $TOTAL_ERRORS
+exit 1 # $TOTAL_ERRORS
 
 # cpplint --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens --quiet $@
