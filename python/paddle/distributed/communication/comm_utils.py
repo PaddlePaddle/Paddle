@@ -15,6 +15,7 @@
 
 class ReduceOp:
     """
+
     Specify the type of operation used for element-wise reductions.
     It should be one of the following values:
 

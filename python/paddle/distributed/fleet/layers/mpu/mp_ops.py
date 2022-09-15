@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
 from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid import core
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.fluid.framework import in_dygraph_mode
@@ -432,10 +432,10 @@ def _parallel_linear(x,
     """
     Parallel Linear
 
-    axis the dimension of the parameter of linear layer. 
+    axis the dimension of the parameter of linear layer.
     axis = 0: the row dimension
     axis = 1: the col dimension
-    
+
     """
     if group is not None and not group.is_member():
         return
@@ -612,7 +612,7 @@ def split(x,
         of which is a matrix with N/num_partitions rows and M column.
 
         The linear layer put on single card is shown as below, the input variable is represented by X,
-        the weight matrix is represented by W and the output vaiable is O. The linear layer on single card is 
+        the weight matrix is represented by W and the output vaiable is O. The linear layer on single card is
         simple matrix multiplication operation, O = X * W.
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_single.png
@@ -635,14 +635,14 @@ def split(x,
         of which is a matrix with N rows and M/num_partitions column.
 
         The linear layer put on single card has been illustrated on case 2 and Column Parallel Linear
-        is shown as below. The Column Parallel Linear splits the weight matrix W into [W_col1, W_col2] along the column and 
-        these splitted matrices respectively multiply the input. Finally apply AllGather on the output from each card to get the final output. 
+        is shown as below. The Column Parallel Linear splits the weight matrix W into [W_col1, W_col2] along the column and
+        these splitted matrices respectively multiply the input. Finally apply AllGather on the output from each card to get the final output.
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col.png
             :width: 800
             :alt: split_col
             :align: center
-    
+
     As observed, the column parallel linear and row parallel linear can be combined to skip one ALLGATHER communication
     operator. Furthermore the Attention and MLP can be combined to imporve the performance as shown below.
 

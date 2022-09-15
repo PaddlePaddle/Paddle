@@ -40,7 +40,6 @@ import paddle.fluid.core as core
 from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid.dygraph_utils as dygraph_utils
 import contextlib
-from .communication.comm_utils import ReduceOp
 from .fleet.layers.mpu.mp_ops import split
 from .fleet.layers.mpu.mp_ops import _c_identity
 from .fleet.layers.mpu.mp_ops import _c_concat
@@ -53,6 +52,7 @@ from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy
 from .fleet.layers.mpu.mp_ops import _linear
 from .fleet.layers.mpu.mp_ops import _parallel_linear
 from .fleet.layers.mpu.mp_ops import _parallel_embedding
+from .communication.comm_utils import ReduceOp
 
 __all__ = []
 

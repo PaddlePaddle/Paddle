@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-import contextlib
 import numpy as np
+import contextlib
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
