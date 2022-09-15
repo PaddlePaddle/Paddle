@@ -16,17 +16,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from paddle import enable_static
-# from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 from paddle.fluid.framework import _current_expected_place
 import paddle.fluid.core as core
 
 import sys
-
-sys.path.append('/workspace/Paddle/python/paddle/fluid/tests/unittests')
-from op_test import OpTest, OpTestTool, convert_float_to_uint16
-import paddle
-
-paddle.set_device('cpu')
 
 
 @OpTestTool.skip_if(not (isinstance(_current_expected_place(), core.CPUPlace)),
@@ -127,12 +121,10 @@ class TestMKLDNNElementwiseSubOp40(TestMKLDNNElementwiseSubOp):
         self.out = np.subtract(self.x, self.y)
 
     def test_check_grad_normal(self):
-        # self.check_grad(['X', 'Y'], 'Out')
-        pass
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ignore_x(self):
-        # self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
-        pass
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ignore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
