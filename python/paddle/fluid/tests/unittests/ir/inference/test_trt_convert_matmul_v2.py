@@ -32,10 +32,10 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for trans_x in [True, False]:
-            for trans_y in [True, False]:
-                input1_shape = [4, 4, 4]
-                input2_shape = [4, 4]
+        for trans_x in [False]:
+            for trans_y in [False]:
+                input1_shape = [15, 64, 350, 75]
+                input2_shape = [75, 25]
                 dics = [{
                     "trans_x": trans_x,
                     "trans_y": trans_y,
@@ -73,16 +73,16 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
 
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input1_data": [1, 4, 4],
-                "input2_data": [4, 4]
+                "input1_data": [10, 64, 350, 75],
+                "input2_data": [75, 25]
             }
             self.dynamic_shape.max_input_shape = {
-                "input1_data": [16, 4, 4],
-                "input2_data": [4, 4]
+                "input1_data": [100, 64, 350, 75],
+                "input2_data": [75, 25]
             }
             self.dynamic_shape.opt_input_shape = {
-                "input1_data": [8, 4, 4],
-                "input2_data": [4, 4]
+                "input1_data": [15, 64, 350, 75],
+                "input2_data": [75, 25]
             }
 
         attrs = [
