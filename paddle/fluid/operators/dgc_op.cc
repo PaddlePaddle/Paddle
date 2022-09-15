@@ -126,10 +126,10 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
     This optimizer will do two things:
-        
+
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
-    
+
         2. Call momentum to optimize on the cost.
 
 )DOC");

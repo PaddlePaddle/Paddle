@@ -49,7 +49,7 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(2);
     AddComment(R"DOC("
      **Tdm Child**
-     According to the input node_id on the given tree, return the corresponding child node_id and 
+     According to the input node_id on the given tree, return the corresponding child node_id and
       whether child is a leaf node by LeafMask.")DOC");
   }
 };

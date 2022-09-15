@@ -44,8 +44,8 @@ class BmmOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor), The output tensor of Bmm op.");
     AddComment(R"DOC(
 The Bmm operator is used to perform batched matrix multiplication
-over the last two dimensions of the input tensors `X` and `Y` 
-which are both 3-dimentionsal. 
+over the last two dimensions of the input tensors `X` and `Y`
+which are both 3-dimentionsal.
 
 Examples:
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]

@@ -71,7 +71,7 @@ class RandpermOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Default: 0.")
         .SetDefault(0);
 
-    AddComment(R"DOC( 
+    AddComment(R"DOC(
 This operator returns a random permutation of integers from 0 to n-1.
 )DOC");
   }

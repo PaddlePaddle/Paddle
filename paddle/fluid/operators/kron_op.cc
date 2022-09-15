@@ -63,14 +63,14 @@ class KronOpMaker : public framework::OpProtoAndCheckerMaker {
           Kron Operator.
 
           This operator computes the Kronecker product of two tensors, a
-          composite tensor made of blocks of the second tensor scaled by the 
+          composite tensor made of blocks of the second tensor scaled by the
           first.
 
           This operator assumes that the rank of the two tensors, $X$ and $Y$
-          are the same, if necessary prepending the smallest with ones. If the 
-          shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is 
-          [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is 
-          [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are 
+          are the same, if necessary prepending the smallest with ones. If the
+          shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is
+          [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is
+          [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are
           products of elements from $X$ and $Y$.
 
           The equation is:

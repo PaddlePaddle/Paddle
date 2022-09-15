@@ -30,10 +30,10 @@ class IndexSampleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "Return the element of input at index");
 
     AddComment(R"DOC(
-    IndexSample OP returns the element of the specified location of X, 
-    and the location is specified by Index. 
+    IndexSample OP returns the element of the specified location of X,
+    and the location is specified by Index.
 
-    X tensor and Index tensor's shape must be 2-D, 
+    X tensor and Index tensor's shape must be 2-D,
     dimension at 0 which usually is batch size must be equal.
 
     The returned tensor has the same shape and dimensions as the Index tensor.
