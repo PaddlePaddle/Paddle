@@ -21,18 +21,29 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-void GeneralBinaryGradInferMeta(const MetaTensor& x,
-                                const MetaTensor& y,
-                                MetaTensor* dx,
-                                MetaTensor* dy) {
-  phi::GeneralBinaryGradInferMeta(x, y, dx, dy);
-}
-
 void CastGradInferMeta(const MetaTensor& x,
                        const MetaTensor& out_grad,
                        const DataType value_dtype,
                        MetaTensor* out) {
   phi::CastInferMeta(x, x.dtype(), out);
+}
+
+void FusedAttentionGradInferMeta(const MetaTensor& query,
+                                 const MetaTensor& key,
+                                 const MetaTensor& value,
+                                 const MetaTensor& softmax,
+                                 const MetaTensor& out_grad,
+                                 MetaTensor* query_grad,
+                                 MetaTensor* key_grad,
+                                 MetaTensor* value_grad) {
+  // TODO(zhouwei, zhangkaihuo) add correct infer meta
+}
+
+void GeneralBinaryGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                MetaTensor* dx,
+                                MetaTensor* dy) {
+  phi::GeneralBinaryGradInferMeta(x, y, dx, dy);
 }
 
 void GeneralTernaryGradInferMeta(const MetaTensor& x,

@@ -21,11 +21,6 @@ namespace sparse {
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out) {
-  // if (x.dims() == y.dims()) {
-  //   out->set_dims(x.dims());
-  // }
-  // out->set_dtype(x.dtype());
-  // out->set_layout(x.layout());
   phi::ElementwiseInferMeta(x, y, out);
 }
 
@@ -154,6 +149,15 @@ void MatmulInferMeta(const MetaTensor& x,
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   phi::MvInferMeta(x, vec, out);
+}
+
+void SparseCooTensorInferMeta(const MetaTensor& values,
+                              const MetaTensor& indices,
+                              const IntArray& dense_shape,
+                              MetaTensor* out) {
+  out->set_dims(phi::make_ddim(dense_shape.GetData()));
+  out->set_dtype(values.dtype());
+  out->set_layout(values.layout());
 }
 
 }  // namespace sparse

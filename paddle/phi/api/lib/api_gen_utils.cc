@@ -142,6 +142,14 @@ phi::MetaTensor MakeMetaTensor(
   return phi::MetaTensor();
 }
 
+phi::MetaTensor MakeMetaTensor(
+    const paddle::optional<phi::SparseCsrTensor>& tensor) {
+  if (tensor) {
+    return {phi::MetaTensor(*tensor)};
+  }
+  return phi::MetaTensor();
+}
+
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const paddle::optional<std::vector<const phi::DenseTensor*>>& tensors) {
   std::vector<phi::MetaTensor> meta_tensors;

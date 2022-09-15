@@ -399,6 +399,8 @@
 - op: fused_attention
   args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask)
   output : Tensor(out), Tensor(softmax)
+  infer_meta :
+    func : FusedAttentionInferMeta
   kernel :
     func : fused_attention_csr{dense, dense, dense, sparse_csr, dense, dense -> dense, sparse_csr}
     layout : sparse_mask

@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -23,15 +22,24 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-void GeneralBinaryGradInferMeta(const MetaTensor& x,
-                                const MetaTensor& y,
-                                MetaTensor* dx,
-                                MetaTensor* dy);
-
 void CastGradInferMeta(const MetaTensor& x,
                        const MetaTensor& out_grad,
                        const DataType value_dtype,
                        MetaTensor* out);
+
+void FusedAttentionGradInferMeta(const MetaTensor& query,
+                                 const MetaTensor& key,
+                                 const MetaTensor& value,
+                                 const MetaTensor& softmax,
+                                 const MetaTensor& out_grad,
+                                 MetaTensor* query_grad,
+                                 MetaTensor* key_grad,
+                                 MetaTensor* value_grad);
+
+void GeneralBinaryGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                MetaTensor* dx,
+                                MetaTensor* dy);
 
 void GeneralTernaryGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& y,
