@@ -272,7 +272,8 @@ class PRChecker(object):
             % (PADDLE_ROOT, all_ut_file))
         #determine whether filename is in all_ut_case
         with open(all_ut_file, 'r') as f:
-            if filename.split(".")[0] in f:
+            (filepath, tempfilename) = os.path.split(filename)
+            if tempfilename.split(".")[0] in f:
                 return True
             else:
                 return False
@@ -370,7 +371,9 @@ class PRChecker(object):
                             f_judge_in_added_ut = False
                             with open('{}/added_ut'.format(
                                     PADDLE_ROOT)) as utfile:
-                                if f_judge.split(".")[0] in utfile:
+                                (filepath,
+                                 tempfilename) = os.path.split(f_judge)
+                                if tempfilename.split(".")[0] in utfile:
                                     f_judge_in_added_ut = True
                             if f_judge_in_added_ut == True:
                                 print(
