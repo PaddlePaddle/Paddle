@@ -20,6 +20,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace phi {
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
@@ -78,6 +80,12 @@ void IndexAddKernel(const Context& ctx,
   // copy input to output.
   // todo(@limin29): inplace do not need copy.
   phi::Copy(ctx, x, ctx.GetPlace(), false, output);
+
+  if (FLAGS_cudnn_deterministic) {
+    VLOG(2) << "Run grad kernel of index_add with single thread.";
+    block_dim = 1;
+    grid_dim.x = 1;
+  }
 
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();

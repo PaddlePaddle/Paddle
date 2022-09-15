@@ -114,12 +114,12 @@ class DistributedStrategy(object):
         """
         DistributedStrategy is the main configuration entry for distributed training of Paddle.
         All of the distributed training configurations can be configured in DistributedStrategy,
-        such as automatic mixed precision (AMP), Layer-wise Adaptive Rate Scaling (LARS), 
+        such as automatic mixed precision (AMP), Layer-wise Adaptive Rate Scaling (LARS),
         asynchronous update parameter server(ASGD), etc.
 
         DistributedStrategy can be serialized into protobuf file or deserialized from protobuf file
 
-        Users who run local training usually configure BuildStrategy and ExecutionStrategy, and 
+        Users who run local training usually configure BuildStrategy and ExecutionStrategy, and
         DistributedStrategy supports configurations from BuildStrategy and ExecutionStrategy
 
         """
@@ -290,7 +290,7 @@ class DistributedStrategy(object):
     def a_sync(self):
         """
         Indicating whether we are using asynchronous stocastic gradient descent updates
-        for training. This property is valid when we are using parameter server training, 
+        for training. This property is valid when we are using parameter server training,
         which is implied by setting approperate RoleMaker
         Default value: True
 
@@ -372,7 +372,7 @@ class DistributedStrategy(object):
     @property
     def trainer_desc_configs(self):
         """
-        Set trainer desc configurations. 
+        Set trainer desc configurations.
 
         **Notes**:
             dump_fields_path(str): the path of dump fields
@@ -381,7 +381,7 @@ class DistributedStrategy(object):
 
             dump_param(list(str)): the param that you want to dump
 
-            stat_var_names(list(str)): 
+            stat_var_names(list(str)):
 
         Examples:
 
@@ -443,12 +443,12 @@ class DistributedStrategy(object):
     @property
     def fs_client_param(self):
         """
-        Set fs client configurations. 
+        Set fs client configurations.
         **Notes**:
             uri(str): the uri of fs client
             user(str): the user_name of fs client
             passwd(str): the passwd of fs client
-            hadoop_bin(str): 
+            hadoop_bin(str):
         Examples:
           .. code-block:: python
             import paddle.distributed.fleet as fleet
@@ -1001,15 +1001,15 @@ class DistributedStrategy(object):
     @property
     def last_comm_group_size_MB(self):
         """
-        Specifying the size of gradient to fuse in Mega-Bytes when 
-        the last group of each batch communicates. Making the last group 
-        small is useful to improve performance. 
+        Specifying the size of gradient to fuse in Mega-Bytes when
+        the last group of each batch communicates. Making the last group
+        small is useful to improve performance.
 
         Default value: 1
 
         Examples:
           .. code-block:: python
-        
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.last_comm_group_size_MB = 2
@@ -1027,7 +1027,7 @@ class DistributedStrategy(object):
     @property
     def find_unused_parameters(self):
         """
-        Indicating whether we are using find_unused_parameters to 
+        Indicating whether we are using find_unused_parameters to
         find unused parameters in DataParallel.
 
         Default value: False
@@ -1104,20 +1104,20 @@ class DistributedStrategy(object):
     @property
     def recompute_configs(self):
         """
-        Set recompute configurations. 
-        
+        Set recompute configurations.
+
         **Note**:
         checkpoints(list): list of string name of checkpoints. In general, the recompute
         strategy of current implementation should have some manually assign checkpoints.
 
-        enable_offload(bool): enable recompute checkpoints offload feature. this feature 
+        enable_offload(bool): enable recompute checkpoints offload feature. this feature
         will offload the checkpoint to host memory to allow even larger batch size. since
         the memcpy from host to device takes time, it is a trade off between larger batch
         size and training speed.
 
         checkpoint_shape(list): list of int that specific the shape of checkpoint. so far
         recompute-offload requires that all checkpoint to be same shape, and every dimension
-        specific here should be determined ("-1" is not allowed). 
+        specific here should be determined ("-1" is not allowed).
 
         Examples:
 
@@ -1145,7 +1145,7 @@ class DistributedStrategy(object):
     def sharding(self):
         """
         Indicating whether we are using sharding Optimizer for memory
-        optimization. We implement the sharding optimizer following the ZeRO-DP 
+        optimization. We implement the sharding optimizer following the ZeRO-DP
         idea from [ZeRO: Memory Optimizations Toward Training Trillion Parameter Models](https://arxiv.org/abs/1910.02054).
         Model parameters and Optimizer State are sharded into different ranks allowing to fit larger model.
 
@@ -1174,26 +1174,26 @@ class DistributedStrategy(object):
     @property
     def sharding_configs(self):
         """
-        Set sharding configurations. 
+        Set sharding configurations.
 
         **Note**:
-            sharding_segment_strategy(string, optional): strategy used to segment the program(forward & backward operations). two strategise are 
-            available: "segment_broadcast_MB" and "segment_anchors". segment is a concept used in sharding to overlap computation and 
+            sharding_segment_strategy(string, optional): strategy used to segment the program(forward & backward operations). two strategise are
+            available: "segment_broadcast_MB" and "segment_anchors". segment is a concept used in sharding to overlap computation and
             communication. Default is segment_broadcast_MB.
 
-            segment_broadcast_MB(float, optional): segment by the parameters broadcast volume. sharding will introduce parameter broadcast operations into program, and 
+            segment_broadcast_MB(float, optional): segment by the parameters broadcast volume. sharding will introduce parameter broadcast operations into program, and
             after every segment_broadcast_MB size parameter being broadcasted, the program will be cutted into one segment.
             This configuration will affect the communication speed in sharding training, and should be an empirical value decided by your model size and network topology.
             Only enable when sharding_segment_strategy = segment_broadcast_MB. Default is 32.0 .
 
-            segment_anchors(list): list of anchors used to segment the program, which allows a finner control of program segmentation. 
+            segment_anchors(list): list of anchors used to segment the program, which allows a finner control of program segmentation.
             this strategy is experimental by now. Only enable when sharding_segment_strategy = segment_anchors.
 
             sharding_degree(int, optional): specific the number of gpus within each sharding parallelism group; and sharding will be turn off if sharding_degree=1.  Default is 8.
 
             gradient_merge_acc_step(int, optional): specific the accumulation steps in gradient merge; and gradient merge will be turn off if gradient_merge_acc_step=1.  Default is 1.
 
-            optimize_offload(bool, optional): enable the optimizer offload which will offload the moment vars to Host memory in order to saving GPU memory for fitting larger model. 
+            optimize_offload(bool, optional): enable the optimizer offload which will offload the moment vars to Host memory in order to saving GPU memory for fitting larger model.
             the moment var will be prefetch from and offloaded to Host memory during update stage. it is a stragtegy that trades off between training speed and GPU memory, and is recommened to be turn on only when gradient_merge_acc_step large, where
             the number of time of update stage will be relatively small compared with forward&backward's.  Default is False.
 
@@ -1203,7 +1203,7 @@ class DistributedStrategy(object):
 
             pp_degree(int, optional): [Hybrid parallelism ONLY] specific the number of gpus within each pipeline parallelism group; and pipeline parallelism will turn be off if pp_degree=1.  Default is 1.
 
-            pp_allreduce_in_optimize(bool, optional): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on. 
+            pp_allreduce_in_optimize(bool, optional): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on.
             This configuration will affect the communication speed of Hybrid parallelism training depeneded on network topology. this strategy is experimental by now..  Default is False.
 
             optimize_cast(bool, optional): [Hybrid parallelism ONLY] Move the cast op of AMP which cast fp32 param to fp16 param to optimizer. optimize_cast will persist fp16 param, it
@@ -1385,11 +1385,11 @@ class DistributedStrategy(object):
         """
         Set pipeline parallelism configurations. In pipeline parallelism,
         different parts of neural networks are running on different GPUS.
-        There are Tensor queue buffer between each pair of neighborhood GPUS 
+        There are Tensor queue buffer between each pair of neighborhood GPUS
         that are responsible for synchronizing hidden Tensor results between
         GPUs. Pipeline parallelism consists of serveral producer-consumer style
         hardware pairs, such as GPU-GPU, CPU-GPU, GPU-XPU. The best way to speedup
-        pipeline parallelism is to make the size of Tensor in Tensor queue smaller, 
+        pipeline parallelism is to make the size of Tensor in Tensor queue smaller,
         so that we will have a faster producer for downstream consumers.
 
         **Notes**:
@@ -1475,7 +1475,7 @@ class DistributedStrategy(object):
     @property
     def hybrid_configs(self):
         """
-        Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism 
+        Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism
         needs to meet the following relationships
 
         total_number_GPUs = dp_degree * mp_degree * pp_degree
@@ -1483,7 +1483,7 @@ class DistributedStrategy(object):
         **Note**:
             dp_degree(int): set number of GPUs in a data parallel group. Default -1.
                                     This value should be an integer greater than 0.
-                                    If it is not set, or set to -1, its value will be inferred 
+                                    If it is not set, or set to -1, its value will be inferred
                                     based on the total number of cards.
             mp_degree(int): set number of GPUs in a model parallel group. Default 1
             pp_degree(int): set number of GPUs in a pipeline parallel group. Default 1
@@ -1567,7 +1567,7 @@ class DistributedStrategy(object):
     def adaptive_localsgd(self):
         """
         Indicating whether we are using Adaptive Local SGD training. Default Value: False
-        For more details, please refer to `Adaptive Communication Strategies to Achieve 
+        For more details, please refer to `Adaptive Communication Strategies to Achieve
         the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
 
 
@@ -1770,8 +1770,8 @@ class DistributedStrategy(object):
     @property
     def lars(self):
         """
-        Set lars configurations. lars is used to deal with the convergence problems when the global 
-        batch size is larger than 8k.  For more details, please refer to 
+        Set lars configurations. lars is used to deal with the convergence problems when the global
+        batch size is larger than 8k.  For more details, please refer to
         [Large Batch Training of Convolutional Networks](https://arxiv.org/abs/1708.03888).
 
         Default Value: False
@@ -1802,8 +1802,8 @@ class DistributedStrategy(object):
         **Notes**:
         **lars_coeff (float)**: trust ratio in lars formula.
         **lars_weight_decay** (float): weight decay coefficient in lars formula.
-        **epsilon (float)**: argument is used to avoid potential devision-by-zero 
-        when compute the local lr; 
+        **epsilon (float)**: argument is used to avoid potential devision-by-zero
+        when compute the local lr;
         **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
         will be exclude from weight decay in lars formula.
 
@@ -1832,9 +1832,9 @@ class DistributedStrategy(object):
     @property
     def lamb(self):
         """
-        Set lamb configurations. lamb is used to deal with the convergence problems for large 
-        batch size training, specially for attention-related model like BERT. For more details, 
-        please refer to 
+        Set lamb configurations. lamb is used to deal with the convergence problems for large
+        batch size training, specially for attention-related model like BERT. For more details,
+        please refer to
         [Large Batch Optimization for Deep Learning: Training BERT in 76 minutes](https://arxiv.org/abs/1904.00962).
 
         Default Value: False
@@ -1908,7 +1908,7 @@ class DistributedStrategy(object):
     def auto(self):
         """
         Indicating whether we are using auto-parallel configuration
-        This feature is currently an experimental feature. Currently, 
+        This feature is currently an experimental feature. Currently,
         auto-parallelism can be used only when a user does not set any other
         strategy configs except auto. For details, please reference the following
         code example
@@ -1943,7 +1943,7 @@ class DistributedStrategy(object):
     def semi_auto(self):
         """
         Indicating whether we are using semi-auto parallel function
-        This feature is currently an experimental feature. Currently, 
+        This feature is currently an experimental feature. Currently,
         auto-parallelism can be used only when a user does not set any other
         strategy configs except semi-auto. For details, please reference the following
         code example
@@ -2047,7 +2047,7 @@ class DistributedStrategy(object):
 
             activation_bits(int): quantization bit number for activation. Default is 8.
 
-            not_quant_pattern(list[str]): When the skip pattern is detected in an op's name scope, 
+            not_quant_pattern(list[str]): When the skip pattern is detected in an op's name scope,
                 the corresponding op will not be quantized.
 
             algo(str): Other quantization training algorithm.

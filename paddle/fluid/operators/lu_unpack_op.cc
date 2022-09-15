@@ -24,7 +24,7 @@ namespace operators {
 class LU_UnpackOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddComment(R"DOC(Unpack L U and P to single matrix tensor, 
+    AddComment(R"DOC(Unpack L U and P to single matrix tensor,
                 unpack L and U matrix from LU, unpack permutation matrix Pmat from Pivtos .
                 )DOC");
     AddInput("X", "(Tensor) The input LU tensor, shape of (*,m,n)");

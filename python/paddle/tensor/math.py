@@ -158,7 +158,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     Examples:
         .. code-block:: python
-            
+
             # scale as a float32 number
             import paddle
 
@@ -291,7 +291,7 @@ def multiplex(inputs, index, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             img1 = paddle.to_tensor([[1, 2], [3, 4]], dtype=paddle.float32)
             img2 = paddle.to_tensor([[5, 6], [7, 8]], dtype=paddle.float32)
             inputs = [img1, img2]
@@ -345,7 +345,7 @@ def pow(x, y, name=None):
     Compute the power of Tensor elements. The equation is:
 
     .. math::
-        out = x^{y} 
+        out = x^{y}
 
     Note:
         ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
@@ -355,7 +355,7 @@ def pow(x, y, name=None):
         x (Tensor): An N-D Tensor, the data type is float16, float32, float64, int32 or int64.
         y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
 
@@ -1138,7 +1138,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     Returns:
         Tensor: Results of summation operation on the specified axis of input Tensor `x`,
-        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, 
+        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
         otherwise it's data type is the same as `x`.
 
     Examples:
@@ -1161,11 +1161,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = paddle.to_tensor([[[1, 2], [3, 4]], 
+            y = paddle.to_tensor([[[1, 2], [3, 4]],
                                   [[5, 6], [7, 8]]])
             out5 = paddle.sum(y, axis=[1, 2]) # [10, 26]
             out6 = paddle.sum(y, axis=[0, 1]) # [16, 20]
-            
+
             # x is a Tensor with following elements:
             #    [[True, True, True, True]
             #     [False, False, False, False]]
@@ -1293,7 +1293,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             #      [[[1, nan], [3, 4]],
             #      [[5, 6], [-nan, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = np.array([[[1, float('nan')], [3, 4]], 
+            y = np.array([[[1, float('nan')], [3, 4]],
                             [[5, 6], [float('-nan'), 8]]])
             y = paddle.to_tensor(y)
             out5 = paddle.nansum(y, axis=[1, 2]) # [8, 19]
@@ -1444,11 +1444,11 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
 def add_n(inputs, name=None):
     """
     Sum one or more Tensor of the input.
-    
+
     For example:
 
     .. code-block:: text
-    
+
         Case 1:
 
             Input:
@@ -1462,7 +1462,7 @@ def add_n(inputs, name=None):
                           [4, 5, 6]]
 
         Case 2:
-       
+
             Input:
                 First input:
                     input1.shape = [2, 3]
@@ -1495,7 +1495,7 @@ def add_n(inputs, name=None):
             input0 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
             input1 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]], dtype='float32')
             output = paddle.add_n([input0, input1])
-            # [[8., 10., 12.], 
+            # [[8., 10., 12.],
             #  [14., 16., 18.]]
     """
     if in_dygraph_mode():
@@ -1536,14 +1536,14 @@ def add_n(inputs, name=None):
 def trunc(input, name=None):
     '''
     This API is used to returns a new tensor with the truncated integer values of input.
-    
+
     Args:
         input (Tensor): The input tensor, it's data type should be int32, int64, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         Tensor: The output Tensor of trunc.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1721,7 +1721,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
     Examples:
         ..  code-block:: python
-            
+
             import paddle
 
             x = paddle.ones([2,2])
@@ -1785,7 +1785,7 @@ def renorm(x, p, axis, max_norm):
     This operator is used to calculate the p-norm along the axis,
     suppose the input-shape on axis dimension has the value of T, then
     the tensor is split into T parts, the p-norm should be calculated for each
-    part, if the p-norm for part i is larger than max-norm, then each element 
+    part, if the p-norm for part i is larger than max-norm, then each element
     in part i should be re-normalized at the same scale so that part-i' p-norm equals
     max-norm exactly, otherwise part-i stays unchanged.
 
@@ -1800,17 +1800,17 @@ def renorm(x, p, axis, max_norm):
 
     Examples:
         ..  code-block:: python
-            
+
             import paddle
             input = [[[2.0,2,-2],[3,0.3,3]],[[2,-8,2],[3.1,3.7,3]]]
             x = paddle.to_tensor(input,dtype='float32')
             y = paddle.renorm(x, 1.0, 2, 2.05)
-            print(y)        
+            print(y)
     #        [[[ 0.40594056,  0.29285714, -0.41000000],
     #          [ 0.60891086,  0.04392857,  0.61500001]],
     #         [[ 0.40594056, -1.17142856,  0.41000000],
     #          [ 0.62920785,  0.54178572,  0.61500001]]])
-    
+
     """
     input_shape = x.shape
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
@@ -1843,7 +1843,7 @@ def inner(x, y, name=None):
     """
 
     Inner product of two input Tensor.
-    
+
     Ordinary inner product for 1-D Tensors, in higher dimensions a sum product over the last axes.
 
     Args:
@@ -1918,8 +1918,8 @@ def outer(x, y, name=None):
     Input is flattened if not already 1-dimensional.
 
     Args:
-        x (Tensor): An N-D Tensor or a Scalar Tensor. 
-        y (Tensor): An N-D Tensor or a Scalar Tensor. 
+        x (Tensor): An N-D Tensor or a Scalar Tensor.
+        y (Tensor): An N-D Tensor or a Scalar Tensor.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1971,7 +1971,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
        logsumexp(x) = \log\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float32 or float64, which 
+        x (Tensor): The input Tensor with data type float32 or float64, which
             have no more than 4 dimensions.
         axis (int|list|tuple, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
@@ -2081,7 +2081,7 @@ def inverse(x, name=None):
 
 def _get_reduce_axis(axis):
     """
-    Internal function for max, min, amax and amin. 
+    Internal function for max, min, amax and amin.
     It computes the attribute reduce_all value based on axis.
     """
     if axis is not None and not isinstance(axis, list):
@@ -2104,7 +2104,7 @@ def _get_reduce_axis_with_tensor(axis):
 
 def _get_reduce_all_value(axis):
     """
-    Internal function for max, min, amax and amin. 
+    Internal function for max, min, amax and amin.
     It computes the attribute reduce_all value based on axis.
     """
     if axis is not None and not isinstance(axis, list):
@@ -2127,7 +2127,7 @@ def max(x, axis=None, keepdim=False, name=None):
 
     Note:
         The difference between max and amax is: If there are multiple maximum elements,
-        amax evenly distributes gradient between these equal values, 
+        amax evenly distributes gradient between these equal values,
         while max propagates gradient to all of them.
 
 
@@ -2156,45 +2156,45 @@ def max(x, axis=None, keepdim=False, name=None):
             # data_x is a Tensor with shape [2, 4]
             # the axis is a int element
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-                                  [0.1, 0.2, 0.6, 0.7]], 
+                                  [0.1, 0.2, 0.6, 0.7]],
                                  dtype='float64', stop_gradient=False)
             result1 = paddle.max(x)
             result1.backward()
-            print(result1, x.grad) 
+            print(result1, x.grad)
             #[0.9], [[0., 0., 0., 1.], [0., 0., 0., 0.]]
 
             x.clear_grad()
             result2 = paddle.max(x, axis=0)
             result2.backward()
-            print(result2, x.grad) 
+            print(result2, x.grad)
             #[0.2, 0.3, 0.6, 0.9], [[1., 1., 0., 1.], [0., 0., 1., 0.]]
 
             x.clear_grad()
             result3 = paddle.max(x, axis=-1)
             result3.backward()
-            print(result3, x.grad) 
+            print(result3, x.grad)
             #[0.9, 0.7], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
 
             x.clear_grad()
             result4 = paddle.max(x, axis=1, keepdim=True)
             result4.backward()
-            print(result4, x.grad) 
+            print(result4, x.grad)
             #[[0.9], [0.7]], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
 
             # data_y is a Tensor with shape [2, 2, 2]
-            # the axis is list 
+            # the axis is list
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
                                   [[5.0, 6.0], [7.0, 8.0]]],
                                  dtype='float64', stop_gradient=False)
             result5 = paddle.max(y, axis=[1, 2])
             result5.backward()
-            print(result5, y.grad) 
+            print(result5, y.grad)
             #[4., 8.], [[[0., 0.], [0., 1.]], [[0., 0.], [0., 1.]]]
 
             y.clear_grad()
             result6 = paddle.max(y, axis=[0, 1])
             result6.backward()
-            print(result6, y.grad) 
+            print(result6, y.grad)
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
@@ -2231,7 +2231,7 @@ def min(x, axis=None, keepdim=False, name=None):
 
     Note:
         The difference between min and amin is: If there are multiple minimum elements,
-        amin evenly distributes gradient between these equal values, 
+        amin evenly distributes gradient between these equal values,
         while min propagates gradient to all of them.
 
     Args:
@@ -2259,45 +2259,45 @@ def min(x, axis=None, keepdim=False, name=None):
             # data_x is a Tensor with shape [2, 4]
             # the axis is a int element
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-                                  [0.1, 0.2, 0.6, 0.7]], 
+                                  [0.1, 0.2, 0.6, 0.7]],
                                  dtype='float64', stop_gradient=False)
             result1 = paddle.min(x)
             result1.backward()
-            print(result1, x.grad) 
+            print(result1, x.grad)
             #[0.1], [[0., 0., 0., 0.], [1., 0., 0., 0.]]
 
             x.clear_grad()
             result2 = paddle.min(x, axis=0)
             result2.backward()
-            print(result2, x.grad) 
+            print(result2, x.grad)
             #[0.1, 0.2, 0.5, 0.7], [[0., 0., 1., 0.], [1., 1., 0., 1.]]
 
             x.clear_grad()
             result3 = paddle.min(x, axis=-1)
             result3.backward()
-            print(result3, x.grad) 
+            print(result3, x.grad)
             #[0.2, 0.1], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
 
             x.clear_grad()
             result4 = paddle.min(x, axis=1, keepdim=True)
             result4.backward()
-            print(result4, x.grad) 
+            print(result4, x.grad)
             #[[0.2], [0.1]], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
 
             # data_y is a Tensor with shape [2, 2, 2]
-            # the axis is list 
+            # the axis is list
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
                                   [[5.0, 6.0], [7.0, 8.0]]],
                                  dtype='float64', stop_gradient=False)
             result5 = paddle.min(y, axis=[1, 2])
             result5.backward()
-            print(result5, y.grad) 
+            print(result5, y.grad)
             #[1., 5.], [[[1., 0.], [0., 0.]], [[1., 0.], [0., 0.]]]
 
             y.clear_grad()
             result6 = paddle.min(y, axis=[0, 1])
             result6.backward()
-            print(result6, y.grad) 
+            print(result6, y.grad)
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
@@ -2334,7 +2334,7 @@ def amax(x, axis=None, keepdim=False, name=None):
 
     Note:
         The difference between max and amax is: If there are multiple maximum elements,
-        amax evenly distributes gradient between these equal values, 
+        amax evenly distributes gradient between these equal values,
         while max propagates gradient to all of them.
 
     Args:
@@ -2363,22 +2363,22 @@ def amax(x, axis=None, keepdim=False, name=None):
             # the axis is a int element
 
             x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],
-                                  [0.9, 0.9, 0.6, 0.7]], 
+                                  [0.9, 0.9, 0.6, 0.7]],
                                  dtype='float64', stop_gradient=False)
-            # There are 5 maximum elements: 
-            # 1) amax evenly distributes gradient between these equal values, 
+            # There are 5 maximum elements:
+            # 1) amax evenly distributes gradient between these equal values,
             #    thus the corresponding gradients are 1/5=0.2;
-            # 2) while max propagates gradient to all of them, 
+            # 2) while max propagates gradient to all of them,
             #    thus the corresponding gradient are 1.
             result1 = paddle.amax(x)
             result1.backward()
-            print(result1, x.grad) 
+            print(result1, x.grad)
             #[0.9], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
 
             x.clear_grad()
             result1_max = paddle.max(x)
             result1_max.backward()
-            print(result1_max, x.grad) 
+            print(result1_max, x.grad)
             #[0.9], [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
 
             ###############################
@@ -2386,35 +2386,35 @@ def amax(x, axis=None, keepdim=False, name=None):
             x.clear_grad()
             result2 = paddle.amax(x, axis=0)
             result2.backward()
-            print(result2, x.grad) 
+            print(result2, x.grad)
             #[0.9, 0.9, 0.9, 0.9], [[0., 0.5, 1., 1.], [1., 0.5, 0., 0.]]
 
             x.clear_grad()
             result3 = paddle.amax(x, axis=-1)
             result3.backward()
-            print(result3, x.grad) 
+            print(result3, x.grad)
             #[0.9, 0.9], [[0., 0.3333, 0.3333, 0.3333], [0.5, 0.5, 0., 0.]]
 
             x.clear_grad()
             result4 = paddle.amax(x, axis=1, keepdim=True)
             result4.backward()
-            print(result4, x.grad) 
+            print(result4, x.grad)
             #[[0.9], [0.9]], [[0., 0.3333, 0.3333, 0.3333.], [0.5, 0.5, 0., 0.]]
 
             # data_y is a Tensor with shape [2, 2, 2]
-            # the axis is list 
+            # the axis is list
             y = paddle.to_tensor([[[0.1, 0.9], [0.9, 0.9]],
                                   [[0.9, 0.9], [0.6, 0.7]]],
                                  dtype='float64', stop_gradient=False)
             result5 = paddle.amax(y, axis=[1, 2])
             result5.backward()
-            print(result5, y.grad) 
+            print(result5, y.grad)
             #[0.9., 0.9], [[[0., 0.3333], [0.3333, 0.3333]], [[0.5, 0.5], [0., 1.]]]
 
             y.clear_grad()
             result6 = paddle.amax(y, axis=[0, 1])
             result6.backward()
-            print(result6, y.grad) 
+            print(result6, y.grad)
             #[0.9., 0.9], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
 
@@ -2448,11 +2448,11 @@ def amin(x, axis=None, keepdim=False, name=None):
 
     Note:
         The difference between min and amin is: If there are multiple minimum elements,
-        amin evenly distributes gradient between these equal values, 
+        amin evenly distributes gradient between these equal values,
         while min propagates gradient to all of them.
 
     Args:
-        x (Tensor): A tensor, the data type is float32, float64, int32, int64, 
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64,
             the dimension is no more than 4.
         axis (int|list|tuple, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
@@ -2477,22 +2477,22 @@ def amin(x, axis=None, keepdim=False, name=None):
             # the axis is a int element
 
             x = paddle.to_tensor([[0.2, 0.1, 0.1, 0.1],
-                                  [0.1, 0.1, 0.6, 0.7]], 
+                                  [0.1, 0.1, 0.6, 0.7]],
                                  dtype='float64', stop_gradient=False)
-            # There are 5 minimum elements: 
-            # 1) amin evenly distributes gradient between these equal values, 
+            # There are 5 minimum elements:
+            # 1) amin evenly distributes gradient between these equal values,
             #    thus the corresponding gradients are 1/5=0.2;
-            # 2) while min propagates gradient to all of them, 
+            # 2) while min propagates gradient to all of them,
             #    thus the corresponding gradient are 1.
             result1 = paddle.amin(x)
             result1.backward()
-            print(result1, x.grad) 
+            print(result1, x.grad)
             #[0.1], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
 
             x.clear_grad()
             result1_min = paddle.min(x)
             result1_min.backward()
-            print(result1_min, x.grad) 
+            print(result1_min, x.grad)
             #[0.1], [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
 
             ###############################
@@ -2500,35 +2500,35 @@ def amin(x, axis=None, keepdim=False, name=None):
             x.clear_grad()
             result2 = paddle.amin(x, axis=0)
             result2.backward()
-            print(result2, x.grad) 
+            print(result2, x.grad)
             #[0.1, 0.1, 0.1, 0.1], [[0., 0.5, 1., 1.], [1., 0.5, 0., 0.]]
 
             x.clear_grad()
             result3 = paddle.amin(x, axis=-1)
             result3.backward()
-            print(result3, x.grad) 
+            print(result3, x.grad)
             #[0.1, 0.1], [[0., 0.3333, 0.3333, 0.3333], [0.5, 0.5, 0., 0.]]
 
             x.clear_grad()
             result4 = paddle.amin(x, axis=1, keepdim=True)
             result4.backward()
-            print(result4, x.grad) 
+            print(result4, x.grad)
             #[[0.1], [0.1]], [[0., 0.3333, 0.3333, 0.3333.], [0.5, 0.5, 0., 0.]]
 
             # data_y is a Tensor with shape [2, 2, 2]
-            # the axis is list 
+            # the axis is list
             y = paddle.to_tensor([[[0.2, 0.1], [0.1, 0.1]],
                                   [[0.1, 0.1], [0.6, 0.7]]],
                                  dtype='float64', stop_gradient=False)
             result5 = paddle.amin(y, axis=[1, 2])
             result5.backward()
-            print(result5, y.grad) 
+            print(result5, y.grad)
             #[0.1., 0.1], [[[0., 0.3333], [0.3333, 0.3333]], [[0.5, 0.5], [0., 1.]]]
 
             y.clear_grad()
             result6 = paddle.amin(y, axis=[0, 1])
             result6.backward()
-            print(result6, y.grad) 
+            print(result6, y.grad)
             #[0.1., 0.1], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
 
@@ -2564,7 +2564,7 @@ def log1p(x, name=None):
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        
+
     Returns:
         Tensor, the natural log of the input Tensor computed element-wise.
 
@@ -2610,7 +2610,7 @@ def log2(x, name=None):
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
 
             # example 1: x is a float
@@ -2662,7 +2662,7 @@ def log10(x, name=None):
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
 
             # example 1: x is a float
@@ -2912,7 +2912,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     This OP computes the diagonals of the input tensor x.
 
     If ``x`` is 2D, returns the diagonal.
-    If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2. 
+    If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2.
     By default, the 2D planes formed by the first and second axis of the input tensor x.
 
     The argument ``offset`` determines where diagonals are taken from input tensor x:
@@ -2920,7 +2920,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     - If offset = 0, it is the main diagonal.
     - If offset > 0, it is above the main diagonal.
     - If offset < 0, it is below the main diagonal.
-    
+
     Args:
         x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32, int64, float16, float32, float64.
         offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
@@ -2970,7 +2970,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #       [[0.45661032, 0.86177313],
             #        [0.17020577, 0.27325270]])
-            
+
     """
     if in_dygraph_mode():
         return _C_ops.diagonal(x, offset, axis1, axis2)
@@ -3062,25 +3062,25 @@ def kron(x, y, name=None):
 
 def cumsum(x, axis=None, dtype=None, name=None):
     """
-    The cumulative sum of the elements along a given axis. 
-    
+    The cumulative sum of the elements along a given axis.
+
     Note:
-        The first element of the result is the same as the first element of the input. 
+        The first element of the result is the same as the first element of the input.
 
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the result of cumsum operator. 
+        Tensor, the result of cumsum operator.
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
-            
+
             data = paddle.arange(12)
             data = paddle.reshape(data, (3, 4))
 
@@ -3091,7 +3091,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
             # [[ 0  1  2  3]
             #  [ 4  6  8 10]
             #  [12 15 18 21]]
-            
+
             y = paddle.cumsum(data, axis=-1)
             # [[ 0  1  3  6]
             #  [ 4  9 15 22]
@@ -3129,31 +3129,31 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
 def logcumsumexp(x, axis=None, dtype=None, name=None):
     r"""
-    The logarithm of the cumulative summation of the exponentiation of the elements along a given axis. 
+    The logarithm of the cumulative summation of the exponentiation of the elements along a given axis.
 
     For summation index j given by `axis` and other indices i, the result is
 
     .. math::
 
         logcumsumexp(x)_{ij} = log \sum_{i=0}^{j}exp(x_{ij})
-    
+
     Note:
         The first element of the result is the same as the first element of the input.
 
     Args:
         x (Tensor): The input tensor.
         axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        dtype (str, optional): The data type of the output tensor, can be float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the result of logcumsumexp operator. 
+        Tensor, the result of logcumsumexp operator.
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
-            
+
             data = paddle.arange(12, dtype='float64')
             data = paddle.reshape(data, (3, 4))
 
@@ -3165,7 +3165,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
             # [[ 0.        1.        2.        3.      ]
             #  [ 4.01815   5.01815   6.01815   7.01815 ]
             #  [ 8.018479  9.018479 10.018479 11.018479]]
-            
+
             y = paddle.logcumsumexp(data, axis=-1)
             # [[ 0.         1.3132617  2.4076061  3.4401898]
             #  [ 4.         5.3132615  6.407606   7.44019  ]
@@ -3340,7 +3340,7 @@ def isnan(x, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             out = paddle.isnan(x)
             print(out)  # [False False False False False  True  True]
@@ -3363,21 +3363,21 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
 
     Args:
         x (Tensor): The input tensor, its data type should be float32, float64, int32, int64.
-        axis (int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
-            multiply all elements of `x` and return a Tensor with a single element, 
-            otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
+        axis (int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`,
+            multiply all elements of `x` and return a Tensor with a single element,
+            otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`,
             the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
-        keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result
             tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
-        dtype (str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
-            int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
-            This is very useful for avoiding data type overflows. The default value is None, the dtype 
+        dtype (str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64,
+            int32, int64. If specified, the input tensor is casted to dtype before operator performed.
+            This is very useful for avoiding data type overflows. The default value is None, the dtype
             of output is the same as input Tensor `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, result of product on the specified dim of input tensor.
-    
+
     Examples:
         .. code-block:: python
 
@@ -3629,7 +3629,7 @@ def all(x, axis=None, keepdim=False, name=None):
             # keepdim=True, out4 should be [[False], [True]], out.shape should be (2,1)
             out4 = paddle.all(x, axis=1, keepdim=True) # [[False], [True]]
             print(out4)
-            
+
     """
     if axis is not None and not isinstance(axis, (list, tuple)):
         axis = [axis]
@@ -3719,8 +3719,8 @@ def any(x, axis=None, keepdim=False, name=None):
 
             # keepdim=True, result should be [[True], [True]], out.shape should be (2,1)
             out4 = paddle.any(x, axis=1, keepdim=True)  # [[True], [True]]
-            print(out4) 
-            
+            print(out4)
+
     """
     if axis is not None and not isinstance(axis, (list, tuple)):
         axis = [axis]
@@ -3770,7 +3770,7 @@ def broadcast_shape(x_shape, y_shape):
     Args:
         x_shape (list[int]|tuple[int]): A shape of tensor.
         y_shape (list[int]|tuple[int]): A shape of tensor.
-        
+
 
     Returns:
         list[int], the result shape.
@@ -3782,7 +3782,7 @@ def broadcast_shape(x_shape, y_shape):
 
             shape = paddle.broadcast_shape([2, 1, 3], [1, 3, 1])
             # [2, 3, 3]
-            
+
             # shape = paddle.broadcast_shape([2, 1, 3], [3, 3, 1])
             # ValueError (terminated with error message).
 
@@ -3795,7 +3795,7 @@ def conj(x, name=None):
     This function computes the conjugate of the Tensor elementwisely.
 
     Args:
-        x (Tensor): The input Tensor which hold the complex numbers. 
+        x (Tensor): The input Tensor which hold the complex numbers.
             Optional data types are: complex64, complex128, float32, float64, int32 or int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3806,7 +3806,7 @@ def conj(x, name=None):
         .. code-block:: python
 
           import paddle
-          
+
           data=paddle.to_tensor([[1+1j, 2+2j, 3+3j], [4+4j, 5+5j, 6+6j]])
           #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
           #       [[(1+1j), (2+2j), (3+3j)],
@@ -3996,7 +3996,7 @@ def logit(x, eps=None, name=None):
     This function generates a new tensor with the logit of the elements of input x. x is clamped to [eps, 1-eps] when eps is not zero. When eps is zero and x < 0 or x > 1, the function will yields NaN.
 
     .. math::
- 
+
         logit(x) = ln(\frac{x}{1 - x})
 
     where
@@ -4028,7 +4028,7 @@ def logit(x, eps=None, name=None):
             x = paddle.to_tensor([0.2635, 0.0106, 0.2780, 0.2097, 0.8095])
             out1 = paddle.logit(x)
             print(out1)
-            # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]  
+            # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]
 
     """
 
@@ -4070,7 +4070,7 @@ def lerp(x, y, weight, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.arange(1., 5., dtype='float32')
             y = paddle.empty([4], dtype='float32')
             y.fill_(10.)
@@ -4140,7 +4140,7 @@ def erfinv(x, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.to_tensor([0, 0.5, -1.], dtype="float32")
             out = paddle.erfinv(x)
             # out: [0, 0.4769, -inf]
@@ -4173,7 +4173,7 @@ def erfinv_(x, name=None):
 def rad2deg(x, name=None):
     r"""
     Convert each of the elements of input x from angles in radians to degrees.
-    
+
     Equation:
         .. math::
 
@@ -4191,7 +4191,7 @@ def rad2deg(x, name=None):
 
             import paddle
             import numpy as np
-            
+
             x1 = paddle.to_tensor([3.142, -3.142, 6.283, -6.283, 1.570, -1.570])
             result1 = paddle.rad2deg(x1)
             print(result1)
@@ -4204,7 +4204,7 @@ def rad2deg(x, name=None):
             print(result2)
             # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #         [90.])
-                     
+
             x3 = paddle.to_tensor(1)
             result3 = paddle.rad2deg(x3)
             print(result3)
@@ -4236,7 +4236,7 @@ def rad2deg(x, name=None):
 def deg2rad(x, name=None):
     r"""
     Convert each of the elements of input x from degrees to angles in radians.
-    
+
     Equation:
         .. math::
 
@@ -4254,7 +4254,7 @@ def deg2rad(x, name=None):
 
             import paddle
             import numpy as np
-            
+
             x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
             result1 = paddle.deg2rad(x1)
             print(result1)
@@ -4294,15 +4294,15 @@ def gcd(x, y, name=None):
     """
     Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
     Both x and y must have integer types.
-    
+
     Note:
         gcd(0,0)=0, gcd(0, y)=|y|
 
         If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is int32，int64. 
-        y (Tensor): An N-D Tensor, the data type is int32，int64. 
+        x (Tensor): An N-D Tensor, the data type is int32，int64.
+        y (Tensor): An N-D Tensor, the data type is int32，int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4312,7 +4312,7 @@ def gcd(x, y, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             x1 = paddle.to_tensor(12)
             x2 = paddle.to_tensor(20)
             paddle.gcd(x1, x2)
@@ -4332,7 +4332,7 @@ def gcd(x, y, name=None):
             paddle.gcd(x4, x4)
             # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [0])
-            
+
             x5 = paddle.to_tensor(-20)
             paddle.gcd(x1, x5)
             # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
@@ -4372,15 +4372,15 @@ def lcm(x, y, name=None):
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
     Both x and y must have integer types.
-    
+
     Note:
         lcm(0,0)=0, lcm(0, y)=0
 
         If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is int32，int64. 
-        y (Tensor): An N-D Tensor, the data type is int32，int64. 
+        x (Tensor): An N-D Tensor, the data type is int32，int64.
+        y (Tensor): An N-D Tensor, the data type is int32，int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4390,7 +4390,7 @@ def lcm(x, y, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             x1 = paddle.to_tensor(12)
             x2 = paddle.to_tensor(20)
             paddle.lcm(x1, x2)
@@ -4410,7 +4410,7 @@ def lcm(x, y, name=None):
             paddle.lcm(x4, x4)
             # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [0])
-            
+
             x5 = paddle.to_tensor(-20)
             paddle.lcm(x1, x5)
             # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
@@ -4428,28 +4428,28 @@ def lcm(x, y, name=None):
 def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     r"""
     Computes the n-th forward difference along the given axis.
-    The first-order differences is computed by using the following formula: 
+    The first-order differences is computed by using the following formula:
 
     .. math::
 
         out[i] = x[i+1] - x[i]
-    
-    Higher-order differences are computed by using paddle.diff() recursively. 
+
+    Higher-order differences are computed by using paddle.diff() recursively.
     Only n=1 is currently supported.
 
     Args:
         x (Tensor): The input tensor to compute the forward difference on
-        n (int, optional): The number of times to recursively compute the difference. 
+        n (int, optional): The number of times to recursively compute the difference.
                           Only support n=1. Default:1
         axis (int, optional): The axis to compute the difference along. Default:-1
         prepend (Tensor, optional): The tensor to prepend to input along axis before computing the difference.
-                                   It's dimensions must be equivalent to that of x, 
+                                   It's dimensions must be equivalent to that of x,
                                    and its shapes must match x's shape except on axis.
-        append (Tensor, optional): The tensor to append to input along axis before computing the difference, 
-                                   It's dimensions must be equivalent to that of x, 
+        append (Tensor, optional): The tensor to append to input along axis before computing the difference,
+                                   It's dimensions must be equivalent to that of x,
                                    and its shapes must match x's shape except on axis.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         Tensor: The output tensor with same dtype with x.
 
@@ -4467,7 +4467,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             y = paddle.to_tensor([7, 9])
             out = paddle.diff(x, append=y)
             print(out)
-            # out: 
+            # out:
             # [3, 1, -3, 5, 2]
 
             z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
@@ -4625,7 +4625,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
 
 def angle(x, name=None):
     r"""
-    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while 
+    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
     for negative real numbers, the angle is :math:`\pi`.
 
     Equation:

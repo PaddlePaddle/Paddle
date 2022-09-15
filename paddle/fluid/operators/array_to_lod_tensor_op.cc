@@ -223,10 +223,10 @@ class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
              "'paddle/framework/lod_rank_table.h' for more details.");
     AddOutput("Out", "(LoDTensor) The LoDTensor formed by input tensor array.");
     AddComment(
-        R"DOC(This Op build a big LoDTensor from a std::vector<LoDTensor> 
+        R"DOC(This Op build a big LoDTensor from a std::vector<LoDTensor>
           and a LoDRankTable. It is supposed to be used in getting dynamic RNN's
-          outputs back to a normal LoDTensor. The std::vector<LoDTensor> 
-          would be the output of RNN Op and the LoDRankTable would be build 
+          outputs back to a normal LoDTensor. The std::vector<LoDTensor>
+          would be the output of RNN Op and the LoDRankTable would be build
           with RNN's input.)DOC");
   }
 };

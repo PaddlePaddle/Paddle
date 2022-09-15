@@ -102,7 +102,7 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   """
   Computes sampled output training logits and labels suitable for implementing
-  sampled softmax.        
+  sampled softmax.
   """
 
 )DOC");

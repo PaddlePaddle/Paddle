@@ -72,19 +72,19 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
          While :math:`x` is Input(X) and :math:`y` is Input(Target).
 
          While :attr:`reduction` is :attr:`none`, output loss is in
-         the same shape as Input(X), loss in each point is calculated 
+         the same shape as Input(X), loss in each point is calculated
          seperately and no reduction is applied.
-         
+
          While :attr:`reduction` is :attr:`mean`, output loss is in
          shape of [1] and loss value is the mean value of all losses.
-         
+
          While :attr:`reduction` is :attr:`sum`, output loss is in
          shape of [1] and loss value is the sum value of all losses.
-         
-         While :attr:`reduction` is :attr:`batchmean`, output loss is 
+
+         While :attr:`reduction` is :attr:`batchmean`, output loss is
          in shape of [1] and loss value is the sum value of all losses
          divided by batch size.
-         
+
          )DOC");
   }
 };

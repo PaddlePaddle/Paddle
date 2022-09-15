@@ -32,7 +32,8 @@ list(
   c_allreduce_op_plugin.cu
   preln_residual_bias_plugin.cu
   fused_token_prune_op_plugin.cu
-  layernorm_shift_partition_op.cu)
+  layernorm_shift_partition_op.cu
+  generic_plugin.cu)
 
 list(
   APPEND
@@ -41,7 +42,9 @@ list(
   tensorrt_engine
   prelu
   tensor
-  bert_encoder_functor)
+  bert_encoder_functor
+  tensorrt_dynamic_shape_infermeta_factory
+  tensorrt_plugin_arg_mapping_context)
 
 if(WITH_FASTERTRANSFORMER_MHA)
   list(APPEND TRT_DEPS fastertransformer_trt_fused_mha)

@@ -1140,7 +1140,7 @@ class SplitTrainerOpsPass(PassBase):
         split cpu-trainer program from origin-program
         1. find heter op (located on different device)
         2. find input&output of every heter-block
-        3. create cpu-trainer program, add send&recv op 
+        3. create cpu-trainer program, add send&recv op
         """
         attrs = pass_ctx._attrs
         default_device_ = 'cpu'
