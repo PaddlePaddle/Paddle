@@ -24,7 +24,7 @@ limitations under the License. */
 #endif
 
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
-                            false,
+                            true,
                             "Use inplace in new executor");
 
 DECLARE_bool(use_mkldnn);
