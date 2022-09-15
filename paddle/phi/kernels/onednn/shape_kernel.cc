@@ -35,7 +35,7 @@ void ShapeKernel(const Context& dev_ctx,
     x_dims = make_ddim(rdims);
   }
 
-  out->Resize(x_dims);
+  out->Resize({x_dims.size()});
   auto out_data = dev_ctx.template Alloc<int32_t>(out);
   for (int i = 0; i < x_dims.size(); ++i) {
     out_data[i] = x_dims[i];
