@@ -511,9 +511,9 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Custom Operator.
 
-According to the Tensor operation function implemented by the user 
-independently of the framework, it is encapsulated into a framework 
-operator to adapt to various execution scenarios such as dynamic graph, 
+According to the Tensor operation function implemented by the user
+independently of the framework, it is encapsulated into a framework
+operator to adapt to various execution scenarios such as dynamic graph,
 mode static graph mode, and inference mode.
 
 )DOC");

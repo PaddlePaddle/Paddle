@@ -122,11 +122,11 @@ class Conv3D(_Conv3D):
     **Sparse Convlution3d Layer**
     The Sparse convolution3d layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
-    Output(Output) are multidimensional SparseCooTensors with a shape of 
+    Output(Output) are multidimensional SparseCooTensors with a shape of
     :math:`[N, D, H, W, C]` . Where N is batch size, C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. If bias attribution is provided, 
-    bias is added to the output of the convolution. 
+    and W is the width of the feature. If bias attribution is provided,
+    bias is added to the output of the convolution.
     For each input :math:`X`, the equation is:
 
     ..  math::
@@ -150,7 +150,7 @@ class Conv3D(_Conv3D):
             stride_D = stride_H = stride_W = stride. The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
-            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
@@ -209,14 +209,14 @@ class Conv3D(_Conv3D):
 
           import paddle
           from paddle.fluid.framework import _test_eager_guard
-          
+
           with _test_eager_guard():
             indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
             values = [[1], [2], [3], [4]]
             indices = paddle.to_tensor(indices, dtype='int32')
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
-            sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
+            sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
             conv = paddle.incubate.sparse.nn.Conv3D(1, 1, (1, 3, 3))
             y = conv(sparse_x)
             print(y.shape)
@@ -255,10 +255,10 @@ class SubmConv3D(_Conv3D):
     **Sparse Submanifold Convlution3d Layer**
     The Sparse submanifold convolution3d layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
-    Output(Output) are multidimensional SparseCooTensors with a shape of 
+    Output(Output) are multidimensional SparseCooTensors with a shape of
     :math:`[N, D, H, W, C]` . Where N is batch size, C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. If bias attribution is provided, 
+    and W is the width of the feature. If bias attribution is provided,
     bias is added to the output of the convolution.
     For each input :math:`X`, the equation is:
 
@@ -283,7 +283,7 @@ class SubmConv3D(_Conv3D):
             stride_D = stride_H = stride_W = stride. The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
-            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
@@ -297,7 +297,7 @@ class SubmConv3D(_Conv3D):
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. The default value is 1.
         padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Currently only support ``'zeros'``.
-        key(str, optional): the key is used to save or use the same rulebook, 
+        key(str, optional): the key is used to save or use the same rulebook,
             the definition and role of rulebook refers to
             https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The
             default value is None.
@@ -346,14 +346,14 @@ class SubmConv3D(_Conv3D):
 
           import paddle
           from paddle.fluid.framework import _test_eager_guard
-          
+
           with _test_eager_guard():
             indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
             values = [[1], [2], [3], [4]]
             dense_shape = [1, 1, 3, 4, 1]
             indices = paddle.to_tensor(indices, dtype='int32')
             values = paddle.to_tensor(values, dtype='float32')
-            sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
+            sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
             subm_conv = paddle.incubate.sparse.nn.SubmConv3D(1, 1, (1, 3, 3))
             y = subm_conv(sparse_x)
             print(y.shape)

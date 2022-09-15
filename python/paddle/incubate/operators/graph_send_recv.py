@@ -37,9 +37,9 @@ def graph_send_recv(x,
 
     Graph Learning Send_Recv combine operator.
 
-    This operator is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory 
+    This operator is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory
     consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index`
-    to gather the corresponding data, and then use `dst_index` to update the corresponding position of output tensor 
+    to gather the corresponding data, and then use `dst_index` to update the corresponding position of output tensor
     in different pooling types, like sum, mean, max, or min. Besides, we can set `out_size` to get necessary output shape.
 
     .. code-block:: text
@@ -67,20 +67,20 @@ def graph_send_recv(x,
     Args:
         x (Tensor): The input tensor, and the available data type is float32, float64, int32, int64.
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
-        dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
-                            The available data type is int32, int64. 
+        dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`.
+                            The available data type is int32, int64.
         pool_type (str): The pooling types of graph_send_recv, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
-        out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or 
+        out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or
                                     out_size is smaller or equal to 0, then this input will not be used.
-                                    Otherwise, `out_size` should be equal with or larger than 
+                                    Otherwise, `out_size` should be equal with or larger than
                                     max(dst_index) + 1.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`. 
-                      If `out_size` is set correctly, then it should have the same shape as `x` except 
+        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`.
+                      If `out_size` is set correctly, then it should have the same shape as `x` except
                       the 0th dimension.
 
     Examples:

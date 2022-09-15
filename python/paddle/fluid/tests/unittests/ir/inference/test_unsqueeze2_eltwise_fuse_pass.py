@@ -27,13 +27,13 @@ import hypothesis.strategies as st
 
 class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
     """
-        y_var  
-          |          
-       unsqueeze2 
+        y_var
+          |
+       unsqueeze2
           \
     unsqueeze2_out_var    x_var
              \           /
-            elementwise_mul 
+            elementwise_mul
     """
 
     def sample_predictor_configs(self, program_config):

@@ -39,7 +39,7 @@ def vjp(func, xs, v=None):
 
     Returns:
         output(tuple):
-        
+
             - func_out(Tensor|tuple[Tensor]): The output of ``func(xs)`` .
             - vjp(Tensor|tuple[Tensor]): The vjp result.
 
@@ -94,7 +94,7 @@ def jvp(func, xs, v=None):
             Sequence of Tensors.
         v(Tensor|Sequence[Tensor]|None, Optional): The tangent vector invovled
             in the JVP computation. The ``v`` matches the size and shape of
-            ``xs`` . Default value is None and in this case is equivalent to 
+            ``xs`` . Default value is None and in this case is equivalent to
             all ones the same size of ``xs`` .
 
     Returns:
@@ -154,7 +154,7 @@ def _double_backward_trick(ys, xs, v):
 
 
 def _zeros_like_with_grad(xs):
-    """Create a zero or zeros sequence Tensor like ``xs`` with a flag 
+    """Create a zero or zeros sequence Tensor like ``xs`` with a flag
     ``stop_graident=False`` .
     """
     if not isinstance(xs, typing.Sequence):
@@ -173,17 +173,17 @@ class Jacobian(object):
     r"""
     Computes the Jacobian matrix of a given function.
 
-    If the function has multiple inputs and multiple outputs, during internal 
-    implementation, all input tensors are concatenated after being flatten, 
-    the batch dimension is retained, and the output is subject to the same 
+    If the function has multiple inputs and multiple outputs, during internal
+    implementation, all input tensors are concatenated after being flatten,
+    the batch dimension is retained, and the output is subject to the same
     processing rules.
 
-    Once the Jacobian ``J`` is constructed, you can use a multidimensional index 
-    to retrieve the submatrix of ``J``, as same as slicing a Tensor. The 
-    submatrix is lazily evaluated along row axis, and will be cached once 
+    Once the Jacobian ``J`` is constructed, you can use a multidimensional index
+    to retrieve the submatrix of ``J``, as same as slicing a Tensor. The
+    submatrix is lazily evaluated along row axis, and will be cached once
     evaluated.
 
-    For examples, supposing ``is_batched=True``, you can retrieve the submatrix 
+    For examples, supposing ``is_batched=True``, you can retrieve the submatrix
     by following methods:
 
         * J[:], retrieving the full matrix.
@@ -203,11 +203,11 @@ class Jacobian(object):
 
     Args:
 
-        func (Callable): A python function that takes a Tensor or a sequence of 
+        func (Callable): A python function that takes a Tensor or a sequence of
             Tensors as inputs(the first dimension is batch size) and
             returns a Tensor  a sequence of Tensors.
         xs (Tensor|Sequence[Tensor]): The input to the function ``func`` .
-        is_batched (bool): If true, the first axis is batch axis. Defaults to 
+        is_batched (bool): If true, the first axis is batch axis. Defaults to
             False.
 
     Returns:
@@ -263,11 +263,11 @@ class Hessian(object):
     """
     Computes the Hessian matrix  with a given ``func`` with respect to ``xs`` .
 
-    If the function has multiple inputs, during internal implementation, 
-    all input tensors are concatenated after being flatten, the batch dimension 
+    If the function has multiple inputs, during internal implementation,
+    all input tensors are concatenated after being flatten, the batch dimension
     is retained.
 
-    The Hessian submatrix is lazily evaluated, and can be retrieved with a 
+    The Hessian submatrix is lazily evaluated, and can be retrieved with a
     multidimensional indexes. See details ``Jacobian`` .
 
     Warning:
@@ -275,11 +275,11 @@ class Hessian(object):
 
     Args:
         func (Callable): A python function that takes a Tensor or a Tensor
-            sequence as inputs and returns a Tensor with shape 
+            sequence as inputs and returns a Tensor with shape
             ``[batch_size, 1]`` with batch or ``[1]`` without batch.
-        xs (Tensor|Sequence(Tensor)): The input Tensor or Tensor sequence of 
+        xs (Tensor|Sequence(Tensor)): The input Tensor or Tensor sequence of
             the function ``func``.
-        is_batched (bool): If true, the first axis is batch axis. Defaults to 
+        is_batched (bool): If true, the first axis is batch axis. Defaults to
             False.
 
     Returns:
@@ -334,20 +334,20 @@ class Hessian(object):
 class _Jacobian(object):
     """The base class for computing Jacobian matrix.
 
-    ``_Jacobian`` implementes the core logic of multidimensional index and lazy 
-    evaluation for Jacobian matrix, subclass only need to overwrite following 
+    ``_Jacobian`` implementes the core logic of multidimensional index and lazy
+    evaluation for Jacobian matrix, subclass only need to overwrite following
     methods:
 
-        * ``_lazy_axis()``,  return the axis along which will be lazy 
+        * ``_lazy_axis()``,  return the axis along which will be lazy
             evaluating.
         * ``_flatten(xs)``, flattens the inputs ``xs``.
         * ``_evaluate(index)``, evaluates one slice along ``_lazy_axis`` .
 
     Notes:
 
-        Because currently PaddlePaddle only support reverse differentiation by 
-        ``paddle.grad``, so lazy evaluation is only supported along the row of 
-        Jacobian matrix, which means that slicing along row will get better 
+        Because currently PaddlePaddle only support reverse differentiation by
+        ``paddle.grad``, so lazy evaluation is only supported along the row of
+        Jacobian matrix, which means that slicing along row will get better
         performance.
 
     """
@@ -420,7 +420,7 @@ class _Jacobian(object):
 
 class _JacobianNoBatch(_Jacobian):
     """Compute Jacobian matrix without batch dimension.
-    Suppose the mapping is :math:`f: R^M \to R^N`, the output shape is 
+    Suppose the mapping is :math:`f: R^M \to R^N`, the output shape is
     ``(N, M)`` .
     """
 
@@ -447,7 +447,7 @@ class _JacobianNoBatch(_Jacobian):
 
 class _JacobianBatchFirst(_Jacobian):
     """Compute Jacobian matrix with batch at first axis.
-    Suppose the mapping is :math:`f: R^{B,M} \to R^{B,N}`, the output shape is 
+    Suppose the mapping is :math:`f: R^{B,M} \to R^{B,N}`, the output shape is
     ``(B, N, M)`` .
     """
 
@@ -475,13 +475,13 @@ def _multi_index(indexes, shape):
     """A tool for parsing N-dimensional index into a standard format.
 
     Currently supporting following input format:
-        * ([positive|negative|slice], ...), the right-most elements can be 
+        * ([positive|negative|slice], ...), the right-most elements can be
             omited.
 
     The standard format after converted is slice tuple which contains N elements:
         * ([positive|slice], ..., [positive|slice])
 
-    Notes: 
+    Notes:
         Ellipsis indexes such as ``(..., i), (i, ...)`` is not supported.
 
     Args:
@@ -539,8 +539,8 @@ def _grad(ys, xs, v=None):
         none in outputs will be replaced by zero tensor.
     * The ``create_graph`` flag is removed and set defaults to true internally,
         only makes sense in dynamic graph.
-    * When xs is a single Tensor, ``paddle.grad`` returns a list which only 
-        contains one Tensor. It may confuse users, thus in this case we improve 
+    * When xs is a single Tensor, ``paddle.grad`` returns a list which only
+        contains one Tensor. It may confuse users, thus in this case we improve
         to return a single Tensor in _grad interface.
 
     Args:
@@ -559,9 +559,9 @@ def _grad(ys, xs, v=None):
             grad_outputs is a Tensor. Default None.
 
     Returns:
-        Tensor|tuple[Tensor]: Tensor or a tuple of Tensors, whose length is the 
-            same as the Tensor number inside inputs, and the i-th returned 
-            Tensor is the sum of gradients of outputs with respect to the i-th 
+        Tensor|tuple[Tensor]: Tensor or a tuple of Tensors, whose length is the
+            same as the Tensor number inside inputs, and the i-th returned
+            Tensor is the sum of gradients of outputs with respect to the i-th
             inputs.
     """
     if paddle.fluid._non_static_mode():
@@ -579,21 +579,21 @@ def _grad(ys, xs, v=None):
 
 def _separate(xs):
     """
-    ``_separate`` separates ``xs`` from the computation graph through ``clone`` 
+    ``_separate`` separates ``xs`` from the computation graph through ``clone``
     or ``deteach`` .
 
-    Interally, ``paddle.grad(xs, ys)`` is stateful API implemented based on 
+    Interally, ``paddle.grad(xs, ys)`` is stateful API implemented based on
     computional graph, which will reduce gradients along all path from ys to xs.
 
-    However, funcional autograd API such as ``vjp``, ``jvp`` is stateless, and 
+    However, funcional autograd API such as ``vjp``, ``jvp`` is stateless, and
     only compute gradients with a given ``func`` .
 
     For example, given a ``func`` :math:`y0=f(x0)`, supposing forward path is:
     ``x0 -> y0``, ``x0 -> x1 -> y0`` .
-    ``paddle.grad(y0, x0)`` will reduce gradients along ``y0->x0`` and 
+    ``paddle.grad(y0, x0)`` will reduce gradients along ``y0->x0`` and
     ``y0->x1->x0``, and ``vjp`` only need reduce along ``y0->x0``.
 
-    So, it's needed to clone or detach xs for breaking the dependencies with 
+    So, it's needed to clone or detach xs for breaking the dependencies with
     other variables.
 
     Examples:

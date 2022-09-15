@@ -1093,7 +1093,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
     Estimate the covariance matrix of the input variables, given data and weights.
 
     A covariance matrix is a square matrix, indicate the covariance of each pair variables in the input matrix.
-    For example, for an N-dimensional samples X=[x1,x2,…xN]T, then the covariance matrix 
+    For example, for an N-dimensional samples X=[x1,x2,…xN]T, then the covariance matrix
     element Cij is the covariance of xi and xj. The element Cii is the variance of xi itself.
 
     Parameters:
@@ -1219,11 +1219,11 @@ def t(input, name=None):
         .. code-block:: python
            :name: code-example
              import paddle
-             
+
              # Example 1 (0-D tensor)
              x = paddle.to_tensor([0.79])
              paddle.t(x) # [0.79]
-             
+
              # Example 2 (1-D tensor)
              x = paddle.to_tensor([0.79, 0.84, 0.32])
              paddle.t(x) # [0.79000002, 0.83999997, 0.31999999]
@@ -1621,7 +1621,7 @@ def histogram(input, bins=100, min=0, max=0, name=None):
 
 def bincount(x, weights=None, minlength=0, name=None):
     """
-    Computes frequency of each value in the input tensor. 
+    Computes frequency of each value in the input tensor.
 
     Args:
         x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
@@ -2003,26 +2003,26 @@ def qr(x, mode="reduced", name=None):
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
             where ... is zero or more batch dimensions. M and N can be arbitrary
-            positive number. The data type of x should be float32 or float64. 
-        mode (str, optional): A flag to control the behavior of qr, the default is "reduced". 
+            positive number. The data type of x should be float32 or float64.
+        mode (str, optional): A flag to control the behavior of qr, the default is "reduced".
             Suppose x's shape is `[..., M, N]` and denoting `K = min(M, N)`:
-            If mode = "reduced", qr op will return reduced Q and R matrices, 
+            If mode = "reduced", qr op will return reduced Q and R matrices,
             which means Q's shape is `[..., M, K]` and R's shape is `[..., K, N]`.
-            If mode = "complete", qr op will return complete Q and R matrices, 
+            If mode = "complete", qr op will return complete Q and R matrices,
             which means Q's shape is `[..., M, M]` and R's shape is `[..., M, N]`.
             If mode = "r", qr op will only return reduced R matrix, which means
             R's shape is `[..., K, N]`.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-            
+
     Returns:
-        If mode = "reduced" or mode = "complete", qr will return a two tensor-tuple, which represents Q and R. 
+        If mode = "reduced" or mode = "complete", qr will return a two tensor-tuple, which represents Q and R.
         If mode = "r", qr will return a tensor which represents R.
-        
-    Examples:            
+
+    Examples:
         .. code-block:: python
 
-            import paddle 
+            import paddle
 
             x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
             q, r = paddle.linalg.qr(x)
@@ -2035,8 +2035,8 @@ def qr(x, mode="reduced", name=None):
 
             # R = [[-5.91607978, -7.43735744],
             #      [ 0.        ,  0.82807867]])
-            
-            # one can verify : X = Q * R ;     
+
+            # one can verify : X = Q * R ;
     """
     if in_dygraph_mode():
         q, r = _C_ops.qr(x, mode)
@@ -2072,9 +2072,9 @@ def qr(x, mode="reduced", name=None):
 
 def lu(x, pivot=True, get_infos=False, name=None):
     r"""
-    Computes the LU factorization of an N-D(N>=2) matrix x. 
+    Computes the LU factorization of an N-D(N>=2) matrix x.
 
-    Returns the LU factorization(inplace x) and Pivots. low triangular matrix L and 
+    Returns the LU factorization(inplace x) and Pivots. low triangular matrix L and
     upper triangular matrix U are combined to a single LU matrix.
 
     Pivoting is done if pivot is set to True.
@@ -2094,23 +2094,23 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-            
+
     Returns:
         factorization (Tensor): LU matrix, the factorization of input X.
 
-        pivots (IntTensor): the pivots of size(∗(N-2), min(m,n)). `pivots` stores all the 
-                    intermediate transpositions of rows. The final permutation `perm` could be 
+        pivots (IntTensor): the pivots of size(∗(N-2), min(m,n)). `pivots` stores all the
+                    intermediate transpositions of rows. The final permutation `perm` could be
                     reconstructed by this, details refer to upper example.
 
-        infos (IntTensor, optional): if `get_infos` is `True`, this is a tensor of size (∗(N-2)) 
-                    where non-zero values indicate whether factorization for the matrix or each minibatch 
+        infos (IntTensor, optional): if `get_infos` is `True`, this is a tensor of size (∗(N-2))
+                    where non-zero values indicate whether factorization for the matrix or each minibatch
                     has succeeded or failed.
 
-        
-    Examples:            
+
+    Examples:
         .. code-block:: python
 
-            import paddle 
+            import paddle
 
             x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
             lu,p,info = paddle.linalg.lu(x, get_infos=True)
@@ -2126,26 +2126,26 @@ def lu(x, pivot=True, get_infos=False, name=None):
             # >>> info
             # Tensor(shape=[], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
             #    0)
-            
+
             P,L,U = paddle.linalg.lu_unpack(lu,p)
 
             # >>> P
             # (Tensor(shape=[3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             # [[0., 1., 0.],
             # [0., 0., 1.],
-            # [1., 0., 0.]]), 
+            # [1., 0., 0.]]),
             # >>> L
             # Tensor(shape=[3, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             # [[1.        , 0.        ],
             # [0.20000000, 1.        ],
-            # [0.60000000, 0.50000000]]), 
+            # [0.60000000, 0.50000000]]),
             # >>> U
             # Tensor(shape=[2, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             # [[5.        , 6.        ],
             # [0.        , 0.80000000]]))
-            
 
-            # one can verify : X = P @ L @ U ;     
+
+            # one can verify : X = P @ L @ U ;
     """
 
     if in_dygraph_mode():
@@ -2176,7 +2176,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
 def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
     r"""
-    Unpack L U and P to single matrix tensor . 
+    Unpack L U and P to single matrix tensor .
     unpack L and U matrix from LU, unpack permutation matrix P from Pivtos .
 
     P mat can be get by pivots:
@@ -2196,7 +2196,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
 
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-            
+
     Returns:
         P (Tensor): Permutation matrix P of lu factorization.
 
@@ -2204,11 +2204,11 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
 
         U (Tensor): The upper triangular matrix tensor of lu factorization.
 
-        
-    Examples:            
+
+    Examples:
         .. code-block:: python
 
-            import paddle 
+            import paddle
 
             x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
             lu,p,info = paddle.linalg.lu(x, get_infos=True)
@@ -2224,25 +2224,25 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
             # >>> info
             # Tensor(shape=[], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
             #    0)
-            
+
             P,L,U = paddle.linalg.lu_unpack(lu,p)
 
             # >>> P
             # (Tensor(shape=[3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             # [[0., 1., 0.],
             # [0., 0., 1.],
-            # [1., 0., 0.]]), 
+            # [1., 0., 0.]]),
             # >>> L
             # Tensor(shape=[3, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             # [[1.        , 0.        ],
             # [0.20000000, 1.        ],
-            # [0.60000000, 0.50000000]]), 
+            # [0.60000000, 0.50000000]]),
             # >>> U
             # Tensor(shape=[2, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             # [[5.        , 6.        ],
             # [0.        , 0.80000000]]))
 
-            # one can verify : X = P @ L @ U ;   
+            # one can verify : X = P @ L @ U ;
     """
 
     if in_dygraph_mode():
@@ -2291,7 +2291,7 @@ def eig(x, name=None):
     Args:
         x (Tensor): A tensor with shape math:`[*, N, N]`, The data type of the x should be one of ``float32``,
             ``float64``, ``compplex64`` or ``complex128``.
-        name (str, optional): The default value is `None`. Normally there is no need for user to set 
+        name (str, optional): The default value is `None`. Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2360,7 +2360,7 @@ def eigvals(x, name=None):
             Its data type should be float32, float64, complex64, or complex128.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-            
+
     Returns:
         Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`.
             The eigenvalues are complex-valued even when `x` is real.
@@ -2995,12 +2995,12 @@ def triangular_solve(x,
     Args:
         x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
-        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is 
+        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
             zero or more batch dimensions. Its data type should be float32 or float64.
-        upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular 
+        upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular
             system of equations. Default: True.
         transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
-        unitriangular (bool, optional): whether `x` is unit triangular. If True, the diagonal elements of `x` are assumed 
+        unitriangular (bool, optional): whether `x` is unit triangular. If True, the diagonal elements of `x` are assumed
             to be 1 and not referenced from `x` . Default: False.
         name(str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -3019,7 +3019,7 @@ def triangular_solve(x,
         import paddle
         import numpy as np
 
-        x = paddle.to_tensor([[1, 1, 1], 
+        x = paddle.to_tensor([[1, 1, 1],
                               [0, 2, 1],
                               [0, 0,-1]], dtype="float64")
         y = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
@@ -3066,7 +3066,7 @@ def cholesky_solve(x, y, upper=False, name=None):
     Args:
         x (Tensor): The input matrix which is upper or lower triangular Cholesky factor of square matrix A. Its shape should be `[*, M, M]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
-        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is 
+        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
             zero or more batch dimensions. Its data type should be float32 or float64.
         upper (bool, optional): whether to consider the Cholesky factor as a lower or upper triangular matrix. Default: False.
         name(str, optional): Name for the operation (optional, default is None).
@@ -3080,7 +3080,7 @@ def cholesky_solve(x, y, upper=False, name=None):
 
         import paddle
 
-        u = paddle.to_tensor([[1, 1, 1], 
+        u = paddle.to_tensor([[1, 1, 1],
                                 [0, 2, 1],
                                 [0, 0,-1]], dtype="float64")
         b = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
@@ -3112,7 +3112,7 @@ def cholesky_solve(x, y, upper=False, name=None):
 
 def eigvalsh(x, UPLO='L', name=None):
     """
-    Computes the eigenvalues of a 
+    Computes the eigenvalues of a
     complex Hermitian (conjugate symmetric) or a real symmetric matrix.
 
     Args:
@@ -3192,26 +3192,26 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     Args:
         x (Tensor): A tensor with shape ``(*, M, N)`` , the data type of the input Tensor ``x``
             should be one of float32, float64.
-        y (Tensor): A tensor with shape ``(*, M, K)`` , the data type of the input Tensor ``y`` 
+        y (Tensor): A tensor with shape ``(*, M, K)`` , the data type of the input Tensor ``y``
             should be one of float32, float64.
-        rcond(float, optional): The default value is None. A float pointing number used to determine 
-            the effective rank of ``x``. If ``rcond`` is None, it will be set to max(M, N) times the 
+        rcond(float, optional): The default value is None. A float pointing number used to determine
+            the effective rank of ``x``. If ``rcond`` is None, it will be set to max(M, N) times the
             machine precision of x_dtype.
-        driver(str, optional): The default value is None. The name of LAPACK method to be used. For 
-            CPU inputs the valid values are ‘gels’, ‘gelsy’, ‘gelsd, ‘gelss’. For CUDA input, the only 
-            valid driver is ‘gels’. If ``driver`` is None, ‘gelsy’ is used for CPU inputs and ‘gels’ 
+        driver(str, optional): The default value is None. The name of LAPACK method to be used. For
+            CPU inputs the valid values are ‘gels’, ‘gelsy’, ‘gelsd, ‘gelss’. For CUDA input, the only
+            valid driver is ‘gels’. If ``driver`` is None, ‘gelsy’ is used for CPU inputs and ‘gels’
             for CUDA inputs.
-        name(str, optional): The default value is None. Normally there is no need for user to set 
+        name(str, optional): The default value is None. Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tuple: A tuple of 4 Tensors which is (``solution``, ``residuals``, ``rank``, ``singular_values``). 
-        ``solution`` is a tensor with shape ``(*, N, K)``, meaning the least squares solution. ``residuals`` 
-        is a tensor with shape ``(*, K)``, meaning the squared residuals of the solutions, which is computed 
-        when M > N and every matrix in ``x`` is full-rank, otherwise return an empty tensor. ``rank`` is a tensor 
-        with shape ``(*)``, meaning the ranks of the matrices in ``x``, which is computed when ``driver`` in 
-        (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor. ``singular_values`` is a tensor with 
-        shape ``(*, min(M, N))``, meaning singular values of the matrices in ``x``, which is computed when 
+        Tuple: A tuple of 4 Tensors which is (``solution``, ``residuals``, ``rank``, ``singular_values``).
+        ``solution`` is a tensor with shape ``(*, N, K)``, meaning the least squares solution. ``residuals``
+        is a tensor with shape ``(*, K)``, meaning the squared residuals of the solutions, which is computed
+        when M > N and every matrix in ``x`` is full-rank, otherwise return an empty tensor. ``rank`` is a tensor
+        with shape ``(*)``, meaning the ranks of the matrices in ``x``, which is computed when ``driver`` in
+        (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor. ``singular_values`` is a tensor with
+        shape ``(*, min(M, N))``, meaning singular values of the matrices in ``x``, which is computed when
         ``driver`` in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
 
     Examples:
@@ -3328,7 +3328,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
 
 def corrcoef(x, rowvar=True, name=None):
     """
-    
+
     A correlation coefficient matrix indicate the correlation of each pair variables in the input matrix.
     For example, for an N-dimensional samples X=[x1,x2,…xN]T, then the correlation coefficient matrix
     element Rij is the correlation of xi and xj. The element Rii is the covariance of xi itself.

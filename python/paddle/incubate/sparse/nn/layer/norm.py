@@ -88,7 +88,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 
     Returns:
         None.
-    
+
 
     Examples:
         .. code-block:: python
@@ -100,7 +100,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
               paddle.seed(123)
               channels = 3
               x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
-              dense_x = paddle.to_tensor(x_data) 
+              dense_x = paddle.to_tensor(x_data)
               sparse_x = dense_x.to_sparse_coo(4)
               batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
               batch_norm_out = batch_norm(sparse_x)
@@ -164,8 +164,8 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 class SyncBatchNorm(paddle.nn.SyncBatchNorm):
     r"""
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
-    It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
-    be used as a normalizer function for other operations, such as conv2d and fully connected 
+    It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can
+    be used as a normalizer function for other operations, such as conv2d and fully connected
     operations.
     The data is normalized by the mean and variance of the channel based on whole mini-batch
     , which including data in all gpus.
@@ -173,7 +173,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    When model in training mode, the :math:`\\mu_{\\beta}` 
+    When model in training mode, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of whole mini-batch data in all gpus.
     Calculated as follows:
 
@@ -188,7 +188,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
     - :math:`m` : the size of the whole mini-batch data
 
     When model in evaluation mode, the :math:`\\mu_{\\beta}`
-    and :math:`\sigma_{\beta}^{2}` are global statistics (moving_mean and moving_variance, 
+    and :math:`\sigma_{\beta}^{2}` are global statistics (moving_mean and moving_variance,
     which usually got from the pre-trained model). Global statistics calculated as follows:
 
     .. math::
@@ -196,7 +196,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global \ variance \\
 
     The formula of normalization is as follows:
- 
+
     ..  math::
 
         \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
@@ -205,12 +205,12 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
     - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
     - :math:`\gamma` : trainable scale parameter vector
-    - :math:`\beta` : trainable shift parameter vector 
+    - :math:`\beta` : trainable shift parameter vector
 
     Note:
-        If you want to use container to pack your model and has ``SyncBatchNorm`` in the 
-        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of 
-        ``list`` to pack the model. 
+        If you want to use container to pack your model and has ``SyncBatchNorm`` in the
+        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of
+        ``list`` to pack the model.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -219,12 +219,12 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of this layer. If it is set to None or one attribute of ParamAttr, this layerr
              will create ParamAttr as param_attr. If the Initializer of the param_attr
-             is not set, the parameter is initialized with Xavier. If it is set to False, 
+             is not set, the parameter is initialized with Xavier. If it is set to False,
              this layer will not have trainable scale parameter. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of this layer.
              If it is set to None or one attribute of ParamAttr, this layer
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-             is not set, the bias is initialized zero. If it is set to False, this layer will not 
+             is not set, the bias is initialized zero. If it is set to False, this layer will not
              have trainable bias parameter. Default: None.
 
     Shapes:
