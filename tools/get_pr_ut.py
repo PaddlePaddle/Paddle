@@ -380,9 +380,11 @@ class PRChecker(object):
                                 for i in utfile:
                                     print(i)
                                 print("---------------------")
-                                if tempfilename.strip().split(".")[0] in utfile:
-                                    print("code go here")
-                                    f_judge_in_added_ut = True
+                                for i in utfile:
+                                    i = i.split('\n')
+                                    if tempfilename.strip().split(".")[0] == i:
+                                        print("code go here")
+                                        f_judge_in_added_ut = True
                             if f_judge_in_added_ut == True:
                                 print(
                                     "Adding new unit tests not hit mapFiles: %s"
