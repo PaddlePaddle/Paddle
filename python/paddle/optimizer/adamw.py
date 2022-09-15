@@ -45,7 +45,7 @@ class AdamW(Optimizer):
 
         moemnt\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
 
-        learning\_rate & = learning\_rate * 
+        learning\_rate & = learning\_rate *
             \frac{\sqrt{1 - {\beta}_2^t}}{1 - {beta}_1^t}
 
         param\_out & = param - learning\_rate * (\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
@@ -69,7 +69,7 @@ class AdamW(Optimizer):
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
-        lr_ratio (function|None, optional): If it is not None, 
+        lr_ratio (function|None, optional): If it is not None,
             the learning rate will be updated with layerwise learning rate ratio.
             Otherwise, the learning rate is the original.
             Default: None.
@@ -97,7 +97,7 @@ class AdamW(Optimizer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             linear = paddle.nn.Linear(10, 10)
@@ -136,7 +136,7 @@ class AdamW(Optimizer):
                     'beta1': 0.8
                 }],
                 weight_decay=0.01,
-                beta1=0.9)                   
+                beta1=0.9)
             out.backward()
             opt.step()
             opt.clear_grad()
@@ -541,7 +541,7 @@ class AdamW(Optimizer):
             .. code-block:: python
 
                 import paddle
-                
+
                 a = paddle.rand([2,13], dtype="float32")
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.

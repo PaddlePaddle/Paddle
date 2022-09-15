@@ -41,7 +41,8 @@ set(PYBIND_DEPS
     new_profiler
     auto_parallel
     jit_layer
-    jit_property)
+    jit_property
+    saved_tensors_hooks)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -140,7 +141,7 @@ if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
 endif()
 
-if(NOT ON_INFER)
+if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)

@@ -25,11 +25,11 @@ from .utils import _linear_idx2coordinate
 
 class DistributedTensor:
     """
-    DistributedTensor represents the distribution of tensor on the process group and 
+    DistributedTensor represents the distribution of tensor on the process group and
     local tensors can be created by DistributedTensor.
     Only support even sharding now and uneven sharding will be supported in the future.
-    Local tensor information can be obtained from the DistributedTensor instance object, 
-    or obtained by the static methods provided by DistributedTensor, 
+    Local tensor information can be obtained from the DistributedTensor instance object,
+    or obtained by the static methods provided by DistributedTensor,
     including shard (i.e. the index in the serial tensor), offsets, and sizes.
     """
 

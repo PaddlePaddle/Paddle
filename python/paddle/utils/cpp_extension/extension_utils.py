@@ -81,7 +81,7 @@ WRONG_COMPILER_WARNING = '''
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-Found that your compiler ({user_compiler}) is not compatible with the compiler 
+Found that your compiler ({user_compiler}) is not compatible with the compiler
 built Paddle for this platform, which is {paddle_compiler} on {platform}. Please
 use {paddle_compiler} to compile your custom op. Or you may compile Paddle from
 source using {user_compiler}, and then also use it compile your custom op.
@@ -145,10 +145,10 @@ def custom_write_stub(resource, pyfile):
         import sys
         import types
         import paddle
-        
+
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         so_path = os.path.join(cur_dir, "{resource}")
-        
+
         def inject_ext_module(module_name, api_names):
             if module_name in sys.modules:
                 return sys.modules[module_name]
@@ -165,7 +165,7 @@ def custom_write_stub(resource, pyfile):
             # load custom op shared library with abs path
             new_custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
             m = inject_ext_module(__name__, new_custom_ops)
-        
+
         __bootstrap__()
 
         {custom_api}
@@ -281,7 +281,7 @@ def combine_hash(md5, value):
 
 def clean_object_if_change_cflags(so_path, extension):
     """
-    If already compiling source before, we should check whether cflags 
+    If already compiling source before, we should check whether cflags
     have changed and delete the built object to re-compile the source
     even though source file content keeps unchanaged.
     """
@@ -925,7 +925,7 @@ def _custom_api_content(op_name):
         from paddle.fluid.core import VarBase, CustomOpKernelContext
         from paddle.fluid.framework import _non_static_mode, _dygraph_tracer, _in_legacy_dygraph, in_dygraph_mode
         from paddle.fluid.layer_helper import LayerHelper
-        
+
         def {op_name}({inputs}):
             # prepare inputs and outputs
             ins = {ins}

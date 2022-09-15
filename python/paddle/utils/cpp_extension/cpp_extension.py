@@ -51,33 +51,33 @@ if core.is_compiled_with_rocm():
 def setup(**attr):
     """
     The interface is used to config the process of compiling customized operators,
-    mainly includes how to compile shared library, automatically generate python API 
+    mainly includes how to compile shared library, automatically generate python API
     and install it into site-package. It supports using customized operators directly with
     ``import`` statement.
 
     It encapsulates the python built-in ``setuptools.setup`` function and keeps arguments
     and usage same as the native interface. Meanwhile, it hiddens Paddle inner framework
     concepts, such as necessary compiling flags, included paths of head files, and linking
-    flags. It also will automatically search and valid local environment and versions of 
-    ``cc(Linux)`` , ``cl.exe(Windows)`` and ``nvcc`` , then compiles customized operators 
+    flags. It also will automatically search and valid local environment and versions of
+    ``cc(Linux)`` , ``cl.exe(Windows)`` and ``nvcc`` , then compiles customized operators
     supporting CPU or GPU device according to the specified Extension type.
 
-    Moreover, `ABI compatibility <https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html>`_ 
+    Moreover, `ABI compatibility <https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html>`_
     will be checked to ensure that compiler version from ``cc(Linux)`` , ``cl.exe(Windows)``
     on local machine is compatible with pre-installed Paddle whl in python site-packages.
 
-    For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2, 
-    then the version of user's local machine should satisfy GCC >= 8.2. 
-    For Windows, Visual Studio version will be checked, and it should be greater than or equal to that of 
-    PaddlePaddle (Visual Studio 2017). 
-    If the above conditions are not met, the corresponding warning will be printed, and a fatal error may 
+    For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2,
+    then the version of user's local machine should satisfy GCC >= 8.2.
+    For Windows, Visual Studio version will be checked, and it should be greater than or equal to that of
+    PaddlePaddle (Visual Studio 2017).
+    If the above conditions are not met, the corresponding warning will be printed, and a fatal error may
     occur because of ABI compatibility.
 
     .. note::
-        
+
         1. Currently we support Linux, MacOS and Windows platfrom.
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
-           Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking 
+           Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking
            GCC version.
         3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).
 
@@ -86,11 +86,11 @@ def setup(**attr):
     ``python setup.py install`` . Then customized operators API will be available everywhere
     after importing it.
 
-    A simple example of ``setup.py`` as followed: 
+    A simple example of ``setup.py`` as followed:
 
     .. code-block:: text
 
-        # setup.py 
+        # setup.py
 
         # Case 1: Compiling customized operators supporting CPU and GPU devices
         from paddle.utils.cpp_extension import CUDAExtension, setup
@@ -124,11 +124,11 @@ def setup(**attr):
         x = paddle.randn([4, 10], dtype='float32')
         relu_out = relu(x)
         tanh_out = tanh(x)
-    
+
 
     Args:
         name(str): Specify the name of shared library file and installed python package.
-        ext_modules(Extension): Specify the Extension instance including customized operator source files, compiling flags et.al. 
+        ext_modules(Extension): Specify the Extension instance including customized operator source files, compiling flags et.al.
                                 If only compile operator supporting CPU device, please use ``CppExtension`` ; If compile operator
                                 supporting CPU and GPU devices, please use ``CUDAExtension`` .
         include_dirs(list[str], optional): Specify the extra include directories to search head files. The interface will automatically add
@@ -139,7 +139,7 @@ def setup(**attr):
                                 compiler using dict type with ``{'cxx': [...], 'nvcc': [...]}`` . Default is None.
         **attr(dict, optional): Specify other arguments same as ``setuptools.setup`` .
 
-    Returns: 
+    Returns:
         None
 
     """
@@ -219,7 +219,7 @@ def CppExtension(sources, *args, **kwargs):
 
     .. code-block:: text
 
-        # setup.py 
+        # setup.py
 
         # Compiling customized operators supporting only CPU device
         from paddle.utils.cpp_extension import CppExtension, setup
@@ -269,7 +269,7 @@ def CUDAExtension(sources, *args, **kwargs):
 
     .. code-block:: text
 
-        # setup.py 
+        # setup.py
 
         # Compiling customized operators supporting CPU and GPU devices
         from paddle.utils.cpp_extension import CUDAExtension, setup
@@ -750,22 +750,22 @@ def load(name,
     append user defined custom operators in background while building models.
 
     It will perform compiling, linking, Python API generation and module loading
-    processes under a individual subprocess. It does not require CMake or Ninja 
-    environment. On Linux platform, it requires GCC compiler whose version is 
-    greater than 5.4 and it should be soft linked to ``/usr/bin/cc`` . On Windows 
+    processes under a individual subprocess. It does not require CMake or Ninja
+    environment. On Linux platform, it requires GCC compiler whose version is
+    greater than 5.4 and it should be soft linked to ``/usr/bin/cc`` . On Windows
     platform, it requires Visual Studio whose version is greater than 2017.
-    On MacOS, clang++ is requited. In addition, if compiling Operators supporting 
+    On MacOS, clang++ is requited. In addition, if compiling Operators supporting
     GPU device, please make sure ``nvcc`` compiler is installed in local environment.
-    
-    Moreover, `ABI compatibility <https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html>`_ 
+
+    Moreover, `ABI compatibility <https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html>`_
     will be checked to ensure that compiler version from ``cc(Linux)`` , ``cl.exe(Windows)``
     on local machine is compatible with pre-installed Paddle whl in python site-packages.
 
-    For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2, 
-    then the version of user's local machine should satisfy GCC >= 8.2. 
-    For Windows, Visual Studio version will be checked, and it should be greater than or equal to that of 
-    PaddlePaddle (Visual Studio 2017). 
-    If the above conditions are not met, the corresponding warning will be printed, and a fatal error may 
+    For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2,
+    then the version of user's local machine should satisfy GCC >= 8.2.
+    For Windows, Visual Studio version will be checked, and it should be greater than or equal to that of
+    PaddlePaddle (Visual Studio 2017).
+    If the above conditions are not met, the corresponding warning will be printed, and a fatal error may
     occur because of ABI compatibility.
 
     Compared with ``setup`` interface, it doesn't need extra ``setup.py`` and excute
@@ -776,7 +776,7 @@ def load(name,
 
         1. Currently we support Linux, MacOS and Windows platfrom.
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
-           Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking 
+           Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking
            GCC version.
         3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).
 
@@ -784,7 +784,7 @@ def load(name,
     **A simple example:**
 
     .. code-block:: text
-    
+
         import paddle
         from paddle.utils.cpp_extension import load
 
@@ -807,7 +807,7 @@ def load(name,
         extra_cxx_cflags(list[str], optional): Specify additional flags used to compile CPP files. By default
                                all basic and framework related flags have been included.
         extra_cuda_cflags(list[str], optional): Specify additional flags used to compile CUDA files. By default
-                               all basic and framework related flags have been included. 
+                               all basic and framework related flags have been included.
                                See `Cuda Compiler Driver NVCC <https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html>`_
                                for details. Default is None.
         extra_ldflags(list[str], optional): Specify additional flags used to link shared library. See
