@@ -955,8 +955,7 @@ inline nvinfer1::DataType fieldTypeToDataType(
     case nvinfer1::PluginFieldType::kINT8:
       return nvinfer1::DataType::kINT8;
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "No corresponding datatype for plugin field type"));
+      std::cerr << "PluginFieldType: error" << std::endl;
   }
 }
 
