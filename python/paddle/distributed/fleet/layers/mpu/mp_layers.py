@@ -19,8 +19,8 @@ from paddle.fluid.dygraph.layers import Layer
 from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 from paddle import framework
-from ...base import topology as tp
 from paddle.autograd import PyLayer
+from ...base import topology as tp
 
 __all__ = []
 
@@ -39,7 +39,7 @@ def is_fused_matmul_bias_supported():
 class VocabParallelEmbedding(Layer):
     """Embedding mp parallelized in the vocabulary dimension.
     this class is used for splitting embedding in mp group.
-    
+
     Args:
         num_embeddings(int): One element which indicate the size of the dictionary of embeddings.
         embedding_dim(int): One element which indicate the size of each embedding vector respectively.
@@ -48,7 +48,7 @@ class VocabParallelEmbedding(Layer):
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_initializer_NumpyArrayInitializer`
-            is used to load custom or pre-trained word vectors. See code example for details. 
+            is used to load custom or pre-trained word vectors. See code example for details.
         mp_group(Group): The tensor parallel group.
         name(str, optional): For detailed information, please refer
                to :ref:`api_guide_Name`. Usually name is no need to set and
@@ -67,19 +67,19 @@ class VocabParallelEmbedding(Layer):
                     inner_size,
                     gather_output=False,
                     has_bias=True)
-        
+
               self.linear2 = fleet.meta_parallel.RowParallelLinear(
                     inner_size,
                     hidden_size,
                     input_is_parallel=True,
                     has_bias=True)
-        
+
               self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-        
+
               self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
                                 vocab_size,
                                 hidden_size)
-        
+
            def forward(self, x):
               x = self.embedding(x)
               x = self.linear1(x)
@@ -155,11 +155,11 @@ class VocabParallelEmbedding(Layer):
 class ColumnParallelLinear(Layer):
     """Linear layer with mp parallelized(column).
     this class is used for splitting Linear Layer in mp group, column split the weight of the Linear layer.
-    
+
     Args:
         in_features(int): The number of input units.
         out_features(int): The number of output units.
-        weight_attr(ParamAttr|None): The attribute for the learnable weight of this layer. The default value is None 
+        weight_attr(ParamAttr|None): The attribute for the learnable weight of this layer. The default value is None
             and the weight will be initialized to zero. For detailed information, please refer to paddle.ParamAttr.
         has_bias(bool): whether to add bias.
         gather_output(bool): whether to do allgahter for the output of each rank.
@@ -172,7 +172,7 @@ class ColumnParallelLinear(Layer):
         .. code-block:: python
         import paddle
         from paddle.distributed import fleet
-        
+
         class SimpleMPNet(paddle.nn.Layer):
            def __init__(self, vocab_size, hidden_size, inner_size, output_size):
               super(SimpleMPNet, self).__init__()
@@ -181,19 +181,19 @@ class ColumnParallelLinear(Layer):
                     inner_size,
                     gather_output=False,
                     has_bias=True)
-        
+
               self.linear2 = fleet.meta_parallel.RowParallelLinear(
                     inner_size,
                     hidden_size,
                     input_is_parallel=True,
                     has_bias=True)
-        
+
               self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-        
+
               self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
                                 vocab_size,
                                 hidden_size)
-        
+
            def forward(self, x):
               x = self.embedding(x)
               x = self.linear1(x)
@@ -293,11 +293,11 @@ class ColumnParallelLinear(Layer):
 class RowParallelLinear(Layer):
     """Linear layer with mp parallelized(row).
     this class is used for splitting Linear Layer in mp group, row split the weight of the Linear layer.
-    
+
     Args:
         in_features(int): The number of input units.
         out_features(int): The number of output units.
-        weight_attr(ParamAttr|None): The attribute for the learnable weight of this layer. The default value is None 
+        weight_attr(ParamAttr|None): The attribute for the learnable weight of this layer. The default value is None
             and the weight will be initialized to zero. For detailed information, please refer to paddle.ParamAttr.
         has_bias(bool): whether to add bias.
         input_is_parallel(bool): whether the input has alreadly been splitted across the mp group.
@@ -310,7 +310,7 @@ class RowParallelLinear(Layer):
         .. code-block:: python
         import paddle
         from paddle.distributed import fleet
-        
+
         class SimpleMPNet(paddle.nn.Layer):
            def __init__(self, vocab_size, hidden_size, inner_size, output_size):
               super(SimpleMPNet, self).__init__()
@@ -319,19 +319,19 @@ class RowParallelLinear(Layer):
                     inner_size,
                     gather_output=False,
                     has_bias=True)
-        
+
               self.linear2 = fleet.meta_parallel.RowParallelLinear(
                     inner_size,
                     hidden_size,
                     input_is_parallel=True,
                     has_bias=True)
-        
+
               self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-        
+
               self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
                                 vocab_size,
                                 hidden_size)
-        
+
            def forward(self, x):
               x = self.embedding(x)
               x = self.linear1(x)
@@ -438,7 +438,7 @@ class RowParallelLinear(Layer):
 class ParallelCrossEntropy(Layer):
     """CrossEntropy with mp parallelized.
     this class is used for splitting softmax cross entropy in mp group.
-    
+
     Args:
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
