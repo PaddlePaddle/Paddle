@@ -24,7 +24,7 @@ __all__ = []
 
 class Adamax(Optimizer):
     r"""
-    The Adamax optimizer is implemented based on the Adamax Optimization 
+    The Adamax optimizer is implemented based on the Adamax Optimization
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
     which makes the learning rate update algorithm more stable and simple.
@@ -70,9 +70,9 @@ class Adamax(Optimizer):
 	    the regularization setting here in optimizer will be ignored for this parameter. \
 	    Otherwise, the regularization setting here in optimizer will take effect. \
 	    Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -83,7 +83,7 @@ class Adamax(Optimizer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import numpy as np
 
@@ -124,7 +124,7 @@ class Adamax(Optimizer):
                     'beta1': 0.8
                 }],
                 weight_decay=0.01,
-                beta1=0.9)                   
+                beta1=0.9)
             out.backward()
             adam.step()
             adam.clear_grad()

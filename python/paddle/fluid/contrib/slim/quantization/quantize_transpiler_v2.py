@@ -64,7 +64,7 @@ class QuantizeTranspilerV2(object):
                  ],
                  skip_pattern=['skip_quant']):
         """
-        Apply fake quant for the quantized ops. 
+        Apply fake quant for the quantized ops.
 
         Args:
             weight_bits(int): the bit of quantized weight.
@@ -141,13 +141,13 @@ class QuantizeTranspilerV2(object):
 
     def convert(self, test_program, scope=None):
         """
-        Convert the test program. 
+        Convert the test program.
         Get the out scale from the moving_average_abs_max_scale op and save the
-        out scale into the quantized op. 
+        out scale into the quantized op.
         Args:
             test_program(Program): the test program to be converted.
-            scope(fluid.Scope, optional): The scope of the program, use it to load 
-                and save variables. If scope=None, get scope by global_scope(). 
+            scope(fluid.Scope, optional): The scope of the program, use it to load
+                and save variables. If scope=None, get scope by global_scope().
         """
         scope = global_scope() if scope == None else scope
 

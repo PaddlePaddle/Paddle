@@ -30,10 +30,10 @@ class RealOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of real op.");
     AddOutput("Out", "(Tensor), The output tensor of real op.");
-    AddComment(R"DOC( 
-Real Operator. 
+    AddComment(R"DOC(
+Real Operator.
 
-This operator is used to get a new tensor containing real values 
+This operator is used to get a new tensor containing real values
 from a tensor with complex data type.
 
 )DOC");

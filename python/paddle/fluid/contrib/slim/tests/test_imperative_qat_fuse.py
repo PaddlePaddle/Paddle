@@ -43,7 +43,7 @@ class TestImperativeQatfuseBN(TestImperativeQat):
     def set_vars(self):
         self.weight_quantize_type = 'abs_max'
         self.activation_quantize_type = 'moving_average_abs_max'
-        self.diff_threshold = 0.01
+        self.diff_threshold = 0.03125
         self.onnx_format = False
         self.fuse_conv_bn = True
 

@@ -20,6 +20,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace phi {
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
@@ -50,27 +52,16 @@ void IndexAddKernel(const Context& ctx,
                     const DenseTensor& add_value,
                     int axis,
                     DenseTensor* output) {
-  int dim = axis;
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   auto add_value_dim = add_value.dims();
+  const auto& index_type = index.dtype();
+  int dim = axis;
   dim = dim >= 0 ? dim : dim + input_dim.size();
   auto stride_dim = phi::stride(input_dim);
   int64_t stride = stride_dim[dim];
   int64_t size = add_value_dim[dim];
   int64_t delta = input_dim[dim] - size;
-  const auto& index_type = index.dtype();
-
-  bool index_type_match =
-      index_type == phi::DataType::INT64 || index_type == phi::DataType::INT32;
-  PADDLE_ENFORCE_EQ(index_type_match,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Input(Index) holds the wrong type, it holds %s, but "
-                        "desires to be %s or %s",
-                        index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
 
   auto* in_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(output);
@@ -89,6 +80,12 @@ void IndexAddKernel(const Context& ctx,
   // copy input to output.
   // todo(@limin29): inplace do not need copy.
   phi::Copy(ctx, x, ctx.GetPlace(), false, output);
+
+  if (FLAGS_cudnn_deterministic) {
+    VLOG(2) << "Run grad kernel of index_add with single thread.";
+    block_dim = 1;
+    grid_dim.x = 1;
+  }
 
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();

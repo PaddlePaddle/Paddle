@@ -72,4 +72,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_lr_grad_clip MODULES test_lr_grad_clip)
   py_test_modules(test_quantization MODULES test_quantization)
   py_test_modules(test_dist_matmul MODULES test_dist_matmul)
+
+  py_test_modules(test_iterable_dataset MODULES test_iterable_dataset ENVS
+                  ${dist_ENVS})
+  set_tests_properties(test_iterable_dataset
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
 endif()

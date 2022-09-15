@@ -111,8 +111,8 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Stop updating loss scaling, and just zero inputs.")
         .SetDefault(false);
     AddComment(R"DOC(
-Update loss scaling according to overall gradients. If all gradients is 
-finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
+Update loss scaling according to overall gradients. If all gradients is
+finite after incr_every_n_steps, loss scaling will increase by incr_ratio.
 Otherwise, loss scaling will decrease by decr_ratio after
 decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 

@@ -348,7 +348,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             else:
                 batch_dim_mappings.append(dims_mapping[1])
         for arg_name in op_desc.output_arg_names():
-            if op_desc.type() == "fill_zeros_like":
+            if op_desc.type() == 'fill_any_like':
                 input_tensor = dist_op.get_serial_input(
                     op_desc.input_arg_names()[0])
                 if input_tensor.is_parameter:
@@ -387,7 +387,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     dims_mapping[1] = compatible_dim_mapping
                     changed = True
         for arg_name in op_desc.output_arg_names():
-            if op_desc.type() == "fill_zeros_like":
+            if op_desc.type() == 'fill_any_like':
                 input_tensor = dist_op.get_serial_input(
                     op_desc.input_arg_names()[0])
                 if input_tensor.is_parameter:
