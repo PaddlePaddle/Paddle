@@ -54,7 +54,7 @@ struct KernelKeySet {
   DataLayout layout{DataLayout::UNDEFINED};
   DataType dtype{DataType::UNDEFINED};
 
-  // TODO(chenweihang): iterate all kernelkey for kernel selection
+  // TODO(chenweihang): iterate all kernelkeys for kernel selection
   phi::KernelKey GetHighestPriorityKernelKey() {
     return phi::KernelKey(static_cast<Backend>(64 - detail::CountLeadingZeros(
                                                         backend_set.bitset())),
@@ -97,12 +97,11 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
-    key_set.backend_set =
-        key_set.backend_set | detail::GetTensorBackendSet(tensor);
+    key_set.backend_set |= detail::GetTensorBackendSet(tensor);
     // TODO(chenweihang): select multi layout and dtype
     key_set.layout = tensor.layout();
     key_set.dtype = tensor.dtype();
-    dtype_set = dtype_set | DataTypeSet(key_set.dtype);
+    dtype_set |= DataTypeSet(key_set.dtype);
     auto promote_result = PromoteTypes(dtype_set);
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
@@ -118,8 +117,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
 
   void operator()(const std::vector<Tensor>& x) {
     const phi::TensorBase& tensor = *(x.at(0).impl());
-    key_set.backend_set =
-        key_set.backend_set | detail::GetTensorBackendSet(tensor);
+    key_set.backend_set |= detail::GetTensorBackendSet(tensor);
     // TODO(chenweihang): select multi layout and dtype
     key_set.layout = tensor.layout();
     key_set.dtype = tensor.dtype();

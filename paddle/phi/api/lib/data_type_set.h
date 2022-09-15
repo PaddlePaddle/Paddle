@@ -68,7 +68,7 @@ inline DataType PromoteTypes(const DataTypeSet& dtype_set) {
   constexpr auto c8 = 1ULL << (static_cast<uint8_t>(DataType::COMPLEX128) - 1);
   DataType promote_type = DataType::UNDEFINED;
 
-  // kernel dtype need promote when meet input dtype with more precision
+  // kernel dtype needs promotion when meeting input dtype with more precision
   if ((dtype_set.bitset() & c8) == c8) {
     promote_type = DataType::COMPLEX128;
   } else if ((dtype_set.bitset() & c4) == c4) {

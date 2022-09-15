@@ -263,7 +263,7 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
        << in_def.dtype << "\"";
     need_comma = true;
   }
-  os << "],\n";
+  os << "],";
 
   // output
   os << "\"output\":[";
@@ -274,7 +274,7 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
        << out_def.dtype << "\"";
     need_comma = true;
   }
-  os << "],\n";
+  os << "],";
 
   // attr
   os << "\"attribute\":[";
@@ -284,39 +284,39 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
     os << "\"" << attr_def.type_index << "\"";
     need_comma = true;
   }
-  os << "]}\n";
+  os << "]}";
 
   return os;
 }
 
 // print all kernels info with json format:
 // {
-//  "kernel_name1":
-//      [
-//        {
-//          "(CPU, Undefined(AnyLayout), complex64)": {
-//          "input": ["CPU, NCHW, complex64", "CPU, NCHW, complex64"],
-//          "output": ["CPU, NCHW, complex64"],
-//          "attribute": ["i"]
-//        },
-//        ...
-//      ],
-//    "kernel_name2": []
-//    ...
+//  "kernel_name1":{
+//          "(CPU, Undefined(AnyLayout), complex64)":{
+//              "input": ["CPU, NCHW, complex64", "CPU, NCHW, complex64"],
+//              "output": ["CPU, NCHW, complex64"],
+//              "attribute": ["i"]
+//          },
+//          ...
+//   },
+//  "kernel_name2":{
+//          ...
+//  },
+//  ...
 // }
 std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   os << "{";
   bool need_comma_kernels = false;
   for (const auto& op_kernel_pair : kernel_factory.kernels()) {
     if (need_comma_kernels) os << ",";
-    os << "\"" << op_kernel_pair.first << "\":[";
+    os << "\"" << op_kernel_pair.first << "\":{";
     bool need_comma_per_kernel = false;
     for (const auto& kernel_pair : op_kernel_pair.second) {
       if (need_comma_per_kernel) os << ",";
-      os << "{\"" << kernel_pair.first << "\":" << kernel_pair.second << "}";
+      os << kernel_pair.first << "\":" << kernel_pair.second;
       need_comma_per_kernel = true;
     }
-    os << "]";
+    os << "}";
     need_comma_kernels = true;
   }
   os << "}";
