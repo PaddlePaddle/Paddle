@@ -30,7 +30,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
     '''
     conv_input   conv_weight_var(persistable)
       \       /
-         conv_op     
+         conv_op
           |
       conv_out_var  (bn_scale_var, bn_bias_var, bn_mean_var,bn_variance_var)
                 |            /

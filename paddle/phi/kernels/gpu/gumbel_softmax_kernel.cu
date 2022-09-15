@@ -170,3 +170,10 @@ struct GumbleNoiseGenerator<GPUContext, T> {
 
 PD_REGISTER_KERNEL(
     gumbel_softmax, GPU, ALL_LAYOUT, phi::GumbelSoftmaxKernel, float, double) {}
+
+PD_REGISTER_KERNEL(gumbel_softmax_infer,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GumbelSoftmaxInferKernel,
+                   float,
+                   double) {}

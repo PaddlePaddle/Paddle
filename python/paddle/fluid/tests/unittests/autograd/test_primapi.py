@@ -150,6 +150,8 @@ class TestWithoutProgramGuard(unittest.TestCase):
      (np.random.rand(3, 3), np.random.rand(3, 3)),
      (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
     ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
+    ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                           (10, 10)), ), None, 'float32'),
 ))
 # paddle.where, paddle.pow, paddle.maximum has no double grad definition,
 # can not compute forward grad use double trick
@@ -283,6 +285,21 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          (np.random.rand(200, 189), ), None, 'float32'),
         ('gelu_approximate', lambda x: paddle.nn.functional.gelu(x, True),
          (np.random.rand(200, 189), ), None, 'float32'),
+        ('sum', paddle.sum, (np.random.rand(200, 345), ), None, 'float32'),
+        ('sum_with_axis', lambda x: paddle.sum(x, axis=1),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('sum_with_keepdim', lambda x: paddle.sum(x, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean', paddle.mean, (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_axis', lambda x: paddle.mean(x, axis=1),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_keepdim', lambda x: paddle.mean(x, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_axis_keepdim',
+         lambda x: paddle.mean(x, axis=0, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                               (200, 345)), ), None, 'float32'),
     ))
 class TestGrad(unittest.TestCase):
 

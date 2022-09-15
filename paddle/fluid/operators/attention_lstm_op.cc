@@ -297,7 +297,7 @@ tmp(seqlen*(M+D)) * fc((M+D)*1) => fcout(seqlen*1) with bias, relu
 
 fcout(seqlen*1) * scalar => fcout(seqlen*1) with bias, relu
 
-dotmul and sum pool ( fcout(seqlen*1), x(seqlen * M) ) => lstm_x_t(1, M) 
+dotmul and sum pool ( fcout(seqlen*1), x(seqlen * M) ) => lstm_x_t(1, M)
 
 LSTM part:
 use lstm_x_t as input and compute as standard LSTM.

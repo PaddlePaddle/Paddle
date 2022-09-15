@@ -1,4 +1,4 @@
-- backward_api : abs_grad
+- backward_op : abs_grad
   forward : tanh(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -6,7 +6,7 @@
     func : abs_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            abs_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : acos_grad
+- backward_op : acos_grad
   forward : acos(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -14,7 +14,7 @@
     func : acos_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            acos_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : acosh_grad
+- backward_op : acosh_grad
   forward : acosh(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -22,7 +22,7 @@
     func : acosh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            acosh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : add_grad
+- backward_op : add_grad
   forward : add(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -30,7 +30,7 @@
     func : add_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            add_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
 
-- backward_api : addmm_grad
+- backward_op : addmm_grad
   forward : addmm(Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0) -> Tensor(out)
   args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, float alpha=1.0, float beta=1.0)
   output : Tensor(input_grad), Tensor(x_grad), Tensor(y_grad)
@@ -40,7 +40,7 @@
            addmm_coo_dense_grad {dense, sparse_coo, dense, dense -> dense, sparse_coo, dense},
            addmm_coo_coo_grad {sparse_coo, sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo, sparse_coo}
 
-- backward_api : asin_grad
+- backward_op : asin_grad
   forward : asin(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -48,7 +48,7 @@
     func : asin_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            asin_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : asinh_grad
+- backward_op : asinh_grad
   forward : asinh(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -56,7 +56,7 @@
     func : asinh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            asinh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : atan_grad
+- backward_op : atan_grad
   forward : atan(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -64,7 +64,7 @@
     func : atan_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            atan_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : atanh_grad
+- backward_op : atanh_grad
   forward : atanh(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -72,7 +72,7 @@
     func : atanh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            atanh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : cast_grad
+- backward_op : cast_grad
   forward : cast(Tensor x, DataType index_dtype, DataType value_dtype) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, DataType value_dtype)
   output : Tensor(x_grad)
@@ -81,14 +81,14 @@
            cast_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
     data_type : out_grad
 
-- backward_api : conv3d_coo_grad
+- backward_op : conv3d_coo_grad
   forward : conv3d_coo (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key) -> Tensor(out), Tensor(rulebook), Tensor(counter)
   args : (Tensor x, Tensor kernel, Tensor out, Tensor rulebook, Tensor counter, Tensor out_grad, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
   output : Tensor(x_grad), Tensor(kernel_grad)
   kernel :
     func : conv3d_coo_grad{sparse_coo, dense, sparse_coo, dense, dense, sparse_coo -> sparse_coo, dense}
 
-- backward_api : divide_grad
+- backward_op : divide_grad
   forward : divide(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -96,13 +96,13 @@
     func : divide_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            divide_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
 
-- backward_api : divide_scalar_grad
+- backward_op : divide_scalar_grad
   forward : divide_scalar (Tensor x, float scalar) -> Tensor(out)
   args : (Tensor out_grad, float scalar)
   output : Tensor(x_grad)
   invoke : divide_scalar(out_grad, scalar)
 
-- backward_api : expm1_grad
+- backward_op : expm1_grad
   forward : expm1(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
@@ -110,7 +110,7 @@
     func : expm1_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            expm1_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : leaky_relu_grad
+- backward_op : leaky_relu_grad
   forward : leaky_relu(Tensor x, float alpha) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float alpha)
   output : Tensor(x_grad)
@@ -118,7 +118,7 @@
     func : leaky_relu_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            leaky_relu_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : log1p_grad
+- backward_op : log1p_grad
   forward : log1p(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -126,14 +126,14 @@
     func : log1p_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            log1p_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : masked_matmul_grad
+- backward_op : masked_matmul_grad
   forward : masked_matmul(Tensor x, Tensor y, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   kernel :
     func : masked_matmul_csr_grad{dense, dense, sparse_csr -> dense, dense}
 
-- backward_api : matmul_grad
+- backward_op : matmul_grad
   forward : matmul(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -143,14 +143,14 @@
            matmul_coo_dense_grad {sparse_coo, dense, dense -> sparse_coo, dense},
            matmul_coo_coo_grad {sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo}
 
-- backward_api : maxpool_grad
+- backward_op : maxpool_grad
   forward : maxpool(Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides) -> Tensor(out), Tensor(rulebook), Tensor(counter)
   args : (Tensor x, Tensor rulebook, Tensor counter, Tensor out, Tensor out_grad, int[] kernel_sizes)
   output : Tensor(x_grad)
   kernel :
     func : maxpool_coo_grad {sparse_coo, dense, dense, sparse_coo, sparse_coo -> sparse_coo}
 
-- backward_api : multiply_grad
+- backward_op : multiply_grad
   forward : multiply(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -158,7 +158,7 @@
     func : multiply_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            multiply_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
 
-- backward_api : mv_grad
+- backward_op : mv_grad
   forward : mv(Tensor x, Tensor vec) -> Tensor(out)
   args : (Tensor x, Tensor vec, Tensor out_grad)
   output : Tensor(x_grad), Tensor(vec_grad)
@@ -166,7 +166,7 @@
     func : mv_coo_grad{sparse_coo, dense, dense -> sparse_coo, dense},
            mv_csr_grad{sparse_csr, dense, dense -> sparse_csr, dense}
 
-- backward_api : pow_grad
+- backward_op : pow_grad
   forward : pow(Tensor x, float factor) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float factor)
   output : Tensor(x_grad)
@@ -174,7 +174,7 @@
     func : pow_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            pow_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : relu6_grad
+- backward_op : relu6_grad
   forward : relu6(Tensor x, float threshold) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, float threshold)
   output : Tensor(x_grad)
@@ -182,7 +182,7 @@
     func : relu6_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            relu6_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : relu_grad
+- backward_op : relu_grad
   forward : relu(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
@@ -190,13 +190,13 @@
     func : relu_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            relu_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : scale_grad
+- backward_op : scale_grad
   forward : scale(Tensor x, float scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, float scale)
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0, true)
 
-- backward_api : sin_grad
+- backward_op : sin_grad
   forward : sin(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -204,7 +204,7 @@
     func : sin_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            sin_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : sinh_grad
+- backward_op : sinh_grad
   forward : sinh(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -212,21 +212,21 @@
     func : sinh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            sinh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : softmax_grad
+- backward_op : softmax_grad
   forward : softmax(Tensor x, int axis=-1) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, int axis)
   output : Tensor(x_grad)
   kernel :
     func : softmax_csr_grad{sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : sparse_coo_tensor_grad
+- backward_op : sparse_coo_tensor_grad
   forward : sparse_coo_tensor(Tensor values, Tensor indices, IntArray dense_shape) -> Tensor(out)
   args : (Tensor indices, Tensor out_grad)
   output : Tensor(values_grad)
   kernel :
     func : sparse_coo_tensor_grad{dense, sparse_coo -> dense}
 
-- backward_api : sqrt_grad
+- backward_op : sqrt_grad
   forward : sqrt(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
@@ -234,7 +234,7 @@
     func : sqrt_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            sqrt_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : square_grad
+- backward_op : square_grad
   forward : square(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -242,7 +242,7 @@
     func : square_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            square_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : subtract_grad
+- backward_op : subtract_grad
   forward : subtract(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -250,7 +250,7 @@
     func : subtract_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            subtract_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
 
-- backward_api : tan_grad
+- backward_op : tan_grad
   forward : tan(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -258,7 +258,7 @@
     func : tan_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            tan_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : tanh_grad
+- backward_op : tanh_grad
   forward : tanh(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
@@ -266,28 +266,28 @@
     func : tanh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            tanh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : to_dense_grad
+- backward_op : to_dense_grad
   forward : to_dense(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   kernel :
     func : coo_to_dense_grad{sparse_coo, dense -> sparse_coo}
 
-- backward_api : to_sparse_coo_grad
+- backward_op : to_sparse_coo_grad
   forward : to_sparse_coo(Tensor x, int64_t sparse_dim) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
   kernel :
     func : coo_to_dense { sparse_coo -> dense }
 
-- backward_api : values_grad
+- backward_op : values_grad
   forward : values_coo(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   kernel :
     func : values_coo_grad{sparse_coo, dense-> sparse_coo}
 
-- backward_api: fused_attention_grad
+- backward_op: fused_attention_grad
   forward : fused_attention_csr(Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask) -> Tensor(out), Tensor(softmax)
   args: (Tensor query, Tensor key, Tensor value, Tensor softmax, Tensor out_grad)
   output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad)

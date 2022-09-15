@@ -55,7 +55,7 @@ def sequence_conv(input,
                   name=None):
     r"""
 
-    Note: 
+    Note:
     	Only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
@@ -63,7 +63,7 @@ def sequence_conv(input,
     It fills all-zero padding data on both sides of the sequence by default to ensure that
     the output is the same length as the input. You can customize the padding behavior by
     configuring the parameter :attr:`padding\_start` .
-    
+
     **Warning:** the parameter :attr:`padding` take no effect and will be deprecated in the future.
 
     .. code-block:: text
@@ -181,7 +181,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     r"""
 
     Note:
-        The input type of the OP must be LoDTensor. For Tensor, use:** :ref:`api_fluid_layers_softmax` 
+        The input type of the OP must be LoDTensor. For Tensor, use:** :ref:`api_fluid_layers_softmax`
 
     A LoD-tensor can be regarded as several sequences, and this op apply softmax algo on each sequence.
     The shape of input Tensor can be :math:`[N, 1]` or :math:`[N]`, where :math:`N`
@@ -193,7 +193,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
         Out(X[lod[i]:lod[i+1]], :) = \\frac{\exp(X[lod[i]:lod[i+1], :])}{\sum(\exp(X[lod[i]:lod[i+1], :]))}
 
-    For example, for a LoD-Tensor with 6 sequences ([3, 2, 4, 1, 2, 3] - sequence length list in order), 
+    For example, for a LoD-Tensor with 6 sequences ([3, 2, 4, 1, 2, 3] - sequence length list in order),
     the lod in the runtime is [[0, 3, 5, 9, 10, 12, 15]],
     then softmax will be computed among :math:`X[0:3,:],X[3:5,:],X[5:9,:],X[9:10,:],X[10:12,:],X[12:15,:]`,
     and :math:`N` turns out to be 15.
@@ -213,19 +213,19 @@ def sequence_softmax(input, use_cudnn=False, name=None):
             then:
                  output.data = [0.30724832, 0.41474187, 0.2780098,
                                 0.59868765, 0.40131235,
-                                0.2544242, 0.09359743, 0.13963096, 0.5123474, 
+                                0.2544242, 0.09359743, 0.13963096, 0.5123474,
                                 1.,
                                 0.84553474, 0.15446526,
                                 0.06995796, 0.69777346, 0.23226859]
-                 output.lod = [[0, 3, 5, 9, 10, 12, 15]]    
-    
+                 output.lod = [[0, 3, 5, 9, 10, 12, 15]]
+
 
     Args:
-        input (Variable):A LoDTensor with shape of  :math:`[N, 1]` or  :math:`[N]`, Recommended usage: :math:`[N]`. 
-                         Supported data types: float32, float64. 
-        use_cudnn (bool, optional): Use cudnn kernel or not. Effective only when the cudnn version of the paddle 
+        input (Variable):A LoDTensor with shape of  :math:`[N, 1]` or  :math:`[N]`, Recommended usage: :math:`[N]`.
+                         Supported data types: float32, float64.
+        use_cudnn (bool, optional): Use cudnn kernel or not. Effective only when the cudnn version of the paddle
                                     library is installed and GPU is used for training or reasoning. Default: False.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. 
+        name (str, optional): The default value is None. Normally there is no need for user to set this property.
                               For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
@@ -234,17 +234,17 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     Examples:
 
         .. code-block:: python
-             
+
              import paddle
              paddle.enable_static()
-             
+
              x = paddle.static.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
-             x_sequence_softmax_1 = paddle.static.nn.sequence_softmax(input=x)  
+             x_sequence_softmax_1 = paddle.static.nn.sequence_softmax(input=x)
 
              y = paddle.static.data(name='y', shape=[7],
                  dtype='float32', lod_level=1)
-             x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)  
+             x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)
     """
     assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -263,7 +263,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     r"""
 
-    Note: 
+    Note:
         Only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
 
     This operator only supports LoDTensor as input. It will apply specified pooling
@@ -380,7 +380,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 def sequence_concat(input, name=None):
     """
 
-    Note: 
+    Note:
         Only receives LoDTensor as input. If your input is Tensor, please use concat Op.(fluid.layers.** :ref:`api_fluid_layers_concat` ).
 
     This operator only supports LoDTensor as input. It concatenates the multiple LoDTensor from input by the LoD information,
@@ -547,7 +547,7 @@ def sequence_last_step(input):
 
              import paddle
              paddle.enable_static()
-             
+
              x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_last_step = paddle.static.nn.sequence_last_step(input=x)
     """
@@ -608,7 +608,7 @@ def sequence_slice(input, offset, length, name=None):
 
              import paddle
              paddle.enable_static()
-             
+
              import numpy as np
              seqs = paddle.static.data(name='x', shape=[10, 5],
                               dtype='float32', lod_level=1)
@@ -656,7 +656,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         of ``y``. If the lod level of ``x`` is 0, then the first dim of ``x`` should \
         be equal to the size of ``ref_level`` of ``y``. The rank of **x** is at least 2. \
         When rank of ``x`` is greater than 2, then it would be viewed as a 2-D tensor.
-    
+
     Note:
 
         Please note that the input ``x`` should be LodTensor or Tensor, \
@@ -716,16 +716,16 @@ def sequence_expand(x, y, ref_level=-1, name=None):
                          refer the last level of lod.
         name(str, optional): For detailed information, please refer \
             to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default. 
+            None by default.
 
-    Returns: 
+    Returns:
             Tensor, The expanded variable which is a LoDTensor, with dims ``[N, K]``. \
             ``N`` depends on the lod info of ``x`` and ``y``. \
             The data type is same as input.
 
     Examples:
         .. code-block:: python
-	
+
             import paddle
             from paddle import fluid
             paddle.enable_static()
@@ -806,7 +806,7 @@ def sequence_expand_as(x, y, name=None):
 
         Consider 4 sequences [a], [b], [c], [d], now we want to expand them to [a][a][a], [b][b][b], [c] and [d].
         It's obvious that the lod info of expanded sequences is [0, 3, 6, 7, 8].
-        Given a 1-level LodTensor ``x``: 
+        Given a 1-level LodTensor ``x``:
             x.data = [[a], [b], [c], [d]]
             x.dims = [4, 1]
         and input ``y``
@@ -840,7 +840,7 @@ def sequence_expand_as(x, y, name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: 
+    Returns:
             Tensor, The expanded variable which is a LoDTensor with the dims ``[N, K]``. \
             ``N`` depends on the lod of ``y``, and the lod level must be 1. \
             The data type is same as input.
@@ -908,10 +908,10 @@ def sequence_expand_as(x, y, name=None):
 def sequence_pad(x, pad_value, maxlen=None, name=None):
     r"""
 
-        This layer padding the sequences in a same batch to a common length (according 
-        to ``maxlen``). The padding value is defined by ``pad_value``, and will be 
-        appended to the tail of sequences. The result is a Python tuple ``(Out, Length)``: 
-        the LodTensor ``Out`` is the padded sequences, and LodTensor ``Length`` is 
+        This layer padding the sequences in a same batch to a common length (according
+        to ``maxlen``). The padding value is defined by ``pad_value``, and will be
+        appended to the tail of sequences. The result is a Python tuple ``(Out, Length)``:
+        the LodTensor ``Out`` is the padded sequences, and LodTensor ``Length`` is
         the length information of input sequences. For removing padding data (unpadding operation), See :ref:`api_fluid_layers_sequence_unpad`.
 
     Note:
@@ -972,7 +972,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: 
+    Returns:
             tuple, A Python tuple (Out, Length): the 1st is a 0 level LodTensor \
             ``Out``, with the shape ``[batch_size, maxlen, K]``; the second is the original \
             sequences length infor ``Length``, which should be a 0-level 1D LodTensor. \
@@ -1026,8 +1026,8 @@ def sequence_unpad(x, length, name=None):
     """
 
     Note:
-        The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`  
-     
+        The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`
+
     Remove the padding data from the input based on the length information and returns a LoDTensor.
 
     .. code-block:: text
@@ -1052,9 +1052,9 @@ def sequence_unpad(x, length, name=None):
     Args:
         x(Variable): A Tensor which contains padding data, and its shape size can not be less than 2.
                      Supported data types: float32, float64, int32, int64.
-        length(Variable): A 1D Tensor that stores the actual length of each sample, and the Tensor 
+        length(Variable): A 1D Tensor that stores the actual length of each sample, and the Tensor
                           has the same shape with the 0th dimension of the X . Supported data types: int64.
-        name(str|None):  The default value is None.  Normally there is no need for user to set this property.  
+        name(str|None):  The default value is None.  Normally there is no need for user to set this property.
                          For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
@@ -1072,7 +1072,7 @@ def sequence_unpad(x, length, name=None):
             x = paddle.static.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
             pad_value = paddle.assign(numpy.array([0.0], dtype=numpy.float32))
             pad_data, len = paddle.static.nn.sequence_pad(x=x, pad_value=pad_value)
-            
+
             # unpad data
             unpad_data = paddle.static.nn.sequence_unpad(x=pad_data, length=len)
     """
@@ -1101,7 +1101,7 @@ def sequence_unpad(x, length, name=None):
 def sequence_reshape(input, new_dim):
     """
 
-    Note: 
+    Note:
         Only receives LoDTensor as input. If your input is Tensor, please use reshape Op.(fluid.layers.** :ref:`api_fluid_layers_reshape` ).
 
     Only supports LoDTensor as input. Given :attr:`new_dim` ,
@@ -1166,22 +1166,22 @@ def sequence_scatter(input, index, updates, name=None):
 
     Note:
         The index and updates parameters of the OP must be LoDTensor.
-     
+
     Plus the updates data to the corresponding input according to the index.
- 
-    The updated algorithm is as follows: output[instance_index][index [pos]] = input[instance_index][index [pos]] +  updates[pos], 
+
+    The updated algorithm is as follows: output[instance_index][index [pos]] = input[instance_index][index [pos]] +  updates[pos],
     where instance_idx is the K sample corresponding to pos in batch.
 
-    The value of output[i][j] depends on whether j can be found in the i+1th interval of the index. If found, 
+    The value of output[i][j] depends on whether j can be found in the i+1th interval of the index. If found,
     out[i][j] = input[i][j] + update[m] [n], otherwise, out[i][j] = input[i][j].
 
-    For example, in the following example, the lod information for index is divided into three sequences. Among 
-    them, because the element 0 can be found in the first interval of the index, it is updated with the value of 
-    the corresponding position of the updates, out[0][0] = input[0][0]+updates[0][0] . Because element 1 cannot 
+    For example, in the following example, the lod information for index is divided into three sequences. Among
+    them, because the element 0 can be found in the first interval of the index, it is updated with the value of
+    the corresponding position of the updates, out[0][0] = input[0][0]+updates[0][0] . Because element 1 cannot
     be found in the third interval of index, out[2][1] = input[2][1].
 
     .. code-block:: text
-        
+
         *Case 1:
 
             Given:
@@ -1205,9 +1205,9 @@ def sequence_scatter(input, index, updates, name=None):
     Args:
         input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
         index (Variable):  A LoDTensor contains index information. Its LoD level must be 1 and its data type can be int32 or int64.
-        updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the index and has the 
+        updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the index and has the
                             same data type  with the input. Supported data types: float32, float64, int32, int64.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, 
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information,
                               please refer to :ref:`api_guide_Name`
 
     Returns:
@@ -1216,7 +1216,7 @@ def sequence_scatter(input, index, updates, name=None):
     Examples:
 
         .. code-block:: python
-	
+
             import paddle
             paddle.enable_static()
 
@@ -1288,7 +1288,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: 
+    Returns:
             Tensor, The enumerate sequence variable which is a LoDTensor with \
             shape ``[d_1, win_size]`` and 1-level lod info. \
             The data type is same as ``input``.
@@ -1298,7 +1298,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
 
             import paddle
             paddle.enable_static()
-            
+
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
             out = paddle.static.nn.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
@@ -1358,7 +1358,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: 
+    Returns:
             Tensor, The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen]
             and data type of :code:`dtype`. The data type should be bool, float32, float64, int8,
             int32 or int64.
@@ -1384,7 +1384,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 @templatedoc()
 def sequence_reverse(x, name=None):
     """
-    Note: 
+    Note:
         Only receives LoDTensor as input. If your input is Tensor, please use reverse Op.(fluid.layers.** :ref:`api_fluid_layers_reverse` ).
 
     Only supports LoDTensor as input. It will reverse each sequence for input LoDTensor.
