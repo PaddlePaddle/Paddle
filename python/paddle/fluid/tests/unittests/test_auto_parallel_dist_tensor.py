@@ -71,7 +71,7 @@ class TestDistributedTensor(unittest.TestCase):
 
     def test_new_local_tensor(self):
         test_auto_parallel_reshard._global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1])
+            mesh=[0, 1], dim_names=["x"])
         test_auto_parallel_reshard._global_parallel_strategy = "dp"
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
