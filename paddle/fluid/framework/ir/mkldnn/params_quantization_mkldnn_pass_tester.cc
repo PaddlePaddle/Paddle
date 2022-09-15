@@ -89,8 +89,14 @@ struct ProgramStrategy {
 
   virtual void CheckOp(const OpDesc& op) const = 0;
 
-  VarDesc* AddInput(OpDesc* op, std::string input_name, const Data& data) {
-    const std::string var_name = input_name + "_var";
+  VarDesc* AddInput(OpDesc* op,
+                    std::string input_name,
+                    const Data& data,
+                    const std::string var = "") {
+    std::string var_name = var;
+    if (var_name.empty()) {
+      var_name = input_name + "_var";
+    }
     op->SetInput(input_name, {var_name});
     auto var = program.MutableBlock(0)->Var(var_name);
     var->SetShape(data.getShape());
@@ -98,8 +104,14 @@ struct ProgramStrategy {
     return var;
   }
 
-  void AddOutput(OpDesc* op, std::string output_name, const Data& data) {
-    const std::string var_name = output_name + "_var";
+  void AddOutput(OpDesc* op,
+                 std::string output_name,
+                 const Data& data,
+                 const std::string var = "") {
+    std::string var_name = var;
+    if (var_name.empty()) {
+      var_name = output_name + "_var";
+    }
     op->SetOutput(output_name, {var_name});
     program.MutableBlock(0)->Var(var_name);
     test_scope.CreateTensor(var_name, data);
@@ -162,12 +174,12 @@ struct ConvProgramStrategy : public ProgramStrategy {
       OpDesc* op2 = CreateBasicConvOp("Conv2");
       AddInput(op2, "Input", input);
       AddInput(op2, "Filter", filter)->SetPersistable(true);
-      AddOutput(op2, "Output", output);
+      AddOutput(op2, "Output", output, "output2");
       op2->SetAttr("Scale_weights", scale_weights);
       op2->SetAttr("Scale_in", 1.0f);
       op2->SetAttr("groups", groups);
       if (HasBias()) {
-        AddInput(op2, "Bias2", bias);
+        AddInput(op2, "Bias", bias, "bias2");
         op2->SetAttr("Bias_scales", scale_bias);
       }
     }
