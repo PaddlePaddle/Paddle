@@ -39,8 +39,8 @@ class LayerNormPlugin : public PluginTensorRT {
   std::vector<int64_t> variance_shape_;
 
   // data on devices
-  void* bias_gpu_{nullptr};
-  void* scale_gpu_{nullptr};
+  float* bias_gpu_{nullptr};
+  float* scale_gpu_{nullptr};
 
  public:
   size_t getSerializationSize() const TRT_NOEXCEPT override {
@@ -271,8 +271,8 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
   // data on devices
-  void* bias_gpu_{nullptr};
-  void* scale_gpu_{nullptr};
+  float* bias_gpu_{nullptr};
+  float* scale_gpu_{nullptr};
 };
 
 class LayerNormPluginDynamicCreator : public TensorRTPluginCreator {

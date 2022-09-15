@@ -27,39 +27,16 @@ namespace tensorrt {
 namespace plugin {
 
 int LayerNormPlugin::initialize() TRT_NOEXCEPT {
-  if (with_fp16_) {
-    half *scale_d_ptr = new half[scale_.size()];
-    for (int i = 0; i < scale_.size(); i++) {
-      scale_d_ptr[i] = static_cast<half>(scale_.data()[i]);
-    }
-    half *bias_d_ptr = new half[bias_.size()];
-    for (int i = 0; i < bias_.size(); i++) {
-      bias_d_ptr[i] = static_cast<half>(bias_.data()[i]);
-    }
-    cudaMalloc(&scale_gpu_, sizeof(half) * scale_.size());
-    cudaMemcpy(scale_gpu_,
-               scale_d_ptr,
-               sizeof(half) * scale_.size(),
-               cudaMemcpyHostToDevice);
-    cudaMalloc(&bias_gpu_, sizeof(half) * bias_.size());
-    cudaMemcpy(bias_gpu_,
-               bias_d_ptr,
-               sizeof(half) * bias_.size(),
-               cudaMemcpyHostToDevice);
-    delete[] scale_d_ptr;
-    delete[] bias_d_ptr;
-  } else {
-    cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
-    cudaMemcpy(bias_gpu_,
-               bias_.data(),
-               bias_.size() * sizeof(float),
-               cudaMemcpyHostToDevice);
-    cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
-    cudaMemcpy(scale_gpu_,
-               scale_.data(),
-               scale_.size() * sizeof(float),
-               cudaMemcpyHostToDevice);
-  }
+  cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
+  cudaMemcpy(bias_gpu_,
+             bias_.data(),
+             bias_.size() * sizeof(float),
+             cudaMemcpyHostToDevice);
+  cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
+  cudaMemcpy(scale_gpu_,
+             scale_.data(),
+             scale_.size() * sizeof(float),
+             cudaMemcpyHostToDevice);
   return 0;
 }
 
@@ -148,27 +125,24 @@ int LayerNormPlugin::enqueue(int batch_size,
                         feature_size,
                         bias_.size()));
 
-  mean_t.Resize(phi::make_ddim({batched_mean_shape}));
-  variance_t.Resize(phi::make_ddim({batched_variance_shape}));
   int device_id;
   cudaGetDevice(&device_id);
+  mean_t.Resize(phi::make_ddim({batched_mean_shape}));
+  variance_t.Resize(phi::make_ddim({batched_variance_shape}));
+  float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *variance_d =
+      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
   auto input_type = getDataType();
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
-    float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *variance_d =
-        variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *scale_d = static_cast<float *>(scale_gpu_);
-    float *bias_d = static_cast<float *>(bias_gpu_);
-
-    phi::LayerNormDirectCUDAFunctor<float> layer_norm;
+    phi::LayerNormDirectCUDAFunctor<float, float> layer_norm;
     layer_norm(stream,
                input,
                input_shape,
-               bias_d,
-               scale_d,
+               bias_gpu_,
+               scale_gpu_,
                output,
                mean_d,
                variance_d,
@@ -178,19 +152,12 @@ int LayerNormPlugin::enqueue(int batch_size,
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp16";
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
-    half *mean_d = reinterpret_cast<half *>(
-        mean_t.mutable_data<float16>(platform::CUDAPlace(device_id)));
-    half *variance_d = reinterpret_cast<half *>(
-        variance_t.mutable_data<float16>(platform::CUDAPlace(device_id)));
-    half *scale_d = static_cast<half *>(scale_gpu_);
-    half *bias_d = static_cast<half *>(bias_gpu_);
-
-    phi::LayerNormDirectCUDAFunctor<half> layer_norm;
+    phi::LayerNormDirectCUDAFunctor<half, float> layer_norm;
     layer_norm(stream,
                input,
                input_shape,
-               bias_d,
-               scale_d,
+               bias_gpu_,
+               scale_gpu_,
                output,
                mean_d,
                variance_d,
@@ -204,39 +171,16 @@ int LayerNormPlugin::enqueue(int batch_size,
 }
 
 int LayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
-  if (with_fp16_) {
-    half *scale_d_ptr = new half[scale_.size()];
-    for (int i = 0; i < scale_.size(); i++) {
-      scale_d_ptr[i] = static_cast<half>(scale_.data()[i]);
-    }
-    half *bias_d_ptr = new half[bias_.size()];
-    for (int i = 0; i < bias_.size(); i++) {
-      bias_d_ptr[i] = static_cast<half>(bias_.data()[i]);
-    }
-    cudaMalloc(&scale_gpu_, sizeof(half) * scale_.size());
-    cudaMemcpy(scale_gpu_,
-               scale_d_ptr,
-               sizeof(half) * scale_.size(),
-               cudaMemcpyHostToDevice);
-    cudaMalloc(&bias_gpu_, sizeof(half) * bias_.size());
-    cudaMemcpy(bias_gpu_,
-               bias_d_ptr,
-               sizeof(half) * bias_.size(),
-               cudaMemcpyHostToDevice);
-    delete[] scale_d_ptr;
-    delete[] bias_d_ptr;
-  } else {
-    cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
-    cudaMemcpy(bias_gpu_,
-               bias_.data(),
-               bias_.size() * sizeof(float),
-               cudaMemcpyHostToDevice);
-    cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
-    cudaMemcpy(scale_gpu_,
-               scale_.data(),
-               scale_.size() * sizeof(float),
-               cudaMemcpyHostToDevice);
-  }
+  cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
+  cudaMemcpy(bias_gpu_,
+             bias_.data(),
+             bias_.size() * sizeof(float),
+             cudaMemcpyHostToDevice);
+  cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
+  cudaMemcpy(scale_gpu_,
+             scale_.data(),
+             scale_.size() * sizeof(float),
+             cudaMemcpyHostToDevice);
   return 0;
 }
 
@@ -387,23 +331,20 @@ int LayerNormPluginDynamic::enqueue(
   cudaGetDevice(&device_id);
   mean_t.Resize(phi::make_ddim(mean_shape_));
   variance_t.Resize(phi::make_ddim(variance_shape_));
+  float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *variance_d =
+      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
-    float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *variance_d =
-        variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *scale_d = static_cast<float *>(scale_gpu_);
-    float *bias_d = static_cast<float *>(bias_gpu_);
-
-    phi::LayerNormDirectCUDAFunctor<float> layer_norm;
+    phi::LayerNormDirectCUDAFunctor<float, float> layer_norm;
     layer_norm(stream,
                input,
                input_shape,
-               bias_d,
-               scale_d,
+               bias_gpu_,
+               scale_gpu_,
                output,
                mean_d,
                variance_d,
@@ -413,19 +354,12 @@ int LayerNormPluginDynamic::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp16";
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
-    half *mean_d = reinterpret_cast<half *>(
-        mean_t.mutable_data<float16>(platform::CUDAPlace(device_id)));
-    half *variance_d = reinterpret_cast<half *>(
-        variance_t.mutable_data<float16>(platform::CUDAPlace(device_id)));
-    half *scale_d = static_cast<half *>(scale_gpu_);
-    half *bias_d = static_cast<half *>(bias_gpu_);
-
-    phi::LayerNormDirectCUDAFunctor<half> layer_norm;
+    phi::LayerNormDirectCUDAFunctor<half, float> layer_norm;
     layer_norm(stream,
                input,
                input_shape,
-               bias_d,
-               scale_d,
+               bias_gpu_,
+               scale_gpu_,
                output,
                mean_d,
                variance_d,
