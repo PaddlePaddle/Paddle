@@ -571,6 +571,11 @@ class GradientsGroup(object):
             self.remove_scale_op_indices.append(i + 1)
 
         if len(self.gradients) == 1:
+            # TODO Remove this is a temporary hack for Tensor Parallel. the logic
+            # for find grad_op should be more general.
+            if self.ops[grad_op_idx].type == "c_allreduce_sum":
+                grad_op_idx -= 1
+
             grad_op = self.ops[grad_op_idx]
             assert grad_var.name in grad_op.output_arg_names, "grad [{}] should be output of {}".format(
                 grad_var.name, str(grad_op))
