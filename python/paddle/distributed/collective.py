@@ -290,9 +290,6 @@ def _new_process_group_impl(backend,
         pg = core.ProcessGroupCustom(store, rank, world_size, place, group_id)
     elif backend == "mpi":
         pg = core.ProcessGroupMPI.create(src_ranks, group_id)
-    elif backend == "xccl":
-        place = core.CustomPlace(genv.device_type, genv.device_id)
-        pg = core.ProcessGroupCustom(store, rank, world_size, place, group_id)
     elif backend == "heter":
         place = None
         if core.is_compiled_with_cuda():
