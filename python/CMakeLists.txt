@@ -21,32 +21,6 @@ endif()
 set(SETUP_LOG_FILE "setup.py.log")
 
 set(FLUID_CORE_NAME "paddle_core")
-# Since paddle currently retains the release form of compiling avx so and noavx so separately on mac,
-# and then packaging them together, we must keep the core_noavx package and releated logic at this stage
-# to be compatible with mac's package release work
-set(FLUID_CORE_NOAVX_NAME "core_noavx")
-if(APPLE)
-  if(WITH_AVX AND AVX_FOUND)
-    if(NOT DEFINED NOAVX_CORE_FILE OR NOAVX_CORE_FILE STREQUAL "")
-      message(
-        STATUS
-          "MESSAGE: This is just a message for publishing release.
-        You are building AVX version without NOAVX core.
-        So the wheel package may fail on NOAVX machine.
-        You can add -DNOAVX_CORE_FILE=/path/to/your/core_noavx.* in cmake command
-        to get a full wheel package to resolve this warning.
-        While, this version will still work on local machine.")
-    endif()
-
-    if(NOAVX_CORE_FILE AND NOT EXISTS "${NOAVX_CORE_FILE}")
-      message(FATAL_ERROR "The file ${NOAVX_CORE_FILE} does not exist!")
-    endif()
-
-    set(HAS_NOAVX_CORE ON)
-  else()
-    set(FLUID_CORE_NAME "${FLUID_CORE_NOAVX_NAME}")
-  endif()
-endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
                ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
@@ -69,29 +43,9 @@ else()
     OUTPUT ${FLUID_CORE}
     COMMAND cmake -E copy $<TARGET_FILE:paddle_core> ${FLUID_CORE}
     DEPENDS paddle_core)
-  if(APPLE)
-    set(FLUID_NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.so)
-  endif()
 endif()
 
 set(FLUID_CORE_DEPS ${FLUID_CORE})
-
-if(APPLE)
-  if(HAS_NOAVX_CORE AND EXISTS "${NOAVX_CORE_FILE}")
-    get_filename_component(NOAVX_CORE_NAME ${NOAVX_CORE_FILE} NAME)
-    get_filename_component(NOAVX_CORE_EXT ${NOAVX_CORE_FILE} EXT)
-    if(NOT NOAVX_CORE_EXT STREQUAL ".so")
-      message(
-        FATAL_ERROR
-          "Wrong file ${NOAVX_CORE_NAME}, the ext does not match *.so!")
-    endif()
-    add_custom_command(
-      OUTPUT ${FLUID_NOAVX_CORE}
-      COMMAND cmake -E copy ${NOAVX_CORE_FILE} ${FLUID_NOAVX_CORE}
-      DEPENDS paddle_pybind)
-    list(APPEND FLUID_CORE_DEPS ${FLUID_NOAVX_CORE})
-  endif()
-endif()
 
 add_custom_target(copy_paddle_core ALL DEPENDS ${FLUID_CORE_DEPS})
 

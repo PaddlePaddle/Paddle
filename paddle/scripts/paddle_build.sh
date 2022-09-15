@@ -272,7 +272,6 @@ EOF
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
-        -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
         -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} \
         -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} \
@@ -545,23 +544,6 @@ EOF
     fi
 }
 
-
-function combine_avx_noavx_build() {
-    mkdir -p ${PADDLE_ROOT}/build.noavx
-    cd ${PADDLE_ROOT}/build.noavx
-    WITH_AVX=OFF
-    cmake_base ${PYTHON_ABI:-""}
-    build_base
-
-    # build combined one
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    NOAVX_CORE_FILE=`find ${PADDLE_ROOT}/build.noavx/python/paddle/fluid/ -name "core_noavx.*"`
-    WITH_AVX=ON
-
-    cmake_base ${PYTHON_ABI:-""}
-    build_base
-}
 
 function mac_m1_arm_build() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -3485,18 +3467,9 @@ function main() {
         gen_dockerfile ${PYTHON_ABI:-""}
         assert_api_spec_approvals
         ;;
-      combine_avx_noavx)
-        combine_avx_noavx_build
-        gen_dockerfile ${PYTHON_ABI:-""}
-        ;;
       mac_m1_arm)
         mac_m1_arm_build
         gen_dockerfile ${PYTHON_ABI:-""}
-        ;;
-      combine_avx_noavx_build_and_test)
-        combine_avx_noavx_build
-        gen_dockerfile ${PYTHON_ABI:-""}
-        parallel_test_base
         ;;
       test)
         parallel_test
