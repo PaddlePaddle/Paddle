@@ -249,6 +249,19 @@ def test_return_in_for_2(x):
         return 12
     return 10
 
+@to_static
+def test_return_nested(x):
+    def func():
+        rr = 0
+        if True: 
+            rr = 1
+            return 1
+            rr = 2
+        else : 
+            a = 0 
+            return 4
+        return 3
+    return func()
 
 class TestReturnBase(unittest.TestCase):
 
@@ -415,6 +428,10 @@ class TestReturnTupleManyValue(TestReturnBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_tuple_many_values
 
+class TestReturnNested(TestReturnBase):
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_nested
 
 class TestReturnSpecial(TestReturnBase):
 

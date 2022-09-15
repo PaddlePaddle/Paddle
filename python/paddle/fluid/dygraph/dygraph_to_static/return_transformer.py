@@ -139,28 +139,15 @@ class ReturnTransformer(BaseTransformer):
     def __init__(self, wrapper_root):
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
-
         pre_transformer = ReplaceReturnNoneTransformer(self.root)
         pre_transformer.transform()
-
-    def generic_visit(self, node):
-        # Because we change ancestor nodes during visit_Return, not current
-        # node, original generic_visit of NodeTransformer will visit node
-        # which may be deleted. To prevent that node being added into
-        # transformed AST, We self-write a generic_visit and visit
-        for field, value in gast.iter_fields(node):
-            if isinstance(value, list):
-                for item in value:
-                    if isinstance(item, gast.AST):
-                        self.visit(item)
-            elif isinstance(value, gast.AST):
-                self.visit(value)
 
     def transform(self):
         self.visit(self.root)
 
     def visit_FunctionDef(self, node):
-        SingleReturnTransformer(node).transform()
+        node = self.generic_visit(node)
+        node = SingleReturnTransformer(node).transform()
         return node
 
 
@@ -219,6 +206,7 @@ class SingleReturnTransformer(BaseTransformer):
         """
         if node == self.root:
             self.generic_visit(node)
+        return node
 
     def append_assign_to_return_node(self, value, parent_node_of_return,
                                      return_name, assign_nodes):
