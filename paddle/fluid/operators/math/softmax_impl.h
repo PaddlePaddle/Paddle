@@ -272,30 +272,6 @@ class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
   }
 };
 
-template <typename DeviceContext>
-class SoftmaxFunctor<DeviceContext, float, enable_if_CPU<DeviceContext>> {
- public:
-  void operator()(const DeviceContext& context,
-                  const int axis_dim,
-                  const framework::Tensor* X,
-                  framework::Tensor* Y) {
-    const auto& in_dims = X->dims();
-    const float* in_data = X->data<float>();
-    float* out_data = Y->data<float>();
-    const int kBatchDim = 0;
-    const int kClassDim = 1;
-    // 2D data. Batch x C
-    auto compute_softmax =
-        jit::KernelFuncs<jit::SoftmaxTuple<float>, platform::CPUPlace>::Cache()
-            .At(in_dims[kClassDim]);
-    compute_softmax(in_data,
-                    out_data,
-                    in_dims[kClassDim],
-                    in_dims[kBatchDim],
-                    in_dims[kClassDim] / axis_dim);
-  }
-};
-
 template <typename DeviceContext, typename T>
 class SoftmaxGradEigen {
  public:
