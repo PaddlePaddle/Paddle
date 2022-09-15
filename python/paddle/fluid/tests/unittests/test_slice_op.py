@@ -79,7 +79,7 @@ class TestCase2(TestSliceOp):
         self.out = self.input[-3:3, 0:100, :, 2:-1]
 
 
-class TestCase3(OpTest):
+class TestSliceZerosShapeTensor(OpTest):
 
     def setUp(self):
         self.op_type = "slice"

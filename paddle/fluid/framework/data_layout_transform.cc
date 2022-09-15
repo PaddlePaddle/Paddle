@@ -171,8 +171,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
   out->set_mem_desc(out_mem_desc);
   out->Resize(in.dims());
 
-  // Note(0x45f): Using initialized() to support slice Tensor
-  // which shape like [0, 0, 0].
+  // Note(0x45f): Using initialized() to support slice Tensors
+  // whti shapes like [0, 0, 0].
   if (in.initialized() && ((in.mem_desc() != out->mem_desc()) || always_copy)) {
     void* in_data = GetDataFromTensor(in, in_type);
 
