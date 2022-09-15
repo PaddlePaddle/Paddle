@@ -574,27 +574,27 @@ def _save_binary_var(obj, path):
 def save(obj, path, protocol=4, **configs):
     '''
     Save an object to the specified path.
-    
+
     .. note::
         Now supports saving ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
     .. note::
-        Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file, 
-        there is no need to distinguish multiple saved files by adding a suffix. The argument ``path`` 
-        of ``paddle.save`` will be directly used as the saved file name instead of a prefix. 
+        Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file,
+        there is no need to distinguish multiple saved files by adding a suffix. The argument ``path``
+        of ``paddle.save`` will be directly used as the saved file name instead of a prefix.
         In order to unify the saved file name format, we recommend using the paddle standard suffix:
-        1. for ``Layer.state_dict`` , recommend to use ``.pdparams`` ; 
-        2. for ``Optimizer.state_dict`` , recommend to use ``.pdopt`` . 
+        1. for ``Layer.state_dict`` , recommend to use ``.pdparams`` ;
+        2. for ``Optimizer.state_dict`` , recommend to use ``.pdopt`` .
         For specific examples, please refer to API code examples.
-    
+
     Args:
         obj(Object) : The object to be saved.
-        path(str|BytesIO) : The path/buffer of the object to be saved. 
-          If saved in the current directory, the input path string will be used as the file name. 
+        path(str|BytesIO) : The path/buffer of the object to be saved.
+          If saved in the current directory, the input path string will be used as the file name.
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
                                  Default: 4
         **configs(dict, optional): optional keyword arguments. The following options are currently supported:
-          use_binary_format(bool): When the saved object is static graph variable, you can specify ``use_binary_for_var``. 
+          use_binary_format(bool): When the saved object is static graph variable, you can specify ``use_binary_for_var``.
           If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
           Default: False
 
@@ -687,7 +687,7 @@ def save(obj, path, protocol=4, **configs):
             paddle.save(state_dict, byio)
             tensor = paddle.randn([2, 3], dtype='float32')
             paddle.save(tensor, byio)
-    
+
     '''
     if _is_file_path(path):
         # 1. input check
@@ -796,42 +796,42 @@ def load(path, **configs):
         Now supports loading ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
     .. note::
-        In order to use the model parameters saved by paddle more efficiently, 
-        ``paddle.load`` supports loading ``state_dict`` of Layer from the result of 
-        other save APIs except ``paddle.save`` , but the argument ``path`` format is 
+        In order to use the model parameters saved by paddle more efficiently,
+        ``paddle.load`` supports loading ``state_dict`` of Layer from the result of
+        other save APIs except ``paddle.save`` , but the argument ``path`` format is
         different:
-        1. loading from ``paddle.static.save`` or ``paddle.Model().save(training=True)`` ,  
-        ``path`` needs to be a complete file name, such as ``model.pdparams`` or 
-        ``model.pdopt`` ; 
-        2. loading from ``paddle.jit.save`` or ``paddle.static.save_inference_model`` 
-        or ``paddle.Model().save(training=False)`` , ``path`` need to be a file prefix, 
-        such as ``model/mnist``, and ``paddle.load`` will get information from 
+        1. loading from ``paddle.static.save`` or ``paddle.Model().save(training=True)`` ,
+        ``path`` needs to be a complete file name, such as ``model.pdparams`` or
+        ``model.pdopt`` ;
+        2. loading from ``paddle.jit.save`` or ``paddle.static.save_inference_model``
+        or ``paddle.Model().save(training=False)`` , ``path`` need to be a file prefix,
+        such as ``model/mnist``, and ``paddle.load`` will get information from
         ``mnist.pdmodel`` and ``mnist.pdiparams`` ;
-        3. loading from paddle 1.x APIs ``paddle.fluid.io.save_inference_model`` or 
-        ``paddle.fluid.io.save_params/save_persistables`` , ``path`` need to be a 
+        3. loading from paddle 1.x APIs ``paddle.fluid.io.save_inference_model`` or
+        ``paddle.fluid.io.save_params/save_persistables`` , ``path`` need to be a
         directory, such as ``model`` and model is a directory.
 
     .. note::
-        If you load ``state_dict`` from the saved result of static mode API such as 
-        ``paddle.static.save`` or ``paddle.static.save_inference_model`` , 
-        the structured variable name in dynamic mode will cannot be restored. 
-        You need to set the argument ``use_structured_name=False`` when using 
+        If you load ``state_dict`` from the saved result of static mode API such as
+        ``paddle.static.save`` or ``paddle.static.save_inference_model`` ,
+        the structured variable name in dynamic mode will cannot be restored.
+        You need to set the argument ``use_structured_name=False`` when using
         ``Layer.set_state_dict`` later.
 
     Args:
-        path(str|BytesIO) : The path/buffer to load the target object. Generally, the path is the target 
-            file path. When loading state_dict from the saved result of the API used to save 
+        path(str|BytesIO) : The path/buffer to load the target object. Generally, the path is the target
+            file path. When loading state_dict from the saved result of the API used to save
             the inference model, the path may be a file prefix or directory.
-        **configs (dict, optional): other load configuration options for compatibility. We do not 
-            recommend using these configurations, they may be removed in the future. If not necessary, 
+        **configs (dict, optional): other load configuration options for compatibility. We do not
+            recommend using these configurations, they may be removed in the future. If not necessary,
             DO NOT use them. Default None.
             The following options are currently supported:
-            (1) model_filename (str): The inference model file name of the paddle 1.x 
-            ``save_inference_model`` save format. Default file name is :code:`__model__` . 
-            (2) params_filename (str): The persistable variables file name of the paddle 1.x 
-            ``save_inference_model`` save format. No default file name, save variables separately 
-            by default.            
-            (3) return_numpy(bool): If specified as True, return tensor as numpy.ndarray, otherwise return tensor as paddle.Tensor. 
+            (1) model_filename (str): The inference model file name of the paddle 1.x
+            ``save_inference_model`` save format. Default file name is :code:`__model__` .
+            (2) params_filename (str): The persistable variables file name of the paddle 1.x
+            ``save_inference_model`` save format. No default file name, save variables separately
+            by default.
+            (3) return_numpy(bool): If specified as True, return tensor as numpy.ndarray, otherwise return tensor as paddle.Tensor.
             Default False.
 
     Returns:

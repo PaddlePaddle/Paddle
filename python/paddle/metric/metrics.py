@@ -45,7 +45,7 @@ class Metric(object):
             for prediction, label in ...:
                 m.update(prediction, label)
             m.accumulate()
-        
+
     Advanced usage for :code:`compute`:
 
     Metric calculation can be accelerated by calculating metric states
@@ -191,7 +191,7 @@ class Accuracy(Metric):
             is `acc`.
 
     Example by standalone:
-        
+
         .. code-block:: python
 
           import numpy as np
@@ -212,14 +212,14 @@ class Accuracy(Metric):
 
 
     Example with Model API:
-        
+
         .. code-block:: python
 
           import paddle
           from paddle.static import InputSpec
           import paddle.vision.transforms as T
           from paddle.vision.datasets import MNIST
-             
+
           input = InputSpec([None, 1, 28, 28], 'float32', 'image')
           label = InputSpec([None, 1], 'int64', 'label')
           transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
@@ -254,7 +254,7 @@ class Accuracy(Metric):
             label (Tensor): The ground truth value is Tensor with dtype
                 int64. Shape is [batch_size, d0, ..., 1], or
                 [batch_size, d0, ..., num_classes] in one hot representation.
-                
+
         Return:
             Tensor: Correct mask, a tensor with shape [batch_size, d0, ..., topk].
         """
@@ -280,7 +280,7 @@ class Accuracy(Metric):
         Update the metrics states (correct count and total count), in order to
         calculate cumulative accuracy of all instances. This function also
         returns the accuracy of current step.
-        
+
         Args:
             correct: Correct mask, a tensor with shape [batch_size, d0, ..., topk].
 
@@ -345,7 +345,7 @@ class Precision(Metric):
             Default is `precision`.
 
     Example by standalone:
-        
+
         .. code-block:: python
 
           import numpy as np
@@ -361,27 +361,27 @@ class Precision(Metric):
 
 
     Example with Model API:
-        
+
         .. code-block:: python
 
           import numpy as np
-          
+
           import paddle
           import paddle.nn as nn
-          
+
           class Data(paddle.io.Dataset):
               def __init__(self):
                   super(Data, self).__init__()
                   self.n = 1024
                   self.x = np.random.randn(self.n, 10).astype('float32')
                   self.y = np.random.randint(2, size=(self.n, 1)).astype('float32')
-          
+
               def __getitem__(self, idx):
                   return self.x[idx], self.y[idx]
-          
+
               def __len__(self):
                   return self.n
-  
+
           model = paddle.Model(nn.Sequential(
               nn.Linear(10, 1),
               nn.Sigmoid()
@@ -392,7 +392,7 @@ class Precision(Metric):
               optim,
               loss=nn.BCELoss(),
               metrics=paddle.metric.Precision())
-          
+
           data = Data()
           model.fit(data, batch_size=16)
     """
@@ -478,7 +478,7 @@ class Recall(Metric):
             Default is `recall`.
 
     Example by standalone:
-        
+
         .. code-block:: python
 
           import numpy as np
@@ -494,27 +494,27 @@ class Recall(Metric):
 
 
     Example with Model API:
-        
+
         .. code-block:: python
 
           import numpy as np
-          
+
           import paddle
           import paddle.nn as nn
-          
+
           class Data(paddle.io.Dataset):
               def __init__(self):
                   super(Data, self).__init__()
                   self.n = 1024
                   self.x = np.random.randn(self.n, 10).astype('float32')
                   self.y = np.random.randint(2, size=(self.n, 1)).astype('float32')
-          
+
               def __getitem__(self, idx):
                   return self.x[idx], self.y[idx]
-          
+
               def __len__(self):
                   return self.n
-          
+
           model = paddle.Model(nn.Sequential(
               nn.Linear(10, 1),
               nn.Sigmoid()
@@ -525,7 +525,7 @@ class Recall(Metric):
               optim,
               loss=nn.BCELoss(),
               metrics=[paddle.metric.Precision(), paddle.metric.Recall()])
-          
+
           data = Data()
           model.fit(data, batch_size=16)
     """
@@ -626,48 +626,48 @@ class Auc(Metric):
           import paddle
 
           m = paddle.metric.Auc()
-          
+
           n = 8
           class0_preds = np.random.random(size = (n, 1))
           class1_preds = 1 - class0_preds
-          
+
           preds = np.concatenate((class0_preds, class1_preds), axis=1)
           labels = np.random.randint(2, size = (n, 1))
-          
+
           m.update(preds=preds, labels=labels)
           res = m.accumulate()
 
 
     Example with Model API:
-        
+
         .. code-block:: python
 
           import numpy as np
           import paddle
           import paddle.nn as nn
-          
+
           class Data(paddle.io.Dataset):
               def __init__(self):
                   super(Data, self).__init__()
                   self.n = 1024
                   self.x = np.random.randn(self.n, 10).astype('float32')
                   self.y = np.random.randint(2, size=(self.n, 1)).astype('int64')
-          
+
               def __getitem__(self, idx):
                   return self.x[idx], self.y[idx]
-          
+
               def __len__(self):
                   return self.n
-          
+
           model = paddle.Model(nn.Sequential(
               nn.Linear(10, 2), nn.Softmax())
           )
           optim = paddle.optimizer.Adam(
               learning_rate=0.001, parameters=model.parameters())
-          
+
           def loss(x, y):
               return nn.functional.nll_loss(paddle.log(x), y)
-          
+
           model.prepare(
               optim,
               loss=loss,
@@ -767,12 +767,12 @@ class Auc(Metric):
 def accuracy(input, label, k=1, correct=None, total=None, name=None):
     """
     accuracy layer.
-    Refer to the https://en.wikipedia.org/wiki/Precision_and_recall                                                                                           
- 
+    Refer to the https://en.wikipedia.org/wiki/Precision_and_recall
+
     This function computes the accuracy using the input and label.
     If the correct label occurs in top k predictions, then correct will increment by one.
     Note: the dtype of accuracy is determined by input. the input and label dtype can be different.
- 
+
     Args:
         input(Tensor): The input of accuracy layer, which is the predictions of network. A Tensor with type float32,float64.
             The shape is ``[sample_number, class_dim]`` .
@@ -782,15 +782,15 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
         total(Tensor, optional): The total entries count. A tensor with type int64 or int32.
         name(str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
- 
+
     Returns:
         Tensor, the correct rate. A Tensor with type float32.
- 
+
     Examples:
         .. code-block:: python
- 
+
             import paddle
- 
+
             predictions = paddle.to_tensor([[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]], dtype='float32')
             label = paddle.to_tensor([[2], [0]], dtype="int64")
             result = paddle.metric.accuracy(input=predictions, label=label, k=1)

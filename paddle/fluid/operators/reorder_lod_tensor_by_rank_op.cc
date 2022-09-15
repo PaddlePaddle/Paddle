@@ -70,7 +70,7 @@ X = [Slice0, Slice1, Slice2, Slice3] and its LoD information is empty. The
 indices in RankTable are [3, 0, 2, 1].
 Out = [Slice3, Slice0, Slice2, Slice1] with no LoD information is appended.
 
-**NOTE**: 
+**NOTE**:
 This operator sorts Input(X) according to a given LoDRankTable which does
 not need to be calculated according to Input(X). It can be calculated according
 to another different sequence, and then this operator sorts Input(X) according

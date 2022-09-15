@@ -640,7 +640,7 @@ where `tx`, `ty`, `tw`, `th` denote the predicted box's center coordinates, widt
 and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
 anchor's center coordinates, width and height. `pxv`, `pyv`, `pwv`,
 `phv` denote the variance of the anchor box and `ox`, `oy`, `ow`, `oh` denote the
-decoded coordinates, width and height. 
+decoded coordinates, width and height.
 
 Then the top decoded prediction from all levels are merged followed by NMS.
 In the NMS step, this operator prunes away boxes that have high IOU

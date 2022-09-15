@@ -27,15 +27,15 @@ import hypothesis.strategies as st
 
 class TestFlatten2MatmulFusePass(PassAutoScanTest):
     """
-        x_var  
-          |          
-       flatten2 
+        x_var
+          |
+       flatten2
           \
     flatten2_out_var    y_var
              \           /
                  matmul      bias_var
                     \          /
-                   elementwise_add  
+                   elementwise_add
     """
 
     def sample_predictor_configs(self, program_config):

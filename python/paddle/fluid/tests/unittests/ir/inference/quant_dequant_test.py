@@ -121,7 +121,7 @@ class QuantDequantTest(unittest.TestCase):
 
     def _get_paddle_outs(self, feed, fetch_list, executor, program, scope):
         '''
-        Return PaddlePaddle outputs. 
+        Return PaddlePaddle outputs.
         '''
         with fluid.scope_guard(scope):
             outs = executor.run(program=program,
@@ -132,7 +132,7 @@ class QuantDequantTest(unittest.TestCase):
 
     def _get_inference_outs(self, config):
         '''
-        Return AnalysisPredictor outputs. 
+        Return AnalysisPredictor outputs.
         '''
         predictor = create_paddle_predictor(config)
         tensor_shapes = predictor.get_input_tensor_shape()
@@ -160,7 +160,7 @@ class QuantDequantTest(unittest.TestCase):
                              use_trt=False,
                              use_mkldnn=False):
         '''
-        Return a new object of AnalysisConfig. 
+        Return a new object of AnalysisConfig.
         '''
         config = AnalysisConfig(self.path)
         config.disable_gpu()
@@ -201,9 +201,9 @@ class QuantDequantTest(unittest.TestCase):
                                  quant=False,
                                  rtol=1e-5):
         '''
-        Check whether calculating on CPU and GPU, enable TensorRT 
-        or disable TensorRT, enable MKLDNN or disable MKLDNN 
-        are all the same. 
+        Check whether calculating on CPU and GPU, enable TensorRT
+        or disable TensorRT, enable MKLDNN or disable MKLDNN
+        are all the same.
         '''
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         executor = fluid.Executor(place)
@@ -352,7 +352,7 @@ class QuantDequantTest(unittest.TestCase):
 
     class TensorRTParam:
         '''
-        Prepare TensorRT subgraph engine parameters. 
+        Prepare TensorRT subgraph engine parameters.
         '''
 
         def __init__(self, workspace_size, max_batch_size, min_subgraph_size,
@@ -366,7 +366,7 @@ class QuantDequantTest(unittest.TestCase):
 
     class DynamicShapeParam:
         '''
-        Prepare TensorRT subgraph engine dynamic shape parameters. 
+        Prepare TensorRT subgraph engine dynamic shape parameters.
         '''
 
         def __init__(self, min_input_shape, max_input_shape, optim_input_shape,

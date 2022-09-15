@@ -72,10 +72,18 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
       ends[i] = ends[i] < 0 ? x_vec_dims[axes[i]] + ends[i]
                             : std::min(ends[i], x_vec_dims[axes[i]]);
       offsets[axes[i]] = starts[i];
-      slice_dims[axes[i]] = ends[i] - starts[i];
+      slice_dims[axes[i]] =
+          std::max(static_cast<int64_t>(0), ends[i] - starts[i]);
     }
 
     out->Resize(phi::make_ddim(slice_dims));
+
+    // Note(0x45f): To support slice Tensors with shapes like [0, 0, 0].
+    if (!x->initialized()) {
+      out->mutable_data(x->place(), x->dtype());
+      out->set_layout(experimental::DataLayout::kMKLDNN);
+      return;
+    }
 
     dnnl::memory::data_type x_type =
         framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
