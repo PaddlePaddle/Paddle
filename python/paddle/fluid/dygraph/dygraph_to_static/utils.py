@@ -145,21 +145,6 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
                                          need_check_feed=False)
 
 
-def create_undefined_var_like(variable):
-    """ create a undefined var with the same shape and dtype like varaible.
-    """
-    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
-    var = data_layer_not_check(unique_name.generate("undefined_var"),
-                               variable.shape, variable.dtype)
-    var.stop_gradient = False
-    helper = LayerHelper('create_undefined_var_like', **locals())
-    saved_block_ids = helper.main_program.current_block_idx
-    helper.main_program.current_block_idx = 0
-    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
-    helper.main_program.current_block_idx = saved_block_ids
-    return var
-
-
 def create_undefined_variable():
     from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
     var = data_layer_not_check(unique_name.generate("undefined_var"), [1],
