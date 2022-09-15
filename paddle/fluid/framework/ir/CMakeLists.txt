@@ -175,7 +175,7 @@ if(WITH_TENSORRT)
   pass_library(layernorm_shift_partition_fuse_pass inference)
 endif()
 
-if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+if(WITH_TENSORRT AND NOT WIN32)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
 endif()
