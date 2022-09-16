@@ -16,32 +16,26 @@ import paddle.distributed.collective as collective
 import paddle.fluid.framework as framework
 
 
-def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
-    op_type = collective._get_reduce_op(op, "all_reduce")
+def _recv_in_dygraph(tensor, src, group, sync_op, use_calc_stream):
     group = collective._get_default_group() if group is None else group
     if use_calc_stream:
-        return group.process_group.allreduce_on_calc_stream(tensor, op_type)
+        return group.process_group.recv_on_calc_stream(tensor, src)
 
-    task = group.process_group.allreduce(tensor, op_type, sync_op)
+    task = group.process_group.recv(tensor, src, sync_op)
     if sync_op:
         task.wait()
 
     return task
 
 
-def all_reduce(tensor,
-               op=collective.ReduceOp.SUM,
-               group=None,
-               sync_op=True,
-               use_calc_stream=False):
+def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
     """
 
-    Perform specific reduction (for example, sum, max) on inputs across devices.
+    Receive a tensor from the source device.
 
     Args:
-        tensor (Tensor): The input tensor on each rank. The result will overwrite this tenor after communication. Support
-            float16, float32, float64, int32 or int64 as the input data type.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
+        tensor (Tensor): The tensor to receive. Support float16, float32, float64, int32, int64, int8, uint8 or bool as its data type.
+        src (int, optional): Rank of the source device. If none is given, use `0` as default.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
@@ -62,15 +56,15 @@ def all_reduce(tensor,
 
             dist.init_parallel_env()
             local_rank = dist.get_rank()
-            data = None
             if local_rank == 0:
                 data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+                task = dist.stream.send(data, dst=1, sync_op=False)
             else:
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            task = dist.stream.all_reduce(data, sync_op=False)
+                task = dist.stream.recv(data, src=0, sync_op=False)
             task.wait()
             out = data.numpy()
-            # [[5, 7, 9], [5, 7, 9]]
+            # [[4, 5, 6], [4, 5, 6]
     """
     if group is not None and not group.is_member():
         raise RuntimeError(
@@ -79,12 +73,10 @@ def all_reduce(tensor,
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be True in sync op behavior.")
 
     if framework.in_dygraph_mode():
-        return _all_reduce_in_dygraph(tensor, op, group, sync_op,
-                                      use_calc_stream)
+        return _recv_in_dygraph(tensor, src, group, sync_op, use_calc_stream)
 
     raise RuntimeError(
-        "paddle.distributed.stream.all_reduce is only supported in dygraph mode now."
-    )
+        "paddle.distributed.stream.recv is only supported in dygraph mode now.")
