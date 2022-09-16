@@ -80,6 +80,7 @@ class PrelnResidualBiasFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
+  int ApplyPattern(ir::Graph* graph, bool with_bias) const;
 };
 
 }  // namespace ir

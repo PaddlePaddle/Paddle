@@ -51,12 +51,16 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     framework::DDim bias_dims, scale_dims, ele_bias_dims;
     auto* bias = get_persistable_data("Bias", &bias_dims);
     auto* scale = get_persistable_data("Scale", &scale_dims);
-    auto* ele_bias = get_persistable_data("EleBias", &ele_bias_dims);
+    float* ele_bias = op_desc.Input("EleBias").front() == ""
+                          ? nullptr
+                          : get_persistable_data("EleBias", &ele_bias_dims);
 
     int bias_size = phi::product(bias_dims);
 
     int scale_size = phi::product(scale_dims);
-    int ele_bias_size = phi::product(ele_bias_dims);
+    int ele_bias_size = op_desc.Input("EleBias").front() == ""
+                            ? 0
+                            : phi::product(ele_bias_dims);
     float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
@@ -66,18 +70,22 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     plugin::DynamicPluginTensorRT* plugin = nullptr;
     if (with_fp16) {
-      auto half_ele_bias_data = new half[ele_bias_size];
-      for (int i = 0; i < ele_bias_size; i++) {
-        half_ele_bias_data[i] = static_cast<half>(ele_bias[i]);
+      half* half_ele_bias_data = nullptr;
+      if (ele_bias_size > 0) {
+        half_ele_bias_data = new half[ele_bias_size];
+        for (int i = 0; i < ele_bias_size; i++) {
+          half_ele_bias_data[i] = static_cast<half>(ele_bias[i]);
+        }
       }
-      plugin = new plugin::PrelnResidualBiasPluginDynamic(bias,
-                                                          scale,
-                                                          half_ele_bias_data,
-                                                          bias_size,
-                                                          scale_size,
-                                                          ele_bias_size,
-                                                          epsilon,
-                                                          with_fp16);
+      plugin = new plugin::PrelnResidualBiasPluginDynamic(
+          bias,
+          scale,
+          ele_bias_size > 0 ? half_ele_bias_data : nullptr,
+          bias_size,
+          scale_size,
+          ele_bias_size,
+          epsilon,
+          with_fp16);
     } else {
       plugin = new plugin::PrelnResidualBiasPluginDynamic(bias,
                                                           scale,
