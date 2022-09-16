@@ -382,7 +382,10 @@ class ShardingPass(PassBase):
                     continue
 
                 for input_name in op.desc.input_arg_names():
-                    if op.type == "cast":
+                    # NOTE hack for embedding op when AMP 02-3
+                    # paddle amp force embedding (lookup table) to be run on fp32
+                    if _is_param_fp16_cast_op(main_block, op, self.param_names):
+                        # if op.type == "cast":
                         continue
                     if input_name not in need_broadcast_vars:
                         continue
@@ -661,9 +664,14 @@ class ShardingInfo(object):
             return self.param_to_rank[varname]
         return -1
 
+    # determine fp32 and fp16 (cast) param
     def is_in_local_shard(self, param_name):
         return self.get_var_rank(param_name) == self.local_rank
 
+    # NOTE the follwo logic is designed for supporting AMP O1 when
+    # the param would be cast to fp16 before used for caculation.
+    # and sharding should only broadcast the casted fp16 param
+    # instead of the origin fp32 version param.
     def get_broadcast_vars_and_param_usage(self, block):
         broadcast_vars = set([])
         fp16_params = set([])
