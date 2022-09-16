@@ -117,26 +117,26 @@ paddle::experimental::Tensor CallScalarFuction(
   if (PyFloat_Check(other_obj)) {
     if (_supported_int_dtype_.find(self_tensor->dtype()) !=
         _supported_int_dtype_.end()) {
-      (*self_tensor) = cast_dygraph_function(*self_tensor, DataType::FLOAT32);
+      (*self_tensor) = cast_ad_func(*self_tensor, DataType::FLOAT32);
     }
   }
 
   if (op_type == "add" || op_type == "radd") {
-    ret = scale_dygraph_function(*self_tensor,
-                                 phi::Scalar(1.0),
-                                 CastPyArg2AttrFloat(other_obj, 0),
-                                 true);
+    ret = scale_ad_func(*self_tensor,
+                        phi::Scalar(1.0),
+                        CastPyArg2AttrFloat(other_obj, 0),
+                        true);
   } else if (op_type == "sub") {
-    ret = scale_dygraph_function(*self_tensor,
-                                 phi::Scalar(1.0),
-                                 -CastPyArg2AttrFloat(other_obj, 0),
-                                 true);
+    ret = scale_ad_func(*self_tensor,
+                        phi::Scalar(1.0),
+                        -CastPyArg2AttrFloat(other_obj, 0),
+                        true);
 
   } else if (op_type == "rsub") {
-    ret = scale_dygraph_function(*self_tensor,
-                                 phi::Scalar(-1.0),
-                                 CastPyArg2AttrFloat(other_obj, 0),
-                                 true);
+    ret = scale_ad_func(*self_tensor,
+                        phi::Scalar(-1.0),
+                        CastPyArg2AttrFloat(other_obj, 0),
+                        true);
   }
 
   return ret;
@@ -175,8 +175,8 @@ static PyObject* tensor__add__method(TensorObject* self,
     if (!PyCheckTensor(other_obj)) {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "full", 0);
-      other_tensor = full_dygraph_function(
-          self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor =
+          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
     } else {
       other_tensor = CastPyArg2Tensor(other_obj, 0);
     }
@@ -195,10 +195,10 @@ static PyObject* tensor__add__method(TensorObject* self,
                 framework::TransToProtoVarType(rhs_dtype)));
         if (lhs_dtype != promote_dtype) {
           // cast
-          self_tensor = cast_dygraph_function(self_tensor, promote_dtype);
+          self_tensor = cast_ad_func(self_tensor, promote_dtype);
         }
         if (rhs_dtype != promote_dtype) {
-          other_tensor = cast_dygraph_function(other_tensor, promote_dtype);
+          other_tensor = cast_ad_func(other_tensor, promote_dtype);
         }
       } else {
         printf(
@@ -209,13 +209,13 @@ static PyObject* tensor__add__method(TensorObject* self,
                "dtype is "
             << lhs_dtype << ", but right dtype is " << rhs_dtype
             << ", the right dtype will convert to " << lhs_dtype;
-        other_tensor = cast_dygraph_function(other_tensor, lhs_dtype);
+        other_tensor = cast_ad_func(other_tensor, lhs_dtype);
       }
     }
 
     // 4. calculation
     VLOG(6) << "Calling add_dygraph_function in tensor__add__method";
-    ret = add_dygraph_function(self_tensor, other_tensor);
+    ret = add_ad_func(self_tensor, other_tensor);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(ret);
@@ -262,8 +262,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
     if (!PyCheckTensor(other_obj)) {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "full", 0);
-      other_tensor = full_dygraph_function(
-          self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor =
+          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
     } else {
       other_tensor = CastPyArg2Tensor(other_obj, 0);
     }
@@ -280,10 +280,10 @@ static PyObject* tensor__sub__method(TensorObject* self,
                 framework::TransToProtoVarType(rhs_dtype)));
         if (lhs_dtype != promote_dtype) {
           // cast
-          self_tensor = cast_dygraph_function(self_tensor, promote_dtype);
+          self_tensor = cast_ad_func(self_tensor, promote_dtype);
         }
         if (rhs_dtype != promote_dtype) {
-          other_tensor = cast_dygraph_function(other_tensor, promote_dtype);
+          other_tensor = cast_ad_func(other_tensor, promote_dtype);
         }
       } else {
         printf(
@@ -294,13 +294,13 @@ static PyObject* tensor__sub__method(TensorObject* self,
                "dtype is "
             << lhs_dtype << ", but right dtype is " << rhs_dtype
             << ", the right dtype will convert to " << lhs_dtype;
-        other_tensor = cast_dygraph_function(other_tensor, lhs_dtype);
+        other_tensor = cast_ad_func(other_tensor, lhs_dtype);
       }
     }
 
     // 4. calculation
-    VLOG(6) << "Calling subtract_dygraph_function in tensor__sub__method";
-    ret = subtract_dygraph_function(self_tensor, other_tensor);
+    VLOG(6) << "Calling subtract_ad_func in tensor__sub__method";
+    ret = subtract_ad_func(self_tensor, other_tensor);
 
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
@@ -349,8 +349,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       VLOG(1) << "============= before ====== CastPyArg2Scalar ====== ";
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "full", 0);
-      other_tensor = full_dygraph_function(
-          self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor =
+          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
     } else {
       other_tensor = CastPyArg2Tensor(other_obj, 0);
     }
@@ -367,10 +367,10 @@ static PyObject* tensor__rsub__method(TensorObject* self,
                 framework::TransToProtoVarType(rhs_dtype)));
         if (lhs_dtype != promote_dtype) {
           // cast
-          self_tensor = cast_dygraph_function(self_tensor, promote_dtype);
+          self_tensor = cast_ad_func(self_tensor, promote_dtype);
         }
         if (rhs_dtype != promote_dtype) {
-          other_tensor = cast_dygraph_function(other_tensor, promote_dtype);
+          other_tensor = cast_ad_func(other_tensor, promote_dtype);
         }
       } else {
         printf(
@@ -381,13 +381,13 @@ static PyObject* tensor__rsub__method(TensorObject* self,
                "dtype is "
             << lhs_dtype << ", but right dtype is " << rhs_dtype
             << ", the right dtype will convert to " << lhs_dtype;
-        other_tensor = cast_dygraph_function(other_tensor, lhs_dtype);
+        other_tensor = cast_ad_func(other_tensor, lhs_dtype);
       }
     }
 
     // 4. calculation
     VLOG(6) << "Calling subtract_dygraph_function in tensor__rsub__method";
-    ret = subtract_dygraph_function(other_tensor, self_tensor);
+    ret = subtract_ad_func(other_tensor, self_tensor);
 
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
