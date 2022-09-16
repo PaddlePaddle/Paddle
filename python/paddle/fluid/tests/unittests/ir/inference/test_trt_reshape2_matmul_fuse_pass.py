@@ -159,8 +159,3 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
         self.run_and_statis(quant=False,
                             max_examples=50,
                             passes=["trt_reshape2_matmul_fuse_pass"])
-
-
-if __name__ == "__main__":
-    pass
-    #unittest.main()
