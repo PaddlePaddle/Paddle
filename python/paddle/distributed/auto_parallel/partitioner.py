@@ -224,13 +224,15 @@ class Partitioner(object):
                 forward_op_id2forward_op[
                     serial_ops[idx].desc.original_id()] = serial_ops[idx]
 
-        appended_grad_times = 0
         # partiiton
+        appended_grad_times = 0
         for idx, op in enumerate(serial_ops):
 
+            op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
             if is_backward_op(op) and (is_forward_op(serial_ops[idx - 1])
                                        or is_loss_op(serial_ops[idx - 1])):
-                appended_grad_times += 1
+                if not op_dist_attr.is_recompute:
+                    appended_grad_times += 1
 
             # partititon input variables
             for serial_input_varname in op.desc.input_arg_names():
@@ -256,7 +258,6 @@ class Partitioner(object):
                         serial_output_varname] = new_varname
 
             # partition op
-            op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
             if is_forward_op(op) or op_dist_attr.is_recompute:
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_forward_impl = _get_dist_op_forward_implement(

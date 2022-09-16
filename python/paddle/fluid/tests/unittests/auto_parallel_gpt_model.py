@@ -914,12 +914,6 @@ class GPTForPretraining(nn.Layer):
         initializer_range=0.02,
     ):
         super(GPTForPretraining, self).__init__()
-        self.output_embeddings = nn.Embedding(
-            vocab_size,
-            hidden_size,
-            weight_attr=paddle.ParamAttr(name="output_embeddings",
-                                         initializer=nn.initializer.Normal(
-                                             mean=0.0, std=initializer_range)))
         self.gpt = gpt
 
     def forward(self,
@@ -938,9 +932,45 @@ class GPTForPretraining(nn.Layer):
             encoder_outputs, cached_kvs = outputs[:2]
         else:
             encoder_outputs = outputs
-        logits = paddle.matmul(encoder_outputs,
-                               self.output_embeddings.weight,
-                               transpose_y=True)
+
+        x = encoder_outputs
+        w = self.gpt.embeddings.word_embeddings.weight
+
+        mesh = _global_process_mesh
+        x_dims_mapping = [-1 for i in range(len(x.shape))]
+        w_dims_mapping = [-1 for i in range(len(w.shape))]
+        if _global_parallel_strategy == "pp":
+            mesh = PP_MESH_LIST[-1]
+        elif _global_parallel_strategy == "dp":
+            x_dims_mapping = [0] + [-1 for i in range(len(x.shape) - 1)]
+        elif _global_parallel_strategy == "mp":
+            w_dims_mapping = [0] + [-1 for i in range(len(w.shape) - 1)]
+        elif _global_parallel_strategy == "dp_mp":
+            x_dims_mapping = [0] + [-1 for i in range(len(x.shape) - 1)]
+            w_dims_mapping = [1] + [-1 for i in range(len(w.shape) - 1)]
+        elif _global_parallel_strategy == "dp_pp":
+            mesh = DPPP_MESH_LIST[-1]
+            x_dims_mapping = [0] + [-1 for i in range(len(x.shape) - 1)]
+        elif _global_parallel_strategy == "mp_pp":
+            mesh = MPPP_MESH_LIST[-1]
+            w_dims_mapping = [0] + [-1 for i in range(len(w.shape) - 1)]
+        elif _global_parallel_strategy == "dp_mp_pp":
+            mesh = DPMPPP_MESH_LIST[-1]
+            x_dims_mapping = [0] + [-1 for i in range(len(x.shape) - 1)]
+            w_dims_mapping = [1] + [-1 for i in range(len(w.shape) - 1)]
+
+        matmul = auto.shard_op(paddle.matmul,
+                               dist_attr={
+                                   'process_mesh': mesh,
+                                   x: {
+                                       "dims_mapping": x_dims_mapping
+                                   },
+                                   w: {
+                                       "dims_mapping": w_dims_mapping
+                                   }
+                               })
+        logits = matmul(x, w, transpose_y=True)
+
         if use_cache:
             return logits, cached_kvs
         else:
@@ -958,6 +988,26 @@ class GPTPretrainingCriterion(nn.Layer):
         self.loss_func = paddle.nn.CrossEntropyLoss(reduction="none")
 
     def forward(self, prediction_scores, masked_lm_labels, loss_mask):
+
+        mesh = _global_process_mesh
+        dims_mapping = [-1 for i in range(len(loss_mask.shape))]
+        if _global_parallel_strategy == "dp":
+            dims_mapping = [0] + [-1 for i in range(len(loss_mask.shape) - 1)]
+        elif _global_parallel_strategy == "dp_mp":
+            dims_mapping = [0] + [-1 for i in range(len(loss_mask.shape) - 1)]
+        elif _global_parallel_strategy == "dp_pp":
+            mesh = DPPP_MESH_LIST[-1]
+            dims_mapping = [0] + [-1 for i in range(len(loss_mask.shape) - 1)]
+        elif _global_parallel_strategy == "dp_mp_pp":
+            mesh = DPMPPP_MESH_LIST[-1]
+            dims_mapping = [0] + [-1 for i in range(len(loss_mask.shape) - 1)]
+
+        auto.shard_tensor(loss_mask,
+                          dist_attr={
+                              "process_mesh": mesh,
+                              "dims_mapping": dims_mapping
+                          })
+
         masked_lm_loss = self.loss_func(prediction_scores,
                                         masked_lm_labels.unsqueeze(2))
         loss_mask = loss_mask.reshape([-1])

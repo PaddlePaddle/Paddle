@@ -122,8 +122,10 @@ void AddNKernel(const Context &dev_ctx,
 
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array =
-        paddle::memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
+    auto tmp_in_array = paddle::memory::Alloc(
+        dev_ctx.GetPlace(),
+        in_data.size() * sizeof(T *),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
     paddle::memory::Copy(dev_ctx.GetPlace(),
                          tmp_in_array->ptr(),

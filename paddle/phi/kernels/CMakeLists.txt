@@ -22,14 +22,17 @@ set_property(GLOBAL PROPERTY PHI_KERNELS "")
 # [ 1. Common kernel compilation dependencies ]
 set(COMMON_KERNEL_DEPS
     dense_tensor
+    string_tensor
     sparse_coo_tensor
     sparse_csr_tensor
+    tensor_array
     kernel_context
     kernel_factory
     arg_map_context
     convert_utils
     lod_utils
     custom_kernel
+    string_infermeta
     phi_tensor_utils)
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
@@ -67,23 +70,10 @@ set(COMMON_KERNEL_DEPS
     sequence_padding
     sequence_scale
     fft
-    phi_data_layout_transform)
-
-set(COMMON_KERNEL_DEPS
-    ${COMMON_KERNEL_DEPS}
-    dense_tensor
-    string_tensor
-    sparse_coo_tensor
-    sparse_csr_tensor
-    kernel_context
-    kernel_factory
-    arg_map_context
-    convert_utils
-    lod_utils
-    custom_kernel
-    string_infermeta
+    phi_data_layout_transform
     gpc
-    utf8proc)
+    utf8proc
+    device_memory_aligment)
 
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
 if(WITH_NCCL OR WITH_RCCL)
@@ -105,8 +95,8 @@ file(
   "kps/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
-  "strings/*.cu"
-  "strings/gpu/*.cu")
+  "strings/gpu/*.cu"
+  "fusion/gpu/*.cu")
 
 if(WITH_MKLDNN)
   file(
@@ -120,7 +110,9 @@ if(WITH_MKLDNN)
     "sparse/cpu/*.cc"
     "strings/*.cc"
     "strings/cpu/*.cc"
-    "onednn/*.cc")
+    "onednn/*.cc"
+    "fusion/*.cc"
+    "fusion/cpu/*.cc")
 else()
   file(
     GLOB
@@ -132,10 +124,12 @@ else()
     "sparse/*.cc"
     "sparse/cpu/*.cc"
     "strings/*.cc"
-    "strings/cpu/*.cc")
+    "strings/cpu/*.cc"
+    "fusion/*.cc"
+    "fusion/cpu/*.cc")
 endif()
 
-file(GLOB kernel_xpu "xpu/*.cc")
+file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")

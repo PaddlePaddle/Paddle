@@ -2268,7 +2268,8 @@ def pool2d(input,
     if in_dygraph_mode():
         return _C_ops.pool2d(input, pool_size, pool_stride, pool_padding,
                              ceil_mode, exclusive, data_format, pool_type,
-                             global_pooling, False, padding_algorithm)
+                             global_pooling, False, padding_algorithm,
+                             use_cudnn)
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
@@ -3933,7 +3934,6 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     dtype = weight.dtype
 
     # create intput and parameters
-    inputs = {'Weight': weight}
     input_shape = weight.shape
     assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
     assert dim < len(input_shape), ("The input `dim` should be less than the "
@@ -3947,13 +3947,18 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
                                 dtype=dtype,
                                 default_initializer=Normal(0., 1.))
     u.stop_gradient = True
-    inputs['U'] = u
     v = helper.create_parameter(attr=ParamAttr(),
                                 shape=[w],
                                 dtype=dtype,
                                 default_initializer=Normal(0., 1.))
-    inputs['V'] = v
     v.stop_gradient = True
+
+    if in_dygraph_mode():
+        return _C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
+
+    inputs = {'Weight': weight}
+    inputs['U'] = u
+    inputs['V'] = v
 
     # create output
     out = helper.create_variable(dtype=dtype)
@@ -4211,11 +4216,42 @@ def conv2d_transpose(input,
 
     padding = _update_padding(padding, data_format)
 
+    if output_size is None:
+        output_size = []
+    elif isinstance(output_size, (list, tuple)):
+        if utils._contain_var(output_size):
+            output_size = utils._convert_to_tensor_list(output_size)
+        else:
+            output_size = utils.convert_to_list(output_size, 2, 'output_size')
+    elif isinstance(output_size, int):
+        output_size = utils.convert_to_list(output_size, 2, 'output_size')
+    elif isinstance(output_size, Variable):
+        check_dtype(output_size.dtype, 'output_size', ['int32', 'int64'],
+                    'conv2d_transpose')
+        if len(output_size.shape) == 1 and (output_size.shape[0] == 1
+                                            or output_size.shape[0] == 2):
+            if output_size.shape[0] == 1:
+                output_size = [output_size, output_size]
+        else:
+            raise ValueError("output_size must contain one or two integers.")
+    else:
+        raise ValueError(
+            "output_size should be int, list[int] or tuple[int] or Tensor")
+
     if filter_size is None:
-        if output_size is None:
+        if output_size is []:
             raise ValueError("output_size must be set when filter_size is None")
-        if isinstance(output_size, int):
-            output_size = [output_size, output_size]
+        if not _non_static_mode():
+            if isinstance(output_size,
+                          Variable) or utils._contain_var(output_size):
+                raise ValueError(
+                    "filter_size should not be None when output_size is Variable or contain Variable in static mode."
+                )
+        else:
+            output_size = utils.convert_shape_to_list(output_size)
+            if len(output_size) == 1:
+                output_size = utils.convert_to_list(output_size[0], 2,
+                                                    'output_size')
 
         h_in = input.shape[2] if data_format == 'NCHW' else input.shape[1]
         w_in = input.shape[3] if data_format == 'NCHW' else input.shape[2]
@@ -4231,13 +4267,6 @@ def conv2d_transpose(input,
 
     if len(padding) == 4 and utils._is_symmetric_padding(padding, 2):
         padding = [padding[0], padding[2]]
-
-    if output_size is None:
-        output_size = []
-    elif isinstance(output_size, (list, tuple, int)):
-        output_size = utils.convert_to_list(output_size, 2, 'output_size')
-    else:
-        raise ValueError("output_size should be int, list[int] or tuple[int]")
 
     if groups is None:
         groups = 1
@@ -4803,8 +4832,13 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
     """
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        return _C_ops.max(input, dim if dim != None else [], keep_dim)
+
     helper.append_op(type='reduce_max',
                      inputs={'X': input},
                      outputs={'Out': out},
@@ -4873,6 +4907,10 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        return _C_ops.min(input, dim if dim != None else [], keep_dim)
+
     helper.append_op(type='reduce_min',
                      inputs={'X': input},
                      outputs={'Out': out},
@@ -5018,6 +5056,10 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
     """
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        return _C_ops.all(input, dim if dim != None else [], keep_dim)
+
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -5180,7 +5222,10 @@ def split(input, num_or_sections, dim=-1, name=None):
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
         if in_dygraph_mode():
-            return _C_ops.split(input, [num], dim)
+            if isinstance(num_or_sections, int):
+                return _C_ops.split_with_num(input, num_or_sections, dim)
+            else:
+                return _C_ops.split(input, num_or_sections, dim)
         elif _in_legacy_dygraph():
             out = [_varbase_creator() for n in range(num)]
             _legacy_C_ops.split(input, out, *attrs)
@@ -5307,8 +5352,11 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     if len(x.shape) == 1:
         axis = 0
     if _non_static_mode():
-        _, out = _legacy_C_ops.norm(x, 'axis', 1 if axis is None else axis,
-                                    'epsilon', epsilon)
+        if in_dygraph_mode():
+            out, _ = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
+        elif _in_legacy_dygraph():
+            _, out = _legacy_C_ops.norm(x, 'axis', 1 if axis is None else axis,
+                                        'epsilon', epsilon)
         return out
 
     check_variable_and_dtype(x, "X", ("float16", "float32", "float64"), "norm")
@@ -10249,6 +10297,9 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
                                     dtype=dtype,
                                     is_bias=False,
                                     default_initializer=Constant(0.25))
+    if in_dygraph_mode():
+        return _C_ops.prelu(x, alpha, data_format, mode)
+
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="prelu",
                      inputs={

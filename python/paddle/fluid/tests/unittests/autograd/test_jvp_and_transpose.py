@@ -364,6 +364,42 @@ class TestExpPJVPAndTranspose(TestAddPJVPAndTranspose):
         ]
 
 
+class TestErfPJVPAndTranspose(TestAddPJVPAndTranspose):
+
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'erf_p'
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
+        self.prim_input = {
+            'X': X,
+        }
+        self.prim_output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.prim_attrs = {}
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
+
+        self.all_ops = [
+            # prim op:
+            'erf_p',
+            # jvp op:
+            'exp_p',
+            'fill_constant_p',
+            'fill_constant_p',
+            'fill_constant_p',
+            'mul_p',
+            'mul_p',
+            'pow_p',
+            'sub_p',
+            # transpose op:
+        ]
+
+
 class TestLogPJVPAndTranspose(TestAddPJVPAndTranspose):
 
     def init_data(self):

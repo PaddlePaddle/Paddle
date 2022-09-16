@@ -16,11 +16,11 @@ import typing
 import unittest
 
 import numpy as np
-import autograd
-import autograd.numpy as np_autograd
-
 import paddle
 
+import autograd
+import autograd.numpy as anp
+import autograd.scipy as ascipy
 import config
 import utils
 
@@ -278,6 +278,11 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
             np.array([1, 2, 3]),
             np.array([2, 2, 2]),
         ), None, 'float32'),
+        ('erf', paddle.erf, (np.random.rand(300, 288), ), None, 'float32'),
+        ('gelu', paddle.nn.functional.gelu,
+         (np.random.rand(200, 189), ), None, 'float32'),
+        ('gelu_approximate', lambda x: paddle.nn.functional.gelu(x, True),
+         (np.random.rand(200, 189), ), None, 'float32'),
     ))
 class TestGrad(unittest.TestCase):
 
@@ -397,25 +402,41 @@ def multiply_pd(x):
 
 
 multiply_ag = lambda xs: xs[0] * xs[0] * xs[0] * xs[0] * xs[0]
-sin_ag = lambda xs: np_autograd.sin(xs[0])
-cos_ag = lambda xs: np_autograd.cos(xs[0])
-exp_ag = lambda xs: np_autograd.exp(xs[0])
+sin_ag = lambda xs: anp.sin(xs[0])
+cos_ag = lambda xs: anp.cos(xs[0])
+exp_ag = lambda xs: anp.exp(xs[0])
 pow_ag = lambda xs: xs[0]**xs[1]
-log_ag = lambda xs: np_autograd.log(xs[0])
+log_ag = lambda xs: anp.log(xs[0])
+erf_ag = lambda xs: ascipy.special.erf(xs[0])
+
+
+def gelu_ag(x, approximate=False):
+    if approximate:
+        sqrt_2_over_pi = np.sqrt(2 / np.pi).astype(x.dtype)
+        cdf = 0.5 * (1.0 + anp.tanh(sqrt_2_over_pi * (x + 0.044715 * (x**3))))
+        return x * cdf
+    else:
+        return x * (ascipy.special.erf(x / np.sqrt(2)) + 1) / 2
 
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
-    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'), (
-        ('multiply', multiply_pd, multiply_ag,
-         (np.random.rand(3, 5), ), None, 'float32'),
-        ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
-        ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
-        ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
-        ('pow', paddle.pow, pow_ag,
-         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
-        ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
-    ))
+    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'),
+    (('multiply', multiply_pd, multiply_ag,
+      (np.random.rand(3, 5), ), None, 'float32'),
+     ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
+     ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
+     ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
+     ('pow', paddle.pow, pow_ag,
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+     ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
+     ('erf', paddle.erf, erf_ag, (np.random.rand(100, 200), ), None, 'float32'),
+     ('gelu', paddle.nn.functional.gelu, lambda xs: gelu_ag(xs[0]),
+      (np.random.rand(10, 20, 30), ), None, 'float32'),
+     ('gelu_approximate',
+      lambda x: paddle.nn.functional.gelu(x, approximate=True),
+      lambda xs: gelu_ag(xs[0], approximate=True),
+      (np.random.rand(10, 20, 30), ), None, 'float32')))
 class TestGradWithHigherOrder(unittest.TestCase):
 
     def setUp(self):

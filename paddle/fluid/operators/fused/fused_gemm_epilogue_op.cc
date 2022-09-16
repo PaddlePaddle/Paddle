@@ -392,14 +392,13 @@ class FusedGemmEpilogueOpGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     const auto& act_type = this->template Attr<std::string>("activation");
-    PADDLE_ENFORCE_EQ(
-        act_type,
-        "none",
-        phi::errors::InvalidArgument("The activation should be none."));
 
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
+    if (act_type != "none") {
+      op->SetInput("ReserveSpace", this->Input("ReserveSpace"));
+    }
     op->SetInput("DOut", this->OutputGrad("Out"));
 
     op->SetOutput("DX", this->InputGrad("X"));

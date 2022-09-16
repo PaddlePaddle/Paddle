@@ -62,6 +62,9 @@ def convert_to_list(value, n, name, dtype=int):
             raise ValueError("The " + name + "'s length must be " + str(n) +
                              ". Received: " + str(value))
         for single_value in value_list:
+            assert not isinstance(
+                single_value, Variable
+            ), "Required numerical type with '%s', but received Tensor." % dtype
             try:
                 dtype(single_value)
             except (ValueError, TypeError):

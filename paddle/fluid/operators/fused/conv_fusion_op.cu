@@ -49,7 +49,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     auto* bias = ctx.Input<Tensor>("Bias");
     auto* residual = ctx.Input<Tensor>("ResidualData");
     auto* output = ctx.Output<Tensor>("Output");
-    output->mutable_data<T>(ctx.GetPlace());
+    dev_ctx.template Alloc<T>(output, output->numel() * sizeof(T));
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");

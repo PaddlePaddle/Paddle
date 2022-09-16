@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+
 #include <memory>
 #include <string>
-
-#include "paddle/phi/kernels/elementwise_add_kernel.h"
 
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
@@ -58,14 +58,6 @@ void AddRawKernel(const Context& dev_ctx,
       dev_ctx, x, y, axis, out, xpu::broadcast_add<XPUType>);
 }
 
-template <typename T, typename Context>
-void AddKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& y,
-               DenseTensor* out) {
-  AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(grad_add,
@@ -76,6 +68,3 @@ PD_REGISTER_KERNEL(grad_add,
                    float) {}
 PD_REGISTER_KERNEL(
     add_raw, XPU, ALL_LAYOUT, phi::AddRawKernel, phi::dtype::float16, float) {}
-
-PD_REGISTER_KERNEL(
-    add, XPU, ALL_LAYOUT, phi::AddKernel, phi::dtype::float16, float) {}

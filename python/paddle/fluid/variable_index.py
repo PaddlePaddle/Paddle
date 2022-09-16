@@ -315,8 +315,8 @@ def get_value_for_bool_tensor(var, item):
         return paddle.empty(var_shape, dtype=var.dtype)
 
     from .layers.control_flow import cond
-    return cond(paddle.logical_not(item.any()), lambda: idx_empty(var),
-                lambda: idx_not_empty(var, item))
+    return cond(item.any(), lambda: idx_not_empty(var, item),
+                lambda: idx_empty(var))
 
 
 def _getitem_impl_(var, item):
@@ -551,8 +551,37 @@ def _getitem_impl_(var, item):
     return out
 
 
+def _setitem_for_tensor_array(var, item, value):
+    """ branches for tensor array setitem operation.
+        A item can be a:
+        (1) int/Variable, which is a simple number/variable such as [1], [-2]
+        (2) Slice, which is represented by bounds such as [2:-1]
+        (3) Tuple, which includes the above two cases such as [2:-1, 1]
+        If item is case (1), we perform paddle.tensor.array_write, 
+        in other cases, we raise a NotImplementedError.
+    """
+    from ..framework import LayerHelper, core, _non_static_mode
+    from .framework import Variable
+    assert not _non_static_mode(
+    ), "setitem for tensor_array must be called in static graph mode."
+    if isinstance(item, (Variable, int)):
+        from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
+        from paddle import cast
+        from paddle.tensor import array_write
+        item = paddle.cast(to_static_variable(item), dtype='int64')
+        value = to_static_variable(value)
+        array_write(x=value, i=item, array=var)
+    else:
+        raise NotImplementedError(
+            "Only support __setitem__ by Int/Variable in tensor_array, but gets {}"
+            .format(type(item)))
+
+
 def _setitem_impl_(var, item, value):
     from .framework import default_main_program, Variable
+    from paddle.fluid import core
+    if var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        return _setitem_for_tensor_array(var, item, value)
 
     inputs = {'Input': var}
     if isinstance(item, list):

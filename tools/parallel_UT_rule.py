@@ -845,7 +845,7 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_normalization_wrapper', 'test_flip', 'test_cosine_similarity_api',
     'test_cumsum_op', 'test_range', 'test_log_loss_op', 'test_where_index',
     'test_tril_triu_op', 'test_lod_reset_op', 'test_lod_tensor',
-    'test_addmm_op', 'test_index_select_op', 'test_nvprof',
+    'test_addmm_op', 'test_index_select_op', 'test_index_add_op', 'test_nvprof',
     'test_index_sample_op', 'test_unstack_op', 'test_increment',
     'strided_memcpy_test', 'test_target_assign_op',
     'test_trt_dynamic_shape_transformer_prune',

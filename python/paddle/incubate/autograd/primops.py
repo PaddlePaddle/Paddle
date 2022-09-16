@@ -355,3 +355,8 @@ def pow(x, y, out=None):
 @REGISTER_FN('max_p', 'X', 'Y', 'Z')
 def max(x, y, out=None):
     return _simple_binop(LayerHelper('max_p', **locals()))
+
+
+@REGISTER_FN('erf_p', 'X', 'Y')
+def erf(x, out=None):
+    return _simple_unop(LayerHelper('erf_p', **locals()))

@@ -186,6 +186,8 @@ FORWARD_FUNCTION_TEMPLATE = \
 {}
   // AMP Logic
 {}
+  // Layout autotune
+{}
   // Get Input AutoGradMeta
 {}
   // Forward API Call
@@ -217,7 +219,8 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = \
 {}
   // AMP Logic
 {}
-
+  // Layout autotune
+{}
   // Forward API Call
   VLOG(3) << \"Final State Running: \" << \"{}\";
 {}
@@ -295,7 +298,6 @@ NODE_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
-
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 DECLARE_bool(check_nan_inf);
@@ -317,7 +319,7 @@ FORWARD_CC_FILE_TEMPLATE = \
 #include "paddle/phi/api/lib/dygraph_api.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
-
+#include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/phi/api/include/strings_api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
@@ -396,7 +398,21 @@ AMP_LOGIC_TEMPLATE = \
     }}
   }}
 """
-
+LAYOUT_LOGIC_TEMPLATE=\
+"""
+  if (paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune()) {{
+    VLOG(5) << "Check and Prepare For LAYOUT";
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> tensors_vector = {};
+    {} 
+    {}
+    paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune(); 
+    {}
+    {}
+    paddle::imperative::LayoutAutoTune::Instance().EnableLayoutAutoTune();
+    // Returns
+    return {};
+  }}
+"""
 CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = \
 """
   paddle::optional<paddle::experimental::Tensor> {}_optional;
@@ -553,16 +569,16 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         forward_api_contents = self.forward_api_contents
         grad_api_contents = self.grad_api_contents
 
-        assert 'api' in forward_api_contents.keys(
-        ), "Unable to find \"api\" in api.yaml"
+        assert 'op' in forward_api_contents.keys(
+        ), "Unable to find \"op\" in ops.yaml"
         assert 'args' in forward_api_contents.keys(
-        ), "Unable to find \"args\" in api.yaml"
+        ), "Unable to find \"args\" in ops.yaml"
         assert 'output' in forward_api_contents.keys(
-        ), "Unable to find \"output\" in api.yaml"
+        ), "Unable to find \"output\" in ops.yaml"
 
         if grad_api_contents is not None:
             assert 'backward' in forward_api_contents.keys(
-            ), "Unable to find \"backward\" in api.yaml"
+            ), "Unable to find \"backward\" in ops.yaml"
             assert 'args' in grad_api_contents.keys(
             ), "Unable to find \"args\" in backward.yaml"
             assert 'output' in grad_api_contents.keys(
@@ -992,6 +1008,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         amp_tensors_vector_optional_list = []
         amp_autocast_list = []
         amp_autocast_optional_list = []
+        layout_autotune_list = []
+        layout_autotune_optional_list = []
+        layout_tensors_vector_optional_list = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"NEW_{name}"
@@ -1009,6 +1028,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     amp_autocast_optional_list.append(
                         f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
+                    layout_tensors_vector_optional_list.append(
+                        f"if ({name}) tensors_vector.push_back({{ *{name} }});\n"
+                    )
+                    layout_autotune_optional_list.append(
+                        f"auto NEW_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
+                    )
                 else:
                     if is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
                     ):
@@ -1023,6 +1048,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         amp_autocast_list.append(
                             f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                         )
+                    layout_autotune_list.append(
+                        f"auto NEW_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
+                    )
             else:
                 assert IsVectorTensorType(ttype)
                 if is_optional:
@@ -1037,6 +1065,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     amp_autocast_optional_list.append(
                         f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
+                    layout_autotune_optional_list.append(
+                        f"auto NEW_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
+                    )
                 else:
                     if is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
                     ):
@@ -1047,10 +1078,59 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     amp_autocast_list.append(
                         f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
+                    layout_autotune_list.append(
+                        f"auto NEW_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
+                    )
 
             inputs_args_definition_list[pos] = arg_str
             inputs_args_declaration_list[pos] = arg_str
 
+        # for layout autotune attr
+        lightly_sensitive_attr = [
+            'axis', 'axes', 'dim', 'dims', 'start', 'end', 'stop'
+        ]
+        heavily_sensitive_attr = ['data_format', 'data_layout']
+        layout_autotune_attr = []
+        layout_autotune_attr_code_list = []
+        layout_autotune_attr_type_list = []
+        layout_autotune_attr_code_list.append(
+            f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");\n"
+        )
+
+        lightly_flag = False
+        heavily_flag = False
+        for name, atype, default_val, pos in forward_attrs_list:
+            for attr_name in lightly_sensitive_attr:
+                if name.find(
+                        attr_name) != -1 and name not in layout_autotune_attr:
+                    lightly_flag = True
+                    layout_autotune_attr.append(name)
+                    layout_autotune_attr_type_list.append(atype)
+            if lightly_flag is False:
+                for attr_name in heavily_sensitive_attr:
+                    if name.find(attr_name
+                                 ) != -1 and name not in layout_autotune_attr:
+                        layout_autotune_attr.append(name)
+                        layout_autotune_attr_type_list.append(atype)
+                        heavily_flag = True
+        if len(layout_autotune_attr) == 0:
+            layout_autotune_attr_code_list.append(
+                f"auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);\n"
+            )
+        elif len(layout_autotune_attr) == 1:
+            layout_autotune_attr_code_list.append(
+                f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}>(op_name, tensors_vector, &{layout_autotune_attr[0]});\n"
+            )
+        elif len(layout_autotune_attr) == 2:
+            layout_autotune_attr_code_list.append(
+                f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}, {layout_autotune_attr_type_list[1]}>(op_name, tensors_vector, &{layout_autotune_attr[0]}, &{layout_autotune_attr[1]});\n"
+            )
+        else:
+            layout_autotune_attr_code_list.append(
+                f"auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector, {len(layout_autotune_attr)});\n"
+            )
+
+        # forward attrs
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
             amp_inputs_call_list[pos] = name
@@ -1236,6 +1316,35 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,
                 amp_autocast_list_str, amp_call_str)
 
+        # Forward layout autotune
+        layout_inputs_call_args_str = amp_inputs_call_args_str
+        layout_tmp_result_list = []
+        layout_autotune_outs_list = ""
+        if num_outputs == 1:
+            layout_autotune_outs_list += f"{indent}auto {returns_str} = api_result;\n"
+            layout_autotune_outs_list += f"{indent}transformer -> SetOutTensorLayout(&{returns_str});\n"
+        else:
+            for name, (rtype, pos) in forward_outputs_position_map.items():
+                if name in intermediate_outputs:
+                    continue
+                layout_autotune_outs_list += f"{indent}auto& {name} = std::get<{len(layout_tmp_result_list)}>(api_result);\n"
+                layout_autotune_outs_list += f"{indent}transformer -> SetOutTensorLayout(&{name});\n"
+                layout_tmp_result_list.append(f"{name}")
+
+        if returns_type_str == "paddle::experimental::Tensor&" or forward_api_name == "slice" or forward_api_name == "strided_slice" or len(
+                layout_autotune_attr) == 0:
+            layout_logic_str = ""
+        else:
+            # after_call_str = f"return {forward_function_name}({layout_inputs_call_args_str});\n"
+            after_call_str = f"auto api_result = {forward_function_name}({layout_inputs_call_args_str});\n"
+            layout_logic_str = LAYOUT_LOGIC_TEMPLATE.format(
+                amp_tensors_vector_list_str,
+                "    ".join(layout_tensors_vector_optional_list),
+                "    ".join(layout_autotune_attr_code_list) + "    " +
+                "    ".join(layout_autotune_list) +
+                "   ".join(layout_autotune_optional_list), after_call_str,
+                layout_autotune_outs_list, returns_str)
+
         # Generate forward_definition_str and forward_declaration_str
         if self.is_forward_only:
             if len(amp_tensors_vector_list) == 0:
@@ -1243,17 +1352,17 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             self.forward_definition_str += FORWARD_ONLY_FUNCTION_TEMPLATE.format(
                 returns_type_str, forward_function_name,
                 inputs_args_definition_str, dygraph_event_str, amp_logic_str,
-                forward_function_name, forward_call_str, get_outputs_str,
-                returns_str)
+                layout_logic_str, forward_function_name, forward_call_str,
+                get_outputs_str, returns_str)
         else:
             self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
                 returns_type_str, forward_function_name,
                 inputs_args_definition_str, dygraph_event_str, amp_logic_str,
-                inputs_autograd_meta_str, forward_function_name,
-                forward_call_str, check_nan_inf_str, get_outputs_str,
-                outputs_autograd_meta_str, compute_require_grad_args_str,
-                check_inplace_str, bump_inplace_version_str, node_creation_str,
-                returns_str)
+                layout_logic_str, inputs_autograd_meta_str,
+                forward_function_name, forward_call_str, check_nan_inf_str,
+                get_outputs_str, outputs_autograd_meta_str,
+                compute_require_grad_args_str, check_inplace_str,
+                bump_inplace_version_str, node_creation_str, returns_str)
 
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
 
@@ -1376,7 +1485,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if next_grad_api_contents:
             # Fake forward_api_contents and backward_api_contents
             forward_api_contents = grad_api_contents
-            forward_api_contents['api'] = forward_api_contents['backward_api']
+            forward_api_contents['op'] = forward_api_contents['backward_op']
             backward_api_contents = next_grad_api_contents
 
             next_node_generator = DygraphFunctionGeneratorBase(
@@ -1805,11 +1914,11 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         grad_api_dict = self.grad_api_dict
         forward_apis_dict = {}
         for api_item in forward_api_list:
-            forward_apis_dict[api_item['api']] = api_item
+            forward_apis_dict[api_item['op']] = api_item
         namespace = self.namespace
 
         for forward_api_contents in forward_api_list:
-            if forward_api_contents['api'] in black_ops_list: continue
+            if forward_api_contents['op'] in black_ops_list: continue
 
             self.CollectIsForwardOnly(forward_api_contents)
 
@@ -1850,8 +1959,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                 forward_api_contents = backward_api_contents
 
                 # Fake forward_api_content
-                forward_api_contents['api'] = forward_api_contents[
-                    'backward_api']
+                forward_api_contents['op'] = forward_api_contents['backward_op']
                 backward_api_contents = next_grad_api_contents
 
         if len(namespace) > 0:
@@ -1934,7 +2042,7 @@ if __name__ == "__main__":
         api_yaml_path = api_yaml_paths[i]
 
         # string api is forwrad only
-        if not api_yaml_path.endswith('strings_api.yaml'):
+        if not api_yaml_path.endswith('strings_ops.yaml'):
             backward_yaml_path = backward_yaml_paths[i]
         else:
             backward_yaml_path = None

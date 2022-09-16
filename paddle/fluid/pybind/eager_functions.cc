@@ -523,8 +523,8 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
       std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_indices.impl());
   auto dense_elements =
       std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
-  // TODO(zhangkaihuo): After create SparseTensor, call coalesced() to sort and
-  // merge duplicate indices
+  // TODO(zhangkaihuo): After creating SparseCooTensor, call coalesced() to sort
+  // and merge duplicate indices
   std::shared_ptr<phi::SparseCooTensor> coo_tensor =
       std::make_shared<phi::SparseCooTensor>(
           *dense_indices, *dense_elements, phi::make_ddim(dense_shape));
@@ -537,7 +537,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
   autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
   if (!autograd_meta->GetMutableGradNode()) {
     VLOG(3) << "Tensor(" << name
-            << ") have not GradNode, add GradNodeAccumulation for it.";
+            << ") doesn't have GradNode, add GradNodeAccumulation to it.";
     autograd_meta->SetGradNode(
         std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
   }

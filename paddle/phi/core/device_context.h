@@ -157,6 +157,7 @@ class PADDLE_API DeviceContext {
   T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;
 
   virtual const Place& GetPlace() const = 0;
+
   // TODO(wilber): The fluid framework uses wait() in many places, how to delete
   // this API interface.
   virtual void Wait() const {}

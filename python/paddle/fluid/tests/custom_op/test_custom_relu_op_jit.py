@@ -111,17 +111,9 @@ class TestJITLoad(unittest.TestCase):
             custom_relu_dynamic(custom_module.custom_relu, 'cpu', 'int32', x)
         except OSError as e:
             caught_exception = True
-            self.assertTrue(
-                "function \"relu_cpu_forward\" is not implemented for data type `int32`"
-                in str(e))
-            if IS_WINDOWS:
-                self.assertTrue(
-                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc" in
-                    str(e))
-            else:
-                self.assertTrue(
-                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc" in
-                    str(e))
+            self.assertTrue("relu_cpu_forward" in str(e))
+            self.assertTrue("int32" in str(e))
+            self.assertTrue("custom_relu_op.cc" in str(e))
         self.assertTrue(caught_exception)
         caught_exception = False
         # MAC-CI don't support GPU
@@ -132,12 +124,9 @@ class TestJITLoad(unittest.TestCase):
             custom_relu_dynamic(custom_module.custom_relu, 'gpu', 'int32', x)
         except OSError as e:
             caught_exception = True
-            self.assertTrue(
-                "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32`"
-                in str(e))
-            self.assertTrue(
-                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu" in str(
-                    e))
+            self.assertTrue("relu_cuda_forward_kernel" in str(e))
+            self.assertTrue("int32" in str(e))
+            self.assertTrue("custom_relu_op.cu" in str(e))
         self.assertTrue(caught_exception)
 
     def test_exception(self):

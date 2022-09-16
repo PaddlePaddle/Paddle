@@ -22,6 +22,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -132,6 +133,25 @@ void BindDistributed(py::module *m) {
               },
               py::arg("tensor"),
               py::arg("op") = distributed::ReduceOp::SUM,
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "allreduce",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 distributed::ReduceOp op,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                distributed::AllreduceOptions opts;
+                opts.reduce_op = op;
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.AllReduce(tensors, tensors, opts, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("op"),
+              py::arg("sync_op"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
@@ -384,11 +404,36 @@ void BindDistributed(py::module *m) {
               py::arg("op") = distributed::ReduceOp::SUM,
               py::call_guard<py::gil_scoped_release>());
 
+  auto ProcessGroupStream =
+      py::class_<distributed::ProcessGroupStream,
+                 std::shared_ptr<distributed::ProcessGroupStream>>(
+          *m, "ProcessGroupStream", ProcessGroup)
+          .def(
+              "allreduce_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 distributed::ReduceOp op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                distributed::AllreduceOptions opts;
+                opts.reduce_op = op;
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.AllReduce(tensors,
+                                      tensors,
+                                      opts,
+                                      /*sync_op*/ true,
+                                      /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("op"),
+              py::call_guard<py::gil_scoped_release>());
+
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
   auto processGroupNCCL =
       py::class_<distributed::ProcessGroupNCCL,
                  std::shared_ptr<distributed::ProcessGroupNCCL>>(
-          *m, "ProcessGroupNCCL", ProcessGroup)
+          *m, "ProcessGroupNCCL", ProcessGroupStream)
           .def(py::init<const std::shared_ptr<distributed::Store> &,
                         int,
                         int,
@@ -485,6 +530,7 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroup::Task,
              std::shared_ptr<distributed::ProcessGroup::Task>>(*m, "task")
       .def("is_completed", &distributed::ProcessGroup::Task::IsCompleted)
+      .def("is_sync", &distributed::ProcessGroup::Task::IsSync)
       .def("wait",
            &distributed::ProcessGroup::Task::Wait,
            py::arg("timeout") = kWaitTimeout,

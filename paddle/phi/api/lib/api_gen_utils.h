@@ -73,30 +73,25 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 /* ------------------ for output ----------------------- */
 
-phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out);
+phi::DenseTensor* SetKernelOutput(Tensor* out);
 
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
-                                               Backend backend,
                                                std::vector<Tensor>* out);
 
 std::vector<phi::DenseTensor*> SetInplaceVectorKernelOutput(
-    size_t out_size, Backend backend, std::vector<Tensor>* out);
+    size_t out_size, std::vector<Tensor>* out);
 
 std::vector<phi::DenseTensor*> SetInplaceOptionalVectorKernelOutput(
-    size_t out_size,
-    Backend backend,
-    const paddle::optional<std::vector<Tensor>>& out);
+    size_t out_size, const paddle::optional<std::vector<Tensor>>& out);
 
 // For backward api
 std::vector<phi::DenseTensor*> SetKernelOutput(std::vector<Tensor*>* out);
 
-phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend, Tensor* out);
+phi::SelectedRows* SetSelectedRowsKernelOutput(Tensor* out);
 
 phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type);
 
-phi::TensorBase* SetStringsKernelOutput(Backend backend,
-                                        Tensor* out,
-                                        TensorType type);
+phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type);
 
 }  // namespace experimental
 }  // namespace paddle

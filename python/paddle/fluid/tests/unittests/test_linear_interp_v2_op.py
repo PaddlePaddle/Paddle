@@ -376,9 +376,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
 
         # dygraph
         x_data = np.random.random((1, 3, 128)).astype("float32")
-        us_1 = paddle.nn.Upsample(size=[
-            64,
-        ],
+        us_1 = paddle.nn.Upsample(size=[64],
                                   mode='linear',
                                   align_mode=1,
                                   align_corners=False,
@@ -493,28 +491,21 @@ class TestLinearInterpOpError(unittest.TestCase):
 
             def input_shape_error():
                 x1 = fluid.data(name="x1", shape=[1], dtype="float32")
-                out1 = paddle.nn.Upsample(size=[
-                    256,
-                ],
+                out1 = paddle.nn.Upsample(size=[256],
                                           data_format='NCW',
                                           mode='linear')
                 out1_res = out1(x1)
 
             def data_format_error():
                 x2 = fluid.data(name="x2", shape=[1, 3, 128], dtype="float32")
-                out2 = paddle.nn.Upsample(size=[
-                    256,
-                ],
+                out2 = paddle.nn.Upsample(size=[256],
                                           data_format='NHWCD',
                                           mode='linear')
                 out2_res = out2(x2)
 
             def out_shape_error():
                 x3 = fluid.data(name="x3", shape=[1, 3, 128], dtype="float32")
-                out3 = paddle.nn.Upsample(size=[
-                    256,
-                    256,
-                ],
+                out3 = paddle.nn.Upsample(size=[256, 256],
                                           data_format='NHWC',
                                           mode='linear')
                 out3_res = out3(x3)
@@ -522,6 +513,47 @@ class TestLinearInterpOpError(unittest.TestCase):
             self.assertRaises(ValueError, input_shape_error)
             self.assertRaises(ValueError, data_format_error)
             self.assertRaises(ValueError, out_shape_error)
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestLinearInterpOpForFloat16(unittest.TestCase):
+
+    def init_test_case(self):
+        self.interp_method = 'linear'
+        self.input_shape = [1, 3, 64]
+        self.scale = 2
+        self.align_corners = False
+        self.align_mode = 1
+        self.data_layout = 'NCW'
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        y = interpolate(x,
+                        scale_factor=self.scale,
+                        mode=self.interp_method,
+                        align_mode=self.align_mode,
+                        align_corners=self.align_corners,
+                        data_format=self.data_layout)
+        x_g = paddle.grad(y, x)
+        y_np = y[0].numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+        # forward
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        # backward
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2)
 
 
 if __name__ == "__main__":

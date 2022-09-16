@@ -27,7 +27,6 @@ from paddle.io import Dataset
 from paddle.static import InputSpec
 from paddle.fluid.framework import _non_static_mode
 from paddle.distributed.auto_parallel.engine import Engine
-from paddle.distributed.auto_parallel.hepler import ProgramHelper
 
 from test_to_static import MLPLayer, MyDataset
 
@@ -86,7 +85,7 @@ class TestLRScheduler(TestEngineBase):
         self.engine.fit(self.dataset, batch_size=self.batch_size)
 
 
-class TestGradClip(TestEngineBase):
+class TestGradClipByGlobalNorm(TestEngineBase):
 
     def init_optimizer(self):
         clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
@@ -96,7 +95,6 @@ class TestGradClip(TestEngineBase):
     def test_grad_clip(self):
 
         clip = self.engine._optimizer._grad_clip
-        assert isinstance(clip, paddle.nn.ClipGradByGlobalNorm)
         self.engine.fit(self.dataset, batch_size=self.batch_size)
         self.check_program()
 
@@ -110,6 +108,14 @@ class TestGradClip(TestEngineBase):
                 has_grad_clip = True
                 break
         assert has_grad_clip is True
+
+
+class TestGradClipByNorm(TestGradClipByGlobalNorm):
+
+    def init_optimizer(self):
+        clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
+        self.optimizer = paddle.optimizer.SGD(learning_rate=0.00001,
+                                              grad_clip=clip)
 
 
 if __name__ == "__main__":

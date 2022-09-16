@@ -145,12 +145,7 @@ class Parallelizer:
                             params_grads):
         # NOTE: `apply_gradients` will add an Accumulator for a parameter only once,
         # but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
-        if self._dist_context._dygraph_mode:
-            paddle.disable_static()
-            optimizer = copy.deepcopy(optimizer)
-            paddle.enable_static()
-        else:
-            optimizer = copy.deepcopy(optimizer)
+        optimizer = copy.deepcopy(optimizer)
         self._dist_context._lr_optimizer = optimizer
         with program_guard(main_program, startup_program):
             with unique_name.guard("opt_"):
@@ -222,6 +217,7 @@ class Parallelizer:
         config = {}
         config["dist_context"] = self._dist_context
         config["global_rank"] = rank
+        config["use_sharding"] = self._strategy.sharding
         dp_pass = new_pass("auto_parallel_data_parallel_optimization", config)
         dp_pass.apply([main_program], [startup_program], self._pass_context)
 
@@ -235,7 +231,19 @@ class Parallelizer:
             auto_parallel_sharding_pass.apply([main_program], [startup_program],
                                               self._pass_context)
 
-        # recompute is then train-only optimization
+        # GradClip is train-only optimization
+
+        if self._mode == "train":
+            config = copy.deepcopy(self._strategy.sharding_configs)
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["rank_id"] = rank
+            auto_parallel_clip_pass = new_pass("auto_parallel_grad_clip",
+                                               config)
+            auto_parallel_clip_pass.apply([main_program], [startup_program],
+                                          self._pass_context)
+
+        # gradient_merge is then train-only optimization
         if self._mode == "train" and self._strategy.gradient_merge:
             config = copy.deepcopy(self._strategy.gradient_merge_configs)
             config["dist_context"] = self._dist_context

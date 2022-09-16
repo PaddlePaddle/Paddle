@@ -627,6 +627,12 @@ class DistributedStrategy(object):
                     % (table_class))
             table_data.table_class = 'MemorySparseTable'
             table_data.shard_num = config.get('sparse_shard_num', 1000)
+            table_data.enable_sparse_table_cache = config.get(
+                'sparse_enable_cache', True)
+            table_data.sparse_table_cache_rate = config.get(
+                'sparse_cache_rate', 0.00055)
+            table_data.sparse_table_cache_file_num = config.get(
+                'sparse_cache_file_num', 16)
 
             accessor_class = config.get("sparse_accessor_class",
                                         "DownpourCtrAccessor")
@@ -1990,6 +1996,28 @@ class DistributedStrategy(object):
             self.strategy.auto_search = flag
         else:
             print("WARNING: auto-search should have value of bool type")
+
+    @property
+    def split_data(self):
+        """
+        Indicating whether we split the data. If True, we split the data.
+        Default Value: True
+        Examples:
+          .. code-block:: python
+            import paddle
+            paddle.enable_static()
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.split_data = True
+        """
+        return self.strategy.split_data
+
+    @split_data.setter
+    def split_data(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.split_data = flag
+        else:
+            print("WARNING: split_data should have value of bool type")
 
     @property
     def qat(self):

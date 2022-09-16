@@ -113,20 +113,24 @@ class CriterionPipe(Layer):
 
 class ModelPipe(PipelineLayer):
 
-    def __init__(self, topology):
+    def __init__(self, hcg):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
+        self.hcg = hcg
 
         for x in range(2):
             self.descs.append(LayerDesc(TransformerNetPipe))
 
         super().__init__(layers=self.descs,
                          loss_fn=CriterionPipe(),
-                         topology=topology,
+                         topology=self.hcg.topology(),
                          seg_method="layer:TransformerNetPipe",
                          recompute_interval=1,
-                         recompute_partition=False,
-                         recompute_offload=False)
+                         recompute_ctx={
+                             "mp_group": self.hcg.get_model_parallel_group(),
+                             "offload": False,
+                             "partition": False
+                         })
 
 
 class TestDistPPTraning(unittest.TestCase):
@@ -156,7 +160,7 @@ class TestDistPPTraning(unittest.TestCase):
         topology = hcg.topology()
         set_random_seed(1024, dp_id, rank_id)
 
-        model = ModelPipe(topology)
+        model = ModelPipe(hcg)
         scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
                                                        values=[0.001, 0.002],
                                                        verbose=True)

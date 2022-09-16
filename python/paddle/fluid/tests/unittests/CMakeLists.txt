@@ -27,8 +27,6 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_multi_transformer)
-list(APPEND DIST_TEST_OPS
-     test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
 list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
 list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
@@ -147,17 +145,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
 endif()
-
-list(REMOVE_ITEM TEST_OPS test_fleet_checkpoint)
-list(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
-list(REMOVE_ITEM TEST_OPS test_auto_checkpoint1)
-list(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
-list(REMOVE_ITEM TEST_OPS test_auto_checkpoint3)
-list(REMOVE_ITEM TEST_OPS test_auto_checkpoint_multiple)
-list(REMOVE_ITEM TEST_OPS test_auto_checkpoint_dist_basic)
-list(REMOVE_ITEM TEST_OPS test_hdfs1)
-list(REMOVE_ITEM TEST_OPS test_hdfs2)
-list(REMOVE_ITEM TEST_OPS test_hdfs3)
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
 if(APPLE OR WIN32)
@@ -189,8 +176,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
-  list(REMOVE_ITEM TEST_OPS
-       test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt)
@@ -687,11 +672,6 @@ if(WITH_DISTRIBUTE)
 
     endif()
   endif()
-  if(NOT WITH_DGC)
-    # if not with dgc, must close all dgc tests
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_se_resnext_dgc")
-  endif()
 
   if(NOT APPLE)
     if(WITH_GPU OR WITH_ROCM)
@@ -825,7 +805,7 @@ py_test_modules(
 # it is found that windows CI will run all the training unittests with the ON_INFER option turned on,
 # which will not appear in other CIs. The calculation behavior of some ops in inference mode is
 # inconsistent with that in non-inference mode.
-if(NOT ON_INFER)
+if(WITH_PYTHON)
   py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES
                   test_parallel_executor_seresnext_base_cpu)
   py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES
@@ -857,87 +837,6 @@ if(NOT WIN32)
   py_test_modules(test_parallel_executor_fetch_feed MODULES
                   test_parallel_executor_fetch_feed)
   set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
-endif()
-
-if(WITH_DISTRIBUTE
-   AND NOT APPLE
-   AND NOT WIN32)
-  py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
-  set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_fleet_checkpoint
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
-  bash_test_modules(
-    test_auto_checkpoint
-    START_BASH
-    dist_test.sh
-    TIMEOUT
-    200
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY")
-  bash_test_modules(
-    test_auto_checkpoint1
-    START_BASH
-    dist_test.sh
-    TIMEOUT
-    200
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY")
-  bash_test_modules(
-    test_auto_checkpoint2
-    START_BASH
-    dist_test.sh
-    TIMEOUT
-    200
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY")
-  bash_test_modules(
-    test_auto_checkpoint3
-    START_BASH
-    dist_test.sh
-    TIMEOUT
-    200
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY")
-  bash_test_modules(
-    test_auto_checkpoint_multiple
-    START_BASH
-    dist_test.sh
-    TIMEOUT
-    200
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY")
-  bash_test_modules(
-    test_auto_checkpoint_dist_basic
-    START_BASH
-    dist_test.sh
-    TIMEOUT
-    200
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY")
-  bash_test_modules(
-    test_hdfs1
-    START_BASH
-    dist_test.sh
-    TIMEOUT
-    200
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY")
-  bash_test_modules(
-    test_hdfs2
-    START_BASH
-    dist_test.sh
-    TIMEOUT
-    200
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY")
-  bash_test_modules(
-    test_hdfs3
-    START_BASH
-    dist_test.sh
-    TIMEOUT
-    200
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 endif()
 
 add_subdirectory(sequence)
@@ -1149,6 +1048,7 @@ endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_crf PROPERTIES TIMEOUT 120)
@@ -1274,9 +1174,6 @@ set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
-  set_tests_properties(
-    test_parallel_dygraph_pipeline_parallel_with_virtual_stage
-    PROPERTIES TIMEOUT 500)
   set_tests_properties(test_auto_parallel_data_unshard PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
@@ -1379,6 +1276,11 @@ set_tests_properties(test_renorm_op_without_eager PROPERTIES TIMEOUT 120)
 py_test_modules(
   test_eager_deletion_padding_rnn_for_interpretercore MODULES
   test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+set_tests_properties(
+  test_buffer_shared_memory_reuse_pass
+  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+  PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
 
 # ExecutionStrategy is deprecated in standalone executor
 set_tests_properties(test_parallel_executor_dry_run

@@ -302,7 +302,7 @@ class GradNodeBase {
   // Gradient Hooks
   // Customer may register a list of hooks which will be called in order during
   // backward
-  // Each entry consists one pair of
+  // Each entry consists of one pair of
   // <hook_id, <out_rank, std::shared_ptr<TensorHook>>>
   std::map<int64_t,
            std::tuple<

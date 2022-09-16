@@ -166,7 +166,7 @@ def sparse_coo_tensor(indices,
                 "the number of dimensions(len(shape) must be sparse_dim({}) + dense_dim({}), but get {}"
                 .format(sparse_dim, dense_dim, len(shape)))
 
-    return _C_ops.sparse_create_sparse_coo_tensor(values, indices, shape)
+    return _C_ops.sparse_sparse_coo_tensor(values, indices, shape)
 
 
 #TODO: need to support shape is None

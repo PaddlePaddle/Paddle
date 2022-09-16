@@ -40,6 +40,9 @@ void SynchronizeAllDevice();
 
 std::atomic<bool> Profiler::alive_{false};
 
+uint32_t Profiler::span_indx = 0;
+const char* Profiler::version = "1.0.2";
+
 std::unique_ptr<Profiler> Profiler::Create(
     const ProfilerOptions& options,
     const std::vector<std::string>& custom_device_types) {
@@ -131,8 +134,24 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
                            std::string("%s"),
                            kv.second.c_str());
   }
-  return std::unique_ptr<ProfilerResult>(
-      new platform::ProfilerResult(std::move(tree), extrainfo));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::map<uint32_t, gpuDeviceProp> device_property_map;
+  std::vector<int32_t> device_ids = GetSelectedDevices();
+  for (auto index = 0u; index < device_ids.size(); index++) {
+    const gpuDeviceProp& device_property =
+        GetDeviceProperties(device_ids[index]);
+    device_property_map[device_ids[index]] = device_property;
+  }
+  ProfilerResult* profiler_result_ptr = new platform::ProfilerResult(
+      std::move(tree), extrainfo, device_property_map);
+#else
+  ProfilerResult* profiler_result_ptr =
+      new platform::ProfilerResult(std::move(tree), extrainfo);
+#endif
+  profiler_result_ptr->SetVersion(std::string(version));
+  profiler_result_ptr->SetSpanIndx(span_indx);
+  span_indx += 1;
+  return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 
 }  // namespace platform

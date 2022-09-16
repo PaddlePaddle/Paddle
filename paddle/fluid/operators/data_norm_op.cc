@@ -251,10 +251,6 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddAttr<bool>("sync_stats", "(bool, default false) only used in multi-GPU")
         .SetDefault(false);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddInput("X", "The input tensor");
     AddInput("BatchSize",
              "BatchSize is a 1-dimensional tensor of size C "

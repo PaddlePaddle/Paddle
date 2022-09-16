@@ -18,14 +18,13 @@ import paddle
 from paddle.framework import core
 from paddle.fluid import unique_name
 from .pass_base import register_pass
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
 from paddle.distributed.auto_parallel.utils import set_var_dist_attr, naive_set_dist_op_attr_for_program_by_mesh_and_mapping
 from paddle.distributed.auto_parallel.process_group import get_world_process_group
 from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_layer_norm_scale_bias_to_fp32, _need_keep_fp32, _valid_types, _dtype_to_str
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
-from paddle.distributed.auto_parallel.utils import is_forward_op, is_backward_op
+from paddle.distributed.auto_parallel.utils import is_forward_op, is_backward_op, OP_ROLE_KEY, OpRole
 from .auto_parallel_amp import AMPPass
 
 world_process_group = get_world_process_group()
@@ -331,6 +330,7 @@ class FP16State(object):
                             attrs={
                                 "in_dtype": in_var.dtype,
                                 "out_dtype": cast_var.dtype,
+                                OP_ROLE_KEY: OpRole.Forward
                             })
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                             cast_op, ref_mesh, ref_mapping, dist_context)
@@ -409,6 +409,7 @@ class FP16State(object):
                 attrs={
                     "in_dtype": dst_dtype,
                     "out_dtype": src_dtype,
+                    OP_ROLE_KEY: OpRole.Backward
                 })
             grad.desc.set_dtype(src_dtype)
 

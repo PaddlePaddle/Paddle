@@ -200,8 +200,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       }
     }
     if (!sr_in_out_data.empty()) {
-      auto tmp_sr_in_out_array =
-          memory::Alloc(dev_ctx, sr_in_out_data.size() * sizeof(T *));
+      auto tmp_sr_in_out_array = memory::Alloc(
+          dev_ctx.GetPlace(),
+          sr_in_out_data.size() * sizeof(T *),
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
       memory::Copy(dev_ctx.GetPlace(),
                    tmp_sr_in_out_array->ptr(),
@@ -221,7 +223,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
+    auto tmp_in_array = memory::Alloc(
+        dev_ctx.GetPlace(),
+        in_data.size() * sizeof(T *),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
     memory::Copy(dev_ctx.GetPlace(),
                  tmp_in_array->ptr(),
