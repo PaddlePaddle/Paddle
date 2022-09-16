@@ -92,7 +92,7 @@ void NMSKernel(const Context& dev_ctx,
       }
     }
   }
-  output->Resize({{last_box_num}});
+  output->Resize(phi::make_ddim({last_box_num}));
   auto* output_data = dev_ctx.template Alloc<int64_t>(output);
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        output_data,

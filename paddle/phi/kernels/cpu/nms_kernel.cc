@@ -15,9 +15,8 @@
 #include "paddle/phi/kernels/nms_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -71,16 +70,14 @@ void NMSKernel(const Context& dev_ctx,
                float threshold,
                DenseTensor* output) {
   int64_t num_boxes = boxes.dims()[0];
-  std::vector<int64_t> output_vec(num_boxes);
+  DenseTensor output_tmp;
+  output_tmp.Resize(phi::make_ddim({num_boxes}));
+  auto output_tmp_data = dev_ctx.template Alloc<int64_t>(&output_tmp);
+
   int64_t num_keep_boxes =
-      NMS<T>(boxes.data<T>(), output_vec.data(), threshold, num_boxes);
-  output->Resize({{num_keep_boxes}});
-  auto output_data = dev_ctx.template Alloc<int64_t>(output);
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       output_data,
-                       dev_ctx.GetPlace(),
-                       output_vec.data(),
-                       sizeof(int64_t) * num_keep_boxes);
+      NMS<T>(boxes.data<T>(), output_tmp_data, threshold, num_boxes);
+  auto slice_out = output_tmp.Slice(0, num_keep_boxes);
+  phi::Copy(dev_ctx, slice_out, dev_ctx.GetPlace(), false, output);
 }
 
 }  // namespace phi

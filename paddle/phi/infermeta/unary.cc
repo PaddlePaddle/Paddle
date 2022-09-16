@@ -2035,7 +2035,6 @@ void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
                         "whose shape must be [N, 4] "
                         "N is the number of boxes "
                         "in last dimension in format [x1, x2, y1, y2]. "));
-  auto num_boxes = boxes_dim[0];
   out->set_dims(phi::make_ddim({-1}));
   out->set_dtype(DataType::INT64);
 }
