@@ -34,14 +34,6 @@ void Conv3dInferMeta(const MetaTensor& x,
                      MetaTensor* rulebook,
                      MetaTensor* counter);
 
-void ElementwiseInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          MetaTensor* out);
-
-void MatmulInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
-
-void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
-
 void Pool3dInferMeta(const MetaTensor& x,
                      const std::vector<int>& kernel_sizes,
                      const std::vector<int>& paddings,

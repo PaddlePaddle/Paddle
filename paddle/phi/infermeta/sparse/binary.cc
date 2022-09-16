@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/sparse/binary.h"
-#include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 namespace sparse {
@@ -94,22 +93,6 @@ void Conv3dInferMeta(const MetaTensor& x,
   counter->set_dtype(DataType::INT32);
   counter->set_layout(DataLayout::NCHW);
   counter->set_dims({1});
-}
-
-void ElementwiseInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          MetaTensor* out) {
-  phi::ElementwiseInferMeta(x, y, out);
-}
-
-void MatmulInferMeta(const MetaTensor& x,
-                     const MetaTensor& y,
-                     MetaTensor* out) {
-  phi::MatmulInferMeta(x, y, false, false, out);
-}
-
-void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
-  phi::MvInferMeta(x, vec, out);
 }
 
 inline const std::vector<int> PoolResetKernel(

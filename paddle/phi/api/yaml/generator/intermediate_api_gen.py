@@ -52,7 +52,6 @@ def source_include(header_file_path):
 
 #include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/infermeta/sparse/binary.h"
-#include "paddle/phi/infermeta/sparse/ternary.h"
 #include "paddle/phi/infermeta/sparse/multiary.h"
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"

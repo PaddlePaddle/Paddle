@@ -104,7 +104,8 @@
   args : (Tensor x, Tensor out_grad, DataType value_dtype)
   output : Tensor(x_grad)
   infer_meta :
-    func : CastGradInferMeta
+    func : UnchangedInferMeta 
+    param: [x]
   kernel :
     func : cast_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            cast_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -398,7 +399,7 @@
   args: (Tensor query, Tensor key, Tensor value, Tensor softmax, Tensor out_grad)
   output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad)
   infer_meta :
-    func : FusedAttentionGradInferMeta 
+    func : sparse::FusedAttentionGradInferMeta 
   kernel :
     func : fused_attention_csr_grad{dense, dense, dense, sparse_csr, dense -> dense, dense, dense}
     layout : softmax

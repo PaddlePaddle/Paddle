@@ -477,15 +477,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
         return kernel_select_code
 
-    def gene_infer_meta(self,
-                        kernel_output_names,
-                        code_indent,
-                        is_sparse=False) -> str:
+    def gene_infer_meta(self, kernel_output_names, code_indent) -> str:
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
         infer_meta = self.infer_meta
-
-        prefix_tensor_name = PREFIX_TENSOR_NAME if is_sparse is False else ""
 
         infer_meta_params = infer_meta['param'] if infer_meta[
             'param'] is not None else input_names + attr_names
@@ -493,23 +488,13 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         meta_tensor_code = ""
         param_code = ""
         for param in infer_meta_params:
-            if is_sparse is False:
-                make_input_meta_tensor = f"""
-{code_indent}  auto {param}_meta_vec = MakeMetaTensor({prefix_tensor_name}{param});
-"""
-            else:
-                make_input_meta_tensor = f"""
-{code_indent}  auto {param}_meta_vec = MakeMetaTensor(*{param}.impl());
-"""
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
-                    if is_sparse is False:
-                        param_code = param_code + "MakeMetaTensor(*" + prefix_tensor_name + param + "), "
-                    else:
-                        param_code = param_code + "MakeMetaTensor(*" + param + ".impl()), "
+                    param_code = param_code + "MakeMetaTensor(*" + PREFIX_TENSOR_NAME + param + "), "
                 elif self.inputs['input_info'][
                         param] == "const std::vector<Tensor>&":
-                    meta_tensor_code = meta_tensor_code + make_input_meta_tensor + f"""
+                    meta_tensor_code = meta_tensor_code + f"""
+{code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
 {code_indent}  std::vector<const phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
 {code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
 {code_indent}    {param}_metas[i] = &{param}_meta_vec[i];
@@ -518,7 +503,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     param_code = param_code + param + "_metas, "
                 elif self.inputs['input_info'][
                         param] == "const paddle::optional<std::vector<Tensor>>&":
-                    meta_tensor_code = meta_tensor_code + make_input_meta_tensor + f"""
+                    meta_tensor_code = meta_tensor_code + f"""
+{code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
 {code_indent}  paddle::optional<std::vector<const phi::MetaTensor*>> {param}_metas({param}_meta_vec.size());
 {code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
 {code_indent}    {param}_metas->at(i) = &{param}_meta_vec[i];
@@ -526,11 +512,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 """
                     param_code = param_code + param + "_metas, "
                 elif param in self.optional_vars:
-                    if is_sparse is False:
-                        param_code = param_code + "MakeMetaTensor(" + prefix_tensor_name + param + "), "
-                    else:
-                        param_code = param_code + f"""{param}""" + "? MakeMetaTensor(*(*" + param + ").impl()) : phi::MetaTensor(), "
-
+                    param_code = param_code + "MakeMetaTensor(" + PREFIX_TENSOR_NAME + param + "), "
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
@@ -564,12 +546,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     param_code = param_code + f"{out_name} ? &{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)} : nullptr, "
 
         param_code = param_code[:-2]
-        if is_sparse:
-            return f"""{meta_tensor_code}
-{code_indent}  phi::sparse::{infer_meta['func']}({param_code});
-"""
-        else:
-            return f"""{meta_tensor_code}
+        return f"""{meta_tensor_code}
 {code_indent}  phi::{infer_meta['func']}({param_code});
 """
 
