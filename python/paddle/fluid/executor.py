@@ -1618,13 +1618,6 @@ class Executor(object):
                         UserWarning)
                     return False
 
-            # delete this code after supporting fleet
-            from paddle.distributed.fleet import fleet
-            if fleet._role_maker is not None:
-                warnings.warn("Standalone executor is not used for fleet",
-                              UserWarning)
-                return use_standalone_executor_for_distribution
-
             return True
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
