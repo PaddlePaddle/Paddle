@@ -23,7 +23,7 @@ import numpy as np
 class HybridParallelInferenceHelper(object):
     """
     A helper class to split program for inference with hybrid parallelism.
-    
+
     Args:
         startup_program (Program): the startup program.
         main_program (Program): the main program.
@@ -34,15 +34,15 @@ class HybridParallelInferenceHelper(object):
         init_comm (bool): wheter if initilize comminication group. Default ``True``.
         role_maker (RoleMakerBase or subclass): user custom define RoleMakerBase.
             If ``role_maker==None``, then use PaddleCloudRoleMaker. Default ``None``.
-    
+
     Returns:
         None.
-        
+
     Write Paradigm:
-    
+
     .. code-block:: bash
         :name: bash-example1
-        
+
         # while op pattern
         with paddle.fluid.device_guard(f'{device}:all'):
             # init global cond
@@ -51,10 +51,10 @@ class HybridParallelInferenceHelper(object):
             cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
             cond = layers.cast(step_idx < max_len, dtype="bool")
             while_op = layers.While(cond, is_test=True)
-            
+
             # init global lod_tensor_array for generation task
             arr = layers.array_write(data, step_idx)
-            
+
         with while_op.block():
             with paddle.fluid.device_guard(f'{device}:all'):
                 # read data from global lod_tensor_array
@@ -63,36 +63,36 @@ class HybridParallelInferenceHelper(object):
                 # it need for send_v2 of lod_tensor_array
                 layers.increment(x=step_idx, value=1.0, in_place=True)
                 layers.array_write(element_in_arr, i=step_idx, array=arr)
-                
+
             with paddle.fluid.device_guard(f'{device}:0'):
                 ... some code
-                
+
             with paddle.fluid.device_guard(f'{device}:1'):
                 ... some code
-                
+
             with paddle.fluid.device_guard(f'{device}:{num_pp-1}'):
                 # generate some data in while block and write to global lod_tensor_array
                 # that they are read in next while step.
                 # we will using send_v2 to send global lod_tensor_array to other pipeline and sync
                 layers.array_write(other_var, i=step_idx, array=arr)
-                
+
                 # update cond and assign to cond_int, we will sync cond_int
                 layers.assign(layers.cast(cond, dtype="int32"), cond_int)
-                
+
             with paddle.fluid.device_guard(f'{model._device}:all'):
                 # the code below must at end of while block and exists in device:all
                 layers.assign(layers.cast(cond_int, dtype='bool'), cond)
-                
+
         with paddle.fluid.device_guard(f'{model._device}:all'):
             # use a empty lod_tensor_array to clear lod_tensor_array
             layers.assign(layers.create_array(data.dtype), arr)
-            
-            
+
+
     Examples:
-    
+
     .. code-block:: python
         :name: code-example1
-    
+
         # required: distributed
         import os
         import numpy as np
@@ -172,7 +172,7 @@ class HybridParallelInferenceHelper(object):
 
         exe = paddle.static.Executor(paddle.CUDAPlace(dev_id))
         exe.run(startup_program)
-        
+
         np.random.seed(2333)
         for step in range(5):
             init_data = np.random.uniform(low=0.0, high=1.0, size=[2, 2]).astype('float32')
@@ -358,7 +358,7 @@ class HybridParallelInferenceHelper(object):
         Args:
             stage (int): pipeline stage
             block_idx (int): block index
-            
+
         Returns:
             used_var_names (set): used var names in block_idx block
         """
@@ -445,9 +445,9 @@ class HybridParallelInferenceHelper(object):
 
     def _add_op_device_attr(self, block):
         """
-        Add op_device attrribute for ops in block that have 
+        Add op_device attrribute for ops in block that have
         not that attribute set.
-        
+
         Args:
             block (Block): the block to process.
         """
@@ -474,7 +474,7 @@ class HybridParallelInferenceHelper(object):
 
     def _check_validation(self, block):
         """
-        Check whether ops in a block have both the op_device and the 
+        Check whether ops in a block have both the op_device and the
         op_role attributes set.
         """
         assert isinstance(block, Block)
@@ -729,7 +729,7 @@ class HybridParallelInferenceHelper(object):
         """
         Generate inference program.
         Params:
-            sync_in_while_lastpp2firstpp_var_names (list(str)): the vars in the last pipeline 
+            sync_in_while_lastpp2firstpp_var_names (list(str)): the vars in the last pipeline
                 that need to send var to first pipeline and exclude bool dtype var
             sync_in_while_var_names (list(str)): the vars sync among all pipeline in while block
                 e.g cond. Note that cond cannot be bool dtype.

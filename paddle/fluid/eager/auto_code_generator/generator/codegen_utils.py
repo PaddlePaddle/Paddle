@@ -83,10 +83,10 @@ def ReadBwdFile(filepath):
     ret = {}
     if contents is not None:
         for content in contents:
-            assert 'backward_api' in content.keys(), AssertMessage(
-                'backward_api', content.keys())
-            if 'backward_api' in content.keys():
-                api_name = content['backward_api']
+            assert 'backward_op' in content.keys(), AssertMessage(
+                'backward_op', content.keys())
+            if 'backward_op' in content.keys():
+                api_name = content['backward_op']
 
             ret[api_name] = content
     f.close()
@@ -161,11 +161,24 @@ def GetGradNodeName(string):
     string = str2Hump(string)
     if string.rfind("Grad") == (len(string) - 4):
         string = string[:-4]
-    return f"{string}GradNodeFinal"
+    return f"{string}GradNode"
 
 
 def GetDygraphForwardFunctionName(string):
-    return f"{string}_dygraph_function"
+    return f"{string}_ad_func"
+
+
+def GetDygraphLogName(string):
+
+    def str2Hump(text):
+        arr = filter(None, text.split('_'))
+        res = ''
+        for i in arr:
+            res = res + i.lower()
+        return res
+
+    string = str2Hump(string)
+    return string
 
 
 def GetIntermediateAPIFunctionName(string):
@@ -198,7 +211,7 @@ def GetInplacedFunctionName(function_name):
 
 
 def GetForwardFunctionName(string):
-    return f"{string}_dygraph_function"
+    return f"{string}_ad_func"
 
 
 def GetIndent(num):
@@ -418,12 +431,12 @@ class FunctionGeneratorBase:
     def CollectOriginalForwardInfo(self):
         forward_api_contents = self.forward_api_contents
 
-        self.forward_api_name = forward_api_contents['api']
+        self.forward_api_name = forward_api_contents['op']
         forward_args_str = forward_api_contents['args']
         forward_returns_str = forward_api_contents['output']
 
-        assert 'api' in forward_api_contents.keys(
-        ), "Unable to find \"api\" in forward_api_contents keys"
+        assert 'op' in forward_api_contents.keys(
+        ), "Unable to find \"op\" in forward_api_contents keys"
         assert 'args' in forward_api_contents.keys(
         ), "Unable to find \"args\" in forward_api_contents keys"
         assert 'output' in forward_api_contents.keys(

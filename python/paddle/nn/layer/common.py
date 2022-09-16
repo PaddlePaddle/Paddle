@@ -325,8 +325,8 @@ class Upsample(Layer):
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
-             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
-             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
              Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
@@ -373,7 +373,7 @@ class Upsample(Layer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -1016,8 +1016,8 @@ class Pad2D(Layer):
 
     Parameters:
         padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
-            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded. 
-            The pad has the form (pad_left, pad_right, pad_top, pad_bottom). 
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
+            The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
         mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
@@ -1279,7 +1279,7 @@ class CosineSimilarity(Layer):
 
 class Embedding(Layer):
     r"""
-    
+
     Embedding Layer, used to construct a callable object of the ``Embedding`` class.
     For specific usage, refer to code examples. It implements the function of the Embedding Layer.
     This layer is used to lookup embeddings vector of ids provided by :attr:`x` .
@@ -1449,7 +1449,7 @@ class Unfold(Layer):
 
     See ``paddle.nn.functional.unfold`` for more details.
 
-    
+
     Parameters:
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
@@ -1515,15 +1515,15 @@ class Fold(Layer):
     r"""
 
     Combines an array of sliding local blocks into a large containing
-    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
-    combined value in the resulting large tensor by summing all values from all containing blocks. 
+    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each
+    combined value in the resulting large tensor by summing all values from all containing blocks.
 
 
     For each input :math:`x` with shape [N, C_in , L], the output shape [N, C_out, H_out, W_out]
     can be calculated as following.
 
     .. math::
-    
+
         H_{out} &= output\_size[0] \\
         W_{out} &= output\_size[1] \\
         C_{out} &= \frac{C_{in}}{kernel\_sizes[0]\times kernel\_sizes[1]} \\

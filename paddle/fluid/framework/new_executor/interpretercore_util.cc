@@ -418,7 +418,6 @@ void build_op_func_list(const platform::Place& place,
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
       ops_unique;  // its elements will be moved to vec_func_list
-  bool flag_log_is_printed = false;
   // Step 1: create all ops for current block.
   create_all_ops(block, &ops_unique);
 
@@ -443,6 +442,7 @@ void build_op_func_list(const platform::Place& place,
   }
   auto unused_var_map = get_unused_vars(block, ops);
 
+  bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
     const std::string& op_type = op->Type();
@@ -452,7 +452,7 @@ void build_op_func_list(const platform::Place& place,
     // Print new executor log if grad op is used.
     // It's only for test and will be removed later.
     if (!flag_log_is_printed && op_type.find("_grad") != std::string::npos) {
-      VLOG(0) << "Standalone Executor is Used.";
+      LOG_FIRST_N(INFO, 1) << "Standalone Executor is Used.";
       flag_log_is_printed = true;
     }
 

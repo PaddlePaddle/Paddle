@@ -228,6 +228,20 @@ class ReturnTransformer(BaseTransformer):
 
         # Prepend no value placeholders
         self.function_def.pop()
+
+        # Need update self.pre_analysis after pop
+        # For fix this case:
+        '''
+        def fun(cond):
+            def inner():
+                pass
+            if cond:
+                return True
+            else:
+                return False
+        '''
+        if self.function_def:
+            self.pre_analysis = ReturnAnalysisVisitor(self.function_def[-1])
         return node
 
     def visit_Return(self, node):
