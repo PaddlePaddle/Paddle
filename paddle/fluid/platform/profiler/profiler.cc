@@ -32,6 +32,9 @@
 #include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -49,12 +52,9 @@ void SynchronizeDevice() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto& dev_type : dev_types) {
-    auto dev_cnt = phi::DeviceManager::GetDeviceCount(dev_type);
-    for (size_t i = 0; i < dev_cnt; i++) {
-      auto place = paddle::platform::CustomPlace(dev_type, i);
-      phi::DeviceManager::SetDevice(place);
-      phi::DeviceManager::SynchronizeDevice(place);
-    }
+    auto i = phi::DeviceManager::GetDevice(dev_type);
+    auto place = paddle::platform::CustomPlace(dev_type, i);
+    phi::DeviceManager::SynchronizeDevice(place);
   }
 #endif
 }
