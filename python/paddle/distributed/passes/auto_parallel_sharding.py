@@ -384,7 +384,8 @@ class ShardingPass(PassBase):
                 for input_name in op.desc.input_arg_names():
                     # NOTE hack for embedding op when AMP 02-3
                     # paddle amp force embedding (lookup table) to be run on fp32
-                    if _is_param_fp16_cast_op(main_block, op, self.param_names):
+                    if _is_param_fp16_cast_op(main_block, op,
+                                              sharding_info.param_names):
                         # if op.type == "cast":
                         continue
                     if input_name not in need_broadcast_vars:
