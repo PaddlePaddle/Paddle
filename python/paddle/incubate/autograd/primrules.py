@@ -155,6 +155,13 @@ def elementwise_mul_orig2prim(op, x, y):
     return z
 
 
+@REGISTER_ORIG2PRIM('elementwise_div')
+def elementwise_div_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return primops.div(x, y)
+
+
 @REGISTER_ORIG2PRIM('tanh')
 def tanh_orig2prim(op, x):
     return tanh(x)
@@ -314,6 +321,11 @@ def p_norm_orig2prim(op, x):
         raise RuntimeError('Only support lower l2/l1 norm currently')
 
 
+@REGISTER_ORIG2PRIM('cast')
+def cast_orig2prim(op, x):
+    return primops.cast(x, paddle.dtype(op.attr('out_dtype')))
+
+
 # TODO: support broadcast
 @REGISTER_ORIG2PRIM('where')
 def select_orig2prim(op, condition, x, y):
@@ -327,13 +339,46 @@ def equal_orig2prim(op, x, y):
     return eq(x, y)
 
 
+@REGISTER_ORIG2PRIM('not_equal')
+def ne_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return ne(x, y)
+
+
+@REGISTER_ORIG2PRIM('greater_than')
+def gt_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return gt(x, y)
+
+
+@REGISTER_ORIG2PRIM('greater_equal')
+def ge_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return ge(x, y)
+
+
+# paddle.pow API use "elementwise_pow" operator when y is a Tensor.
 @REGISTER_ORIG2PRIM('elementwise_pow')
 def elementwise_pow_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
-
     z = primops.pow(x, y)
     return z
+
+
+# paddle.pow API use "pow" operator when y is a scalar.
+@REGISTER_ORIG2PRIM('pow')
+def pow_orig2prim(op, x, y):
+    # x is factorTensor defined in paddle phi op. Currently it is None.
+    return primops.pow(y, fill_const(op.attr('factor'), y.shape, y.dtype))
+
+
+@REGISTER_ORIG2PRIM('square')
+def square_orig2prim(op, x):
+    return primops.pow(x, fill_const(2., x.shape, x.dtype))
 
 
 @REGISTER_ORIG2PRIM('elementwise_max')
@@ -365,6 +410,31 @@ def gelu_orig2prim(op, x):
             mul(fill_const(0.5, x.shape, x.dtype), x),
             add(fill_const(1.0, x.shape, x.dtype),
                 erf(mul(x, fill_const(1 / math.sqrt(2.), x.shape, x.dtype)))))
+
+
+@REGISTER_ORIG2PRIM('reduce_sum')
+def reduce_sum_orig2prim(op, x):
+    axes = tuple(range(0, len(
+        x.shape))) if op.attr('reduce_all') else op.attr('dim')
+    return reduce_sum(x, axis=axes, keepdim=op.attr('keep_dim'))
+
+
+@REGISTER_ORIG2PRIM('reduce_mean')
+def reduce_mean_orig2prim(op, x):
+    axes = tuple(range(0, len(
+        x.shape))) if op.attr('reduce_all') else op.attr('dim')
+    sum = reduce_sum(x, axis=axes, keepdim=op.attr('keep_dim'))
+    norm = fill_const(shape=sum.shape,
+                      value=functools.reduce(operator.mul,
+                                             [x.shape[axis] for axis in axes]),
+                      dtype=sum.dtype)
+    return div(sum, norm)
+
+
+@REGISTER_ORIG2PRIM('size')
+def size_orig2prim(op, x):
+    return fill_const(functools.reduce(operator.mul, x.shape), (1, ),
+                      paddle.int64)
 
 
 ## Register prim2orig lower rules
@@ -522,6 +592,11 @@ def pow_prim2orig(op, x, y):
 @REGISTER_PRIM2ORIG('max_p')
 def max_prim2orig(op, x, y):
     return paddle.maximum(x, y)
+
+
+@REGISTER_PRIM2ORIG('cast_p')
+def cast_prim2orig(op, x):
+    return paddle.cast(x, paddle.dtype(op.attr('dtype')))
 
 
 ## Register linearize rules
@@ -825,6 +900,12 @@ def max_jvp(op, x_dot, y_dot):
         return select(eq(y, z), y_dot, x_dot)
 
 
+@REGISTER_JVP('cast_p')
+def cast_jvp(op, x_dot):
+    y = op_position_output(op)
+    return primops.cast(x_dot, y.dtype)
+
+
 ## Register transpose rules
 
 
@@ -1029,3 +1110,9 @@ def select_transpose(op, check_dot, z_bar):
     y_bar = select(cond, zeros_y, z_bar) if check_dot(y) else None
 
     return cond_bar, x_bar, y_bar
+
+
+@REGISTER_TRANSPOSE('cast_p')
+def cast_transpose(op, check_dot, y_bar):
+    x, = op_position_inputs(op)
+    return primops.cast(y_bar, x.dtype)
