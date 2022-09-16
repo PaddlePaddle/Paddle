@@ -37,7 +37,7 @@ class Uniform(distribution.Distribution):
 
     .. math::
 
-        pdf(x; a, b) = \\frac{1}{Z}, \ a <=x <b
+        pdf(x; a, b) = \frac{1}{Z}, \ a <=x <b
 
     .. math::
 
