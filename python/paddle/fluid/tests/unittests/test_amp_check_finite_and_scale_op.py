@@ -20,7 +20,8 @@ import paddle.fluid.contrib.mixed_precision.amp_nn as amp_nn
 
 
 def check_finite_and_unscale_wrapper(x, scale):
-    return amp_nn.check_finite_and_unscale([x], scale)
+    _, found_inf = amp_nn.check_finite_and_unscale([x], scale)
+    return x, found_inf
 
 
 class TestCheckFiniteAndUnscaleOp(OpTest):
