@@ -71,7 +71,6 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
 
 // Enforce GradNode has TensorWrappers as Input
 void EnforceGradNodeHasInput(GradNodeBase* node) {
-  VLOG(6) << "Running in EnforceGradNodeHasInput";
   PADDLE_ENFORCE_NE(
       node->IsTensorWrappersCleared(),
       true,
