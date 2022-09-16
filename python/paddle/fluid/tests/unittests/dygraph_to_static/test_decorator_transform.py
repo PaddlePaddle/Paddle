@@ -177,6 +177,17 @@ def warn1():
     fun9()
 
 
+@paddle.no_grad()
+def fun10():
+    print('in fun10, paddle api decorated')
+    return True
+
+
+@paddle.jit.to_static
+def deco_with_paddle_api():
+    return fun10()
+
+
 class TestDecoratorTransform(unittest.TestCase):
 
     def test_deco_transform(self):
@@ -203,6 +214,9 @@ class TestDecoratorTransform(unittest.TestCase):
                     flag = True
                     break
             self.assertTrue(flag)
+
+    def test_deco_with_paddle_api(self):
+        self.assertTrue(deco_with_paddle_api())
 
 
 if __name__ == '__main__':

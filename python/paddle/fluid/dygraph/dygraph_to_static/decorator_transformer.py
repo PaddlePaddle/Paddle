@@ -93,10 +93,6 @@ class DecoratorTransformer(BaseTransformer):
                     # '_jst.Call(deco)(5)'
                     rematch = re.match(r'\_jst\.Call\((.+?)\)\((.*)\)',
                                        deco_full_name)
-                    if not rematch:
-                        raise Dygraph2StaticException(
-                            '@{}: transform decorator with param failed during dy2static'
-                            .format(deco_full_name))
                     re_name = rematch.group(1)
                     re_args = rematch.group(2)
                     re_args_with_func = deco_target + ', ' + re_args
@@ -105,10 +101,6 @@ class DecoratorTransformer(BaseTransformer):
                 else:
                     # paddle api will not be transformed to '_jst.Call'
                     rematch = re.match(r'(.+?)\((.*)\)', deco_full_name)
-                    if not rematch:
-                        raise Dygraph2StaticException(
-                            '@{}: transform decorator with param failed during dy2static'
-                            .format(deco_full_name))
                     re_name = rematch.group(1)
                     re_args = rematch.group(2)
                     re_args_with_func = deco_target + ', ' + re_args
