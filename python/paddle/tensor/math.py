@@ -4121,7 +4121,7 @@ def lerp_(x, y, weight, name=None):
 
 def erfinv(x, name=None):
     r"""
-    The inverse error function of x. Please refer to :ref:`erf_en.html`
+    The inverse error function of x. Please refer to :ref:`en_api_paddle_erf`
 
         .. math::
 
@@ -4689,7 +4689,7 @@ def heaviside(x, y, name=None):
             \\right.
 
     Note:
-        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`en_api_paddle_distributed_broadcast`.
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor`.
 
     Args:
         x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
