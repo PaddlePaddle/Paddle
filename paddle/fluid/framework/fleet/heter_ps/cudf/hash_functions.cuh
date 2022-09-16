@@ -39,7 +39,8 @@ struct MurmurHash3_32 {
 
   __forceinline__ __host__ __device__ MurmurHash3_32() : m_seed(0) {}
 
-  __forceinline__ __host__ __device__ uint32_t rotl32(uint32_t x, int8_t r) const {
+  __forceinline__ __host__ __device__ uint32_t rotl32(uint32_t x,
+                                                      int8_t r) const {
     return (x << r) | (x >> (32 - r));
   }
 
@@ -52,7 +53,7 @@ struct MurmurHash3_32 {
     return h;
   }
 
-  /* --------------------------------------------------------------------------*/
+  /* ------------------------------------------------------------------------*/
   /**
    * @Synopsis  Combines two hash values into a new single hash value. Called
    * repeatedly to create a hash value from several variables.
@@ -62,10 +63,12 @@ struct MurmurHash3_32 {
    * @Param lhs The first hash value to combine
    * @Param rhs The second hash value to combine
    *
-   * @Returns A hash value that intelligently combines the lhs and rhs hash values
+   * @Returns A hash value that intelligently combines the lhs and rhs hash
+   * values
    */
-  /* ----------------------------------------------------------------------------*/
-  __host__ __device__ result_type hash_combine(result_type lhs, result_type rhs) {
+  /* --------------------------------------------------------------------------*/
+  __host__ __device__ result_type hash_combine(result_type lhs,
+                                               result_type rhs) {
     result_type combined{lhs};
 
     combined ^= rhs + 0x9e3779b9 + (combined << 6) + (combined >> 2);
@@ -73,7 +76,8 @@ struct MurmurHash3_32 {
     return combined;
   }
 
-  __forceinline__ __host__ __device__ result_type operator()(const Key& key) const {
+  __forceinline__ __host__ __device__ result_type
+  operator()(const Key& key) const {
     constexpr int len = sizeof(argument_type);
     const uint8_t* const data = (const uint8_t*)&key;
     constexpr int nblocks = len / 4;

@@ -36,8 +36,9 @@ struct managed_allocator {
     T* ptr = 0;
     cudaError_t result = cudaMallocManaged(&ptr, n * sizeof(T));
     if (cudaSuccess != result || nullptr == ptr) {
-      std::cerr << "ERROR: CUDA Runtime call in line " << __LINE__ << "of file " << __FILE__
-                << " failed with " << cudaGetErrorString(result) << " (" << result << ") "
+      std::cerr << "ERROR: CUDA Runtime call in line " << __LINE__ << "of file "
+                << __FILE__ << " failed with " << cudaGetErrorString(result)
+                << " (" << result << ") "
                 << " Attempted to allocate: " << n * sizeof(T) << " bytes.\n";
       throw std::bad_alloc();
     }
