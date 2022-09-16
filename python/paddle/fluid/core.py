@@ -246,7 +246,6 @@ if platform.system().lower() == 'linux':
 try:
     from . import libpaddle
     if avx_supported() and not libpaddle.is_compiled_with_avx():
-        from .. import compat as cpt
         sys.stderr.write(
             "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
             "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
@@ -295,6 +294,10 @@ except Exception as e:
         sys.stderr.write(
             'Error: Can not import paddle core while this file exists: ' +
             current_path + os.sep + 'libpaddle.' + core_suffix + '\n')
+    if not avx_supported() and libpaddle.is_compiled_with_avx():
+        sys.stderr.write(
+            "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "
+            "you should reinstall paddlepaddle with no-avx core.\n")
     raise e
 
 

@@ -545,6 +545,26 @@ EOF
 }
 
 
+function avx_build() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    WITH_AVX=ON
+
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+}
+
+
+function noavx_build() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    WITH_AVX=OFF
+
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+}
+
+
 function mac_m1_arm_build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -3467,9 +3487,27 @@ function main() {
         gen_dockerfile ${PYTHON_ABI:-""}
         assert_api_spec_approvals
         ;;
+      avx_build)
+        avx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        ;;
+      noavx_build)
+        noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        ;;
       mac_m1_arm)
         mac_m1_arm_build
         gen_dockerfile ${PYTHON_ABI:-""}
+        ;;
+      avx_build_and_test)
+        avx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        parallel_test_base
+        ;;
+      noavx_build_and_test)
+        noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        parallel_test_base
         ;;
       test)
         parallel_test
