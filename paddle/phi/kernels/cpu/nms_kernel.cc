@@ -15,6 +15,8 @@
 #include "paddle/phi/kernels/nms_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -22,10 +24,10 @@
 namespace phi {
 
 template <typename T>
-static void NMS(const T* boxes_data,
-                int64_t* output_data,
-                float threshold,
-                int64_t num_boxes) {
+static int64_t NMS(const T* boxes_data,
+                   int64_t* output_data,
+                   float threshold,
+                   int64_t num_boxes) {
   auto num_masks = CeilDivide(num_boxes, 64);
   std::vector<uint64_t> masks(num_masks, 0);
 
@@ -54,9 +56,13 @@ static void NMS(const T* boxes_data,
     output_data[output_data_idx++] = i;
   }
 
+  int64_t num_keep_boxes = output_data_idx;
+
   for (; output_data_idx < num_boxes; ++output_data_idx) {
     output_data[output_data_idx] = 0;
   }
+
+  return num_keep_boxes;
 }
 
 template <typename T, typename Context>
@@ -64,8 +70,17 @@ void NMSKernel(const Context& dev_ctx,
                const DenseTensor& boxes,
                float threshold,
                DenseTensor* output) {
+  int64_t num_boxes = boxes.dims()[0];
+  std::vector<int64_t> output_vec(num_boxes);
+  int64_t num_keep_boxes =
+      NMS<T>(boxes.data<T>(), output_vec.data(), threshold, num_boxes);
+  output->Resize({{num_keep_boxes}});
   auto output_data = dev_ctx.template Alloc<int64_t>(output);
-  NMS<T>(boxes.data<T>(), output_data, threshold, boxes.dims()[0]);
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       output_data,
+                       dev_ctx.GetPlace(),
+                       output_vec.data(),
+                       sizeof(int64_t) * num_keep_boxes);
 }
 
 }  // namespace phi
