@@ -386,12 +386,12 @@ class PRChecker(object):
                                     if tempfilename.strip().split(".")[0] == i:
                                         print("code go here")
                                         f_judge_in_added_ut = True
-                            if f_judge_in_added_ut == True:
-                                print(
-                                    "Adding new unit tests not hit mapFiles: %s"
-                                    % f_judge)
-                            else:
-                                notHitMapFiles.append(f_judge)
+                                if f_judge_in_added_ut == True:
+                                    print(
+                                        "Adding new unit tests not hit mapFiles: %s"
+                                        % f_judge)
+                                else:
+                                    notHitMapFiles.append(f_judge)
                         elif file_dict[f] in ['removed']:
                             print("remove file not hit mapFiles: %s" % f_judge)
                         else:
