@@ -148,7 +148,7 @@ class TestOriginInfoWithNestedFunc(TestOriginInfo):
         self.func = nested_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 12, 13, 14, 15]
+        self.static_abs_lineno_list = [9, 12, 14, 16, 17]
 
     def set_dygraph_info(self):
         self.line_num = 5
