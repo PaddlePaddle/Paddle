@@ -18,6 +18,7 @@ import argparse
 import re
 
 from api_gen import ForwardAPI
+from api_base import PREFIX_TENSOR_NAME
 
 
 class SparseAPI(ForwardAPI):
@@ -136,82 +137,35 @@ class SparseAPI(ForwardAPI):
 
         return kernel_context_code
 
-    def gene_infer_meta(self, kernel_output_names, code_indent) -> str:
+    def prepare_input(self):
         input_names = self.inputs['names']
+        input_types = self.inputs['tensor_type']
         attr_names = self.attrs['names']
-        if not hasattr(self, 'infer_meta'):
-            return ''
         infer_meta = self.infer_meta
 
         infer_meta_params = infer_meta['param'] if infer_meta[
             'param'] is not None else input_names + attr_names
-        # generate meta tensors
-        meta_tensor_code = ""
-        param_code = ""
+
+        create_input_var_code = ""
+        tensor_type_map = {
+            'dense': 'phi::DenseTensor',
+            'sparse_coo': 'phi::SparseCooTensor',
+            'sparse_csr': 'phi::SparseCsrTensor'
+        }
         for param in infer_meta_params:
             if param in input_names:
+                var_name = "auto " + PREFIX_TENSOR_NAME + param + " = "
                 if self.inputs['input_info'][param] == "const Tensor&":
-                    param_code = param_code + "MakeMetaTensor(*" + param + ".impl()), "
-                elif self.inputs['input_info'][
-                        param] == "const std::vector<Tensor>&":
-                    meta_tensor_code = meta_tensor_code + f"""
-{code_indent}  auto {param}_meta_vec = MakeMetaTensor(*{param}.impl());
-{code_indent}  std::vector<const phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
-{code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
-{code_indent}    {param}_metas[i] = &{param}_meta_vec[i];
-{code_indent}  }}
-"""
-                    param_code = param_code + param + "_metas, "
-                elif self.inputs['input_info'][
-                        param] == "const paddle::optional<std::vector<Tensor>>&":
-                    meta_tensor_code = meta_tensor_code + f"""
-{code_indent}  auto {param}_meta_vec = MakeMetaTensor(*{param}.impl());
-{code_indent}  paddle::optional<std::vector<const phi::MetaTensor*>> {param}_metas({param}_meta_vec.size());
-{code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
-{code_indent}    {param}_metas->at(i) = &{param}_meta_vec[i];
-{code_indent}  }}
-"""
-                    param_code = param_code + param + "_metas, "
+                    create_input_var_code = create_input_var_code + var_name + param + ".impl();\n"
                 elif param in self.optional_vars:
-                    param_code = param_code + "MakeMetaTensor(*" + param + ".impl()), "
-                else:
-                    raise ValueError(
-                        f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
-                    )
-            elif param in attr_names:
-                param_code = param_code + param + ", "
-            elif isinstance(param, str):
-                param_code = param_code + "\"" + param + "\", "
-            elif isinstance(param, bool):
-                param_code = param_code + str(param).lower() + ", "
-            else:
-                param_code = param_code + str(param) + ", "
-
-        PREFIX_META_TENSOR_NAME = 'meta_'
-
-        for i, out_name in enumerate(kernel_output_names):
-            if self.outputs['types'][i] == 'std::vector<Tensor>':
-                meta_tensor_code = meta_tensor_code + f"""
-{code_indent}  auto {out_name}_{PREFIX_META_TENSOR_NAME}vec = MakeMetaTensor({out_name});
-{code_indent}  std::vector<phi::MetaTensor*> {out_name}_metas({out_name}_{PREFIX_META_TENSOR_NAME}vec.size());
-{code_indent}  for (size_t i = 0; i < {out_name}_{PREFIX_META_TENSOR_NAME}vec.size(); ++i) {{
-{code_indent}    {out_name}_metas[i] = {out_name}[i] ? &{out_name}_{PREFIX_META_TENSOR_NAME}vec[i] : nullptr;
-{code_indent}  }}"""
-
-                param_code = param_code + out_name + '_metas, '
-            else:
-                meta_tensor_code = meta_tensor_code + code_indent + "  phi::MetaTensor " + out_name.replace(
-                    'kernel_',
-                    PREFIX_META_TENSOR_NAME) + "(" + out_name + ");\n"
-                if len(kernel_output_names) == 1:
-                    param_code = param_code + f"&{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)}, "
-                else:
-                    param_code = param_code + f"{out_name} ? &{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)} : nullptr, "
-
-        param_code = param_code[:-2]
-        return f"""{meta_tensor_code}
-{code_indent}  phi::sparse::{infer_meta['func']}({param_code});
-"""
+                    tensor_type = 'phi::DenseTensor'
+                    for name, input_type in zip(input_names, input_types):
+                        if param == name:
+                            tensor_type = tensor_type_map[input_type]
+                            break
+                    optional_var = "paddle::optional<" + tensor_type + ">("
+                    create_input_var_code = create_input_var_code + var_name + param + " ? " + optional_var + "*static_cast<" + tensor_type + "*>((*" + param + ").impl().get())) : " + optional_var + "paddle::none);\n"
+        return f"""{create_input_var_code}"""
 
     def gen_sparse_kernel_code(self, kernel_name, inplace_flag=False):
         _, kernel_output_names, output_create = self.gene_output(
@@ -231,6 +185,7 @@ class SparseAPI(ForwardAPI):
     auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
     auto kernel_context = phi::KernelContext(dev_ctx);
 {output_create}
+{self.prepare_input()}
 {self.gene_infer_meta(kernel_output_names, '')}
 {kernel_context_code}
     phi_kernel(&kernel_context);
@@ -245,6 +200,7 @@ class SparseAPI(ForwardAPI):
             'sparse_csr': 'DataLayout::SPARSE_CSR'
         }
         condition_list = []
+        tensor_type_list = []
         for i, in_type in enumerate(input_types):
             if in_type == "dense":
                 if self.inputs['names'][i] in self.optional_vars:
@@ -262,6 +218,8 @@ class SparseAPI(ForwardAPI):
                 else:
                     condition_list.append(
                         f"{self.inputs['names'][i]}.is_sparse_csr_tensor()")
+            tensor_type_list.append(in_type)
+        self.inputs['tensor_type'] = tensor_type_list
 
         return " && ".join(condition_list)
 
@@ -312,9 +270,15 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/ternary.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/utils/none.h"
+
 #include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/infermeta/sparse/binary.h"
-#include "paddle/phi/infermeta/sparse/ternary.h"
+#include "paddle/phi/infermeta/sparse/multiary.h"
 """
 
 

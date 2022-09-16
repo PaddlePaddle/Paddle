@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/infermeta/unary.h"
 // clang-format off
 
@@ -168,7 +167,7 @@ void Tensor::copy_(const Tensor &src,
   } else if (kernel_type == KernelType::SPARSE_COO_KERNEL) {
     SetSparseKernelOutput(this, TensorType::SPARSE_COO);
     phi::MetaTensor meta_out(impl_.get());
-    phi::sparse::UnchangedInferMeta(
+    phi::UnchangedInferMeta(
         MakeMetaTensor(
             *(std::static_pointer_cast<phi::SparseCooTensor>(src.impl_))),
         &meta_out);
@@ -180,7 +179,7 @@ void Tensor::copy_(const Tensor &src,
   } else if (kernel_type == KernelType::SPARSE_CSR_KERNEL) {
     SetSparseKernelOutput(this, TensorType::SPARSE_CSR);
     phi::MetaTensor meta_out(impl_.get());
-    phi::sparse::UnchangedInferMeta(
+    phi::UnchangedInferMeta(
         MakeMetaTensor(
             *(std::static_pointer_cast<phi::SparseCsrTensor>(src.impl_))),
         &meta_out);

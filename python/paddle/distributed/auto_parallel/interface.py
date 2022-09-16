@@ -39,8 +39,8 @@ def shard_tensor(x, dist_attr=None):
         x (Tensor): the tensor to be sharded.
         dist_attr (dict): the tensor distributed attributes. The accepted attributes are as follow:
             "process_mesh": a nested list an to describe the mesh topology of logical processes.
-            "dims_mapping": a list to describe the mapping between `x` and `process_mesh`, the dimension 
-                `i` of `x` is split across the dimension `dims_mapping[i]` of `process_mesh`, 
+            "dims_mapping": a list to describe the mapping between `x` and `process_mesh`, the dimension
+                `i` of `x` is split across the dimension `dims_mapping[i]` of `process_mesh`,
                 where -1 means that tensor dimension is not split.
             Both process_mesh and dims_mapping are optional and users can specify as need.
 
@@ -52,7 +52,7 @@ def shard_tensor(x, dist_attr=None):
 
             import paddle
             import paddle.distributed as dist
-            
+
             paddle.enable_static()
 
             x = paddle.ones([4, 6])
@@ -76,12 +76,12 @@ def shard_op(op_fn, dist_attr=None):
 
     Args:
         op_fn (callable): a callable operator or module to be sharded.
-        dist_attr (dict): the operator distributed attributes. The accepted attributes are classified into 
-            two categories. The first category decsribes the distributed attributes shared by all inputs and 
+        dist_attr (dict): the operator distributed attributes. The accepted attributes are classified into
+            two categories. The first category decsribes the distributed attributes shared by all inputs and
             outputs, and only `process_mesh` can be specified now. The second category describes distributed
             attributes for inputs or outputs same as the `dist_attr` of `shard_tensor`. All of them are
             optional and users can specify them as need. Note that `process_mesh` for operators must be the
-            same as these process_meshes for inputs and outputs. 
+            same as these process_meshes for inputs and outputs.
 
     Returns:
         list: the outputs of the function `op_fn`, which are annotated with distributed attributes.
@@ -93,7 +93,7 @@ def shard_op(op_fn, dist_attr=None):
             import paddle.distributed as dist
 
             paddle.enable_static()
-            
+
             x = paddle.ones([4, 6])
             y = paddle.zeros([4, 6])
             dist_add = dist.shard_op(paddle.add,

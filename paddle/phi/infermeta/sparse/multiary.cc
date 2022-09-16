@@ -12,19 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/infermeta/sparse/ternary.h"
-#include "paddle/phi/infermeta/ternary.h"
+#include "paddle/phi/infermeta/sparse/multiary.h"
 
 namespace phi {
 namespace sparse {
 
-void AddmmInferMeta(const MetaTensor& input,
-                    const MetaTensor& x,
-                    const MetaTensor& y,
-                    float alpha,
-                    float beta,
-                    MetaTensor* out) {
-  phi::AddmmInferMeta(input, x, y, alpha, beta, out);
+void FusedAttentionInferMeta(const MetaTensor& query,
+                             const MetaTensor& key,
+                             const MetaTensor& value,
+                             const MetaTensor& sparse_mask,
+                             const MetaTensor& key_padding_mask,
+                             const MetaTensor& attn_mask,
+                             MetaTensor* out,
+                             MetaTensor* softmax) {
+  // TODO(zhouwei,zhangkaihuo) add correct infer meta
 }
 
 }  // namespace sparse

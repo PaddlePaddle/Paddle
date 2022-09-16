@@ -14,31 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
 namespace sparse {
-void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
-
-void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
-
-void SparseCooTensorInferMeta(const MetaTensor& values,
-                              const MetaTensor& indices,
-                              const IntArray& dense_shape,
-                              MetaTensor* out);
-
-void ValuesInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void IndicesInferMeta(const MetaTensor& x, MetaTensor* out);
 
-void CastInferMeta(const MetaTensor& x,
-                   const DataType index_dtype,
-                   const DataType value_dtype,
-                   MetaTensor* out);
+void ValuesInferMeta(const MetaTensor& x, MetaTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

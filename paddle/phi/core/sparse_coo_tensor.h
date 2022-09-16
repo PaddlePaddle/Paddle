@@ -237,11 +237,11 @@ class SparseCooTensor : public TensorBase,
     indices_dict_ = indices_dict;
   }
 
- protected:
-  SparseTensorMeta meta_;
-
  private:
   friend class DenseTensorUtils;
+
+  SparseTensorMeta meta_;
+
   // save the indices of non zero elements in original dense tensor
   DenseTensor non_zero_indices_;
   // save the non zero elements of original dense tensor

@@ -77,7 +77,7 @@ class AddMMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 AddMM Operator.
 This operator is used to perform matrix multiplication for input $x$ and $y$ with coefficient $alpha$.
-$input$ with coefficient $beta$ is added to the final result. 
+$input$ with coefficient $beta$ is added to the final result.
 The equation is:
 
 $$Out = alpha * x * y + beta * input$$

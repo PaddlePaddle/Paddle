@@ -91,6 +91,7 @@
   output : Tensor(out)
   infer_meta :
     func : CastInferMeta
+    param: [x, value_dtype]
   kernel :
     func : cast_coo{sparse_coo -> sparse_coo},
            cast_csr{sparse_csr -> sparse_csr}
@@ -102,7 +103,7 @@
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
   output : Tensor(out), Tensor(rulebook), Tensor(counter)
   infer_meta :
-    func : Conv3dInferMeta
+    func : sparse::Conv3dInferMeta
   kernel :
     func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense, dense}
     layout : x
@@ -259,7 +260,7 @@
   args : (Tensor values, Tensor indices, IntArray dense_shape)
   output : Tensor(out)
   infer_meta :
-    func : SparseCooTensorInferMeta
+    func : sparse::SparseCooTensorInferMeta
   kernel :
     func : sparse_coo_tensor{dense, dense -> sparse_coo}
     layout : values
@@ -355,7 +356,7 @@
   args : (Tensor x)
   output : Tensor(out)
   infer_meta :
-    func : ValuesInferMeta
+    func : sparse::ValuesInferMeta
   kernel :
     func : values_coo{sparse_coo -> dense},
            values_csr{sparse_csr -> dense}
@@ -399,6 +400,8 @@
 - op: fused_attention
   args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask)
   output : Tensor(out), Tensor(softmax)
+  infer_meta :
+    func : sparse::FusedAttentionInferMeta
   kernel :
     func : fused_attention_csr{dense, dense, dense, sparse_csr, dense, dense -> dense, sparse_csr}
     layout : sparse_mask
@@ -412,7 +415,7 @@
   output : Tensor(out)
   infer_meta :
     func : MatmulInferMeta
-    param : [x, y]
+    param : [x, y, false, false]
   kernel :
     func : masked_matmul_csr{dense, dense, sparse_csr -> sparse_csr}
     layout : x
@@ -423,6 +426,7 @@
   output : Tensor(out)
   infer_meta :
     func : MatmulInferMeta
+    param: [x, y, false, false]
   kernel :
     func : matmul_csr_dense {sparse_csr, dense -> dense},
            matmul_csr_csr {sparse_csr, sparse_csr -> sparse_csr},
@@ -435,7 +439,7 @@
   args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
   output : Tensor(out), Tensor(rulebook), Tensor(counter)
   infer_meta :
-    func : Pool3dInferMeta
+    func : sparse::Pool3dInferMeta
   kernel :
     func : maxpool_coo{sparse_coo -> sparse_coo, dense, dense}
     layout : x

@@ -262,25 +262,16 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   }
 }
 
-#define DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(name)                          \
-  template <typename T, typename IntT, typename Context>                 \
-  void ElementWise##name##CsrCPUKernel(const Context& dev_ctx,           \
-                                       const SparseCsrTensor& x,         \
-                                       const SparseCsrTensor& y,         \
-                                       SparseCsrTensor* out) {           \
-    funcs::name##Functor<T> functor;                                     \
-    SparseCooTensor coo_x, coo_y;                                        \
-    MetaTensor meta_coo_x(&coo_x), meta_coo_y(&coo_y);                   \
-    phi::sparse::UnchangedInferMeta(x, &meta_coo_x);                     \
-    phi::sparse::UnchangedInferMeta(y, &meta_coo_y);                     \
-    CsrToCooKernel<T>(dev_ctx, x, &coo_x);                               \
-    CsrToCooKernel<T>(dev_ctx, y, &coo_y);                               \
-    SparseCooTensor coo_out;                                             \
-    MetaTensor meta_coo_out(&coo_out);                                   \
-    phi::sparse::UnchangedInferMeta(x, &meta_coo_out);                   \
-    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
-        dev_ctx, coo_x, coo_y, &coo_out, functor);                       \
-    CooToCsrKernel<T>(dev_ctx, coo_out, out);                            \
+#define DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(name)                               \
+  template <typename T, typename IntT, typename Context>                      \
+  void ElementWise##name##CsrCPUKernel(const Context& dev_ctx,                \
+                                       const SparseCsrTensor& x,              \
+                                       const SparseCsrTensor& y,              \
+                                       SparseCsrTensor* out) {                \
+    auto coo_x = CsrToCoo<T>(dev_ctx, x);                                     \
+    auto coo_y = CsrToCoo<T>(dev_ctx, y);                                     \
+    auto coo_out = ElementWise##name##Coo<T, Context>(dev_ctx, coo_x, coo_y); \
+    CooToCsrKernel<T>(dev_ctx, coo_out, out);                                 \
   }
 
 #define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                               \
@@ -337,35 +328,6 @@ DEFINE_COO_ELEMENTWISE_KERNEL(Add)
 DEFINE_COO_ELEMENTWISE_KERNEL(Subtract)
 DEFINE_COO_ELEMENTWISE_KERNEL(Multiply)
 DEFINE_COO_ELEMENTWISE_KERNEL(Divide)
-
-/*
- * out.values() = x.values() + y.values()
- */
-template <typename T, typename Context>
-void ValuesAddCooCooKernel(const Context& dev_ctx,
-                           const SparseCooTensor& x,
-                           const SparseCooTensor& y,
-                           SparseCooTensor* out) {
-  // TODO(zkh2016): assert(x.indices() == y.indices())
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
-  phi::AddKernel<T, Context>(dev_ctx,
-                             x.non_zero_elements(),
-                             y.non_zero_elements(),
-                             out->mutable_non_zero_elements());
-}
-
-/*
- * out.values() = x.values() + values
- */
-template <typename T, typename Context>
-void ValuesAddCooDenseKernel(const Context& dev_ctx,
-                             const SparseCooTensor& x,
-                             const DenseTensor& y,
-                             SparseCooTensor* out) {
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
-  phi::AddKernel<T, Context>(
-      dev_ctx, x.non_zero_elements(), y, out->mutable_non_zero_elements());
-}
 
 }  // namespace sparse
 }  // namespace phi
@@ -472,23 +434,4 @@ PD_REGISTER_KERNEL(divide_coo_coo,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
-
-PD_REGISTER_KERNEL(values_add_coo_coo,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::ValuesAddCooCooKernel,
-                   float,
-                   double) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
-
-PD_REGISTER_KERNEL(values_add_coo_dense,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::ValuesAddCooDenseKernel,
-                   float,
-                   double) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

@@ -21,18 +21,18 @@ from ..utils import get_logger
 
 class Converter(object):
     """
-    Converter is a class object for auto parallel to convert tensors from 
-    one parallel strategy to another one. Tensors will merge and slice value 
+    Converter is a class object for auto parallel to convert tensors from
+    one parallel strategy to another one. Tensors will merge and slice value
     with their strategy when strategies are different.
     """
 
     def __init__(self, tensors_dict, pre_strategy, cur_strategy):
         """
         Args:
-            tensors_dict(dict): tensors' value of all ranks that to be converted. 
+            tensors_dict(dict): tensors' value of all ranks that to be converted.
                 key is tensor's name(str), value is all ranks' data(list(numpy.ndarray))
             pre_strategy(dict): tensors' distributed attribute of last training process.
-                key is tensor's name(str), value is tensor's distributed attribute in last 
+                key is tensor's name(str), value is tensor's distributed attribute in last
                 training process.
             cur_strategy(dict): tensors' distributed attribute of current rank.
                 key is tensor's name(str), value is tensor's distributed attribute in current
@@ -432,7 +432,7 @@ class Converter(object):
                 process_group = [0, 1, 2]
 
                 slice_tensor = _slice_tensor(complete_tensor, [[], [], [2, 4]], 3)
-                # slice_tensor: 
+                # slice_tensor:
                 # [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
 
                 index = _get_sliced_index(rank, complete_shape, dims_mapping

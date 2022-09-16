@@ -13,21 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/sparse/binary.h"
-#include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 namespace sparse {
-
-void ElementwiseInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          MetaTensor* out) {
-  // if (x.dims() == y.dims()) {
-  //   out->set_dims(x.dims());
-  // }
-  // out->set_dtype(x.dtype());
-  // out->set_layout(x.layout());
-  phi::ElementwiseInferMeta(x, y, out);
-}
 
 inline void GetOutShape(const DDim& x_dims,
                         const std::vector<int>& kernel_sizes,
@@ -146,14 +134,13 @@ void Pool3dInferMeta(const MetaTensor& x,
   counter->set_dims({1});
 }
 
-void MatmulInferMeta(const MetaTensor& x,
-                     const MetaTensor& y,
-                     MetaTensor* out) {
-  phi::MatmulInferMeta(x, y, false, false, out);
-}
-
-void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
-  phi::MvInferMeta(x, vec, out);
+void SparseCooTensorInferMeta(const MetaTensor& values,
+                              const MetaTensor& indices,
+                              const IntArray& dense_shape,
+                              MetaTensor* out) {
+  out->set_dims(phi::make_ddim(dense_shape.GetData()));
+  out->set_dtype(values.dtype());
+  out->set_layout(values.layout());
 }
 
 }  // namespace sparse

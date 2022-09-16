@@ -41,7 +41,7 @@ def numel(var):
 class DataParallelOptimizationPass(PassBase):
     """
     Apply Optimizations that specialized for data parallelism in Auto Parallel.
-    1. prune grad scaling 
+    1. prune grad scaling
     2. overlap comm and calc
     3. fuse allreduce
     """
@@ -350,9 +350,9 @@ class DataParallelOptimizationPass(PassBase):
         """
         conditions for gradients to be grouped:
         1. group size < max_fuse_numel
-        2. same dp group 
+        2. same dp group
         3. same dtype
-        4. dependency: grad would NOT be used by other ops within group segment 
+        4. dependency: grad would NOT be used by other ops within group segment
 
         gradients inside same group would be fuse into one coalesce tensor
         """

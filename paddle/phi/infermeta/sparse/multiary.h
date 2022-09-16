@@ -14,21 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
-#include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
 namespace sparse {
 
-void AddmmInferMeta(const MetaTensor& input,
-                    const MetaTensor& x,
-                    const MetaTensor& y,
-                    float alpha,
-                    float beta,
-                    MetaTensor* out);
+void FusedAttentionInferMeta(const MetaTensor& query,
+                             const MetaTensor& key,
+                             const MetaTensor& value,
+                             const MetaTensor& sparse_mask,
+                             const MetaTensor& key_padding_mask,
+                             const MetaTensor& attn_mask,
+                             MetaTensor* out,
+                             MetaTensor* softmax);
 
 }  // namespace sparse
 }  // namespace phi

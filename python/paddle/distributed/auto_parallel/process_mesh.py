@@ -38,7 +38,7 @@ def _flatten_nested_list(nested_list):
 
 class ProcessMesh(object):
     r"""
-    The class `Processmesh` describes the topology of logical processes. 
+    The class `Processmesh` describes the topology of logical processes.
     A mesh is an N-dimensional array. The shape of the N-dimensional
     array represents the topology of logical processes and every
     element of the N-dimensional array represent a logical process. For
@@ -52,9 +52,9 @@ class ProcessMesh(object):
     Args:
         mesh (list): an N-dimensional array (nested list) describes the toplogy
             of logical processes. The shape of the N-dimensional array
-            represents the topology of logical processes and every 
+            represents the topology of logical processes and every
             element of the N-dimensional array represents a logical process.
-    
+
     Returns:
         None
 
@@ -66,9 +66,9 @@ class ProcessMesh(object):
 
             import paddle
             import paddle.distributed as dist
-            
+
             paddle.enable_static()
-            
+
             mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
             assert mesh.topology == [2, 3]
             assert mesh.processes == [2, 4, 5, 0, 1, 3]

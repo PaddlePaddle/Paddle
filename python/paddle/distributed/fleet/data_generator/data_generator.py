@@ -22,7 +22,7 @@ class DataGenerator(object):
     """
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic
-    with paddle.distributed.InMemoryDataset/QueueDataset should 
+    with paddle.distributed.InMemoryDataset/QueueDataset should
     inherit this class.
     """
 
@@ -96,7 +96,7 @@ class DataGenerator(object):
     def run_from_stdin(self):
         '''
         This function reads the data row from stdin, parses it with the
-        process function, and further parses the return value of the 
+        process function, and further parses the return value of the
         process function with the _gen_str function. The parsed data will
         be wrote to stdout and the corresponding protofile will be
         generated.
@@ -152,7 +152,7 @@ class DataGenerator(object):
 
     def generate_sample(self, line):
         '''
-        This function needs to be overridden by the user to process the 
+        This function needs to be overridden by the user to process the
         original data row into a list or tuple.
 
         Args:
@@ -160,8 +160,8 @@ class DataGenerator(object):
 
         Returns:
             Returns the data processed by the user.
-              The data format is list or tuple: 
-            [(name, [feasign, ...]), ...] 
+              The data format is list or tuple:
+            [(name, [feasign, ...]), ...]
               or ((name, [feasign, ...]), ...)
 
             For example:
@@ -290,7 +290,7 @@ class MultiSlotDataGenerator(DataGenerator):
         and updating proto_info information.
 
         The input line will be in this format:
-            >>> [(name, [feasign, ...]), ...] 
+            >>> [(name, [feasign, ...]), ...]
             >>> or ((name, [feasign, ...]), ...)
         The output will be in this format:
             >>> [ids_num id1 id2 ...] ...

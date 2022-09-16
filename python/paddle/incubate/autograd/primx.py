@@ -29,9 +29,9 @@ from .utils import (flatten, flatten_and_remove_none, get_input_var_list,
 
 
 def topo_path(xs, ys, block=None):
-    """ Returns the list of ops on the path from `xs` to `ys` in topological 
+    """ Returns the list of ops on the path from `xs` to `ys` in topological
     order.
-    
+
     TODO(Tongxin): supporting control flow and nested blocks.
     Args:
         xs: a list|tuple of vars as source
@@ -89,7 +89,7 @@ def topo_path(xs, ys, block=None):
 def output_vars_on_path(path):
     """ Returns the output variables of all the ops on the path from `xs`
     to `ys`.
-    
+
     Args:
         path: a list of ops on which to find the output variables
 
@@ -106,7 +106,7 @@ def output_vars_on_path(path):
 
 class VarMap(object):
     """ A general map data structure for linking variables to variables.
-    
+
     An example is linking variables to their gradients.
     """
 
@@ -169,7 +169,7 @@ class VarMap(object):
 
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
 class Transform(object):
-    """ An object that maintains the state of transformations applied to a 
+    """ An object that maintains the state of transformations applied to a
     primitve program. """
 
     def __init__(self, block):
@@ -244,9 +244,9 @@ class Transform(object):
         return bars
 
     def linearize(self, xs, ys, xs_dot=None):
-        """ Performs the linearization transform, a.k.a, forward mode AD 
+        """ Performs the linearization transform, a.k.a, forward mode AD
         transform, on a primitive lowered program.
-        
+
         Args:
             xs: a list of input variables
             ys: a list of output variables
@@ -256,9 +256,9 @@ class Transform(object):
 
         Returns:
             (xs_dot, ys_dot): a tuple of two lists. `xs_dot` is the list of
-            gradient inputs of the resulting linearized program. `ys_dot` is 
+            gradient inputs of the resulting linearized program. `ys_dot` is
             the list gradient outputs of the resulting linearized program
-            
+
         """
         if xs_dot is None:
             xs_dot = [fill_const(1.0, shape=x.shape, dtype=x.dtype) for x in xs]
@@ -300,23 +300,23 @@ class Transform(object):
         return xs_dot, ys_dot
 
     def transpose(self, ys_dot, xs_dot, ys_bar=None, retain_fwd=False):
-        """ Performs the transpose transform, a.k.a, reverse mode AD 
+        """ Performs the transpose transform, a.k.a, reverse mode AD
         transform, on a linearized primitive program.
 
         Note, `transpose` is supposed to be used in couple with `linearize`.
-        
+
         Args:
             ys_dot: a list of outputs of the linearized program.
             xs_dot: a list of inputs of the linearized program.
-            ys_bar: optional, a list of inputs of the resulting transposed 
+            ys_bar: optional, a list of inputs of the resulting transposed
                 program. The list size must be equal to `len(ys_dot)`. The shape
                 and dtype of each element must be the same as in `ys_dot`
 
         Returns:
             (ys_bar, xs_bar): a tuple of two lists. `ys_bar` is the list of
-            inputs of the resulting transposed program. `xs_bar` is 
+            inputs of the resulting transposed program. `xs_bar` is
             the list outputs of the resulting transposed program
-            
+
         """
         assert all(v is not None for v in xs_dot), f'`xs_dot` includes None.'
         assert all(v is not None for v in ys_dot), f'`ys_dot` includes None.'
@@ -519,7 +519,7 @@ def _lower(block, reverse, blacklist):
 
 @framework.static_only
 def orig2prim(block=None):
-    """ 
+    """
     .. note::
         **This API is ONLY available in the static mode.**
         **Args block must be None or current block of main program.**
@@ -528,7 +528,7 @@ def orig2prim(block=None):
     If it is an original operator, it will be transformed into
     one or a series of automatic differential basic operators with
     equivalent function.
-    
+
     Args:
         block(paddle.static.Block|None, optional): The
             target block to process on. Default None, and will
@@ -552,7 +552,7 @@ def prim2orig(block=None, blacklist=None):
     If it is an automatic differential basic operator, it will be
     transformed into one or a series of original operators with
     equivalent function to support execution.
-    
+
     Args:
         block(paddle.static.Block|None, optional): The
             target block to process on. Default None, and will
@@ -568,10 +568,10 @@ def prim2orig(block=None, blacklist=None):
 
             import paddle
             from paddle.incubate.autograd import enable_prim, prim_enabled, prim2orig
-            
+
             paddle.enable_static()
             enable_prim()
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradients = False
             y = x * x

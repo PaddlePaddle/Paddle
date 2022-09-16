@@ -66,8 +66,8 @@ class SparseAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddComment(R"DOC(
       Compute the value of the sparse attention module. Its input value includes five tensors.
-      Q, K, and V represent query, key, and value in the Attention module, respectively. 
-      The CSR format is used to represent the sparsity feature in the Attention module. 
+      Q, K, and V represent query, key, and value in the Attention module, respectively.
+      The CSR format is used to represent the sparsity feature in the Attention module.
       The CSR format contains two tensors, offset and columns.
       )DOC");
   }

@@ -33,7 +33,7 @@ class TuningConfig(object):
     """
     A uniform config wrap:
     distributed strategy: the user defined configuration for optimization pass
-    tuning config: configuration for the tuning process: mode (profile or cost model), log dir, extra tuning config for optimization like search range for specific 
+    tuning config: configuration for the tuning process: mode (profile or cost model), log dir, extra tuning config for optimization like search range for specific
     """
 
     def __init__(self, user_config, strategy):

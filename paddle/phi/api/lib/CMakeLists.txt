@@ -370,7 +370,6 @@ cc_library(
   SRCS api_custom_impl.cc
   DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta
        phi_data_transform)
-
 cc_library(
   phi_function_api
   SRCS ${api_source_file}

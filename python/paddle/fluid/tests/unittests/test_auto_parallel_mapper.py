@@ -136,7 +136,7 @@ cluster_json = """
           "source_global_id": 0,
           "target_global_id": 4,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 1,
@@ -160,7 +160,7 @@ cluster_json = """
           "source_global_id": 1,
           "target_global_id": 4,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 2,
@@ -208,13 +208,13 @@ cluster_json = """
           "source_global_id": 3,
           "target_global_id": 4,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 4,
           "target_global_id": 9,
           "type": "NET",
-          "bandwidth": 1 
+          "bandwidth": 1
         }
       ]
     },
@@ -288,7 +288,7 @@ cluster_json = """
           "source_global_id": 5,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 6,
@@ -312,7 +312,7 @@ cluster_json = """
           "source_global_id": 6,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 7,
@@ -336,7 +336,7 @@ cluster_json = """
           "source_global_id": 7,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 8,
@@ -360,16 +360,16 @@ cluster_json = """
           "source_global_id": 8,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 9,
           "target_global_id": 4,
           "type": "NET",
-          "bandwidth": 1 
+          "bandwidth": 1
         }
       ]
-    } 
+    }
   ]
 }
 """

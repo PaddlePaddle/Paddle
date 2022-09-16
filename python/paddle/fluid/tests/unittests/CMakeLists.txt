@@ -799,7 +799,7 @@ py_test_modules(
 # it is found that windows CI will run all the training unittests with the ON_INFER option turned on,
 # which will not appear in other CIs. The calculation behavior of some ops in inference mode is
 # inconsistent with that in non-inference mode.
-if(NOT ON_INFER)
+if(WITH_PYTHON)
   py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES
                   test_parallel_executor_seresnext_base_cpu)
   py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES

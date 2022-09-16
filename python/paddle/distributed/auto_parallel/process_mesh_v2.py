@@ -19,14 +19,14 @@ from paddle.fluid import core
 
 class ProcessMesh(core.ProcessMesh):
     r"""
-    The class `Processmesh` describes the topology of logical processes. 
+    The class `Processmesh` describes the topology of logical processes.
 
     Args:
         mesh (list|numpy.array): an N-dimensional array describes the toplogy
             of logical processes.
         dim_names (list, optional): the i-th element of this list gives the name of the
             i-th dimension.
-    
+
     Returns:
         None
 
@@ -35,9 +35,9 @@ class ProcessMesh(core.ProcessMesh):
 
             import paddle
             import paddle.distributed as dist
-            
+
             paddle.enable_static()
-            
+
             mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
             assert mesh.shape == [2, 3]
             assert mesh.processe_ids == [2, 4, 5, 0, 1, 3]
