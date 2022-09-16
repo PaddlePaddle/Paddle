@@ -4689,7 +4689,7 @@ def heaviside(x, y, name=None):
             \\right.
 
     Note:
-        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`en_api_paddle_distributed_broadcast`.
 
     Args:
         x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
