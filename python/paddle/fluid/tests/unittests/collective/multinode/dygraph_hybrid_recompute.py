@@ -39,7 +39,7 @@ from test_collective_multi_nodes import TestCollectiveAPIRunnerBase, runtime_mai
 from paddle import nn
 import numpy as np
 
-from paddle.distributed.fleet.utils import recompute
+from paddle.incubate.distributed.fleet import recompute
 
 
 def weight_init(mp, shape, col=True, seed=1024):
@@ -99,7 +99,7 @@ class RecomputeMatmulBlock(nn.Layer):
 
     def forward(self, x):
         if self.mp:
-            return paddle.incubate.distributed.fleet.recompute(self.layers, x)
+            return recompute(self.layers, x)
         else:
             return self.layers(x)
 

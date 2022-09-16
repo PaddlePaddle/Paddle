@@ -25,6 +25,7 @@ import paddle
 from paddle.autograd import PyLayer
 from paddle.distributed import fleet
 import random
+from paddle.incubate.distributed.fleet import recompute, recompute_sequential
 
 import paddle.fluid.layers as layers
 

@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle.autograd import PyLayer
-from paddle.distributed.fleet.utils import recompute
+from paddle.incubate.distributed.fleet import recompute, recompute_hybrid
 import random
 from paddle.distributed import fleet
 
@@ -77,7 +77,7 @@ class Naive_fc_net(paddle.nn.Layer):
     def forward(self, inputs):
         for i in range(len(self.layers)):
             if i in self.recompute_blocks:
-                inputs = paddle.incubate.distributed.fleet.recompute_hybrid(
+                inputs = recompute_hybrid(
                     {
                         "mp_group": fleet.fleet._hcg.get_model_parallel_group(),
                         "offload": self.offload,

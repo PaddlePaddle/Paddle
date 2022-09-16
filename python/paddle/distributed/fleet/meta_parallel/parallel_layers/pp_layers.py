@@ -51,6 +51,7 @@ from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
 from paddle.distributed import fleet
 from paddle.fluid.framework import in_dygraph_mode
+from paddle.incubate.distributed.fleet import recompute_hybrid
 
 __all__ = []
 
@@ -638,7 +639,7 @@ class PipelineLayer(Layer):
                     input = (input, )
 
                 if self._need_recompute(funcs, input):
-                    input = paddle.incubate.distributed.fleet.recompute_hybrid(
+                    input = recompute_hybrid(
                         self.recompute_ctx,
                         self.forward_function(start_idx, end_idx), *input)
                 else:
