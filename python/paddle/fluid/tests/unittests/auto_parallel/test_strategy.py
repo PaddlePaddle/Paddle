@@ -15,7 +15,7 @@
 import os
 # import yaml
 import unittest
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 
 class TestStrategy(unittest.TestCase):

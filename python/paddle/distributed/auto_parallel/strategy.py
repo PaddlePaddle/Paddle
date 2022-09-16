@@ -117,7 +117,7 @@ class TuningConfig(BaseConfig):
 
 class Strategy(BaseConfig):
     """
-    The `Strategy` object is used to configure the paralleization and optimization beheviors. 
+    The `Strategy` object is used to configure the paralleization and optimization beheviors.
 
     Args:
         config (dict|string, optional): If this is None, the default configurations will used.
@@ -130,7 +130,7 @@ class Strategy(BaseConfig):
         .. code-block:: python
 
             import paddle
-            import paddle.distributed.auto_parallel as auto
+            from paddle.distributed.fleet import auto
 
             strategy = auto.Strategy()
             sharding = strategy.sharding

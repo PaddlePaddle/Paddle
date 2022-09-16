@@ -81,7 +81,7 @@ class Engine:
 
             import paddle
             import paddle.vision.transforms as T
-            import paddle.distributed.auto_parallel as auto
+            from paddle.distributed.fleet import auto
             from paddle.vision.datasets import MNIST
 
             transform = T.Compose([
@@ -540,7 +540,7 @@ class Engine:
 
                 import paddle
                 import paddle.vision.transforms as T
-                import paddle.distributed.auto_parallel as auto
+                from paddle.distributed.fleet import auto
                 from paddle.vision.datasets import MNIST
 
                 transform = T.Compose([
@@ -661,7 +661,7 @@ class Engine:
 
                 import paddle
                 import paddle.vision.transforms as T
-                import paddle.distributed.auto_parallel as auto
+                from paddle.distributed.fleet import auto
                 from paddle.vision.datasets import MNIST
 
                 transform = T.Compose([
@@ -767,7 +767,7 @@ class Engine:
 
                 import paddle
                 import paddle.vision.transforms as T
-                import paddle.distributed.auto_parallel as auto
+                from paddle.distributed.fleet import auto
                 from paddle.vision.datasets import MNIST
 
                 transform = T.Compose([
@@ -1035,7 +1035,7 @@ class Engine:
             .. code-block:: python
                 import paddle
                 import paddle.vision.transforms as T
-                import paddle.distributed.auto_parallel as auto
+                from paddle.distributed.fleet import auto
                 from paddle.vision.datasets import MNIST
 
                 transform = T.Compose([
@@ -1101,7 +1101,7 @@ class Engine:
             .. code-block:: python
                 import paddle
                 import paddle.vision.transforms as T
-                import paddle.distributed.auto_parallel as auto
+                from paddle.distributed.fleet import auto
                 from paddle.vision.datasets import MNIST
 
                 transform = T.Compose([

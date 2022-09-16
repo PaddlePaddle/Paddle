@@ -28,7 +28,7 @@ import paddle.utils as utils
 from paddle.fluid import layers
 from paddle.io import IterableDataset, DataLoader
 from paddle.distributed import fleet
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = None
