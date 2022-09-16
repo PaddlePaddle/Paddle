@@ -108,9 +108,9 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
                                             height,
                                             width);
 
-          paddle::platform::CudaAtomicAdd(
-              grad_im + cur_bottom_grad_pos,
-              static_cast<T>(weight * cur_top_grad));
+//          慢在这 ，不支持float16
+          *(grad_im + cur_bottom_grad_pos) =
+              *(grad_im + cur_bottom_grad_pos) + static_cast<T>(weight * cur_top_grad);
         }
       }
     }
