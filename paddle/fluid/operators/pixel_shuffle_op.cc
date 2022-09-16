@@ -60,9 +60,9 @@ class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
     		with a stride of :math:`1/r`.
 
 		Please refer to the paper:
-		 `Real-Time Single Image and Video Super-Resolution Using an Efficient 
+		 `Real-Time Single Image and Video Super-Resolution Using an Efficient
 		 Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_
-    		by Shi et. al (2016) for more details. 
+    		by Shi et. al (2016) for more details.
 
         )DOC");
   }

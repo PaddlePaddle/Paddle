@@ -62,12 +62,12 @@ class MatMulV2Op : public framework::OperatorWithKernel {
                       0,
                       platform::errors::InvalidArgument(
                           "The Input(X) dims size must be greater than 0,"
-                          " but reviced dims size is 0. "));
+                          " but received dims size is 0. "));
     PADDLE_ENFORCE_GT(ndims_y,
                       0,
                       platform::errors::InvalidArgument(
                           "The Input(Y) dims size must be greater than 0,"
-                          " but reviced dims size is 0. "));
+                          " but received dims size is 0. "));
 
     bool x_broadcasted = false, y_broadcasted = false;
     if (ndims_x == 1) {
@@ -160,9 +160,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
-      // op
-      // previously)
-      // then we also need to rotate shape NHWC -> NCWH
+      // op previously) then we also need to rotate shape NHWC -> NCWH
       if ((expected_kernel_type.data_layout_ ==
            framework::DataLayout::kMKLDNN) &&
           (tensor.layout() != framework::DataLayout::kMKLDNN) &&
@@ -195,8 +193,8 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "doing multiplication")
         .SetDefault(false);
     AddComment(
-        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
-        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)). 
+        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
+        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
         In addition, it also follows the broadcast rule which is similar as
         numpy.matmul.
 )DOC");

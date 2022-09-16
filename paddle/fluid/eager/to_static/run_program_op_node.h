@@ -246,6 +246,34 @@ static void BuildScopeByBlock(
   }
 }
 
+static void GcScope(paddle::framework::Scope *scope) {
+  std::deque<std::shared_ptr<paddle::memory::Allocation>> *garbages =
+      new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
+
+  for (auto &var : scope->LocalVars()) {
+    if (var != nullptr) {
+      if (var->IsType<paddle::framework::LoDTensor>()) {
+        garbages->emplace_back(var->GetMutable<paddle::framework::LoDTensor>()
+                                   ->MoveMemoryHolder());
+      }
+      if (var->IsType<phi::SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                   ->mutable_value()
+                                   ->MoveMemoryHolder());
+      }
+      if (var->IsType<paddle::framework::LoDTensorArray>()) {
+        auto *lod_tensor_arr =
+            var->GetMutable<paddle::framework::LoDTensorArray>();
+        for (auto &t : *lod_tensor_arr) {
+          garbages->emplace_back(t.MoveMemoryHolder());
+        }
+        lod_tensor_arr->clear();
+      }
+    }
+  }
+  delete garbages;  // free mem
+}
+
 }  // namespace details
 
 inline void RunProgramAPI(
@@ -274,22 +302,14 @@ inline void RunProgramAPI(
       1,
       paddle::platform::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
-  // Step 2. prepare executor and init persistable variables
-  // NOTE(Aurelius84): While training some models, forward can be called many
-  // times and then apply backpropagation all at once, such as Reinforcement
-  // Learning. Tensor data in multi-step training should be saved into single
-  // scope separately. Otherwise, the gradients can be miscalculated because
-  // always using the Tensor data of the last step in forward.
-  paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
-  VLOG(2) << "The number of sub scopes before forward: "
-          << out_scope_vec->front()->kids().size();
-  paddle::framework::Scope &scope = global_inner_scope->NewScope();
 
   bool use_interpretorcore =
       PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
 
   if (use_interpretorcore) {
     VLOG(0) << "RunProgramOp use interpretercore to execute program.";
+
+    paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
     auto input_names = details::GetTensorsName(x);
     auto output_names = details::GetTensorsName(out);
@@ -308,12 +328,16 @@ inline void RunProgramAPI(
     if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/false)) {
       VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
       // Step 1. share input_vars & parameters into scope
-      details::ShareTensorsIntoScope(x, &scope);
-      details::ShareTensorsIntoScope(params, &scope);
+      details::ShareTensorsIntoScope(x, global_inner_scope);
+      details::ShareTensorsIntoScope(params, global_inner_scope);
       // Step 2. create new interpretercore
       auto interpreter_core =
           paddle::framework::CreateInterpreterCoreInfoToCache(
-              *forward_program, place, /*is_grad=*/false, program_id, &scope);
+              *forward_program,
+              place,
+              /*is_grad=*/false,
+              program_id,
+              global_inner_scope);
       // Step 3. get all eager gc vars
       std::set<std::string> skip_eager_delete_vars =
           paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
@@ -331,10 +355,14 @@ inline void RunProgramAPI(
         interpreter_core->Run({});
       }
       // Step 5. Get Output
-      details::ShareTensorsFromScopeWithPartialBlock(
-          out, *forward_global_block, *backward_global_block, &scope);
-      details::ShareTensorsFromScopeWithPartialBlock(
-          dout, *forward_global_block, *backward_global_block, &scope);
+      details::ShareTensorsFromScopeWithPartialBlock(out,
+                                                     *forward_global_block,
+                                                     *backward_global_block,
+                                                     global_inner_scope);
+      details::ShareTensorsFromScopeWithPartialBlock(dout,
+                                                     *forward_global_block,
+                                                     *backward_global_block,
+                                                     global_inner_scope);
     } else {
       VLOG(2) << "Get interpretercore cahce by program:" << program_id;
       // Step 1. get cache interpretercore
@@ -342,34 +370,55 @@ inline void RunProgramAPI(
           interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false);
       auto &interpreter_core = cached_value.core_;
       // Step 2. update scope for cache interpretercore
-      details::ShareTensorsIntoScope(x, &scope);
-      details::ShareTensorsIntoScope(params, &scope);
-      details::BuildScopeByBlock(
-          *interpreter_core.get(), *forward_global_block, &scope);
-      interpreter_core->reset_scope(&scope);
+      details::ShareTensorsIntoScope(x, global_inner_scope);
+      details::ShareTensorsIntoScope(params, global_inner_scope);
+      if (interpreter_core->GetVariableScope()->GetMutableScope() !=
+          global_inner_scope) {
+        details::BuildScopeByBlock(
+            *interpreter_core.get(), *forward_global_block, global_inner_scope);
+        interpreter_core->reset_scope(global_inner_scope);
+      }
       // Step 3. interpretercore run
       if (forward_global_block->OpSize() > 0) {
         interpreter_core->Run({});
       }
       // Step 4. Get Output
-      details::ShareTensorsFromScopeWithPartialBlock(
-          out, *forward_global_block, *backward_global_block, &scope);
-      details::ShareTensorsFromScopeWithPartialBlock(
-          dout, *forward_global_block, *backward_global_block, &scope);
+      details::ShareTensorsFromScopeWithPartialBlock(out,
+                                                     *forward_global_block,
+                                                     *backward_global_block,
+                                                     global_inner_scope);
+      details::ShareTensorsFromScopeWithPartialBlock(dout,
+                                                     *forward_global_block,
+                                                     *backward_global_block,
+                                                     global_inner_scope);
     }
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     if (is_test) {
-      VLOG(1) << "is test, after forward, drop kids";
-      out_scope_vec->front()->DropKids();
+      VLOG(4) << "is test, set this scope can reused";
+      global_inner_scope->SetCanReuesd(true);
+      details::GcScope(global_inner_scope);
+    } else {
+      VLOG(4) << "not test, set this scope can not reused";
+      global_inner_scope->SetCanReuesd(false);
     }
-    VLOG(2) << "The number of sub scopes after forward: "
-            << out_scope_vec->front()->kids().size();
 #ifdef PADDLE_WITH_MKLDNN
     if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
 #endif
   } else {
     VLOG(2) << "RunProgramOp execute with parallel_executor.";
+
+    // Step 2. prepare executor and init persistable variables
+    // NOTE(Aurelius84): While training some models, forward can be called many
+    // times and then apply backpropagation all at once, such as Reinforcement
+    // Learning. Tensor data in multi-step training should be saved into single
+    // scope separately. Otherwise, the gradients can be miscalculated because
+    // always using the Tensor data of the last step in forward.
+    paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+    VLOG(2) << "The number of sub scopes before forward: "
+            << out_scope_vec->front()->kids().size();
+    paddle::framework::Scope &scope = global_inner_scope->NewScope();
+
     // share input_vars & parameters into scope
     details::ShareTensorsIntoScope(x, &scope);
     details::ShareTensorsIntoScope(params, &scope);
@@ -454,20 +503,13 @@ inline void RunProgramGradAPI(
       1,
       paddle::platform::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
-  paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
-  auto sub_scope_num = global_inner_scope->kids().size();
-  VLOG(2) << "The number of sub scopes before backward: " << sub_scope_num;
-  PADDLE_ENFORCE_GT(sub_scope_num,
-                    0,
-                    paddle::platform::errors::InvalidArgument(
-                        "The OutScope of RunProgramGradOp should hold at "
-                        "least one sub scope."));
 
-  auto &scope = *(global_inner_scope->kids().front());
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   if (use_interpretorcore) {
     VLOG(0) << "RunProgramGradOp use interpretercore to execute program.";
+
+    paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
     auto *forward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc *, attrs.at("forward_global_block"));
@@ -490,10 +532,14 @@ inline void RunProgramGradAPI(
         paddle::framework::InterpreterCoreInfoCache::Instance();
     if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/true)) {
       VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
-      details::ShareTensorsIntoScope(out_grad, &scope);
+      details::ShareTensorsIntoScope(out_grad, global_inner_scope);
       auto interpreter_core =
           paddle::framework::CreateInterpreterCoreInfoToCache(
-              *backward_program, place, /*is_grad=*/true, program_id, &scope);
+              *backward_program,
+              place,
+              /*is_grad=*/true,
+              program_id,
+              global_inner_scope);
 
       // get all eager gc vars
       std::set<std::string> skip_eager_delete_vars;
@@ -518,10 +564,14 @@ inline void RunProgramGradAPI(
           interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/true);
       auto &interpreter_core = cached_value.core_;
       // update scope
-      details::ShareTensorsIntoScope(out_grad, &scope);
-      details::BuildScopeByBlock(
-          *interpreter_core.get(), *backward_global_block, &scope);
-      interpreter_core->reset_scope(&scope);
+      details::ShareTensorsIntoScope(out_grad, global_inner_scope);
+      if (interpreter_core->GetVariableScope()->GetMutableScope() !=
+          global_inner_scope) {
+        details::BuildScopeByBlock(*interpreter_core.get(),
+                                   *backward_global_block,
+                                   global_inner_scope);
+        interpreter_core->reset_scope(global_inner_scope);
+      }
 
       if (backward_global_block->OpSize() > 0) {
         // Debug info: scope info when run end
@@ -531,16 +581,31 @@ inline void RunProgramGradAPI(
       }
     }
     // Step 4. get outputs
-    details::ShareTensorsFromScopeWithPartialBlock(
-        x_grad, *forward_global_block, *backward_global_block, &scope);
-    details::ShareTensorsFromScopeWithPartialBlock(
-        params_grad, *forward_global_block, *backward_global_block, &scope);
-
-    // Step5. drop current scope
-    global_inner_scope->DeleteScope(&scope);
-    VLOG(2) << "The number of sub scopes after backward: "
-            << global_inner_scope->kids().size();
+    details::ShareTensorsFromScopeWithPartialBlock(x_grad,
+                                                   *forward_global_block,
+                                                   *backward_global_block,
+                                                   global_inner_scope);
+    details::ShareTensorsFromScopeWithPartialBlock(params_grad,
+                                                   *forward_global_block,
+                                                   *backward_global_block,
+                                                   global_inner_scope);
+    VLOG(4) << "after backward gc all vars";
+    global_inner_scope->SetCanReuesd(true);
+    details::GcScope(global_inner_scope);
   } else {
+    VLOG(2) << "RunProgramGradOp use pe to execute program.";
+
+    paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+    auto sub_scope_num = global_inner_scope->kids().size();
+    VLOG(2) << "The number of sub scopes before backward: " << sub_scope_num;
+    PADDLE_ENFORCE_GT(sub_scope_num,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "The OutScope of RunProgramGradOp should hold at "
+                          "least one sub scope."));
+
+    auto &scope = *(global_inner_scope->kids().front());
+
     auto *global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc *,
                                           attrs.at("global_block"));
     auto orig_end_op_index =

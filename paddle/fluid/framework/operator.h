@@ -680,8 +680,7 @@ class OperatorWithKernel : public OperatorBase {
 
   /**
    * Transfer data from scope to a transferred scope. If there is no data need
-   * to
-   * be tranfered, it returns nullptr.
+   * to be transferred, it returns nullptr.
    *
    * * transfered_inplace_vars is a output vector.
    */

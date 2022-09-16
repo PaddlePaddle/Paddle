@@ -93,10 +93,10 @@ __global__ void GetNonZeroElementsAndIndices(const T* dense_data,
 }
 
 template <typename T, typename Context>
-void DenseToSparseCooKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const int64_t sparse_dim,
-                            SparseCooTensor* out) {
+void DenseToCooKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const int64_t sparse_dim,
+                      SparseCooTensor* out) {
   const T* x_data = x.data<T>();
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_LE(sparse_dim,
@@ -208,9 +208,9 @@ __global__ void ConvertCsrCrowsToCooRows(const IntT* crows_ptr,
 }
 
 template <typename T, typename IntT>
-void SparseCsrToCooGPUKernel(const GPUContext& dev_ctx,
-                             const SparseCsrTensor& x,
-                             SparseCooTensor* out) {
+void CsrToCooGPUKernel(const GPUContext& dev_ctx,
+                       const SparseCsrTensor& x,
+                       SparseCooTensor* out) {
   const DDim& x_dims = x.dims();
   const int64_t non_zero_num = x.cols().numel();
   const auto& csr_crows = x.crows();
@@ -274,13 +274,12 @@ void SparseCsrToCooGPUKernel(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SparseCsrToCooKernel(const Context& dev_ctx,
-                          const SparseCsrTensor& x,
-                          SparseCooTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.crows().dtype(), "SparseCsrToCooGPUKernel", ([&] {
-        SparseCsrToCooGPUKernel<T, data_t>(dev_ctx, x, out);
-      }));
+void CsrToCooKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.crows().dtype(), "CsrToCooGPUKernel", ([&] {
+                                 CsrToCooGPUKernel<T, data_t>(dev_ctx, x, out);
+                               }));
 }
 
 template <typename IntT>
@@ -343,9 +342,9 @@ __global__ void ConvertCooRowsToCsrCrows(
 }
 
 template <typename T, typename IntT>
-void SparseCooToCsrGPUKernel(const GPUContext& dev_ctx,
-                             const SparseCooTensor& x,
-                             SparseCsrTensor* out) {
+void CooToCsrGPUKernel(const GPUContext& dev_ctx,
+                       const SparseCooTensor& x,
+                       SparseCsrTensor* out) {
   const auto& x_dims = x.dims();
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
@@ -416,23 +415,22 @@ void SparseCooToCsrGPUKernel(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SparseCooToCsrKernel(const Context& dev_ctx,
-                          const SparseCooTensor& x,
-                          SparseCsrTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.indices().dtype(), "SparseCooToCsrGPUKernel", ([&] {
-        SparseCooToCsrGPUKernel<T, data_t>(dev_ctx, x, out);
-      }));
+void CooToCsrKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCsrTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "CooToCsrGPUKernel", ([&] {
+                                 CooToCsrGPUKernel<T, data_t>(dev_ctx, x, out);
+                               }));
 }
 
 template <typename ValueT, typename IndicesT>
-__global__ void KernelSparseCooToDense(const IndicesT* indices,
-                                       const int64_t* sparse_offsets,
-                                       const ValueT* data,
-                                       ValueT* dense_data,
-                                       const IndicesT non_zero_num,
-                                       const int64_t base_offset,
-                                       const int64_t sparse_dim) {
+__global__ void KernelCooToDense(const IndicesT* indices,
+                                 const int64_t* sparse_offsets,
+                                 const ValueT* data,
+                                 ValueT* dense_data,
+                                 const IndicesT non_zero_num,
+                                 const int64_t base_offset,
+                                 const int64_t sparse_dim) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     int64_t index = 0;
@@ -447,9 +445,9 @@ __global__ void KernelSparseCooToDense(const IndicesT* indices,
 }
 
 template <typename T, typename IntT>
-void SparseCooToDenseGPUKernel(const GPUContext& dev_ctx,
-                               const SparseCooTensor& x,
-                               DenseTensor* out) {
+void CooToDenseGPUKernel(const GPUContext& dev_ctx,
+                         const SparseCooTensor& x,
+                         DenseTensor* out) {
   const auto non_zero_num = x.nnz();
   const auto dense_dims = x.dims();
   const auto indices = x.indices();
@@ -490,7 +488,7 @@ void SparseCooToDenseGPUKernel(const GPUContext& dev_ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
-  KernelSparseCooToDense<T, IntT>
+  KernelCooToDense<T, IntT>
       <<<config.block_per_grid.x,
          config.thread_per_block.x,
          0,
@@ -504,22 +502,22 @@ void SparseCooToDenseGPUKernel(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SparseCooToDenseKernel(const Context& dev_ctx,
-                            const SparseCooTensor& x,
-                            DenseTensor* out) {
+void CooToDenseKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      DenseTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.indices().dtype(), "SparseCooToDenseGPUKernel", ([&] {
-        SparseCooToDenseGPUKernel<T, data_t>(dev_ctx, x, out);
+      x.indices().dtype(), "CooToDenseGPUKernel", ([&] {
+        CooToDenseGPUKernel<T, data_t>(dev_ctx, x, out);
       }));
 }
 
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(dense_to_sparse_coo,
+PD_REGISTER_KERNEL(dense_to_coo,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::DenseToSparseCooKernel,
+                   phi::sparse::DenseToCooKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -529,10 +527,10 @@ PD_REGISTER_KERNEL(dense_to_sparse_coo,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(sparse_csr_to_coo,
+PD_REGISTER_KERNEL(csr_to_coo,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseCsrToCooKernel,
+                   phi::sparse::CsrToCooKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -542,10 +540,10 @@ PD_REGISTER_KERNEL(sparse_csr_to_coo,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(sparse_coo_to_csr,
+PD_REGISTER_KERNEL(coo_to_csr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseCooToCsrKernel,
+                   phi::sparse::CooToCsrKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -555,10 +553,10 @@ PD_REGISTER_KERNEL(sparse_coo_to_csr,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(dense_to_sparse_csr,
+PD_REGISTER_KERNEL(dense_to_csr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::DenseToSparseCsrKernel,
+                   phi::sparse::DenseToCsrKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -568,10 +566,10 @@ PD_REGISTER_KERNEL(dense_to_sparse_csr,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(sparse_coo_to_dense,
+PD_REGISTER_KERNEL(coo_to_dense,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseCooToDenseKernel,
+                   phi::sparse::CooToDenseKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -581,10 +579,10 @@ PD_REGISTER_KERNEL(sparse_coo_to_dense,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(sparse_csr_to_dense,
+PD_REGISTER_KERNEL(csr_to_dense,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseCsrToDenseKernel,
+                   phi::sparse::CsrToDenseKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -594,10 +592,10 @@ PD_REGISTER_KERNEL(sparse_csr_to_dense,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(coo_values,
+PD_REGISTER_KERNEL(values_coo,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::CooValuesKernel,
+                   phi::sparse::ValuesCooKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -609,10 +607,10 @@ PD_REGISTER_KERNEL(coo_values,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(csr_values,
+PD_REGISTER_KERNEL(values_csr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::CsrValuesKernel,
+                   phi::sparse::ValuesCsrKernel,
                    float,
                    double,
                    phi::dtype::float16,

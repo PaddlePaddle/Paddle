@@ -31,6 +31,7 @@ template <typename T>
 class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     using U = LayerNormParamType<T>;
     auto *input_x = ctx.Input<Tensor>("X");
     auto *bias = ctx.Input<Tensor>("Bias");
@@ -50,12 +51,14 @@ class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
     auto *ln_scale_data = (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
     auto *ln_bias_data = (ln_bias == nullptr ? nullptr : ln_bias->data<U>());
     auto *bias_dropout_residual_out_data =
-        bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
-    auto *ln_mean_data = ln_mean->mutable_data<U>(ctx.GetPlace());
-    auto *ln_var_data = ln_var->mutable_data<U>(ctx.GetPlace());
-    auto *dropout_mask_out_data =
-        dropout_mask_out->mutable_data<uint8_t>(ctx.GetPlace());
-    auto *y_data = y->mutable_data<T>(ctx.GetPlace());
+        dev_ctx.Alloc<T>(bias_dropout_residual_out,
+                         bias_dropout_residual_out->numel() * sizeof(T));
+    auto *ln_mean_data =
+        dev_ctx.Alloc<U>(ln_mean, ln_mean->numel() * sizeof(U));
+    auto *ln_var_data = dev_ctx.Alloc<U>(ln_var, ln_var->numel() * sizeof(U));
+    auto *dropout_mask_out_data = dev_ctx.Alloc<uint8_t>(
+        dropout_mask_out, dropout_mask_out->numel() * sizeof(uint8_t));
+    auto *y_data = dev_ctx.Alloc<T>(y, y->numel() * sizeof(T));
 
     const auto input_x_dims = input_x->dims();
     int bsz_seq = 1;
@@ -92,7 +95,7 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     using U = LayerNormParamType<T>;
     const float ln_epsilon = ctx.Attr<float>("ln_epsilon");
-
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     auto *ln_scale = ctx.Input<Tensor>("LnScale");
     auto *dropout_mask_out = ctx.Input<Tensor>("DropoutMaskOut");
@@ -114,18 +117,24 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
         ctx.Output<Tensor>(framework::GradVarName("BiasDropoutResidualOut"));
     auto *d_ln_scale = ctx.Output<Tensor>(framework::GradVarName("LnScale"));
     auto *d_ln_bias = ctx.Output<Tensor>(framework::GradVarName("LnBias"));
-    auto *d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
-    auto *d_residual_data = d_residual->mutable_data<T>(ctx.GetPlace());
+    auto *d_x_data = dev_ctx.Alloc<T>(d_x, d_x->numel() * sizeof(T));
+    auto *d_residual_data =
+        dev_ctx.Alloc<T>(d_residual, d_residual->numel() * sizeof(T));
     auto *d_bias_dropout_residual_out_data =
-        d_bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
+        dev_ctx.Alloc<T>(d_bias_dropout_residual_out,
+                         d_bias_dropout_residual_out->numel() * sizeof(T));
     auto *d_bias_data =
-        (d_bias == nullptr ? nullptr : d_bias->mutable_data<T>(ctx.GetPlace()));
+        (d_bias == nullptr
+             ? nullptr
+             : dev_ctx.Alloc<T>(d_bias, d_bias->numel() * sizeof(T)));
     auto *d_ln_scale_data =
-        (d_ln_scale == nullptr ? nullptr
-                               : d_ln_scale->mutable_data<U>(ctx.GetPlace()));
+        (d_ln_scale == nullptr
+             ? nullptr
+             : dev_ctx.Alloc<U>(d_ln_scale, d_ln_scale->numel() * sizeof(U)));
     auto *d_ln_bias_data =
-        (d_ln_bias == nullptr ? nullptr
-                              : d_ln_bias->mutable_data<U>(ctx.GetPlace()));
+        (d_ln_bias == nullptr
+             ? nullptr
+             : dev_ctx.Alloc<U>(d_ln_bias, d_ln_bias->numel() * sizeof(U)));
 
     const auto input_x_dims = d_y->dims();
     int bsz_seq = 1;

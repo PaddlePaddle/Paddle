@@ -459,6 +459,9 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         infer_meta_context.EmplaceBackInputs(std::move(inputs));
       }
     } else {
+      // Note: Because the input of InferMetaFn is const MetaTensor&,
+      // so when we prepare input MetaTensor by InferMetaContext->InputAt(),
+      // we need to return a const reference of empty MetaTensor
       infer_meta_context.EmplaceBackInput(
           std::move(CompatMetaTensor(ctx->IsRuntime())));
     }

@@ -139,7 +139,7 @@ class Tracer {
   // intermediate var both in imperative and static mode. But the
   // `UniqueNameGenerator` in C++ and `unique_name.py` in Python doesn't share
   // the same auto-increment id. It will create a variable repeatedly with same
-  // name like `tmp_0` in some cases when transform dygraph into static layers.
+  // name like `tmp_0` in some cases when transform dygraph into static layers.
   // So we modify the default prefix key into `eager_tmp` to distinguish with
   // static graph.
   std::string GenerateUniqueName(std::string key = "dygraph_tmp") {

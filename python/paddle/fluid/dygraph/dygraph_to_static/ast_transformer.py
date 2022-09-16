@@ -18,6 +18,7 @@ from __future__ import print_function
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
+
 import os
 from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
@@ -38,6 +39,7 @@ from paddle.fluid.dygraph.dygraph_to_static.return_transformer import ReturnTran
 from paddle.fluid.dygraph.dygraph_to_static.create_variable_transformer import CreateVariableTransformer
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
+from paddle.fluid.dygraph.dygraph_to_static.decorator_transformer import DecoratorTransformer
 
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
@@ -105,6 +107,7 @@ class DygraphToStaticAst(BaseTransformer):
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
             GradTransformer,  # transform paddle.grad to paddle.gradients
+            DecoratorTransformer,  # transform decorators to function call
         ]
 
         apply_optimization(transformers)
@@ -120,27 +123,6 @@ class DygraphToStaticAst(BaseTransformer):
             self.decorate_func_name = node.name
 
         self.generic_visit(node)
-        # Remove the decorated name of dygraph_to_static
-        if hasattr(node, 'decorator_list'):
-            decorator_list = []
-            for d in node.decorator_list:
-                if isinstance(d, gast.Name) and d.id not in DECORATOR_NAMES:
-                    raise NotImplementedError(
-                        "ProgramTranslator hasn't implemented multiple decorators. Please remove "
-                        + d.id + " in " + self.decorate_func_name)
-                if isinstance(d, gast.Attribute):
-                    full_attribute_name = get_attribute_full_name(d)
-                    has_translate_decorator = False
-                    for deco in DECORATOR_NAMES:
-                        if deco in full_attribute_name:
-                            has_translate_decorator = True
-                            break
-                    if not has_translate_decorator:
-                        raise NotImplementedError(
-                            "ProgramTranslator hasn't implemented multiple decorators. Please remove "
-                            + full_attribute_name + " in " +
-                            self.decorate_func_name)
-            node.decorator_list = decorator_list
         return node
 
     def get_module_name(self):

@@ -38,17 +38,17 @@ def default_collate_fn(batch):
      {'image': np.array(shape=[3, 224, 224]), 'label': 3},
      {'image': np.array(shape=[3, 224, 224]), 'label': 4},
      {'image': np.array(shape=[3, 224, 224]), 'label': 5},]
-    
-    
+
+
     This default collate function zipped each number and numpy array
     field together and stack each field as the batch field as follows:
 
     {'image': np.array(shape=[4, 3, 224, 224]), 'label': np.array([1, 3, 4, 5])}
 
 
-    Args:  
+    Args:
         batch(list of sample data): batch should be a list of sample data.
-    
+
     Returns:
         Batched data: batched each number, numpy array and paddle.Tensor
                       in input data.
@@ -92,9 +92,9 @@ def default_convert_fn(batch):
         automatic batching** mode, for **Distable automatic batching**
         mode, please ses :attr:`paddle.io.DataLoader`
 
-    Args:  
+    Args:
         batch(list of sample data): batch should be a list of sample data.
-    
+
     Returns:
         Batched data: batched each number, numpy array and paddle.Tensor
                       in input data.

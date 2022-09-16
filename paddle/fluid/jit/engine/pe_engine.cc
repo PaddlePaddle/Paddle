@@ -74,8 +74,7 @@ PEEngine::PEEngine(const std::shared_ptr<FunctionInfo> &info,
 
 void PEEngine::CreateGraphAndPE() {
   framework::details::BuildStrategy build_strategy;
-  build_strategy.inference_ = true;
-  build_strategy.del_dropout_ = true;
+  build_strategy.enable_inference_pass_ = true;  // use pe to inference
   auto execution_strategy = GetExecutionStrategy(place_);
 
   auto &program_desc = info_->ProgramDesc();
