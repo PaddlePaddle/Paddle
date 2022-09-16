@@ -39,7 +39,6 @@ class Laplace(distribution.Distribution):
     Args:
         loc (scalar|Tensor): The mean of the distribution.
         scale (scalar|Tensor): The scale of the distribution.
-        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
