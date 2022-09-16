@@ -1014,7 +1014,6 @@ def fmax(x, y, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             x = paddle.to_tensor([[1, 2], [7, 8]])
@@ -1077,7 +1076,7 @@ def fmin(x, y, name=None):
 
         .. code-block:: python
 
-            import numpy as np
+
             import paddle
 
             x = paddle.to_tensor([[1, 2], [7, 8]])
@@ -4122,9 +4121,8 @@ def lerp_(x, y, weight, name=None):
 
 def erfinv(x, name=None):
     r"""
-    The inverse error function of x.
+    The inverse error function of x. Please refer to :ref:`erf_en.html`
 
-    Equation:
         .. math::
 
             erfinv(erf(x)) = x.
@@ -4237,7 +4235,6 @@ def deg2rad(x, name=None):
     r"""
     Convert each of the elements of input x from degrees to angles in radians.
     
-    Equation:
         .. math::
 
             deg2rad(x)=\pi * x / 180
@@ -4253,7 +4250,6 @@ def deg2rad(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             
             x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
             result1 = paddle.deg2rad(x1)
