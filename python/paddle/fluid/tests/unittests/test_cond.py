@@ -277,7 +277,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             a = 2 * i
             if i < 5:
                 if i >= 3:
-                    return a + a 
+                    return a + a
                 else:
                     return a - a
             else:

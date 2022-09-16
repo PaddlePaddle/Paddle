@@ -901,7 +901,7 @@ class Completer:
 
     def _complete_high_order_grad_annotation(self, serial_main_program=None):
         """
-        NOTE: 
+        NOTE:
             [HighOrderGrad] Complete the annotation of vars and ops only for high order gradient.
             This function is temporary to support high order gradient, and will be removed in the future.
         """

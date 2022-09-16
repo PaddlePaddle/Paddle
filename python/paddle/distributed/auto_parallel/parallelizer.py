@@ -42,6 +42,7 @@ from .utils import make_data_unshard
 from .utils import set_grad_var_shape
 from .utils import print_program_with_dist_attr
 from .utils import SerialProgramInfo
+from .utils import get_logger
 from .reshard import Resharder
 from .cluster import Cluster
 from .mapper import mapping
@@ -57,9 +58,9 @@ class AutoParallelizer:
     AutoParallelizer is the main controller class to do the auto parallel process.
     And the auto parallel process will be triggered in the wrapped parallelize function.
     To facilitate the auto parallelization, it will contain information about program, cluster and the
-    related context. In this basic version, the program information will be retrevied from 
+    related context. In this basic version, the program information will be retrevied from
     Fleet object, and the cluster information can be retrevied in the new created Cluster object,
-    and the context information can be retrevied in the new created DistributedContext. 
+    and the context information can be retrevied in the new created DistributedContext.
     """
 
     def __init__(self, fleet):

@@ -33,8 +33,8 @@ __all__ = []
 
 def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     """
-    This OP creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2) 
-    are filled by ``input``. By default, a 2D plane formed by the last two dimensions 
+    This OP creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2)
+    are filled by ``input``. By default, a 2D plane formed by the last two dimensions
     of the returned tensor will be selected.
 
     The argument ``offset`` determines which diagonal is generated:
@@ -48,16 +48,16 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
         offset(int, optional): Which diagonal to consider. Default: 0 (main diagonal).
         dim1(int, optional): The first dimension with respect to which to take diagonal. Default: -2.
         dim2(int, optional): The second dimension with respect to which to take diagonal. Default: -1.
-    
+
     Returns:
         Tensor, the output data type is the same as input data type.
-    
+
     Examples:
         .. code-block:: python
 
             import paddle.nn.functional as F
             import numpy as np
-            
+
             diag_embed = np.random.randn(2, 3).astype('float32')
             # [[ 0.7545889 , -0.25074545,  0.5929117 ],
             #  [-0.6097662 , -0.01753256,  0.619769  ]]
@@ -191,7 +191,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: 
+    Returns:
             Tensor, The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
             and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.

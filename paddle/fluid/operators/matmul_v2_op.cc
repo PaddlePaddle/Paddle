@@ -193,8 +193,8 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "doing multiplication")
         .SetDefault(false);
     AddComment(
-        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
-        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)). 
+        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
+        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
         In addition, it also follows the broadcast rule which is similar as
         numpy.matmul.
 )DOC");

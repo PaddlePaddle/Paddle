@@ -83,10 +83,10 @@ def ReadBwdFile(filepath):
     ret = {}
     if contents is not None:
         for content in contents:
-            assert 'backward_api' in content.keys(), AssertMessage(
-                'backward_api', content.keys())
-            if 'backward_api' in content.keys():
-                api_name = content['backward_api']
+            assert 'backward_op' in content.keys(), AssertMessage(
+                'backward_op', content.keys())
+            if 'backward_op' in content.keys():
+                api_name = content['backward_op']
 
             ret[api_name] = content
     f.close()
@@ -161,11 +161,24 @@ def GetGradNodeName(string):
     string = str2Hump(string)
     if string.rfind("Grad") == (len(string) - 4):
         string = string[:-4]
-    return f"{string}GradNodeFinal"
+    return f"{string}GradNode"
 
 
 def GetDygraphForwardFunctionName(string):
-    return f"{string}_dygraph_function"
+    return f"{string}_ad_func"
+
+
+def GetDygraphLogName(string):
+
+    def str2Hump(text):
+        arr = filter(None, text.split('_'))
+        res = ''
+        for i in arr:
+            res = res + i[0].upper() + i[1:]
+        return res
+
+    string = str2Hump(string)
+    return string
 
 
 def GetIntermediateAPIFunctionName(string):
@@ -198,7 +211,7 @@ def GetInplacedFunctionName(function_name):
 
 
 def GetForwardFunctionName(string):
-    return f"{string}_dygraph_function"
+    return f"{string}_ad_func"
 
 
 def GetIndent(num):
