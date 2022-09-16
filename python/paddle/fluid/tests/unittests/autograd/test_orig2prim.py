@@ -18,6 +18,7 @@ import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.utils import flatten
 from paddle.incubate.autograd.primrules import _orig2prim, _prim2orig, _jvp, _transpose
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -340,6 +341,46 @@ class TestFillZerosLikeOrig2Prim(TestElementWiseAddOrig2Prim):
 
         self.orig2prim_args = (X, )
         self.all_ops = ['fill_zeros_like', 'fill_constant_p']
+        self.out_map = {0: self.output['Out']}
+
+
+class TestFillAnyLikeOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'fill_any_like'
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['fill_any_like', 'fill_constant_p']
+        self.out_map = {0: self.output['Out']}
+
+
+class TestFillAnyLikeOrig2Prim2(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'fill_any_like'
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {'dtype': paddle.float32, 'value': 5}
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['fill_any_like', 'fill_constant_p']
         self.out_map = {0: self.output['Out']}
 
 
