@@ -91,6 +91,7 @@ class CublasLtHelper {
             cudaStream_t stream) {
     cublasStatus_t status;
 
+#if __CUDA_ARCH__ >= 800 && CUDA_VERSION >= 11020
     cublasLtMatmulAlgo_t algo;
     int algoId = 21;
     int swizzle = 0;
@@ -139,7 +140,7 @@ class CublasLtHelper {
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
         &algo, CUBLASLT_ALGO_CONFIG_STAGES_ID, &(stages), sizeof(stages));
 #endif
-
+#endif
     status = dyl::cublasLtMatmul(handle_,
                                  matmul_desc_,
                                  &alpha_,
@@ -152,7 +153,11 @@ class CublasLtHelper {
                                  C_desc_,
                                  C_dev,
                                  C_desc_,
+#if __CUDA_ARCH__ >= 800 && CUDA_VERSION >= 11020
                                  &algo,
+#else
+                                 nullptr,
+#endif
                                  nullptr,
                                  0,
                                  stream);
