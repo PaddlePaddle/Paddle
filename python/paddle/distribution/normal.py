@@ -36,7 +36,7 @@ class Normal(distribution.Distribution):
 
     .. math::
 
-        pdf(x; \mu, \sigma) = \\frac{1}{Z}e^{\\frac {-0.5 (x - \mu)^2}  {\sigma^2} }
+        pdf(x; \mu, \sigma) = \frac{1}{Z}e^{\frac {-0.5 (x - \mu)^2}  {\sigma^2} }
 
     .. math::
 
@@ -177,7 +177,7 @@ class Normal(distribution.Distribution):
 
         .. math::
 
-            entropy(\sigma) = 0.5 \\log (2 \pi e \sigma^2)
+            entropy(\sigma) = 0.5 \log (2 \pi e \sigma^2)
 
         In the above equation:
 
@@ -243,11 +243,11 @@ class Normal(distribution.Distribution):
 
         .. math::
 
-            KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = 0.5 (ratio^2 + (\\frac{diff}{\sigma_1})^2 - 1 - 2 \\ln {ratio})
+            KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = 0.5 (ratio^2 + (\frac{diff}{\sigma_1})^2 - 1 - 2 \ln {ratio})
 
         .. math::
 
-            ratio = \\frac{\sigma_0}{\sigma_1}
+            ratio = \frac{\sigma_0}{\sigma_1}
         
         .. math::
 
