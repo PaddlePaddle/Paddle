@@ -492,4 +492,9 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
+if(WITH_CUTLASS)
+  include(external/cutlass) # download, build, install cusparselt
+  list(APPEND third_party_deps extern_cutlass)
+endif()
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

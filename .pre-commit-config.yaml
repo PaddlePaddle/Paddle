@@ -4,6 +4,7 @@ repos:
     hooks:
     -   id: remove-crlf
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
+        exclude: paddle/phi/kernels/sparse/gpu/gather_gemm_grouped.h
 -   repo: https://github.com/google/yapf
     rev: v0.32.0
     hooks:
@@ -42,7 +43,7 @@ repos:
     -   id: cpplint-cpp-source
         name: cpplint
         description: Check C++ code style using cpplint.py.
-        entry: bash ./tools/codestyle/cpplint_pre_commit.hook
+        entry: bash ./tools/codestyle/cpplint_pre_commit.hook --exclude=paddle/phi/kernels/sparse/gpu/gather_gemm_grouped.h
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
 -   repo: local

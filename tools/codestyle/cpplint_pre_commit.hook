@@ -24,7 +24,7 @@ for file in $files; do
     if [[ $file =~ ^(patches/.*) ]]; then
         continue;
     else
-        cpplint --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens $file;
+        cpplint --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens $@ $file;
         TOTAL_ERRORS=$(expr $TOTAL_ERRORS + $?);
     fi
 done

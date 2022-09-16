@@ -293,7 +293,7 @@ struct GatherGemmGrouped {
 
   /// Executes one GEMM
   CUTLASS_DEVICE
-  void operator()(Params const &params, SharedStorage const &shared_storage) {
+  void operator()(Params const &params, SharedStorage &shared_storage) {
     //
     // These types shadow the type-level definitions and support the ability to
     // implement a 'transposed' GEMM that computes the transposed problems.

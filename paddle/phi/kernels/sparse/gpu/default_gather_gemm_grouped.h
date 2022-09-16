@@ -229,10 +229,11 @@ struct DefaultGatherGemmGrouped<ElementA,
                                    GatherA>::GemmKernel;
 
   /// Define the kernel in terms of the default kernel
-  using GemmKernel = kernel::GemmGrouped<typename DefaultGemmKernel::Mma,
-                                         typename DefaultGemmKernel::Epilogue,
-                                         ThreadblockSwizzle,
-                                         kInternalTranspose>;
+  using GemmKernel =
+      kernel::GatherGemmGrouped<typename DefaultGemmKernel::Mma,
+                                typename DefaultGemmKernel::Epilogue,
+                                ThreadblockSwizzle,
+                                kInternalTranspose>;
 };
 }  // namespace kernel
 }  // namespace gemm

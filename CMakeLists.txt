@@ -427,9 +427,6 @@ endif()
 
 if(WITH_CUTLASS)
   add_definitions("-DPADDLE_WITH_CUTLASS")
-  include_directories("cutlass/")
-  include_directories("cutlass/include/")
-  include_directories("cutlass/tools/util/include/")
 endif()
 
 if(WITH_BRPC_RDMA)
