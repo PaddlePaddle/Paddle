@@ -29,6 +29,16 @@ namespace ir {
 //        other_op4    layer_norm            other_op4  other_op3
 //                       |
 //                   other_op3
+//                                 or
+//
+//     |           |                            |            |
+// other_op1     other_op2                  other_op1    other_op2
+//     |           |              fuse           \          /
+//     |------elementwise_add      ->          preln_residual_bias
+//             |          |                        |      |
+//        other_op4    layer_norm            other_op4  other_op3
+//                       |
+//                   other_op3
 class Graph;
 
 class PrelnResidualBiasFusePass : public FusePassBase {
