@@ -423,7 +423,7 @@ LAYOUT_LOGIC_TEMPLATE=\
 """
   if (egr::Controller::Instance().UseLayoutAutoTune()) {{
     paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> tensors_vector = {};
-    {} 
+    {}
     {}
     VLOG(5) << "Check and Prepare For LAYOUT "<< op_name;
     paddle::imperative::LayoutAutotuneGuard guard(egr::Controller::Instance().GetCurrentTracer(), false);
