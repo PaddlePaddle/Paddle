@@ -115,9 +115,6 @@ class TestMKLDNNElementwiseSubOp40(TestMKLDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 2, [180, 1]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [1, 256]).astype(self.dtype)
-
-        # self.x = np.random.uniform(0.1, 2, [1, 180]).astype(self.dtype)
-        # self.y = np.random.uniform(0.1, 1, [256, 1]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
     def test_check_grad_normal(self):
