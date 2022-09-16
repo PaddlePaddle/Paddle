@@ -3,8 +3,8 @@ select = E,F,W
 exclude = ./build
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-    E101,E122,E124,E125,E127,E128,E129,E131,
-    E201,E202,E203,E221,E225,E228,E231,E251,E261,E262,E265,E266,E271,E272,E275,
+    E101,E121,E122,E123,E124,E125,E126,E127,E128,E129,E131,
+    E201,E202,E203,E221,E225,E226,E228,E231,E241,E251,E261,E262,E265,E266,E271,E272,E275,
     E301,E302,E303,E305,E306,
     E401,E402,
     E501,E502,
@@ -18,4 +18,5 @@ ignore =
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     W191,
+    W503,W504
     W601,W605
