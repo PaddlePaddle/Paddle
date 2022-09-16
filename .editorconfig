@@ -17,6 +17,9 @@ indent_size = 4
 [Dockerfile.*]
 indent_size = 4
 
+[.flake8]
+indent_size = 4
+
 [*.go]
 indent_style = tab
 indent_size = 4
