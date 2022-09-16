@@ -16,6 +16,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace phi {
 namespace funcs {
@@ -43,6 +44,7 @@ inline void ModulatedDeformableIm2colCPUKernel(
     const int height_col,
     const int width_col,
     T* data_col) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int i = 0; i < num_kernels; i++) {
     const int w_col = i % width_col;
     const int h_col = (i / width_col) % height_col;
@@ -68,6 +70,8 @@ inline void ModulatedDeformableIm2colCPUKernel(
             ? data_mask + (b_col * deformable_group + deformable_group_index) *
                               kernel_h * kernel_w * height_col * width_col
             : nullptr;
+    
+    // 上边都动不了，指针移动也不会引起误差和速度降低
 
     for (int i = 0; i < kernel_h; ++i) {
       for (int j = 0; j < kernel_w; ++j) {
@@ -77,22 +81,22 @@ inline void ModulatedDeformableIm2colCPUKernel(
             ((2 * (i * kernel_w + j) + 1) * height_col + h_col) * width_col +
             w_col;
 
-        const T offset_h = data_offset_ptr[data_offset_h_ptr];
-        const T offset_w = data_offset_ptr[data_offset_w_ptr];
-        T val = static_cast<T>(0);
-        const T h_im = static_cast<T>(h_in) + static_cast<T>(i * dilation_h) + offset_h;
-        const T w_im = static_cast<T>(w_in) + static_cast<T>(j * dilation_w) + offset_w;
-        if (h_im > static_cast<T>(-1) && w_im > static_cast<T>(-1) && h_im < static_cast<T>(height) && w_im < static_cast<T>(width)) {
+        const MT offset_h = static_cast<MT>(data_offset_ptr[data_offset_h_ptr]);
+        const MT offset_w = static_cast<MT>(data_offset_ptr[data_offset_w_ptr]);
+        MT val = static_cast<MT>(0);
+        const MT h_im = h_in + i * dilation_h + offset_h;
+        const MT w_im = w_in + j * dilation_w + offset_w;
+        if (h_im > -1 && w_im > -1 && h_im < height && w_im < width) {
           val =
-              DmcnIm2colBilinear(data_im_ptr, width, height, width, h_im, w_im);
+              DmcnIm2colBilinear<T, MT>(data_im_ptr, width, height, width, h_im, w_im);
         }
-        *data_col_ptr = val;
         if (data_mask_ptr) {
           const int data_mask_hw_ptr =
               ((i * kernel_w + j) * height_col + h_col) * width_col + w_col;
-          const T mask = data_mask_ptr[data_mask_hw_ptr];
-          *data_col_ptr *= mask;
+          const MT mask = static_cast<MT>(data_mask_ptr[data_mask_hw_ptr]);
+          val *= mask;
         }
+        *data_col_ptr = static_cast<T>(val);
         data_col_ptr += batch_size * height_col * width_col;
       }
     }
@@ -167,19 +171,19 @@ template void ModulatedDeformableIm2col(
     const int deformable_groups,
     double* data_col);
 
-template void ModulatedDeformableIm2col(
-    const phi::CPUContext& dev_ctx,
-    const phi::dtype::float16* data_im,
-    const phi::dtype::float16* data_offset,
-    const phi::dtype::float16* data_mask,
-    const std::vector<int64_t>& im_shape,
-    const std::vector<int64_t>& col_shape,
-    const std::vector<int64_t>& filter_shape,
-    const std::vector<int>& paddings,
-    const std::vector<int>& strides,
-    const std::vector<int>& dilations,
-    const int deformable_groups,
-    phi::dtype::float16* data_col);
+// template void ModulatedDeformableIm2col(
+//     const phi::CPUContext& dev_ctx,
+//     const phi::dtype::float16* data_im,
+//     const phi::dtype::float16* data_offset,
+//     const phi::dtype::float16* data_mask,
+//     const std::vector<int64_t>& im_shape,
+//     const std::vector<int64_t>& col_shape,
+//     const std::vector<int64_t>& filter_shape,
+//     const std::vector<int>& paddings,
+//     const std::vector<int>& strides,
+//     const std::vector<int>& dilations,
+//     const int deformable_groups,
+//     phi::dtype::float16* data_col);
 
 }  // namespace funcs
 }  // namespace phi

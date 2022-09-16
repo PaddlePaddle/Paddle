@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
 #include "paddle/utils/optional.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace phi {
 
@@ -37,10 +38,8 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int im2col_step,
                           DenseTensor* out) {
   const int batch_size = static_cast<int>(x.dims()[0]);
-  
-  
-//   im2col_step = 2;
-//   printf("default im2col_step is: %d",im2col_step);
+
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   std::vector<int64_t> filter_shape_vec(phi::vectorize(filter.dims()));
   std::vector<int64_t> output_shape_vec(phi::vectorize(out->dims()));
 

@@ -54,6 +54,7 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
     T* grad_im) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (size_t thread = index; thread < nthreads; thread += offset) {
     const int j = (thread / width_col / height_col / batch_size) % kernel_w;
     const int i =
@@ -78,17 +79,17 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
         ((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col + w_out;
     const int data_mask_hw_ptr =
         ((i * kernel_w + j) * height_col + h_out) * width_col + w_out;
-    const T offset_h = data_offset_ptr[data_offset_h_ptr];
-    const T offset_w = data_offset_ptr[data_offset_w_ptr];
-    const T cur_inv_h_data = static_cast<T>(h_in + i * dilation_h) + offset_h;
-    const T cur_inv_w_data = static_cast<T>(w_in + j * dilation_w) + offset_w;
+    const MT offset_h = static_cast<MT>(data_offset_ptr[data_offset_h_ptr]);
+    const MT offset_w = static_cast<MT>(data_offset_ptr[data_offset_w_ptr]);
+    const MT cur_inv_h_data = h_in + i * dilation_h + offset_h;
+    const MT cur_inv_w_data = w_in + j * dilation_w + offset_w;
 
-    T cur_top_grad = data_col[thread];
+    MT cur_top_grad = static_cast<MT>(data_col[thread]);
     if (data_mask) {
       const T* data_mask_ptr =
           data_mask + (b * deformable_group + deformable_group_index) *
                           kernel_h * kernel_w * height_col * width_col;
-      const T mask = data_mask_ptr[data_mask_hw_ptr];
+      const MT mask = static_cast<MT>(data_mask_ptr[data_mask_hw_ptr]);
       cur_top_grad *= mask;
     }
     const int cur_h = static_cast<int>(cur_inv_h_data);
@@ -96,11 +97,11 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
     for (int dy = -2; dy <= 2; dy++) {
       for (int dx = -2; dx <= 2; dx++) {
         if (cur_h + dy >= 0 && cur_h + dy < height && cur_w + dx >= 0 &&
-            cur_w + dx < width && abs(cur_inv_h_data - static_cast<T>(cur_h + dy)) < T(1) &&
-            abs(cur_inv_w_data - static_cast<T>(cur_w + dx)) < T(1)) {
+            cur_w + dx < width && abs(cur_inv_h_data - (cur_h + dy)) < 1 &&
+            abs(cur_inv_w_data - (cur_w + dx)) < 1) {
           int cur_bottom_grad_pos =
               ((b * channels + c) * height + cur_h + dy) * width + cur_w + dx;
-          T weight = DmcnGetGradientWeight(cur_inv_h_data,
+          MT weight = DmcnGetGradientWeight(cur_inv_h_data,
                                            cur_inv_w_data,
                                            cur_h + dy,
                                            cur_w + dx,
@@ -108,7 +109,7 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
                                            width);
 
           paddle::platform::CudaAtomicAdd(grad_im + cur_bottom_grad_pos,
-                                          weight * cur_top_grad);
+                                          static_cast<T>(weight * cur_top_grad));
         }
       }
     }
@@ -185,8 +186,9 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
     T* grad_mask) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (size_t i = index; i < nthreads; i += offset) {
-    T val(0), mval(0);
+    MT val = 0, mval = 0;
     const int w = i % width_col;
     const int h = (i / width_col) % height_col;
     const int c = (i / width_col / height_col) % offset_channels;
@@ -231,23 +233,24 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
       const int data_offset_w_ptr =
           (((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col +
            w_out);
-      const T offset_h = data_offset_ptr[data_offset_h_ptr];
-      const T offset_w = data_offset_ptr[data_offset_w_ptr];
-      T inv_h = static_cast<T>(h_in + i * dilation_h) + offset_h;
-      T inv_w = static_cast<T>(w_in + j * dilation_w) + offset_w;
-      if (inv_h <= T(-1) || inv_w <= T(-1) || inv_h >= static_cast<T>(height) || inv_w >=static_cast<T>(width)) {
+
+      const MT offset_h = static_cast<MT>(data_offset_ptr[data_offset_h_ptr]);
+      const MT offset_w = static_cast<MT>(data_offset_ptr[data_offset_w_ptr]);
+      MT inv_h = h_in + i * dilation_h + offset_h;
+      MT inv_w = w_in + j * dilation_w + offset_w;
+      if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
         inv_h = inv_w = -2;
       } else {
-        mval += data_col_ptr[col_pos] *
-                funcs::DmcnIm2colBilinear(data_im_ptr + cnt * height * width,
+        mval += static_cast<MT>(data_col_ptr[col_pos]) *
+                funcs::DmcnIm2colBilinear<T, MT>(data_im_ptr + cnt * height * width,
                                           width,
                                           height,
                                           width,
                                           inv_h,
                                           inv_w);
       }
-      const T weight =
-          DmcnGetCoordinateWeight(inv_h,
+      const MT weight =
+          DmcnGetCoordinateWeight<T, MT>(inv_h,
                                   inv_w,
                                   height,
                                   width,
@@ -257,14 +260,14 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
       if (data_mask_ptr) {
         const int data_mask_hw_ptr =
             (((i * kernel_w + j) * height_col + h_out) * width_col + w_out);
-        const T mask = data_mask_ptr[data_mask_hw_ptr];
-        val += weight * data_col_ptr[col_pos] * mask;
+        const MT mask = static_cast<MT>(data_mask_ptr[data_mask_hw_ptr]);
+        val += weight * static_cast<MT>(data_col_ptr[col_pos]) * mask;
       } else {
-        val += weight * data_col_ptr[col_pos];
+        val += weight * static_cast<MT>(data_col_ptr[col_pos]);
       }
       cnt += 1;
     }
-    grad_offset[i] = val;
+    grad_offset[i] = static_cast<T>(val);
     if (grad_mask && offset_c % 2 == 0)
       grad_mask[(((b * deformable_group + deformable_group_index) * kernel_h *
                       kernel_w +

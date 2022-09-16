@@ -294,6 +294,10 @@ class TestWithFloat16(TestModulatedDeformableConvOp):
 
     def init_type(self):
         self.dtype = np.float16
+    
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=1e-3)
+
 
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
 

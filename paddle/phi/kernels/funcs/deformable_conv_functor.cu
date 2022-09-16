@@ -55,6 +55,8 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
     T* data_col) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
+
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (size_t i = index; i < nthreads; i += offset) {
     const int w_col = i % width_col;
     const int h_col = (i / width_col) % height_col;
@@ -67,7 +69,6 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
     const int h_in = h_col * stride_h - pad_h;
     const int w_in = w_col * stride_w - pad_w;
 
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     T* data_col_ptr =
         data_col +
         ((c_col * batch_size + b_col) * height_col + h_col) * width_col + w_col;
@@ -81,6 +82,8 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
             ? data_mask + (b_col * deformable_group + deformable_group_index) *
                               kernel_h * kernel_w * height_col * width_col
             : nullptr;
+    
+    // 上边都动不了，指针移动也不会引起误差和速度降低
 
     for (int i = 0; i < kernel_h; ++i) {
       for (int j = 0; j < kernel_w; ++j) {
@@ -90,26 +93,22 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
             ((2 * (i * kernel_w + j) + 1) * height_col + h_col) * width_col +
             w_col;
 
-        const T offset_h = data_offset_ptr[data_offset_h_ptr];
-        const T offset_w = data_offset_ptr[data_offset_w_ptr];
-        T val = static_cast<T>(0);
-        // 下边几行要修改
-        // const T h_im = static_cast<T>(h_in + i * dilation_h) + offset_h;
-        // const T w_im = static_cast<T>(w_in + j * dilation_w) + offset_w;
-        const T h_im = static_cast<T>(h_in + i * dilation_h + double(offset_h));
-        const T w_im = static_cast<T>(w_in + j * dilation_w + double(offset_w));
-        // if (h_im > static_cast<T>(-1) && w_im > static_cast<T>(-1) && h_im < static_cast<T>(height) && w_im < static_cast<T>(width)) {
-        if (h_im > T(-1) && w_im > T(-1) && float(h_im) < height && float(w_im) < width) {
+        const MT offset_h = static_cast<MT>(data_offset_ptr[data_offset_h_ptr]);
+        const MT offset_w = static_cast<MT>(data_offset_ptr[data_offset_w_ptr]);
+        MT val = static_cast<MT>(0);
+        const MT h_im = h_in + i * dilation_h + offset_h;
+        const MT w_im = w_in + j * dilation_w + offset_w;
+        if (h_im > -1 && w_im > -1 && h_im < height && w_im < width) {
           val =
-              DmcnIm2colBilinear(data_im_ptr, width, height, width, h_im, w_im);
+              DmcnIm2colBilinear<T, MT>(data_im_ptr, width, height, width, h_im, w_im);
         }
-        *data_col_ptr = val;
         if (data_mask_ptr) {
           const int data_mask_hw_ptr =
               ((i * kernel_w + j) * height_col + h_col) * width_col + w_col;
-          const T mask = data_mask_ptr[data_mask_hw_ptr];
-          *data_col_ptr *= mask;
+          const MT mask = static_cast<MT>(data_mask_ptr[data_mask_hw_ptr]);
+          val *= mask;
         }
+        *data_col_ptr = static_cast<T>(val);
         data_col_ptr += batch_size * height_col * width_col;
       }
     }
@@ -134,8 +133,6 @@ void ModulatedDeformableIm2col(const Context& dev_ctx,
 
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
-
-  // phi::funcs::ElementwiseKernel
 
   ModulatedDeformableIm2colGpuKernel<T>
       <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,

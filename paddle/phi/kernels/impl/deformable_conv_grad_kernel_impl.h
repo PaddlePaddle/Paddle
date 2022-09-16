@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace phi {
 
@@ -30,90 +31,90 @@ HOSTDEVICE T DmcnGetGradientWeight(T argmax_h,
                                    const int w,
                                    const int height,
                                    const int width) {
-  if (argmax_h <= T(-1) || argmax_h >= static_cast<T>(height) || argmax_w <= T(-1) ||
-      argmax_w >= static_cast<T>(width)) {
-    return T(0);
+  if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
+      argmax_w >= width) {
+    return 0;
   }
 
-  int argmax_h_low = floor(float(argmax_h));
-  int argmax_w_low = floor(float(argmax_w));
+  int argmax_h_low = floor(argmax_h);
+  int argmax_w_low = floor(argmax_w);
   int argmax_h_high = argmax_h_low + 1;
   int argmax_w_high = argmax_w_low + 1;
 
-  T weight(0);
+  T weight = 0;
 
   weight = (h == argmax_h_low && w == argmax_w_low)
-               ? ((static_cast<T>(h + 1) - argmax_h) * (static_cast<T>(w + 1) - argmax_w))
+               ? (h + 1 - argmax_h) * (w + 1 - argmax_w)
                : weight;
   weight = (h == argmax_h_low && w == argmax_w_high)
-               ? ((static_cast<T>(h + 1) - argmax_h) * (argmax_w + static_cast<T>(1 - w)))
+               ? (h + 1 - argmax_h) * (argmax_w + 1 - w)
                : weight;
   weight = (h == argmax_h_high && w == argmax_w_low)
-               ? (argmax_h + static_cast<T>(1 - h)) * (static_cast<T>(w + 1) - argmax_w)
+               ? (argmax_h + 1 - h) * (w + 1 - argmax_w)
                : weight;
   weight = (h == argmax_h_high && w == argmax_w_high)
-               ? (argmax_h + static_cast<T>(1 - h)) * (argmax_w + static_cast<T>(1 - w))
+               ? (argmax_h + 1 - h) * (argmax_w + 1 - w)
                : weight;
 
   return weight;
 }
 
-template <typename T>
-HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h,
-                                     T argmax_w,
+template <typename T, typename MT>
+HOSTDEVICE MT DmcnGetCoordinateWeight(MT argmax_h,
+                                     MT argmax_w,
                                      const int height,
                                      const int width,
                                      const T* im_data,
                                      const int data_width,
                                      const int bp_dir) {
-  if (argmax_h <= T(-1) || argmax_h >= static_cast<T>(height) || argmax_w <= T(-1) ||
-      argmax_w >= static_cast<T>(width)) {
-    return T(0);
+  if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
+      argmax_w >= width) {
+    return 0;
   }
 
-  int argmax_h_low = floor(float(argmax_h));
-  int argmax_w_low = floor(float(argmax_w));
+  int argmax_h_low = floor(argmax_h);
+  int argmax_w_low = floor(argmax_w);
   int argmax_h_high = argmax_h_low + 1;
   int argmax_w_high = argmax_w_low + 1;
 
-  T weight(0);
+  MT weight = 0;
 
   if (bp_dir == 0) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
-                  ? static_cast<T>(-1 * (argmax_w_low + 1 - float(argmax_w))) *
-                        im_data[argmax_h_low * data_width + argmax_w_low]
-                  : T(0);
+                  ? -1 * (argmax_w_low + 1 - argmax_w) *
+                        static_cast<MT>(im_data[argmax_h_low * data_width + argmax_w_low])
+                  : 0;
 
     weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
-                  ? static_cast<T>(-1 * (float(argmax_w) - argmax_w_low)) *
-                        im_data[argmax_h_low * data_width + argmax_w_high]
-                  : T(0);
+                  ? -1 * (argmax_w - argmax_w_low) *
+                        static_cast<MT>(im_data[argmax_h_low * data_width + argmax_w_high])
+                  : 0;
 
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
-                  ? static_cast<T>((argmax_w_low + 1 - float(argmax_w))) *
-                        im_data[argmax_h_high * data_width + argmax_w_low]
-                  : T(0);
+                  ? (argmax_w_low + 1 - argmax_w) *
+                        static_cast<MT>(im_data[argmax_h_high * data_width + argmax_w_low])
+                  : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
-                  ? static_cast<T>((float(argmax_w) - argmax_w_low)) *
-                        im_data[argmax_h_high * data_width + argmax_w_high]
-                  : T(0);
+                  ? (argmax_w - argmax_w_low) *
+                        static_cast<MT>(im_data[argmax_h_high * data_width + argmax_w_high])
+                  : 0;
   } else if (bp_dir == 1) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
-                  ? static_cast<T>(-1 * (argmax_h_low + 1 - float(argmax_h))) *
-                        im_data[argmax_h_low * data_width + argmax_w_low]
-                  : T(0);
+                  ? -1 * (argmax_h_low + 1 - argmax_h) *
+                        static_cast<MT>(im_data[argmax_h_low * data_width + argmax_w_low])
+                  : 0;
     weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
-                  ? static_cast<T>((argmax_h_low + 1 - float(argmax_h))) *
-                        im_data[argmax_h_low * data_width + argmax_w_high]
-                  : T(0);
+                  ? (argmax_h_low + 1 - argmax_h) *
+                        static_cast<MT>(im_data[argmax_h_low * data_width + argmax_w_high])
+                  : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
-                  ? static_cast<T>(-1 * (float(argmax_h) - argmax_h_low)) *
-                        im_data[argmax_h_high * data_width + argmax_w_low]
-                  : T(0);
+                  ? -1 * (argmax_h - argmax_h_low) *
+                        static_cast<MT>(im_data[argmax_h_high * data_width + argmax_w_low])
+                  : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
-                  ? static_cast<T>((float(argmax_h) - argmax_h_low)) *
-                        im_data[argmax_h_high * data_width + argmax_w_high]
-                  : T(0);
+                  ? (argmax_h - argmax_h_low) *
+                        static_cast<MT>(im_data[argmax_h_high * data_width + argmax_w_high])
+                  : 0;
   }
 
   return weight;
@@ -158,6 +159,7 @@ void FilterGradAddup(const Context& dev_ctx,
                      const T* dweight_3d,
                      T* filter_grad);
 
+// 总入口
 template <typename T, typename Context>
 void DeformableConvGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
@@ -261,7 +263,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                   T(1.0),
                   &col_buffer_3d_slice,
                   T(0.0));
-    }
+      } // 相信没啥问题
     col_buffer.Resize(make_ddim(col_buffer_shape_vec));
 
     T* col_buffer_ptr = col_buffer.data<T>();
@@ -290,7 +292,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
           deformable_groups,
           offset_grad_ptr + i * im2col_step * input_offset_dim,
           mask_grad_data_ptr);
-    }
+    } //check
     if (dx) {
       T* dx_ptr = dx->data<T>();
       // get grad of input
@@ -305,7 +307,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                                 strides,
                                 dilations,
                                 deformable_groups,
-                                dx_ptr + i * im2col_step * input_dim);
+                                dx_ptr + i * im2col_step * input_dim); //待改
       dx->Resize(x.dims());
     }
 
@@ -321,7 +323,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
         strides,
         dilations,
         deformable_groups,
-        col_buffer_ptr);
+        col_buffer_ptr); //check
 
     col_buffer_3d.Resize(col_buffer_3d_shape);
 
@@ -353,7 +355,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                          K,
                          M,
                          dweight_3d.data<T>(),
-                         filter_grad->data<T>());
+                         filter_grad->data<T>()); // 待改
     }
   }
   if (filter_grad) {

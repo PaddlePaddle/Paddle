@@ -24,4 +24,9 @@ PD_REGISTER_KERNEL(deformable_conv,
                    phi::DeformableConvKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+    if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+        kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+        kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+    }
+}
