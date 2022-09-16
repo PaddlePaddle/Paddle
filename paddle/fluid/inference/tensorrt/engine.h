@@ -890,7 +890,7 @@ class TRTEngineManager {
   void* getContextMemory(PredictorID predictor_id,
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     static auto alignment = getAlignmentSize(place);
     if (context_memorys_.count(predictor_id) == 0) {
       auto context_memory =
