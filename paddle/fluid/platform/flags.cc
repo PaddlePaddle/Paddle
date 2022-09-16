@@ -659,7 +659,11 @@ PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
  * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
  * message summary will be shown.
  */
+#ifdef PADDLE_NO_PYTHON
+static const int32_t kDefaultCallStackLevel = 2;
+#else
 static const int32_t kDefaultCallStackLevel = 1;
+#endif
 
 PADDLE_DEFINE_EXPORTED_int32(
     call_stack_level,
