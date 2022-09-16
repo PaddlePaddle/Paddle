@@ -382,3 +382,15 @@ def max(x, y, out=None):
 @REGISTER_FN('erf_p', 'X', 'Y')
 def erf(x, out=None):
     return _simple_unop(LayerHelper('erf_p', **locals()))
+
+
+@REGISTER_FN('cast_p', 'X', 'Y')
+def cast(x, dtype, out=None):
+    helper = LayerHelper('cast_p', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type=helper.layer_type,
+                     inputs={'X': x},
+                     outputs={'Y': out},
+                     attrs={'dtype': dtype})
+    return out
