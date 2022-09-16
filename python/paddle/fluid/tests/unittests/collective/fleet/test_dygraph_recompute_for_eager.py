@@ -23,9 +23,9 @@ import numpy as np
 
 import paddle
 from paddle.autograd import PyLayer
-from paddle.distributed import fleet
+from paddle.distributed.fleet.utils import recompute
 import random
-from paddle.incubate.distributed.fleet import recompute, recompute_sequential
+from paddle.incubate.distributed.fleet import recompute_sequential
 
 import paddle.fluid.layers as layers
 

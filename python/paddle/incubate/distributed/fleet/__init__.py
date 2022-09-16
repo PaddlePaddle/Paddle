@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.fleet.recompute import recompute, recompute_sequential, recompute_hybrid
+from paddle.distributed.fleet.recompute import recompute_sequential, recompute_hybrid
 
-__all__ = ["recompute", "recompute_sequential", "recompute_hybrid"]
+__all__ = ["recompute_sequential", "recompute_hybrid"]

@@ -39,7 +39,7 @@ from test_collective_multi_nodes import TestCollectiveAPIRunnerBase, runtime_mai
 from paddle import nn
 import numpy as np
 
-from paddle.incubate.distributed.fleet import recompute
+from paddle.distributed.fleet.utils import recompute
 
 
 def weight_init(mp, shape, col=True, seed=1024):

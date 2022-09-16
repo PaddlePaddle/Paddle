@@ -15,9 +15,8 @@
 from .fs import LocalFS  # noqa: F401
 from .fs import HDFSClient  # noqa: F401
 from .ps_util import DistributedInfer  # noqa: F401
-from paddle.distributed import fleet
 import paddle.utils.deprecated as deprecated
-from paddle.incubate.distributed.fleet import recompute
+from paddle.distributed import fleet
 
 import paddle
 from . import log_util  # noqa: F401
@@ -33,4 +32,4 @@ __all__ = [  #noqa
             level=1,
             reason="Please use new recompute API(fleet.recompute) ")
 def recompute(function, *args, **kwargs):
-    return recompute(function, *args, **kwargs)
+    return fleet.recompute.recompute(function, *args, **kwargs)
