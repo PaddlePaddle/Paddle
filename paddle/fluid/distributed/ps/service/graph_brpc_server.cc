@@ -35,7 +35,6 @@ namespace distributed {
   }
 
 int32_t GraphBrpcServer::Initialize() {
-  // do some change
   auto &service_config = _config.downpour_server_param().service_param();
   if (!service_config.has_service_class()) {
     LOG(ERROR) << "miss service_class in ServerServiceParameter";
