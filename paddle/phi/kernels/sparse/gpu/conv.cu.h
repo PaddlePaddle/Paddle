@@ -46,10 +46,10 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUTLASS
 #include "cutlass/epilogue/thread/linear_combination.h"
-#include "cutlass/examples/common/helper.h"
 #include "cutlass/gemm/device/gemm_grouped.h"
 #include "cutlass/gemm/device/gemm_universal.h"
 #include "cutlass/util/device_memory.h"
+#include "examples/common/helper.h"
 #include "paddle/phi/kernels/sparse/gpu/default_gather_gemm_grouped.h"
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_grouped.h"
 #endif
