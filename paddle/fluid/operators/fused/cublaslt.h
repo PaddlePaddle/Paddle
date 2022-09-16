@@ -37,9 +37,13 @@ class CublasLtHelper {
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
 #endif
 
-    PADDLE_ENFORCE_EQ(status,
-                      CUBLAS_STATUS_SUCCESS,
-                      platform::errors::Fatal("cublasLtMatrixLayoutCreate"));
+    PADDLE_ENFORCE_EQ(
+        status,
+        CUBLAS_STATUS_SUCCESS,
+        platform::errors::External(
+            "cublasLtMatrixLayoutCreate execution error"
+            "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
+            "information"));
 
 #if CUBLAS_VER_MAJOR < 11
     status = dyl::cublasLtMatmulDescCreate(&matmul_desc_, cudaComputeType);
@@ -48,9 +52,13 @@ class CublasLtHelper {
         &matmul_desc_, cudaComputeType, CUDA_R_32I);
 #endif
 
-    PADDLE_ENFORCE_EQ(status,
-                      CUBLAS_STATUS_SUCCESS,
-                      platform::errors::Fatal("cublasLtMatmulDescCreate"));
+    PADDLE_ENFORCE_EQ(
+        status,
+        CUBLAS_STATUS_SUCCESS,
+        platform::errors::External(
+            "cublasLtMatmulDescCreate execution error"
+            "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
+            "information"));
     cublasOperation_t op_transpose = CUBLAS_OP_T;
     status = dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
                                                  CUBLASLT_MATMUL_DESC_TRANSA,
@@ -59,23 +67,38 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        platform::errors::Fatal("cublasLtMatmulDescSetAttribute"));
+        platform::errors::External(
+            "cublasLtMatmulDescSetAttribute execution error"
+            "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
+            "information"));
 
     // matrix desc
     status = dyl::cublasLtMatrixLayoutCreate(&B_desc_, CUDA_R_8I, k, n, k);
-    PADDLE_ENFORCE_EQ(status,
-                      CUBLAS_STATUS_SUCCESS,
-                      platform::errors::Fatal("cublasLtMatrixLayoutCreate"));
+    PADDLE_ENFORCE_EQ(
+        status,
+        CUBLAS_STATUS_SUCCESS,
+        platform::errors::External(
+            "cublasLtMatrixLayoutCreate execution error"
+            "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
+            "information"));
 
     status = dyl::cublasLtMatrixLayoutCreate(&A_desc_, CUDA_R_8I, k, m, k);
-    PADDLE_ENFORCE_EQ(status,
-                      CUBLAS_STATUS_SUCCESS,
-                      platform::errors::Fatal("cublasLtMatrixLayoutCreate"));
+    PADDLE_ENFORCE_EQ(
+        status,
+        CUBLAS_STATUS_SUCCESS,
+        platform::errors::External(
+            "cublasLtMatrixLayoutCreate execution error"
+            "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
+            "information"));
 
     status = dyl::cublasLtMatrixLayoutCreate(&C_desc_, CUDA_R_32I, n, m, n);
-    PADDLE_ENFORCE_EQ(status,
-                      CUBLAS_STATUS_SUCCESS,
-                      platform::errors::Fatal("cublasLtMatrixLayoutCreate"));
+    PADDLE_ENFORCE_EQ(
+        status,
+        CUBLAS_STATUS_SUCCESS,
+        platform::errors::External(
+            "cublasLtMatrixLayoutCreate execution error"
+            "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
+            "information"));
   }
   ~CublasLtHelper() {
     if (handle_) dyl::cublasLtDestroy(handle_);
@@ -161,9 +184,13 @@ class CublasLtHelper {
                                  nullptr,
                                  0,
                                  stream);
-    PADDLE_ENFORCE_EQ(status,
-                      CUBLAS_STATUS_SUCCESS,
-                      platform::errors::Fatal("cublasLtMatmul"));
+    PADDLE_ENFORCE_EQ(
+        status,
+        CUBLAS_STATUS_SUCCESS,
+        platform::errors::External(
+            "cublasLtMatmul execution error"
+            "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
+            "information"));
   }
 
  private:

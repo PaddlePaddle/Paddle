@@ -1206,6 +1206,8 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   endif()
   set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_fused_multi_transformer_int8_op PROPERTIES TIMEOUT
+                                                                       60)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)

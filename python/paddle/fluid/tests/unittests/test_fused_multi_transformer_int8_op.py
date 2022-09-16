@@ -95,8 +95,6 @@ def fused_multi_transformer_int8(
     return final_out
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
     def setUp(self):
@@ -684,8 +682,6 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
                                    atol=self.atol)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8OpFp16(TestFusedMultiTransformerInt8Op):
 
     def config(self):
@@ -694,8 +690,6 @@ class TestFusedMultiTransformerInt8OpFp16(TestFusedMultiTransformerInt8Op):
         self.layers = 3  # odd layers
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8OpCacheKV(TestFusedMultiTransformerInt8Op):
 
     def config(self):
@@ -707,8 +701,6 @@ class TestFusedMultiTransformerInt8OpCacheKV(TestFusedMultiTransformerInt8Op):
         self.layers = 3  # odd layers
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8OpCacheKVFp16(TestFusedMultiTransformerInt8Op
                                                  ):
 
@@ -720,8 +712,6 @@ class TestFusedMultiTransformerInt8OpCacheKVFp16(TestFusedMultiTransformerInt8Op
         self.x_type = np.float16
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8OpGenCacheKV(TestFusedMultiTransformerInt8Op
                                                 ):
 
@@ -731,8 +721,6 @@ class TestFusedMultiTransformerInt8OpGenCacheKV(TestFusedMultiTransformerInt8Op
         self.gen_cache_kv = True
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8OpGenCacheKVFp16(
         TestFusedMultiTransformerInt8Op):
 
@@ -744,8 +732,6 @@ class TestFusedMultiTransformerInt8OpGenCacheKVFp16(
         self.layers = 3  # odd layers
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8OpPostLayerNormFp16(
         TestFusedMultiTransformerInt8Op):
 
@@ -756,8 +742,6 @@ class TestFusedMultiTransformerInt8OpPostLayerNormFp16(
         self.pre_layer_norm = False
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8OpCacheKVPostLayerNorm(
         TestFusedMultiTransformerInt8Op):
 
@@ -770,8 +754,6 @@ class TestFusedMultiTransformerInt8OpCacheKVPostLayerNorm(
         self.pre_layer_norm = False
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8OpCacheKVPostLayerNormFp16(
         TestFusedMultiTransformerInt8Op):
 
@@ -784,8 +766,6 @@ class TestFusedMultiTransformerInt8OpCacheKVPostLayerNormFp16(
         self.pre_layer_norm = False
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8OpGenCacheKVPostLayerNorm(
         TestFusedMultiTransformerInt8Op):
 
@@ -796,8 +776,6 @@ class TestFusedMultiTransformerInt8OpGenCacheKVPostLayerNorm(
         self.pre_layer_norm = False
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestFusedMultiTransformerInt8OpGenCacheKVPostLayerNormFp16(
         TestFusedMultiTransformerInt8Op):
 
