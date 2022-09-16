@@ -80,6 +80,7 @@ class Laplace(distribution.Distribution):
     @property
     def mean(self):
         """Mean of distribution.
+
         Returns:
             Tensor: The mean value.
         """
