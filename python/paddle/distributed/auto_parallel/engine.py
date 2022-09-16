@@ -564,9 +564,11 @@ class Engine:
         self._infer_sample_spec(train_data, batch_size, train_sample_split)
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
+        else:
+            self._switch_mode("train")
 
         assert self.mode in self._dist_main_progs, \
-            "train model is not ready, please call `engine.prepare()` first."
+            "train model is not ready, please call `engine._prepare_single_mode('train')` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch,
                                                    collate_fn)
@@ -621,8 +623,8 @@ class Engine:
                 self.evaluate(valid_data, valid_sample_split, batch_size,
                               valid_steps, collate_fn, callbacks)
                 self._switch_mode("train")
-
-            self._reset_metrics()
+            else:
+                self._reset_metrics()
         return outputs
 
     def evaluate(self,
@@ -682,9 +684,11 @@ class Engine:
         self._infer_sample_spec(valid_data, batch_size, valid_sample_split)
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
+        else:
+            self._switch_mode("eval")
 
         assert self.mode in self._dist_main_progs, \
-            "eval model is not ready, please call `engine.prepare()` first."
+            "eval model is not ready, please call `engine._prepare_single_mode('eval')` first."
         valid_dataloader = self._create_dataloader(valid_data,
                                                    batch_size,
                                                    steps_per_epoch=steps,
@@ -785,9 +789,11 @@ class Engine:
         self._infer_sample_spec(test_data, batch_size, test_sample_split)
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
+        else:
+            self._switch_mode("predict")
 
         assert self.mode in self._dist_main_progs, \
-            "predict model is not ready, please call `engine.prepare()` first."
+            "predict model is not ready, please call `engine._prepare_single_mode('predict')` first."
         test_dataloader = self._create_dataloader(test_data,
                                                   batch_size,
                                                   steps_per_epoch=steps,
@@ -1059,7 +1065,7 @@ class Engine:
         """
         if training:
             assert 'train' in self._serial_main_progs, \
-                "training model is not ready, please call `engine.prepare()` first."
+                "training model is not ready, please call `engine._prepare_single_mode('train')` first."
             serial_program = self._serial_main_progs["train"]
             dist_main_prog = self._dist_main_progs["train"][self._cur_rank]
             dist_context = self._dist_contexts["train"]
