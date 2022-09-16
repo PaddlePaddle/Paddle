@@ -1303,7 +1303,7 @@ class TestLayerNormFp16(unittest.TestCase):
     "skip bf16 test if cuda is in use but bf16 is not supported by gpu arch.")
 class TestBf16(unittest.TestCase):
     '''
-    test amp for BF16 
+    test amp for BF16
     '''
 
     def train(self, enable_amp=True, amp_level='O1'):

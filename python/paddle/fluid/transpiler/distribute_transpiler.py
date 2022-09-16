@@ -1044,14 +1044,14 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
     def get_trainer_program(self, wait_port=True):
         """
-        Get transpiled trainer side program. The program on trainer side compared with origin program 
+        Get transpiled trainer side program. The program on trainer side compared with origin program
         has following difference:
 
             - Delete optimizer related op, because parameter updated on Pserver
-            - After the op which computed gradient of each parameter, add ``Send_op`` and ``Recv_op`` 
+            - After the op which computed gradient of each parameter, add ``Send_op`` and ``Recv_op``
 
         Args:
-            wait_port(bool): Whether to wait for the parameter server to be ready before returning to program, 
+            wait_port(bool): Whether to wait for the parameter server to be ready before returning to program,
             default is True
 
         Returns:
@@ -1179,10 +1179,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
     def get_pserver_program(self, endpoint):
         """
-        Get parameter server side program.The program on pserver side compared with origin program 
+        Get parameter server side program.The program on pserver side compared with origin program
         has following difference:
 
-            - Only the following op is included: optimize-related op and communication-related op 
+            - Only the following op is included: optimize-related op and communication-related op
             - NO.0 block only has variable definitions and ``listen_and_serv_op``
             - Every variable which need to be updated has a unique block
 
@@ -1450,7 +1450,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
     def get_pserver_programs(self, endpoint):
         """
         Get pserver side main program and startup program for distributed training.
-        The ``main_program`` returned by this function is consistent with the 
+        The ``main_program`` returned by this function is consistent with the
         return value of the function ``get_pserver_program`` .
 
         Args:

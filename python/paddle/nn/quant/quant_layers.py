@@ -516,7 +516,7 @@ class QuantizedConv2DTranspose(Layer):
     """
     The computational logic of QuantizedConv2DTranspose is the same with Conv2DTranspose.
     The only difference is that its inputs are all fake quantized.
-    
+
     Examples:
        .. code-block:: python
           import paddle
@@ -703,7 +703,7 @@ class QuantizedColumnParallelLinear(Layer):
                  act_quant_layer=None):
         super(QuantizedColumnParallelLinear, self).__init__()
         '''
-        
+
         '''
         assert weight_quant_layer is None, "When quantizing ColumnParallelLinear, weight_quant_layer should be None."
         assert act_quant_layer is None, "When quantizing ColumnParallelLinear, act_quant_layer should be None."

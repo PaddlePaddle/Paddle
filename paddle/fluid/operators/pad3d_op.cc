@@ -113,7 +113,7 @@ class Pad3dOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("NCDHW");
     AddComment(R"DOC(
 Pad3d Operator.
-Pad 3-d images according to 'paddings' and 'mode'. 
+Pad 3-d images according to 'paddings' and 'mode'.
 If mode is 'reflect', paddings[0] and paddings[1] must be no greater
 than width-1. The height and depth dimension have the same condition.
 

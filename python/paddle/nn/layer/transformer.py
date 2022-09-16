@@ -86,11 +86,11 @@ def _convert_attention_mask(attn_mask, dtype):
                 to prevents attention to some unwanted positions, usually the
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
-                When the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                When the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
         dtype (VarType): The target type of `attn_mask` we expect.
 
@@ -133,7 +133,7 @@ class MultiHeadAttention(Layer):
             Default: None, which means the default bias parameter property is used.
             If it is set to False, this layer will not have trainable bias parameter.
             See usage for details in :code:`ParamAttr` .
-         
+
     Examples:
 
         .. code-block:: python
@@ -255,7 +255,7 @@ class MultiHeadAttention(Layer):
         (reshape and transpose) to get keys and values from different representation
         subspaces. The results are used as key-values pairs for subsequent multiple
         parallel attention.
-        
+
         It is part of calculations in multi-head attention, and is provided as
         a method to pre-compute and prefetch these results, thus we can use them
         to construct cache for inference.
@@ -291,12 +291,12 @@ class MultiHeadAttention(Layer):
         and it stores tensors shaped `[batch_size, num_heads, length, embed_dim]`
         which are results of linear projection, reshape and transpose calculations
         in MultiHeadAttention.
-        
+
         If the generated cache is an instance of `Cache`, `k` and `v` fields
         reserve intermediate result tensors of previous positions, and the tensors
         are incremental among decoding steps, which mostly are used for decoder
         decoder self attention.
-        
+
         If the generated cache is an instance of `StaticCache`, `k` and `v` fields
         would be used as calculated result tensors on keys an values in `forward`,
         and the tensors keep unchanged among decoding steps, which are mostly used
@@ -306,7 +306,7 @@ class MultiHeadAttention(Layer):
 
         1. If `type` is `StaticCache`, apply `compute_kv(key, value)` and use the
         results to create an instance of `StaticCache`.
-        
+
         2. If `type` is `Cache` and `value` is None, generate empty tensors shaped
         `[batch_size, num_heads, 0, embed_dim // num_heads]` and use the results
         to create an instance of `Cache`, where `batch_size` is from the first
@@ -326,7 +326,7 @@ class MultiHeadAttention(Layer):
                 for batch size reference. Default None.
             type (type): It should be `MultiHeadAttention.StaticCache` or
                 `MultiHeadAttention.Cache` to indicate the cache type to generate.
-        
+
         Returns:
             namedtuple: an instance of `Cache` or `StaticCache` accordingly.
         """
@@ -370,11 +370,11 @@ class MultiHeadAttention(Layer):
                 to prevents attention to some unwanted positions, usually the
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
-                When the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                When the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
                 It is a namedtuple with `k` and `v` as fields, and stores tensors
@@ -473,7 +473,7 @@ class TransformerEncoderLayer(Layer):
             MHA, and `weight_attr[1]` would be used as `weight_attr` for linear in FFN.
             Otherwise, MHA and FFN both use it as `weight_attr` to create parameters.
             Default: None, which means the default weight parameter property is used.
-            See usage for details in :code:`ParamAttr` . 
+            See usage for details in :code:`ParamAttr` .
         bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
             If it is a list/tuple, `bias_attr[0]` would be used as `bias_attr` for
             MHA, and `bias_attr[1]` would be used as `bias_attr` for linear in FFN.
@@ -481,7 +481,7 @@ class TransformerEncoderLayer(Layer):
             The `False` value means the corresponding layer would not have trainable
             bias parameter. See usage for details in :code:`ParamAttr` . Default: None,
             which means the default bias parameter property is used.
-            
+
 
     Examples:
 
@@ -562,11 +562,11 @@ class TransformerEncoderLayer(Layer):
                 to prevents attention to some unwanted positions, usually the
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
-                When the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                When the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (Tensor, optional): It is an instance of `MultiHeadAttention.Cache`.
                 See `TransformerEncoderLayer.gen_cache` for more details. It is
@@ -609,17 +609,17 @@ class TransformerEncoderLayer(Layer):
 
     def gen_cache(self, src):
         r"""
-        Generates cache for `forward` usage. The generated cache is an 
+        Generates cache for `forward` usage. The generated cache is an
         instance of `MultiHeadAttention.Cache`.
 
         Parameters:
             src (Tensor): The input of Transformer encoder. It is a tensor
-                with shape `[batch_size, source_length, d_model]`. The data 
+                with shape `[batch_size, source_length, d_model]`. The data
                 type should be float32 or float64.
 
         Returns:
             incremental_cache: It is an instance of `MultiHeadAttention.Cache` \
-                produced by `self_attn.gen_cache`, it reserves two tensors 
+                produced by `self_attn.gen_cache`, it reserves two tensors
                 shaped `[batch_size, nhead, 0, d_model // nhead]`. See \
                 `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
@@ -631,7 +631,7 @@ class TransformerEncoderLayer(Layer):
 
 class TransformerEncoder(Layer):
     """
-    TransformerEncoder is a stack of N encoder layers. 
+    TransformerEncoder is a stack of N encoder layers.
 
     Parameters:
         encoder_layer (Layer): an instance of the `TransformerEncoderLayer`. It
@@ -680,14 +680,14 @@ class TransformerEncoder(Layer):
                 to prevents attention to some unwanted positions, usually the
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
-                When the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                When the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (list, optional): It is a list, and each element in the list
-                is `incremental_cache` produced by `TransformerEncoderLayer.gen_cache`. 
+                is `incremental_cache` produced by `TransformerEncoderLayer.gen_cache`.
                 See `TransformerEncoder.gen_cache` for more details. It is only
                 used for inference and should be None for training. Default None.
 
@@ -721,7 +721,7 @@ class TransformerEncoder(Layer):
     def gen_cache(self, src):
         r"""
         Generates cache for `forward` usage. The generated cache is a list, and
-        each element in it is `incremental_cache` produced by 
+        each element in it is `incremental_cache` produced by
         `TransformerEncoderLayer.gen_cache`. See `TransformerEncoderLayer.gen_cache`
         for more details.
 
@@ -731,8 +731,8 @@ class TransformerEncoder(Layer):
                 should be float32 or float64.
 
         Returns:
-            list: It is a list, and each element in the list is `incremental_cache` 
-            produced by `TransformerEncoderLayer.gen_cache`. See 
+            list: It is a list, and each element in the list is `incremental_cache`
+            produced by `TransformerEncoderLayer.gen_cache`. See
             `TransformerEncoderLayer.gen_cache` for more details.
         """
         cache = [layer.gen_cache(src) for layer in self.layers]
@@ -774,7 +774,7 @@ class TransformerDecoderLayer(Layer):
             for linear in FFN. Otherwise, the three sub-layers all uses it as
             `weight_attr` to create parameters. Default: None, which means the
             default weight parameter property is used. See usage for details
-            in :ref:`api_paddle_fluid_param_attr_ParamAttr` . 
+            in :ref:`api_paddle_fluid_param_attr_ParamAttr` .
         bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
             If it is a list/tuple, `bias_attr[0]` would be used as `bias_attr` for
             self attention, `bias_attr[1]` would be used as `bias_attr` for
@@ -881,21 +881,21 @@ class TransformerDecoderLayer(Layer):
                 to prevents attention to some unwanted positions, usually the
                 the subsequent positions. It is a tensor with shape broadcasted
                 to `[batch_size, n_head, target_length, target_length]`.
-                When the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                When the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             memory_mask (Tensor, optional): A tensor used in decoder-encoder
                 cross attention to prevents attention to some unwanted positions,
-                usually the paddings. It is a tensor with shape broadcasted to 
-                `[batch_size, n_head, target_length, source_length]`. When the 
-                data type is bool, the unwanted positions have `False` values 
-                and the others have `True` values. When the data type is int, 
-                the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                usually the paddings. It is a tensor with shape broadcasted to
+                `[batch_size, n_head, target_length, source_length]`. When the
+                data type is bool, the unwanted positions have `False` values
+                and the others have `True` values. When the data type is int,
+                the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (tuple, optional): It is a tuple( :code:`(incremental_cache, static_cache)` ),
                 `incremental_cache` is an instance of `MultiHeadAttention.Cache`,
@@ -981,7 +981,7 @@ class TransformerDecoderLayer(Layer):
 
 class TransformerDecoder(Layer):
     """
-    TransformerDecoder is a stack of N decoder layers. 
+    TransformerDecoder is a stack of N decoder layers.
 
     Parameters:
         decoder_layer (Layer): an instance of the `TransformerDecoderLayer`. It
@@ -1039,22 +1039,22 @@ class TransformerDecoder(Layer):
             tgt_mask (Tensor, optional): A tensor used in self attention
                 to prevents attention to some unwanted positions, usually the
                 the subsequent positions. It is a tensor with shape broadcasted
-                to `[batch_size, n_head, target_length, target_length]`. When 
-                the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                to `[batch_size, n_head, target_length, target_length]`. When
+                the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             memory_mask (Tensor, optional): A tensor used in decoder-encoder
                 cross attention to prevents attention to some unwanted positions,
                 usually the paddings. It is a tensor with shape broadcasted to
-                `[batch_size, n_head, target_length, source_length]`. When the 
-                data type is bool, the unwanted positions have `False` values 
-                and the others have `True` values. When the data type is int, 
-                the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                `[batch_size, n_head, target_length, source_length]`. When the
+                data type is bool, the unwanted positions have `False` values
+                and the others have `True` values. When the data type is int,
+                the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (list, optional): It is a list, and each element in the list
                 is a tuple( :code:`(incremental_cache, static_cache)` ). See
@@ -1131,12 +1131,12 @@ class Transformer(Layer):
 
     Please refer to `Attention is all you need <http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf>`_ ,
     and see `TransformerEncoder` and `TransformerDecoder` for more details.
-    
+
     Users can configurate the model architecture with corresponding parameters.
     Note the usage of `normalize_before` representing where to apply layer
     normalization (in pre-process or post-precess of multi-head attention or FFN),
     and some transformer like models are different on this, such as
-    `BERT <https://arxiv.org/abs/1810.04805>`_ and `GPT2 <https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf>`_ . 
+    `BERT <https://arxiv.org/abs/1810.04805>`_ and `GPT2 <https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf>`_ .
     The default architecture here places layer normalization in post-process and
     applies another layer normalization on the output of last encoder/decoder layer.
 
@@ -1162,30 +1162,30 @@ class Transformer(Layer):
             Otherwise, no pre-process and post-precess includes dropout, residual
             connection, layer normalization. Default False
         weight_attr(ParamAttr|list|tuple, optional): To specify the weight parameter property.
-            If it is a list/tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3, 
-            `weight_attr[0]` would be used as `weight_attr` for self attention, `weight_attr[1]` 
-            would be used as `weight_attr` for cross attention of `TransformerDecoder`, 
-            and `weight_attr[2]` would be used as `weight_attr` for linear in FFN. 
-            If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention 
-            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for 
-            linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr` 
-            for self attention, cross attention and linear in FFN. Otherwise, 
-            the three sub-layers all uses it as `weight_attr` to create parameters. 
-            Default: None, which means the default weight parameter property is used. 
+            If it is a list/tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3,
+            `weight_attr[0]` would be used as `weight_attr` for self attention, `weight_attr[1]`
+            would be used as `weight_attr` for cross attention of `TransformerDecoder`,
+            and `weight_attr[2]` would be used as `weight_attr` for linear in FFN.
+            If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention
+            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for
+            linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr`
+            for self attention, cross attention and linear in FFN. Otherwise,
+            the three sub-layers all uses it as `weight_attr` to create parameters.
+            Default: None, which means the default weight parameter property is used.
             See usage for details
-            in :code:`ParamAttr` . 
+            in :code:`ParamAttr` .
         bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
-            If it is a list/tuple, the length of `bias_attr` could be 1, 2 or 3. If it is 3, 
-            `bias_attr[0]` would be used as `bias_attr` for self attention, `bias_attr[1]` 
-            would be used as `bias_attr` for cross attention of `TransformerDecoder`, 
-            and `bias_attr[2]` would be used as `bias_attr` for linear in FFN. 
-            If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention 
-            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for 
-            linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr` 
-            for self attention, cross attention and linear in FFN. Otherwise, 
-            the three sub-layers all uses it as `bias_attr` to create parameters. 
-            The `False` value means the corresponding layer would not have trainable 
-            bias parameter. See usage for details in :code:`ParamAttr` . 
+            If it is a list/tuple, the length of `bias_attr` could be 1, 2 or 3. If it is 3,
+            `bias_attr[0]` would be used as `bias_attr` for self attention, `bias_attr[1]`
+            would be used as `bias_attr` for cross attention of `TransformerDecoder`,
+            and `bias_attr[2]` would be used as `bias_attr` for linear in FFN.
+            If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention
+            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for
+            linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr`
+            for self attention, cross attention and linear in FFN. Otherwise,
+            the three sub-layers all uses it as `bias_attr` to create parameters.
+            The `False` value means the corresponding layer would not have trainable
+            bias parameter. See usage for details in :code:`ParamAttr` .
             Default: None,which means the default bias parameter property is used.
         custom_encoder (Layer, optional): If custom encoder is provided, use it as the encoder.
             Default None
@@ -1323,31 +1323,31 @@ class Transformer(Layer):
                 to prevents attention to some unwanted positions, usually the
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
-                When the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                When the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             tgt_mask (Tensor, optional): A tensor used in self attention
                 to prevents attention to some unwanted positions, usually the
                 the subsequent positions. It is a tensor with shape broadcasted
-                to `[batch_size, n_head, target_length, target_length]`. When 
-                the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                to `[batch_size, n_head, target_length, target_length]`. When
+                the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             memory_mask (Tensor, optional): A tensor used in decoder-encoder
                 cross attention to prevents attention to some unwanted positions,
                 usually the paddings. It is a tensor with shape broadcasted to
-                `[batch_size, n_head, target_length, source_length]`. When the 
-                data type is bool, the unwanted positions have `False` values 
-                and the others have `True` values. When the data type is int, 
-                the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                `[batch_size, n_head, target_length, source_length]`. When the
+                data type is bool, the unwanted positions have `False` values
+                and the others have `True` values. When the data type is int,
+                the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
 
         Returns:
