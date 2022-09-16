@@ -19,8 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/unary.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -87,7 +89,7 @@ class IndicesCooOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(indices_coo,
                             IndicesCooInferShapeFunctor,
-                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 class CooToDenseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -107,7 +109,7 @@ class CooToDenseOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(coo_to_dense,
                             CooToDenseInferShapeFunctor,
-                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 class ReluCooOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -127,7 +129,7 @@ class ReluCooOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(relu_coo,
                             ReluCooInferShapeFunctor,
-                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 class ShapeCooOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -147,7 +149,7 @@ class ShapeCooOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(shape_coo,
                             ShapeCooInferShapeFunctor,
-                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 class Conv3dCooOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -201,7 +203,7 @@ class ValuesAddCooCooOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(values_add_coo_coo,
                             ValuesAddCooCooInferShapeFunctor,
-                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 class ValuesAddCooDenseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -222,7 +224,7 @@ class ValuesAddCooDenseOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(values_add_coo_dense,
                             ValuesAddCooDenseInferShapeFunctor,
-                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 class CastCooOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -244,7 +246,7 @@ class CastCooOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(cast_coo,
                             CastCooInferShapeFunctor,
-                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 class AddCooCooOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -265,7 +267,7 @@ class AddCooCooOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(add_coo_coo,
                             AddCooCooInferShapeFunctor,
-                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 }  // namespace operators
 }  // namespace paddle
