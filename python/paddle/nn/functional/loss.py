@@ -865,8 +865,7 @@ def hsigmoid_loss(input,
     The OP supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
     Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_. 
     
-    For the custom tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an
-     example):
+    For the custom tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
 
     1. Using a custom word dict to build a binary tree, each leaf node should be an word in the word dict.
     2. Creating a dict map word_id -> path that from the word to the root node, we call it path_table.
