@@ -615,9 +615,9 @@ inline nvinfer1::DataType fieldTypeToDataType(
       TRANSFORMER_DEBUG_MSG("PluginFieldType is Int8");
       return nvinfer1::DataType::kINT8;
     }
-    default:
+    /*default:
       throw std::invalid_argument(
-          "No corresponding datatype for plugin field type");
+          "No corresponding datatype for plugin field type");*/
   }
 }
 
