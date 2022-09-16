@@ -80,15 +80,15 @@ class FilterByInstagOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("LossWeight", "(Tensor) loss weight.");
     AddOutput("IndexMap", "(LoDTensor) mapping from Out rows to X1 rows");
     AddComment(R"DOC(
-Filter By Instag Op 
+Filter By Instag Op
 
 This operator is used to filter embeded ins.
 
-There are 3 inputs. First is embeded ins, Second is tags for ins, 
+There are 3 inputs. First is embeded ins, Second is tags for ins,
 Third is tags to filter.
 
 There are 3 outputs. First is filtered embeded ins, Second is Loss Weight,
-Third is the IndexMap from Out line number to X1 line number. 
+Third is the IndexMap from Out line number to X1 line number.
 )DOC");
   }
 };

@@ -205,6 +205,14 @@ PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
 
+bool IsCompiledWithAVX() {
+#ifndef PADDLE_WITH_AVX
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   return false;
@@ -576,12 +584,7 @@ static int GetNCCLVersion() {
 }
 #endif
 
-#ifdef PADDLE_WITH_AVX
-PYBIND11_MODULE(core_avx, m) {
-#else
-PYBIND11_MODULE(core_noavx, m) {
-#endif
-
+PYBIND11_MODULE(libpaddle, m) {
   BindImperative(&m);
   BindEager(&m);
   BindEagerStringTensor(&m);
@@ -1038,7 +1041,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("name"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           its parent scope. Return None if not found.
 
            Args:
                name (str): the variable name.
@@ -1053,7 +1056,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           its parent scope. Return None if not found.
 
            Args:
                name (str): the variable names to be erase.
@@ -1248,12 +1251,12 @@ All parameter, weight, gradient are variables in Paddle.
       R"DOC(
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
-              
+
             Args:
                    program (ProgramDesc): The original program.
 
              Returns:
-                   tuple(ProgramDesc, map<int, int>): The first part is 
+                   tuple(ProgramDesc, map<int, int>): The first part is
                    the pruned program desc, and the second part is a map
                    which contains the id pair of pruned block and corresponding
                    origin block.
@@ -1706,6 +1709,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
+  m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
@@ -1873,7 +1877,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("tensor"),
           R"DOC(
              Append a LoDensor to LoDTensorArray.
-              
+
              Args:
                    tensor (LoDTensor): The LoDTensor to be appended.
 

@@ -16,7 +16,7 @@ import copy
 from abc import ABC, abstractmethod
 import logging
 
-from paddle.distributed.utils import get_logger
+from ..utils import get_logger
 from .trial import TrialStatus
 from .trial import OptimizationTunerTrial as Trial
 
@@ -110,13 +110,13 @@ class ShardingStageAlgorithm(AlgorithmBase):
     # TODO import trial class & copy strategy
     def __init__(self, config):
         super().__init__(config)
-        self._changed_configs = ["sharding_configs"]
+        self._changed_configs = ["sharding"]
 
     def _init_spaces(self):
         self._max_stage = 3
         self._trial_idx = 0
 
-        stage_range = self._config.sharding_configs.get("stage_range", None)
+        stage_range = self._config.sharding.to_dict().get("tuning_range", None)
         if stage_range:
             assert set(stage_range).issubset(
                 set([0, 1, 2, 3])
@@ -136,9 +136,8 @@ class ShardingStageAlgorithm(AlgorithmBase):
             stage = self._stage_range[self._trial_idx]
 
             new_strategy = copy.deepcopy(self._config.dist_strategy)
-            config_dict = new_strategy.sharding_configs
-            config_dict["stage"] = stage
-            new_strategy.sharding_configs = config_dict
+            sharding = new_strategy.sharding
+            sharding.stage = stage
 
             name = "trial-sharding-stage{}".format(stage)
             trial = Trial(new_strategy, name, self.changed_configs)

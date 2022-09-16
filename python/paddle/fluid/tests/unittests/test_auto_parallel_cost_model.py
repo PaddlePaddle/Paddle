@@ -35,8 +35,8 @@ from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 _global_parallel_strategy = "dp_mp_pp"
-PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]])
-PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]])
+PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]], dim_names=["x", "y"])
+PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]], dim_names=["x", "y"])
 NUM_RANKS = 8
 STAGE_0_CNT = 5
 STAGE_1_CNT = 10
@@ -73,16 +73,8 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         if self.is_distributed:
-            auto.shard_tensor(self.linear0.weight,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_0,
-                                  "dims_mapping": [-1, 1]
-                              })
-            auto.shard_tensor(self.linear1.weight,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_1,
-                                  "dims_mapping": [1, -1]
-                              })
+            auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, None])
+            auto.shard_tensor(self.linear1.weight, PP_MESH_1, ["y", None])
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -135,16 +127,8 @@ def mlp_forward(train_program, start_program, is_distributed=True):
                                 dtype='float32')
 
         if is_distributed:
-            auto.shard_tensor(input,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_0,
-                                  "dims_mapping": [0, -1]
-                              })
-            auto.shard_tensor(label,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_1,
-                                  "dims_mapping": [0, -1]
-                              })
+            auto.shard_tensor(input, PP_MESH_0, ["x", None])
+            auto.shard_tensor(label, PP_MESH_1, ["x", None])
 
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
