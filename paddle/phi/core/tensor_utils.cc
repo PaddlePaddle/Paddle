@@ -411,4 +411,12 @@ template void Copy(const CustomContext& dev_ctx,
                    bool blocking,
                    DenseTensor* dst);
 #endif
+
+#ifdef PADDLE_WITH_MKLDNN
+template void Copy(const OneDNNContext& dev_ctx,
+                   const DenseTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   DenseTensor* dst);
+#endif
 }  // namespace phi
