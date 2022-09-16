@@ -33,28 +33,6 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-__global__ void pi64(int64_t* p, int len, int group_num) {
-  printf("\n");
-  for (int i = 0; i < len; i++) {
-    printf("%lld,", *(p + i));
-    if ((i + 1) % group_num == 0) {
-      printf("\n");
-    }
-  }
-  printf("\n");
-}
-
-template <typename T>
-__global__ void pp(T** p, int len, int group_num) {
-  printf("\n");
-  for (int i = 0; i < len; i++) {
-    printf("%p,", *(p + i));
-    if ((i + 1) % group_num == 0) {
-      printf("\n");
-    }
-  }
-  printf("\n");
-}
 #ifdef PADDLE_WITH_CUTLASS
 template <typename T>
 void AlignFeaturesChannel(const GPUContext& dev_ctx,
