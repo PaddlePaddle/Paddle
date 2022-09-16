@@ -382,6 +382,7 @@ class PRChecker(object):
                                 print("---------------------")
                                 for i in utfile:
                                     i = i.strip('\n')
+                                    print(i)
                                     if tempfilename.strip().split(".")[0] == i:
                                         print("code go here")
                                         f_judge_in_added_ut = True
