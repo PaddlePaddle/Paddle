@@ -577,7 +577,6 @@ if(WITH_PYTHON)
     paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
-  message("=============" ${PYBIND_SRCS})
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(paddle_pybind legacy_eager_codegen)

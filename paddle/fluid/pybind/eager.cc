@@ -1227,51 +1227,5 @@ void BindEagerStringTensor(pybind11::module* module) {
   }
 }
 
-// void BindEagerSparseCooTensor(pybind11::module* module) {
-//   auto m = module->def_submodule("eager");
-//
-//   auto heap_type = reinterpret_cast<PyHeapTypeObject*>(
-//       PyType_Type.tp_alloc(&PyType_Type, 0));
-//   heap_type->ht_name = ToPyObject("SparseCooTensor");
-//   heap_type->ht_qualname = ToPyObject("SparseCooTensor");
-//   auto type = &heap_type->ht_type;
-//   type->tp_name = "SparseCooTensor";
-//   type->tp_basicsize = sizeof(TensorObject);
-//   type->tp_dealloc = (destructor)TensorDealloc;
-//   type->tp_as_number = &number_methods;
-//   type->tp_as_sequence = &sequence_methods;
-//   type->tp_as_mapping = &mapping_methods;
-//   //type->tp_methods = nullptr;//string_tensor_variable_methods;
-//   //type->tp_getset = nullptr;//string_tensor_variable_properties;
-//   type->tp_init = SparseCooTensorInit;
-//   type->tp_new = TensorNew;
-//   Py_INCREF(&PyBaseObject_Type);
-//   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
-//   type->tp_flags |=
-//       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
-// #if PY_VERSION_HEX >= 0x03050000
-//   type->tp_as_async = &heap_type->as_async;
-// #endif
-//   p_string_tensor_type = type;
-//
-//   if (PyType_Ready(type) < 0) {
-//     PADDLE_THROW(platform::errors::Fatal(
-//         "Init Paddle error in BindEager(PyType_Ready)."));
-//     return;
-//   }
-//
-//   Py_INCREF(type);
-//   if (PyModule_AddObject(
-//           m.ptr(), "SparseCooTensor", reinterpret_cast<PyObject*>(type)) < 0)
-//           {
-//     Py_DECREF(type);
-//     Py_DECREF(m.ptr());
-//     PADDLE_THROW(platform::errors::Fatal(
-//         "Init Paddle error in
-//         BindEagerSparseCooTensor(PyModule_AddObject)."));
-//     return;
-//   }
-// }
-
 }  // namespace pybind
 }  // namespace paddle
