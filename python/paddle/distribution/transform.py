@@ -58,7 +58,7 @@ class Transform(object):
     Suppose :math:`X` is a K-dimensional random variable with probability 
     density function :math:`p_X(x)`. A new random variable :math:`Y = f(X)` may 
     be defined by transforming :math:`X` with a suitably well-behaved funciton 
-    :math:`f`. It suffices for what follows to note that if f is one-to-one and 
+    :math:`f`. It suffices for what follows to note that if `f` is one-to-one and 
     its inverse :math:`f^{-1}` have a well-defined Jacobian, then the density of 
     :math:`Y` is
 
@@ -648,8 +648,8 @@ class IndependentTransform(Transform):
 
     To see this, consider the ``ExpTransform`` applied to a Tensor which has 
     sample, batch, and event ``(S,B,E)`` shape semantics. Suppose the Tensor's 
-    paritioned-shape is ``(S=[4], B=[2, 2], E=[3])`` , reinterpreted_batch_rank
-    is 1. Then the reinterpreted Tensor's shape  is ``(S=[4], B=[2], E=[2, 3])`` .
+    paritioned-shape is ``(S=[4], B=[2,2], E=[3])`` , reinterpreted_batch_rank
+    is 1. Then the reinterpreted Tensor's shape  is ``(S=[4], B=[2], E=[2,3])`` .
     The shape returned by ``forward`` and ``inverse`` is unchanged, ie, 
     ``[4,2,2,3]`` . However the shape returned by ``inverse_log_det_jacobian`` 
     is ``[4,2]``, because the Jacobian determinant is a reduction over the 
