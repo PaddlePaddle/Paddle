@@ -352,13 +352,13 @@ def recompute(function, *args, **kwargs):
     recompute intermediate activations to save then memory.
 
     Parameters:
-        function(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model  
-              whose intermediate activations will be released to save memory in forward stage and will be recomputed 
-              in backward stage for gradient calculation. 
-        *args(Tensor): inputs to the function.    
-        **kwargs(Dict): Kwargs should only contain the key-value pair of preserve_rng_state, which is used to 
-              indicate whether to save the forward rng. If it is True, then the last forward rng value will be 
-              restored when the forward recalculation of backpropagation is performed. The default 
+        function(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model
+              whose intermediate activations will be released to save memory in forward stage and will be recomputed
+              in backward stage for gradient calculation.
+        *args(Tensor): inputs to the function.
+        **kwargs(Dict): Kwargs should only contain the key-value pair of preserve_rng_state, which is used to
+              indicate whether to save the forward rng. If it is True, then the last forward rng value will be
+              restored when the forward recalculation of backpropagation is performed. The default
               preserve_rng_state is True.
 
     Returns:

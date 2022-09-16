@@ -133,7 +133,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     AutogradMeta* auto_grad_meta = EagerUtils::nullable_autograd_meta(tensor);
     if (auto_grad_meta == nullptr) {
-      VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
+      VLOG(5) << "Skip auto grad since there is no grad op for var or loss is "
                  "stop_gradient=True: "
               << tensor.name();
       continue;
@@ -141,14 +141,14 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     // Get grad input info from target tensors
     auto input_info = auto_grad_meta->OutRankInfo();
 
-    VLOG(2) << "Out Rank of Tensor is slot: " << input_info.first
+    VLOG(5) << "Out Rank of Tensor is slot: " << input_info.first
             << ", rank: " << input_info.second;
     // Get target GradNodeBase from target tensors
     auto shared_grad_node = auto_grad_meta->GetMutableGradNode();
 
     if (shared_grad_node == nullptr || shared_grad_node.get() == nullptr ||
         auto_grad_meta->StopGradient()) {
-      VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
+      VLOG(5) << "Skip auto grad since there is no grad op for var or loss is "
                  "stop_gradient=True: "
               << tensor.name();
       continue;
@@ -169,7 +169,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
-      VLOG(6) << "Create Value for grad input tensor " << i
+      VLOG(5) << "Create Value for grad input tensor " << i
               << " of grad node: " << grad_node->name();
       node_input_buffers_dict[grad_node] =
           std::make_unique<GradTensorHolder>(grad_node->InputMeta());
@@ -184,13 +184,13 @@ std::vector<paddle::experimental::Tensor> RunBackward(
               "grad_tensors should either have "
               "size = 0 or same size as tensors."));
       // Feed given tensor if it's provided
-      VLOG(6) << "Fill grad input tensor " << i << "with give grad tensor";
+      VLOG(3) << "Fill grad input tensor " << i << "with give grad tensor";
 
       // Deep copy
       node_input_buffers_dict[grad_node]->CopyValueFromTensor(
           input_info.first, input_info.second, grad_tensors[i]);
     } else {
-      VLOG(6) << "Fill grad input tensor " << i << " with 1.0";
+      VLOG(3) << "Fill grad input tensor " << i << " with 1.0";
       // Initialize tensor with 1.0
       // Forward Tensor "tensor" is passed to indicate tensortype, datatype and
       // dims
@@ -210,12 +210,12 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         inputs, no_grad_vars, orig_queue, &queue, node_input_buffers_dict);
   }
 
-  VLOG(6) << "Update In degree Map for backward";
+  VLOG(5) << "Update In degree Map for backward";
   // 3. Compute in_degree for each node
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
 
-  VLOG(3) << "Startup_ops's size is " << queue.size();
+  VLOG(5) << "Startup_ops's size is " << queue.size();
 
   /* --- Topological Visit --- */
   // 1. Pop queue
@@ -224,11 +224,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   //    |- node(grads)
   //    |- Prepare for next node
   // 3. Update queue
-  VLOG(3) << "Run Backward";
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
-    VLOG(3) << "Running GradNode:" << node->name() << " addr:" << node;
-
+    VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
+    VLOG(4) << EagerUtils::GradNodeStr(*node);
     paddle::platform::RecordEvent node_record_event(
         std::string((*node).name()),
         paddle::platform::TracerEventType::Operator,
@@ -255,7 +254,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     // Check input
     EnforceGradNodeHasInput(node);
 
-    VLOG(6) << "Run Backward Kernel with GradTensorHolder.";
+    VLOG(7) << "Run Backward Kernel with GradTensorHolder.";
     // Run Pre Backward Node and get outputs
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>
@@ -269,7 +268,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     // retain_grad or not
     if (!retain_graph) {
-      VLOG(6)
+      VLOG(3)
           << "retain_graph is false, need to clear the TensorWrapper of nodes.";
       node->ClearTensorWrappers();
     }
@@ -322,11 +321,11 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
         if ((!grad_output_tensor.defined() ||
              !grad_output_tensor.initialized())) {
-          VLOG(6) << "We get grad_output_tensor with slot: " << i
+          VLOG(7) << "We get grad_output_tensor with slot: " << i
                   << ", rank: " << j << " as uninitialized or undefined tensor";
         }
 
-        VLOG(6) << "Get Edge and grad_output_tensor with slot: " << i
+        VLOG(7) << "Get Edge and grad_output_tensor with slot: " << i
                 << ", rank: " << j
                 << " 's name is: " << grad_output_tensor.name();
 
@@ -335,12 +334,12 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           const auto& input_meta = next_node->InputMeta();
           auto grad_tensor_holder =
               std::make_unique<GradTensorHolder>(input_meta);
-          VLOG(6) << "Construct GradTensorHolder for grad node: "
+          VLOG(7) << "Construct GradTensorHolder for grad node: "
                   << next_node->name();
           node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
         }
 
-        VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
+        VLOG(3) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;
 
         node_input_buffers_dict[next_node]->add(edge_rank.first,
@@ -350,7 +349,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
         // Update queue
         node_in_degree_map[next_node]--;
-        VLOG(6) << next_node->name()
+        VLOG(7) << next_node->name()
                 << " ref_cnt is: " << node_in_degree_map[next_node];
 
         PADDLE_ENFORCE(
@@ -382,7 +381,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     }
   }
 
-  VLOG(6) << "Run Backward Final hook size: "
+  VLOG(7) << "Run Backward Final hook size: "
           << egr::Controller::Instance().FinalBackwardHooks().size();
   for (auto& hook : egr::Controller::Instance().FinalBackwardHooks()) {
     (*hook)();
@@ -390,6 +389,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   egr::Controller::Instance().ClearFinalBackwardHooks();
   if (!is_general_grad) return {};
   return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
+  VLOG(3) << "Finish Backward";
 }
 
 void Backward(

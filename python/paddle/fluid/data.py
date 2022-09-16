@@ -35,10 +35,10 @@ def data(name, shape, dtype='float32', lod_level=0):
     is a placeholder that could be fed with input, such as Executor can feed
     input into the variable.
 
-    Note: 
+    Note:
         `paddle.fluid.layers.data` is deprecated. It will be removed in a
-        future version. Please use this `paddle.fluid.data`. 
-       
+        future version. Please use this `paddle.fluid.data`.
+
         The `paddle.fluid.layers.data` set shape and dtype at compile time but
         does NOT check the shape or the dtype of fed data, this
         `paddle.fluid.data` checks the shape and the dtype of data fed by

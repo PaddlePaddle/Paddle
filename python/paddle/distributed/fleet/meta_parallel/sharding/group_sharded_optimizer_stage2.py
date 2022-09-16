@@ -47,7 +47,7 @@ align = {
 
 class GroupShardedOptimizerStage2(Optimizer):
     """
-    A wrapper for Sharding Stage2 Optimizer in Dygraph. 
+    A wrapper for Sharding Stage2 Optimizer in Dygraph.
 
     .. warning: ShardingOptimizer encapsulates the optimization strategy and integrates it into the optimizer.
 

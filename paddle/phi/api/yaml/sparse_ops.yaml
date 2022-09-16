@@ -1,4 +1,4 @@
-- api : abs
+- op : abs
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -7,7 +7,7 @@
     layout : x
   backward : abs_grad
 
-- api : acos
+- op : acos
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -16,7 +16,7 @@
     layout : x
   backward : acos_grad
 
-- api : acosh
+- op : acosh
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -25,7 +25,7 @@
     layout : x
   backward : acosh_grad
 
-- api : add
+- op : add
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   kernel :
@@ -34,7 +34,7 @@
     layout : x
   backward : add_grad
 
-- api : asin
+- op : asin
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -43,7 +43,7 @@
     layout : x
   backward : asin_grad
 
-- api : asinh
+- op : asinh
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -52,7 +52,7 @@
     layout : x
   backward : asinh_grad
 
-- api : atan
+- op : atan
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -61,7 +61,7 @@
     layout : x
   backward : atan_grad
 
-- api : atanh
+- op : atanh
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -70,7 +70,7 @@
     layout : x
   backward : atanh_grad
 
-- api : cast
+- op : cast
   args : (Tensor x, DataType index_dtype=DataType::UNDEFINED, DataType value_dtype=DataType::UNDEFINED)
   output : Tensor(out)
   kernel :
@@ -80,7 +80,7 @@
     data_type : x
   backward : cast_grad
 
-- api : conv3d
+- op : conv3d
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key, bool cutlass=false)
   output : Tensor(out), Tensor(rulebook), Tensor(counter) 
   kernel :
@@ -89,7 +89,7 @@
   intermediate: rulebook, counter
   backward : conv3d_coo_grad
 
-- api : divide
+- op : divide
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   kernel :
@@ -98,7 +98,7 @@
     layout : x
   backward : divide_grad
 
-- api : divide_scalar
+- op : divide_scalar
   args : (Tensor x, float scalar)
   output : Tensor(out)
   kernel :
@@ -106,7 +106,7 @@
            divide_csr_scalar{sparse_csr -> sparse_csr}
   backward : divide_scalar_grad
 
-- api : expm1
+- op : expm1
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -115,7 +115,7 @@
     layout : x
   backward : expm1_grad
 
-- api : leaky_relu
+- op : leaky_relu
   args : (Tensor x, float alpha)
   output : Tensor(out)
   kernel :
@@ -124,7 +124,7 @@
     layout : x
   backward : leaky_relu_grad
 
-- api : log1p
+- op : log1p
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -133,7 +133,7 @@
     layout : x
   backward : log1p_grad
 
-- api : multiply
+- op : multiply
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   kernel :
@@ -142,7 +142,7 @@
     layout : x
   backward : multiply_grad
 
-- api : pow
+- op : pow
   args : (Tensor x, float factor)
   output : Tensor(out)
   kernel :
@@ -151,7 +151,7 @@
     layout : x
   backward : pow_grad
 
-- api : relu
+- op : relu
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -160,7 +160,7 @@
     layout : x
   backward : relu_grad
 
-- api : relu6
+- op : relu6
   args : (Tensor x, float threshold)
   output : Tensor(out)
   kernel :
@@ -169,7 +169,7 @@
     layout : x
   backward : relu6_grad
 
-- api : scale
+- op : scale
   args : (Tensor x, float scale, float bias, bool bias_after_scale)
   output : Tensor(out)
   kernel :
@@ -177,7 +177,7 @@
            scale_csr{sparse_csr -> sparse_csr}
   backward : scale_grad
 
-- api : sin
+- op : sin
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -186,7 +186,7 @@
     layout : x
   backward : sin_grad
 
-- api : sinh
+- op : sinh
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -195,7 +195,7 @@
     layout : x
   backward : sinh_grad
 
-- api : softmax
+- op : softmax
   args : (Tensor x, int axis=-1)
   output : Tensor(out)
   kernel :
@@ -203,7 +203,7 @@
     layout : x
   backward : softmax_grad
 
-- api : sparse_coo_tensor
+- op : sparse_coo_tensor
   args : (Tensor values, Tensor indices, IntArray dense_shape)
   output : Tensor(out)
   kernel :
@@ -212,7 +212,7 @@
     data_type : values
   backward : sparse_coo_tensor_grad
 
-- api : sqrt
+- op : sqrt
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -221,7 +221,7 @@
     layout : x
   backward : sqrt_grad
 
-- api : square
+- op : square
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -230,7 +230,7 @@
     layout : x
   backward : square_grad
 
-- api : subtract
+- op : subtract
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   kernel :
@@ -239,7 +239,7 @@
     layout : x
   backward : subtract_grad
 
-- api : tan
+- op : tan
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -248,7 +248,7 @@
     layout : x
   backward : tan_grad
 
-- api : tanh
+- op : tanh
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -257,7 +257,7 @@
     layout : x
   backward : tanh_grad
 
-- api : to_dense
+- op : to_dense
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -265,7 +265,7 @@
            csr_to_dense {sparse_csr -> dense}
   backward : to_dense_grad
 
-- api : to_sparse_coo
+- op : to_sparse_coo
   args : (Tensor x, int64_t sparse_dim)
   output : Tensor(out)
   kernel :
@@ -273,14 +273,14 @@
            csr_to_coo { sparse_csr -> sparse_coo}
   backward : to_sparse_coo_grad
 
-- api : to_sparse_csr
+- op : to_sparse_csr
   args : (Tensor x)
   output : Tensor(out)
   kernel :
     func : dense_to_csr {dense -> sparse_csr},
            coo_to_csr {sparse_coo -> sparse_csr}
 
-- api : values
+- op : values
   args : (Tensor x)
   output : Tensor(out)
   kernel :
@@ -289,7 +289,7 @@
     layout : x
   backward : values_grad
 
-- api: addmm
+- op: addmm
   args : (Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0)
   output : Tensor(out)
   kernel :
@@ -300,14 +300,14 @@
     layout : x
   backward: addmm_grad
 
-- api: coalesce
+- op: coalesce
   args : (Tensor x)
   output : Tensor(out)
   kernel :
     func: coalesce{sparse_coo -> sparse_coo}
     layout : x
 
-- api: full_like
+- op: full_like
   args : (Tensor x, Scalar value, DataType dtype=DataType::UNDEFINED)
   output : Tensor(out)
   kernel :
@@ -316,7 +316,7 @@
     layout : x
     data_type : dtype
 
-- api: fused_attention
+- op: fused_attention
   args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask)
   output : Tensor(out), Tensor(softmax)
   kernel :
@@ -327,7 +327,7 @@
   intermediate : softmax
   backward: fused_attention_grad
 
-- api: masked_matmul
+- op: masked_matmul
   args : (Tensor x, Tensor y, Tensor mask)
   output : Tensor(out)
   kernel :
@@ -335,7 +335,7 @@
     layout : x
   backward: masked_matmul_grad
 
-- api: matmul
+- op: matmul
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   kernel :
@@ -346,7 +346,7 @@
     layout : x
   backward: matmul_grad
 
-- api: maxpool
+- op: maxpool
   args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
   output : Tensor(out), Tensor(rulebook), Tensor(counter)
   kernel :
@@ -355,7 +355,7 @@
   intermediate : rulebook, counter
   backward : maxpool_grad
 
-- api: mv
+- op: mv
   args : (Tensor x, Tensor vec)
   output : Tensor(out)
   kernel :

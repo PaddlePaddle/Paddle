@@ -26,6 +26,8 @@ repos:
     -   id: end-of-file-fixer
     -   id: sort-simple-yaml
         files: (api|backward|api_[a-z_]+)\.yaml$
+    -   id: trailing-whitespace
+        files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists.txt)$
 -   repo: local
     hooks:
     -   id: clang-format
