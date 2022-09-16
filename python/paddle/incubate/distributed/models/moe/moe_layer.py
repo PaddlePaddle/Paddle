@@ -34,7 +34,6 @@ from paddle.distributed import fleet
 from paddle.autograd import PyLayer
 from .gate import NaiveGate, GShardGate, SwitchGate, BaseGate
 from .utils import count_by_gate
-from paddle.distributed import fleet
 from paddle import fluid
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid

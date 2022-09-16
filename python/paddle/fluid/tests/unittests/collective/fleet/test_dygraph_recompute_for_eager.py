@@ -100,14 +100,13 @@ class Naive_fc_net(paddle.nn.Layer):
                 {"segments": self.segments}, self.runfuncs, inputs)
 
         if self.use_raw_recompute:
-            inputs = paddle.incubate.distributed.fleet.recompute(
-                self.layers[0], inputs)
+            inputs = recompute(self.layers[0], inputs)
             return self.layers[1](inputs)
 
         for i in range(len(self.layers)):
             if i in self.recompute_blocks:
-                inputs = paddle.incubate.distributed.fleet.recompute(
-                    self.layers[i], inputs, **self.recompute_kwargs)
+                inputs = recompute(self.layers[i], inputs,
+                                   **self.recompute_kwargs)
             else:
                 inputs = self.layers[i](inputs)
 
