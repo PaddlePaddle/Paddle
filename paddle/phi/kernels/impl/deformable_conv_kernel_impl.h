@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -38,6 +39,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                           DenseTensor* out) {
   const int batch_size = static_cast<int>(x.dims()[0]);
 
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   std::vector<int64_t> filter_shape_vec(phi::vectorize(filter.dims()));
   std::vector<int64_t> output_shape_vec(phi::vectorize(out->dims()));
 

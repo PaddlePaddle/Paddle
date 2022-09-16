@@ -14,15 +14,24 @@
 
 #include "paddle/phi/kernels/deformable_conv_grad_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/deformable_conv_grad_kernel_impl.h"
 
 namespace phi {
 
+static constexpr int kNumCUDAThreads = 512;
+static constexpr int kNumMaximumNumBlocks = 4096;
+
+static inline int NumBlocks(const int N) {
+  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
+                  kNumMaximumNumBlocks);
+}
+
 template <typename T>
-inline void ModulatedDeformableCol2imCPUKernel(
-    const int num_kernels,
+__global__ void ModulatedDeformableCol2imGpuKernel(
+    const int nthreads,
     const T* data_col,
     const T* data_offset,
     const T* data_mask,
@@ -43,7 +52,10 @@ inline void ModulatedDeformableCol2imCPUKernel(
     const int height_col,
     const int width_col,
     T* grad_im) {
-  for (int thread = 0; thread < num_kernels; thread++) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int offset = blockDim.x * gridDim.x;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  for (size_t thread = index; thread < nthreads; thread += offset) {
     const int j = (thread / width_col / height_col / batch_size) % kernel_w;
     const int i =
         (thread / width_col / height_col / batch_size / kernel_w) % kernel_h;
@@ -67,17 +79,17 @@ inline void ModulatedDeformableCol2imCPUKernel(
         ((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col + w_out;
     const int data_mask_hw_ptr =
         ((i * kernel_w + j) * height_col + h_out) * width_col + w_out;
-    const T offset_h = data_offset_ptr[data_offset_h_ptr];
-    const T offset_w = data_offset_ptr[data_offset_w_ptr];
-    const T cur_inv_h_data = h_in + i * dilation_h + offset_h;
-    const T cur_inv_w_data = w_in + j * dilation_w + offset_w;
+    const MT offset_h = static_cast<MT>(data_offset_ptr[data_offset_h_ptr]);
+    const MT offset_w = static_cast<MT>(data_offset_ptr[data_offset_w_ptr]);
+    const MT cur_inv_h_data = h_in + i * dilation_h + offset_h;
+    const MT cur_inv_w_data = w_in + j * dilation_w + offset_w;
 
-    T cur_top_grad = data_col[thread];
+    MT cur_top_grad = static_cast<MT>(data_col[thread]);
     if (data_mask) {
       const T* data_mask_ptr =
           data_mask + (b * deformable_group + deformable_group_index) *
                           kernel_h * kernel_w * height_col * width_col;
-      const T mask = data_mask_ptr[data_mask_hw_ptr];
+      const MT mask = static_cast<MT>(data_mask_ptr[data_mask_hw_ptr]);
       cur_top_grad *= mask;
     }
     const int cur_h = static_cast<int>(cur_inv_h_data);
@@ -89,15 +101,16 @@ inline void ModulatedDeformableCol2imCPUKernel(
             abs(cur_inv_w_data - (cur_w + dx)) < 1) {
           int cur_bottom_grad_pos =
               ((b * channels + c) * height + cur_h + dy) * width + cur_w + dx;
-          T weight = DmcnGetGradientWeight(cur_inv_h_data,
-                                           cur_inv_w_data,
-                                           cur_h + dy,
-                                           cur_w + dx,
-                                           height,
-                                           width);
+          MT weight = DmcnGetGradientWeight(cur_inv_h_data,
+                                            cur_inv_w_data,
+                                            cur_h + dy,
+                                            cur_w + dx,
+                                            height,
+                                            width);
 
-          *(grad_im + cur_bottom_grad_pos) =
-              *(grad_im + cur_bottom_grad_pos) + weight * cur_top_grad;
+          paddle::platform::CudaAtomicAdd(
+              grad_im + cur_bottom_grad_pos,
+              static_cast<T>(weight * cur_top_grad));
         }
       }
     }
@@ -119,33 +132,36 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
                                T* grad_im) {
   int channel_per_deformable_group = im_shape[0] / deformable_group;
   int num_kernels = col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
+  int blocks = NumBlocks(num_kernels);
+  int threads = kNumCUDAThreads;
 
-  ModulatedDeformableCol2imCPUKernel(num_kernels,
-                                     data_col,
-                                     data_offset,
-                                     data_mask,
-                                     im_shape[0],
-                                     im_shape[1],
-                                     im_shape[2],
-                                     kernel_shape[2],
-                                     kernel_shape[3],
-                                     pad[0],
-                                     pad[1],
-                                     stride[0],
-                                     stride[1],
-                                     dilation[0],
-                                     dilation[1],
-                                     channel_per_deformable_group,
-                                     col_shape[1],
-                                     deformable_group,
-                                     col_shape[2],
-                                     col_shape[3],
-                                     grad_im);
+  ModulatedDeformableCol2imGpuKernel<T>
+      <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
+                                                 data_col,
+                                                 data_offset,
+                                                 data_mask,
+                                                 im_shape[0],
+                                                 im_shape[1],
+                                                 im_shape[2],
+                                                 kernel_shape[2],
+                                                 kernel_shape[3],
+                                                 pad[0],
+                                                 pad[1],
+                                                 stride[0],
+                                                 stride[1],
+                                                 dilation[0],
+                                                 dilation[1],
+                                                 channel_per_deformable_group,
+                                                 col_shape[1],
+                                                 deformable_group,
+                                                 col_shape[2],
+                                                 col_shape[3],
+                                                 grad_im);
 }
 
 template <typename T>
-void ModulatedDeformableCol2imCoordCPUKernel(
-    const int num_kernels,
+__global__ void ModulatedDeformableCol2imCoordGpuKernel(
+    const int nthreads,
     const T* data_col,
     const T* data_im,
     const T* data_offset,
@@ -169,8 +185,11 @@ void ModulatedDeformableCol2imCoordCPUKernel(
     const int width_col,
     T* grad_offset,
     T* grad_mask) {
-  for (int i = 0; i < num_kernels; i++) {
-    T val = 0, mval = 0;
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int offset = blockDim.x * gridDim.x;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  for (size_t i = index; i < nthreads; i += offset) {
+    MT val = 0, mval = 0;
     const int w = i % width_col;
     const int h = (i / width_col) % height_col;
     const int c = (i / width_col / height_col) % offset_channels;
@@ -215,40 +234,42 @@ void ModulatedDeformableCol2imCoordCPUKernel(
       const int data_offset_w_ptr =
           (((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col +
            w_out);
-      const T offset_h = data_offset_ptr[data_offset_h_ptr];
-      const T offset_w = data_offset_ptr[data_offset_w_ptr];
-      T inv_h = h_in + i * dilation_h + offset_h;
-      T inv_w = w_in + j * dilation_w + offset_w;
+
+      const MT offset_h = static_cast<MT>(data_offset_ptr[data_offset_h_ptr]);
+      const MT offset_w = static_cast<MT>(data_offset_ptr[data_offset_w_ptr]);
+      MT inv_h = h_in + i * dilation_h + offset_h;
+      MT inv_w = w_in + j * dilation_w + offset_w;
       if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
         inv_h = inv_w = -2;
       } else {
-        mval += data_col_ptr[col_pos] *
-                funcs::DmcnIm2colBilinear(data_im_ptr + cnt * height * width,
-                                          width,
-                                          height,
-                                          width,
-                                          inv_h,
-                                          inv_w);
+        mval +=
+            static_cast<MT>(data_col_ptr[col_pos]) *
+            funcs::DmcnIm2colBilinear<T, MT>(data_im_ptr + cnt * height * width,
+                                             width,
+                                             height,
+                                             width,
+                                             inv_h,
+                                             inv_w);
       }
-      const T weight =
-          DmcnGetCoordinateWeight(inv_h,
-                                  inv_w,
-                                  height,
-                                  width,
-                                  data_im_ptr + cnt * height * width,
-                                  width,
-                                  bp_dir);
+      const MT weight =
+          DmcnGetCoordinateWeight<T, MT>(inv_h,
+                                         inv_w,
+                                         height,
+                                         width,
+                                         data_im_ptr + cnt * height * width,
+                                         width,
+                                         bp_dir);
       if (data_mask_ptr) {
         const int data_mask_hw_ptr =
             (((i * kernel_w + j) * height_col + h_out) * width_col + w_out);
-        const T mask = data_mask_ptr[data_mask_hw_ptr];
-        val += weight * data_col_ptr[col_pos] * mask;
+        const MT mask = static_cast<MT>(data_mask_ptr[data_mask_hw_ptr]);
+        val += weight * static_cast<MT>(data_col_ptr[col_pos]) * mask;
       } else {
-        val += weight * data_col_ptr[col_pos];
+        val += weight * static_cast<MT>(data_col_ptr[col_pos]);
       }
       cnt += 1;
     }
-    grad_offset[i] = val;
+    grad_offset[i] = static_cast<T>(val);
     if (grad_mask && offset_c % 2 == 0)
       grad_mask[(((b * deformable_group + deformable_group_index) * kernel_h *
                       kernel_w +
@@ -278,32 +299,49 @@ void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
   int num_kernels = 2 * kernel_shape[2] * kernel_shape[3] * col_shape[1] *
                     col_shape[2] * col_shape[3] * deformable_groups;
   int channel_per_deformable_group = col_shape[0] / deformable_groups;
+  int blocks = NumBlocks(num_kernels);
+  int threads = kNumCUDAThreads;
 
-  ModulatedDeformableCol2imCoordCPUKernel(
-      num_kernels,
-      data_col,
-      data_im,
-      data_offset,
-      data_mask,
-      im_shape[0],
-      im_shape[1],
-      im_shape[2],
-      kernel_shape[2],
-      kernel_shape[3],
-      paddings[0],
-      paddings[1],
-      strides[0],
-      strides[1],
-      dilations[0],
-      dilations[1],
-      channel_per_deformable_group,
-      col_shape[1],
-      2 * kernel_shape[2] * kernel_shape[3] * deformable_groups,
-      deformable_groups,
-      col_shape[2],
-      col_shape[3],
-      grad_offset,
-      grad_mask);
+  ModulatedDeformableCol2imCoordGpuKernel<T>
+      <<<blocks, threads, 0, dev_ctx.stream()>>>(
+          num_kernels,
+          data_col,
+          data_im,
+          data_offset,
+          data_mask,
+          im_shape[0],
+          im_shape[1],
+          im_shape[2],
+          kernel_shape[2],
+          kernel_shape[3],
+          paddings[0],
+          paddings[1],
+          strides[0],
+          strides[1],
+          dilations[0],
+          dilations[1],
+          channel_per_deformable_group,
+          col_shape[1],
+          2 * kernel_shape[2] * kernel_shape[3] * deformable_groups,
+          deformable_groups,
+          col_shape[2],
+          col_shape[3],
+          grad_offset,
+          grad_mask);
+}
+
+template <typename T>
+__global__ void FilterGradAddupGpuKernel(const int nthreads,
+                                         const int n,
+                                         const int height,
+                                         const int width,
+                                         const T* dweight_3d,
+                                         T* filter_grad) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int offset = blockDim.x * gridDim.x;
+  for (size_t i = index; i < nthreads; i += offset) {
+    filter_grad[i] = filter_grad[i] + dweight_3d[i];
+  }
 }
 
 template <typename T, typename Context>
@@ -314,16 +352,17 @@ void FilterGradAddup(const Context& dev_ctx,
                      const int width,
                      const T* dweight_3d,
                      T* filter_grad) {
-  for (int i = 0; i < nthreads; i++) {
-    filter_grad[i] = filter_grad[i] + dweight_3d[i];
-  }
+  FilterGradAddupGpuKernel<T>
+      <<<NumBlocks(nthreads), kNumCUDAThreads, 0, dev_ctx.stream()>>>(
+          nthreads, n, height, width, dweight_3d, filter_grad);
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(deformable_conv_grad,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
                    phi::DeformableConvGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}

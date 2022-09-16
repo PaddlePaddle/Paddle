@@ -23,6 +23,9 @@ from op_test import OpTest
 from paddle.fluid.framework import _test_eager_guard
 
 
+paddle.enable_static()
+
+
 def dmc_bilinear(data_im, height, width, h, w):
     h_low = int(np.floor(h))
     w_low = int(np.floor(w))
@@ -61,8 +64,8 @@ def dconv_im2col_gemm(input, offset, filter, group, conv_param):
     assert f_c * group == in_c
     assert np.mod(out_c, group) == 0
 
-    stride, pad, dilation = conv_param['stride'], conv_param['pad'],\
-        conv_param['dilation']
+    stride, pad, dilation = conv_param['stride'], conv_param['pad'], \
+                            conv_param['dilation']
     out_h = 1 + (in_h + 2 * pad[0] - (dilation[0] * (f_h - 1) + 1)) // stride[0]
     out_w = 1 + (in_w + 2 * pad[1] - (dilation[1] * (f_w - 1) + 1)) // stride[1]
     assert out_h == in_h
@@ -76,18 +79,18 @@ def dconv_im2col_gemm(input, offset, filter, group, conv_param):
                     for kh in range(f_h):
                         for kw in range(f_w):
                             offset_h_table = \
-                                    offset[n, ::2, h, w].reshape(f_h, f_w)
+                                offset[n, ::2, h, w].reshape(f_h, f_w)
                             offset_w_table = \
-                                    offset[n, 1::2, h, w].reshape(f_h, f_w)
+                                offset[n, 1::2, h, w].reshape(f_h, f_w)
                             offset_h = offset_h_table[kh, kw]
                             offset_w = offset_w_table[kh, kw]
                             val = 0
                             im_h = h * stride[0] + kh * dilation[0] \
-                                + offset_h - pad[0]
+                                   + offset_h - pad[0]
                             im_w = w * stride[0] + kw * dilation[0] \
-                                + offset_w - pad[1]
+                                   + offset_w - pad[1]
                             if im_h > -1 and im_w > -1 and \
-                                im_h < in_h and im_w < in_h:
+                                    im_h < in_h and im_w < in_h:
                                 val = dmc_bilinear(input[n, c], in_h, in_w,
                                                    im_h, im_w)
                             val_out = val
@@ -201,6 +204,7 @@ class TestModulatedDeformableConvOp(OpTest):
         self.dtype = np.float32
 
 
+
 class TestWithStride(TestModulatedDeformableConvOp):
 
     def init_test_case(self):
@@ -284,6 +288,15 @@ class TestWithDouble(TestModulatedDeformableConvOp):
 
     def init_type(self):
         self.dtype = np.float64
+
+
+class TestWithFloat16(TestModulatedDeformableConvOp):
+
+    def init_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=1e-3)
 
 
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):

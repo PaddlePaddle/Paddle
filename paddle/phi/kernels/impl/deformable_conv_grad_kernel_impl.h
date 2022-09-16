@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -58,14 +59,14 @@ HOSTDEVICE T DmcnGetGradientWeight(T argmax_h,
   return weight;
 }
 
-template <typename T>
-HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h,
-                                     T argmax_w,
-                                     const int height,
-                                     const int width,
-                                     const T* im_data,
-                                     const int data_width,
-                                     const int bp_dir) {
+template <typename T, typename MT>
+HOSTDEVICE MT DmcnGetCoordinateWeight(MT argmax_h,
+                                      MT argmax_w,
+                                      const int height,
+                                      const int width,
+                                      const T* im_data,
+                                      const int data_width,
+                                      const int bp_dir) {
   if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
       argmax_w >= width) {
     return 0;
@@ -76,43 +77,51 @@ HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h,
   int argmax_h_high = argmax_h_low + 1;
   int argmax_w_high = argmax_w_low + 1;
 
-  T weight = 0;
+  MT weight = 0;
 
   if (bp_dir == 0) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
                   ? -1 * (argmax_w_low + 1 - argmax_w) *
-                        im_data[argmax_h_low * data_width + argmax_w_low]
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_low])
                   : 0;
 
     weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
                   ? -1 * (argmax_w - argmax_w_low) *
-                        im_data[argmax_h_low * data_width + argmax_w_high]
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_high])
                   : 0;
 
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
                   ? (argmax_w_low + 1 - argmax_w) *
-                        im_data[argmax_h_high * data_width + argmax_w_low]
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_low])
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
                   ? (argmax_w - argmax_w_low) *
-                        im_data[argmax_h_high * data_width + argmax_w_high]
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_high])
                   : 0;
   } else if (bp_dir == 1) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
                   ? -1 * (argmax_h_low + 1 - argmax_h) *
-                        im_data[argmax_h_low * data_width + argmax_w_low]
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_low])
                   : 0;
     weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
                   ? (argmax_h_low + 1 - argmax_h) *
-                        im_data[argmax_h_low * data_width + argmax_w_high]
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_high])
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
                   ? -1 * (argmax_h - argmax_h_low) *
-                        im_data[argmax_h_high * data_width + argmax_w_low]
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_low])
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
                   ? (argmax_h - argmax_h_low) *
-                        im_data[argmax_h_high * data_width + argmax_w_high]
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_high])
                   : 0;
   }
 
@@ -290,7 +299,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
           deformable_groups,
           offset_grad_ptr + i * im2col_step * input_offset_dim,
           mask_grad_data_ptr);
-    }
+    }  // check
     if (dx) {
       T* dx_ptr = dx->data<T>();
       // get grad of input
@@ -305,7 +314,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                                 strides,
                                 dilations,
                                 deformable_groups,
-                                dx_ptr + i * im2col_step * input_dim);
+                                dx_ptr + i * im2col_step * input_dim);  //待改
       dx->Resize(x.dims());
     }
 
@@ -321,7 +330,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
         strides,
         dilations,
         deformable_groups,
-        col_buffer_ptr);
+        col_buffer_ptr);  // check
 
     col_buffer_3d.Resize(col_buffer_3d_shape);
 
@@ -353,7 +362,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                          K,
                          M,
                          dweight_3d.data<T>(),
-                         filter_grad->data<T>());
+                         filter_grad->data<T>());  // 待改
     }
   }
   if (filter_grad) {
