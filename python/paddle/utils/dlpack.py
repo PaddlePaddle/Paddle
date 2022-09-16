@@ -34,7 +34,7 @@ def to_dlpack(x):
 
     Returns:
         dltensor, and the data type is PyCapsule.
-    
+
     Examples:
         .. code-block:: python
 
@@ -62,12 +62,12 @@ def to_dlpack(x):
 def from_dlpack(dlpack):
     """
     Decodes a DLPack to a tensor.
-    
+
     Args:
         dlpack (PyCapsule): a PyCapsule object with the dltensor.
 
     Returns:
-        out (Tensor): a tensor decoded from DLPack. One thing to be noted, if we get 
+        out (Tensor): a tensor decoded from DLPack. One thing to be noted, if we get
                       an input dltensor with data type as `bool`, we return the decoded
                       tensor as `uint8`.
 
@@ -83,7 +83,7 @@ def from_dlpack(dlpack):
             print(x)
             # Tensor(shape=[2, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #  [[0.20000000, 0.30000001, 0.50000000, 0.89999998],
-            #  [0.10000000, 0.20000000, 0.60000002, 0.69999999]]) 
+            #  [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
     """
 
     t = type(dlpack)

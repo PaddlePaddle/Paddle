@@ -25,8 +25,8 @@ os.environ['FLAGS_new_einsum'] = "1"
 
 
 def error_trans(func, *args, **kargs):
-    """ 
-    transport C++ exception into Python exception. 
+    """
+    transport C++ exception into Python exception.
     because einsum_v2 raise different exception with einsum_v1.
     """
     try:

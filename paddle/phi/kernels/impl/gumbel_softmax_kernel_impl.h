@@ -43,12 +43,13 @@ template <typename Context, typename T>
 struct OneHotGenerator;
 
 template <typename T, typename Context>
-void GumbelSoftmaxKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         float temperature,
-                         bool hard,
-                         int axis,
-                         DenseTensor* out) {
+void GumbelSoftmaxKernelHelper(const Context& ctx,
+                               const DenseTensor& x,
+                               float temperature,
+                               bool hard,
+                               int axis,
+                               DenseTensor* out,
+                               bool is_test) {
   const int rank = x.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
   int axis_dim = x.dims()[axis];
@@ -80,18 +81,39 @@ void GumbelSoftmaxKernel(const Context& ctx,
                                               size_to_axis,
                                               size_from_axis,
                                               temperature);
-
-#ifdef PADDLE_ON_INFERENCE
-  paddle::operators::math::SoftmaxFunctor<Context, T, true>()(
-      ctx, axis_dim, &x_noise_2d, &out_2d);
-#else
-  paddle::operators::math::SoftmaxFunctor<Context, T, false>()(
-      ctx, axis_dim, &x_noise_2d, &out_2d);
-#endif
+  if (is_test) {
+    paddle::operators::math::SoftmaxFunctor<Context, T, true>()(
+        ctx, axis_dim, &x_noise_2d, &out_2d);
+  } else {
+    paddle::operators::math::SoftmaxFunctor<Context, T, false>()(
+        ctx, axis_dim, &x_noise_2d, &out_2d);
+  }
 
   if (hard) {
     OneHotGenerator<Context, T>::Transform(ctx, x, out, axis);
   }
+}
+
+template <typename T, typename Context>
+void GumbelSoftmaxKernel(const Context& ctx,
+                         const DenseTensor& x,
+                         float temperature,
+                         bool hard,
+                         int axis,
+                         DenseTensor* out) {
+  GumbelSoftmaxKernelHelper<T, Context>(
+      ctx, x, temperature, hard, axis, out, false);
+}
+
+template <typename T, typename Context>
+void GumbelSoftmaxInferKernel(const Context& ctx,
+                              const DenseTensor& x,
+                              float temperature,
+                              bool hard,
+                              int axis,
+                              DenseTensor* out) {
+  GumbelSoftmaxKernelHelper<T, Context>(
+      ctx, x, temperature, hard, axis, out, true);
 }
 
 }  // namespace phi

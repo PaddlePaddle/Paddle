@@ -198,11 +198,11 @@ class PipelineLayer(Layer):
     """PipelineLayer
     Args:
         layers(Iterable): A sequence of layers description to define the structure for pipeline.
-        num_stages(int, optional): pp degree, if not specified, 'topology' parameter must be given. 
+        num_stages(int, optional): pp degree, if not specified, 'topology' parameter must be given.
         topology(CommunicateTopology, optional): topo of hybrid parallel, if it is None, 'num_stages' parameters must be given.
         loss_fn(callable, optional): Loss function.
         seg_method(str, optional): the method of splitting pp layer, default 'uniform', or use specific layer to split, method's name must be start with 'layer:'.
-        recompute_interval(int, optional): the number of layers to be used recompute, the value of 0 represents no recompute. default 0. 
+        recompute_interval(int, optional): the number of layers to be used recompute, the value of 0 represents no recompute. default 0.
         recompute_ctx(dict,optional): the context of recompute, when 'recompute_interval' > 0, the context must be given.
         num_virtual_pipeline_stages(int, optional): the num of virtual pipeline stages for interleave pp.
     Examples:
@@ -212,7 +212,7 @@ class PipelineLayer(Layer):
         from paddle.fluid.dygraph.layers import Layer
         import paddle.nn.functional as F
         from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
-        
+
         pipeline_parallel_size = 2
         strategy = fleet.DistributedStrategy()
         strategy.hybrid_configs = {
@@ -224,19 +224,19 @@ class PipelineLayer(Layer):
             "accumulate_steps": 4,
             "micro_batch_size": 2
         }
-        
+
         fleet.init(is_collective=True, strategy=strategy)
-        
+
         hcg = fleet.get_hybrid_communicate_group()
-        
+
         class ReshapeHelp(Layer):
             def __init__(self, shape):
                 super(ReshapeHelp, self).__init__()
                 self.shape = shape
-        
+
             def forward(self, x):
                 return x.reshape(shape=self.shape)
-        
+
         class AlexNetPipeDesc(PipelineLayer):
             def __init__(self, num_classes=10, **kwargs):
                 self.num_classes = num_classes
@@ -268,7 +268,7 @@ class PipelineLayer(Layer):
                 ]
                 super(AlexNetPipeDesc, self).__init__(
                     layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
-        
+
         model = AlexNetPipeDesc(num_stages=pipeline_parallel_size, topology=hcg._topo)
 
     """
@@ -377,7 +377,7 @@ class PipelineLayer(Layer):
         for virtual_pp_rank in range(self._num_virtual_pipeline_stages):
             # Mapping the virtual pipeline stage to the real pipeline stage.
             # start_idx marks the start of a new virtual pp stage.
-            start_idx = virtual_pp_rank * self._num_virtual_pipeline_stages
+            start_idx = virtual_pp_rank * self._num_stages
             for stage in range(self._num_stages):
                 # stage mark the real pp stage
                 if self.segment_parts[start_idx +
@@ -483,7 +483,7 @@ class PipelineLayer(Layer):
                     ", ".join(str(arg) for arg in self.segment_parts))
 
         for i in range(self._stage_id, self._total_stages_with_virtual_stages,
-                       self._num_virtual_pipeline_stages):
+                       self._num_stages):
             # If there are 2 real pp stages and 2 virtual pp stages, and the model has 8 layers.
             # Layers [0, 1], [4, 5] will be assigned to the first real pp stage.
             # Layers [2, 3], [6, 7] will be assigned to the second real pp stage.
@@ -528,7 +528,7 @@ class PipelineLayer(Layer):
                 stage_to_virtual_stage_info = "stage {} contains virtual stages: ".format(
                     stage)
                 for i in range(stage, self._total_stages_with_virtual_stages,
-                               self._num_virtual_pipeline_stages):
+                               self._num_stages):
                     stage_to_virtual_stage_info += " {},".format(i)
                 logger.info(stage_to_virtual_stage_info)
 

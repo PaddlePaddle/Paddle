@@ -132,7 +132,7 @@ def test_push_pop_2(x, *args, **kargs):
 def test_push_pop_3(x, *args, **kargs):
     """ push_pop_vars in main_function is : `k`
         NOTE: One may expect `k` and `l` because l
-              is nonlocal. Name bind analysis is 
+              is nonlocal. Name bind analysis is
               not implemented yet.
     """
     l = []
