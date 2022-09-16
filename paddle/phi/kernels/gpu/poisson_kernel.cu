@@ -1,11 +1,8 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +17,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/poisson_kernel.h"
@@ -29,8 +27,7 @@ namespace phi {
 template <typename T>
 __global__ void GetPoisson(
     const T* in, T* out, const int N, unsigned int seed, unsigned int offset) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < N) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
 #ifdef __NVCC__
     curandStatePhilox4_32_10_t state;
     curand_init(seed, idx, offset, &state);
@@ -53,6 +50,7 @@ void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   int block_size = std::min(kMaxBlockDim, ctx.GetMaxThreadsPerBlock());
   dim3 dim_block(block_size);
   dim3 dim_grid((size + block_size - 1) / block_size);
+  phi::backends::gpu::LimitGridDim(ctx, &dim_grid);
 
   auto gen_cuda = ctx.GetGenerator();
   auto seed_offset = gen_cuda->IncrementOffset(20);
