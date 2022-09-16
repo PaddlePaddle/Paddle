@@ -154,6 +154,10 @@ class ProcessGroup:
             paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
             paddle.distributed.wait(tmp, group=self)
             paddle.enable_static()
+            print(
+                "initialized communicator: ring_id: {}, nrank: {}, ranks: {}, current endpoint: {}, comm group endpoints: {}"
+                .format(ring_id, self.nranks, self.ranks,
+                        strategy.current_endpoint, strategy.trainer_endpoints))
 
         self._is_instantiate = True
 
