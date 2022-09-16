@@ -87,7 +87,7 @@ class SaveLinear(paddle.nn.Layer):
         self.linear = paddle.nn.Linear(80, 80)
 
     @paddle.jit.to_static(
-        input_spec=[paddle.static.InputSpec(shape=[None, None])])
+        input_spec=[InputSpec(shape=[None, 80], dtype='float32')])
     def forward(self, x):
         out = self.linear(x)
         return out
