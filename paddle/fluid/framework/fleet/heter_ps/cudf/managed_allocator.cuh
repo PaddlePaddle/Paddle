@@ -18,8 +18,8 @@
  * in the root directory of this source tree.
  */
 
-#ifndef MANAGED_ALLOCATOR_CUH
-#define MANAGED_ALLOCATOR_CUH
+#ifndef PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_MANAGED_ALLOCATOR_CUH_
+#define PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_MANAGED_ALLOCATOR_CUH_
 
 #include <new>
 
@@ -56,4 +56,4 @@ bool operator!=(const managed_allocator<T>&, const managed_allocator<U>&) {
   return false;
 }
 
-#endif
+#endif  // PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_MANAGED_ALLOCATOR_CUH_

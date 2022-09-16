@@ -18,8 +18,8 @@
  * in the root directory of this source tree.
  */
 
-#ifndef MANAGED_CUH
-#define MANAGED_CUH
+#ifndef PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_MANAGED_CUH_
+#define PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_MANAGED_CUH_
 
 #include <new>
 
@@ -34,4 +34,4 @@ struct managed {
   static void operator delete(void *ptr) noexcept { cudaFree(ptr); }
 };
 
-#endif  // MANAGED_CUH
+#endif  // PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_MANAGED_CUH_

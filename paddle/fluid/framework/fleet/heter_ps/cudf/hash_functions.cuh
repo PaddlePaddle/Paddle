@@ -18,8 +18,8 @@
  * in the root directory of this source tree.
  */
 
-#ifndef HASH_FUNCTIONS_CUH
-#define HASH_FUNCTIONS_CUH
+#ifndef PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_HASH_FUNCTIONS_CUH_
+#define PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_HASH_FUNCTIONS_CUH_
 
 using hash_value_type = uint32_t;
 
@@ -66,7 +66,7 @@ struct MurmurHash3_32 {
    * @Returns A hash value that intelligently combines the lhs and rhs hash
    * values
    */
-  /* --------------------------------------------------------------------------*/
+  /* ------------------------------------------------------------------------*/
   __host__ __device__ result_type hash_combine(result_type lhs,
                                                result_type rhs) {
     result_type combined{lhs};
@@ -111,7 +111,7 @@ struct MurmurHash3_32 {
         k1 = rotl32(k1, 15);
         k1 *= c2;
         h1 ^= k1;
-    };
+    }
     //----------
     // finalization
     h1 ^= len;
@@ -126,4 +126,4 @@ struct MurmurHash3_32 {
 template <typename Key>
 using default_hash = MurmurHash3_32<Key>;
 
-#endif  // HASH_FUNCTIONS_CUH
+#endif  // PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_HASH_FUNCTIONS_CUH_
