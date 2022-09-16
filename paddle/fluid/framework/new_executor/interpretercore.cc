@@ -29,6 +29,7 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/new_executor/threadpool_config.h"
 #include "paddle/phi/backends/device_manager.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
@@ -293,8 +294,11 @@ bool InterpreterCore::BuildInplaceCheckVarIsOnlyInput(size_t var_index) {
 
 std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
   if (async_work_queue_ == nullptr) {
+    int host_num_threads = 1, deivce_num_threads = 1;
+    std::tie(host_num_threads, deivce_num_threads) =
+        interpreter::GetThreadPoolConfig(place_);
     async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
-        kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+        host_num_threads, deivce_num_threads, &main_thread_blocker_);
   }
   return async_work_queue_;
 }
