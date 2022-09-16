@@ -648,8 +648,8 @@ class IndependentTransform(Transform):
 
     To see this, consider the ``ExpTransform`` applied to a Tensor which has 
     sample, batch, and event ``(S,B,E)`` shape semantics. Suppose the Tensor's 
-    paritioned-shape is ``(S=[4], B=[2,2], E=[3])`` , reinterpreted_batch_rank
-    is 1. Then the reinterpreted Tensor's shape  is ``(S=[4], B=[2], E=[2,3])`` .
+    paritioned-shape is ``(S=[4], B=[2, 2], E=[3])`` , reinterpreted_batch_rank
+    is 1. Then the reinterpreted Tensor's shape  is ``(S=[4], B=[2], E=[2, 3])`` .
     The shape returned by ``forward`` and ``inverse`` is unchanged, ie, 
     ``[4,2,2,3]`` . However the shape returned by ``inverse_log_det_jacobian`` 
     is ``[4,2]``, because the Jacobian determinant is a reduction over the 
@@ -1002,7 +1002,7 @@ class StackTransform(Transform):
 
     Args:
         transforms(Sequence[Transform]): The sequence of transformations. 
-        axis(int): The axis along which will be transformed.
+        axis(int,optional): The axis along which will be transformed. (optional, default is 0).
 
     Examples:
 
