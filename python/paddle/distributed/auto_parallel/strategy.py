@@ -117,7 +117,7 @@ class TuningConfig(BaseConfig):
 
 class Strategy(BaseConfig):
     """
-    The `Strategy` object is used to configure the paralleization and optimization beheviors. 
+    The `Strategy` object is used to configure the paralleization and optimization beheviors.
 
     Args:
         config (dict|string, optional): If this is None, the default configurations will used.
