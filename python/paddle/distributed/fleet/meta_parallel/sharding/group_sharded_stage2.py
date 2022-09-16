@@ -287,7 +287,7 @@ class GroupShardedStage2(nn.Layer):
             collective.broadcast(buffer,
                                  self._global_root_rank,
                                  self._group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
