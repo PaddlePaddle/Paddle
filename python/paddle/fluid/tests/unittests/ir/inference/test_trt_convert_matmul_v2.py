@@ -112,9 +112,6 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
 
 class TrtConvertMatmulTest_dynamic2(TrtLayerAutoScanTest):
 
-    def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        return True
-
     def sample_program_configs(self):
 
         def generate_input(shape):
