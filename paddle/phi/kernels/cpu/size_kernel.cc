@@ -12,13 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/size_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/size_kernel_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void SizeKernel(const Context& ctx, const DenseTensor& input, DenseTensor* out);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(size,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SizeKernel,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   float,
+                   double,
+                   bool) {}
