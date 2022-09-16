@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fill_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -49,15 +49,18 @@ const dnnl::memory::desc FillConstantOneDNNHandler<T>::src1_md(
 }  // namespace funcs
 
 template <typename T, typename Context>
-void FillKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const Scalar& value,
+void FullKernel(const Context& dev_ctx,
+                const IntArray& shape,
+                const Scalar& val,
+                DataType dtype,
                 DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  T fill_value = value.to<T>();
+  T fill_value = val.to<T>();
   funcs::FillConstantOneDNNHandler<T> handler(
       out, onednn_engine, dev_ctx.GetPlace());
+
+  out->Resize(make_ddim(shape.GetData()));
 
   dnnl::memory constant_value_memory =
       dnnl::memory(funcs::FillConstantOneDNNHandler<T>::src1_md,
@@ -80,7 +83,6 @@ void FillKernel(const Context& dev_ctx,
                      funcs::OneDNNGetDataType<T>(),
                      funcs::GetPlainOneDNNFormat(out->dims().size())});
 }
-
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fill, OneDNN, ALL_LAYOUT, phi::FillKernel, float) {}
+PD_REGISTER_KERNEL(full, OneDNN, ALL_LAYOUT, phi::FullKernel, float) {}
