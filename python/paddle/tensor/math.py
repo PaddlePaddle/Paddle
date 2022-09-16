@@ -4828,8 +4828,10 @@ def frexp(x):
             x (Tensor): The input tensor, which data type should be float32, float64.
 
         Returns:
-            mantissa: A mantissa Tensor for real input, shape and data type are same as input.
-            exponent: A mantissa Tensor for real input, shape and data type are same as input.
+            mantissa(Tensor): A mantissa Tensor.The shape and data type of mantissa tensor and exponential tensor are
+            the same as those of input.
+            exponent(Tensor): A exponent Tensor.The shape and data type of mantissa tensor and exponential tensor are
+            the same as those of input.
 
         Examples:
             .. code-block:: Python
@@ -4837,8 +4839,9 @@ def frexp(x):
                 import paddle
 
                 x = paddle.to_tensor([[1,2,3,4]])
-                print(paddle.sgn(x))
-                #[[0.5 , 0.5 , 0.75, 0.5 ],[1,2,2,3]]
+                print(paddle.tensor.math.frexp(x))
+                #(Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[0.50000000, 0.50000000, 0.75000000, 0.50000000]]),
+                    Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[1., 2., 2., 3.]]))
         """
     if x.dtype not in [paddle.float32, paddle.float64]:
         raise TypeError(
