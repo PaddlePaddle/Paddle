@@ -165,7 +165,20 @@ def GetGradNodeName(string):
 
 
 def GetDygraphForwardFunctionName(string):
-    return f"{string}_dygraph_function"
+    return f"{string}_ad_func"
+
+
+def GetDygraphLogName(string):
+
+    def str2Hump(text):
+        arr = filter(None, text.split('_'))
+        res = ''
+        for i in arr:
+            res = res + i.lower()
+        return res
+
+    string = str2Hump(string)
+    return string
 
 
 def GetIntermediateAPIFunctionName(string):
