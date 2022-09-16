@@ -58,8 +58,17 @@ void LaunchFlipCudaKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<int>& axis,
                           DenseTensor* out) {
+<<<<<<< HEAD
 
   std::vector<int> flip_dims_v = axis;
+=======
+  auto* in_data = x.data<T>();
+  auto* out_data = dev_ctx.template Alloc<T>(out);
+
+  auto x_dims = x.dims();
+  const int total_dims = x_dims.size();
+  const int64_t numel = x.numel();
+>>>>>>> fix extra flip_dims_v
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   auto x_stride = phi::stride(x_dims);
 
@@ -98,8 +107,6 @@ void FlipKernel(const Context& dev_ctx,
   const size_t total_dims = x.dims().size();
   switch (total_dims) {
     case 1:
-<<<<<<< HEAD
-<<<<<<< HEAD
       LaunchFlipCudaKernel<T, Context, 1>(dev_ctx, x, axis, out);
       break;
     case 2:
@@ -125,40 +132,6 @@ void FlipKernel(const Context& dev_ctx,
       break;
     case 9:
       LaunchFlipCudaKernel<T, Context, 9>(dev_ctx, x, axis, out);
-=======
-      launch_flip_cuda_kernel<T, Context, 1>(dev_ctx, x, axis, out);
-=======
-      LaunchFlipCudaKernel<T, Context, 1>(dev_ctx, x, axis, out);
->>>>>>> fix function name
-      break;
-    case 2:
-      LaunchFlipCudaKernel<T, Context, 2>(dev_ctx, x, axis, out);
-      break;
-    case 3:
-      LaunchFlipCudaKernel<T, Context, 3>(dev_ctx, x, axis, out);
-      break;
-    case 4:
-      LaunchFlipCudaKernel<T, Context, 4>(dev_ctx, x, axis, out);
-      break;
-    case 5:
-      LaunchFlipCudaKernel<T, Context, 5>(dev_ctx, x, axis, out);
-      break;
-    case 6:
-      LaunchFlipCudaKernel<T, Context, 6>(dev_ctx, x, axis, out);
-      break;
-    case 7:
-      LaunchFlipCudaKernel<T, Context, 7>(dev_ctx, x, axis, out);
-      break;
-    case 8:
-      LaunchFlipCudaKernel<T, Context, 8>(dev_ctx, x, axis, out);
-      break;
-    case 9:
-<<<<<<< HEAD
-      launch_flip_cuda_kernel<T, Context, 9>(dev_ctx, x, axis, out);
->>>>>>> Optimize flip kernel by eliminating H2D data transfer, test=develop
-=======
-      LaunchFlipCudaKernel<T, Context, 9>(dev_ctx, x, axis, out);
->>>>>>> fix function name
       break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
