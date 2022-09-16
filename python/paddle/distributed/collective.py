@@ -1471,12 +1471,10 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         group = _get_default_group() if group is None else group
         backend = _group_map_backend[group]
         assert backend != 'gloo', ("backend gloo is not supported yet")
-        task = group.process_group.send(tensor, dst)
         if use_calc_stream:
-            task.wait()
-            return None
+            return group.process_group.send_on_calc_stream(tensor, dst)
         else:
-            return task
+            return group.process_group.send(tensor, dst)
 
     ring_id = 0 if group is None else group.id
 
@@ -1537,12 +1535,10 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         group = _get_default_group() if group is None else group
         backend = _group_map_backend[group]
         assert backend != 'gloo', ("backend gloo is not supported yet")
-        task = group.process_group.recv(tensor, src)
         if use_calc_stream:
-            task.wait()
-            return None
+            return group.process_group.recv_on_calc_stream(tensor, src)
         else:
-            return task
+            return group.process_group.recv(tensor, src)
 
     ring_id = 0 if group is None else group.id
 

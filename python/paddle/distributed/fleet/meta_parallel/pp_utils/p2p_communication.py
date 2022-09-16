@@ -174,8 +174,8 @@ def _partial_send_op(tensor, group, use_calc_stream, ring_id, dst, nranks,
     elif in_dygraph_mode():
         group = paddle.distributed.collective._get_default_group(
         ) if group is None else group
-        return group.process_group.send_partial(tensor, dst_rank_in_group,
-                                                nranks, rank_id)
+        return group.process_group.send_partial_on_calc_stream(
+            tensor, dst_rank_in_group, nranks, rank_id)
 
 
 def send_partial(tensor,
@@ -216,8 +216,8 @@ def _partial_recv_op(tensor, group, use_calc_stream, ring_id, src, nranks,
     elif in_dygraph_mode():
         group = paddle.distributed.collective._get_default_group(
         ) if group is None else group
-        return group.process_group.recv_partial(tensor, src_rank_in_group,
-                                                nranks, rank_id)
+        return group.process_group.recv_partial_on_calc_stream(
+            tensor, src_rank_in_group, nranks, rank_id)
 
 
 def recv_partial(tensor,
