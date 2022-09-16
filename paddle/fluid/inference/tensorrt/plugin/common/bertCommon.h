@@ -617,7 +617,7 @@ inline nvinfer1::DataType fieldTypeToDataType(
     }
     default:
       TRANSFORMER_DEBUG_MSG("PluginFieldType is Float32");
-      return nvinfer1::DataType::Float32;
+      return nvinfer1::DataType::kFLOAT;
   }
 }
 
