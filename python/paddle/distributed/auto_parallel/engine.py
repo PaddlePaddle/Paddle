@@ -636,12 +636,12 @@ class Engine:
         Evaluate the loss and metrics of the model on evaluation data.
 
         Args:
-            eval_data (Dataset): An instance of paddle paddle.io.Dataset. Default: None.
-            eval_sample_split (int, optional): Each sample of the eval dataset is assumed
+            valid_data (Dataset): An instance of paddle paddle.io.Dataset. Default: None.
+            valid_sample_split (int, optional): Each sample of the eval dataset is assumed
                 to be a (input, label) pair by default and has two items. If each sample has
-                more than two items, eval_sample_split specifies how to split these items into
+                more than two items, valid_sample_split specifies how to split these items into
                 input and label. The items before it are input and the left are label. Default: None.
-            batch_size (int, optional): The batch size of eval_data. The user's data will
+            batch_size (int, optional): The batch size of valid_data. The user's data will
                 be used directly without batching if set to None. Default: 1.
             steps (int, optional): It is the total number of steps (batches of samples) to draw before
                 stopping evaluation. If None, evaluation will run until the `valid_data` dataset is exhausted.
