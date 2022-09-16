@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -234,7 +234,7 @@ class TestLaplaceAndLaplaceKL(unittest.TestCase):
 
 """
 # Note: Zero dimension of a Tensor is not supported by static mode of paddle;
-# therefore, ks test below cannot be conducted temporarily. 
+# therefore, ks test below cannot be conducted temporarily.
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
@@ -253,7 +253,7 @@ class TestLaplaceKS(unittest.TestCase):
                                         self.sample_shape.dtype)
             self._dist = paddle.distribution.Laplace(loc=loc, scale=scale)
             self.feeds = {'loc': self.loc, 'scale': self.scale, 'sample_shape': self.sample_shape}
-            
+
     def test_sample(self):
         with paddle.static.program_guard(self.program):
             [sample_values] = self.executor.run(self.program,
