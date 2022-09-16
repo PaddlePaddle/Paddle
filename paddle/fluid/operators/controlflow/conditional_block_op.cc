@@ -23,10 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
-PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
-                            true,
-                            "Use inplace in new executor");
-
 DECLARE_bool(use_mkldnn);
 
 namespace paddle {

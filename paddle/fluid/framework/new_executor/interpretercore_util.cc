@@ -210,6 +210,11 @@ void build_variable_scope(const framework::BlockDesc& block,
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
 
+  const Scope* ancestor_scope = inner_scope;
+  while (ancestor_scope->parent()) {
+    ancestor_scope = ancestor_scope->parent();
+  }
+
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
     // TODO(xiongkun): user may create a variable with name that exists before.
@@ -220,7 +225,7 @@ void build_variable_scope(const framework::BlockDesc& block,
     }
 
     if (var_desc->Persistable()) {
-      auto* ptr = inner_scope->Var(var_name);
+      auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var_name);
 
       VLOG(3) << "Initialize Variable " << var_name;
       // NOTE(zhiqiu): if var exists in scope and the type is right,

@@ -34,6 +34,7 @@
 #include "paddle/fluid/platform/device_event.h"
 
 DECLARE_bool(new_executor_use_local_scope);
+DECLARE_bool(control_flow_use_new_executor);
 
 namespace paddle {
 namespace framework {
