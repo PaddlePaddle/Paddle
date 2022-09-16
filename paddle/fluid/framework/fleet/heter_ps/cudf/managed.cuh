@@ -19,7 +19,7 @@
  */
 
 #ifndef MANAGED_CUH
-#define MANAGED_CUH 
+#define MANAGED_CUH
 
 #include <new>
 
