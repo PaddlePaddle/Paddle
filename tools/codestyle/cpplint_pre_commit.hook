@@ -8,4 +8,4 @@ if ! [[ $version == *"$VERSION"* ]]; then
     pip install cpplint==1.6.0
 fi
 
-cpplint --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens --quiet $@
+cpplint $@
