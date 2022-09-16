@@ -793,7 +793,7 @@ class TRTEngineManager {
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
     std::unique_lock<std::mutex> lock(mutex_);
-    auto alignment = getAlignmentSize(place);
+    static auto alignment = getAlignmentSize(place);
     if (context_memorys_.count(predictor_id) == 0) {
       auto context_memory =
           memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
