@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+import operator
+
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -103,7 +106,11 @@ def mean(x, axis=None, keepdim=False):
 
 
 def ones(shape, dtype):
-    return fill_const(1.0, shape, dtype)
+    return fill_const(1, shape, dtype)
+
+
+def zeros(shape, dtype):
+    return fill_const(0, shape, dtype)
 
 
 def batch_norm(x,
@@ -114,7 +121,8 @@ def batch_norm(x,
                run_var,
                eps=1e-5,
                momentum=0.9,
-               use_run_stat=False):
+               use_run_stat=False,
+               reserve_space=None):
     """batch normalizer.
 
     Args:
@@ -133,20 +141,49 @@ def batch_norm(x,
             Defaults to False.
     """
     reduce_axes = tuple(i for i in range(len(x.shape)) if i != axis)
+    stats_shape = tuple(1 if i in reduce_axes else s
+                        for i, s in enumerate(x.shape))
+
+    batch_mean = zeros(run_mean.shape, run_mean.dtype)
+    batch_var = zeros(run_var.shape, run_var.dtype)
 
     if not use_run_stat:
-        m = mean(x, reduce_axes, keepdims=True)
-        v = mean(square(sub(x, m)), reduce_axes, keepdims=True)
-        x_hat = div(sub(x, m), sqrt(add(v, fill_const(eps, v.shape, v.dtype))))
+        batch_mean = mean(x, reduce_axes, keepdim=True)
+        batch_var = mean(square(sub(x, broadcast(batch_mean, x.shape))),
+                         reduce_axes,
+                         keepdim=True)
+        x_hat = div(
+            sub(x, broadcast(batch_mean, x.shape)),
+            sqrt(
+                add(broadcast(batch_var, x.shape),
+                    fill_const(eps, x.shape, batch_var.dtype))))
 
         momentum = fill_const(momentum, run_mean.shape, run_mean.dtype)
-        one = ones(run_mean.shape, run_mean.dtype)
-        run_mean = add(mul(momentum, run_mean), mul(sub(one, momentum), m))
-        run_var = add(mul(momentum, run_var), mul(sub(one, momentum), v))
+        run_mean = add(
+            mul(momentum, run_mean),
+            mul(sub(ones(run_mean.shape, run_mean.dtype), momentum),
+                reshape(batch_mean, run_mean.shape)))
+        run_var = add(
+            mul(momentum, run_var),
+            mul(sub(ones(run_var.shape, run_var.dtype), momentum),
+                reshape(batch_var, run_var.shape)))
     else:
-        x_hat = div(sub(x, run_mean), sqrt(add(run_var, eps)))
+        x_hat = div(
+            sub(x, broadcast(reshape(run_mean, stats_shape), x.shape)),
+            sqrt(
+                add(broadcast(reshape(run_var, stats_shape), x.shape),
+                    fill_const(eps, x.shape, x.dtype))))
+    y = add(mul(broadcast(reshape(gamma, stats_shape), x_hat.shape), x_hat),
+            broadcast(reshape(beta, stats_shape), x_hat.shape))
 
-    return add(mul(gamma, x_hat), beta), run_mean, run_var
+    if reserve_space:
+        return run_mean, reserve_space, batch_mean, batch_var, run_var, y
+    else:
+        return run_mean, batch_mean, batch_var, run_var, y
+
+
+def square(x):
+    return pow(x, fill_const(2., x.shape, x.dtype))
 
 
 @REGISTER_FN('add_p', 'X', 'Y', 'Z')

@@ -215,6 +215,20 @@ def fill_any_like_orig2prim(op, x):
                           convert_dtype(INT_DTYPE_2_STRING[op.attr('dtype')])))
 
 
+@REGISTER_ORIG2PRIM('fill_constant')
+def fill_const_orig2prim(op,
+                         shape_tensor=None,
+                         shape_tensor_list=None,
+                         value_tensor=None):
+    if shape_tensor or shape_tensor_list or value_tensor:
+        raise TypeError(
+            'fill_const_orig2prim currently not support Tensor input of shape and value.'
+        )
+    return fill_const(value=op.attr('value'),
+                      shape=op.attr('shape'),
+                      dtype=paddle.dtype(op.attr('dtype')))
+
+
 @REGISTER_ORIG2PRIM('sum')
 def sum_orig2prim(op, xs):
     x0 = xs[0]
@@ -391,7 +405,7 @@ def pow_orig2prim(op, x, y):
 
 @REGISTER_ORIG2PRIM('square')
 def square_orig2prim(op, x):
-    return primops.pow(x, fill_const(2., x.shape, x.dtype))
+    return primops.square(x)
 
 
 @REGISTER_ORIG2PRIM('elementwise_max')
@@ -436,12 +450,35 @@ def reduce_sum_orig2prim(op, x):
 def reduce_mean_orig2prim(op, x):
     axes = tuple(range(0, len(
         x.shape))) if op.attr('reduce_all') else op.attr('dim')
-    return primops.mean(x, axes, op.attr('keepdim'))
+    return primops.mean(x, axes, op.attr('keep_dim'))
 
 
 @REGISTER_ORIG2PRIM('batch_norm')
-def batch_norm_orig2prim(op, x):
-    pass
+def batch_norm_orig2prim(op, bias, run_mean, momentum_tensor, scale, run_var,
+                         x):
+    momentum = op.attr('momentum')
+    eps = op.attr('epsilon')
+    is_test = op.attr('is_test')
+    data_layout = op.attr('data_layout')
+    use_global_stats = op.attr('use_global_stats')
+    trainable_statistics = op.attr('trainable_statistics')
+    reserve_space = None if len(
+        op.output_names) == 5 else get_output_var_list(op)[1]
+
+    feature_axis = 1 if data_layout in ('NC', 'NCL', 'NCHW',
+                                        'NCHWD') else len(x.shape) - 1
+    use_run_stat = (is_test and (not trainable_statistics)) or use_global_stats
+
+    return primops.batch_norm(x,
+                              feature_axis,
+                              scale,
+                              bias,
+                              run_mean,
+                              run_var,
+                              eps=eps,
+                              momentum=momentum,
+                              use_run_stat=use_run_stat,
+                              reserve_space=reserve_space)
 
 
 @REGISTER_ORIG2PRIM('size')
