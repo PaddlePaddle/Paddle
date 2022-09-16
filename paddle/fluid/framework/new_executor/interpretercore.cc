@@ -43,6 +43,9 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
                             true,
                             "Use new executor in control flow op");
+PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor_cache,
+                            false,
+                            "Cache new executor in control flow op");
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -279,6 +282,8 @@ const VariableScope* InterpreterCore::GetVariableScope() const {
 
 void InterpreterCore::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
+  paddle::framework::interpreter::build_variable_scope(
+      block_, &var_scope_, create_local_scope_);
   auto& var_list = var_scope_.MutableVarList();
   for (size_t i = 0; i < var_list.size(); i++) {
     var_list[i] = new_scope->FindVar(var_scope_.GetNameById(i));

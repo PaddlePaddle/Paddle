@@ -35,6 +35,7 @@
 
 DECLARE_bool(new_executor_use_local_scope);
 DECLARE_bool(control_flow_use_new_executor);
+DECLARE_bool(control_flow_use_new_executor_cache);
 
 namespace paddle {
 namespace framework {
@@ -67,6 +68,8 @@ class InterpreterCore {
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
 
   const VariableScope* GetVariableScope() const;
+
+  platform::Place Place() const { return place_; }
 
   void reset_scope(Scope* new_scope);
 
