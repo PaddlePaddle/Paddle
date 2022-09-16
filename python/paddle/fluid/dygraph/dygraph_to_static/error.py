@@ -66,6 +66,7 @@ class TraceBackFrame(OriginInfo):
         self.location = location
         self.function_name = function_name
         self.source_code = source_code
+        self.error_line = ''
 
     def formated_message(self):
         # self.source_code may be empty in some functions.
@@ -85,6 +86,7 @@ class TraceBackFrameRange(OriginInfo):
         self.location = location
         self.function_name = function_name
         self.source_code = []
+        self.error_line = ''
         blank_count = []
         begin_lineno = max(1, self.location.lineno - int(SOURCE_CODE_RANGE / 2))
 
@@ -98,6 +100,7 @@ class TraceBackFrameRange(OriginInfo):
                 blank_count.append(len(line) - len(line_lstrip))
 
             if i == self.location.lineno:
+                self.error_line = self.source_code[-1]
                 hint_msg = '~' * len(self.source_code[-1]) + ' <--- HERE'
                 self.source_code.append(hint_msg)
                 blank_count.append(blank_count[-1])
@@ -170,6 +173,27 @@ class ErrorData(object):
         setattr(new_exception, ERROR_DATA, self)
         return new_exception
 
+    def numpy_api_check(self, format_exception, error_line):
+        if self.error_type is not TypeError:
+            return format_exception
+        tb = self.origin_traceback
+        is_numpy_api_err = False
+        np_api_name = ''
+        for frame in tb:
+            if 'site-packages/numpy/' in frame.filename:
+                if 'np.' + frame.name in error_line or 'numpy.' + frame.name in error_line:
+                    is_numpy_api_err = True
+                    np_api_name = frame.name
+                    break
+        if is_numpy_api_err:
+            return [
+                "TypeError: Variables created in dy2static process will be an unexpected keyword for numpy API",
+                "           Code '{}' called numpy API {}, please use Paddle API to replace it"
+                .format(error_line, np_api_name),
+            ]
+        else:
+            return format_exception
+
     def create_message(self):
         """
         Creates a custom error message which includes trace stack with source code information of dygraph from user.
@@ -213,6 +237,7 @@ class ErrorData(object):
                     dygraph_func_info.source_code)
 
             message_lines.append(traceback_frame.formated_message())
+            error_line = traceback_frame.error_line
         message_lines.append("")
 
         # Add paddle traceback after user code traceback
@@ -230,6 +255,9 @@ class ErrorData(object):
         # is gather than 1, for example, the error_type is IndentationError.
         format_exception = traceback.format_exception_only(
             self.error_type, self.error_value)
+
+        format_exception = self.numpy_api_check(format_exception, error_line)
+
         error_message = [
             " " * BLANK_COUNT_BEFORE_FILE_STR + line
             for line in format_exception

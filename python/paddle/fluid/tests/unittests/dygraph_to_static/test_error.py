@@ -448,5 +448,23 @@ class TestKeyError(unittest.TestCase):
             x = paddle.to_tensor([1])
             func_ker_error(x)
 
+
+@paddle.jit.to_static
+def NpApiErr():
+    a = paddle.to_tensor([1,2])
+    b = np.sum(a.numpy())
+    print(b)
+
+class TestNumpyApiErr(unittest.TestCase):
+    def test_numpy_api_err(self):
+        flag = False
+        try:
+            NpApiErr()
+        except TypeError as e:
+            self.assertTrue("TypeError: Variables created in dy2static process will be an unexpected keyword for numpy API" in e.args[0])
+            flag = True
+        finally:
+            self.assertTrue(flag)
+
 if __name__ == '__main__':
     unittest.main()
