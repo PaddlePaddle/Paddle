@@ -57,13 +57,15 @@ class Controller {
   }
 
   bool UseLayoutAutoTune() {
+    bool use_autotune = false;
 #if defined(PADDLE_WITH_CUDA)
-    if (paddle::platform::is_gpu_place(tracer_->ExpectedPlace())) {
-      return tracer_->UseLayoutAutoTune();
+    auto place = tracer_->ExpectedPlace();
+    bool is_gpu_place = paddle::platform::is_gpu_place(place);
+    if (is_gpu_place) {
+      use_autotune = tracer_->UseLayoutAutoTune();
     }
 #endif
-    tracer_->DisableLayoutAutoTune();
-    return false;
+    return use_autotune;
   }
 
   void DisableLayoutAutoTune() { tracer_->DisableLayoutAutoTune(); }

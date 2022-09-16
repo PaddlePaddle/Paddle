@@ -137,9 +137,8 @@ LayoutAutotuneGuard::LayoutAutotuneGuard(std::shared_ptr<Tracer> tracer,
     : tracer_(tracer) {
   pre_layout_autotune_ = tracer_->UseLayoutAutoTune();
   if (pre_layout_autotune_ != use_autotune) {
-    if (use_autotune) {
-      tracer_->EnableLayoutAutoTune();
-    } else {
+    tracer_->EnableLayoutAutoTune();
+    if (!use_autotune) {
       tracer_->DisableLayoutAutoTune();
     }
   }

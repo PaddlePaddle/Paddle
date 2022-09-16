@@ -86,8 +86,8 @@ paddle::experimental::Tensor conv2d_ad_func(
     auto transformer = egr::EagerLayoutAutotune<std::string>(
         op_name, tensors_vector, &data_format);
     auto new_input = transformer->TransInTensor("input", input);
-    paddle::imperative::LayoutAutotuneGuard guard(
-        egr::Controller::Instance().GetCurrentTracer(), false);
+    bool need_tune = egr::Controller::Instance().UseLayoutAutoTune();
+    egr::Controller::Instance().DisableLayoutAutoTune();
     auto out = conv2d_ad_func(new_input,
                               filter,
                               strides,
@@ -100,6 +100,9 @@ paddle::experimental::Tensor conv2d_ad_func(
                               workspace_size_MB,
                               exhaustive_search);
     transformer->SetOutTensorLayout(&out);
+    if (need_tune) {
+      egr::Controller::Instance().EnableLayoutAutoTune();
+    }
     // Returns
     return out;
   }
