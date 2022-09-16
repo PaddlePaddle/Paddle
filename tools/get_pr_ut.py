@@ -376,10 +376,6 @@ class PRChecker(object):
                                 print('{}/added_ut'.format(PADDLE_ROOT))
                                 print("tempfilename:", tempfilename)
                                 print("filepath:", filepath)
-                                print("--------------------")
-                                for i in utfile:
-                                    print(i)
-                                print("---------------------")
                                 for i in utfile:
                                     i = i.strip('\n')
                                     print(i)
