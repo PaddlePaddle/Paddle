@@ -16,6 +16,7 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/array.h"
@@ -57,37 +58,40 @@ void LaunchFlipCudaKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<int>& axis,
                           DenseTensor* out) {
-  std::vector<int> flip_dims_v = axis;
   auto* in_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
   auto x_dims = x.dims();
   const int total_dims = x_dims.size();
   const int64_t numel = x.numel();
-
-  int block_size = 512;
-  dim3 dim_block(block_size);
-  dim3 dim_grid((numel + block_size - 1) / block_size);
-
-  for (size_t i = 0; i < flip_dims_v.size(); ++i) {
-    if (flip_dims_v[i] < 0) {
-      flip_dims_v[i] += total_dims;
-    }
-  }
-
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   auto x_stride = phi::stride(x_dims);
 
   phi::Array<int64_t, N> stride_a;
   phi::Array<int64_t, N> shape_a;
   phi::Array<int, N> flip_dims_a;
-  size_t flip_dims_size = flip_dims_v.size();
+  size_t flip_dims_size = axis.size();
+
   for (size_t idx = 0; idx < N; ++idx) {
     stride_a[idx] = x_stride[idx];
     shape_a[idx] = x_dims[idx];
-    flip_dims_a[idx] = idx < flip_dims_size ? flip_dims_v[idx] : 0;
+    flip_dims_a[idx] = idx < flip_dims_size ? axis[idx] : 0;
   }
-  flip_cuda_kernel<T, N><<<dim_grid, dim_block, 0, dev_ctx.stream()>>>(
-      numel, in_data, out_data, shape_a, stride_a, flip_dims_a, flip_dims_size);
+
+  for (size_t i = 0; i < flip_dims_a.size(); ++i) {
+    if (flip_dims_a[i] < 0) {
+      flip_dims_a[i] += total_dims;
+    }
+  }
+  flip_cuda_kernel<T, N>
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+          numel,
+          in_data,
+          out_data,
+          shape_a,
+          stride_a,
+          flip_dims_a,
+          flip_dims_size);
 }
 
 template <typename T, typename Context>
@@ -98,8 +102,6 @@ void FlipKernel(const Context& dev_ctx,
   const size_t total_dims = x.dims().size();
   switch (total_dims) {
     case 1:
-<<<<<<< HEAD
-<<<<<<< HEAD
       LaunchFlipCudaKernel<T, Context, 1>(dev_ctx, x, axis, out);
       break;
     case 2:
@@ -125,40 +127,6 @@ void FlipKernel(const Context& dev_ctx,
       break;
     case 9:
       LaunchFlipCudaKernel<T, Context, 9>(dev_ctx, x, axis, out);
-=======
-      launch_flip_cuda_kernel<T, Context, 1>(dev_ctx, x, axis, out);
-=======
-      LaunchFlipCudaKernel<T, Context, 1>(dev_ctx, x, axis, out);
->>>>>>> fix function name
-      break;
-    case 2:
-      LaunchFlipCudaKernel<T, Context, 2>(dev_ctx, x, axis, out);
-      break;
-    case 3:
-      LaunchFlipCudaKernel<T, Context, 3>(dev_ctx, x, axis, out);
-      break;
-    case 4:
-      LaunchFlipCudaKernel<T, Context, 4>(dev_ctx, x, axis, out);
-      break;
-    case 5:
-      LaunchFlipCudaKernel<T, Context, 5>(dev_ctx, x, axis, out);
-      break;
-    case 6:
-      LaunchFlipCudaKernel<T, Context, 6>(dev_ctx, x, axis, out);
-      break;
-    case 7:
-      LaunchFlipCudaKernel<T, Context, 7>(dev_ctx, x, axis, out);
-      break;
-    case 8:
-      LaunchFlipCudaKernel<T, Context, 8>(dev_ctx, x, axis, out);
-      break;
-    case 9:
-<<<<<<< HEAD
-      launch_flip_cuda_kernel<T, Context, 9>(dev_ctx, x, axis, out);
->>>>>>> Optimize flip kernel by eliminating H2D data transfer, test=develop
-=======
-      LaunchFlipCudaKernel<T, Context, 9>(dev_ctx, x, axis, out);
->>>>>>> fix function name
       break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
