@@ -95,12 +95,6 @@ def _keep_layer_norm_scale_bias_to_fp32(*args):
         return old_value
 
 
-def _use_int8_input(op, in_name):
-    op_type = op.type
-    if op_type == 'fused_multi_transformer_int8':
-        return in_name in {'QKVW', 'OutLinearW', 'FFN1Weight', 'FFN2Weight'}
-
-
 def _keep_fp32_input(op, in_name):
     op_type = op.type
     if op_type == 'batch_norm':
@@ -118,11 +112,6 @@ def _keep_fp32_input(op, in_name):
         }
     if op_type == 'fused_multi_transformer':
         return in_name in {'LnScale', 'LnBias', 'FFNLnScale', 'FFNLnBias'}
-    if op_type == 'fused_multi_transformer_int8':
-        return in_name in {
-            'LnScale', 'LnBias', 'FFNLnScale', 'FFNLnBias', 'QKVOutScale',
-            'OutLinearOutScale', 'FFN1OutScale', 'FFN2OutScale'
-        }
     return False
 
 
@@ -559,21 +548,6 @@ def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
             param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
             param_t.set(np.float16(data), place)
-
-
-def cast_parameters_to_int8(place, program, scope=None, to_int8_var_names=None):
-    all_parameters = []
-    for block in program.blocks:
-        all_parameters.extend(block.all_parameters())
-
-    int8_var_names = to_int8_var_names if to_int8_var_names else set()
-    var_scope = scope if scope else global_scope()
-    for param in all_parameters:
-        if param.name in int8_var_names:
-            _logger.debug("---- cast {} to int8 dtype ----".format(param.name))
-            param_t = var_scope.find_var(param.name).get_tensor()
-            data = np.array(param_t)
-            param_t.set(np.int8(data), place)
 
 
 def rewrite_program(main_prog, amp_lists):
