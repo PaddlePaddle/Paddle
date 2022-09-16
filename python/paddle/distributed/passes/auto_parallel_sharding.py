@@ -22,7 +22,7 @@ from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass
 from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op
 from paddle.distributed.auto_parallel.process_group import new_process_group
-from paddle.distributed.auto_parallel.operators.common import is_parameter_related
+from paddle.distributed.auto_parallel.operators.common import is_parameter_related, is_data_parallel_reduce_op
 from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_dist_op_attr_for_program_by_mesh_and_mapping, set_var_dist_attr
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -346,7 +346,8 @@ class ShardingPass(PassBase):
 
         dp_ring_ids = [group.id for group in self.dp_groups]
         for idx, op in reversed(list(enumerate(main_block.ops))):
-            if _is_param_grad_allreduce_op(op, main_block, dp_ring_ids):
+            if is_data_parallel_reduce_op(op):
+                # if _is_param_grad_allreduce_op(op, main_block, dp_ring_ids):
                 input_name = op.input_arg_names[0]
                 base_name = _get_base_name_from_grad_name(input_name)
                 sharding_info = self.varname_to_sharding_info[base_name]
