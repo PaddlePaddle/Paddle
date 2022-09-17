@@ -444,8 +444,6 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    framework::LibraryType library = framework::LibraryType::kPlain;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -453,12 +451,14 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
     // TODO(danqing): support other interp_method
     if (this->CanMKLDNNBeUsed(ctx, data_type) &&
         (interp_method == "nearest" || interp_method == "bilinear")) {
-      layout = framework::DataLayout::kMKLDNN;
-      library = framework::LibraryType::kMKLDNN;
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
 
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
