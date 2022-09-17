@@ -136,7 +136,7 @@ class Normal(distribution.Distribution):
             seed (int): Python integer number.
 
         Returns:
-            Tensor. A tensor with prepended dimensions shape.The data type is float32.
+            Tensor, A tensor with prepended dimensions shape.The data type is float32.
 
         """
         if not _non_static_mode():
