@@ -544,7 +544,13 @@ void LaunchBroadcastKernel(
   int tail_tid = numel % (read_lens * gpu_config.GetBlockSize());
 
   if (broadcast_num > (Arity >> 1)) {
-    VectorizedBroadcastKernel<Functor, InT, OutT, Arity, NumOuts, VecSize, true>
+    VectorizedBroadcastKernel<Functor,
+                              InT,
+                              OutT,
+                              Arity,
+                              NumOuts,
+                              VecSize,
+                              (Arity > 1)>
         <<<blocks, threads, 0, stream>>>(ins_data,
                                          outs_data,
                                          use_broadcast,
