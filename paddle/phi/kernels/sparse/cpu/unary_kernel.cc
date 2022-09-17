@@ -60,11 +60,11 @@ void DivCsrScalarKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void TransposeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
-                        const std::vector<int>& dims,
+                        const std::vector<int>& perm,
                         SparseCooTensor* out) {
   // create out sparse tensor
   int64_t x_nnz = x.nnz();
-  DDim out_dims = x.dims().transpose(dims);
+  DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
   DenseTensor out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
@@ -73,9 +73,9 @@ void TransposeCooKernel(const Context& dev_ctx,
   const DenseTensor& x_indices = x.indices();
   const auto* x_indices_data = x_indices.data<int64_t>();
   auto* out_indices_data = out_indices.data<int64_t>();
-  for (unsigned int i = 0; i < dims.size(); ++i) {
+  for (unsigned int i = 0; i < perm.size(); ++i) {
     for (int64_t j = 0; j < x_nnz; ++j) {
-      out_indices_data[j + i * x_nnz] = x_indices_data[j + dims[i] * x_nnz];
+      out_indices_data[j + i * x_nnz] = x_indices_data[j + perm[i] * x_nnz];
     }
   }
 }
@@ -83,11 +83,11 @@ void TransposeCooKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void TransposeCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
-                        const std::vector<int>& dims,
+                        const std::vector<int>& perm,
                         SparseCsrTensor* out) {
-  unsigned int n_dim = dims.size();
+  unsigned int n_dim = perm.size();
   // create out sparse tensor
-  DDim out_dims = x.dims().transpose(dims);
+  DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_crows;
   if (n_dim == 2) {
     out_crows = Empty<int64_t, Context>(dev_ctx, {out_dims[0] + 1});
@@ -104,24 +104,24 @@ void TransposeCsrKernel(const Context& dev_ctx,
   const DenseTensor& x_values = x.non_zero_elements();
 
   // return a copy of x
-  if (dims[0] == 0 && dims[1] == 1 && (n_dim == 2 || dims[2] == 2)) {
+  if (perm[0] == 0 && perm[1] == 1 && (n_dim == 2 || perm[2] == 2)) {
     phi::Copy(dev_ctx, x_crows, dev_ctx.GetPlace(), false, &out_crows);
     phi::Copy(dev_ctx, x_cols, dev_ctx.GetPlace(), false, &out_cols);
     phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, &out_values);
     return;
   }
   // transpose by two stages
-  if (dims[0] == 1 && dims[1] == 2) {  // dims == {1, 2, 0}
+  if (perm[0] == 1 && perm[1] == 2) {  // perm == {1, 2, 0}
     SparseCsrTensor temp;
     TransposeCsrKernel<T, Context>(dev_ctx, x, {1, 0, 2}, &temp);
     TransposeCsrKernel<T, Context>(dev_ctx, temp, {0, 2, 1}, out);
     return;
-  } else if (dims[0] == 2 && dims[1] == 0) {  // dims == {2, 0, 1}
+  } else if (perm[0] == 2 && perm[1] == 0) {  // perm == {2, 0, 1}
     SparseCsrTensor temp;
     TransposeCsrKernel<T, Context>(dev_ctx, x, {0, 2, 1}, &temp);
     TransposeCsrKernel<T, Context>(dev_ctx, temp, {1, 0, 2}, out);
     return;
-  } else if (dims[0] == 2 && dims[1] == 1) {  // dims == {2, 1, 0}
+  } else if (perm[0] == 2 && perm[1] == 1) {  // perm == {2, 1, 0}
     SparseCsrTensor temp;
     TransposeCsrKernel<T, Context>(dev_ctx, x, {1, 0, 2}, &temp);
     TransposeCsrKernel<T, Context>(dev_ctx, temp, {2, 0, 1}, out);
@@ -136,7 +136,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
   const T* x_values_data = x_values.data<T>();
 
   int64_t x_nnz = x.nnz();
-  if (n_dim == 2) {  // dims == {1, 0}
+  if (n_dim == 2) {  // perm == {1, 0}
     // compute out_crows_data by x_cols_data
     for (int i = 0; i < out_dims[0]; ++i) {
       out_crows_data[i] = 0;
@@ -171,7 +171,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
     int out_n_rows = out_dims[1];
     int x_n_rows = x.dims()[1];
     for (int k = 0; k < out_dims[0]; ++k) {
-      if (dims[0] == 0) {  // dims == {0, 2, 1}
+      if (perm[0] == 0) {  // perm == {0, 2, 1}
         // compute out_crows_data by x_cols_data
         for (int i = 0; i < out_n_rows; ++i) {
           out_crows_data[i] = 0;
@@ -206,7 +206,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
         x_cols_data += x_crows_data[x_n_rows];
         x_values_data += x_crows_data[x_n_rows];
         x_crows_data += x_n_rows + 1;
-      } else if (dims[0] == 1 && dims[1] == 0) {  // dims == {1, 0, 2}
+      } else if (perm[0] == 1 && perm[1] == 0) {  // perm == {1, 0, 2}
         for (int i = 0; i < out_n_rows; ++i) {
           out_crows_data[i] = 0;
         }

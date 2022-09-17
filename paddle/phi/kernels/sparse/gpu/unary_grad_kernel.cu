@@ -35,7 +35,7 @@ template <typename T, typename Context>
 void TransposeCooGradKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             const SparseCooTensor& dout,
-                            const std::vector<int>& dims,
+                            const std::vector<int>& perm,
                             SparseCooTensor* dx) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
   std::vector<int> grad_dims = get_gpu_grad_dims(dims);
@@ -46,7 +46,7 @@ template <typename T, typename Context>
 void TransposeCsrGradKernel(const Context& dev_ctx,
                             const SparseCsrTensor& x,
                             const SparseCsrTensor& dout,
-                            const std::vector<int>& dims,
+                            const std::vector<int>& perm,
                             SparseCsrTensor* dx) {
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
   std::vector<int> grad_dims = get_gpu_grad_dims(dims);
