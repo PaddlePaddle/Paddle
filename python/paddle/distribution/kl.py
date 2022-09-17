@@ -42,7 +42,7 @@ def kl_divergence(p, q):
         q (Distribution): ``Distribution`` object. Inherits from the Distribution Base class.
 
     Returns:
-        Tensor: Batchwise KL-divergence between distribution p and q.
+        Tensor, Batchwise KL-divergence between distribution p and q.
 
     Examples:
 
@@ -71,8 +71,8 @@ def register_kl(cls_p, cls_q):
     implemention funciton by the decorator.
 
     Args:
-        cls_p(Distribution): The Distribution type of Instance p. Subclass derived from ``Distribution``.
-        cls_q(Distribution): The Distribution type of Instance q. Subclass derived from ``Distribution``.
+        cls_p (Distribution): The Distribution type of Instance p. Subclass derived from ``Distribution``.
+        cls_q (Distribution): The Distribution type of Instance q. Subclass derived from ``Distribution``.
 
     Examples:
         .. code-block:: python

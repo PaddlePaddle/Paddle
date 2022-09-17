@@ -1757,12 +1757,12 @@ def margin_cross_entropy(logits,
                     Default value is `'mean'`.
 
     Returns:
-            Return the cross entropy loss if \
-            `return_softmax` is False, otherwise the tuple \
-            (loss, softmax), softmax is shard_softmax when \
-            using model parallel, otherwise softmax is in \
-            the same shape with input logits. If ``reduction == None``, \
-            the shape of loss is ``[N, 1]``, otherwise the shape is ``[1]``.
+        Tensor|tuple[Tensor, Tensor], return the cross entropy loss if
+            `return_softmax` is False, otherwise the tuple (loss, softmax),
+            softmax is shard_softmax when using model parallel, otherwise
+            softmax is in the same shape with input logits. If
+            ``reduction == None``, the shape of loss is ``[N, 1]``, otherwise
+            the shape is ``[1]``.
 
     Examples:
 

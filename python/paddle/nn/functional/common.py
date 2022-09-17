@@ -185,17 +185,13 @@ def interpolate(x,
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
-        'linear' : Linear interpolation
 
-        'bilinear' : Bilinear interpolation
-
-        'trilinear' : Trilinear interpolation
-
-        'nearest' : Nearest neighbor interpolation
-
-        'bicubic' : Bicubic interpolation
-
-        'area': Area interpolation
+    - 'linear' : Linear interpolation
+    - 'bilinear' : Bilinear interpolation
+    - 'trilinear' : Trilinear interpolation
+    - 'nearest' : Nearest neighbor interpolation
+    - 'bicubic' : Bicubic interpolation
+    - 'area': Area interpolation
 
     Linear interpolation is the method of using a line connecting two known quantities
     to determine the value of an unknown quantity between the two known quantities.
@@ -913,15 +909,16 @@ def dropout(x,
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer'].
 
-                           1. upscale_in_train(default), upscale the output at training time
+            1. upscale_in_train(default), upscale the output at training time
 
-                              - train: out = input * mask / ( 1.0 - dropout_prob )
-                              - inference: out = input
+                - train: out = input * mask / ( 1.0 - dropout_prob )
+                - inference: out = input
 
-                           2. downscale_in_infer, downscale the output at inference
+            2. downscale_in_infer, downscale the output at inference
 
-                              - train: out = input * mask
-                              - inference: out = input * (1.0 - dropout_prob)
+                - train: out = input * mask
+                - inference: out = input * (1.0 - dropout_prob)
+
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1787,8 +1784,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     correct label directly may cause overfitting and reduce the ability of the
     model to adapt.
 
-    Label
-    smoothing replaces the ground-truth label :math:`y` with the weighted sum
+    Label smoothing replaces the ground-truth label :math:`y` with the weighted sum
     of itself and some fixed distribution :math:`\mu`. For class :math:`k`,
     i.e.
 
