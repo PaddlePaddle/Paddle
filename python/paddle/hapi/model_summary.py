@@ -30,11 +30,11 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
     Args:
         net (Layer): the network which must be a subinstance of Layer.
-        input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. if model only 
+        input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. if model only
                     have one input, input_size can be tuple or InputSpec. if model
-                    have multiple input, input_size must be a list which contain 
+                    have multiple input, input_size must be a list which contain
                     every input's shape. Note that input_size only dim of
-                    batch_size can be None or -1. Default: None. Note that 
+                    batch_size can be None or -1. Default: None. Note that
                     input_size and input cannot be None at the same time.
         dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
         input: the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
@@ -92,10 +92,10 @@ def summary(net, input_size=None, dtypes=None, input=None):
                         x = paddle.flatten(x, 1)
                         x = self.fc(x + y)
                     return x
-            
+
             lenet_multi_input = LeNetMultiInput()
 
-            params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)], 
+            params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)],
                                         dtypes=['float32', 'float32'])
             print(params_info)
 
@@ -109,7 +109,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
                         x = paddle.flatten(x, 1)
                         x = self.fc(x + inputs[1])
                     return x
-            
+
             lenet_list_input = LeNetListInput()
             input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
             params_info = paddle.summary(lenet_list_input, input=input_data)

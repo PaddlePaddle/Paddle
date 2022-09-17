@@ -326,7 +326,8 @@ void Launch2DColumnReduce(const phi::GPUContext& dev_ctx,
   } else {
     framework::Tensor tmp_sum;
     tmp_sum.Resize({grid.y, left_num});
-    tmp_sum.mutable_data<ReduceParamType<T>>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<ReduceParamType<T>>(
+        &tmp_sum, tmp_sum.numel() * sizeof(ReduceParamType<T>));
 
     BiasAddBw2DReduceKernel<T><<<grid, block, 0, stream>>>(
         d_out,

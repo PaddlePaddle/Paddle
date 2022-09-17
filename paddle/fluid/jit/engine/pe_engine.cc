@@ -74,8 +74,7 @@ PEEngine::PEEngine(const std::shared_ptr<FunctionInfo> &info,
 
 void PEEngine::CreateGraphAndPE() {
   framework::details::BuildStrategy build_strategy;
-  build_strategy.inference_ = true;
-  build_strategy.del_dropout_ = true;
+  build_strategy.enable_inference_pass_ = true;  // use pe to inference
   auto execution_strategy = GetExecutionStrategy(place_);
 
   auto &program_desc = info_->ProgramDesc();
@@ -86,7 +85,6 @@ void PEEngine::CreateGraphAndPE() {
   graph_ = std::make_shared<Graph>(program_desc, start_op_index, end_op_index);
   inner_pe_ = std::make_shared<ParallelExecutor>(
       place_, &scope_, execution_strategy, build_strategy, graph_.get());
-  inner_pe_->PrepareVariables(&scope_);
   inner_pe_->SkipMemoryReuse(/*scope_idx=*/0, info_->InputArgNames());
 }
 
@@ -98,14 +96,8 @@ std::vector<Tensor> PEEngine::operator()(const std::vector<Tensor> &inputs) {
 std::vector<DenseTensor> PEEngine::operator()(
     const std::vector<DenseTensor> &inputs) {
   utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
-
-  // update op_handle scope_map in pe->executor_->Graph
-  std::unordered_map<framework::Scope *, framework::Scope *> scope_map = {
-      {inner_pe_->GetLocalScopes().front(), &scope_}};
-  inner_pe_->ResetOpHandleScopeMapOfGraphs(scope_map);
   // need to recreate tmp variables in new scope
   inner_pe_->PrepareVariables(&scope_);
-
   inner_pe_->RunWithoutFetch(info_->OutputArgNames());
 
   std::vector<DenseTensor> outputs;

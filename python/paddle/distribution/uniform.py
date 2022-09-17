@@ -21,7 +21,7 @@ from paddle.distribution import distribution
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
                                       check_variable_and_dtype, convert_dtype)
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
                                  elementwise_mul, elementwise_sub, nn, ops,
                                  tensor)
@@ -191,11 +191,17 @@ class Uniform(distribution.Distribution):
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
-                                    'out_dtype', value.dtype)
-            ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
-                                    'out_dtype', value.dtype)
-            return nn.log(lb * ub) - nn.log(self.high - self.low)
+            if in_dygraph_mode():
+                lb = _C_ops.cast(lb_bool, value.dtype)
+                ub = _C_ops.cast(ub_bool, value.dtype)
+                return nn.log(lb * ub) - nn.log(self.high - self.low)
+
+            if _in_legacy_dygraph():
+                lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
+                                        'out_dtype', value.dtype)
+                ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
+                                        'out_dtype', value.dtype)
+                return nn.log(lb * ub) - nn.log(self.high - self.low)
 
         name = self.name + '_log_prob'
         lb_bool = self.low < value
@@ -221,11 +227,17 @@ class Uniform(distribution.Distribution):
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
-                                    'out_dtype', value.dtype)
-            ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
-                                    'out_dtype', value.dtype)
-            return (lb * ub) / (self.high - self.low)
+            if in_dygraph_mode():
+                lb = _C_ops.cast(lb_bool, value.dtype)
+                ub = _C_ops.cast(ub_bool, value.dtype)
+                return (lb * ub) / (self.high - self.low)
+
+            if _in_legacy_dygraph():
+                lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
+                                        'out_dtype', value.dtype)
+                ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
+                                        'out_dtype', value.dtype)
+                return (lb * ub) / (self.high - self.low)
 
         name = self.name + '_probs'
         lb_bool = self.low < value

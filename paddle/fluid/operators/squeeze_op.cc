@@ -296,15 +296,46 @@ class SqueezeDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
 // squeeze_grad, in this way, the framework can reuse the memory of X
 // immediately the squeeze2_op is finished.
 // Considering compatibility issues, we could not fix squeeze2_op
-class Squeeze2OpMaker : public SqueezeOpMaker {
+class Squeeze2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    SqueezeOpMaker::Make();
+    AddInput("X", "(Tensor). The input tensor of squeeze operator.");
+    AddOutput("Out", "(Tensor). The output tensor of squeeze operator.");
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in SqueezeGradOp.")
         .AsIntermediate()
         .AsExtra();
+    AddAttr<std::vector<int>>("axes",
+                              "(std::vector<int>). List of integers,"
+                              " indicating the dimensions to squeeze.")
+        .SetDefault({})
+        .SupportTensor();
+    AddComment(R"DOC(
+        Squeeze2 Operator.
+
+        Remove single-dimensional entries from the shape of a tensor.
+        Takes a parameter axes with a list of axes to squeeze.
+        If axes is not provided, all the single dimensions will be removed from the shape.
+        If an axis is selected with shape entry not equal to one, an error is raised.
+
+        Examples:
+        Case 1:
+          Given
+            X.shape = (1, 3, 1, 5)
+          and
+            axes = [0]
+          we get:
+            Out.shape = (3, 1, 5)
+
+        Case 2:
+          Given
+            X.shape = (1, 3, 1, 5)
+          and
+            axes = []
+          we get:
+            Out.shape = (3, 5)
+    )DOC");
   }
 };
 

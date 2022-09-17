@@ -33,7 +33,7 @@ from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogge
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func, unwrap
 from paddle.fluid.dygraph.layers import Layer
 
 __all__ = ["convert_call"]
@@ -206,13 +206,19 @@ def convert_call(func):
             # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
             # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
             # `foo` function. So `isinstance(fn, StaticFunction)` is added here.
+            _origfunc = unwrap(func)
             global_functions = set()
-            for fn in func.__globals__.values():
+            for fn in _origfunc.__globals__.values():
                 if inspect.isfunction(fn):
                     global_functions.add(fn)
                 elif isinstance(fn, StaticFunction):
                     _, fn = unwrap_decorators(fn)
                     global_functions.add(fn)
+                elif inspect.isclass(fn):
+                    if isinstance(fn.__dict__.get(func.__name__, None),
+                                  staticmethod):
+                        global_functions.add(
+                            func)  # Add func to ensure that we will convert
 
             if func in global_functions:
                 converted_call = convert_to_static(func)

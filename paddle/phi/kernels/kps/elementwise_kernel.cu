@@ -32,6 +32,7 @@ void MaximumKernel(const Context& dev_ctx,
   int axis = -1;
   MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
+
 // Create the definition of Minimum
 DEFINE_CUDA_ELEMENTWISE_OP(Minimum)
 template <typename T, typename Context>
@@ -92,11 +93,25 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(
-    fmax, KPS, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(fmax,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::FMaxKernel,
+                   float,
+                   double,
+                   int,
+                   float16,
+                   int64_t) {}
 
-PD_REGISTER_KERNEL(
-    fmin, KPS, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(fmin,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::FMinKernel,
+                   float,
+                   double,
+                   int,
+                   float16,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(maximum_raw,
                    KPS,
@@ -125,6 +140,7 @@ PD_REGISTER_KERNEL(remainder_raw,
                    float,
                    double,
                    int,
+                   float16,
                    int64_t) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
                    KPS,
@@ -139,6 +155,7 @@ PD_REGISTER_KERNEL(elementwise_heaviside_raw,
                    float,
                    double,
                    int,
+                   float16,
                    int64_t) {}
 PD_REGISTER_KERNEL(elementwise_pow_raw,
                    KPS,
@@ -147,5 +164,6 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    float,
                    double,
                    int,
+                   float16,
                    int64_t) {}
 #endif

@@ -9,21 +9,19 @@ endforeach()
 # add nne
 find_path(
   DLNNE_INCLUDE_DIR dlnne.h
-  PATHS $ENV{SOFTWARE_SOURCE_DIR} $ENV{SOFTWARE_SOURCE_DIR}/driver/nne/include
+  PATHS $ENV{DL_SDK_DIR} $ENV{DL_SDK_DIR}/include/dlnne
   NO_DEFAULT_PATH)
 
 find_library(
   DLNNE_LIB libdlnne.so
-  PATHS $ENV{SOFTWARE_BUILD_DIR} $ENV{SOFTWARE_BUILD_DIR}/driver/nne
+  PATHS $ENV{DL_SDK_DIR} $ENV{DL_SDK_DIR}/lib
   NO_DEFAULT_PATH)
 
-find_path(CUDA_INCLUDE_DIR cuda.h
-          $ENV{SOFTWARE_BUILD_DIR}/llvm-project-10/cuda/include)
+find_path(CUDA_INCLUDE_DIR cuda.h $ENV{DL_SDK_DIR}/include)
 
 find_library(
   CURT_LIB libcurt.so
-  PATHS $ENV{SOFTWARE_BUILD_DIR}
-        $ENV{SOFTWARE_BUILD_DIR}/llvm-project-10/cuda/lib
+  PATHS $ENV{DL_SDK_DIR} $ENV{DL_SDK_DIR}/lib
   NO_DEFAULT_PATH)
 
 message("DLNNE_INCLUDE_DIR: "${DLNNE_INCLUDE_DIR})

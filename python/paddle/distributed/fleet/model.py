@@ -18,7 +18,7 @@ import numpy as np
 from .base import topology as tp
 from .base.topology import ParallelMode
 from .meta_parallel import TensorParallel, model_parallel_random_seed
-from .meta_parallel import PipelineParallel, ShardingParallel
+from .meta_parallel import PipelineParallel, ShardingParallel, PipelineParallelWithInterleave, PipelineLayer
 from paddle.fluid import core
 from paddle.distributed.fleet.utils.recompute import LegacyRecomputeFunction
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
@@ -185,6 +185,16 @@ def distributed_model(model):
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
         model = TensorParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
-        model = PipelineParallel(model, fleet_env._hcg, strategy=strategy)
+        assert isinstance(
+            model, PipelineLayer
+        ), "For pipeline parallel, the model should an instance of PipelineLayer"
+        if model.get_num_virtual_stages() == 1:
+            # 1f1b pipeline
+            model = PipelineParallel(model, fleet_env._hcg, strategy=strategy)
+        else:
+            # interleave pipeline
+            model = PipelineParallelWithInterleave(model,
+                                                   fleet_env._hcg,
+                                                   strategy=strategy)
 
     return model

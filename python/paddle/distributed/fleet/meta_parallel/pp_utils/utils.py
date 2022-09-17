@@ -107,7 +107,7 @@ def _initialize_recompute_hcg(hcg):
 
 def _all_gather(tensor, group=None, use_calc_stream=True):
     """
-    The main difference with paddle.distributed.all_gather: 
+    The main difference with paddle.distributed.all_gather:
     no need to pass in tensor_list, the returned tensor is spliced
     """
     if group is not None and not group.is_member():

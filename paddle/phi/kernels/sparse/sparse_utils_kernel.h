@@ -24,57 +24,55 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void DenseToSparseCooKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const int64_t sparse_dim,
-                            SparseCooTensor* out);
+void DenseToCooKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const int64_t sparse_dim,
+                      SparseCooTensor* out);
 
 template <typename T, typename Context>
-SparseCooTensor DenseToSparseCoo(const Context& dev_ctx,
-                                 const DenseTensor& x,
-                                 const int64_t sparse_dim) {
+SparseCooTensor DenseToCoo(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const int64_t sparse_dim) {
   DenseTensor indices;
   DenseTensor values;
   SparseCooTensor coo(indices, values, x.dims());
-  DenseToSparseCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
+  DenseToCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
   return coo;
 }
 
 template <typename T, typename Context>
-void SparseCsrToCooKernel(const Context& dev_ctx,
-                          const SparseCsrTensor& x,
-                          SparseCooTensor* out);
+void CsrToCooKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    SparseCooTensor* out);
 
 template <typename T, typename Context>
-SparseCooTensor SparseCsrToCoo(const Context& dev_ctx,
-                               const SparseCsrTensor& x) {
+SparseCooTensor CsrToCoo(const Context& dev_ctx, const SparseCsrTensor& x) {
   DenseTensor indices;
   DenseTensor values;
   SparseCooTensor coo(indices, values, x.dims());
-  SparseCsrToCooKernel<T, Context>(dev_ctx, x, &coo);
+  CsrToCooKernel<T, Context>(dev_ctx, x, &coo);
   return coo;
 }
 
 template <typename T, typename Context>
-void SparseCooToCsrKernel(const Context& dev_ctx,
-                          const SparseCooTensor& x,
-                          SparseCsrTensor* out);
+void CooToCsrKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCsrTensor* out);
 
 template <typename T, typename Context>
-SparseCsrTensor SparseCooToCsr(const Context& dev_ctx,
-                               const SparseCooTensor& x) {
+SparseCsrTensor CooToCsr(const Context& dev_ctx, const SparseCooTensor& x) {
   DenseTensor crows;
   DenseTensor cols;
   DenseTensor non_zero_elements;
   SparseCsrTensor csr(crows, cols, non_zero_elements, x.dims());
-  SparseCooToCsrKernel<T, Context>(dev_ctx, x, &csr);
+  CooToCsrKernel<T, Context>(dev_ctx, x, &csr);
   return csr;
 }
 
 template <typename T, typename Context>
-void DenseToSparseCsrKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            SparseCsrTensor* out) {
+void DenseToCsrKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      SparseCsrTensor* out) {
   const auto& x_dims = x.dims();
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
@@ -85,61 +83,61 @@ void DenseToSparseCsrKernel(const Context& dev_ctx,
   DenseTensor indices;
   DenseTensor values;
   SparseCooTensor coo(indices, values, x.dims());
-  DenseToSparseCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
-  SparseCooToCsrKernel<T, Context>(dev_ctx, coo, out);
+  DenseToCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
+  CooToCsrKernel<T, Context>(dev_ctx, coo, out);
 }
 
 template <typename T, typename Context>
-SparseCsrTensor DenseToSparseCsr(const Context& dev_ctx, const DenseTensor& x) {
+SparseCsrTensor DenseToCsr(const Context& dev_ctx, const DenseTensor& x) {
   DenseTensor crows;
   DenseTensor cols;
   DenseTensor non_zero_elements;
   SparseCsrTensor csr(crows, cols, non_zero_elements, x.dims());
-  DenseToSparseCsrKernel<T, Context>(dev_ctx, x, &csr);
+  DenseToCsrKernel<T, Context>(dev_ctx, x, &csr);
   return csr;
 }
 
 template <typename T, typename Context>
-void SparseCooToDenseKernel(const Context& dev_ctx,
-                            const SparseCooTensor& x,
-                            DenseTensor* out);
+void CooToDenseKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      DenseTensor* out);
 
 template <typename T, typename Context>
-DenseTensor SparseCooToDense(const Context& dev_ctx, const SparseCooTensor& x) {
+DenseTensor CooToDense(const Context& dev_ctx, const SparseCooTensor& x) {
   DenseTensorMeta meta(x.dtype(), x.dims(), x.non_zero_elements().layout());
   DenseTensor dense = phi::Empty(dev_ctx, std::move(meta));
-  SparseCooToDenseKernel<T, Context>(dev_ctx, x, &dense);
+  CooToDenseKernel<T, Context>(dev_ctx, x, &dense);
   return dense;
 }
 
 template <typename T, typename Context>
-void SparseCsrToDenseKernel(const Context& dev_ctx,
-                            const SparseCsrTensor& x,
-                            DenseTensor* out) {
+void CsrToDenseKernel(const Context& dev_ctx,
+                      const SparseCsrTensor& x,
+                      DenseTensor* out) {
   DenseTensor indices;
   DenseTensor values;
   SparseCooTensor coo(indices, values, x.dims());
-  SparseCsrToCooKernel<T, Context>(dev_ctx, x, &coo);
-  SparseCooToDenseKernel<T, Context>(dev_ctx, coo, out);
+  CsrToCooKernel<T, Context>(dev_ctx, x, &coo);
+  CooToDenseKernel<T, Context>(dev_ctx, coo, out);
 }
 
 template <typename T, typename Context>
-DenseTensor SparseCsrToDense(const Context& dev_ctx, const SparseCsrTensor& x) {
+DenseTensor CsrToDense(const Context& dev_ctx, const SparseCsrTensor& x) {
   DenseTensorMeta meta(x.dtype(), x.dims(), x.non_zero_elements().layout());
   DenseTensor dense = phi::Empty(dev_ctx, std::move(meta));
-  SparseCsrToDenseKernel<T, Context>(dev_ctx, x, &dense);
+  CsrToDenseKernel<T, Context>(dev_ctx, x, &dense);
   return dense;
 }
 
 template <typename T, typename Context>
-void CooValuesKernel(const Context& dev_ctx,
+void ValuesCooKernel(const Context& dev_ctx,
                      const SparseCooTensor& x,
                      DenseTensor* out) {
   *out = x.non_zero_elements();
 }
 
 template <typename T, typename Context>
-void CsrValuesKernel(const Context& dev_ctx,
+void ValuesCsrKernel(const Context& dev_ctx,
                      const SparseCsrTensor& x,
                      DenseTensor* out) {
   *out = x.non_zero_elements();
