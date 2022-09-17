@@ -205,9 +205,15 @@ void TransposeCooKernel(const Context &dev_ctx,
   const auto *x_indices_data = x_indices.data<int64_t>();
   auto *out_indices_data = out_indices.data<int64_t>();
   int *d_perm;
+#ifdef PADDLE_WITH_HIP
+  hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
+  hipMemcpy(
+      d_perm, perm.data(), sizeof(int) * perm.size(), hipMemcpyHostToDevice);
+#else
   cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
   cudaMemcpy(
       d_perm, perm.data(), sizeof(int) * perm.size(), cudaMemcpyHostToDevice);
+#endif
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz, 1);
   TransposeCooCudaKernel<<<config.block_per_grid.x,
                            config.thread_per_block.x,
@@ -271,6 +277,23 @@ void TransposeCsrKernel(const Context &dev_ctx,
   const T *x_values_data = x_values.data<T>();
   int *d_perm;
   int64_t *d_x_dims, *d_out_dims;
+#ifdef PADDLE_WITH_HIP
+  hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
+  hipMemcpy(
+      d_perm, perm.data(), sizeof(int) * perm.size(), hipMemcpyHostToDevice);
+  hipMalloc(reinterpret_cast<void **>(&d_x_dims),
+            sizeof(int64_t) * x.dims().size());
+  hipMemcpy(d_x_dims,
+            x.dims().Get(),
+            sizeof(int64_t) * x.dims().size(),
+            hipMemcpyHostToDevice);
+  hipMalloc(reinterpret_cast<void **>(&d_out_dims),
+            sizeof(int64_t) * out_dims.size());
+  hipMemcpy(d_out_dims,
+            out_dims.Get(),
+            sizeof(int64_t) * out_dims.size(),
+            hipMemcpyHostToDevice);
+#else
   cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
   cudaMemcpy(
       d_perm, perm.data(), sizeof(int) * perm.size(), cudaMemcpyHostToDevice);
@@ -286,6 +309,7 @@ void TransposeCsrKernel(const Context &dev_ctx,
              out_dims.Get(),
              sizeof(int64_t) * out_dims.size(),
              cudaMemcpyHostToDevice);
+#endif
   int64_t x_nnz = x.nnz();
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_dims[0], 1);
