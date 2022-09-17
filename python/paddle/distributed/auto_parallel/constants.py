@@ -81,7 +81,7 @@ set_field_default_config(AMP, "use_optimizer_fp16", False)
 SHARDING = "sharding"
 set_field_default_config(SHARDING, "enable", False)
 set_field_default_config(SHARDING, "stage", 1)
-set_field_default_config(SHARDING, "sharding_degree", 8)
+set_field_default_config(SHARDING, "degree", 8)
 set_field_default_config(SHARDING, "segment_broadcast_MB", 32.0)
 set_field_default_config(SHARDING, "enable_tuning", False)
 set_field_default_config(SHARDING, "tuning_range", [])
