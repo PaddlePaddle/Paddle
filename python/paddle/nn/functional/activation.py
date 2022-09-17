@@ -250,7 +250,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
 def hardtanh(x, min=-1.0, max=1.0, name=None):
     r"""
-    hardtanh activation
+    hardtanh activation. Calculate the `hardtanh` of input `x`.
 
     .. math::
 
@@ -278,9 +278,8 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
+            x = paddle.to_tensor([-1.5, 0.3, 2.5])
             out = F.hardtanh(x) # [-1., 0.3, 1.]
     """
 
@@ -307,8 +306,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 
 def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
     r"""
-    hardsigmoid activation.
-
+    hardsigmoid activation. Calculate the `hardsigmoid` of input `x`.
     A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
     which is much faster than sigmoid.
 
@@ -366,11 +364,9 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
 
 def hardswish(x, name=None):
     r"""
-    hardswish activation
-
-    hardswish is proposed in MobileNetV3, and performs better in computational stability
-    and efficiency compared to swish function. For more details please refer
-    to: https://arxiv.org/pdf/1905.02244.pdf
+    hardswish activation. hardswish is proposed in MobileNetV3, and performs
+    better in computational stability and efficiency compared to swish function.
+    For more details please refer to: https://arxiv.org/pdf/1905.02244.pdf
 
     .. math::
 

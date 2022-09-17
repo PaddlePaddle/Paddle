@@ -1414,7 +1414,7 @@ def nll_loss(input,
 
 def kl_div(input, label, reduction='mean', name=None):
     r"""
-    This operator calculates the Kullback-Leibler divergence loss
+    Calculate the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
     log-probability and Input(Target) is the probability.
 
@@ -1459,12 +1459,11 @@ def kl_div(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            import paddle.nn.functional as F
+            import paddle.nn as nn
 
             shape = (5, 20)
-            input = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
+            x = paddle.uniform(shape, min=-10, max=10).astype('float32')
+            target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [1]
             pred_loss = F.kl_div(paddle.to_tensor(input),
@@ -3009,7 +3008,7 @@ def multi_label_soft_margin_loss(input,
 
 def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
     r"""
-    This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    Calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
     This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
     and is typically used for learning nonlinear embeddings or semi-supervised learning.
 

@@ -215,9 +215,8 @@ class Hardshrink(Layer):
 
 class Hardswish(Layer):
     r"""
-    Hardswish activation
-
-    Hardswish is proposed in MobileNetV3, and performs better in computational stability
+    Hardswish activation. Create a callable object of `Hardswish`. Hardswish
+    is proposed in MobileNetV3, and performs better in computational stability
     and efficiency compared to swish function. For more details please refer
     to: https://arxiv.org/pdf/1905.02244.pdf
 
@@ -307,7 +306,7 @@ class Tanh(Layer):
 
 class Hardtanh(Layer):
     r"""
-    Hardtanh Activation
+    Hardtanh Activation. Create a callable object of `Hardtanh`.
 
     .. math::
 
@@ -748,8 +747,8 @@ class Sigmoid(Layer):
 
 class Hardsigmoid(Layer):
     r"""
-    This interface is used to construct a callable object of the ``Hardsigmoid`` class.
-    This layer calcluate the `hardsigmoid` of input x.
+    ``Hardsigmoid`` Activiation Layers, Construct a callable object of
+    the ``Hardsigmoid`` class. This layer calcluate the `hardsigmoid` of input x.
 
     A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
     which is much faster than sigmoid.
@@ -764,7 +763,6 @@ class Hardsigmoid(Layer):
             x/6 + 1/2, & & \text{otherwise}
                 \end{array}
             \right.
-
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.

@@ -900,9 +900,10 @@ class NLLLoss(Layer):
 
 class KLDivLoss(Layer):
     r"""
-    This interface calculates the Kullback-Leibler divergence loss
-    between Input(X) and Input(Target). Notes that Input(X) is the
-    log-probability and Input(Target) is the probability.
+    Generate a callable object of 'KLDivLoss' to calculate the
+    Kullback-Leibler divergence loss between Input(X) and
+    Input(Target). Notes that Input(X) is the log-probability
+    and Input(Target) is the probability.
 
     KL divergence loss is calculated as follows:
 
@@ -930,12 +931,11 @@ class KLDivLoss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn as nn
 
             shape = (5, 20)
-            x = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
+            x = paddle.uniform(shape, min=-10, max=10).astype('float32')
+            target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
@@ -1294,7 +1294,7 @@ class MultiLabelSoftMarginLoss(Layer):
 
 class HingeEmbeddingLoss(Layer):
     r"""
-    This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    Create a callable object of `HingeEmbeddingLoss` to calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
     This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
     and is typically used for learning nonlinear embeddings or semi-supervised learning.
 
