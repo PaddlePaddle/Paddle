@@ -76,7 +76,7 @@ class MobileNetV2(nn.Layer):
 
     Args:
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
-        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
@@ -186,7 +186,7 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     """MobileNetV2 from
     `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
-    
+
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.

@@ -334,6 +334,7 @@ class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
         op.SetInput("X", og);
         op.SetOutput("Out", InputGradsType{x_grad});
         op.SetAttr("scale", 1.0f);
+        op.SetDefaultAttrsMap(DefaultAttrsMap());
       }
       return node;
     } else {

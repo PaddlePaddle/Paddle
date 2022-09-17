@@ -1,4 +1,4 @@
-- api : empty
+- op : empty
   args : (IntArray shape, Place place=CPUPlace())
   output : Tensor(out@StringTensor)
   infer_meta :
@@ -9,7 +9,7 @@
     param : [shape]
     backend : place
 
-- api : empty_like
+- op : empty_like
   args : (Tensor x, Place place = {})
   output : Tensor(out@StringTensor)
   infer_meta :
@@ -20,7 +20,7 @@
     param : [x]
     backend : place > x
 
-- api : lower
+- op : lower
   args : (Tensor x, bool use_utf8_encoding)
   output : Tensor(out@StringTensor)
   infer_meta :
@@ -29,7 +29,7 @@
   kernel :
     func : strings_lower
 
-- api : upper
+- op : upper
   args : (Tensor x, bool use_utf8_encoding)
   output : Tensor(out@StringTensor)
   infer_meta :

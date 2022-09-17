@@ -36,8 +36,10 @@ class RecordEvent(ContextDecorator):
     Interface for recording a time range by user defined.
 
     Args:
-        name(str): Name of the record event.
-        event_type(TracerEventType, optional): Optional, default value is `TracerEventType.PythonUserDefined`. It is reserved for internal purpose, and it is better not to specify this parameter. 
+        name (str): Name of the record event.
+        event_type (TracerEventType, optional): Optional, default value is
+            `TracerEventType.PythonUserDefined`. It is reserved for internal
+            purpose, and it is better not to specify this parameter.
 
     Examples:
         .. code-block:: python

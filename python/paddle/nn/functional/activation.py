@@ -965,21 +965,21 @@ def silu(x, name=None):
     .. math::
 
         silu(x) = \frac{x}{1 + e^{-x}}
-    
+
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         A Tensor with the same data type and shape as ``x`` .
-    
+
     Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn.functional as F
-            
+
             x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
             out = F.silu(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
     """
@@ -1237,7 +1237,7 @@ def softshrink(x, threshold=0.5, name=None):
 
     .. math::
 
-        softshrink(x)= 
+        softshrink(x)=
             \left\{
                 \begin{array}{rcl}
                 x - threshold,& & \text{if } x > threshold \\
@@ -1378,7 +1378,7 @@ def mish(x, name=None):
             \end{cases}
 
         mish(x) = x * \tanh(softplus(x))
-    
+
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         name (str, optional): Name for the operation (optional, default is None).
@@ -1454,7 +1454,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
 
     .. math::
 
-        thresholded\_relu(x) = 
+        thresholded\_relu(x) =
             \left\{
                 \begin{array}{rl}
                 x,& \text{if } \ x > threshold \\
@@ -1507,7 +1507,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
     .. math::
 
-        \begin{aligned} 
+        \begin{aligned}
         log\_softmax[i, j] &= log(softmax(x)) \\
         &= log(\frac{\exp(X[i, j])}{\sum_j(\exp(X[i, j])})
         \end{aligned}
@@ -1600,7 +1600,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
 def glu(x, axis=-1, name=None):
     r"""
-    The gated linear unit. The input is evenly splited into 2 parts along a 
+    The gated linear unit. The input is evenly splited into 2 parts along a
     given axis. The first part is used as the content, and the second part is
     passed through a sigmoid function then used as the gate. The output is a
     elementwise multiplication of the content and the gate.
@@ -1611,23 +1611,23 @@ def glu(x, axis=-1, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        axis (int, optional): The axis along which split the input tensor. It 
-            should be in range [-D, D), where D is the dimensions of ``x`` . 
-            If ``axis`` < 0, it works the same way as :math:`axis + D` . 
+        axis (int, optional): The axis along which split the input tensor. It
+            should be in range [-D, D), where D is the dimensions of ``x`` .
+            If ``axis`` < 0, it works the same way as :math:`axis + D` .
             Default is -1.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
-        A Tensor with the same data type as x. The size of the given aixs is 
+        A Tensor with the same data type as x. The size of the given aixs is
         halved.
-    
+
     Examples:
         .. code-block:: python
-        
+
             import paddle
             from paddle.nn import functional as F
-            
+
             x = paddle.to_tensor(
                 [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
                  [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
@@ -1635,7 +1635,7 @@ def glu(x, axis=-1, name=None):
             print(F.glu(x).numpy())
             # array([[-0.15216254, -0.9004892 ],
             #        [-1.0577879 , -0.46985325]], dtype=float32)
-        
+
     """
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              "glu")
@@ -1668,24 +1668,24 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
         gumbel\_softmax(v_i)=\frac{e^{v_i/t}}{\sum_{j=1}^n{e^{v_j/t}}},i=1,2,3...n
 
     Parameters:
-        x (Tensor): An N-D Tensor, the first N - 1 dimensions index into a batch 
-            of independent distributions and the last dimension represents 
+        x (Tensor): An N-D Tensor, the first N - 1 dimensions index into a batch
+            of independent distributions and the last dimension represents
             a vector of probabilities with datatype float32, float64.
         temperature (float, optional): non-negative scalar temperature.
             Default is 1.0.
-        hard (bool, optional): if True, the returned samples will be discretized as 
-            one-hot vectors, but will be differentiated as if it is the soft sample 
+        hard (bool, optional): if True, the returned samples will be discretized as
+            one-hot vectors, but will be differentiated as if it is the soft sample
             in autograd. Default is False.
-        axis (int, optional): The axis along will be calculated softmax value. 
+        axis (int, optional): The axis along will be calculated softmax value.
             Default is -1.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
-        Sampled tensor of same shape as ``x`` from the Gumbel-Softmax distribution. 
-        If ``hard = True``, the returned samples will be one-hot, otherwise they will be 
+        Sampled tensor of same shape as ``x`` from the Gumbel-Softmax distribution.
+        If ``hard = True``, the returned samples will be one-hot, otherwise they will be
         probability distributions that sum to 1 across ``axis``.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1701,7 +1701,7 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
             # [0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 1.        ],
             # [0.00000062, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.99999940],
             # [0.00000000, 0.00000000, 0.00000000, 0.00001258, 0.99998736, 0.00000000]]
-        
+
     """
     if in_dygraph_mode():
         return _C_ops.gumbel_softmax(x, temperature, hard, axis)
