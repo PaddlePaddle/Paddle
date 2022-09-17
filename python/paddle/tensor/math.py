@@ -1014,8 +1014,8 @@ def fmax(x, y, name=None):
 
         .. code-block:: python
 
-            import paddle
             import numpy as np
+            import paddle
 
             x = paddle.to_tensor([[1, 2], [7, 8]])
             y = paddle.to_tensor([[3, 4], [5, 6]])
@@ -1077,8 +1077,8 @@ def fmin(x, y, name=None):
 
         .. code-block:: python
 
-            import paddle
             import numpy as np
+            import paddle
 
             x = paddle.to_tensor([[1, 2], [7, 8]])
             y = paddle.to_tensor([[3, 4], [5, 6]])
