@@ -136,7 +136,7 @@ struct DimensionsTransform {
 
   // To judge whether shape of any input tensors is sequential
   // 1-value-dimensions, and metric the length of it.
-  int GetSequentialOneDimLength(int *swap_index) {
+  bool FindSequentialOneDim(int *swap_index) {
     int index = 0;
     int max_one_length = 0;
     for (int j = 0; j < N; ++j) {
@@ -155,16 +155,16 @@ struct DimensionsTransform {
           }
         }
       }
-      max_one_length =
-          seq_one_length > max_one_length ? seq_one_length : max_one_length;
       index = seq_one_length > max_one_length ? j : index;
+      max_one_length = std::max(seq_one_length, max_one_length);
     }
 
-    if (max_one_length > 1) {
+    bool has_seq_one = max_one_length > 1;
+    if (has_seq_one) {
       std::swap(in_dims[0], in_dims[index]);
       *swap_index = index;
     }
-    return max_one_length;
+    return has_seq_one;
   }
 
  public:
@@ -236,13 +236,13 @@ struct DimensionsTransform {
   }
 };
 
-template <typename InT, typename OutT, int NumOuts = 1>
+template <typename InT, typename OutT>
 int GetVecsize(const std::vector<const DenseTensor *> &ins,
                std::vector<DenseTensor *> *outs) {
   int in_vec_size = 4;
   int out_vec_size = 4;
-  if (NumOuts > 1) {
-    for (int i = 0; i < NumOuts; ++i) {
+  if (outs->size() > 1) {
+    for (auto i = 1; i < outs->size(); ++i) {
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
           (*outs)[0]->dims(),
@@ -310,7 +310,7 @@ __device__ void VectorizedBroadcastKernelImpl(
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
-  for (int i = 0; i < Arity; i++) {
+  for (int i = 0; i < Arity; ++i) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f), read_lens);
     LoadData<InT, VecSize, IsBoundary>(args[i],
                                        ins[i],
@@ -439,9 +439,9 @@ void LaunchBroadcastKernel(
     std::vector<DenseTensor *> *outs,
     Functor func,
     const phi::Array<kps::details::BroadcastConfig, Arity> &configs) {
-  bool all_elementwise = true;
-  auto numel = (*outs)[0]->numel();
+  int numel = (*outs)[0]->numel();
   phi::Array<BroadcastType, Arity> broadcast_types;
+  phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
@@ -450,12 +450,12 @@ void LaunchBroadcastKernel(
 
   for (int i = 0; i < Arity; i++) {
     if (ins[i]->numel() != numel) {
-      all_elementwise = false;
       broadcast_types[i] = (ins[i]->numel() != 1) ? BroadcastType::kCommon
                                                   : BroadcastType::kOneToMany;
     } else {
       broadcast_types[i] = BroadcastType::kNoBroadcast;
     }
+    ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
   }
 
 #ifdef PADDLE_WITH_XPU_KP
@@ -465,11 +465,17 @@ void LaunchBroadcastKernel(
   auto stream = ctx.x_context()->xpu_stream;
   int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
   int tail_tid = numel % (read_lens * threads);
-
-  phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
-  for (int i = 0; i < Arity; i++) {
-    ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
-  }
+#else
+  auto gpu_config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
+  int read_lens = VecSize;
+  auto stream = ctx.stream();
+  auto threads = gpu_config.thread_per_block;
+  auto blocks = gpu_config.block_per_grid;
+  int main_offset = (numel / (read_lens * gpu_config.GetBlockSize())) *
+                    read_lens * gpu_config.GetBlockSize();
+  int tail_tid = numel % (read_lens * gpu_config.GetBlockSize());
+#endif
   VectorizedBroadcastKernel<InT, OutT, Functor, Arity, NumOuts, VecSize>
       <<<blocks, threads, 0, stream>>>(ins_data,
                                        outs_data,
@@ -480,40 +486,6 @@ void LaunchBroadcastKernel(
                                        tail_tid,
                                        read_lens,
                                        func);
-#else
-  auto gpu_config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
-  auto stream = ctx.stream();
-  auto threads = gpu_config.thread_per_block;
-  auto blocks = gpu_config.block_per_grid;
-  int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
-                    gpu_config.GetBlockSize();
-
-  if (all_elementwise) {
-    phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
-    Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
-    VectorizedElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSize>
-        <<<blocks, threads, 0, stream>>>(
-            ins_data, outs_data, numel, main_offset, VecSize, func);
-  } else {
-    int tail_tid = numel % (VecSize * gpu_config.GetBlockSize());
-
-    phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
-    for (int i = 0; i < Arity; i++) {
-      ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
-    }
-    VectorizedBroadcastKernel<InT, OutT, Functor, Arity, NumOuts, VecSize>
-        <<<blocks, threads, 0, stream>>>(ins_data,
-                                         outs_data,
-                                         broadcast_types,
-                                         numel,
-                                         configs,
-                                         main_offset,
-                                         tail_tid,
-                                         VecSize,
-                                         func);
-  }
-#endif
 }
 
 #ifndef PADDLE_WITH_XPU_KP
@@ -1036,14 +1008,12 @@ void BroadcastKernelForDifferentVecSize(
     // get the broadcast config,
     // if data shape is[m, n], then you should set data_dim = {n, m}
     // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
-    // and only condition below, the input tensor shall get pre-broadcast.
-    auto in_numel = ins[i]->numel();
-    if (in_numel != 1 && in_numel != numel) {
+    if (ins[i]->numel()) {
       configs[i] = kps::details::BroadcastConfig(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
   }
-  int vec_size = GetVecsize<InT, OutT, NumOuts>(ins, outs);
+  int vec_size = GetVecsize<InT, OutT>(ins, outs);
 #endif
 
   switch (vec_size) {
