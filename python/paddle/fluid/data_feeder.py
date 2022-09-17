@@ -286,9 +286,6 @@ class DataFeeder(object):
             feed data into, if program is None, it will use default_main_program().
             Default None.
 
-    Raises:
-        :code:`ValueError` - If some Variables are not in this Program.
-
     Example:
         ..  code-block:: python
 

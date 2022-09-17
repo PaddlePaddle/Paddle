@@ -1490,9 +1490,6 @@ def range(start, end, step, dtype, name=None):
             taken with common difference ``step`` beginning from ``start``. Its
             data type is set by ``dtype``.
 
-    Raises:
-        TypeError: If ``dtype`` is not int32, int64, float32, float64.
-
     examples:
 
         .. code-block:: python

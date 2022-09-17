@@ -86,9 +86,6 @@ class ParallelExecutor(object):
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
 
-    Raises:
-        TypeError: If share_vars_from is provided, but not ParallelExecutor object.
-
     NOTES:
 
         1. If you only use ParallelExecutor to do multi-card test, you don't need to set loss_name

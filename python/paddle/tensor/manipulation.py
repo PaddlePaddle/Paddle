@@ -142,10 +142,6 @@ def slice(input, axes, starts, ends):
     Returns:
         Tensor:  A ``Tensor``. The data type is same as ``input``.
 
-    Raises:
-        TypeError: The type of ``starts`` must be list, tuple or Tensor.
-        TypeError: The type of ``ends`` must be list, tuple or Tensor.
-
     Examples:
         .. code-block:: python
 
@@ -440,9 +436,6 @@ def unstack(x, axis=0, num=None):
 
     Returns:
         list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
-
-    Raises:
-        ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
 
     Examples:
         .. code-block:: python
@@ -1427,10 +1420,6 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         Tensor: A tensor with the contents of the input tensor, with input \
                   axes flattened by indicated start axis and end axis. \
                   A Tensor with data type same as input x.
-
-    Raises:
-        ValueError: If x is not a Tensor.
-        ValueError: If start_axis or stop_axis is illegal.
 
     Examples:
 

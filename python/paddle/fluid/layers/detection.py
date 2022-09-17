@@ -1064,16 +1064,6 @@ def yolov3_loss(x,
     Returns:
         Variable: A 1-D tensor with shape [N], the value of yolov3 loss
 
-    Raises:
-        TypeError: Input x of yolov3_loss must be Variable
-        TypeError: Input gtbox of yolov3_loss must be Variable
-        TypeError: Input gtlabel of yolov3_loss must be Variable
-        TypeError: Input gtscore of yolov3_loss must be None or Variable
-        TypeError: Attr anchors of yolov3_loss must be list or tuple
-        TypeError: Attr class_num of yolov3_loss must be an integer
-        TypeError: Attr ignore_thresh of yolov3_loss must be a float number
-        TypeError: Attr use_label_smooth of yolov3_loss must be a bool value
-
     Examples:
       .. code-block:: python
 
@@ -1192,12 +1182,6 @@ def yolo_box(x,
         Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
         and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification
         scores of boxes.
-
-    Raises:
-        TypeError: Input x of yolov_box must be Variable
-        TypeError: Attr anchors of yolo box must be list or tuple
-        TypeError: Attr class_num of yolo box must be an integer
-        TypeError: Attr conf_thresh of yolo box must be a float number
 
     Examples:
 
@@ -1647,10 +1631,6 @@ def ssd_loss(location,
         Variable(Tensor):  The weighted sum of the localization loss and confidence loss, \
         with shape [N * Np, 1], N and Np are the same as they are in
         `location`.The data type is float32 or float64.
-
-    Raises:
-        ValueError: If mining_type is 'hard_example', now only support mining \
-        type of `max_negative`.
 
     Examples:
 

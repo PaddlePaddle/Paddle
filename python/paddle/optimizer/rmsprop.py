@@ -100,9 +100,6 @@ class RMSProp(Optimizer):
         name (str, optional): This parameter is used by developers to print debugging information.
           For details, please refer to :ref:`api_guide_Name`. Default is None.
 
-    Raises:
-        ValueError: If learning_rate, rho, epsilon, momentum are None.
-
     Examples:
           .. code-block:: python
 

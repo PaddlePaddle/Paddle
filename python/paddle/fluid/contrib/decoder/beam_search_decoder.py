@@ -179,10 +179,6 @@ class StateCell(object):
             will be used to compute the score in beam search process.
         name (str): The name of the RNN cell. Default None.
 
-    Raises:
-        `ValueError`: If the initial state is not an instance of InitState, or
-            the out_state is not in the dict of states.
-
     Returns:
         StateCell: The initialized StateCell object.
 

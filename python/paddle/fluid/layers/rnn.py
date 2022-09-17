@@ -3488,13 +3488,6 @@ def lstm_unit(x_t,
             cell value which correspond to :math:`h_{t}` and :math:`c_{t}` in \
             the formula.
 
-    Raises:
-        ValueError: Rank of x_t must be 2.
-        ValueError: Rank of hidden_t_prev must be 2.
-        ValueError: Rank of cell_t_prev must be 2.
-        ValueError: The 1st dimensions of x_t, hidden_t_prev and cell_t_prev must be the same.
-        ValueError: The 2nd dimensions of hidden_t_prev and cell_t_prev must be the same.
-
     Examples:
 
         .. code-block:: python

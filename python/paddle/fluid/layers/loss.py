@@ -1325,9 +1325,6 @@ def rank_loss(label, left, right, name=None):
     Returns:
         Variable: ``Tensor`` indicating the output value of the sort loss layer, the data type is float32, and the return value's shape is :math:`[batch,1]` .
 
-    Raises:
-        ValueError: Any of label, left, and right is not a ``Variable`` .
-
     Examples:
 
         .. code-block:: python
@@ -1379,9 +1376,6 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
 
     Returns:
        Variable: The ranking loss.
-
-    Raises:
-       ValueError: Any of label, left, and right is not a Variable.
 
     Examples:
 

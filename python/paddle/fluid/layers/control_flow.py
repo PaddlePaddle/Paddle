@@ -412,13 +412,6 @@ def Assert(cond, data=None, summarize=20, name=None):
     Returns:
         Operator: the created operation.
 
-    Raises:
-        TypeError: If ``cond`` is not boolean Variable.
-        TypeError: If ``data`` is not a list or tuple or ``None``.
-        TypeError: If ``summarize`` is not int.
-        TypeError: If ``name`` is not a string or ``None`` .
-        fluid.core.EnforceNotMet: If the condition is False in running time.
-
     Examples:
         .. code-block:: python
 
@@ -2547,11 +2540,6 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         Tensor|list(Tensor)|tuple(Tensor): returns ``true_fn()`` if the
         predicate ``pred`` is true else ``false_fn()`` .
 
-    Raises:
-        TypeError: if ``true_fn`` or ``false_fn`` is not callable.
-        ValueError: if ``true_fn`` and ``false_fn`` don't return the same nest
-            structure of tensors.
-
     Examples:
         .. code-block:: python
 
@@ -2758,14 +2746,6 @@ def case(pred_fn_pairs, default=None, name=None):
         Tensor|list(Tensor): Tensors returned by the callable from the first pair whose pred is True,
         or Tensors returned by ``default`` if no pred in ``pred_fn_pairs`` is True and ``default`` is not None,
         or Tensors returned by the last callable in ``pred_fn_pairs``  if no pred in ``pred_fn_pairs`` is True and ``default`` is None.
-
-    Raises:
-        TypeError: If the type of ``pred_fn_pairs`` is not list or tuple.
-        TypeError: If the type of elements in ``pred_fn_pairs`` is not tuple.
-        TypeError: If the size of tuples in ``pred_fn_pairs`` is not 2.
-        TypeError: If the first element of 2-tuple in ``pred_fn_pairs`` is not a Tensor.
-        TypeError: If the second element of 2-tuple in ``pred_fn_pairs`` is not callable.
-        TypeError: If ``default`` is not None but it is not callable.
 
     Examples:
         .. code-block:: python
@@ -3878,16 +3858,6 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
         Tensor|list(Tensor): Tensors returned by the callable specified by ``branch_index`` in ``branch_fns``,
         or Tensors returned by ``default`` if ``default`` is not None and no index matches in ``branch_fns``,
         or Tensors returned by the callable with the max index in ``branch_fns`` if ``default`` is None and no index matches in ``branch_fns``.
-
-    Raises:
-        TypeError: If the type of ``branch_index`` is not Tensor.
-        TypeError: If the data type of ``branch_index`` is not ``int32``, ``int64`` or ``uint8``.
-        TypeError: If the type of ``branch_fns`` is not dict, list or tuple.
-        TypeError: If the elements of ``branch_fns`` is not 2-tuple.
-        TypeError: If the first element of 2-tuple in ``branch_fns`` is not integer.
-        ValueError: If the first element of 2-tuple in ``branch_fns`` is not unique.
-        TypeError: If the second element of 2-tuple in ``branch_fns`` is not callable.
-        TypeError: If ``default`` is not None but it is not callable.
 
     Examples:
         .. code-block:: python

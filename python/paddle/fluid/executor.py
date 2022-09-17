@@ -231,9 +231,7 @@ def check_feed_shape_type(var, feed, num_places=1):
             ParallelExecutor will divide data into devices (CPU/GPU) evenly.
     Returns:
         True if the shape and dtype of variable is compatible with the feed value
-    Raises:
-        ValueError: if the shape or dtype of the variable is not compatible with
-            the feed value
+
     """
     if var.desc.need_check_feed():
         diff_shape = core.diff_tensor_shape(feed, var.desc, num_places)
