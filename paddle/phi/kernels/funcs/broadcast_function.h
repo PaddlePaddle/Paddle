@@ -254,6 +254,7 @@ int GetVecsize(const std::vector<const DenseTensor *> &ins,
   return std::min(out_vec_size, in_vec_size);
 }
 
+#ifndef PADDLE_WITH_XPU_KP
 template <typename T,
           int VecSize,
           int Arity,
@@ -331,6 +332,7 @@ struct BroadcastDataLoader<T, VecSize, Arity, IsBoundary, true> {
     }
   }
 };
+#endif
 
 template <typename InT,
           typename OutT,

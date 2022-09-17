@@ -102,7 +102,7 @@ TEST(Broadcast, add) {
   auto place = paddle::platform::CUDAPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
-  size_t times = 10000;
+  size_t times = 10;
 
   do {
     auto dim1 = phi::make_ddim({1, 2048, 3584});
