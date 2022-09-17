@@ -82,11 +82,7 @@ def mlp_pretrain_forward(train_program, start_program):
                             shape=[batch_size, sequence_len, 1],
                             dtype='float32')
 
-        auto.shard_tensor(input,
-                          dist_attr={
-                              "process_mesh": _global_process_mesh,
-                              "dims_mappig": [-1, -1, -1]
-                          })
+        auto.shard_tensor(input, _global_process_mesh, [None, None, None])
 
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
@@ -106,7 +102,7 @@ class TestMLPAutoParallelizer(unittest.TestCase):
     def test_mlp_serial(self):
 
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
 
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.amp = False

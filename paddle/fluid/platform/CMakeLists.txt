@@ -251,6 +251,10 @@ if(WITH_MLU)
   target_link_libraries(device_context mlu_resource_pool)
 endif()
 
+if(WITH_CUSTOM_DEVICE)
+  target_link_libraries(device_context custom_device_resource_pool)
+endif()
+
 cc_test(
   init_test
   SRCS init_test.cc
@@ -284,11 +288,17 @@ if(WITH_GPU)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
-  nv_test(
-    device_event_test
-    SRCS device_event_test.cc
-    DEPS device_event_gpu)
-
+  if(WITH_CUSTOM_DEVICE)
+    nv_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu device_event_custom_device)
+  else()
+    nv_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu)
+  endif()
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -311,11 +321,17 @@ if(WITH_ROCM)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
-  hip_test(
-    device_event_test
-    SRCS device_event_test.cc
-    DEPS device_event_gpu)
-
+  if(WITH_CUSTOM_DEVICE)
+    hip_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu device_event_custom_device)
+  else()
+    hip_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu)
+  endif()
   hip_test(
     device_context_test
     SRCS device_context_test.cu
@@ -469,4 +485,14 @@ if(NOT APPLE AND NOT WIN32)
       SRCS device_code_test.cc
       DEPS device_code lod_tensor)
   endif()
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  cc_library(
+    device_event_custom_device
+    SRCS device_event_custom_device.cc
+    DEPS device_event_base custom_device_resource_pool)
+  set(DEVICE_EVENT_LIBS
+      ${DEVICE_EVENT_LIBS} device_event_custom_device
+      CACHE INTERNAL "device event libs")
 endif()

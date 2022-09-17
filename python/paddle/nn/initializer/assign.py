@@ -38,7 +38,7 @@ class Assign(NumpyArrayInitializer):
             # numpy array
             data_1 = paddle.ones(shape=[1, 2], dtype='float32')
             weight_attr_1 = paddle.framework.ParamAttr(
-                name="linear_weight_1", 
+                name="linear_weight_1",
                 initializer=paddle.nn.initializer.Assign(np.array([2, 2])))
             bias_attr_1 = paddle.framework.ParamAttr(
                 name="linear_bias_1",
