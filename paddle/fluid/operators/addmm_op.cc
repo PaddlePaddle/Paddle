@@ -39,29 +39,23 @@ class AddMMOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    int customized_type_value =
-        framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      int customized_type_value =
+          framework::OpKernelType::kDefaultCustomizedTypeValue;
       if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
           input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
         customized_type_value = kMULMKLDNNINT8;
       }
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN,
+                                     customized_type_value);
     }
 #endif
-
-    return framework::OpKernelType(input_data_type,
-                                   ctx.GetPlace(),
-                                   layout,
-                                   library,
-                                   customized_type_value);
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 

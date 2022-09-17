@@ -32,11 +32,32 @@
 #include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace platform {
 
-void SynchronizeAllDevice();
+void SynchronizeDevice() {
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#endif
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
+#ifdef PADDLE_WITH_MLU
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtSyncDevice());
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  for (const auto& dev_type : dev_types) {
+    auto i = phi::DeviceManager::GetDevice(dev_type);
+    auto place = paddle::platform::CustomPlace(dev_type, i);
+    phi::DeviceManager::SynchronizeDevice(place);
+  }
+#endif
+}
 
 std::atomic<bool> Profiler::alive_{false};
 
@@ -99,7 +120,7 @@ void Profiler::Prepare() {
 }
 
 void Profiler::Start() {
-  SynchronizeAllDevice();
+  SynchronizeDevice();
   for (auto& tracer : tracers_) {
     tracer.Get().StartTracing();
   }
@@ -107,7 +128,7 @@ void Profiler::Start() {
 }
 
 std::unique_ptr<ProfilerResult> Profiler::Stop() {
-  SynchronizeAllDevice();
+  SynchronizeDevice();
   TraceEventCollector collector;
   for (auto& tracer : tracers_) {
     tracer.Get().StopTracing();
