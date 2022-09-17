@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <unordered_map>
-#include "paddle/phi/core/ddim.h"
+
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -26,6 +25,7 @@
 #include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/trunc_kernel.h"
+
 namespace phi {
 namespace sparse {
 

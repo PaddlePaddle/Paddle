@@ -139,5 +139,6 @@ void CastCsrGradKernel(const Context& dev_ctx,
                                 dx->mutable_non_zero_elements());
   }
 }
+
 }  // namespace sparse
 }  // namespace phi
