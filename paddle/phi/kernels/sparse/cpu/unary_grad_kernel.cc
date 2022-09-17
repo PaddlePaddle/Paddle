@@ -23,12 +23,12 @@
 namespace phi {
 namespace sparse {
 
-std::vector<int> get_cpu_grad_dims(std::vector<int> perm) {
-  std::vector<int> grad_dims(perm.size());
+std::vector<int> get_cpu_grad_perm(std::vector<int> perm) {
+  std::vector<int> grad_perm(perm.size());
   for (unsigned int i = 0; i < perm.size(); ++i) {
-    grad_dims[perm[i]] = i;
+    grad_perm[perm[i]] = i;
   }
-  return grad_dims;
+  return grad_perm;
 }
 
 template <typename T, typename Context>
@@ -38,8 +38,8 @@ void TransposeCooGradKernel(const Context& dev_ctx,
                             const std::vector<int>& perm,
                             SparseCooTensor* dx) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
-  std::vector<int> grad_dims = get_cpu_grad_dims(perm);
-  TransposeCooKernel<T, Context>(dev_ctx, dout, grad_dims, dx);
+  std::vector<int> grad_perm = get_cpu_grad_perm(perm);
+  TransposeCooKernel<T, Context>(dev_ctx, dout, grad_perm, dx);
 }
 
 template <typename T, typename Context>
@@ -49,8 +49,8 @@ void TransposeCsrGradKernel(const Context& dev_ctx,
                             const std::vector<int>& perm,
                             SparseCsrTensor* dx) {
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
-  std::vector<int> grad_dims = get_cpu_grad_dims(perm);
-  TransposeCsrKernel<T, Context>(dev_ctx, dout, grad_dims, dx);
+  std::vector<int> grad_perm = get_cpu_grad_perm(perm);
+  TransposeCsrKernel<T, Context>(dev_ctx, dout, grad_perm, dx);
 }
 }  // namespace sparse
 }  // namespace phi
