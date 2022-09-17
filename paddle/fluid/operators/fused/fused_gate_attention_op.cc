@@ -174,7 +174,7 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   Add fused attention op whose logic is as follows:
   {
-    q = paddle.einsum('nbqa,ahc->nbqhc', q_data, self.query_w) 
+    q = paddle.einsum('nbqa,ahc->nbqhc', q_data, self.query_w)
     k = paddle.einsum('nbka,ahc->nbkhc', m_data, self.key_w)
     v = paddle.einsum('nbka,ahc->nbkhc', m_data, self.value_w)
 
@@ -189,10 +189,10 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                                     self.gating_w) + self.gating_b
         gate_values_1 = nn.functional.sigmoid(gate_values)
         weighted_avg *= gate_values_1
-    
+
     output = paddle.einsum('nbqhc,hco->nbqo', weighted_avg,
                           self.output_w) + self.output_b
-                
+
   }
     )DOC");
   }

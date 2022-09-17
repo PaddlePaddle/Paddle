@@ -131,7 +131,7 @@ def monkey_patch_variable():
 
     @static_only
     def cpu(self):
-        """ 
+        """
             Variable should not have cpu() and cuda() interface.
             But this interface can greatly facilitate dy2static.
             We do nothing here.
@@ -140,7 +140,7 @@ def monkey_patch_variable():
 
     @static_only
     def cuda(self):
-        """ 
+        """
             Variable should not have cpu() and cuda() interface.
             But this interface can greatly facilitate dy2static.
             We do nothing here.
@@ -209,7 +209,7 @@ def monkey_patch_variable():
         """
          **Notes**:
             **The type variable must be LoD Tensor Array.
-        
+
         """
         if not isinstance(var, Variable):
             if in_declarative_mode():
@@ -229,8 +229,8 @@ def monkey_patch_variable():
 
     @static_only
     def _item(self):
-        """ 
-        In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self. 
+        """
+        In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
         It will check that the shape must be a 1-D tensor
         """
         if len(self.shape) > 1:
@@ -243,7 +243,7 @@ def monkey_patch_variable():
     def pop(self, *args):
         """
         The type variable must be LoD Tensor Array.
-        When self is LoDTensorArray, calling pop is similar to Python's pop on list. 
+        When self is LoDTensorArray, calling pop is similar to Python's pop on list.
         This interface is used to simplify dygraph to static graph operations.
 
         Args:

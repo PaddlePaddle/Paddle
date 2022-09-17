@@ -105,7 +105,7 @@ def init_parallel_env():
 
     Returns:
         None
-        
+
     Examples:
         .. code-block:: python
             # required: gpu
@@ -119,7 +119,7 @@ def init_parallel_env():
                     super(LinearNet, self).__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
-                    
+
                 def forward(self, x):
                     return self._linear2(self._linear1(x))
 
@@ -140,7 +140,7 @@ def init_parallel_env():
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
                 loss = loss_fn(outputs, labels)
-                
+
                 loss.backward()
 
                 adam.step()

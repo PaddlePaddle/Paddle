@@ -213,9 +213,10 @@ struct DimensionsTransform {
         }
       }
     };
-    int swap_idx = 0;
-    bool has_seq_one = FindSequentialOneDim(&swap_idx);
-    if (has_seq_one) {
+    for (auto i = 0; i < dim_size; ++i) {
+      int swap_idx = 0;
+      bool has_seq_one = FindSequentialOneDim(&swap_idx);
+      if (!has_seq_one) break;
       merge_ptr = merge_sequential_one_dims;
       MergeDimensions<MergeFunctor>(merge_ptr, N);
       std::swap(in_dims[swap_idx], in_dims[0]);
@@ -468,6 +469,397 @@ void LaunchBroadcastKernel(
                                        func);
 }
 
+#ifndef PADDLE_WITH_XPU_KP
+HOSTDEVICE static int64_t ConvertSrcIdxToDstIdx(
+    int64_t src_idx,
+    const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &src_strides,
+    const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &dst_strides,
+    int rank) {
+  int64_t dst_idx = 0;
+  int64_t old_src_idx = src_idx;
+  for (int k = 0; k < rank; ++k) {
+    auto local_idx = src_idx / src_strides[k + 1];
+    src_idx -= local_idx * src_strides[k + 1];
+
+    if (dst_strides[k] != dst_strides[k + 1]) {
+      dst_idx += local_idx * dst_strides[k + 1];
+    }
+  }
+  return dst_idx;
+}
+
+template <typename T, int VecSize, bool IsBoundary>
+HOSTDEVICE static void ReadVecDataWithInt64Index(
+    const T *in,
+    int64_t idx,
+    bool need_broadcast,
+    const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &src_strides,
+    const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &dst_strides,
+    int rank,
+    int n,
+    phi::AlignedVector<T, VecSize> *out) {
+  if (IsBoundary) {
+    for (int i = 0; i < n; ++i) {
+      (*out)[i] =
+          in[ConvertSrcIdxToDstIdx(idx + i, src_strides, dst_strides, rank)];
+    }
+  } else {
+    if (!need_broadcast) {
+      phi::Load<T, VecSize>(in + idx, out);
+    } else {
+#pragma unroll
+      for (int i = 0; i < VecSize; ++i) {
+        (*out)[i] =
+            in[ConvertSrcIdxToDstIdx(idx + i, src_strides, dst_strides, rank)];
+      }
+    }
+  }
+}
+
+template <typename InT,
+          typename OutT,
+          typename Functor,
+          int VecSize,
+          int NumIns>
+struct ApplyFunctorWithInt64IndexHelper {
+  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
+                             Functor functor,
+                             int i);
+};
+
+template <typename InT, typename OutT, typename Functor, int VecSize>
+struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 0> {
+  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
+                             Functor functor,
+                             int i) {
+    return static_cast<OutT>(functor());
+  }
+};
+
+template <typename InT, typename OutT, typename Functor, int VecSize>
+struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 1> {
+  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
+                             Functor functor,
+                             int i) {
+    return static_cast<OutT>(functor(ins_vec[0][i]));
+  }
+};
+
+template <typename InT, typename OutT, typename Functor, int VecSize>
+struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 2> {
+  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
+                             Functor functor,
+                             int i) {
+    return static_cast<OutT>(functor(ins_vec[0][i], ins_vec[1][i]));
+  }
+};
+
+template <typename InT, typename OutT, typename Functor, int VecSize>
+struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 3> {
+  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
+                             Functor functor,
+                             int i) {
+    return static_cast<OutT>(
+        functor(ins_vec[0][i], ins_vec[1][i], ins_vec[2][i]));
+  }
+};
+
+template <int N>
+struct MaxWithOne {
+  static constexpr auto kValue = (N >= 1 ? N : 1);
+};
+
+template <typename InT,
+          typename OutT,
+          typename Functor,
+          int VecSize,
+          int NumIns>
+__global__ void BroadcastKernelWithInt64Index(
+    phi::Array<const InT *, MaxWithOne<NumIns>::kValue> ins,
+    OutT *out,
+    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank + 1>,
+               MaxWithOne<NumIns>::kValue> ins_strides,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> out_strides,
+    phi::Array<bool, MaxWithOne<NumIns>::kValue> need_broadcasts,
+    int rank,
+    Functor functor) {
+  int64_t numel = out_strides[0];
+  int64_t idx =
+      (static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x) * VecSize;
+  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x * VecSize;
+  int64_t limit = numel - VecSize;
+
+  phi::Array<phi::AlignedVector<InT, VecSize>, MaxWithOne<NumIns>::kValue>
+      ins_vec;
+  phi::AlignedVector<OutT, VecSize> out_vec;
+  for (; idx <= limit; idx += stride) {
+#pragma unroll
+    for (int i = 0; i < NumIns; ++i) {
+      ReadVecDataWithInt64Index<InT, VecSize, false>(ins[i],
+                                                     idx,
+                                                     need_broadcasts[i],
+                                                     out_strides,
+                                                     ins_strides[i],
+                                                     rank,
+                                                     VecSize,
+                                                     &ins_vec[i]);
+    }
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      out_vec[i] = ApplyFunctorWithInt64IndexHelper<InT,
+                                                    OutT,
+                                                    Functor,
+                                                    VecSize,
+                                                    NumIns>::Run(ins_vec.Get(),
+                                                                 functor,
+                                                                 i);
+    }
+
+    phi::Store<OutT, VecSize>(out_vec, out + idx);
+  }
+
+  if (idx < numel) {
+    int remain = numel - idx;  // remain is always less than VecSize, therefore
+                               // `int` is enough here
+#pragma unroll
+    for (int i = 0; i < NumIns; ++i) {
+      ReadVecDataWithInt64Index<InT, VecSize, true>(ins[i],
+                                                    idx,
+                                                    need_broadcasts[i],
+                                                    out_strides,
+                                                    ins_strides[i],
+                                                    rank,
+                                                    remain,
+                                                    &ins_vec[i]);
+    }
+
+    for (int i = 0; i < remain; ++i) {
+      out[idx + i] =
+          ApplyFunctorWithInt64IndexHelper<InT,
+                                           OutT,
+                                           Functor,
+                                           VecSize,
+                                           NumIns>::Run(ins_vec.Get(),
+                                                        functor,
+                                                        i);
+    }
+  }
+}
+
+template <typename InT,
+          typename OutT,
+          typename Functor,
+          int Arity,
+          int NumOuts,
+          int VecSize>
+struct LaunchBroadcastKernelWithInt64IndexHelper {
+  static void Run(const KPDevice &ctx,
+                  const std::vector<const DenseTensor *> &ins,
+                  std::vector<DenseTensor *> *outs,
+                  int axis,
+                  Functor functor) {
+    PADDLE_THROW(phi::errors::PermissionDenied(
+        "Unreachable code branch. This may be a bug."));
+  }
+};
+
+template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
+struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
+                                                 OutT,
+                                                 Functor,
+                                                 Arity,
+                                                 /*NumOuts=*/1,
+                                                 VecSize> {
+  static void Run(const KPDevice &ctx,
+                  const std::vector<const DenseTensor *> &ins,
+                  std::vector<DenseTensor *> *outs,
+                  int axis,
+                  Functor functor) {
+    phi::Array<const InT *, MaxWithOne<Arity>::kValue> ins_ptrs;
+    for (int i = 0; i < Arity; ++i) {
+      ins_ptrs[i] = ins[i]->data<InT>();
+    }
+    auto *out_tensor = (*outs)[0];
+    auto *out_ptr = ctx.Alloc<OutT>(out_tensor);
+
+    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank>,
+               MaxWithOne<Arity>::kValue>
+        ins_expand_dims;
+    phi::Array<int64_t, phi::DDim::kMaxRank> broadcast_out_dims;
+    int rank;
+    if (Arity == 1) {
+      rank = ins[0]->dims().size();
+      for (int i = 0; i < rank; ++i) {
+        broadcast_out_dims[i] = ins[0]->dims()[i];
+      }
+      ins_expand_dims[0] = broadcast_out_dims;
+    } else if (Arity >= 2) {
+      CalculateBroadcastDims(ins[0]->dims().Get(),
+                             ins[1]->dims().Get(),
+                             ins[0]->dims().size(),
+                             ins[1]->dims().size(),
+                             axis,
+                             ins_expand_dims[0].GetMutable(),
+                             ins_expand_dims[1].GetMutable(),
+                             broadcast_out_dims.GetMutable(),
+                             &rank);
+      for (int i = 2; i < Arity; ++i) {
+        auto tmp_dims = broadcast_out_dims;
+        phi::Array<int64_t, phi::DDim::kMaxRank> tmp_expand_dims;
+        int tmp_rank;
+        PADDLE_ENFORCE_GE(rank,
+                          ins[i]->dims().size(),
+                          phi::errors::InvalidArgument(
+                              "Unsupported reverse broadcast when the input "
+                              "tensor number is larger than 2."));
+        CalculateBroadcastDims(tmp_dims.Get(),
+                               ins[i]->dims().Get(),
+                               rank,
+                               ins[i]->dims().size(),
+                               axis,
+                               tmp_expand_dims.GetMutable(),
+                               ins_expand_dims[i].GetMutable(),
+                               broadcast_out_dims.GetMutable(),
+                               &tmp_rank);
+        PADDLE_ENFORCE_EQ(rank,
+                          tmp_rank,
+                          phi::errors::InvalidArgument(
+                              "Wrong broadcast algorithm. This may be a bug."));
+      }
+    }
+
+    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank + 1>,
+               MaxWithOne<Arity>::kValue>
+        ins_strides;
+    phi::Array<bool, MaxWithOne<Arity>::kValue> need_broadcasts;
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> out_strides;
+    const auto &out_dims = out_tensor->dims();
+    if (rank <= out_dims.size()) {
+      out_strides = ShapeToStride(out_dims.Get(), rank);
+    } else {
+      out_strides = ShapeToStride(broadcast_out_dims.Get(), rank);
+    }
+
+    for (int i = 0; i < Arity; ++i) {
+      ins_strides[i] = ShapeToStride(ins_expand_dims[i].Get(), rank);
+      need_broadcasts[i] =
+          !IsSameShape(out_strides.Get(), ins_strides[i].Get(), rank + 1);
+    }
+
+    int64_t numel = out_strides[0];
+    auto gpu_config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
+
+    BroadcastKernelWithInt64Index<InT, OutT, Functor, VecSize, Arity>
+        <<<gpu_config.block_per_grid,
+           gpu_config.thread_per_block,
+           0,
+           ctx.stream()>>>(ins_ptrs,
+                           out_ptr,
+                           ins_strides,
+                           out_strides,
+                           need_broadcasts,
+                           rank,
+                           functor);
+  }
+
+ private:
+  static void CalculateBroadcastDims(const int64_t *x_dims,
+                                     const int64_t *y_dims,
+                                     int nx,
+                                     int ny,
+                                     int axis,
+                                     int64_t *x_out_dims,
+                                     int64_t *y_out_dims,
+                                     int64_t *broadcast_out_dims,
+                                     int *length) {
+    PADDLE_ENFORCE_GE(
+        axis, 0, phi::errors::InvalidArgument("Invalid axis value: %d", axis));
+    if (nx == ny) {
+      *length = nx;
+      for (int i = 0; i < nx; ++i) {
+        if (x_dims[i] != y_dims[i]) {
+          PADDLE_ENFORCE_EQ(
+              x_dims[i] == 1 || y_dims[i] == 1,
+              true,
+              phi::errors::InvalidArgument("Cannot broadcast input shape where "
+                                           "x_dims[%d] = %d, y_dims[%d] = %d.",
+                                           i,
+                                           x_dims[i],
+                                           i,
+                                           y_dims[i]));
+        }
+        broadcast_out_dims[i] = std::max(x_dims[i], y_dims[i]);
+        x_out_dims[i] = x_dims[i];
+        y_out_dims[i] = y_dims[i];
+      }
+    } else if (nx > ny) {
+      *length = nx;
+      for (int i = nx - axis; i < ny; ++i) {
+        PADDLE_ENFORCE_EQ(
+            y_dims[i],
+            1,
+            phi::errors::InvalidArgument(
+                "The trailing Y.shape[%d] should be 1 but got %d.",
+                i,
+                y_dims[i]));
+      }
+
+      for (int i = 0; i < nx; ++i) {
+        if (i >= axis && i - axis < ny) {
+          if (x_dims[i] != y_dims[i - axis]) {
+            PADDLE_ENFORCE_EQ(x_dims[i] == 1 || y_dims[i - axis] == 1,
+                              true,
+                              phi::errors::InvalidArgument(
+                                  "Cannot broadcast input shape where "
+                                  "x_dims[%d] = %d, y_dims[%d] = %d.",
+                                  i,
+                                  x_dims[i],
+                                  i - axis,
+                                  y_dims[i - axis]));
+          }
+          broadcast_out_dims[i] = std::max(x_dims[i], y_dims[i - axis]);
+          x_out_dims[i] = x_dims[i];
+          y_out_dims[i] = y_dims[i - axis];
+        } else {
+          broadcast_out_dims[i] = x_dims[i];
+          x_out_dims[i] = x_dims[i];
+          y_out_dims[i] = 1;
+        }
+      }
+    } else {
+      CalculateBroadcastDims(y_dims,
+                             x_dims,
+                             ny,
+                             nx,
+                             axis,
+                             y_out_dims,
+                             x_out_dims,
+                             broadcast_out_dims,
+                             length);
+    }
+  }
+
+  static bool IsSameShape(const int64_t *x, const int64_t *y, int rank) {
+    for (int i = 0; i < rank; ++i) {
+      if (x[i] != y[i]) return false;
+    }
+    return true;
+  }
+
+  static phi::Array<int64_t, phi::DDim::kMaxRank + 1> ShapeToStride(
+      const int64_t *arr, int rank) {
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> strides;
+    strides[rank] = 1;
+    for (int i = rank - 1; i >= 0; --i) {
+      strides[i] = strides[i + 1] * arr[i];
+    }
+    return strides;
+  }
+};
+#endif
+
 template <ElementwiseType ET,
           typename InT,
           typename OutT,
@@ -508,6 +900,63 @@ void BroadcastKernelForDifferentVecSize(
                                    "functions is %d.",
                                    outs->size(),
                                    NumOuts));
+
+#ifndef PADDLE_WITH_XPU_KP
+  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && kArity <= 3);
+  bool use_int64_index_kernel =
+      kEnabledInt64IndexKernel &&
+      (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
+  if (use_int64_index_kernel) {
+    int vec_size = GetVecsize<InT, OutT>(ins, outs);
+    switch (vec_size) {
+      case VecSizeL: {
+        LaunchBroadcastKernelWithInt64IndexHelper<InT,
+                                                  OutT,
+                                                  Functor,
+                                                  kArity,
+                                                  NumOuts,
+                                                  VecSizeL>::Run(ctx,
+                                                                 ins,
+                                                                 outs,
+                                                                 axis,
+                                                                 func);
+        break;
+      }
+      case VecSizeM: {
+        LaunchBroadcastKernelWithInt64IndexHelper<InT,
+                                                  OutT,
+                                                  Functor,
+                                                  kArity,
+                                                  NumOuts,
+                                                  VecSizeM>::Run(ctx,
+                                                                 ins,
+                                                                 outs,
+                                                                 axis,
+                                                                 func);
+        break;
+      }
+      case VecSizeS: {
+        LaunchBroadcastKernelWithInt64IndexHelper<InT,
+                                                  OutT,
+                                                  Functor,
+                                                  kArity,
+                                                  NumOuts,
+                                                  VecSizeS>::Run(ctx,
+                                                                 ins,
+                                                                 outs,
+                                                                 axis,
+                                                                 func);
+        break;
+      }
+      default: {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Unsupported vectorized size: %d!", vec_size));
+        break;
+      }
+    }
+    return;
+  }
+#endif
 
   // mergedim and get vec_size
   const auto merge_dims = DimensionsTransform(ins, (*outs)[0]->dims(), axis);
