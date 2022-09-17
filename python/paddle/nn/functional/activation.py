@@ -413,7 +413,7 @@ def hardswish(x, name=None):
 
 def leaky_relu(x, negative_slope=0.01, name=None):
     r"""
-    leaky_relu activation
+    leaky_relu activation. The calculation formula is:
 
     .. math::
         leaky\_relu(x)=

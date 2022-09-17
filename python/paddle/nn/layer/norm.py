@@ -452,11 +452,7 @@ class GroupNorm(Layer):
 
 class LayerNorm(Layer):
     r"""
-    :alias_main: paddle.nn.LayerNorm
-	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
-	:old_api: paddle.fluid.dygraph.LayerNorm
-
-    This interface is used to construct a callable object of the ``LayerNorm`` class.
+    Construct a callable object of the ``LayerNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
     Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
@@ -504,11 +500,8 @@ class LayerNorm(Layer):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
+          x = paddle.rand((2, 2, 2, 3))
           layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
           layer_norm_out = layer_norm(x)
 
@@ -748,11 +741,8 @@ class BatchNorm1D(_BatchNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
+          x = paddle.rand((2, 1, 3))
           batch_norm = paddle.nn.BatchNorm1D(1)
           batch_norm_out = batch_norm(x)
 
@@ -850,11 +840,8 @@ class BatchNorm2D(_BatchNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
+          x = paddle.rand((2, 1, 2, 3))
           batch_norm = paddle.nn.BatchNorm2D(1)
           batch_norm_out = batch_norm(x)
 
@@ -938,11 +925,8 @@ class BatchNorm3D(_BatchNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
+          x = paddle.rand((2, 1, 2, 2, 3))
           batch_norm = paddle.nn.BatchNorm3D(1)
           batch_norm_out = batch_norm(x)
 

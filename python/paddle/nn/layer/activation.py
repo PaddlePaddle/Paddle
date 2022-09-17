@@ -658,7 +658,8 @@ class SELU(Layer):
 
 class LeakyReLU(Layer):
     r"""
-    Leaky ReLU Activation.
+    Leaky ReLU Activation. Create a callable object of `LeakyReLU` to calculate
+    the `LeakyReLU` of input `x`.
 
     .. math::
 
@@ -685,10 +686,9 @@ class LeakyReLU(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             m = paddle.nn.LeakyReLU()
-            x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
+            x = paddle.to_tensor([-2.0, 0, 1])
             out = m(x)  # [-0.02, 0., 1.]
     """
 
