@@ -4676,21 +4676,21 @@ def angle(x, name=None):
     return out
 
 def heaviside(x, y, name=None):
-    """
+    r"""
     Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
 
     .. math::
         heaviside(x, y)=
             \left\{
-                \\begin{array}{lcl}
-                0,& &\\text{if} \ x < 0, \\\\
-                y,& &\\text{if} \ x = 0, \\\\
-                1,& &\\text{if} \ x > 0.
+                \begin{array}{lcl}
+                0,& &\text{if} \ x < 0, \\
+                y,& &\text{if} \ x = 0, \\
+                1,& &\text{if} \ x > 0.
                 \end{array}
-            \\right.
+            \right.
 
     Note:
-        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor`.
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
         x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
@@ -4713,7 +4713,7 @@ def heaviside(x, y, name=None):
             paddle.heaviside(x, y)
             #    [[0.        , 0.20000000, 1.        ],
             #     [0.        , 1.        , 0.30000001]]
-     """
+    """
     op_type = 'elementwise_heaviside'
     axis = -1
     act = None
