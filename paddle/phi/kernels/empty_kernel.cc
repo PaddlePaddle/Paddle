@@ -25,6 +25,7 @@ void EmptyKernel(const Context& dev_ctx,
                  DataType dtype,
                  DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
+  out->set_type(dtype);
   dev_ctx.template Alloc<T>(out);
 }
 
@@ -33,6 +34,8 @@ void EmptyLikeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DataType dtype,
                      DenseTensor* out) {
+  out->Resize(x.dims());
+  out->set_type(dtype);
   dev_ctx.template Alloc<T>(out);
 }
 
