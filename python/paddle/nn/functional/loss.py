@@ -1459,7 +1459,7 @@ def kl_div(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.nn as nn
+            import paddle.nn.functional as F
 
             shape = (5, 20)
             x = paddle.uniform(shape, min=-10, max=10).astype('float32')
