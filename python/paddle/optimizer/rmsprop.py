@@ -71,12 +71,12 @@ class RMSProp(Optimizer):
     Parameters:
         learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
           It can be a float value or a LRScheduler.
-        rho(float): rho is :math:`\rho` in equation, default is 0.95.
-        epsilon(float): :math:`\epsilon` in equation is smoothing term to
+        rho(float, optional): rho is :math:`\rho` in equation, default is 0.95.
+        epsilon(float, optional): :math:`\epsilon` in equation is smoothing term to
           avoid division by zero, default is 1e-6.
-        momentum(float): :math:`\beta` in equation is the momentum term,
+        momentum(float, optional): :math:`\beta` in equation is the momentum term,
           default is 0.0.
-        centered(bool): If True, gradients are normalized by the estimated variance of
+        centered(bool, optional): If True, gradients are normalized by the estimated variance of
           the gradient; if False, by the uncentered second moment. Setting this to
           True may help with training, but is slightly more expensive in terms of
           computation and memory. Defaults to False.
