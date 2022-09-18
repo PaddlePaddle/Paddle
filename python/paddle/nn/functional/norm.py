@@ -295,7 +295,7 @@ def layer_norm(x,
 
           import paddle
 
-          x = paddle.rand((2, 2, 2, 3)))
+          x = paddle.rand((2, 2, 2, 3))
           layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
           print(layer_norm_out)
     """
