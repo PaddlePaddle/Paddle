@@ -17,6 +17,7 @@ from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
+from paddle.distribution.gumbel import Gumbel
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.independent import Independent
 from paddle.distribution.kl import kl_divergence, register_kl
@@ -28,7 +29,7 @@ from paddle.distribution.transformed_distribution import \
 from paddle.distribution.uniform import Uniform
 
 __all__ = [  # noqa
-    'Beta', 'Categorical', 'Dirichlet', 'Distribution', 'ExponentialFamily',
+    'Beta', 'Categorical', 'Dirichlet', 'Distribution', 'ExponentialFamily', 'Gumbel',
     'Multinomial', 'Normal', 'Uniform', 'kl_divergence', 'register_kl',
     'Independent', 'TransformedDistribution'
 ]

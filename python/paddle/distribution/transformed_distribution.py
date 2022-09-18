@@ -93,6 +93,20 @@ class TransformedDistribution(distribution.Distribution):
             x = t.forward(x)
         return x
 
+    def rsample(self, shape=()):
+        """Rsample from ``TransformedDistribution``.
+
+        Args:
+            shape (tuple, optional): The rsample shape. Defaults to ().
+
+        Returns:
+            [Tensor]: The rsample result.
+        """
+        x = self._base.rsample(shape)
+        for t in self._transforms:
+            x = t.forward(x)
+        return x
+
     def log_prob(self, value):
         """The log probability evaluated at value.
 
