@@ -16,6 +16,8 @@
 
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/common/int_array.h"
+
 
 namespace phi {
 namespace sparse {
@@ -56,6 +58,23 @@ DECLARE_SPARSE_UNARY_KERNEL(Sqrt)
 DECLARE_SPARSE_UNARY_KERNEL(Log1p)
 DECLARE_SPARSE_UNARY_KERNEL(Abs)
 DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
+
+
+
+
+template <typename T, typename Context>
+void AnyCooKernel(const Context& dev_ctx,
+                  const SparseCooTensor& x,
+                  const IntArray& axis,
+                  bool keepdim,
+                  SparseCooTensor* out);
+
+template <typename T, typename Context>
+void AnyCsrKernel(const Context& dev_ctx,
+                  const SparseCsrTensor& x,
+                  const IntArray& axis,
+                  bool keepdim,
+                  SparseCsrTensor* out);
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,

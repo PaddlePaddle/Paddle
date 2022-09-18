@@ -3674,23 +3674,23 @@ def all(x, axis=None, keepdim=False, name=None):
 
 def any(x, axis=None, keepdim=False, name=None):
     """
-    Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
+    Compute the ``logical or`` of tensor elements over the given dimensions, and return the result.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
-        axis (int|list|tuple, optional): The dimensions along which the ``logical or`` is compute. If
-            :attr:`None`, and all elements of :attr:`x` and return a
-            Tensor with a single element, otherwise must be in the
+        axis (int|list|tuple, optional): The dimensions along which the ``logical or`` is computed. If
+            :attr:`None`, then all elements of :attr:`x` are participating in the ``logical or``
+            computation and return a Tensor with a single element, otherwise must be in the
             range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
             the dimension to reduce is :math:`rank + axis[i]`.
-        keepdim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result Tensor will have one fewer dimension
+        keepdim (bool, optional): Whether to reserve the reduced dimensions in the
+            output Tensor. The result Tensor will have fewer dimensions
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
+        Tensor: Result of the ``logical or`` on the specified axes of input Tensor `x`,  it's data type is bool.
 
     Examples:
         .. code-block:: python
@@ -3698,9 +3698,8 @@ def any(x, axis=None, keepdim=False, name=None):
             import paddle
 
             x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
-            x = paddle.assign(x)
-            print(x)
             x = paddle.cast(x, 'bool')
+            print(x)
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [True, True]]
@@ -3713,11 +3712,11 @@ def any(x, axis=None, keepdim=False, name=None):
             out2 = paddle.any(x, axis=0)  # [True, True]
             print(out2)
 
-            # keepdim=False, out3 should be [True, True], out.shape should be (2,)
+            # keepdim=False, out3 should be [True, True], out3.shape should be (2,)
             out3 = paddle.any(x, axis=-1)  # [True, True]
             print(out3)
 
-            # keepdim=True, result should be [[True], [True]], out.shape should be (2,1)
+            # keepdim=True, out4 should be [[True], [True]], out4.shape should be (2,1)
             out4 = paddle.any(x, axis=1, keepdim=True)  # [[True], [True]]
             print(out4)
 
@@ -3739,7 +3738,7 @@ def any(x, axis=None, keepdim=False, name=None):
         return _C_ops.any(x, axis, keepdim)
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
+        axis = axis if axis != None and axis != [] and axis != () else [0]
         return _legacy_C_ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag)
 
