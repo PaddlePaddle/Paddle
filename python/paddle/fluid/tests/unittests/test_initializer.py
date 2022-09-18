@@ -245,7 +245,7 @@ class TestNormalInitializer(unittest.TestCase):
                                    name="param",
                                    initializer=initializer.NormalInitializer(
                                        2.3, 1.9, 123))
-        num_ops = 2 if (dtype == "float16" or dtype == "uint16") else 1
+        num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -390,7 +390,6 @@ class TestXavierInitializer(unittest.TestCase):
         """Test the Xavier initializer with float16
         """
         block = self.test_xavier_initializer_supplied_arguments("float16")
-        self.assertTrue(check_cast_op(block.ops[1]))
 
     def test_xavier_initializer_bf16(self):
         """Test the Xavier initializer with bfloat16
@@ -400,7 +399,6 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertEqual(len(block_uniform.ops), 1)
         block_gaussian = self.test_xavier_initializer_supplied_arguments(
             "uint16", False)
-        self.assertTrue(check_cast_op(block_gaussian.ops[1]))
 
 
 class TestMSRAInitializer(unittest.TestCase):

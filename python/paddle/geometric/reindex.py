@@ -33,17 +33,17 @@ def reindex_graph(x,
 
     This API is mainly used in Graph Learning domain, which should be used
     in conjunction with `graph_sample_neighbors` API. And the main purpose
-    is to reindex the ids information of the input nodes, and return the 
+    is to reindex the ids information of the input nodes, and return the
     corresponding graph edges after reindex.
 
-    **Notes**: 
+    **Notes**:
         The number in x should be unique, otherwise it would cause potential errors.
-    We will reindex all the nodes from 0. 
+    We will reindex all the nodes from 0.
 
     Take input nodes x = [0, 1, 2] as an example.
-    If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2], 
+    If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
     then we know that the neighbors of 0 is [8, 9], the neighbors of 1
-    is [0, 4, 7], and the neighbors of 2 is [6, 7]. 
+    is [0, 4, 7], and the neighbors of 2 is [6, 7].
     Then after graph_reindex, we will have 3 different outputs:
         1. reindex_src: [3, 4, 0, 5, 6, 7, 6]
         2. reindex_dst: [0, 0, 1, 1, 1, 2, 2]
@@ -56,17 +56,17 @@ def reindex_graph(x,
                     data type is int32, int64.
         neighbors (Tensor): The neighbors of the input nodes `x`. The data type
                             should be the same with `x`.
-        count (Tensor): The neighbor count of the input nodes `x`. And the 
+        count (Tensor): The neighbor count of the input nodes `x`. And the
                         data type should be int32.
         value_buffer (Tensor|None): Value buffer for hashtable. The data type should be int32,
                                     and should be filled with -1. Only useful for gpu version.
         index_buffer (Tensor|None): Index buffer for hashtable. The data type should be int32,
                                     and should be filled with -1. Only useful for gpu version.
-                                    `value_buffer` and `index_buffer` should be both not None 
+                                    `value_buffer` and `index_buffer` should be both not None
                                     if you want to speed up by using hashtable buffer.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         reindex_src (Tensor): The source node index of graph edges after reindex.
         reindex_dst (Tensor): The destination node index of graph edges after reindex.
@@ -75,7 +75,7 @@ def reindex_graph(x,
                             nodes in the back.
 
     Examples:
-        
+
         .. code-block:: python
 
         import paddle
@@ -156,7 +156,7 @@ def reindex_heter_graph(x,
 
     **Notes**:
         The number in x should be unique, otherwise it would cause potential errors.
-    We support multi-edge-types neighbors reindexing in reindex_heter_graph api. 
+    We support multi-edge-types neighbors reindexing in reindex_heter_graph api.
     We will reindex all the nodes from 0.
 
     Take input nodes x = [0, 1, 2] as an example.
@@ -169,14 +169,14 @@ def reindex_heter_graph(x,
     We will get following outputs:
         1. reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1]
         2. reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
-        3. out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5] 
+        3. out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
 
     Args:
         x (Tensor): The input nodes which we sample neighbors for. The available
                     data type is int32, int64.
-        neighbors (list|tuple): The neighbors of the input nodes `x` from different graphs. 
+        neighbors (list|tuple): The neighbors of the input nodes `x` from different graphs.
                                 The data type should be the same with `x`.
-        count (list|tuple): The neighbor counts of the input nodes `x` from different graphs. 
+        count (list|tuple): The neighbor counts of the input nodes `x` from different graphs.
                             And the data type should be int32.
         value_buffer (Tensor|None): Value buffer for hashtable. The data type should be int32,
                                     and should be filled with -1. Only useful for gpu version.

@@ -423,6 +423,10 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
+    VLOG(10) << "all reduce buffer:" << sendbuff << ", numel:" << numel
+             << ", redtype:" << static_cast<int>(red_type)
+             << ", dtype:" << dtype << ", comm:" << comm
+             << ", stream:" << stream;
 
     ncclRedOp_t nccl_red_type = ncclSum;
     switch (red_type) {

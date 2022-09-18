@@ -43,7 +43,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
@@ -135,11 +134,11 @@ def main():
     parser.add_argument('--api_yaml_path',
                         nargs='+',
                         help='path to api yaml file',
-                        default='paddle/phi/api/yaml/api.yaml')
+                        default='paddle/phi/api/yaml/ops.yaml')
 
     parser.add_argument('--sparse_api_yaml_path',
                         help='path to sparse api yaml file',
-                        default='paddle/phi/api/yaml/sparse_api.yaml')
+                        default='paddle/phi/api/yaml/sparse_ops.yaml')
 
     parser.add_argument('--dygraph_api_header_path',
                         help='output of generated dygraph api header code file',

@@ -40,7 +40,7 @@ class TensorConfig:
         '''
         shape: The shape of the tensor.
         dtype: The data type of the tensor.
-        data: The value of WeightVar. for input, it should be None 
+        data: The value of WeightVar. for input, it should be None
         '''
         self.lod = lod
         if data_gen is not None:

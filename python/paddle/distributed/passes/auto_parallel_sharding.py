@@ -51,7 +51,8 @@ class ShardingPass(PassBase):
         super(ShardingPass, self).__init__()
         self.set_attr("dist_context", None)
         self.set_attr("stage", None)
-        self.set_attr("sharding_degree", None)
+        self.set_attr("sharding_degree", None)  # for parallelizer
+        self.set_attr("degree", None)  # for parallelizer_v2
         self.set_attr("params_grads", [])
         self.set_attr("global_rank", -1)
         self.dp_groups = set()
@@ -59,6 +60,7 @@ class ShardingPass(PassBase):
         self.varname_to_sharding_info = {}
         self.partial_sharding = False
         self.outer_dp_group = None
+        self.shared_params_grads = []
 
     def _check_self(self):
         if self.get_attr("dist_context") is None:
@@ -66,8 +68,15 @@ class ShardingPass(PassBase):
 
         if self.get_attr("stage") not in [1, 2, 3]:
             return False
-        if (not isinstance(self.get_attr("sharding_degree"),
-                           int)) or self.get_attr("sharding_degree") <= 1:
+        if self.get_attr("sharding_degree") is not None:
+            if (not isinstance(self.get_attr("sharding_degree"), int)) \
+                or self.get_attr("sharding_degree") <= 1:
+                return False
+        elif self.get_attr("degree") is not None:
+            if (not isinstance(self.get_attr("degree"), int)) \
+                or self.get_attr("degree") <= 1:
+                return False
+        else:
             return False
         if len(self.get_attr("params_grads")) <= 0:
             return False
@@ -82,7 +91,8 @@ class ShardingPass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, context):
         self._dist_context = self.get_attr("dist_context")
-        self.sharding_world_size = int(self.get_attr("sharding_degree"))
+        self.sharding_world_size = int(
+            self.get_attr("sharding_degree") or self.get_attr("degree"))
         self.stage = int(self.get_attr("stage"))
         self.global_rank = int(self.get_attr("global_rank"))
         params_grads = self.get_attr("params_grads")
@@ -93,6 +103,8 @@ class ShardingPass(PassBase):
         self._shard_optimizer(main_block, startup_block, params_grads, context)
         self._shard_gradient_synchronization(main_block)
         self._shard_parameter(main_block, startup_block)
+
+        context.set_attr("params_grads", self.shared_params_grads)
 
     def _build_sharding_groups(self, main_block, params_grads):
         self._collective_data_parallel_groups(main_block)
@@ -148,13 +160,10 @@ class ShardingPass(PassBase):
 
             self._dist_context._sharding_group = sharding_group
             # TODO(JZ-LIANG) when support multiple dp groups in future, should group param and bind them to corresponding dp group
-            params_in_group = [p for p, g in params_grads]
-            assert len(params_in_group) == len(
-                set(params_in_group)), "found duplicated param in params_grads"
             sharding_info = ShardingInfo(sharding_group, self.global_rank,
-                                         params_in_group)
+                                         params_grads)
             self.sharding_infos.append(sharding_info)
-            for param in params_in_group:
+            for param in sharding_info.params:
                 self.varname_to_sharding_info[param.name] = sharding_info
 
     def _shard_optimizer(self, main_block, startup_block, params_grads,
@@ -201,6 +210,7 @@ class ShardingPass(PassBase):
                     op.desc.set_output('Out', reversed_x)
                 else:
                     if op.type == "check_finite_and_unscale":
+                        op_role = op.attr('op_role')
                         out_name = op.output_arg_names[0]
                         out_var = main_block.vars[out_name]
                         main_block._remove_op(idx, sync=False)
@@ -212,6 +222,7 @@ class ShardingPass(PassBase):
                                 "shape": out_var.shape,
                                 "dtype": out_var.dtype,
                                 "value": 0,
+                                OP_ROLE_KEY: op_role,
                             })
                     else:
                         main_block._remove_op(idx, sync=False)
@@ -313,6 +324,9 @@ class ShardingPass(PassBase):
                         if varname != param_name
                     ])
                     main_block._remove_op(idx, sync=False)
+                else:
+                    self.shared_params_grads.append(
+                        self._get_param_grad(param_name))
 
         for idx, op in reversed(list(enumerate(startup_block.ops))):
             if len(op.output_arg_names) == 1 and op.output_arg_names[
@@ -364,6 +378,13 @@ class ShardingPass(PassBase):
         assert param_name in self.varname_to_sharding_info
         sharding_info = self.varname_to_sharding_info[param_name]
         return sharding_info.is_in_local_shard(param_name)
+
+    def _get_param_grad(self, param_name):
+        assert param_name in self.varname_to_sharding_info
+        sharding_info = self.varname_to_sharding_info[param_name]
+        p_g = sharding_info.get_param_grad(param_name)
+        assert p_g is not None
+        return p_g
 
     def _shard_gradient_synchronization(self, main_block):
 
@@ -705,9 +726,13 @@ def shard_parameters(params, group_size):
 
 class ShardingInfo(object):
 
-    def __init__(self, group, rank, params):
+    def __init__(self, group, rank, params_grads):
         self.group = group
-        self.params = params
+        self.params_grads = dict([(p.name, (p, g)) for p, g in params_grads])
+        assert len(self.params_grads) == len(set(
+            self.params_grads)), "found duplicated param in params_grads"
+
+        self.params = [p for p, _ in params_grads]
         self.param_names = [p.name for p in self.params]
         self.group_size = group.nranks
         self.global_rank = rank
@@ -762,3 +787,11 @@ class ShardingInfo(object):
             if usage > 0:
                 broadcast_vars.add(param)
         return broadcast_vars, param_usage
+
+    def get_param_grad(self, param_name):
+        if not self.is_in_local_shard(param_name):
+            raise ValueError(
+                "param[{}] not in current rank.".format(param_name))
+        if param_name not in self.params_grads:
+            raise ValueError('param[{}] not in params_grads'.format(param_name))
+        return self.params_grads.get(param_name, None)

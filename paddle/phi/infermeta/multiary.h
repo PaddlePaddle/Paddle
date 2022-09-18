@@ -216,6 +216,11 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
                              MetaTensor* fused_output,
                              MetaConfig config = MetaConfig());
 
+void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
+                                  MetaTensor* output,
+                                  std::vector<MetaTensor*> xout,
+                                  MetaConfig config = MetaConfig());
+
 void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
