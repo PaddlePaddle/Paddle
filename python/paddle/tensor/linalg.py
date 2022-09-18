@@ -1745,24 +1745,27 @@ def mv(x, vec, name=None):
 def det(x, name=None):
     """
     Calculates determinant value of a square matrix or batches of square matrices.
+
     Args:
-        x (Tensor): input (Tensor): the input matrix of size `(n, n)` or the batch of matrices of size
-                    `(*, n, n)` where `*` is one or more batch dimensions.
+        x (Tensor): input (Tensor): the input matrix of size `(n, n)` or the
+            batch of matrices of size `(*, n, n)` where `*` is one or more
+            batch dimensions.
+
     Returns:
-        y (Tensor):the determinant value of a square matrix or batches of square matrices.
+        Tensor, the determinant value of a square matrix or batches of square matrices.
 
     Examples:
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x =  paddle.randn([3,3,3])
+            x =  paddle.randn([3,3,3])
 
-        A = paddle.linalg.det(x)
+            A = paddle.linalg.det(x)
 
-        print(A)
+            print(A)
 
-        # [ 0.02547996,  2.52317095, -6.15900707])
+            # [ 0.02547996,  2.52317095, -6.15900707])
 
 
     """
