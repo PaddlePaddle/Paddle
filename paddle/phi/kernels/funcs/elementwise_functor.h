@@ -108,6 +108,7 @@ using ComplexType = phi::dtype::complex<T>;
 
 template <typename InT, typename OutT>
 struct DivGradXYFunctor {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT a,
                                                    const InT b,
                                                    const InT c) {
@@ -122,6 +123,7 @@ struct DivGradXYFunctor {
 
 template <typename InT, typename OutT>
 struct DivGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE phi::Array<ComplexType<OutT>, 2> operator()(
       const ComplexType<InT> a,
       const ComplexType<InT> b,
@@ -154,6 +156,7 @@ struct DivGradXFunctor<ComplexType<T>> {
 // Float mul and div
 template <typename T>
 struct DivGradYFunctor {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE T operator()(const T a, const T b, const T c) const {
     return -a * b / c;
   }
@@ -162,6 +165,7 @@ struct DivGradYFunctor {
 // ComplexType mul and div
 template <typename T>
 struct DivGradYFunctor<ComplexType<T>> {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
                                               const ComplexType<T> b,
                                               const ComplexType<T> c) const {
@@ -249,6 +253,7 @@ struct FMaxFunctor<int64_t> {
 
 template <typename T>
 struct FMaxGradDx {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return dout * static_cast<T>((x >= y) || isnan(y));
   }
@@ -256,6 +261,7 @@ struct FMaxGradDx {
 
 template <>
 struct FMaxGradDx<dtype::float16> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
                                        dtype::float16 out,
@@ -266,6 +272,7 @@ struct FMaxGradDx<dtype::float16> {
 
 template <>
 struct FMaxGradDx<int> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
     return dout * static_cast<int>((x >= y));
   }
@@ -273,6 +280,7 @@ struct FMaxGradDx<int> {
 
 template <>
 struct FMaxGradDx<int64_t> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
                                 int64_t out,
@@ -283,6 +291,7 @@ struct FMaxGradDx<int64_t> {
 
 template <typename T>
 struct FMaxGradDy {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return dout * static_cast<T>(!((x >= y) || isnan(y)));
   }
@@ -290,6 +299,7 @@ struct FMaxGradDy {
 
 template <>
 struct FMaxGradDy<dtype::float16> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
                                        dtype::float16 out,
@@ -300,6 +310,7 @@ struct FMaxGradDy<dtype::float16> {
 
 template <>
 struct FMaxGradDy<int64_t> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
                                 int64_t out,
@@ -317,6 +328,7 @@ struct FMaxGradDy<int> {
 
 template <typename T>
 struct FMinGradDx {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return dout * static_cast<T>((x <= y) || isnan(y));
   }
@@ -324,6 +336,7 @@ struct FMinGradDx {
 
 template <>
 struct FMinGradDx<dtype::float16> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
                                        dtype::float16 out,
@@ -334,6 +347,7 @@ struct FMinGradDx<dtype::float16> {
 
 template <>
 struct FMinGradDx<int> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
     return dout * static_cast<int>((x <= y));
   }
@@ -341,6 +355,7 @@ struct FMinGradDx<int> {
 
 template <>
 struct FMinGradDx<int64_t> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
                                 int64_t out,
@@ -358,6 +373,7 @@ struct FMinGradDy {
 
 template <>
 struct FMinGradDy<dtype::float16> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
                                        dtype::float16 out,
@@ -368,6 +384,7 @@ struct FMinGradDy<dtype::float16> {
 
 template <>
 struct FMinGradDy<int> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
     return dout * static_cast<int>(!((x <= y)));
   }
@@ -375,6 +392,7 @@ struct FMinGradDy<int> {
 
 template <>
 struct FMinGradDy<int64_t> {
+  static constexpr bool IsIntrinsic = false;
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
                                 int64_t out,
@@ -398,6 +416,7 @@ struct MultiplyGradFunctor<ComplexType<T>> {
 
 template <typename InT, typename OutT>
 struct MultiplyGradXYFunctor {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT a,
                                                    const InT b,
                                                    const InT c) {
@@ -412,6 +431,7 @@ struct MultiplyGradXYFunctor {
 
 template <typename InT, typename OutT>
 struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE phi::Array<ComplexType<OutT>, 2> operator()(
       const ComplexType<InT> a,
       const ComplexType<InT> b,
@@ -437,6 +457,7 @@ struct MaximumFunctor {
 
 template <typename T>
 struct MaxGradXFunctor {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x > y);
   }
@@ -444,6 +465,7 @@ struct MaxGradXFunctor {
 
 template <typename T>
 struct MaxGradYFunctor {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x <= y);
   }
@@ -451,6 +473,7 @@ struct MaxGradYFunctor {
 
 template <typename InT, typename OutT>
 struct MaxGradXYFunctor {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x,
                                                    const InT y,
                                                    const InT dout) {
@@ -472,12 +495,14 @@ struct MinimumFunctor {
 };
 template <typename T>
 struct MinGradXFunctor {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x < y);
   }
 };
 template <typename T>
 struct MinGradYFunctor {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x >= y);
   }
@@ -485,6 +510,7 @@ struct MinGradYFunctor {
 
 template <typename InT, typename OutT>
 struct MinGradXYFunctor {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x,
                                                    const InT y,
                                                    const InT dout) {

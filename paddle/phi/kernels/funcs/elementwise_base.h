@@ -632,6 +632,7 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 2, false> {
   }
 };
 
+#ifdef PADDLE_WITH_XPU_KP
 template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
   __device__ inline void operator()(Functor func,
@@ -642,6 +643,44 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
         result, args[0], args[1], args[2], func);
   }
 };
+#else
+template <int VecSize, typename InT, typename OutT, bool IsIntrinsic>
+struct TypeConverter {
+  using InType = InT;
+  using OutType = OutT;
+  static const int Size = VecSize;
+};
+
+template <int VecSize>
+struct FpTypeTrait {
+  using Type = __half2;
+};
+
+template <int VecSize>
+struct TypeConverter<VecSize, dtype::float16, dtype::float16, true> {
+  using InType = typename FpTypeTrait<VecSize>::Type;
+  using OutType = typename FpTypeTrait<VecSize>::Type;
+  static const int Size = (VecSize > 1) ? (VecSize >> 1) : VecSize;
+};
+
+template <typename InT, typename OutT, int VecSize, typename Functor>
+struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
+  __device__ inline void operator()(Functor func,
+                                    InT (*args)[VecSize],
+                                    OutT *result,
+                                    int read_lens) {
+    using ct = TypeConverter<VecSize, InT, OutT, Functor::IsIntrinsic>;
+    using Type1 = typename ct::InType;
+    using Type2 = typename ct::OutType;
+    kps::ElementwiseTernary<Type1, Type2, ct::Size, 1, Functor>(
+        reinterpret_cast<Type2 *>(result),
+        reinterpret_cast<const Type1 *>(args[0]),
+        reinterpret_cast<const Type1 *>(args[1]),
+        reinterpret_cast<const Type1 *>(args[2]),
+        func);
+  }
+};
+#endif
 
 namespace detail {
 template <class F, class Tuple, std::size_t... Index>

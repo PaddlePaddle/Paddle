@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <cuda_fp16.h>
 #include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -53,7 +54,16 @@ void AllocWithDebugInfo(const phi::GPUContext& dev_ctx,
 
 template <typename T>
 struct TernaryAddFunctor {
+  static constexpr bool IsIntrinsic = false;
   inline HOSTDEVICE T operator()(T a, T b, T c) const { return a + b + c; }
+};
+
+template <>
+struct TernaryAddFunctor<phi::dtype::float16> {
+  static constexpr bool IsIntrinsic = true;
+  __device__ inline __half2 operator()(__half2 a, __half2 b, __half2 c) const {
+    return __hadd2(__hadd2(a, b), c);
+  }
 };
 
 template <typename T>
