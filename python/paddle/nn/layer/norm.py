@@ -228,7 +228,7 @@ Where `H` means height of feature map, `W` means width of feature map.
 
           import paddle
 
-          x = paddle.rand((2, 2, 3))
+          x = paddle.rand((2, 2, 2, 3))
           instance_norm = paddle.nn.InstanceNorm2D(2)
           instance_norm_out = instance_norm(x)
 
@@ -294,7 +294,7 @@ Where `H` means height of feature map, `W` means width of feature map.
 
           import paddle
 
-          x = paddle.rand((2, 2, 3))
+          x = paddle.rand((2, 2, 2, 2, 3))
           instance_norm = paddle.nn.InstanceNorm3D(2)
           instance_norm_out = instance_norm(x)
 
