@@ -1811,18 +1811,18 @@ def slogdet(x, name=None):
         of the absolute value of determinant, respectively.
 
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x =  paddle.randn([3,3,3])
+            x =  paddle.randn([3,3,3])
 
-        A = paddle.linalg.slogdet(x)
+            A = paddle.linalg.slogdet(x)
 
-        print(A)
+            print(A)
 
-        # [[ 1.        ,  1.        , -1.        ],
-        # [-0.98610914, -0.43010661, -0.10872950]])
+            # [[ 1.        ,  1.        , -1.        ],
+            # [-0.98610914, -0.43010661, -0.10872950]])
 
     """
     if in_dygraph_mode():
@@ -2942,23 +2942,23 @@ def solve(x, y, name=None):
         Its data type should be the same as that of `x`.
 
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
-        # a square system of linear equations:
-        # 2*X0 + X1 = 9
-        # X0 + 2*X1 = 8
+            # a square system of linear equations:
+            # 2*X0 + X1 = 9
+            # X0 + 2*X1 = 8
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        np_x = np.array([[3, 1],[1, 2]])
-        np_y = np.array([9, 8])
-        x = paddle.to_tensor(np_x, dtype="float64")
-        y = paddle.to_tensor(np_y, dtype="float64")
-        out = paddle.linalg.solve(x, y)
+            np_x = np.array([[3, 1],[1, 2]])
+            np_y = np.array([9, 8])
+            x = paddle.to_tensor(np_x, dtype="float64")
+            y = paddle.to_tensor(np_y, dtype="float64")
+            out = paddle.linalg.solve(x, y)
 
-        print(out)
-        # [2., 3.])
+            print(out)
+            # [2., 3.])
     """
     if in_dygraph_mode():
         return _C_ops.solve(x, y)
@@ -3011,24 +3011,24 @@ def triangular_solve(x,
         Tensor: The solution of the system of equations. Its data type should be the same as that of `x`.
 
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
-        # a square system of linear equations:
-        # x1 +   x2  +   x3 = 0
-        #      2*x2  +   x3 = -9
-        #               -x3 = 5
+            # a square system of linear equations:
+            # x1 +   x2  +   x3 = 0
+            #      2*x2  +   x3 = -9
+            #               -x3 = 5
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        x = paddle.to_tensor([[1, 1, 1],
-                              [0, 2, 1],
-                              [0, 0,-1]], dtype="float64")
-        y = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
-        out = paddle.linalg.triangular_solve(x, y, upper=True)
+            x = paddle.to_tensor([[1, 1, 1],
+                                  [0, 2, 1],
+                                  [0, 0,-1]], dtype="float64")
+            y = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
+            out = paddle.linalg.triangular_solve(x, y, upper=True)
 
-        print(out)
-        # [7, -2, -5]
+            print(out)
+            # [7, -2, -5]
     """
     if in_dygraph_mode():
         return _C_ops.triangular_solve(x, y, upper, transpose, unitriangular)
@@ -3078,18 +3078,18 @@ def cholesky_solve(x, y, upper=False, name=None):
         Tensor: The solution of the system of equations. Its data type is the same as that of `x`.
 
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            import paddle
 
-        u = paddle.to_tensor([[1, 1, 1],
-                                [0, 2, 1],
-                                [0, 0,-1]], dtype="float64")
-        b = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
-        out = paddle.linalg.cholesky_solve(b, u, upper=True)
+            u = paddle.to_tensor([[1, 1, 1],
+                                    [0, 2, 1],
+                                    [0, 0,-1]], dtype="float64")
+            b = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
+            out = paddle.linalg.cholesky_solve(b, u, upper=True)
 
-        print(out)
-        # [-2.5, -7, 9.5]
+            print(out)
+            # [-2.5, -7, 9.5]
     """
     if in_dygraph_mode():
         return _C_ops.cholesky_solve(x, y, upper)
