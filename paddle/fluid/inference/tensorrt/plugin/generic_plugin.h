@@ -128,10 +128,11 @@ class GenericPlugin : public DynamicPluginTensorRT {
   framework::OpDesc op_desc_;
 
  private:
-  phi::KernelContext* phi_kernel_context_;
-  const phi::Kernel* phi_kernel_;
-  std::vector<phi::DenseTensor>* dense_tensor_inputs_;
-  std::vector<phi::DenseTensor>* dense_tensor_outputs_;
+  const phi::Kernel* phi_kernel_{nullptr};
+
+  phi::KernelContext* phi_kernel_context_{nullptr};
+  std::vector<phi::DenseTensor>* dense_tensor_inputs_{nullptr};
+  std::vector<phi::DenseTensor>* dense_tensor_outputs_{nullptr};
 
  private:
   InputOutPutVarInfo in_out_info_;
