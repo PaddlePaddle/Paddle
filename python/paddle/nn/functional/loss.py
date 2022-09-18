@@ -1466,23 +1466,19 @@ def kl_div(input, label, reduction='mean', name=None):
             target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(x,
-                                 paddle.to_tensor(target), reduction='batchmean')
+            pred_loss = F.kl_div(x, target, reduction='batchmean')
             # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='mean')
+            pred_loss = F.kl_div(x, target, reduction='mean')
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='sum')
+            pred_loss = F.kl_div(x, target, reduction='sum')
             # shape=[1]
 
             # 'none' reduction, loss shape is same with input shape
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='none')
+            pred_loss = F.kl_div(x, target, reduction='none')
             # shape=[5, 20]
 
     """
