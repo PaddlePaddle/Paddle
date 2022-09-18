@@ -12,5 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['global_scatter', 'global_gather']
-from moe_utils import global_gather, global_scatter
+__all__ = []

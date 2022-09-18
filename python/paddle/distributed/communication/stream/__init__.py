@@ -13,5 +13,7 @@
 # limitations under the License.
 
 from .all_reduce import all_reduce
+from .send import send
+from .recv import recv
 
-__all__ = ["all_reduce"]
+__all__ = ["all_reduce", "send", "recv"]

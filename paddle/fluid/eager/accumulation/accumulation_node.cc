@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -89,7 +90,7 @@ GradNodeAccumulation::operator()(
                          kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph,
     bool is_new_grad) {
-  VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
+  VLOG(3) << "Running AD API Grad: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
@@ -122,7 +123,22 @@ GradNodeAccumulation::operator()(
   if (ReduceHooksRegistered()) {
     ApplyReduceHooks();
   }
+  VLOG(3) << "Finish AD API Grad: GradNodeAccumulation";
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s], Output: [%s] } ";
 
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = "(grads[0][0], [%s]), ";
+    std::string input_out_grad_str = paddle::string::Sprintf(
+        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grads[0][0]));
+    const char* TENSOR_X_GRAD_TEMPLATE = "(grad_out, [%s]), ";
+    std::string output_x_grad_str = paddle::string::Sprintf(
+        TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
+    output_str += output_x_grad_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
   return {{grad_out}};
 }
 
