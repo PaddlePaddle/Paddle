@@ -295,3 +295,11 @@
     func : fused_attention_csr_grad{dense, dense, dense, sparse_csr, dense -> dense, dense, dense}
     layout : softmax
     data_type: query
+
+- backward_op : transpose_grad
+  forward : transpose(Tensor x, int[] dims) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] dims)
+  output : Tensor(x_grad)
+  kernel :
+    func : transpose_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
+           transpose_csr_grad {sparse_csr, sparse_csr -> sparse_csr}

@@ -363,3 +363,12 @@
            mv_csr{sparse_csr, dense -> dense}
     layout : x
   backward: mv_grad
+
+- op : transpose
+  args : (Tensor x, int[] dims)
+  output : Tensor(out)
+  kernel :
+    func : transpose_coo{sparse_coo -> sparse_coo},
+           transpose_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : transpose_grad

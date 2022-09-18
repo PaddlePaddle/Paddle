@@ -696,7 +696,7 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "dim",
         "(list<int>, default {0}) The dimensions to reduce. "
         "Must be in the range [-rank(input), rank(input)). "
-        "If `dim[i] < 0`, the dims[i] to reduce is `rank + dims[i]`. "
+        "If `dim[i] < 0`, the dim to reduce is `rank + dim[i]`. "
         "Note that reducing on the first dim will make the LoD info lost.")
         .SetDefault({0})
         .SupportTensor();
@@ -721,8 +721,8 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(string::Sprintf(R"DOC(
 %s Operator.
 
-This operator computes the %s of input tensor along the given dimension.
-The result tensor has 1 fewer dimension than the input unless keep_dim is true.
+This operator computes the input tensor of %s along the given dimensions.
+The result tensor has fewer dimensions than the input unless keep_dim is true.
 If reduce_all is true, just reduce along all dimensions and output a scalar.
 
 )DOC",

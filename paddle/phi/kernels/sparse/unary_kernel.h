@@ -62,19 +62,8 @@ DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
 
 
 
-template <typename T, typename Context>
-void AnyCooKernel(const Context& dev_ctx,
-                  const SparseCooTensor& x,
-                  const IntArray& axis,
-                  bool keepdim,
-                  SparseCooTensor* out);
 
-template <typename T, typename Context>
-void AnyCsrKernel(const Context& dev_ctx,
-                  const SparseCsrTensor& x,
-                  const IntArray& axis,
-                  bool keepdim,
-                  SparseCsrTensor* out);
+
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,
@@ -129,6 +118,48 @@ template <typename T, typename Context>
 SparseCooTensor ReluCsr(const Context& dev_ctx, const SparseCooTensor& x) {
   SparseCooTensor csr;
   ReluCsrKernel<T, Context>(dev_ctx, x, &csr);
+  return csr;
+}
+
+template <typename T, typename Context>
+void TransposeCooKernel(const Context &dev_ctx,
+                        const SparseCooTensor &x,
+                        const std::vector<int> &perm,
+                        SparseCooTensor *out);
+
+template <typename T, typename Context>
+void TransposeCsrKernel(const Context &dev_ctx,
+                        const SparseCsrTensor &x,
+                        const std::vector<int> &perm,
+                        SparseCsrTensor *out);
+
+template <typename T, typename Context>
+SparseCooTensor TransposeCoo(const Context &dev_ctx,
+                             const SparseCooTensor &x,
+                             const std::vector<int> &perm) {
+  PADDLE_ENFORCE_EQ(x.sparse_dim(),
+                    perm.size(),
+                    phi::errors::InvalidArgument(
+                        "size of perm must be equal than the x.sparse_dim()"));
+  SparseCooTensor coo;
+  TransposeCooKernel<T, Context>(dev_ctx, x, perm, &coo);
+  return coo;
+}
+
+template <typename T, typename Context>
+SparseCsrTensor TransposeCsr(const Context &dev_ctx,
+                             const SparseCsrTensor &x,
+                             const std::vector<int> &perm) {
+  PADDLE_ENFORCE_LE(
+      2,
+      perm.size(),
+      phi::errors::InvalidArgument("size of perm must be equal to 2 or 3"));
+  PADDLE_ENFORCE_GE(
+      3,
+      perm.size(),
+      phi::errors::InvalidArgument("size of perm must be equal to 2 or 3"));
+  SparseCsrTensor csr;
+  TransposeCsrKernel<T, Context>(dev_ctx, x, perm, &csr);
   return csr;
 }
 

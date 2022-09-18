@@ -17,12 +17,14 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
 template <typename T>
 class EmptyGradOpMaker;
 }  // namespace framework
+
 namespace imperative {
 class OpBase;
 }  // namespace imperative

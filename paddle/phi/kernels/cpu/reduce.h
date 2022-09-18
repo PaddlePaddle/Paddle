@@ -243,7 +243,7 @@ void BoolReduceKernel(const DeviceContext& dev_ctx,
                       phi::DenseTensor* output) {
   dev_ctx.template Alloc<OutT>(output);
 
-  // The dims has full dim, set the reduce_all is True
+  // If the "dims" has full dims, set the reduce_all to True
   const auto& input_dim_size = input.dims().size();
   std::set<int> dims_set(dims.begin(), dims.end());
   bool full_dim = true;
