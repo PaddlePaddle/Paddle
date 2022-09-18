@@ -804,13 +804,19 @@ class TensorRTEngine {
 
 class TRTEngineManager {
  public:
-  bool Empty() const { return engines_.size() == 0; }
+  bool Empty() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return engines_.size() == 0;
+  }
+
   bool Has(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (engines_.count(name) == 0) return false;
     return engines_.at(name).get() != nullptr;
   }
 
   TensorRTEngine* Get(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
     return engines_.at(name).get();
   }
 
@@ -844,17 +850,20 @@ class TRTEngineManager {
                                  disable_trt_plugin_fp16,
                                  model_precision,
                                  logger);
+    std::lock_guard<std::mutex> lock(mutex_);
     engines_[name].reset(p);
     return p;
   }
 
   void DeleteAll() {
+    std::lock_guard<std::mutex> lock(mutex_);
     for (auto& item : engines_) {
       item.second.reset(nullptr);
     }
   }
 
   void DeleteKey(const std::string& key) {
+    std::lock_guard<std::mutex> lock(mutex_);
     auto iter = engines_.find(key);
     if (iter != engines_.end()) {
       iter->second.reset(nullptr);
@@ -862,6 +871,45 @@ class TRTEngineManager {
     }
   }
 
+  void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
+    bool size_updated{false};
+
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (max_ctx_mem_size_ < mem_size) {
+        max_ctx_mem_size_ = mem_size;
+        size_updated = true;
+      }
+    }
+
+    if (size_updated) {
+      releaseContextMemory(predictor_id);
+    }
+  }
+
+  void* getContextMemory(PredictorID predictor_id,
+                         const phi::GPUPlace& place,
+                         const phi::Stream& stream) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    static auto alignment = getAlignmentSize(place);
+    if (context_memorys_.count(predictor_id) == 0) {
+      auto context_memory =
+          memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
+      // context_memory_[predictor_id].reset(context_memory.release());
+      context_memorys_[predictor_id] = std::move(context_memory);
+    }
+    return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
+  }
+
+  void releaseContextMemory(PredictorID predictor_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (context_memorys_.count(predictor_id)) {
+      context_memorys_[predictor_id].reset(nullptr);
+      context_memorys_.erase(predictor_id);
+    }
+  }
+
+>>>>>>> 6052b9ecd0... lock_guard
  private:
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
