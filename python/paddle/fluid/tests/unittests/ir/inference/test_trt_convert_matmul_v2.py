@@ -24,9 +24,6 @@ import os
 
 class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
 
-    def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        return True
-
     def sample_program_configs(self):
 
         def generate_input(shape):
