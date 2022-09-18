@@ -2365,8 +2365,8 @@ def eigvals(x, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`.
-            The eigenvalues are complex-valued even when `x` is real.
+        Tensor, A tensor containing the unsorted eigenvalues which has the same batch
+        dimensions with `x`. The eigenvalues are complex-valued even when `x` is real.
 
     Examples:
         .. code-block:: python
