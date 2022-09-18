@@ -712,18 +712,18 @@ class TRTEngineManager {
 
  public:
   bool Empty() const {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     return engines_.size() == 0;
   }
 
   bool Has(const std::string& name) const {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (engines_.count(name) == 0) return false;
     return engines_.at(name).get() != nullptr;
   }
 
   TensorRTEngine* Get(const std::string& name) const {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     return engines_.at(name).get();
   }
 
@@ -751,13 +751,13 @@ class TRTEngineManager {
                                  disable_trt_plugin_fp16,
                                  model_precision,
                                  logger);
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     engines_[name].reset(p);
     return p;
   }
 
   void DeleteAll() {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     for (auto& item : engines_) {
       item.second.reset(nullptr);
     }
@@ -765,7 +765,7 @@ class TRTEngineManager {
   }
 
   void DeleteKey(const std::string& key) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     auto iter = engines_.find(key);
     if (iter != engines_.end()) {
       iter->second.reset(nullptr);
@@ -777,7 +777,7 @@ class TRTEngineManager {
     bool size_updated{false};
 
     {
-      std::unique_lock<std::mutex> lock(mutex_);
+      std::lock_guard<std::mutex> lock(mutex_);
       if (max_ctx_mem_size_ < mem_size) {
         max_ctx_mem_size_ = mem_size;
         size_updated = true;
@@ -792,7 +792,7 @@ class TRTEngineManager {
   void* getContextMemory(PredictorID predictor_id,
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     static auto alignment = getAlignmentSize(place);
     if (context_memorys_.count(predictor_id) == 0) {
       auto context_memory =
@@ -804,7 +804,7 @@ class TRTEngineManager {
   }
 
   void releaseContextMemory(PredictorID predictor_id) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (context_memorys_.count(predictor_id)) {
       context_memorys_[predictor_id].reset(nullptr);
       context_memorys_.erase(predictor_id);
