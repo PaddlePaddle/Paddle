@@ -168,7 +168,7 @@ class DistributedBatchSampler(BatchSampler):
     as a DataLoader sampler, and load a subset of the original dataset that
     is exclusive to it.
 
-    .. note::
+    Note:
         Dataset is assumed to be of constant size.
 
     Args:

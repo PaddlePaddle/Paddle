@@ -260,7 +260,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
     or 2-norm, and in general the p-norm for p > 0) of a given tensor.
 
-    .. note::
+    Note:
         This norm API is different from `numpy.linalg.norm`.
         This api supports high-order input tensors (rank >= 3), and certain axis need to be pointed out to calculate the norm.
         But `numpy.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
@@ -1029,7 +1029,7 @@ def dot(x, y, name=None):
     """
     This operator calculates inner product for vectors.
 
-    .. note::
+    Note:
        Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix
        is the batch dimension, which means that the vectors of multiple batches are dotted.
 
@@ -2281,7 +2281,7 @@ def eig(x, name=None):
     """
     This API performs the eigenvalue decomposition of a square matrix or a batch of square matrices.
 
-    .. note::
+    Note:
         If the matrix is a Hermitian or a real symmetric matrix, please use :ref:`paddle.linalg.eigh` instead, which is much faster.
         If only eigenvalues is needed, please use :ref:`paddle.linalg.eigvals` instead.
         If the matrix is of any shape, please use :ref:`paddle.linalg.svd`.

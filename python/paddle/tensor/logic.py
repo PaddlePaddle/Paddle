@@ -91,7 +91,7 @@ def logical_and(x, y, out=None, name=None):
 
         out = x \&\& y
 
-    .. note::
+    Note:
         ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -134,7 +134,7 @@ def logical_or(x, y, out=None, name=None):
 
         out = x || y
 
-    .. note::
+    Note:
         ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -179,7 +179,7 @@ def logical_xor(x, y, out=None, name=None):
 
         out = (x || y) \&\& !(x \&\& y)
 
-    .. note::
+    Note:
         ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:

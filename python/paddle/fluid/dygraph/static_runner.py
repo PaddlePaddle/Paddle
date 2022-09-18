@@ -25,7 +25,7 @@ class StaticModelRunner(object):
     A Dynamic graph Layer for loading inference program and related parameters,
     and then performing fine-tune training or inference.
 
-    .. note::
+    Note:
         This is a temporary API, which will be deprecated later, please use
         `fluid.dygraph.jit.load` to achieve the same function.
     """

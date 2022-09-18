@@ -420,7 +420,7 @@ class DataFeeder(object):
             :code:`generator`: a :code:`generator` that generate dict which contains (variable name - converted tensor) pairs,
             the total number of dicts will be generated matches with the :code:`num_places`
 
-        .. note::
+        Note:
             The number of devices - :code:`num_places` should equal to the generator (element of :code:`iterable` ) number
 
         Example:

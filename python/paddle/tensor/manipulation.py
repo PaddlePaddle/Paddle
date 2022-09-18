@@ -1125,7 +1125,7 @@ def broadcast_tensors(input, name=None):
     """
     This OP broadcast a list of tensors following broadcast semantics
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -2106,7 +2106,7 @@ def unique_consecutive(x,
     r"""
     Eliminates all but the first element from every consecutive group of equivalent elements.
 
-    .. note:: This function is different from :func:`paddle.unique` in the sense that this function
+    Note: This function is different from :func:`paddle.unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
 
     Args:

@@ -123,7 +123,7 @@ class PartialProgramLayer:
     PartialProgramLayer wraps all the ops from layers decorated by `@declarative`
     and execute them as a static subgraph.
 
-    .. note::
+    Note:
         **1. This is a very low level API. Users should not use this API
              directly. Please use `partial_program_from(concrete_program)`
              to create it.

@@ -87,7 +87,7 @@ def default_convert_fn(batch):
     if the data of a sample, and sample data should composed of list,
     dictionary, string, number, numpy array and paddle.Tensor.
 
-    .. note::
+    Note:
         This function is default :attr:`collate_fn` in **Distable
         automatic batching** mode, for **Distable automatic batching**
         mode, please ses :attr:`paddle.io.DataLoader`

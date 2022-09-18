@@ -291,7 +291,7 @@ class DataLoader(object):
 
     For :code:`batch_sampler` please see :code:`paddle.io.BatchSampler`
 
-    .. note::
+    Note:
         GPU tensor operation is not supported in subprocess currently,
         please don't use GPU tensor operations in pipeline which will
         be performed in subprocess, such as dataset transforms, collte_fn,
@@ -307,7 +307,7 @@ class DataLoader(object):
     :attr:`collate_fn` or :attr:`default_collate_fn`.
 
 
-    .. note::
+    Note:
         When automatic batching is disabled, :attr:`default_collate_fn` will
         do nothing to data from dataset.
 
@@ -436,7 +436,7 @@ class DataLoader(object):
                     print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
 
 
-    .. note::
+    Note:
         For reading iterable dataset with multiprocess Dataloader,
         please see :code:`paddle.io.IterableDataset`
 
@@ -582,7 +582,7 @@ class DataLoader(object):
           This API will be deprecated in the future, it is recommended to use
           :code:`paddle.io.DataLoader` which supports multi-processes acceleration.
 
-        .. note::
+        Note:
           **The framework ensures that the data loading order of DataLoader is exactly the same as the user-defined data source.**
 
         Create a DataLoader object for loading data from Python generator.
