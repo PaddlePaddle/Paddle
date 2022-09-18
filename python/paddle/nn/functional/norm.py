@@ -401,7 +401,7 @@ def instance_norm(x,
 
           import paddle
 
-          x = paddle.rand((2, 2, 3))
+          x = paddle.rand((2, 2, 2, 3))
           instance_norm_out = paddle.nn.functional.instance_norm(x)
 
           print(instance_norm_out)
