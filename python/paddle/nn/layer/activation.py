@@ -1364,7 +1364,7 @@ class LogSoftmax(Layer):
 
 class Maxout(Layer):
     r"""
-    Maxout Activation.
+    Maxout Activation. Create a callable object of `Maxout`.
 
     Assumed the input shape is (N, Ci, H, W).
     The output shape is (N, Co, H, W).

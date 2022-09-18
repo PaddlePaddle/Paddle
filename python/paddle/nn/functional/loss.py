@@ -2932,21 +2932,34 @@ def multi_label_soft_margin_loss(input,
                                  reduction="mean",
                                  name=None):
     r"""
+    Calculate a multi-class multi-classification
+    hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
+    and output :math:`y` (which is a 2D `Tensor` of target class indices).
+    For each sample in the mini-batch:
 
-        Parameters:
-            input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
-            label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
-            weight (Tensor,optional): a manual rescaling weight given to each class.
-                    If given, has to be a Tensor of size C and the data type is float32, float64.
-                    Default is ``'None'`` .
-            reduction (str, optional): Indicate how to average the loss by batch_size,
-                    the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-                    If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-                    If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-                    If :attr:`reduction` is ``'sum'``, the summed loss is returned.
-                    Default: ``'mean'``
-            name (str, optional): Name for the operation (optional, default is None).
-                    For more information, please refer to :ref:`api_guide_Name`.
+    .. math::
+        \text{loss}(x, y) = \sum_{ij}\frac{\max(0, 1 - (x[y[j]] - x[i]))}{\text{x.size}(0)}
+
+    where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`, \
+    :math:`y \in \left\{0, \; \cdots , \; \text{y.size}(0) - 1\right\}`, \
+    :math:`0 \leq y[j] \leq \text{x.size}(0)-1`, \
+    and :math:`i \neq y[j]` for all :math:`i` and :math:`j`.
+    :math:`y` and :math:`x` must have the same size.
+
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
+        weight (Tensor,optional): a manual rescaling weight given to each class.
+                If given, has to be a Tensor of size C and the data type is float32, float64.
+                Default is ``'None'`` .
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                Default: ``'mean'``
+        name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
 
 	Shape:
             input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
