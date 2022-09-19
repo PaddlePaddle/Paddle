@@ -1,6 +1,8 @@
 - op : abs
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : abs_coo{sparse_coo -> sparse_coo},
            abs_csr{sparse_csr -> sparse_csr}
@@ -10,6 +12,8 @@
 - op : acos
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : acos_coo{sparse_coo -> sparse_coo},
            acos_csr{sparse_csr -> sparse_csr}
@@ -19,6 +23,8 @@
 - op : acosh
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : acosh_coo{sparse_coo -> sparse_coo},
            acosh_csr{sparse_csr -> sparse_csr}
@@ -28,6 +34,8 @@
 - op : add
   args : (Tensor x, Tensor y)
   output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta 
   kernel :
     func : add_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
            add_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
@@ -37,6 +45,8 @@
 - op : asin
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : asin_coo{sparse_coo -> sparse_coo},
            asin_csr{sparse_csr -> sparse_csr}
@@ -46,6 +56,8 @@
 - op : asinh
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : asinh_coo{sparse_coo -> sparse_coo},
            asinh_csr{sparse_csr -> sparse_csr}
@@ -55,6 +67,8 @@
 - op : atan
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : atan_coo{sparse_coo -> sparse_coo},
            atan_csr{sparse_csr -> sparse_csr}
@@ -64,6 +78,8 @@
 - op : atanh
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : atanh_coo{sparse_coo -> sparse_coo},
            atanh_csr{sparse_csr -> sparse_csr}
@@ -73,6 +89,9 @@
 - op : cast
   args : (Tensor x, DataType index_dtype=DataType::UNDEFINED, DataType value_dtype=DataType::UNDEFINED)
   output : Tensor(out)
+  infer_meta :
+    func : CastInferMeta
+    param: [x, value_dtype]
   kernel :
     func : cast_coo{sparse_coo -> sparse_coo},
            cast_csr{sparse_csr -> sparse_csr}
@@ -83,6 +102,8 @@
 - op : conv3d
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
   output : Tensor(out), Tensor(rulebook), Tensor(counter)
+  infer_meta :
+    func : sparse::Conv3dInferMeta
   kernel :
     func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense, dense}
     layout : x
@@ -92,6 +113,8 @@
 - op : divide
   args : (Tensor x, Tensor y)
   output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta 
   kernel :
     func : divide_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
            divide_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
@@ -101,6 +124,9 @@
 - op : divide_scalar
   args : (Tensor x, float scalar)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : divide_coo_scalar{sparse_coo -> sparse_coo},
            divide_csr_scalar{sparse_csr -> sparse_csr}
@@ -109,6 +135,8 @@
 - op : expm1
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : expm1_coo{sparse_coo -> sparse_coo},
            expm1_csr{sparse_csr -> sparse_csr}
@@ -118,6 +146,9 @@
 - op : leaky_relu
   args : (Tensor x, float alpha)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : leaky_relu_coo{sparse_coo -> sparse_coo},
            leaky_relu_csr{sparse_csr -> sparse_csr}
@@ -127,6 +158,8 @@
 - op : log1p
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : log1p_coo{sparse_coo -> sparse_coo},
            log1p_csr{sparse_csr -> sparse_csr}
@@ -136,6 +169,8 @@
 - op : multiply
   args : (Tensor x, Tensor y)
   output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
   kernel :
     func : multiply_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
            multiply_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
@@ -145,6 +180,9 @@
 - op : pow
   args : (Tensor x, float factor)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : pow_coo{sparse_coo -> sparse_coo},
            pow_csr{sparse_csr -> sparse_csr}
@@ -154,6 +192,8 @@
 - op : relu
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : relu_coo{sparse_coo -> sparse_coo},
            relu_csr{sparse_csr -> sparse_csr}
@@ -163,6 +203,9 @@
 - op : relu6
   args : (Tensor x, float threshold)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : relu6_coo{sparse_coo -> sparse_coo},
            relu6_csr{sparse_csr -> sparse_csr}
@@ -172,6 +215,9 @@
 - op : scale
   args : (Tensor x, float scale, float bias, bool bias_after_scale)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : scale_coo{sparse_coo -> sparse_coo},
            scale_csr{sparse_csr -> sparse_csr}
@@ -180,6 +226,8 @@
 - op : sin
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : sin_coo{sparse_coo -> sparse_coo},
            sin_csr{sparse_csr -> sparse_csr}
@@ -189,6 +237,8 @@
 - op : sinh
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : sinh_coo{sparse_coo -> sparse_coo},
            sinh_csr{sparse_csr -> sparse_csr}
@@ -198,6 +248,9 @@
 - op : softmax
   args : (Tensor x, int axis=-1)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : softmax_csr{sparse_csr -> sparse_csr}
     layout : x
@@ -206,6 +259,8 @@
 - op : sparse_coo_tensor
   args : (Tensor values, Tensor indices, IntArray dense_shape)
   output : Tensor(out)
+  infer_meta :
+    func : sparse::SparseCooTensorInferMeta
   kernel :
     func : sparse_coo_tensor{dense, dense -> sparse_coo}
     layout : values
@@ -215,6 +270,8 @@
 - op : sqrt
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : sqrt_coo{sparse_coo -> sparse_coo},
            sqrt_csr{sparse_csr -> sparse_csr}
@@ -224,6 +281,8 @@
 - op : square
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : square_coo{sparse_coo -> sparse_coo},
            square_csr{sparse_csr -> sparse_csr}
@@ -233,6 +292,8 @@
 - op : subtract
   args : (Tensor x, Tensor y)
   output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
   kernel :
     func : subtract_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
            subtract_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
@@ -242,6 +303,8 @@
 - op : tan
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : tan_coo{sparse_coo -> sparse_coo},
            tan_csr{sparse_csr -> sparse_csr}
@@ -251,6 +314,8 @@
 - op : tanh
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : tanh_coo{sparse_coo -> sparse_coo},
            tanh_csr{sparse_csr -> sparse_csr}
@@ -260,6 +325,8 @@
 - op : to_dense
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : coo_to_dense {sparse_coo -> dense},
            csr_to_dense {sparse_csr -> dense}
@@ -268,6 +335,9 @@
 - op : to_sparse_coo
   args : (Tensor x, int64_t sparse_dim)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : dense_to_coo { dense -> sparse_coo },
            csr_to_coo { sparse_csr -> sparse_coo}
@@ -276,6 +346,8 @@
 - op : to_sparse_csr
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : dense_to_csr {dense -> sparse_csr},
            coo_to_csr {sparse_coo -> sparse_csr}
@@ -283,6 +355,8 @@
 - op : values
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : sparse::ValuesInferMeta
   kernel :
     func : values_coo{sparse_coo -> dense},
            values_csr{sparse_csr -> dense}
@@ -292,6 +366,8 @@
 - op: addmm
   args : (Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0)
   output : Tensor(out)
+  infer_meta :
+    func : AddmmInferMeta
   kernel :
     func : addmm_csr_dense {dense, sparse_csr, dense -> dense},
            addmm_csr_csr {sparse_csr, sparse_csr, sparse_csr -> sparse_csr},
@@ -303,6 +379,8 @@
 - op: coalesce
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func: coalesce{sparse_coo -> sparse_coo}
     layout : x
@@ -310,6 +388,9 @@
 - op: full_like
   args : (Tensor x, Scalar value, DataType dtype=DataType::UNDEFINED)
   output : Tensor(out)
+  infer_meta :
+    func : CreateLikeInferMeta
+    param : [x, dtype]
   kernel :
     func : coo_full_like{sparse_coo -> sparse_coo},
            csr_full_like{sparse_csr -> sparse_csr}
@@ -319,6 +400,8 @@
 - op: fused_attention
   args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask)
   output : Tensor(out), Tensor(softmax)
+  infer_meta :
+    func : sparse::FusedAttentionInferMeta
   kernel :
     func : fused_attention_csr{dense, dense, dense, sparse_csr, dense, dense -> dense, sparse_csr}
     layout : sparse_mask
@@ -330,6 +413,9 @@
 - op: masked_matmul
   args : (Tensor x, Tensor y, Tensor mask)
   output : Tensor(out)
+  infer_meta :
+    func : MatmulInferMeta
+    param : [x, y, false, false]
   kernel :
     func : masked_matmul_csr{dense, dense, sparse_csr -> sparse_csr}
     layout : x
@@ -338,6 +424,9 @@
 - op: matmul
   args : (Tensor x, Tensor y)
   output : Tensor(out)
+  infer_meta :
+    func : MatmulInferMeta
+    param: [x, y, false, false]
   kernel :
     func : matmul_csr_dense {sparse_csr, dense -> dense},
            matmul_csr_csr {sparse_csr, sparse_csr -> sparse_csr},
@@ -349,6 +438,8 @@
 - op: maxpool
   args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
   output : Tensor(out), Tensor(rulebook), Tensor(counter)
+  infer_meta :
+    func : sparse::Pool3dInferMeta
   kernel :
     func : maxpool_coo{sparse_coo -> sparse_coo, dense, dense}
     layout : x
@@ -358,6 +449,8 @@
 - op: mv
   args : (Tensor x, Tensor vec)
   output : Tensor(out)
+  infer_meta :
+    func : MvInferMeta
   kernel :
     func : mv_coo{sparse_coo, dense -> dense},
            mv_csr{sparse_csr, dense -> dense}

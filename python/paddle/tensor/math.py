@@ -1501,9 +1501,6 @@ def add_n(inputs, name=None):
     if in_dygraph_mode():
         if isinstance(inputs, Variable):
             inputs = [inputs]
-        for x in inputs:
-            if not x.is_dense():
-                return _legacy_C_ops.sum(inputs, 'use_mkldnn', False)
         return _C_ops.add_n(inputs)
     if _in_legacy_dygraph():
         if isinstance(inputs, Variable):

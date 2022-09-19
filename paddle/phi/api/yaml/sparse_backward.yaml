@@ -2,6 +2,9 @@
   forward : tanh(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : abs_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            abs_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -10,6 +13,9 @@
   forward : acos(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : acos_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            acos_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -18,6 +24,9 @@
   forward : acosh(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : acosh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            acosh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -26,6 +35,9 @@
   forward : add(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta 
+    param : [x, y]
   kernel :
     func : add_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            add_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
@@ -34,6 +46,9 @@
   forward : addmm(Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0) -> Tensor(out)
   args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, float alpha=1.0, float beta=1.0)
   output : Tensor(input_grad), Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [input, x, y]
   kernel :
     func : addmm_csr_dense_grad {dense, sparse_csr, dense, dense -> dense, sparse_csr, dense},
            addmm_csr_csr_grad {sparse_csr, sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr, sparse_csr},
@@ -44,6 +59,9 @@
   forward : asin(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : asin_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            asin_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -52,6 +70,9 @@
   forward : asinh(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : asinh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            asinh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -60,6 +81,9 @@
   forward : atan(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : atan_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            atan_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -68,6 +92,9 @@
   forward : atanh(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : atanh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            atanh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -76,6 +103,9 @@
   forward : cast(Tensor x, DataType index_dtype, DataType value_dtype) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, DataType value_dtype)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta 
+    param: [x]
   kernel :
     func : cast_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            cast_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -85,6 +115,9 @@
   forward : conv3d_coo (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key) -> Tensor(out), Tensor(rulebook), Tensor(counter)
   args : (Tensor x, Tensor kernel, Tensor out, Tensor rulebook, Tensor counter, Tensor out_grad, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
   output : Tensor(x_grad), Tensor(kernel_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, kernel]
   kernel :
     func : conv3d_coo_grad{sparse_coo, dense, sparse_coo, dense, dense, sparse_coo -> sparse_coo, dense}
 
@@ -92,6 +125,9 @@
   forward : divide(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta 
+    param : [x, y]
   kernel :
     func : divide_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            divide_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
@@ -106,6 +142,9 @@
   forward : expm1(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
   kernel :
     func : expm1_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            expm1_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -114,6 +153,9 @@
   forward : leaky_relu(Tensor x, float alpha) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float alpha)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : leaky_relu_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            leaky_relu_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -122,6 +164,9 @@
   forward : log1p(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : log1p_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            log1p_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -130,6 +175,9 @@
   forward : masked_matmul(Tensor x, Tensor y, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
   kernel :
     func : masked_matmul_csr_grad{dense, dense, sparse_csr -> dense, dense}
 
@@ -137,6 +185,9 @@
   forward : matmul(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
   kernel :
     func : matmul_csr_dense_grad {sparse_csr, dense, dense -> sparse_csr, dense},
            matmul_csr_csr_grad {sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr},
@@ -147,6 +198,9 @@
   forward : maxpool(Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides) -> Tensor(out), Tensor(rulebook), Tensor(counter)
   args : (Tensor x, Tensor rulebook, Tensor counter, Tensor out, Tensor out_grad, int[] kernel_sizes)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
   kernel :
     func : maxpool_coo_grad {sparse_coo, dense, dense, sparse_coo, sparse_coo -> sparse_coo}
 
@@ -154,6 +208,9 @@
   forward : multiply(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta 
+    param : [x, y]
   kernel :
     func : multiply_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            multiply_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
@@ -162,6 +219,9 @@
   forward : mv(Tensor x, Tensor vec) -> Tensor(out)
   args : (Tensor x, Tensor vec, Tensor out_grad)
   output : Tensor(x_grad), Tensor(vec_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, vec]
   kernel :
     func : mv_coo_grad{sparse_coo, dense, dense -> sparse_coo, dense},
            mv_csr_grad{sparse_csr, dense, dense -> sparse_csr, dense}
@@ -170,6 +230,9 @@
   forward : pow(Tensor x, float factor) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float factor)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : pow_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            pow_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -178,6 +241,9 @@
   forward : relu6(Tensor x, float threshold) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, float threshold)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
   kernel :
     func : relu6_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            relu6_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -186,6 +252,9 @@
   forward : relu(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
   kernel :
     func : relu_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            relu_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -194,12 +263,18 @@
   forward : scale(Tensor x, float scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, float scale)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
   invoke : scale(out_grad, scale, 0.0, true)
 
 - backward_op : sin_grad
   forward : sin(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : sin_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            sin_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -208,6 +283,9 @@
   forward : sinh(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : sinh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            sinh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -216,6 +294,9 @@
   forward : softmax(Tensor x, int axis=-1) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, int axis)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
   kernel :
     func : softmax_csr_grad{sparse_csr, sparse_csr -> sparse_csr}
 
@@ -223,6 +304,9 @@
   forward : sparse_coo_tensor(Tensor values, Tensor indices, IntArray dense_shape) -> Tensor(out)
   args : (Tensor indices, Tensor out_grad)
   output : Tensor(values_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [out_grad]
   kernel :
     func : sparse_coo_tensor_grad{dense, sparse_coo -> dense}
 
@@ -230,6 +314,9 @@
   forward : sqrt(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
   kernel :
     func : sqrt_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            sqrt_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -238,6 +325,9 @@
   forward : square(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : square_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            square_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -246,6 +336,9 @@
   forward : subtract(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta 
+    param : [x, y]
   kernel :
     func : subtract_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            subtract_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
@@ -254,6 +347,9 @@
   forward : tan(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : tan_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            tan_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -262,6 +358,9 @@
   forward : tanh(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
   kernel :
     func : tanh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            tanh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
@@ -270,6 +369,9 @@
   forward : to_dense(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : coo_to_dense_grad{sparse_coo, dense -> sparse_coo}
 
@@ -277,6 +379,8 @@
   forward : to_sparse_coo(Tensor x, int64_t sparse_dim) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : coo_to_dense { sparse_coo -> dense }
 
@@ -284,6 +388,9 @@
   forward : values_coo(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : values_coo_grad{sparse_coo, dense-> sparse_coo}
 
@@ -291,6 +398,8 @@
   forward : fused_attention_csr(Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask) -> Tensor(out), Tensor(softmax)
   args: (Tensor query, Tensor key, Tensor value, Tensor softmax, Tensor out_grad)
   output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad)
+  infer_meta :
+    func : sparse::FusedAttentionGradInferMeta 
   kernel :
     func : fused_attention_csr_grad{dense, dense, dense, sparse_csr, dense -> dense, dense, dense}
     layout : softmax
