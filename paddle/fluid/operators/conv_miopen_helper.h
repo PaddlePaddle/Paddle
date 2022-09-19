@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/conv_base_helper.h"
 
 namespace paddle {

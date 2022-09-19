@@ -29,7 +29,7 @@ from paddle.fluid import layers
 from paddle.io import Dataset, IterableDataset, DataLoader
 from paddle.static import InputSpec
 
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.optimizer.lr import CosineAnnealingDecay
 from paddle.fluid.dataloader.collate import default_collate_fn
 
