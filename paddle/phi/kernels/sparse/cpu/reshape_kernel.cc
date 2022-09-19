@@ -55,7 +55,9 @@ void ReshapeCooKernel(const Context& dev_ctx,
   // }
   ////////
   // DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
-  DenseTensor out_indices = Empty<int64_t, Context>(dev_ctx, {out_sparse_part_dims.size(), x_nnz});
+  DenseTensor out_indices = Empty<int64_t, Context>(dev_ctx, 
+        {static_cast<int64_t>(out_sparse_part_dims.size()), x_nnz}
+  );
   DenseTensor out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
@@ -87,7 +89,7 @@ void ReshapeCooKernel(const Context& dev_ctx,
 
     for (int64_t j = 0; j < x_nnz; ++j) {
         location = 0;
-        for (size_t i = 0; i < x.sparse_dim(); ++i) {
+        for (int i = 0; i < x.sparse_dim(); ++i) {
             location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
         }
         for (size_t i = 0; i < out_sparse_part_dims.size(); ++i) {

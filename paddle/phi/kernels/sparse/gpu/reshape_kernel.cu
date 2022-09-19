@@ -75,7 +75,9 @@ void ReshapeCooKernel(const Context &dev_ctx,
     out_sparse_part_dims.push_back(out_dims[i]);
   }
   // DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
-  DenseTensor out_indices = Empty<int64_t, Context>(dev_ctx, {out_sparse_part_dims.size(), x_nnz});
+  DenseTensor out_indices = Empty<int64_t, Context>(dev_ctx, 
+            {static_cast<int64_t>(out_sparse_part_dims.size()), x_nnz}
+  );
   
   DenseTensor out_values(x.values());
 
