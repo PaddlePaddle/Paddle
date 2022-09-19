@@ -593,5 +593,23 @@ class TestMaxPPrim2Orig(TestAddPPrim2Orig):
         self.out_map = {self.output['Z']: 0}
 
 
+class TestBernoulliPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'bernoulli_p'
+
+        self.input = {}
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.float64)
+        }
+        self.attrs = {'shape': [7, 8], 'dtype': paddle.float64, 'p': 0.5}
+
+        self.prim2orig_args = ()
+        self.all_ops = ['bernoulli_p', 'fill_constant', 'bernoulli']
+        self.out_map = {self.output['Y']: 0}
+
+
 if __name__ == '__main__':
     unittest.main()

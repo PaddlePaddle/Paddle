@@ -624,5 +624,107 @@ class TestGeluApproximateOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestDropoutOrig2PrimCase1(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'dropout'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+            'Mask':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+        }
+        self.attrs = {
+            'dropout_prob': 0.5,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
+
+        self.orig2prim_args = (X, )
+        self.all_ops = [
+            'bernoulli_p', 'mul_p', 'fill_constant_p', 'div_p', 'dropout'
+        ]
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out'], 1: self.output['Mask']}
+
+
+class TestDropoutOrig2PrimCase2(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'dropout'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+            'Mask':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+        }
+        self.attrs = {
+            'dropout_prob': 0.5,
+            'is_test': False,
+            'dropout_implementation': 'downgrade_in_infer'
+        }
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['bernoulli_p', 'mul_p', 'dropout']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out'], 1: self.output['Mask']}
+
+
+class TestDropoutOrig2PrimCase3(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'dropout'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+            'Mask':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+        }
+        self.attrs = {
+            'dropout_prob': 0.5,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train'
+        }
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['bernoulli_p', 'dropout']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out'], 1: self.output['Mask']}
+
+
+class TestDropoutOrig2PrimCase4(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'dropout'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+            'Mask':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+        }
+        self.attrs = {
+            'dropout_prob': 0.5,
+            'is_test': True,
+            'dropout_implementation': 'downgrade_in_infer'
+        }
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['bernoulli_p', 'fill_constant_p', 'mul_p', 'dropout']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out'], 1: self.output['Mask']}
+
+
 if __name__ == '__main__':
     unittest.main()
