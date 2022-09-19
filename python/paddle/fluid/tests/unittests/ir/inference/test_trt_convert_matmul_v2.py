@@ -28,6 +28,7 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
 
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
+
         for batch in [10, 11, 12, 13, 14, 15]:
             for trans_x in [False]:
                 for trans_y in [False]:
@@ -114,57 +115,58 @@ class TrtConvertMatmulTest_dynamic2(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for trans_x in [False]:
-            for trans_y in [False]:
-                input1_shape = [6, 40]
-                input2_shape = [10, 40, 9]
-                dics = [{
-                    "trans_x": trans_x,
-                    "trans_y": trans_y,
-                }]
-                ops_config = [{
-                    "op_type": "matmul_v2",
-                    "op_inputs": {
-                        "X": ["input1_data"],
-                        "Y": ["input2_data"]
-                    },
-                    "op_outputs": {
-                        "Out": ["output_data"]
-                    },
-                    "op_attrs": dics[0]
-                }]
-                ops = self.generate_op_config(ops_config)
+        for batch in [10, 11, 12, 13, 14, 15]:
+            for trans_x in [False]:
+                for trans_y in [False]:
+                    input1_shape = [60, 40]
+                    input2_shape = [batch, 40, 90]
+                    dics = [{
+                        "trans_x": trans_x,
+                        "trans_y": trans_y,
+                    }]
+                    ops_config = [{
+                        "op_type": "matmul_v2",
+                        "op_inputs": {
+                            "X": ["input1_data"],
+                            "Y": ["input2_data"]
+                        },
+                        "op_outputs": {
+                            "Out": ["output_data"]
+                        },
+                        "op_attrs": dics[0]
+                    }]
+                    ops = self.generate_op_config(ops_config)
 
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={},
-                    inputs={
-                        "input1_data":
-                        TensorConfig(
-                            data_gen=partial(generate_input, input1_shape)),
-                        "input2_data":
-                        TensorConfig(
-                            data_gen=partial(generate_input, input2_shape))
-                    },
-                    outputs=["output_data"])
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "input1_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input, input1_shape)),
+                            "input2_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input, input2_shape))
+                        },
+                        outputs=["output_data"])
 
-                yield program_config
+                    yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input1_data": [6, 40],
-                "input2_data": [10, 40, 9]
+                "input1_data": [60, 40],
+                "input2_data": [10, 40, 90]
             }
             self.dynamic_shape.max_input_shape = {
-                "input1_data": [6, 40],
-                "input2_data": [10, 40, 9]
+                "input1_data": [60, 40],
+                "input2_data": [20, 40, 90]
             }
             self.dynamic_shape.opt_input_shape = {
-                "input1_data": [6, 40],
-                "input2_data": [10, 40, 9]
+                "input1_data": [60, 40],
+                "input2_data": [15, 40, 90]
             }
 
         attrs = [
