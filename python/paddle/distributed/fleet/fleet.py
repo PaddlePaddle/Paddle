@@ -100,7 +100,7 @@ is_non_distributed_check = wrap_decorator(_is_non_distributed_check_)
 class Fleet(object):
     """
     Unified API for distributed training of PaddlePaddle
-    Please reference the https://github.com/PaddlePaddle/FleetX for details
+    Please reference the https://github.com/PaddlePaddle/PaddleFleetX for details
 
 
     Returns:
@@ -1192,7 +1192,7 @@ class Fleet(object):
                 optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
                 optimizer.minimize(avg_cost)
 
-                # for more examples, please reference https://github.com/PaddlePaddle/FleetX
+                # for more examples, please reference https://github.com/PaddlePaddle/PaddleFleetX
 
         """
         if not isinstance(loss, list):
