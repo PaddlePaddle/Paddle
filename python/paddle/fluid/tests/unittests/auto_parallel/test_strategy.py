@@ -45,7 +45,7 @@ class TestStrategy(unittest.TestCase):
         sharding = strategy.sharding
         self.assertEqual(sharding.enable, False)
         self.assertEqual(sharding.stage, 1)
-        self.assertEqual(sharding.sharding_degree, 8)
+        self.assertEqual(sharding.degree, 8)
         self.assertAlmostEqual(sharding.segment_broadcast_MB, 32.0)
         self.assertEqual(sharding.enable_tuning, False)
         self.assertEqual(sharding.tuning_range, [])
@@ -112,13 +112,13 @@ class TestStrategy(unittest.TestCase):
         sharding = strategy.sharding
         sharding.enable = True
         sharding.stage = 2
-        sharding.sharding_degree = 2
+        sharding.degree = 2
         sharding.segment_broadcast_MB = 64.0
         sharding.enable_tuning = True
         sharding.tuning_range = [1, 2, 3]
         self.assertEqual(sharding.enable, True)
         self.assertEqual(sharding.stage, 2)
-        self.assertEqual(sharding.sharding_degree, 2)
+        self.assertEqual(sharding.degree, 2)
         self.assertAlmostEqual(sharding.segment_broadcast_MB, 64.0)
         self.assertEqual(sharding.enable_tuning, True)
         self.assertEqual(sharding.tuning_range, [1, 2, 3])
@@ -175,7 +175,7 @@ class TestStrategy(unittest.TestCase):
     #         enable: false
     #         enable_tuning: true
     #         segment_broadcast_MB: 64.0
-    #         sharding_degree: 8
+    #         degree: 8
     #         stage: 2
     #         tuning_range: None
     #     split_data: false

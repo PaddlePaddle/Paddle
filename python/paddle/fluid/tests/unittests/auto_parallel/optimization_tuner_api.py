@@ -96,7 +96,7 @@ def train(fetch):
     # sharding config
     sharding = dist_strategy.sharding
     sharding.enable = True
-    sharding.sharding_degree = 2
+    sharding.degree = 2
     sharding.stage = 3
     sharding.enable_tuning = True
     sharding.tuning_range = [0, 1, 2, 3]
