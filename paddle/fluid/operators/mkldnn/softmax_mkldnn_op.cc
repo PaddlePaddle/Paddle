@@ -8,21 +8,26 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+
 namespace paddle {
 namespace operators {
+
+using paddle::framework::Tensor;
+using paddle::platform::MKLDNNDeviceContext;
+using paddle::platform::MKLDNNMemDesc;
+
 using dnnl::memory;  // Note: paddle has also "memory" namespace
 using dnnl::primitive;
 using dnnl::prop_kind;
 using dnnl::softmax_backward;
 using dnnl::softmax_forward;
 using dnnl::stream;
-using paddle::framework::Tensor;
-using paddle::platform::MKLDNNDeviceContext;
-using paddle::platform::MKLDNNMemDesc;
 using platform::to_void_cast;
+
 template <typename T>
 class SoftmaxMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T,
@@ -43,6 +48,7 @@ class SoftmaxMKLDNNHandler
         output->dims(),
         platform::errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
+
     this->AcquireForwardPrimitiveDescriptor(
         prop_kind::forward_scoring, input->mem_desc(), axis);
   }
@@ -54,13 +60,17 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
+
     const Tensor* input = ctx.Input<Tensor>("X");
     Tensor* output = ctx.Output<Tensor>("Out");
     bool is_inplaced = input->IsSharedBufferWith(*output);
+
     const int axis =
         phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), input->dims().size());
+
     SoftmaxMKLDNNHandler<T> handler(
         mkldnn_engine, ctx.GetPlace(), input, output, axis);
+
     auto softmax_src_memory_p = handler.AcquireSrcMemory(input);
     // For Inplace src and and dst are the same memory object
     std::shared_ptr<dnnl::memory> softmax_dst_memory_p = nullptr;
@@ -71,11 +81,13 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
       softmax_dst_memory_p = handler.AcquireDstMemory(output);
     }
     auto softmax_p = handler.AcquireForwardPrimitive();
+
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
     softmax_p->execute(astream,
                        {{DNNL_ARG_SRC, *softmax_src_memory_p},
                         {DNNL_ARG_DST, *softmax_dst_memory_p}});
     astream.wait();
+
     const bool is_test = ctx.Attr<bool>("is_test");
     if (!is_test) {
       T* output_data = output->mutable_data<T>(ctx.GetPlace());
@@ -83,6 +95,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
         val = std::max(val, static_cast<T>(exp(-64)));
       });
     }
+
     output->set_mem_desc(softmax_dst_memory_p->get_desc());
   }
 };
@@ -91,6 +104,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OP_KERNEL(softmax,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
