@@ -164,6 +164,17 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         layer_norm_variance, layer_norm_variance, fused_pattern);
+
+    // We can not accept that two or more layer_norm is connected to
+    // elementwise1_out. This will lead to two or more PrelnResidualBias
+    // patterns is found near elementwise1_out, and these patterns will interact
+    // on each other.
+    int num_layer_norm = 0;
+    for (auto op : elementwise1_out->outputs) {
+      if (op->Name() == "layer_norm") num_layer_norm++;
+      if (num_layer_norm >= 2) return;
+    }
+
     std::unordered_set<const Node *> del_node_set;
     // Create an PrelnResidualBias op node
     OpDesc new_desc;
