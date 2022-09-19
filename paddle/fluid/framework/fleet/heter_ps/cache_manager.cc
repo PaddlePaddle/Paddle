@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <set>
+#include <cmath>
 #include <thread>
 #include <fstream>
+#include <bitset>
+#include <chrono>
 #include <algorithm>
 #include "glog/logging.h"
 #include <gflags/gflags.h>
@@ -38,7 +41,6 @@ void CacheManager::init(int thread_num, int batch_sz, int worker_num) {
   worker_num_ = worker_num;
   clear_sign2fids();
   dev_feasign_cnts_.resize(worker_num, nullptr);
-  //prepare_merge_grad_thread_pools_.resize(worker_num, nullptr);
   for (int i = 0; i < worker_num; i++) {
     dev_feasign_cnts_[i] = std::make_shared<std::atomic<int>>(0);
   }
@@ -54,10 +56,6 @@ void CacheManager::init(int thread_num, int batch_sz, int worker_num) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&stream));
   }
   prepare_merge_grad_threads_.resize(worker_num);
-  //prepare_merge_grad_thread_pools_.resize(worker_num, nullptr);
-  //for (int i = 0; i < worker_num; i++) {
-  //  prepare_merge_grad_thread_pools_[i] = std::make_shared<ParallelThreadPool>(2);
-  //}
 #endif
 
   if (FLAGS_dump_cache_manager) {
@@ -208,162 +206,224 @@ std::string CacheManager::dump_to_file() {
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
-std::shared_ptr<std::vector<std::shared_ptr<std::vector<uint32_t>>>>
-  CacheManager::parse_all_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,
+std::shared_ptr<BatchFidSeq> CacheManager::parse_uniq_fids(
+     const std::vector<std::deque<Record>::iterator> & train_data_iters, 
+           int iter_offset, int batch_sz, const std::vector<bool> & slot_is_dense) {
+  // caculate max slot & fid
+  uint32_t max_fid = 0;
+  int max_slot = 0;
+  for (size_t train_data_idx = 0; train_data_idx < train_data_iters.size(); ++train_data_idx) {
+    auto it = train_data_iters[train_data_idx] + iter_offset;
+    for (int j = 0; j < batch_sz; ++j) {
+      const Record & cur_rec = *(it + j);
+      for (auto & fea : cur_rec.uint64_feasigns_) {
+        max_fid = max_fid > fea.sign().uint64_feasign_ ? max_fid : fea.sign().uint64_feasign_;
+        max_slot = max_slot > fea.slot() ? max_slot : fea.slot();
+        PADDLE_ENFORCE_GE(fea.slot(), 0);
+      }
+    }
+  }
+
+  // set bitset of fid & slot
+  PADDLE_ENFORCE_LT(max_slot, (int)slot_is_dense.size());
+  int uint64_fid_bit_vec_size = (max_fid + 63) / 64;
+  std::vector<std::bitset<64>> fid_bit_vec(uint64_fid_bit_vec_size);
+  int uint64_slot_bit_vec_size = (max_slot + 63) / 64;
+  std::vector<std::bitset<64>> slot_bit_vec(uint64_slot_bit_vec_size);
+  for (size_t train_data_idx = 0; train_data_idx < train_data_iters.size(); ++train_data_idx) {
+    auto it = train_data_iters[train_data_idx] + iter_offset;
+    for (int j = 0; j < batch_sz; ++j) {
+      const Record & cur_rec = *(it++);
+      for (auto & fea : cur_rec.uint64_feasigns_) {
+        if (slot_is_dense[fea.slot()]) {
+          continue;
+        }
+        int vec_idx = fea.sign().uint64_feasign_ / 64;
+        int bit_offset = fea.sign().uint64_feasign_ % 64;
+        fid_bit_vec[vec_idx].set(bit_offset);
+
+        vec_idx = fea.slot() / 64;
+        bit_offset = fea.slot() % 64;
+        slot_bit_vec[vec_idx].set(bit_offset);
+      }
+    }
+  }
+
+  // count total slots
+  uint32_t slot_has_value_count = 0;
+  for (auto & bs : slot_bit_vec) {
+    slot_has_value_count += bs.count();
+  }
+  // add default 0 if slot has no fid
+  if (slot_has_value_count < slot_is_dense.size()) {
+    fid_bit_vec[0].set(0);
+  }
+  // count total fids
+  int total_fid_count = 0;
+  for (auto & bs : fid_bit_vec) {
+    total_fid_count += bs.count();
+  }
+
+  // create BatchFidSeq
+  auto seq = std::make_shared<BatchFidSeq>();
+  seq->h_bucket_sizes.resize(worker_num_);
+
+  // dump fidseq
+  auto & fidseq = seq->h_fidseq;
+  fidseq.resize(total_fid_count);
+  uint32_t offset = 0;
+  for (size_t j = 0; j < fid_bit_vec.size(); ++j) {
+    uint64_t val = fid_bit_vec[j].to_ulong();
+    while (val) {
+      uint64_t next_val = (val - 1) & val;
+      uint64_t pos_val = val - next_val;
+      fidseq[offset++] = (uint64_t)log2(pos_val) + j * 64;
+      val = next_val;
+    }
+  }
+  PADDLE_ENFORCE_EQ(offset, total_fid_count);
+
+  // count bucket size
+  std::vector<int> fidseq_buckets_count(worker_num_, 0);
+  for (int j = 0; j < (int)fidseq.size(); ++j) {
+    int bucket_idx = fidseq[j] % worker_num_;
+    ++fidseq_buckets_count[bucket_idx];
+  }
+
+  // find max bucket size
+  int max_bucket_size = 0;
+  for (int j = 0; j < worker_num_; ++j) {
+    max_bucket_size = max_bucket_size < fidseq_buckets_count[j] ? fidseq_buckets_count[j] : max_bucket_size;
+    seq->h_bucket_sizes[j] = fidseq_buckets_count[j];
+    fidseq_buckets_count[j] = 0;
+  }
+  seq->max_bucket_size = max_bucket_size;
+
+  // make buckets
+  int total_fedseq_bucket_size = max_bucket_size * worker_num_;
+  seq->h_fidseq_bucket.resize(total_fedseq_bucket_size, 0);
+  for (int j = 0; j < (int)fidseq.size(); ++j) {
+    int bucket_idx = fidseq[j] % worker_num_;
+    int offset = bucket_idx * max_bucket_size + fidseq_buckets_count[bucket_idx]++;
+    seq->h_fidseq_bucket[offset] = fidseq[j];
+  }
+
+  return seq;
+}
+
+void CacheManager::build_batch_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,
                                             const std::vector<bool> & slot_is_dense) {
+  platform::Timer timeline;
+  std::stringstream time_ss;
+  double total_time = 0.0;
+  timeline.Start();
+
   PADDLE_ENFORCE_GT(all_chan_recs.size(), 0,
       platform::errors::External("all_chan_recs size error"));
+
   size_t expected_chan_size = all_chan_recs[0]->size();
   for (auto & chan_recs : all_chan_recs) {
     PADDLE_ENFORCE_EQ(chan_recs->size(), expected_chan_size);
   }
+ 
+  fidseq_chan_ = paddle::framework::MakeChannel<std::shared_ptr<BatchFidSeq>>();
+ 
+  build_fidseq_thread_ = std::thread([all_chan_recs, slot_is_dense, this] () {
+    int batch_sz = batch_sz_;
+    int size = all_chan_recs[0]->size();
 
-  int size = expected_chan_size;
-  int batch_sz = batch_sz_;
-  int groups = size % batch_sz == 0 ? (size / batch_sz) : (size / batch_sz) + 1;
-  std::shared_ptr<std::vector<std::shared_ptr<std::vector<uint32_t>>>> n_batch_bfidseq_ptr =
-      std::make_shared<std::vector<std::shared_ptr<std::vector<uint32_t>>>>(groups, nullptr);
-  auto & n_batch_bfidseq = *n_batch_bfidseq_ptr;
-  VLOG(0) << "parse_all_fidseq: in size:" << size
-          << ", batch_size: " << batch_sz
-          << ", groups: " << groups
-          << ", channels:" << all_chan_recs.size();
+    std::vector<std::deque<Record>::iterator> train_data_iters(all_chan_recs.size());
+    for (size_t i = 0; i < all_chan_recs.size(); ++i) {
+      train_data_iters[i] = all_chan_recs[i]->begin();
+    }
 
-  std::vector<std::thread> threads(thread_num_);
-  for (int i = 0; i < thread_num_; ++i) {
-    threads[i] = std::thread([&, i, this]() {
-      VLOG(3) << "parse_all_fidseq: in thread-" << i;
-      int my_group = 0;
-      for (int batch_first = i * batch_sz; batch_first < size; batch_first += thread_num_ * batch_sz) {
-        int current_batch_sz = std::min(batch_sz, size - batch_first);
+    ParallelThreadPool build_fidseq_pool(12);
+    int thread_num = build_fidseq_pool.get_thread_num();
+    fidseq_chan_->SetBlockSize(1);
+    fidseq_chan_->SetCapacity(3 * thread_num);
+    //ThreadBarrier barrier(thread_num);
+    //std::vector<std::shared_ptr<BatchFidSeq>> result_vec(thread_num, nullptr); 
 
-        // process batch data for every chan_recs
-        std::shared_ptr<std::vector<uint32_t>> current_bfidseq = std::make_shared<std::vector<uint32_t>>();
-        std::set<uint32_t> current_bfid_set;
-        std::set<int> slot_has_val;
-        for (auto & recs : all_chan_recs) {
-          auto it = recs->begin() + batch_first;
-          for (int j = 0; j < current_batch_sz; ++j) {
-            const Record & cur_rec = *(it + j);
-            for (auto & fea : cur_rec.uint64_feasigns_) {
-              slot_has_val.insert(fea.slot());
-              PADDLE_ENFORCE_LT(fea.slot(), slot_is_dense.size());
-              if (slot_is_dense[fea.slot()]) {
-                continue;
+    std::mutex cv_mtx;
+    std::condition_variable write_cv;
+
+    std::atomic<int> writer_idx{0};
+    build_fidseq_pool.set_task([&, this] (int tid) {
+      int current_batch_sz = 0;
+      for (int i = tid * batch_sz_; i < size; i += thread_num * batch_sz_) {
+        current_batch_sz = std::min(batch_sz, size - i);  
+        auto batch_fidseq = parse_uniq_fids(train_data_iters, i, current_batch_sz, slot_is_dense);
+
+        std::shared_ptr<std::vector<uint32_t>> fidseq_before_opt = std::make_shared<std::vector<uint32_t>>();
+        { // before opt
+          // process batch data for every chan_recs
+          std::set<uint32_t> current_bfid_set;
+          std::set<int> slot_has_val;
+          for (size_t train_data_idx = 0; train_data_idx < train_data_iters.size(); ++train_data_idx) {
+            auto it = train_data_iters[train_data_idx] + i;
+            for (int j = 0; j < current_batch_sz; ++j) {
+              const Record & cur_rec = *(it++);
+              for (auto & fea : cur_rec.uint64_feasigns_) {
+                slot_has_val.insert(fea.slot());
+                PADDLE_ENFORCE_LT(fea.slot(), slot_is_dense.size());
+                if (slot_is_dense[fea.slot()]) {
+                  continue;
+                }
+                current_bfid_set.insert((uint32_t)fea.sign().uint64_feasign_); // feasign already converted to fid(uint32_t)
               }
-              current_bfid_set.insert((uint32_t)fea.sign().uint64_feasign_); // feasign already converted to fid(uint32_t)
             }
+          } // process finished
+          if (slot_has_val.size() < slot_is_dense.size()) {
+            current_bfid_set.insert(0); // add 0 as padding feasign
           }
-        } // process finished
-        if (slot_has_val.size() < slot_is_dense.size()) {
-          current_bfid_set.insert(0); // add 0 as padding feasign
+          fidseq_before_opt->assign(current_bfid_set.begin(), current_bfid_set.end());
+
+          PADDLE_ENFORCE_EQ(batch_fidseq->h_fidseq.size(), fidseq_before_opt->size());
+          for (size_t j = 0; j < batch_fidseq->h_fidseq.size(); ++j) {
+            PADDLE_ENFORCE_EQ(batch_fidseq->h_fidseq[j], (*fidseq_before_opt)[j]);
+          }
+          //VLOG(0) << "tid:" << tid << ", check consistency ok";
         }
-        current_bfidseq->assign(current_bfid_set.begin(), current_bfid_set.end());
-        n_batch_bfidseq[my_group * thread_num_ + i] = current_bfidseq;
-        ++my_group;
+        while (true) {
+          std::unique_lock<std::mutex> lock(cv_mtx);
+          if (tid == writer_idx.load()) {
+            fidseq_chan_->Put(std::move(batch_fidseq));
+            writer_idx.store((tid + 1) % thread_num);
+            write_cv.notify_all();
+            break;
+          }
+          write_cv.wait_for(lock, std::chrono::milliseconds(30));
+        }
       }
     });
-  }
-  for (auto & thd : threads) {
-    thd.join();
-  }
-  return n_batch_bfidseq_ptr;
-}
-
-void CacheManager::build_batch_fidseq(
-    std::vector<std::deque<Record> *> & all_chan_recs,
-               const std::vector<bool> & slot_is_dense) {
-  platform::Timer timeline;
-  timeline.Start();
-
-  if (batch_fidseq_proc_thread_.joinable()) {
-    batch_fidseq_proc_thread_.join();
-  }
-  auto n_batch_bfidseq_ptr = parse_all_fidseq(all_chan_recs, slot_is_dense);
-  batch_fidseq_chan_ = paddle::framework::MakeChannel<std::shared_ptr<BatchFidSeq>>();
-  batch_fidseq_chan_->SetBlockSize(1);
-  batch_fidseq_chan_->SetCapacity(2);
-
-  batch_fidseq_proc_thread_ = std::thread([&, n_batch_bfidseq_ptr, this]() {
-    auto & n_batch_bfidseq = *n_batch_bfidseq_ptr;
-    for (size_t i = 0; i < n_batch_bfidseq.size(); i++) {
-      auto seq = std::make_shared<BatchFidSeq>();
-      seq->h_fidseq = std::move(*(n_batch_bfidseq[i]));
-      seq->h_bucket_sizes.resize(worker_num_);
-
-      auto & fidseq = seq->h_fidseq;
-
-      ThreadBarrier partition_barrier(thread_num_);
-      ThreadBarrier resize_barrier(thread_num_);
-
-      std::mutex mtx;
-      std::vector<std::thread> threads(thread_num_);
-      std::vector<std::vector<uint32_t>> h_fid_buckets(worker_num_);
-      for (int t = 0; t < thread_num_; t++) {
-        threads[t] = std::thread([&, t, this] () {
-          // do partition
-          std::vector<std::vector<uint32_t>> thread_buckets(worker_num_);
-          for (int j = t; j < (int)fidseq.size(); j += thread_num_) {
-            int bucket_idx = fidseq[j] % worker_num_;
-            thread_buckets[bucket_idx].push_back(fidseq[j]);
-          }
-          mtx.lock();
-          for (int j = 0; j < worker_num_; j++) {
-            h_fid_buckets[j].insert(h_fid_buckets[j].end(), thread_buckets[j].begin(), thread_buckets[j].end());
-          }
-          mtx.unlock();
-          partition_barrier.wait();
-
-          // merge bucket
-          int max_bucket_size = 0;
-          for (int j = 0; j < worker_num_; j++) {
-            if ((int)h_fid_buckets[j].size() > max_bucket_size) {
-              max_bucket_size = h_fid_buckets[j].size();
-            }
-          }
-          if (t == 0) {
-            seq->max_bucket_size = max_bucket_size;
-          }
-
-          if (t < (int)h_fid_buckets.size()) {
-            std::sort(h_fid_buckets[t].begin(), h_fid_buckets[t].end());
-          }
-
-          if (t == 0) {
-            seq->h_fidseq_bucket.resize(max_bucket_size * worker_num_, 0);
-            for (int j = 0; j < worker_num_; j++) {
-              seq->h_bucket_sizes[j] = h_fid_buckets[j].size();
-            }
-          }
-          resize_barrier.wait();
-          if (t < (int)h_fid_buckets.size()) {
-            memcpy(&(seq->h_fidseq_bucket[0]) + t * max_bucket_size,
-                                      &(h_fid_buckets[t][0]),
-                  sizeof(uint32_t) * h_fid_buckets[t].size());
-          }
-        });
-      }
-
-      for (auto & thd : threads) {
-        thd.join();
-      }
-      batch_fidseq_chan_->Put(seq);
-    }
-    batch_fidseq_chan_->Close();
+    build_fidseq_pool.wait_task();
+    fidseq_chan_->Close();
   });
 
   timeline.Pause();
-  VLOG(0) << "CacheManager::build_batch_fidseq:" << timeline.ElapsedSec() << "s";
+  total_time += timeline.ElapsedSec();
+  time_ss << "lauch-async-thread:" << timeline.ElapsedSec();
+  timeline.Start();
+
+  while (!fidseq_chan_->Closed() && fidseq_chan_->Size() == 0) { }
+  timeline.Pause();
+  total_time += timeline.ElapsedSec();
+  time_ss << ",wait-data-ready:" << timeline.ElapsedSec();
+  VLOG(0) << "build_batch_fidseq total_time:" << total_time << "s, details:" << time_ss.str();
 }
 
 void CacheManager::prepare_next_batch(int worker_id) {
   //platform::Timer timeline;
   //std::stringstream time_ss;
   //double total_time = 0.0;
+  //timeline.Start();
 
   if (prepare_merge_grad_threads_[worker_id].joinable()) {
     prepare_merge_grad_threads_[worker_id].join();
   }
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << "join-prepare_merge_grad_threads:" << timeline.ElapsedSec();
 
   if (FLAGS_dump_cache_manager &&
                 worker_id == 0 &&
@@ -379,14 +439,14 @@ void CacheManager::prepare_next_batch(int worker_id) {
 
   if (worker_id == 0) {
     //timeline.Start();
-    //time_ss << "batch_fidseq_chan_.size:" << batch_fidseq_chan_->Size();
-    if (!batch_fidseq_chan_->Get(current_batch_fidseq_)) {
+    //time_ss << ",fidseq_chan_.size:" << fidseq_chan_->Size();
+    while (!fidseq_chan_->Closed() && fidseq_chan_->Size() < 2) { }
+    if (!fidseq_chan_->Get(current_batch_fidseq_)) {
       current_batch_fidseq_ = nullptr;
     }
     //timeline.Pause();
     //total_time += timeline.ElapsedSec();
     //time_ss << ",worker0-getchan:" << timeline.ElapsedSec();
-
     //timeline.Start();
 
     PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
@@ -419,8 +479,8 @@ void CacheManager::prepare_next_batch(int worker_id) {
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",wait:" << timeline.ElapsedSec();
-
   //timeline.Start();
+
   int dev_id = resource_->dev_id(worker_id);
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
@@ -554,39 +614,6 @@ void CacheManager::prepare_merge_grad(int dev_id) {
     //time_ss << ",sum-lod:" << timeline.ElapsedSec();
     //timeline.Start();
 
-    // multi-thread impl
-    //int thread_num = prepare_merge_grad_thread_pools_[worker_id]->get_thread_num();
-    //std::vector<float> thread_time_cost(thread_num);
-    //std::vector<int> bfid_out_buffer(cache_bfid_size);
-    //std::atomic<int> bfid_uniq_offset[current_batch_fidseq_->h_fidseq_bucket.size()] = {};
-    //auto work_func = [&, this] (int tid) {
-    //    platform::Timer sub_timeline;
-    //    sub_timeline.Start();
-
-    //    int mean_data_len = cache_bfid_size / thread_num;
-    //    mean_data_len = cache_bfid_size % thread_num == 0 ? mean_data_len : mean_data_len + 1;
-    //    int begin = mean_data_len * tid;
-    //    int end = mean_data_len * (tid + 1);
-    //    end = end <= cache_bfid_size ? end : cache_bfid_size;
-
-    //    int bfid = 0;
-    //    int pos = 0;
-    //    for (int j = begin; j < end; j++) {
-    //      bfid = h_cache_bfids[j];
-    //      pos = bfid_uniq_offset[bfid].fetch_add(1);
-    //      pos += bfid_uniq_lod[bfid];
-    //      bfid_out_buffer[pos] = j;
-    //    }
-
-    //    sub_timeline.Pause();
-    //    thread_time_cost[tid] = sub_timeline.ElapsedSec();
-    //};
-    //prepare_merge_grad_thread_pools_[worker_id]->set_task(work_func);
-    //prepare_merge_grad_thread_pools_[worker_id]->wait_task();
-    //for (int i = 0; i < thread_num; i++) {
-    //  time_ss << "|tid:" << i << ":" << thread_time_cost[i] << ";";
-    //}
-
     std::vector<int> bfid_out_buffer(cache_bfid_size);
     std::vector<int> bfid_uniq_offset(current_batch_fidseq_->h_fidseq_bucket.size(), 0);
     int tmp_bfid = 0, tmp_pos = 0;
@@ -599,7 +626,7 @@ void CacheManager::prepare_merge_grad(int dev_id) {
 
     //timeline.Pause();
     //total_time += timeline.ElapsedSec();
-    //time_ss << ",sort-bfid-pairs-2:" << timeline.ElapsedSec();
+    //time_ss << ",sort-bfid-pairs:" << timeline.ElapsedSec();
     //timeline.Start();
 
     current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id] =

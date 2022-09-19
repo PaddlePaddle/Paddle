@@ -122,11 +122,10 @@ class CacheManager {
 
   CacheManager(std::shared_ptr<HeterPsResource> resource);
   ~CacheManager() {
-    if (batch_fidseq_proc_thread_.joinable()) {
-      batch_fidseq_proc_thread_.join();
+    if (build_fidseq_thread_.joinable()) {
+      build_fidseq_thread_.join();
     }
 
-    //prepare_merge_grad_thread_pools_.clear();
     for (auto & thrd : prepare_merge_grad_threads_) {
       if (thrd.joinable()) {
         thrd.join();
@@ -151,9 +150,10 @@ class CacheManager {
   uint32_t get_max_fid();
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
-  std::shared_ptr<std::vector<std::shared_ptr<std::vector<uint32_t>>>>
-      parse_all_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,
-                                  const std::vector<bool> & slot_is_dense);
+  std::shared_ptr<BatchFidSeq> parse_uniq_fids(
+      const std::vector<std::deque<Record>::iterator> & train_data_iters,
+                                           int iter_offset, int batch_sz, 
+                                 const std::vector<bool> & slot_is_dense);
   void build_batch_fidseq(
       std::vector<std::deque<Record> *> & all_chan_recs,
                 const std::vector<bool> & slot_is_dense);
@@ -197,8 +197,7 @@ class CacheManager {
 
       auto free_func = [dev_id](T* ptr) {
           AnyDeviceGuard guard(dev_id);
-
-          VLOG(0) << "dev_id: " << dev_id << ", xpu_free: " << ptr;
+          //VLOG(0) << "dev_id: " << dev_id << ", xpu_free: " << ptr;
           xpu_free(ptr);
       };
 
@@ -229,17 +228,17 @@ class CacheManager {
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   // for batch fid sequence
-  ThreadBarrier worker_barrier_;
-  std::thread batch_fidseq_proc_thread_;
-  std::shared_ptr<BatchFidSeq> current_batch_fidseq_ = nullptr;
+  std::thread build_fidseq_thread_;
   std::shared_ptr<
-      paddle::framework::ChannelObject<std::shared_ptr<BatchFidSeq>>> batch_fidseq_chan_ = nullptr;
+      paddle::framework::ChannelObject<std::shared_ptr<BatchFidSeq>>> fidseq_chan_ = nullptr;
+
+  ThreadBarrier worker_barrier_;
+  std::shared_ptr<BatchFidSeq> current_batch_fidseq_ = nullptr;
 
   std::vector<ppStream> comm_streams_;
   std::shared_ptr<paddle::framework::ChannelObject<std::string>> debug_data_chan_ = nullptr;
 
   std::vector<std::thread> prepare_merge_grad_threads_;
-  //std::vector<std::shared_ptr<ParallelThreadPool>> prepare_merge_grad_thread_pools_;
 #endif
 };
 

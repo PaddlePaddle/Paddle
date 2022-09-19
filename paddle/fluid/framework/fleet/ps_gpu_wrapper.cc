@@ -919,6 +919,8 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
 
 void PSGPUWrapper::HandlePreloadDoneData(bool is_shuffle) {
   // local shuffle
+  platform::Timer timer;
+  timer.Start();
   if (is_shuffle) {
     dataset_->LocalShuffle();
   }
@@ -927,6 +929,9 @@ void PSGPUWrapper::HandlePreloadDoneData(bool is_shuffle) {
   gpu_task->Reset();
   data_ready_channel_->Put(gpu_task);
   VLOG(3) << "End HandlePreloadDoneData(), dataset[" << dataset_ << "]";
+  timer.Pause();
+  VLOG(0) << "HandlePreloadDoneData, cost time: " << timer.ElapsedSec()
+          << "s";
 }
 
 void PSGPUWrapper::start_build_thread() {
