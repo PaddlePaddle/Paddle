@@ -42,12 +42,12 @@ def current_stream(device=None):
     Return the current CUDA stream by the device.
 
     Parameters:
-        device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from. 
+        device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from.
         If device is None, the device is the current device. Default: None.
-    
+
     Returns:
         CUDAStream: the stream to the device.
-    
+
     Examples:
         .. code-block:: python
 
@@ -82,7 +82,7 @@ def synchronize(device=None):
     Parameters:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
         If device is None, the device is the current device. Default: None.
-    
+
     Examples:
         .. code-block:: python
 
@@ -111,7 +111,7 @@ def synchronize(device=None):
 def device_count():
     '''
     Return the number of GPUs available.
-    
+
     Returns:
         int: the number of GPUs available.
 
@@ -158,7 +158,7 @@ def extract_cuda_device_id(device, op_name):
     Return the id of the given cuda device. It is just a utility that will not be exposed to users.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or 
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or
             the string name of device like 'gpu:x'.
             Default: None.
 
@@ -197,12 +197,12 @@ def max_memory_allocated(device=None):
     Return the peak size of gpu memory that is allocated to tensor of the given device.
 
     .. note::
-        The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may larger than the memory size that tensor actually need. 
+        The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may larger than the memory size that tensor actually need.
         For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or 
-            the string name of device like 'gpu:x'. If device is None, the device is the current device. 
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
     Return:
@@ -232,8 +232,8 @@ def max_memory_reserved(device=None):
     Return the peak size of GPU memory that is held by the allocator of the given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or 
-            the string name of device like 'gpu:x'. If device is None, the device is the current device. 
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
     Return:
@@ -263,12 +263,12 @@ def memory_allocated(device=None):
     Return the current size of gpu memory that is allocated to tensor of the given device.
 
     .. note::
-        The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may be larger than the memory size that tensor actually need. 
-        For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes. 
+        The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may be larger than the memory size that tensor actually need.
+        For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or 
-            the string name of device like 'gpu:x'. If device is None, the device is the current device. 
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
     Return:
@@ -298,14 +298,14 @@ def memory_reserved(device=None):
     Return the current size of GPU memory that is held by the allocator of the given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or 
-            the string name of device like 'gpu:x'. If device is None, the device is the current device. 
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
     Return:
         int: The current size of GPU memory that is held by the allocator of the given device, in bytes.
 
-    Examples:    
+    Examples:
         .. code-block:: python
 
             # required: gpu
@@ -389,18 +389,18 @@ def get_device_properties(device=None):
     Return the properties of given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or 
-            the string name of device like 'gpu:x' which to get the properties of the 
-            device from. If device is None, the device is the current device. 
+        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+            the string name of device like 'gpu:x' which to get the properties of the
+            device from. If device is None, the device is the current device.
             Default: None.
 
     Returns:
-        _gpuDeviceProperties: The properties of the device which include ASCII string 
-        identifying device, major compute capability, minor compute capability, global 
+        _gpuDeviceProperties: The properties of the device which include ASCII string
+        identifying device, major compute capability, minor compute capability, global
         memory available and the number of multiprocessors on the device.
 
     Examples:
-    
+
         .. code-block:: python
 
             # required: gpu
@@ -484,7 +484,7 @@ def get_device_capability(device=None):
     Return the major and minor revision numbers defining the device's compute capability which are got from CUDA function `cudaDeviceProp <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_.
 
     Parameters:
-        device(paddle.CUDAPlace|int, optional): The device or the ID of the device. If device is None (default), the device is the current device. 
+        device(paddle.CUDAPlace|int, optional): The device or the ID of the device. If device is None (default), the device is the current device.
 
     Returns:
         tuple(int,int): the major and minor revision numbers defining the device's compute capability.

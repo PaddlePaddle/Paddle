@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 
@@ -23,7 +24,9 @@ import paddle.nn as nn
 paddle.enable_static()
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid import Program, program_guard
+from test_attribute_var import UnittestBase
+from op_test import OpTest
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):
@@ -972,6 +975,176 @@ class TestConv2DTransposeRepr(unittest.TestCase):
         y_np = y_var.numpy()
         self.assertIsNotNone(y_np)
         paddle.enable_static()
+
+
+class TestTensorOutputSize1(UnittestBase):
+
+    def init_info(self):
+        self.shapes = [[2, 3, 8, 8]]
+        self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size1'
+
+    def var_prefix(self):
+        return "Vars["
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = paddle.assign([17])
+        out = paddle.paddle.nn.functional.conv2d_transpose(
+            x, w_var, stride=2, output_size=output_size)
+        return out
+
+    def test_static(self):
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            fc = paddle.nn.Linear(8, 8)
+            x = paddle.randn([2, 3, 8, 8])
+            x.stop_gradient = False
+            feat = fc(x)
+            out = self.call_func(feat)
+
+            sgd = paddle.optimizer.SGD()
+            sgd.minimize(paddle.mean(out))
+            self.assertTrue(self.var_prefix() in str(main_prog))
+
+            exe = paddle.static.Executor()
+            exe.run(starup_prog)
+            res = exe.run(fetch_list=[feat, out])
+            np.testing.assert_allclose(res[1].shape, (2, 6, 17, 17))
+
+            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
+                                               exe)
+            # Test for Inference Predictor
+            infer_outs = self.infer_prog()
+            np.testing.assert_allclose(infer_outs[1].shape, (2, 6, 17, 17))
+
+
+class TestTensorOutputSize2(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size2'
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = [17, paddle.assign([17])]
+        out = paddle.paddle.nn.functional.conv2d_transpose(
+            x, w_var, stride=2, output_size=output_size)
+        return out
+
+
+class TestTensorOutputSize3(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size3'
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = paddle.assign([17])
+        out = paddle.fluid.layers.conv2d_transpose(x,
+                                                   num_filters=6,
+                                                   output_size=output_size,
+                                                   filter_size=3,
+                                                   stride=2)
+        return out
+
+
+class TestTensorOutputSize4(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size4'
+
+    def call_func(self, x):
+        output_size = [17, paddle.assign([17])]
+        out = paddle.fluid.layers.conv2d_transpose(x,
+                                                   num_filters=6,
+                                                   output_size=output_size,
+                                                   filter_size=3,
+                                                   stride=2)
+        return out
+
+
+class TestTensorOutputSize5(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size5'
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = [17, paddle.assign([17])]
+        conv2d_trans = paddle.fluid.dygraph.Conv2DTranspose(
+            num_channels=3,
+            num_filters=6,
+            filter_size=3,
+            output_size=output_size,
+            stride=2)
+        out = conv2d_trans(x)
+        return out
+
+
+class TestTensorOutputSize6(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size6'
+
+    def var_prefix(self):
+        return "Var["
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = paddle.assign([17, 17])
+        conv2d_trans = paddle.fluid.dygraph.Conv2DTranspose(
+            num_channels=3,
+            num_filters=6,
+            filter_size=3,
+            output_size=output_size,
+            stride=2)
+        out = conv2d_trans(x)
+        return out
+
+
+class TestTensorOutputSize7(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size7'
+
+    def var_prefix(self):
+        return ""
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = 17
+        conv2d_trans = paddle.fluid.dygraph.Conv2DTranspose(
+            num_channels=3,
+            num_filters=6,
+            filter_size=3,
+            output_size=output_size,
+            stride=2)
+        out = conv2d_trans(x)
+        return out
+
+
+class TestTensorOutputSize8(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size8'
+
+    def var_prefix(self):
+        return ""
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = [17, 17]
+        conv2d_trans = paddle.fluid.dygraph.Conv2DTranspose(
+            num_channels=3,
+            num_filters=6,
+            filter_size=3,
+            output_size=output_size,
+            stride=2)
+        out = conv2d_trans(x)
+        return out
 
 
 if __name__ == '__main__':

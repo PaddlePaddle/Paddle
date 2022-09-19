@@ -113,10 +113,12 @@ class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                  "1: dst is on CUDAPlace. "
                  "2: dst is on CUDAPinnedPlace. "
                  "3: dst is on XPUPlace. "
-                 "4: dst is on NPUPlace. ");
+                 "4: dst is on NPUPlace. "
+                 "5: dst is on NPUPinnerPlace. "
+                 "6: dst is on CustomDevicePlace");
     AddComment(R"DOC(
     Memcpy Operator.
-    By now, it ONLY supports the memcopy between CUDAPinnedPlace <-> CUDAPlace or 
+    By now, it ONLY supports the memcopy between CUDAPinnedPlace <-> CUDAPlace or
     NPUPlace <-> CPUPlace, and used as an internal op by Recompute-Offload.
     You would have to update it if you want other more capacities.
 

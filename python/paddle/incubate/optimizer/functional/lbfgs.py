@@ -41,9 +41,9 @@ def minimize_lbfgs(objective_func,
         x_{k+1} = x_{k} + H_k \nabla{f_k}
 
     If :math:`H_k` is the inverse Hessian of :math:`f` at :math:`x_k`, then it's the Newton method.
-    If :math:`H_k` is symmetric and positive definite, used as an approximation of the inverse Hessian, then 
+    If :math:`H_k` is symmetric and positive definite, used as an approximation of the inverse Hessian, then
     it's a quasi-Newton. In practice, the approximated Hessians are obtained
-    by only using the gradients, over either whole or part of the search 
+    by only using the gradients, over either whole or part of the search
     history, the former is BFGS, the latter is L-BFGS.
 
     Reference:
@@ -51,7 +51,7 @@ def minimize_lbfgs(objective_func,
 
     Args:
         objective_func: the objective function to minimize. ``objective_func`` accepts a 1D Tensor and returns a scalar.
-        initial_position (Tensor): the starting point of the iterates, has the same shape with the input of ``objective_func`` . 
+        initial_position (Tensor): the starting point of the iterates, has the same shape with the input of ``objective_func`` .
         history_size (Scalar): the number of stored vector pairs {si,yi}. Default value: 100.
         max_iters (int, optional): the maximum number of minimization iterations. Default value: 50.
         tolerance_grad (float, optional): terminates if the gradient norm is smaller than this. Currently gradient norm uses inf norm. Default value: 1e-7.
@@ -71,12 +71,12 @@ def minimize_lbfgs(objective_func,
             - position (Tensor): the position of the last iteration. If the search converged, this value is the argmin of the objective function regrading to the initial position.
             - objective_value (Tensor): objective function value at the `position`.
             - objective_gradient (Tensor): objective function gradient at the `position`.
-            
+
     Examples:
         .. code-block:: python
 
             import paddle
-            
+
             def func(x):
                 return paddle.dot(x, x)
 

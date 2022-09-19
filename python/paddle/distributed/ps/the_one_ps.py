@@ -1090,8 +1090,9 @@ class TheOnePSRuntime(RuntimeBase):
         print("communicator config:", trainer_config.get_communicator_flags())
 
         self._worker.init_worker(worker_desc, self.string_hosts, self.role_id)
-        self.trainer_endpoint = get_trainer_endpoint(self.role_maker)
-        print("fl-ps > trainer_endpoint: {}".format(self.trainer_endpoint))
+        if not self.is_heter_ps_mode:
+            self.trainer_endpoint = get_trainer_endpoint(self.role_maker)
+            print("fl-ps > trainer_endpoint: {}".format(self.trainer_endpoint))
         print("fl-ps > with_coordinator? {}".format(self.with_coordinator))
         print("fl-ps > coordinator addr: {}".format(self.coordinator_hosts))
         if self.with_coordinator:

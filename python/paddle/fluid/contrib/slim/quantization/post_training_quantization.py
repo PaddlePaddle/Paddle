@@ -110,7 +110,7 @@ def _apply_pass(scope,
 class PostTrainingQuantization(object):
     """
     Utilizing post training quantization methon to quantize the FP32 model,
-    and it uses calibrate data to get the quantization information for all 
+    and it uses calibrate data to get the quantization information for all
     quantized variables.
     """
 
@@ -151,18 +151,18 @@ class PostTrainingQuantization(object):
         Args:
             executor(fluid.Executor): The executor to load, run and save the
                 quantized model.
-            scope(fluid.Scope, optional): The scope of the program, use it to load 
-                and save variables. If scope=None, get scope by global_scope(). 
-            model_dir(str): The path of the fp32 model that will be quantized, 
+            scope(fluid.Scope, optional): The scope of the program, use it to load
+                and save variables. If scope=None, get scope by global_scope().
+            model_dir(str): The path of the fp32 model that will be quantized,
                 and the model and params files are under the path.
-            model_filename(str, optional): The name of file to load the inference 
-                program. If it is None, the default filename '__model__' will 
+            model_filename(str, optional): The name of file to load the inference
+                program. If it is None, the default filename '__model__' will
                 be used. Default is 'None'.
             params_filename(str, optional): The name of file to load all parameters.
-                When all parameters were saved in a single binary file, set it 
-                as the real filename. If parameters were saved in separate files, 
+                When all parameters were saved in a single binary file, set it
+                as the real filename. If parameters were saved in separate files,
                 set it as 'None'. Default is 'None'.
-            batch_generator(Python Generator): The batch generator provides 
+            batch_generator(Python Generator): The batch generator provides
                 calibrate data for DataLoader, and it returns a batch every
                 time. Note that, sample_generator and batch_generator, only one
                 should be set. Beisdes, batch_generator supports lod tensor.
@@ -174,31 +174,31 @@ class PostTrainingQuantization(object):
                 Generator or Dataloader provides calibrate data, and it could
                 return a batch every time.
             batch_size(int, optional): The batch size of DataLoader. Default is 10.
-            batch_nums(int, optional): If batch_nums is not None, the number of 
-                calibrate data is batch_size*batch_nums. If batch_nums is None, use 
+            batch_nums(int, optional): If batch_nums is not None, the number of
+                calibrate data is batch_size*batch_nums. If batch_nums is None, use
                 all data provided by sample_generator as calibrate data.
             algo(str, optional): If algo='KL', use KL-divergenc method to
                 get the KL threshold for quantized activations and get the abs_max
-                value for quantized weights. If algo='abs_max', get the abs max 
-                value for activations and weights. If algo= 'min_max', get the min 
+                value for quantized weights. If algo='abs_max', get the abs max
+                value for activations and weights. If algo= 'min_max', get the min
                 and max value for quantized activations and weights. If algo='avg',
-                get the average value among the max values for activations. If 
+                get the average value among the max values for activations. If
                 algo= 'hist', get the value of 'hist_percent' quantile as the threshold.
-                If algo='mse', get the value which makes the quantization mse loss 
+                If algo='mse', get the value which makes the quantization mse loss
                 minimal. Default is KL.
             hist_percent(float, optional): The threshold of algo 'hist' for activations.
                 Default is 0.99999.
-            quantizable_op_type(list[str], optional): List the type of ops 
-                that will be quantized. Default is ["conv2d", "depthwise_conv2d", 
+            quantizable_op_type(list[str], optional): List the type of ops
+                that will be quantized. Default is ["conv2d", "depthwise_conv2d",
                 "mul"].
             round_type(str, optional): The method of converting the quantized weights
                 value float->int. Currently supports ['round', 'adaround'] methods.
                 Default is `round`, which is rounding nearest to the integer.
                 'adaround' is refer to https://arxiv.org/abs/2004.10568.
             learning_rate(float, optional): The learning rate of adaround method.
-            is_full_quantized(bool, optional): If set is_full_quantized as True, 
+            is_full_quantized(bool, optional): If set is_full_quantized as True,
                 apply quantization to all supported quantizable op type. If set
-                is_full_quantized as False, only apply quantization to the op type 
+                is_full_quantized as False, only apply quantization to the op type
                 according to the input quantizable_op_type.
             bias_correction(bool, optional): If set as True, use the bias correction
                 method of https://arxiv.org/abs/1810.05723. Default is False.
@@ -217,11 +217,11 @@ class PostTrainingQuantization(object):
                 the model accuracy is usually higher when it is 'channel_wise_abs_max'.
             onnx_format(bool): Whether to export the quantized model with format of ONNX.
                 Default is False.
-            freeze_model(bool): Whether to convert quantized and trained ``program`` to final 
+            freeze_model(bool): Whether to convert quantized and trained ``program`` to final
                 quantized ``program``. Default: True.
             skip_tensor_list(list): List of skip quant tensor name. Default: None.
-            same_scale_tensor_list(list(list)): The list of tensor keep same scale in the outermost 
-                list, the final scale about every list is the max of the scale in the list 
+            same_scale_tensor_list(list(list)): The list of tensor keep same scale in the outermost
+                list, the final scale about every list is the max of the scale in the list
                 of tensor. Default: None.
             optimize_model(bool, optional): If set optimize_model as True, it applies
                 some passes to the model before quantization, and it supports
@@ -240,17 +240,17 @@ class PostTrainingQuantization(object):
         .. code-block:: python
             import paddle.fluid as fluid
             from paddle.fluid.contrib.slim.quantization import PostTrainingQuantization
-            
+
             exe = fluid.Executor(fluid.CPUPlace())
             model_dir = path/to/fp32_model_params
-            # set model_filename as None when the filename is __model__, 
+            # set model_filename as None when the filename is __model__,
             # otherwise set it as the real filename
-            model_filename = None 
-            # set params_filename as None when all parameters were saved in 
+            model_filename = None
+            # set params_filename as None when all parameters were saved in
             # separate files, otherwise set it as the real filename
             params_filename = None
             save_model_path = path/to/save_model_path
-            # prepare the sample generator according to the model, and the 
+            # prepare the sample generator according to the model, and the
             # sample generator must return a sample every time. The reference
             # document: https://www.paddlepaddle.org.cn/documentation/docs/zh
             # /user_guides/howto/prepare_data/use_py_reader.html
@@ -621,7 +621,7 @@ class PostTrainingQuantization(object):
 
     def _set_activation_persistable(self):
         '''
-        Set activation variables to be persistable, so can obtain 
+        Set activation variables to be persistable, so can obtain
         the tensor data in sample_data
         '''
         for var in self._program.list_vars():
@@ -983,8 +983,8 @@ class PostTrainingQuantization(object):
 
     def _update_program(self):
         '''
-        Use QuantizationTransformPass and AddQuantDequantPass to insert 
-        fake_quantize, fake_dequantize and fake_quant_dequant op. 
+        Use QuantizationTransformPass and AddQuantDequantPass to insert
+        fake_quantize, fake_dequantize and fake_quant_dequant op.
         Besides, save all threshold to the scale var node.
         '''
         _logger.info("Update the program ...")
@@ -1326,36 +1326,36 @@ class WeightQuantization(object):
                                threshold_rate=0.0):
         '''
         In order to reduce the size of model, this api quantizes the weight
-        of some ops from float32 to int8/16. In the inference stage, the 
+        of some ops from float32 to int8/16. In the inference stage, the
         quantized weight will be dequantized to float32 again.
-        
+
         Args:
             save_model_dir(str): The path to save the quantized model.
-            save_model_filename(str, optional): The name of file to 
-                save the inference program. If it is None, the default 
+            save_model_filename(str, optional): The name of file to
+                save the inference program. If it is None, the default
                 filename '__model__' will be used. Default is 'None'.
-            save_params_filename(str, optional): The name of file to 
-                save all parameters. If it is None, parameters were 
-                saved in separate files. If it is not None, all 
+            save_params_filename(str, optional): The name of file to
+                save all parameters. If it is None, parameters were
+                saved in separate files. If it is not None, all
                 parameters were saved in a single binary file.
-            quantizable_op_type(list[str], optional): The list of ops 
+            quantizable_op_type(list[str], optional): The list of ops
                 that will be quantized, and the quantized ops should be
-                contained in ["conv2d", "depthwise_conv2d", "mul"]. 
+                contained in ["conv2d", "depthwise_conv2d", "mul"].
                 Default is ["conv2d","mul"].
-            weight_bits(int, optional): The bits for the quantized weight, 
+            weight_bits(int, optional): The bits for the quantized weight,
                 and it should be 8 or 16. Default is 8.
             weight_quantize_type(str, optional): quantization type for weights,
                 support 'channel_wise_abs_max' and 'abs_max'. Set it as
                 'channel_wise_abs_max', the accuracy performs better.
-            generate_test_model(bool, optional): If set generate_test_model 
-                as True, it saves a fake quantized model, in which the weights 
-                are quantized and dequantized. We can use PaddlePaddle to load 
+            generate_test_model(bool, optional): If set generate_test_model
+                as True, it saves a fake quantized model, in which the weights
+                are quantized and dequantized. We can use PaddlePaddle to load
                 the fake quantized model and test the accuracy on GPU or CPU.
-            threshold_rate(float, optional): This api uses abs_max methd to 
-                quantize the weight from float32 to int8/16, and the abs max 
-                value is important for quantization diff. When the abs_max 
-                value is far away from the center of the numerical distribution, 
-                we can set threshold_rate between 1e-6 and 1e-8, so the abs max 
+            threshold_rate(float, optional): This api uses abs_max methd to
+                quantize the weight from float32 to int8/16, and the abs max
+                value is important for quantization diff. When the abs_max
+                value is far away from the center of the numerical distribution,
+                we can set threshold_rate between 1e-6 and 1e-8, so the abs max
                 value will be optimized. Default is 0.0.
         '''
         for op_type in quantizable_op_type:
@@ -1386,7 +1386,7 @@ class WeightQuantization(object):
         """
         Convert all presistable vars from fp32 to fp16.
         Note that, this api only changes the data type of variables in
-        __params__ file, and the __model__ file remains unchanged. 
+        __params__ file, and the __model__ file remains unchanged.
 
         Args:
             save_model_dir(str): The path to save the fp16 model.
@@ -1545,7 +1545,7 @@ class WeightQuantization(object):
     def _weight_channel_wise_abs_max_quantization(self, scope, place,
                                                   weight_bits, op, var_name,
                                                   for_test):
-        ''' 
+        '''
         Use channel_wise_abs_max method to quantize weight.
         '''
         quantize_range = (1 << (weight_bits - 1)) - 1

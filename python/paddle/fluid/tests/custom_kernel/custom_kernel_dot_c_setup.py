@@ -61,9 +61,7 @@ paddle_custom_kernel_library_dir = [
 ]
 
 # libs
-libs = [':core_avx.so']
-if not core.has_avx_core and core.has_noavx_core:
-    libs = [':core_noavx.so']
+libs = [':libpaddle.so']
 
 custom_kernel_dot_module = Extension(
     'custom_kernel_dot',

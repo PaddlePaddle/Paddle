@@ -22,7 +22,7 @@ def GenerateFileStructureForFinalDygraph(eager_dir):
     |- generated
     |  |- CMakeLists.txt
     |  |  "add_subdirectory(forwards), add_subdirectory(backwards)"
-    |  
+    |
     |  |- forwards
     |     |- "dygraph_functions.cc"
     |     |- "dygraph_functions.h"
@@ -59,7 +59,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
     |- generated
     |  |- CMakeLists.txt
     |  |  "add_subdirectory(forwards), add_subdirectory(nodes)"
-    |  
+    |
     |  |- forwards
     |     |- "dygraph_forward_functions.cc"
     |     |- CMakeLists.txt
@@ -70,7 +70,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
     |     |- "nodes.h"
     |     |- CMakeLists.txt
     |     |  "cc_library(dygraph_node SRCS nodes.cc DEPS ${eager_deps} ${fluid_deps})"
-    | 
+    |
     |  |- dygraph_forward_api.h
     """
     # Directory Generation

@@ -84,6 +84,10 @@ if(WITH_GPU)
     test_math_function_gpu
     SRCS test_math_function.cu
     DEPS math_function)
+  nv_test(
+    test_broadcast_gpu
+    SRCS test_ternary_broadcast.cu
+    DEPS gtest)
 endif()
 if(WITH_ROCM)
   hip_test(

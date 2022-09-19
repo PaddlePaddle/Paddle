@@ -308,8 +308,8 @@ class _ProgramHolder(object):
     """
     Holds the execution information of a Program.
 
-    _ProgramHolder is the execution unit of TranslatedLayer, 
-    if TranslatedLayer contains multiple _ProgramHolder, 
+    _ProgramHolder is the execution unit of TranslatedLayer,
+    if TranslatedLayer contains multiple _ProgramHolder,
     it can execute multiple methods
 
     _ProgramHolder is an internal concept.
@@ -984,7 +984,7 @@ def _run_static_graph(input, program_holder, trace_program):
 def _collect_current_and_parent_var(program, block_idx):
     '''
     Get variables in current block and its parent block.
-    
+
     Args:
         program(Program): The program containing the current block.
         block_idx(int): index of current block.
@@ -1010,13 +1010,13 @@ def _append_block(dest_program,
                   dict_rename_var_old_new=None):
     '''
     Append Variables and Operators in 'src_program_desc' to dest_program.
-    
+
     Args:
         dest_program(Program): Variables and Operators are appended to it.
         src_program_desc(ProgramDesc): Variables in it will be appended to 'dest_program'.
         program_holder(_ProgramHolder): program_holder of TranslatedLayer
         input_variables(list): list of input variables
-        dict_rename_var_old_new(None|dict): When using '_rename_var_program_desc', 
+        dict_rename_var_old_new(None|dict): When using '_rename_var_program_desc',
         use it to map the name of the variable before it was modified and the new name.
     '''
 
@@ -1199,10 +1199,10 @@ def append_var_from_block_desc_static(block,
 
 class TranslatedLayer(layers.Layer):
     """
-    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model 
-    loaded by :ref:`api_paddle_jit_load` . It can be used like a 
+    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model
+    loaded by :ref:`api_paddle_jit_load` . It can be used like a
     general Layer object in eval or train mode.
-    
+
     .. note:
         The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_paddle_jit_load` .
 
@@ -1410,13 +1410,13 @@ class TranslatedLayer(layers.Layer):
         Args:
             - method_name (string): mehtod name corresponding to the program
                 to be obtained. Default: 'forward'.
-        
+
         Returns:
             Program
 
         Examples:
             .. code-block:: python
-            
+
                 import numpy as np
                 import paddle
                 import paddle.nn as nn
