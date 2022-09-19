@@ -318,6 +318,10 @@ void CacheManager::build_batch_fidseq(std::vector<std::deque<Record> *> & all_ch
   double total_time = 0.0;
   timeline.Start();
 
+  if (build_fidseq_thread_.joinable()) {
+      build_fidseq_thread_.join();
+  }
+
   PADDLE_ENFORCE_GT(all_chan_recs.size(), 0,
       platform::errors::External("all_chan_recs size error"));
 
