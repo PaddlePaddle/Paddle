@@ -44,6 +44,9 @@ paddle.enable_static()
         ('erf', primops.erf, randn(2, 3), {}, (2, 3), 'float64'),
         ('abs', primops.abs, randn(2, 3), {}, (2, 3), 'float64'),
         ('log', primops.log, randn(2, 3), {}, (2, 3), 'float64'),
+        ('cast', primops.cast, randn(2, 3), {
+            'dtype': paddle.int64
+        }, (2, 3), 'int64'),
         ('reshape', primops.reshape, randn(2, 3), {
             'shape': (3, 2)
         }, (3, 2), 'float64'),
