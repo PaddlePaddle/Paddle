@@ -816,10 +816,6 @@ def monkey_patch_varbase():
                 "_set_grad_ivar is only supported for Parameter Tensor")
 
     @framework.dygraph_only
-    def clone(self):
-        return _C_ops.assign(self)
-
-    @framework.dygraph_only
     def value(self):
         return self
 
@@ -1002,7 +998,6 @@ def monkey_patch_varbase():
     if framework._in_eager_mode_:
         setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
-        setattr(core.eager.Tensor, "clone", clone)
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)
         setattr(core.eager.Tensor, "cuda", cuda)
