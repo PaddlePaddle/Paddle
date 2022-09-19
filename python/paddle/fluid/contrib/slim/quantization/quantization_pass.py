@@ -135,7 +135,7 @@ class QuantizationTransformPass(object):
                 initialize these new parameters.
             place(fluid.CPUPlace|fluid.CUDAPlace|str): place is used to initialize new
                 parameters described above. If it's string, It can be ``cpu``, and ``gpu:x``,
-                where ``x`` is the index of the GPUs. 
+                where ``x`` is the index of the GPUs.
             weight_bits(int): quantization bit number for weights,
                 the bias is not quantized.
             activation_bits(int): quantization bit number for activation.
@@ -153,8 +153,8 @@ class QuantizationTransformPass(object):
             moving_rate(float): the param for 'moving_average_abs_max' quantization.
             skip_pattern(str or str list): The user-defined quantization skip pattern, which
                 will be presented in the name scope of an op. When the skip pattern is
-                detected in an op's name scope, the corresponding op will not be quantized. 
-            quantizable_op_type(list[str]): List the type of ops that will be quantized. 
+                detected in an op's name scope, the corresponding op will not be quantized.
+            quantizable_op_type(list[str]): List the type of ops that will be quantized.
                 Default is ["conv2d", "depthwise_conv2d", "mul"]. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
             weight_quantize_func(function): Function that defines how to quantize weight.
@@ -762,7 +762,7 @@ class QuantizationTransformPass(object):
 
     def _copy_graph(self, graph, source_graph, op_node):
         """
-        copy op_node in source_graph to graph. And will run recursively 
+        copy op_node in source_graph to graph. And will run recursively
         for next ops that link to op_node's outputs.
         Args:
             graph(IrGraph): target graph to copy.
@@ -977,8 +977,8 @@ class QuantizationFreezePass(object):
                 value float->int. Currently supports ['round', 'adaround'] methods.
                 Default is `round`, which is rounding nearest to the integer.
                 'adaround' is refer to https://arxiv.org/abs/2004.10568.
-            weight_quantize_type(str): quantization type for weights, support 'abs_max' and 
-                'channel_wise_abs_max'. The 'range_abs_max' usually is not used for weight, 
+            weight_quantize_type(str): quantization type for weights, support 'abs_max' and
+                'channel_wise_abs_max'. The 'range_abs_max' usually is not used for weight,
                 since weights are fixed once the model is well trained.
             quantizable_op_type(list[str]): This input param will be removed latter. The pass
                 will process all quantized op, so it is not necessary to set the input param.
@@ -1610,7 +1610,7 @@ class OutScaleForInferencePass(object):
 
 class AddQuantDequantPass(object):
     """
-    Quantize the ops that do not have weights, and add quant_dequant op for the 
+    Quantize the ops that do not have weights, and add quant_dequant op for the
     quantized ops's inputs.
     """
 
@@ -1635,18 +1635,18 @@ class AddQuantDequantPass(object):
             place(fluid.CPUPlace|fluid.CUDAPlace|str): place is used to initialize new
                 parameters described above. If ``place`` is string, it can be It can be ``cpu``
                 or ``gpu:x``, where ``x`` is the index of the GPUs.
-            moving_rate(float, optional): the param for 'quant_dequant_moving_average_abs_max' 
+            moving_rate(float, optional): the param for 'quant_dequant_moving_average_abs_max'
                 quantization. Default is 0.9.
             quant_bits(int, optional): quantization bit number for activation. Default is 8.
             skip_pattern(str, optional): The user-defined quantization skip pattern, which
                 will be presented in the name scope of an op. When the skip pattern is
                 detected in an op's name scope, the corresponding op will not be quantized.
                 Default is 'skip_quant'.
-            quantizable_op_type(list[str], optional): List the type of ops that will be 
-                quantized. Default is ["elementwise_add", "pool2d"]. 
-            is_full_quantized(bool, optional): If set is_full_quantized as True, apply 
+            quantizable_op_type(list[str], optional): List the type of ops that will be
+                quantized. Default is ["elementwise_add", "pool2d"].
+            is_full_quantized(bool, optional): If set is_full_quantized as True, apply
                 quantization to all supported quantizable op type. If set is_full_quantized
-                as False, only apply quantization to the op type according to the input 
+                as False, only apply quantization to the op type according to the input
                 quantizable_op_type.
         """
         self._scope = scope
@@ -2051,7 +2051,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 initialize these new parameters.
             place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to initialize new
                 parameters described above. If it's string, It can be ``cpu``, and ``gpu:x``,
-                where ``x`` is the index of the GPUs. 
+                where ``x`` is the index of the GPUs.
             weight_bits(int): quantization bit number for weights,
                 the bias is not quantized.
             activation_bits(int): quantization bit number for activation.
@@ -2069,8 +2069,8 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             moving_rate(float): the param for 'moving_average_abs_max' quantization.
             skip_pattern(str or str list): The user-defined quantization skip pattern, which
                 will be presented in the name scope of an op. When the skip pattern is
-                detected in an op's name scope, the corresponding op will not be quantized. 
-            quantizable_op_type(list[str]): List the type of ops that will be quantized. 
+                detected in an op's name scope, the corresponding op will not be quantized.
+            quantizable_op_type(list[str]): List the type of ops that will be quantized.
                 Default is ["conv2d", "depthwise_conv2d", "mul"]. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
             weight_quantize_func(function): Function that defines how to quantize weight.
@@ -2345,20 +2345,20 @@ class AddQuantDequantPassV2(object):
             place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to initialize new
                 parameters described above. If ``place`` is string, it can be It can be ``cpu``
                 or ``gpu:x``, where ``x`` is the index of the GPUs.
-            moving_rate(float, optional): the param for 'quant_dequant_moving_average_abs_max' 
+            moving_rate(float, optional): the param for 'quant_dequant_moving_average_abs_max'
                 quantization. Default is 0.9.
             quant_bits(int, optional): quantization bit number for activation. Default is 8.
             skip_pattern(str, optional): The user-defined quantization skip pattern, which
                 will be presented in the name scope of an op. When the skip pattern is
                 detected in an op's name scope, the corresponding op will not be quantized.
                 Default is 'skip_quant'.
-            quantizable_op_type(list[str], optional): List the type of ops that will be 
-                quantized. Default is ["elementwise_add", "pool2d"]. 
-            is_full_quantized(bool, optional): If set is_full_quantized as True, apply 
+            quantizable_op_type(list[str], optional): List the type of ops that will be
+                quantized. Default is ["elementwise_add", "pool2d"].
+            is_full_quantized(bool, optional): If set is_full_quantized as True, apply
                 quantization to all supported quantizable op type. If set is_full_quantized
-                as False, only apply quantization to the op type according to the input 
+                as False, only apply quantization to the op type according to the input
                 quantizable_op_type.
-        
+
         Examples:
         .. code-block:: python
             # The original graph will be rewrite.
@@ -2490,7 +2490,7 @@ class ReplaceFakeQuantDequantPass(object):
             place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to initialize new
                 parameters described above. If ``place`` is string, it can be It can be ``cpu``
                 or ``gpu:x``, where ``x`` is the index of the GPUs.
-        
+
         Examples:
         .. code-block:: python
             # The original graph will be rewrite.
@@ -2615,7 +2615,7 @@ class QuantWeightPass(object):
              https://arxiv.org/abs/1810.05723.
         quant_bits(int, optional): quantization bit number for weight. Default is 8.
         save_int_weight(bool, optional): Whether the type saving the weight is int. Default is True.
-    
+
     Examples:
         .. code-block:: python
             # The original graph will be rewrite.

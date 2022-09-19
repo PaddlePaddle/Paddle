@@ -100,7 +100,7 @@ class GeluOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) use approximation of gelu")
         .SetDefault(false);
     AddComment(R"DOC(
-Gelu Activation Operator. 
+Gelu Activation Operator.
 
 For more details, please refer to [Gaussian Error Linear Units](https://arxiv.org/pdf/1606.08415.pdf).
 

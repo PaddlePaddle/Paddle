@@ -21,6 +21,7 @@
 #include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/fluid/jit/engine/executor_engine.h"
+#include "paddle/fluid/jit/engine/interpreter_engine.h"
 #include "paddle/fluid/jit/engine/pe_engine.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/property.h"
@@ -79,6 +80,12 @@ Layer Deserializer::operator()(const std::string& path,
       VLOG(3) << "Add function type: PEEngine. Function name: " << func_name;
       layer.SetEngine(func_name,
                       utils::MakeEngine<PEEngine>(info, params_dict, place));
+    } else if (FLAGS_jit_engine_type == "New") {
+      VLOG(3) << "Add function type: InterpreterEngine. Function name: "
+              << func_name;
+      layer.SetEngine(
+          func_name,
+          utils::MakeEngine<InterpreterEngine>(info, params_dict, place));
     } else {
       PD_THROW("Invalid JitLayer engine type.");
     }

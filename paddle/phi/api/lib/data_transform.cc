@@ -52,9 +52,9 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
   return ret;
 }
 
-inline bool NeedTransformLayout(const paddle::platform::Place& place,
-                                const DataLayout& input,
+inline bool NeedTransformLayout(const DataLayout& input,
                                 const DataLayout& target,
+                                const paddle::platform::Place& place,
                                 const TransformFlag& transform_flag) {
   bool ret = transform_flag.need_trans_layout() &&
              (input != DataLayout::ALL_LAYOUT &&
@@ -202,9 +202,9 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
   bool trans_layout = false;
   bool trans_dtype = false;
 
-  if (NeedTransformLayout(tensor->place(),
-                          tensor->layout(),
+  if (NeedTransformLayout(tensor->layout(),
                           target_args_def.layout,
+                          tensor->place(),
                           transform_flag)) {
     out = TransDataLayout(out, target_args_def.layout);
     trans_layout = true;
@@ -240,9 +240,9 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&
          !NeedTransformDataType(
              dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
-         !NeedTransformLayout(dense_tensor.place(),
-                              dense_tensor.layout(),
+         !NeedTransformLayout(dense_tensor.layout(),
                               target_args_def.layout,
+                              dense_tensor.place(),
                               transform_flag))) {
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
@@ -277,9 +277,9 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
              tensor_in->place(), target_args_def.backend, transform_flag) &&
          !NeedTransformDataType(
              tensor_in->dtype(), target_args_def.dtype, transform_flag) &&
-         !NeedTransformLayout(tensor_in->place(),
-                              tensor_in->layout(),
+         !NeedTransformLayout(tensor_in->layout(),
                               target_args_def.layout,
+                              tensor_in->place(),
                               transform_flag))) {
       pt_tensors->emplace_back(
           *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
@@ -307,7 +307,7 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
                       phi::DenseTensor* out) {
-  if (tensor) {
+  if (tensor && tensor->initialized()) {
     *out = TransDataPlace(*tensor, phi::TransToPhiPlace(target_backend));
   }
 }

@@ -153,9 +153,9 @@ class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(R"DOC(
     1. Return a unique subsequence for 1-D input tensor, and an index tensor
-    pointing to this unique subsequence when Attr(is_sorted) is false. This 
+    pointing to this unique subsequence when Attr(is_sorted) is false. This
     means paddle.unique is called.
-    
+
     2. Returns the unique elements of X in ascending order when Attr(is_sorted)
     is true. This means fluid.layers.unique is called.
 )DOC");
