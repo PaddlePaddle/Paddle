@@ -131,6 +131,10 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     platform::RecordEvent record_event_3("Step 3. Set CINN runtime FLAGS.");
     // Step 3. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
+    for (auto& p : inputs_name2tensor) {
+      LOG(INFO) << "---- CinnLaunchOp input name: " << p.first;
+      LOG(INFO) << "---- CinnLaunchOp input val: " << *(p.second);
+    }
 
     // Step 4. Execute the compiled CINN instructions by a PE or
     //         by the CINN compiled program in sequential order
@@ -149,6 +153,12 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
     }
     VLOG(4) << "CinnLaunchOp launch execution done.";
+    const auto& graph = CinnCompiler::GetInstance()->FindGraph(compilation_key);
+    for (auto& var_name : graph.Get<std::vector<std::string>>("OutputVars")) {
+      LOG(INFO) << "---- CinnLaunchOp output name: " << var_name;
+      auto& tensor = scope.GetVar(var_name)->Get<LoDTensor>();
+      LOG(INFO) << "---- CinnLaunchOp output val: " << tensor;
+    }
   }
 };
 

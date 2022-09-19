@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 
 #include <algorithm>
+#include <functional>
 #include <iterator>
 #include <memory>
 #include <regex>
@@ -61,6 +62,23 @@ constexpr char kDelim[] = ";";
 const std::unordered_map<std::string, std::unordered_set<std::string>>
     kDenyParamMap = {{"batch_norm", {"ReserveSpace"}},
                      {"batch_norm_grad", {"ReserveSpace"}}};
+
+const std::unordered_map<std::string, std::function<bool(const Node*)>>
+    kDynamicOpPred = {
+        {"slice", [](const Node* node) -> bool {
+           if (!node->IsOp()) {
+             return false;
+           }
+           auto* op_desc = node->Op();
+           auto infer_flags =
+               op_desc->GetAttrIfExists<std::vector<int>>("infer_flags");
+           if (std::find_if(infer_flags.begin(), infer_flags.end(), [](int v) {
+                 return v < 0;
+               }) != infer_flags.end()) {
+             return true;
+           }
+           return false;
+         }}};
 
 const std::unordered_set<std::string> kDefaultDenyOps = {"feed", "fetch"};
 
@@ -565,27 +583,32 @@ void SearchAllSubgraphs(Graph* graph) {
     const auto& node_name = node->Name();
     bool registered = ::cinn::frontend::OpMapperRegistry::Global()->Find(
                           node_name) != nullptr;
+    // skip the dynamic ops
+    bool is_dynamic = false;
+    if (kDynamicOpPred.count(node_name)) {
+      is_dynamic = kDynamicOpPred.at(node_name)(node);
+    }
     // if the op type is registered in CINN and allow_ops is not empty, return
     // true only when it is in allow_ops
     if (!allow_ops.empty()) {
-      return registered && allow_ops.count(node_name);
+      return registered && !is_dynamic && allow_ops.count(node_name);
     }
     // if the op type is registered in CINN and deny_ops is not empty, return
     // true only when it is not in deny_ops
     if (!deny_ops.empty()) {
-      return registered && !deny_ops.count(node_name);
+      return registered && !is_dynamic && !deny_ops.count(node_name);
     }
 
     // if the user doesn't set FLAGS_allow_cinn_ops and FLAGS_deny_cinn_ops,
     // return true only when it is registered in CINN
-    return registered && !kDefaultDenyOps.count(node_name) &&
+    return registered && !kDefaultDenyOps.count(node_name) && !is_dynamic &&
            (node->IsOp() && !IsInplaceOp(*node->Op()));
   };
   VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
   VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();
-  LOG(INFO) << "---  detected " << clusters.size()
+  LOG(INFO) << "--- [build_cinn_pass] detected " << clusters.size()
             << " cinn supported subgraphs";
 
   auto cluster_debug_info = [](const GraphNodeSet& cluster) {

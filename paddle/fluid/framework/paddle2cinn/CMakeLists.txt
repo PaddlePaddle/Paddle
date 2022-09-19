@@ -1,3 +1,14 @@
+if(WITH_CINN)
+  pass_library(
+    build_cinn_pass
+    base
+    DEPS
+    subgraph_detector
+    cinn_compiler
+    errors
+    enforce)
+endif()
+
 cc_library(
   cinn_cache_key
   SRCS cinn_cache_key.cc
