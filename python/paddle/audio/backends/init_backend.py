@@ -71,7 +71,8 @@ def get_current_audio_backend() -> str:
     if "paddleaudio" in sys.modules:
         current_backend = paddleaudio.backends.get_audio_backend()
     if current_backend is not None:
-        return current_backend
+        if backend.load == paddleaudio.load:
+            return current_backend
     return "wave_backend"
 
 
