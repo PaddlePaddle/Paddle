@@ -22,7 +22,7 @@ import contextlib
 from paddle.fluid.framework import in_dygraph_mode
 
 import logging
-from ..log_util import logger
+from ..utils.log_util import logger
 
 __all__ = []
 
