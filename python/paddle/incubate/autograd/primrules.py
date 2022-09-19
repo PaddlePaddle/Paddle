@@ -23,7 +23,7 @@ from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
                       fill_const, gather, ge, gt, log, matmul, max, mul, ne,
                       neg, reduce_sum, reshape, scatter_add, select, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, log, select, eq, max, erf, bernoulli)
+                      transpose, bernoulli)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -614,7 +614,7 @@ def fill_constant_prim2orig(op):
 
 
 @REGISTER_PRIM2ORIG('bernoulli_p')
-def fill_constant_prim2orig(op):
+def bernoulli_prim2orig(op):
     t = paddle.full(shape=op.attr('shape'),
                     fill_value=op.attr('p'),
                     dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
