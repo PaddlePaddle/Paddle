@@ -288,8 +288,6 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
-  // check nan and inf during training
-  std::vector<std::string> check_nan_var_names_;
 };
 
 class DownpourWorker : public HogwildWorker {

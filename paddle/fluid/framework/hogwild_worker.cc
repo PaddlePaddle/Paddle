@@ -41,12 +41,6 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
   for (int i = 0; i < param_.stat_var_names_size(); ++i) {
     stat_var_name_map_[param_.stat_var_names(i)] = 1;
   }
-  for (int i = 0; i < 204; i++) {
-    std::string var_local = "embedding_0.tmp_" + std::to_string(i);
-    std::string var_remote = "embedding_1.tmp_" + std::to_string(i);
-    check_nan_var_names_.push_back(var_local);
-    check_nan_var_names_.push_back(var_remote);
-  }
 }
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
@@ -255,26 +249,6 @@ void HogwildWorker::TrainFiles() {
       if (!need_skip) {
         op->Run(*thread_scope_, place_);
       }
-    }
-
-    // check inf and nan
-    for (std::string &var_name : check_nan_var_names_) {
-      Variable *var = thread_scope_->FindVar(var_name);
-      if (var == nullptr) {
-        continue;
-      }
-      LoDTensor *tensor = var->GetMutable<LoDTensor>();
-      if (tensor == nullptr) {
-        continue;
-      }
-      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
-                        false,
-                        platform::errors::InvalidArgument(
-                            "Tensor %s contains Inf.", var_name));
-      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
-                        false,
-                        platform::errors::InvalidArgument(
-                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_dump_field_) {

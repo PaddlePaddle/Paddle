@@ -93,7 +93,7 @@ cc_library(
        ctr_dymf_accessor.cc
        tensor_accessor.cc
        memory_sparse_table.cc
-       # ssd_sparse_table.cc
+       ssd_sparse_table.cc
        memory_sparse_geo_table.cc
        table.cc
   DEPS ${TABLE_DEPS}
