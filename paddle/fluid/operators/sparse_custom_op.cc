@@ -277,15 +277,11 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sparse_coo_tensor,
                   ops::SparseCooTensorOp,
                   ops::SparseCooTensorOpMaker,
-                  // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
-                  // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
                   ops::SparseCooTensorInferShapeFunctor);
 
 REGISTER_OPERATOR(values_coo,
                   ops::ValuesCooOp,
                   ops::ValuesCooOpMaker,
-                  // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
-                  // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
                   ops::ValuesCooInferShapeFunctor);
 
 REGISTER_OPERATOR(indices_coo,
@@ -296,15 +292,11 @@ REGISTER_OPERATOR(indices_coo,
 REGISTER_OPERATOR(coo_to_dense,
                   ops::CooToDenseOp,
                   ops::CooToDenseOpMaker,
-                  // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
-                  // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
                   ops::CooToDenseInferShapeFunctor);
 
 REGISTER_OPERATOR(relu_coo,
                   ops::ReluCooOp,
                   ops::ReluCooOpMaker,
-                  // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
-                  // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
                   ops::ReluCooInferShapeFunctor);
 
 REGISTER_OPERATOR(shape_coo,
@@ -315,8 +307,6 @@ REGISTER_OPERATOR(shape_coo,
 REGISTER_OPERATOR(conv3d_coo,
                   ops::Conv3dCooOp,
                   ops::Conv3dCooOpMaker,
-                  // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
-                  // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
                   ops::Conv3dCooInferShapeFunctor);
 
 REGISTER_OPERATOR(values_add_coo_coo,

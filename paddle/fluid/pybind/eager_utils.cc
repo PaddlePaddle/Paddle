@@ -752,12 +752,6 @@ PyObject* ToPyObject(const phi::SelectedRows* value) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const phi::SparseCooTensor* value) {
-  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
-  obj.inc_ref();
-  return obj.ptr();
-}
-
 PyObject* ToPyObject(const void* value) {
   if (value == nullptr) {
     RETURN_PY_NONE

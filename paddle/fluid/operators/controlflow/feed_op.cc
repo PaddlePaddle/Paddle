@@ -70,8 +70,6 @@ class FeedVariableVisitor {
     } else {
       platform::DeviceContext *context =
           platform::DeviceContextPool::Instance().Get(place_);
-      // framework::TensorCopy(in_tensor, place_, *context, out_tensor);
-      // phi::Copy(context, in_tensor, place_, false, out_tensor);
 
       phi::DenseTensor indices, values;
       framework::TensorCopy(in_tensor.indices(), place_, *context, &indices);

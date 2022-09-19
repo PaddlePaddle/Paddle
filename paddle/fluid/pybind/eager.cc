@@ -1113,10 +1113,6 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   return 1;
 }
 
-int SparseCooTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
-  return 1;
-}
-
 static void TensorDealloc(TensorObject* self) {
   if (self->weakrefs != NULL)
     PyObject_ClearWeakRefs(reinterpret_cast<PyObject*>(self));

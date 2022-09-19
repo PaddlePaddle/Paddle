@@ -106,7 +106,6 @@ PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const framework::LoDTensor* value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
-PyObject* ToPyObject(const phi::SparseCooTensor* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
