@@ -122,44 +122,47 @@ SparseCooTensor ReluCsr(const Context& dev_ctx, const SparseCooTensor& x) {
 }
 
 template <typename T, typename Context>
-void TransposeCooKernel(const Context &dev_ctx,
+void ReshapeCooKernel(const Context &dev_ctx,
                         const SparseCooTensor &x,
-                        const std::vector<int> &perm,
+                        const std::vector<int64_t> & new_shape,
                         SparseCooTensor *out);
 
 template <typename T, typename Context>
-void TransposeCsrKernel(const Context &dev_ctx,
+void ReshapeCsrKernel(const Context &dev_ctx,
                         const SparseCsrTensor &x,
-                        const std::vector<int> &perm,
+                        const std::vector<int64_t> & new_shape,
                         SparseCsrTensor *out);
 
 template <typename T, typename Context>
-SparseCooTensor TransposeCoo(const Context &dev_ctx,
+SparseCooTensor ReshapeCoo(const Context &dev_ctx,
                              const SparseCooTensor &x,
-                             const std::vector<int> &perm) {
-  PADDLE_ENFORCE_EQ(x.sparse_dim(),
-                    perm.size(),
-                    phi::errors::InvalidArgument(
-                        "size of perm must be equal than the x.sparse_dim()"));
+                             const std::vector<int64_t>& new_shape) {
+  //TODO: product(new_shape) must be equal with x.dims().numel()
+  // // PADDLE_ENFORCE_EQ(x.sparse_dim(),
+  // PADDLE_ENFORCE_EQ(x.dims().size(),
+  //                   new_shape.size(),
+  //                   phi::errors::InvalidArgument(
+  //                       "size of perm must be equal with the x.dims().size()"));
+
   SparseCooTensor coo;
-  TransposeCooKernel<T, Context>(dev_ctx, x, perm, &coo);
+  ReshapeCooKernel<T, Context>(dev_ctx, x, new_shape, &coo);
   return coo;
 }
 
 template <typename T, typename Context>
-SparseCsrTensor TransposeCsr(const Context &dev_ctx,
+SparseCsrTensor ReshapeCsr(const Context &dev_ctx,
                              const SparseCsrTensor &x,
-                             const std::vector<int> &perm) {
+                             const std::vector<int64_t> & new_shape) {
   PADDLE_ENFORCE_LE(
       2,
-      perm.size(),
-      phi::errors::InvalidArgument("size of perm must be equal to 2 or 3"));
+      new_shape.size(),
+      phi::errors::InvalidArgument("size of new_shape must be equal to 2 or 3"));
   PADDLE_ENFORCE_GE(
       3,
-      perm.size(),
-      phi::errors::InvalidArgument("size of perm must be equal to 2 or 3"));
+      new_shape.size(),
+      phi::errors::InvalidArgument("size of new_shape must be equal to 2 or 3"));
   SparseCsrTensor csr;
-  TransposeCsrKernel<T, Context>(dev_ctx, x, perm, &csr);
+  ReshapeCsrKernel<T, Context>(dev_ctx, x, new_shape, &csr);
   return csr;
 }
 

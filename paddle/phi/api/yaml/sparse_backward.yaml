@@ -296,10 +296,10 @@
     layout : softmax
     data_type: query
 
-- backward_op : transpose_grad
-  forward : transpose(Tensor x, int[] dims) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] dims)
+- backward_op : reshape_grad
+  forward : reshape(Tensor x, int[] new_shape) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   kernel :
-    func : transpose_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
-           transpose_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
+    func : reshape_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
+           reshape_csr_grad {sparse_csr, sparse_csr -> sparse_csr}

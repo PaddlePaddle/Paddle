@@ -364,11 +364,11 @@
     layout : x
   backward: mv_grad
 
-- op : transpose
-  args : (Tensor x, int[] dims)
+- op : reshape
+  args : (Tensor x, int[] new_shape)
   output : Tensor(out)
   kernel :
-    func : transpose_coo{sparse_coo -> sparse_coo},
-           transpose_csr{sparse_csr -> sparse_csr}
+    func : reshape_coo{sparse_coo -> sparse_coo},
+           reshape_csr{sparse_csr -> sparse_csr}
     layout : x
-  backward : transpose_grad
+  backward : reshape_grad
