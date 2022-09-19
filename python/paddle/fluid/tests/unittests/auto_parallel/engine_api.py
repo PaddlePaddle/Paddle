@@ -27,10 +27,8 @@ import paddle.nn.functional as F
 import paddle.utils as utils
 from paddle.fluid import layers
 from paddle.io import Dataset, IterableDataset, DataLoader
-from paddle.static import InputSpec
-from paddle.distributed import fleet
-import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.engine import Engine
+
+from paddle.distributed.fleet import auto
 from paddle.optimizer.lr import CosineAnnealingDecay
 from paddle.fluid.dataloader.collate import default_collate_fn
 
@@ -46,6 +44,8 @@ image_size = hidden_size
 class_num = 10
 
 paddle.seed(44)
+
+is_fetch = True
 
 
 class MyDataset(Dataset):
@@ -90,19 +90,20 @@ class MLPLayer(nn.Layer):
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
 
     def forward(self, input):
-        out = auto.shard_op(self.norm, dist_attr={"process_mesh":
-                                                  PP_MESH_0})(input)
+        out = auto.shard_op(self.norm, PP_MESH_0)(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
-        out = auto.shard_op(self.linear1, dist_attr={"process_mesh":
-                                                     PP_MESH_1})(out)
+        out = auto.shard_op(self.linear1, PP_MESH_1)(out)
         out = self.dropout(out)
         out = self.linear2(out)
-        self.out = out
+        if is_fetch:
+            auto.fetch(out, "out")
         return out
 
 
 def train(fetch):
+    global is_fetch
+    is_fetch = fetch
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    dropout_ratio=0.1,
@@ -113,46 +114,34 @@ def train(fetch):
                                       beta2=0.999,
                                       epsilon=1e-08,
                                       grad_clip=None)
+    metric = paddle.metric.Accuracy()
 
-    inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
-    labels_spec = InputSpec([batch_size], 'int64', 'label')
+    strategy = auto.Strategy()
+    strategy.auto_mode = "semi"
 
-    dist_strategy = fleet.DistributedStrategy()
-    dist_strategy.semi_auto = True
-    fleet.init(is_collective=True, strategy=dist_strategy)
-
-    # init engine
-    engine = Engine(mlp,
-                    inputs_spec=inputs_spec,
-                    labels_spec=labels_spec,
-                    strategy=dist_strategy)
-    engine.prepare(optimizer, loss, metrics=paddle.metric.Accuracy())
-
-    # fetch
-    if fetch:
-        fetches = {'out': mlp.out}
-    else:
-        fetches = None
+    engine = auto.Engine(mlp, loss, optimizer, metric, strategy=strategy)
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)
-    engine.fit(train_dataset,
+    eval_dataset1 = MyDataset(5 * batch_size)
+    engine.fit(train_data=train_dataset,
+               epochs=2,
                batch_size=batch_size,
-               steps_per_epoch=batch_num * batch_size,
-               fetches=fetches)
+               valid_data=eval_dataset1)
 
     # eval
-    eval_dataset = MyDataset(batch_size)
-    engine.evaluate(eval_dataset, batch_size, fetches=fetches)
+    eval_dataset2 = MyDataset(batch_size)
+    engine.evaluate(eval_dataset2, batch_size=batch_size)
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size, fetches=fetches)
+    engine.predict(test_dataset, batch_size=batch_size)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
-    model_filename = os.path.join(temp_dir.name, 'mlp_inf')
-    engine.save(model_filename, training=False, mode='predict')
+    model_filename = os.path.join(temp_dir.name, 'mlp')
+    engine.save(model_filename, training=True)
+    engine.load(model_filename)
     temp_dir.cleanup()
 
 

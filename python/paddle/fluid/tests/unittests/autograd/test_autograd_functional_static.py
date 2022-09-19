@@ -115,11 +115,11 @@ class TestVJPException(unittest.TestCase):
 
 
 def approx_jacobian(f, xs, dtype, eps=1e-5, batch=False):
-    r"""Computes an approximate Jacobian matrix of a multi-valued function 
+    r"""Computes an approximate Jacobian matrix of a multi-valued function
     using finite differences.
 
-    The function input is required to be an np array or a list of list of np 
-    arrays. 
+    The function input is required to be an np array or a list of list of np
+    arrays.
     """
 
     def flatten(x):
