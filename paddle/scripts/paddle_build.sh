@@ -68,6 +68,9 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
+    #Delete previous built paddle cache
+    rm -rf python/paddle 2>/dev/null || true
+
     # Support build for all python3 versions
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
