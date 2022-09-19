@@ -457,14 +457,18 @@ def NpApiErr():
 
 class TestNumpyApiErr(unittest.TestCase):
     def test_numpy_api_err(self):
-        flag = False
-        try:
+        with self.assertRaises(TypeError) as e:
             NpApiErr()
-        except TypeError as e:
-            self.assertTrue("TypeError: Variables created in dy2static process will be an unexpected keyword for numpy API" in e.args[0])
-            flag = True
-        finally:
-            self.assertTrue(flag)
+
+        new_exception = e.exception
+
+        error_data = getattr(new_exception, error.ERROR_DATA, None)
+        self.assertIsInstance(error_data, error.ErrorData)
+
+        error_message = str(new_exception)
+
+        self.assertIn("TypeError: Variables created in dy2static process will be an unexpected keyword for numpy API", error_message)
+
 
 if __name__ == '__main__':
     unittest.main()
