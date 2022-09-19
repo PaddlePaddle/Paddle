@@ -23,10 +23,12 @@ namespace funcs {
 template <typename T>
 class TransposeOneDNNHandler {
  public:
-  TransposeOneDNNHandler(std::vector<int64_t>& dims,  // NOLINT
+  TransposeOneDNNHandler(const OneDNNContext& dev_ctx,
+                         std::vector<int64_t>& dims,  // NOLINT
                          std::vector<int>& axis,      // NOLINT
                          dnnl::engine engine)
-      : dims_(dims),
+      : dev_ctx_(dev_ctx),
+        dims_(dims),
         axis_(axis),
         logical_axis_(dims.size(), 0),
         engine_(engine) {}
@@ -48,7 +50,9 @@ class TransposeOneDNNHandler {
   std::shared_ptr<dnnl::memory> AcquireDstMemory(DenseTensor* output,
                                                  phi::Place place) {
     auto dst_md = Axis2MemoryDesc(dims_, axis_);
-    auto dst_data = output->mutable_data<T>(place, dst_md.get_size());
+    output->Resize(make_ddim(dims_));
+    auto dst_data = dev_ctx_.Alloc<T>(output);
+
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
 
@@ -70,12 +74,14 @@ class TransposeOneDNNHandler {
       strides[axis[i]] = total_stride;
       total_stride *= nchw_tz[axis[i]];
     }
-    dnnl::memory::desc mem_d(nchw_tz, oneDNNGetDataType<T>(), strides);
+    dnnl::memory::desc mem_d(
+        nchw_tz, phi::funcs::oneDNNGetDataType<T>(), strides);
 
     return mem_d;
   }
 
  private:
+  const OneDNNContext& dev_ctx_;
   std::vector<int64_t> dims_;
   std::vector<int> axis_;
   std::vector<int> logical_axis_;
@@ -90,7 +96,7 @@ void TransposeGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad) {
   if (!x_grad) return;
 
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
+  const auto& onednn_engine = dev_ctx.GetEngine();
   std::vector<int> reversed_axis(axis);
   int ndims = axis.size();
   if (ndims == 1) {
@@ -108,7 +114,7 @@ void TransposeGradKernel(const Context& dev_ctx,
   auto nchw_tz = phi::vectorize<int64_t>(out_grad.dims());
 
   phi::funcs::TransposeOneDNNHandler<T> handler(
-      nchw_tz, reversed_axis, mkldnn_engine);
+      dev_ctx, nchw_tz, reversed_axis, onednn_engine);
 
   auto transpose_src_memory_p = handler.AcquireSrcMemory(
       out_grad.format(), phi::funcs::to_void_cast<T>(out_grad_data));
@@ -117,7 +123,7 @@ void TransposeGradKernel(const Context& dev_ctx,
   auto transpose_p =
       handler.AcquireTranspose(transpose_dst_memory_p, transpose_src_memory_p);
 
-  auto& astream = OneDNNContext::tls().get_stream();
+  auto& astream = phi::OneDNNContext::tls().get_stream();
   transpose_p->execute(
       astream, *transpose_src_memory_p, *transpose_dst_memory_p);
   astream.wait();
