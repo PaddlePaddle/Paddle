@@ -26,11 +26,13 @@ from datetime import timedelta
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.collective import Group
 from paddle.distributed.collective import _group_map_by_name
 from paddle.distributed.collective import _default_group_name
 from paddle.distributed.collective import _set_group_map
 from paddle.distributed.collective import _set_group_map_by_name
-from paddle.distributed.collective import _set_group_map_by_nam
+from paddle.distributed.collective import _set_group_map_backend
+from paddle.fluid.framework import _set_expected_place
 import paddle.distributed as dist
 import ctypes
 
@@ -55,14 +57,9 @@ def init_process_group(strategy=None):
                   name=_default_group_name)
     _set_group_map_by_name(_default_group_name, group)
     _set_group_map(gid, group)
+    _set_group_map_backend(group, "mpi")
 
     return group
-
-
-def test_new_group():
-    sub_group = paddle.distributed.new_group([0, 1], backend="mpi")
-    print("test new group api ok")
-    return sub_group
 
 
 def test_allreduce_sum(pg, shape, dtype):
