@@ -460,6 +460,8 @@
 - op : reshape
   args : (Tensor x, int[] new_shape)
   output : Tensor(out)
+  infer_meta :
+    func : sparse::ReshapeInferMeta
   kernel :
     func : reshape_coo{sparse_coo -> sparse_coo},
            reshape_csr{sparse_csr -> sparse_csr}
