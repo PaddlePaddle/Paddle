@@ -40,10 +40,20 @@ void* GetDsoHandle(const std::string& dso_name) {
 
   void* dso_handle = dlopen(dso_name.c_str(), dynload_flags);
 
-  PADDLE_ENFORCE_NOT_NULL(dso_handle,
-                          paddle::platform::errors::NotFound(
-                              "TensorRT is needed, "
-                              "but TensorRT dynamic library is not found."));
+  PADDLE_ENFORCE_NOT_NULL(
+      dso_handle,
+      paddle::platform::errors::NotFound(
+          "TensorRT is needed, "
+          "but TensorRT dynamic library is not found.\n"
+          "  Suggestions:\n"
+          "  1. Check if the TensorRT is installed correctly and its version"
+          " is matched with paddlepaddle you installed.\n"
+          "  2. Configure environment variables as "
+          "follows:\n"
+          "  - Linux: set LD_LIBRARY_PATH by `export LD_LIBRARY_PATH=...`\n"
+          "  - Windows: set PATH by `set PATH=XXX;%PATH%`\n"
+          "  - Mac: set  DYLD_LIBRARY_PATH by `export "
+          "DYLD_LIBRARY_PATH=...`\n"));
   return dso_handle;
 }
 
