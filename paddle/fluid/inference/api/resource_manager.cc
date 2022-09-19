@@ -519,10 +519,6 @@ void ResourceManager::GpuResourceReBindStream(void* old_stream,
           "The stream[%p] not found in gpu_resources.", old_stream));
   auto gpu_resource = std::move(gpu_resources_.at(old_stream));
   DestroyGPUResource(old_stream);
-  PADDLE_ENFORCE_EQ(
-      ref_count_.count(old_stream),
-      0,
-      platform::errors::Fatal("gpu resources rebind stream failed."));
 
   gpu_resource->ReBindStream(static_cast<gpuStream_t>(new_stream));
   gpu_resource->ReBindDnnHandle(static_cast<gpuStream_t>(new_stream));
