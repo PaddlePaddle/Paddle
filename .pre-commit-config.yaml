@@ -1,6 +1,8 @@
 exclude: |
     (?x)^(
-        patches/.+
+        patches/.+|
+        paddle/fluid/framework/fleet/heter_ps/cudf/.+|
+        paddle/fluid/distributed/ps/thirdparty/round_robin.h
     )$
 repos:
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
@@ -8,6 +10,9 @@ repos:
     hooks:
     -   id: remove-crlf
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
+    -   id: remove-tabs
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
+        args: [--whitespaces-count, '2']
 -   repo: https://github.com/google/yapf
     rev: v0.32.0
     hooks:
@@ -39,10 +44,6 @@ repos:
         entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
-        exclude: |
-            (?x)^(
-                paddle/fluid/distributed/ps/thirdparty/round_robin.h
-            )$
 -   repo: local
     hooks:
     -   id: cpplint-cpp-source
