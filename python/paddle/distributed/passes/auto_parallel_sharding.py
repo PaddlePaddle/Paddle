@@ -51,7 +51,8 @@ class ShardingPass(PassBase):
         super(ShardingPass, self).__init__()
         self.set_attr("dist_context", None)
         self.set_attr("stage", None)
-        self.set_attr("sharding_degree", None)
+        self.set_attr("sharding_degree", None)  # for parallelizer
+        self.set_attr("degree", None)  # for parallelizer_v2
         self.set_attr("params_grads", [])
         self.set_attr("global_rank", -1)
         self.dp_groups = set()
@@ -67,8 +68,15 @@ class ShardingPass(PassBase):
 
         if self.get_attr("stage") not in [1, 2, 3]:
             return False
-        if (not isinstance(self.get_attr("sharding_degree"),
-                           int)) or self.get_attr("sharding_degree") <= 1:
+        if self.get_attr("sharding_degree") is not None:
+            if (not isinstance(self.get_attr("sharding_degree"), int)) \
+                or self.get_attr("sharding_degree") <= 1:
+                return False
+        elif self.get_attr("degree") is not None:
+            if (not isinstance(self.get_attr("degree"), int)) \
+                or self.get_attr("degree") <= 1:
+                return False
+        else:
             return False
         if len(self.get_attr("params_grads")) <= 0:
             return False
@@ -83,7 +91,8 @@ class ShardingPass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, context):
         self._dist_context = self.get_attr("dist_context")
-        self.sharding_world_size = int(self.get_attr("sharding_degree"))
+        self.sharding_world_size = int(
+            self.get_attr("sharding_degree") or self.get_attr("degree"))
         self.stage = int(self.get_attr("stage"))
         self.global_rank = int(self.get_attr("global_rank"))
         params_grads = self.get_attr("params_grads")

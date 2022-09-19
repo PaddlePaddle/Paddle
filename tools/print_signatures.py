@@ -296,7 +296,7 @@ def parse_args():
                         dest='skipped',
                         type=str,
                         help='Skip Checking submodules',
-                        default='paddle.fluid.core_avx.eager.ops')
+                        default='paddle.fluid.libpaddle.eager.ops')
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['paddle'])

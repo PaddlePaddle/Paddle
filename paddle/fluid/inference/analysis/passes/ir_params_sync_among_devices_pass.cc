@@ -165,7 +165,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
         auto var_data_type = var_node->Var()->GetDataType();
         VLOG(5) << "var_name is " << var_name << ", data type is "
                 << var_data_type;
-        if (var_data_type == paddle::framework::proto::VarType::FP16) {
+        if (var_data_type == paddle::framework::proto::VarType::FP16 &&
+            t->dtype() != paddle::experimental::DataType::FLOAT16) {
           framework::Tensor half_tensor;
           half_tensor.set_type(paddle::experimental::DataType::FLOAT16);
           half_tensor.Resize(t->dims());

@@ -165,7 +165,14 @@ paddle::framework::FetchList InterpreterCore::Run(
 
     ExecuteInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    if (platform::is_npu_place(place_)) {
+      platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (platform::is_custom_place(place_)) {
+      platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    }
 #endif
   }
   if (create_local_scope_) {
@@ -223,7 +230,14 @@ paddle::framework::FetchList InterpreterCore::Run(
 
     ExecuteInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    if (platform::is_npu_place(place_)) {
+      platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (platform::is_custom_place(place_)) {
+      platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    }
 #endif
   }
 
