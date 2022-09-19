@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/threadpool_config.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -29,7 +30,6 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#include "paddle/fluid/framework/new_executor/threadpool_config.h"
 #include "paddle/phi/backends/device_manager.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
@@ -790,11 +790,11 @@ void InterpreterCore::ExecuteInstructionList(
     return;
   }
 
-  std::unique_ptr<std::vector<std::atomic<size_t>>> atomic_deps = nullptr;
-  std::unique_ptr<std::vector<std::atomic<size_t>>> atomic_var_ref = nullptr;
-
   platform::RecordEvent record_prepare(
       "PrepareAtomic", platform::TracerEventType::UserDefined, 1);
+
+  std::unique_ptr<std::vector<std::atomic<size_t>>> atomic_deps = nullptr;
+  std::unique_ptr<std::vector<std::atomic<size_t>>> atomic_var_ref = nullptr;
 
   if (async_work_queue_->QueueNumThreads(kPrepareWorkQueueIdx)) {
     // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
