@@ -903,7 +903,7 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
         "Input object type error or incompatible array data type. "
         "tensor.set() supports array with bool, float16, float32, "
         "float64, int8, int16, int32, int64,"
-        "please check your input or input array data type."));
+        "please check your input or input array data type.."));
   }
 
   return ToPyObject(*(new_tensor.get()));
