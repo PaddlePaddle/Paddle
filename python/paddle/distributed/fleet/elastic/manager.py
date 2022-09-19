@@ -360,7 +360,7 @@ class ElasticManager(object):
 
     def _parse_np(self, np: str):
         """
-        np format is "MIN" or "MIN:MAX" 
+        np format is "MIN" or "MIN:MAX"
         """
         np_str = np or os.getenv('PADDLE_ELASTIC_NP', "0")
         np_dict = np_str.split(":")

@@ -1,7 +1,7 @@
 <p align="center">
 <img align="center" src="doc/imgs/logo.png", width=1600>
 <p>
-    
+
 --------------------------------------------------------------------------------
 
 English | [简体中文](./README_cn.md)
@@ -52,13 +52,13 @@ Now our developers can acquire Tesla V100 online computing resources for free. I
 - **High-Performance Inference Engines for Comprehensive Deployment Environments**
 
    PaddlePaddle is not only compatible with models trained in 3rd party open-source frameworks , but also offers complete inference products for various production scenarios. Our inference product line includes [Paddle Inference](https://paddle-inference.readthedocs.io/en/master/guides/introduction/index_intro.html): Native inference library for high-performance server and cloud inference; [Paddle Serving](https://github.com/PaddlePaddle/Serving): A service-oriented framework suitable for distributed and pipeline productions; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite): Ultra-Lightweight inference engine for mobile and IoT environments; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs): A frontend inference engine for browser and mini-apps. Furthermore, by great amounts of optimization with leading hardware in each scenario, Paddle inference engines outperform most of the other mainstream frameworks.
-     
-     
+
+
 - **Industry-Oriented Models and Libraries with Open Source Repositories**
 
      PaddlePaddle includes and maintains more than 100 mainstream models that have been practiced and polished for a long time in the industry. Some of these models have won major prizes from key international competitions. In the meanwhile, PaddlePaddle has further more than 200 pre-training models (some of them with source codes) to facilitate the rapid development of industrial applications.
      [Click here to learn more](https://github.com/PaddlePaddle/models)
-     
+
 
 ## Documentation
 
@@ -71,7 +71,7 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 
 - [Practice](https://www.paddlepaddle.org.cn/documentation/docs/zh/tutorial/index_cn.html)
 
-  So far you have already been familiar with Fluid. And the next step should be building a more efficient model or inventing your original Operator. 
+  So far you have already been familiar with Fluid. And the next step should be building a more efficient model or inventing your original Operator.
 
 - [API Reference](https://www.paddlepaddle.org.cn/documentation/docs/en/api/index_en.html)
 
@@ -86,11 +86,11 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 - [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
 - QQ discussion group: 441226485 (PaddlePaddle).
 - [Forums](https://aistudio.baidu.com/paddle/forum): discuss implementations, research, etc.
-    
+
 ## Courses
 
 - [Server Deployments](https://aistudio.baidu.com/aistudio/course/introduce/19084): Courses intorducing high performance server deployments via local and remote services.
-- [Edge Deployments](https://aistudio.baidu.com/aistudio/course/introduce/22690): Courses intorducing edge deployments from mobile, IoT to web and applets.   
+- [Edge Deployments](https://aistudio.baidu.com/aistudio/course/introduce/22690): Courses intorducing edge deployments from mobile, IoT to web and applets.
 
 ## Copyright and License
 PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).

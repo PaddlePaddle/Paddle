@@ -661,7 +661,7 @@ The rest anchors would not contibute to the RPN training loss
 
 ScoreIndex is composed of foreground anchor indexes(positive labels) and
 background anchor indexes(negative labels). LocationIndex is exactly same
-as the foreground anchor indexes since we can not assign regression target to 
+as the foreground anchor indexes since we can not assign regression target to
 the background anchors.
 
 The classification targets(TargetLabel) is a binary class label (of being
@@ -730,16 +730,16 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     This layer can be, for given the Intersection-over-Union (IoU) overlap
     between anchors and ground truth boxes, to assign classification and
     regression targets to each anchor, these target labels are used for
-    train retinanet. 
-    
+    train retinanet.
+
     Every anchor is assigned with a length C one-hot vector of
     classification targets, and a 4-vector of box regression targets,
     where C is the class number. The assignment rules are as followed:
-    
+
     1. Anchors are assigned to ground-truth boxes when: (i) it has the highest
     IoU overlap with a ground-truth box, or (ii) it has an IoU overlap higher
     than positive_overlap(0.5) with any ground-truth box.
-    
+
     2. Anchors are assigned to background when its IoU ratio is lower than
     negative_overlap (0.4) for all ground-truth boxes.
 

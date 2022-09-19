@@ -18,7 +18,7 @@
 
 USE_OP_ITSELF(reshape_p);
 USE_OP_ITSELF(broadcast_p);
-USE_OP_ITSELF(reduce_p);
+USE_OP_ITSELF(reduce_sum_p);
 USE_OP_ITSELF(transpose_p);
 USE_OP_ITSELF(split_p);
 USE_OP_ITSELF(concat_p);
@@ -131,7 +131,7 @@ TEST(PrimOp, broadcast_p) {
   ASSERT_EQ(shapes[2], 5L);
 }
 
-TEST(PrimOp, reduce_p) {
+TEST(PrimOp, reduce_sum_p) {
   ProgramDesc program;
   auto *block = program.MutableBlock(0);
   std::vector<int64_t> shape{3, 4, 5};
@@ -142,7 +142,7 @@ TEST(PrimOp, reduce_p) {
 
   NewVar(block, x0, shape);
   AppendOp(block,
-           "reduce_p",
+           "reduce_sum_p",
            {{"X", {x0}}},
            {{"Y", {x1}}},
            {{"axis", std::vector<int64_t>{0, 2}}, {"keepdim", false}});
@@ -152,7 +152,7 @@ TEST(PrimOp, reduce_p) {
   ASSERT_EQ(shapes.size(), 1UL);
   ASSERT_EQ(shapes[0], 4L);
   AppendOp(block,
-           "reduce_p",
+           "reduce_sum_p",
            {{"X", {x0}}},
            {{"Y", {x2}}},
            {{"axis", std::vector<int64_t>{0, 2}}, {"keepdim", true}});

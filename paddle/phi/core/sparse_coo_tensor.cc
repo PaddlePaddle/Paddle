@@ -21,34 +21,47 @@ SparseCooTensor::SparseCooTensor() {
   this->SetMember(non_zero_indices, non_zero_elements, {1}, true);
 }
 
+SparseCooTensor::SparseCooTensor(SparseCooTensor&& other) {
+  this->non_zero_elements_ = other.non_zero_elements_;
+  this->non_zero_indices_ = other.non_zero_indices_;
+  this->coalesced_ = other.coalesced_;
+  set_meta(other.meta());
+}
+
 SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
                                  const DenseTensor& non_zero_elements,
                                  const DDim& dims)
     : non_zero_indices_(non_zero_indices),
       non_zero_elements_(non_zero_elements),
-      coalesced_(false),
-      dims_(dims) {}
+      coalesced_(false) {
+  meta_.dims = dims;
+  meta_.layout = DataLayout::NCHW;
+  meta_.dtype = non_zero_elements.dtype();
+}
 
 SparseCooTensor::SparseCooTensor(DenseTensor&& non_zero_indices,
                                  DenseTensor&& non_zero_elements,
                                  const DDim& dims)
     : non_zero_indices_(non_zero_indices),
       non_zero_elements_(non_zero_elements),
-      coalesced_(false),
-      dims_(dims) {}
+      coalesced_(false) {
+  meta_.dims = dims;
+  meta_.layout = DataLayout::NCHW;
+  meta_.dtype = non_zero_elements.dtype();
+}
 
 SparseCooTensor::SparseCooTensor(const SparseCooTensor& other)
     : non_zero_indices_(other.non_zero_indices_),
-      non_zero_elements_(other.non_zero_elements_),
-      dims_(other.dims_) {
+      non_zero_elements_(other.non_zero_elements_) {
   this->coalesced_ = other.coalesced_;
+  set_meta(other.meta());
 }
 
 SparseCooTensor SparseCooTensor::operator=(const SparseCooTensor& other) {
-  this->dims_ = other.dims_;
-  this->non_zero_indices_ = other.non_zero_indices_;
   this->non_zero_elements_ = other.non_zero_elements_;
+  this->non_zero_indices_ = other.non_zero_indices_;
   this->coalesced_ = other.coalesced_;
+  set_meta(other.meta());
   return *this;
 }
 
@@ -111,8 +124,18 @@ void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
                                 const bool coalesced) {
   this->non_zero_indices_ = non_zero_indices;
   this->non_zero_elements_ = non_zero_elements;
-  this->dims_ = dims;
+  this->meta_.dims = dims;
   this->coalesced_ = coalesced;
+}
+
+void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
+                                const DenseTensor& non_zero_elements,
+                                const SparseTensorMeta& meta,
+                                const bool coalesced) {
+  this->non_zero_indices_ = non_zero_indices;
+  this->non_zero_elements_ = non_zero_elements;
+  this->coalesced_ = coalesced;
+  set_meta(meta);
 }
 
 int32_t SparseCooTensor::sparse_dim() const {
@@ -120,7 +143,25 @@ int32_t SparseCooTensor::sparse_dim() const {
 }
 
 int32_t SparseCooTensor::dense_dim() const {
-  return dims_.size() - sparse_dim();
+  return meta_.dims.size() - sparse_dim();
+}
+
+void SparseCooTensor::set_meta(SparseTensorMeta&& meta) {
+  PADDLE_ENFORCE(!meta_.valid(),
+                 phi::errors::InvalidArgument(
+                     "Only when the original attribute of Tensor is "
+                     "incomplete, can it be reset."));
+  meta_ = std::move(meta);
+}
+
+void SparseCooTensor::set_meta(const SparseTensorMeta& meta) {
+  PADDLE_ENFORCE(
+      meta.valid(),
+      phi::errors::InvalidArgument(
+          "Input meta is invalid, please check the meta attribute."));
+  meta_.dims = meta.dims;
+  meta_.dtype = meta.dtype;
+  meta_.layout = meta.layout;
 }
 
 }  // namespace phi

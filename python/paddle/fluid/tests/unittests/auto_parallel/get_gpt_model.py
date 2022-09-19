@@ -14,8 +14,10 @@
 
 import sys
 import numpy as np
+import random
 
 import paddle
+from paddle.distributed.fleet import auto
 
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
@@ -25,7 +27,7 @@ sequence_len = 512
 vocab_size = 1000
 
 
-class FakeDataset:
+class FakeDataset(paddle.io.Dataset):
 
     def __init__(self, num_samples):
         self.num_samples = num_samples
@@ -33,6 +35,9 @@ class FakeDataset:
         self.vocab_size = vocab_size
 
     def __getitem__(self, idx):
+        paddle.seed(2021)
+        np.random.seed(2021)
+        random.seed(2021)
         tokens = np.random.randint(self.vocab_size, size=self.sequence_len)
         position_ids = np.arange(self.sequence_len)
         attention_mask = np.tril(np.ones(self.sequence_len)).reshape(
@@ -67,8 +72,9 @@ def create_data_holder(batch_size):
 
 def generate_model(strategy):
     modeling.init_global()
-    modeling._global_process_mesh = list(
-        range(paddle.distributed.get_world_size()))
+    ranks = list(range(paddle.distributed.get_world_size()))
+    modeling._global_process_mesh = auto.ProcessMesh(mesh=ranks,
+                                                     dim_names=["x"])
     if strategy == "serial":
         modeling._global_parallel_strategy = "serial"
     elif strategy == "mp":
