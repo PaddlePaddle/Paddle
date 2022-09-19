@@ -176,7 +176,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "sum",
       "shape",
       "squeeze2",
-      "unsqueeze2"};
+      "unsqueeze2",
+      "celu"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -286,7 +287,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
-      "fused_token_prune"};
+      "fused_token_prune",
+      "cel"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,

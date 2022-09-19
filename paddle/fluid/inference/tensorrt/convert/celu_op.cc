@@ -44,7 +44,7 @@ class CeluOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(input_num,
                       1,
                       platform::errors::InvalidArgument(
-                          "The input X's size must equal to 1 in TRT silu op."
+                          "The input X's size must equal to 1 in TRT celu op."
                           " But received X's size %d.",
                           input_num));
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -54,7 +54,7 @@ class CeluOpConverter : public OpConverter {
         output_num,
         1UL,
         platform::errors::InvalidArgument(
-            "The output Out's size must equal to 1 in TRT silu op. "
+            "The output Out's size must equal to 1 in TRT celu op. "
             "But received Out's size %u.",
             output_num));
     // Get attrs
@@ -80,12 +80,13 @@ class CeluOpConverter : public OpConverter {
         AddConstantLayer(weight_two_data.data(), constant_shape);
 
     auto* input_div_with_alpha = Div(input, alpha_data);
-    auto* sigmiod = TRT_ENGINE_ADD_LAYER(engine_,
+    auto* input_opposite = Sub(constant_zero_data, input_div_with_alpha);
+    auto* sigmoid = TRT_ENGINE_ADD_LAYER(engine_,
                                          Activation,
-                                         *input_div_with_alpha,
-                                         nvinfer1::ActivationType::kSIGMIOD);
-    auto* one_div_sigmiod = Div(constant_one_data,sigmiod);
-    auto* input_sub_with_two = Sub(one_div_sigmiod, constant_two_data);
+                                         *input_opposite,
+                                         nvinfer1::ActivationType::kSIGMOID);
+    auto* one_div_sigmoid = Div(constant_one_data, sigmoid->getOutput(0));
+    auto* input_sub_with_two = Sub(one_div_sigmoid, constant_two_data);
     auto* input_prod_with_alpha = Prod(input_sub_with_two, alpha_data);
     auto* min_input = Min(input_prod_with_alpha, constant_zero_data);
     auto* relu = TRT_ENGINE_ADD_LAYER(
@@ -96,7 +97,7 @@ class CeluOpConverter : public OpConverter {
                                  *min_input,
                                  nvinfer1::ElementWiseOperation::kSUM);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "cule", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "celu", {output_name}, test_mode);
   }
 };
 
