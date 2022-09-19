@@ -78,10 +78,10 @@ cc_library(
        autograd_meta
        hook_utils)
 
-cc_library(
-  saved_tensors_hooks
-  SRCS saved_tensors_hooks.cc
-  DEPS hook_utils)
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  cc_library(
+    saved_tensors_hooks
+    SRCS saved_tensors_hooks.cc
+    DEPS hook_utils)
   add_subdirectory(tests)
 endif()
