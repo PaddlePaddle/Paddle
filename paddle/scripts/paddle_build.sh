@@ -983,6 +983,29 @@ function check_whl_size() {
        fi
     fi
     set -x
+
+
+        set +x
+    pr_so_size=`du -m ${PADDLE_ROOT}/build/pr_whl/libpaddle.so|awk '{print $1}'`
+    echo "pr_whl_size: ${pr_so_size}"
+
+    dev_so_size=`du -m ${PADDLE_ROOT}/build/python/dist/libpaddle.so|awk '{print $1}'`
+    echo "dev_whl_size: ${dev_so_size}"
+
+    sodiffSize=`echo $(($pr_so_size - $dev_so_size))`
+    if [ ${sodiffSize} -gt 20 ]; then
+       approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22334008 22361972`
+       echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+       if [ "${APPROVALS}" == "FALSE" ]; then
+           echo "=========================================================================================="
+           echo "This PR make the release paddlepaddle whl size growth exceeds 10 M."
+           echo "Then you must have one RD (jim19930609 (Recommend) or JiabinYang) approval for this PR\n"
+           echo "=========================================================================================="
+           exit 6
+       fi
+    fi
+    set -x
 }
 
 function generate_upstream_develop_api_spec() {
@@ -3364,7 +3387,7 @@ function build_pr_and_develop() {
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     generate_api_spec "$1" "PR"
-    mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
+    mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/paddle/fluid/*.so ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
     if [[ ${cmake_change} ]];then
         rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
@@ -3374,16 +3397,18 @@ function build_pr_and_develop() {
     git fetch upstream develop
     git checkout develop
     dev_commit=`git log -1|head -1|awk '{print $2}'`
-    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
-    url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
-    if [ "$url_return" == '200' ];then
-        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
+    dev_whl_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
+    whl_url_return=`curl -s -m 5 -IL ${dev_whl_url} |awk 'NR==1{print $2}'`
+    dev_so_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/libpaddle.so"
+    so_url_return="curl -s -m 5 -IL ${dev_so_url} |awk 'NR==1{print $2}'"
+    if [ "${whl_url_return}" == '200' && "${so_url_return}" == '200' ];then
+        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_whl_url} && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_so_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
         git checkout -b develop_base_pr upstream/$BRANCH
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         generate_api_spec "$1" "DEV"
-        mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+        mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/paddle/fluid/*.so ${PADDLE_ROOT}/build/dev_whl
     fi
 
 }
