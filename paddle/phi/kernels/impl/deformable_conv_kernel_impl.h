@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/utils/optional.h"
 
 namespace phi {
@@ -38,6 +39,11 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int im2col_step,
                           DenseTensor* out) {
   const int batch_size = static_cast<int>(x.dims()[0]);
+
+  int temp_step = std::min(64, batch_size);
+  if (batch_size % temp_step == 0) {
+    im2col_step = temp_step;
+  }
 
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   std::vector<int64_t> filter_shape_vec(phi::vectorize(filter.dims()));
@@ -58,8 +64,9 @@ void DeformableConvKernel(const Context& dev_ctx,
   DenseTensor col_buffer = Empty<T>(dev_ctx, col_buffer_shape_vec);
   DenseTensor output_buffer = Empty<T>(dev_ctx, output_buffer_shape_vec);
 
-  int64_t M = output_shape_vec[1] / groups;
-  int64_t N = im2col_step * output_shape_vec[2] * output_shape_vec[3];
+  int64_t M = output_shape_vec[1] / groups;  // 4 : C
+  int64_t N = im2col_step * output_shape_vec[2] *
+              output_shape_vec[3];  // 2*3*3 ：im2Step * H * W
   int64_t K = x.dims()[1] * filter_shape_vec[2] * filter_shape_vec[3] / groups;
 
   DenseTensor weight_3d;
@@ -69,11 +76,18 @@ void DeformableConvKernel(const Context& dev_ctx,
   col_buffer_3d.ShareDataWith(col_buffer)
       .Resize(phi::make_ddim({groups, K, N}));
 
-  DenseTensor output_4d;
+  DenseTensor output_4d;  //计算用 这里需要分配个空内存
   output_4d.ShareDataWith(output_buffer)
-      .Resize(phi::make_ddim({batch_size / im2col_step, groups, M, N}));
+      .Resize(
+          phi::make_ddim({batch_size / im2col_step,
+                          groups,
+                          M,
+                          N}));  // 3 * 1 * 4 * (2*3*3) : mini_batch * group *
+                                 // C/group * (im2stap * H * W) 3 * 1 * 4 *
+                                 // (2*3*3) : mini_batch * C * (im2stap * H * W)
 
-  DDim input_shape = phi::slice_ddim(x.dims(), 1, x.dims().size());
+  DDim input_shape =
+      phi::slice_ddim(x.dims(), 1, x.dims().size());  //单张图片大小：C*H*W
   std::vector<int64_t> input_shape_vec = phi::vectorize(input_shape);
 
   int input_dim = x.numel() / x.dims()[0];
@@ -103,17 +117,25 @@ void DeformableConvKernel(const Context& dev_ctx,
         dilations,
         deformable_groups,
         col_buffer_ptr);
-    DenseTensor output_3d = output_4d.Slice(i, i + 1).Resize(
-        phi::slice_ddim(output_4d.dims(), 1, output_4d.dims().size()));
+    DenseTensor output_3d = output_4d.Slice(i, i + 1).Resize(phi::slice_ddim(
+        output_4d.dims(),
+        1,
+        output_4d.dims().size()));  // group * C/group * (im2step * H * W)
+
     // get the product of pixel and weight
     for (int g = 0; g < groups; ++g) {
       DenseTensor weight_3d_slice = weight_3d.Slice(g, g + 1).Resize(
-          phi::slice_ddim(weight_3d.dims(), 1, weight_3d.dims().size()));
+          phi::slice_ddim(weight_3d.dims(),
+                          1,
+                          weight_3d.dims().size()));  //等于是把第0维去掉
       DenseTensor col_buffer_3d_slice =
           col_buffer_3d.Slice(g, g + 1).Resize(phi::slice_ddim(
               col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
-      DenseTensor output_3d_slice = output_3d.Slice(g, g + 1).Resize(
-          phi::slice_ddim(output_3d.dims(), 1, output_3d.dims().size()));
+      DenseTensor output_3d_slice =
+          output_3d.Slice(g, g + 1).Resize(phi::slice_ddim(
+              output_3d.dims(),
+              1,
+              output_3d.dims().size()));  // 4*32：C * ((im2col_step)*H*W))
       blas.MatMul(weight_3d_slice,
                   false,
                   col_buffer_3d_slice,
@@ -123,7 +145,29 @@ void DeformableConvKernel(const Context& dev_ctx,
                   T(0.0));
     }
   }
-  out->ShareDataWith(output_buffer).Resize(phi::make_ddim(output_shape_vec));
+
+  // 对于im2col_step大于1时的bug进行修复
+  if (im2col_step > 1) {
+    std::vector<int> axis(4);
+    axis[0] = 0;
+    axis[1] = 2;
+    axis[2] = 1;
+    axis[3] = 3;
+
+    DenseTensor real_output_buffer = phi::Transpose<T, Context>(
+        dev_ctx,
+        output_4d.Resize(
+            phi::make_ddim({batch_size / im2col_step,
+                            output_shape_vec[1],
+                            im2col_step,
+                            output_shape_vec[2] * output_shape_vec[3]})),
+        axis);
+
+    out->ShareDataWith(real_output_buffer)
+        .Resize(phi::make_ddim(output_shape_vec));
+  } else {
+    out->ShareDataWith(output_buffer).Resize(phi::make_ddim(output_shape_vec));
+  }
 }
 
 }  // namespace phi

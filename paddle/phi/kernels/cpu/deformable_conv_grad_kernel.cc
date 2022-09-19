@@ -43,7 +43,6 @@ inline void ModulatedDeformableCol2imCPUKernel(
     const int height_col,
     const int width_col,
     T* grad_im) {
-
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int thread = 0; thread < num_kernels; thread++) {
     const int j = (thread / width_col / height_col / batch_size) % kernel_w;
@@ -99,7 +98,8 @@ inline void ModulatedDeformableCol2imCPUKernel(
                                             width);
 
           *(grad_im + cur_bottom_grad_pos) =
-              *(grad_im + cur_bottom_grad_pos) + static_cast<T>(weight * cur_top_grad);
+              *(grad_im + cur_bottom_grad_pos) +
+              static_cast<T>(weight * cur_top_grad);
         }
       }
     }
@@ -225,13 +225,14 @@ void ModulatedDeformableCol2imCoordCPUKernel(
       if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
         inv_h = inv_w = -2;
       } else {
-        mval += static_cast<MT>(data_col_ptr[col_pos]) *
-                funcs::DmcnIm2colBilinear<T, MT>(data_im_ptr + cnt * height * width,
-                                                 width,
-                                                 height,
-                                                 width,
-                                                 inv_h,
-                                                 inv_w);
+        mval +=
+            static_cast<MT>(data_col_ptr[col_pos]) *
+            funcs::DmcnIm2colBilinear<T, MT>(data_im_ptr + cnt * height * width,
+                                             width,
+                                             height,
+                                             width,
+                                             inv_h,
+                                             inv_w);
       }
       const MT weight =
           DmcnGetCoordinateWeight<T, MT>(inv_h,

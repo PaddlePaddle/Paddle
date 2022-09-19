@@ -22,7 +22,6 @@ import paddle.fluid.core as core
 from op_test import OpTest
 from paddle.fluid.framework import _test_eager_guard
 
-
 paddle.enable_static()
 
 
@@ -204,7 +203,6 @@ class TestModulatedDeformableConvOp(OpTest):
         self.dtype = np.float32
 
 
-
 class TestWithStride(TestModulatedDeformableConvOp):
 
     def init_test_case(self):
@@ -302,7 +300,6 @@ class TestWithFloat16(TestModulatedDeformableConvOp):
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
 
     def test_error(self):
-
         def test_invalid_input():
             input = [1, 3, 32, 32]
             offset = fluid.data(name='offset',
