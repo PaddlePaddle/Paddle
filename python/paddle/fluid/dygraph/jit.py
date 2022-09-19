@@ -1090,8 +1090,9 @@ def save(layer, path, input_spec=None, **configs):
                                                ordered_vars)),
                                     filename=params_filename)
         # save property
-        property_filename = file_prefix + INFER_PROPERTY_SUFFIX
-        _save_property(property_filename, property_vals)
+        property_save_path = os.path.join(os.path.normpath(model_path),
+                                          file_prefix + INFER_PROPERTY_SUFFIX)
+        _save_property(property_save_path, property_vals)
 
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:

@@ -130,7 +130,7 @@ class Strategy(BaseConfig):
         .. code-block:: python
 
             import paddle
-            import paddle.distributed.auto_parallel as auto
+            from paddle.distributed.fleet import auto
 
             strategy = auto.Strategy()
             sharding = strategy.sharding
