@@ -12,23 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import paddle
 import warnings
 from paddle.nn.layer.norm import _BatchNormBase
 from paddle.framework import no_grad
+from .. import functional as F
 
 
 class BatchNorm(paddle.nn.BatchNorm1D):
@@ -131,34 +119,22 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             raise ValueError('sparse BatchNorm only support layout of "NDHWC"')
 
     def forward(self, input):
-        values = input.values()
         self._check_data_format(self._data_format)
-
-        if len(values.shape) != 2:
-            raise ValueError('expected 2D input.values() (got {}D)'.format(
-                len(values.shape)))
 
         if self.training:
             warnings.warn(
                 "When training, we now always track global mean and variance.")
 
-        batch_norm_out = paddle.nn.functional.batch_norm(
-            values,
-            self._mean,
-            self._variance,
-            weight=self.weight,
-            bias=self.bias,
-            training=self.training,
-            momentum=self._momentum,
-            epsilon=self._epsilon,
-            data_format='NC',
-            use_global_stats=self._use_global_stats)
-
-        return paddle.incubate.sparse.sparse_coo_tensor(
-            input.indices(),
-            batch_norm_out,
-            shape=input.shape,
-            stop_gradient=input.stop_gradient)
+        return F.batch_norm(input,
+                            self._mean,
+                            self._variance,
+                            weight=self.weight,
+                            bias=self.bias,
+                            training=self.training,
+                            momentum=self._momentum,
+                            epsilon=self._epsilon,
+                            data_format=self._data_format,
+                            use_global_stats=self._use_global_stats)
 
 
 class SyncBatchNorm(paddle.nn.SyncBatchNorm):
