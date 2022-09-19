@@ -51,6 +51,10 @@ repos:
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
+        args:
+            - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
+            - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
+            - --quiet
 -   repo: local
     hooks:
     -   id: pylint-doc-string
