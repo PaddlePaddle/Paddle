@@ -699,6 +699,7 @@ class TensorRTEngine {
   // ensure that the thread is associated with the correct device by calling
   // freshDeviceId().
   void freshDeviceId();
+  // Used for convert weight into Itensor
   const framework::Scope* scope_;
 
   // the max batch size
