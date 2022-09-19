@@ -46,14 +46,13 @@ void SliceRawKernel(const Context& dev_ctx,
     offsets[axes[i]] = starts_vec[i];
     slice_dims[axes[i]] =
         std::max(static_cast<int64_t>(0), ends_vec[i] - starts_vec[i]);
-    ;
   }
 
   out->Resize(make_ddim(slice_dims));
 
   // Note(0x45f): To support slice Tensors with shapes like [0, 0, 0].
   if (!x.initialized()) {
-    out->mutable_data(x.place(), x.dtype());
+    dev_ctx.Alloc(out, x.dtype());
     out->set_layout(DataLayout::ONEDNN);
     return;
   }
