@@ -22,6 +22,8 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
+DECLARE_bool(new_executor_serial_run);
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -112,8 +114,16 @@ inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place place,
       }
     }
   }
+
+  // In serial run, only one 1-size thread pool is used
+  if (FLAGS_new_executor_serial_run) {
+    num_host_threads = 0;
+    num_device_threads = 1;
+  }
+
   VLOG(4) << "place:" << place << ", processor_count:" << processor_count
           << ", device_count:" << device_count
+          << ", serial_run:" << FLAGS_new_executor_serial_run
           << ", num_host_threads:" << num_host_threads
           << ", num_device_threads:" << num_device_threads
           << ", num_prepare_threads:" << num_prepare_threads;
