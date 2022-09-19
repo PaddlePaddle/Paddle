@@ -99,7 +99,6 @@ class EmbLayerNormVarSeqlenPluginBase : public nvinfer1::IPluginV2DynamicExt {
  protected:
   std::string const mLayerName;
   std::string mNamespace;
-
   cuda_unique_ptr<float> mGammaDev;
   cuda_unique_ptr<float> mBetaDev;
   std::vector<void*> mIdsEmbDev;
@@ -147,7 +146,6 @@ class EmbLayerNormVarSeqlenPluginHFace
                   void* const* outputs,
                   void* workspace,
                   cudaStream_t stream) noexcept override;
-
   // IPluginV2 Methods
   int32_t initialize() noexcept override;
   void terminate() noexcept override;
