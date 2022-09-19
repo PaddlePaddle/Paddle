@@ -19,6 +19,9 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/impl/unary_kernel_impl.h"
+// #include "paddle/phi/kernels/sparse/gpu/sparse_utils_kernel.cu"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
+
 
 namespace phi {
 namespace sparse {
@@ -125,10 +128,10 @@ void ReshapeCsrKernel(const Context& dev_ctx,
                         const std::vector<int64_t>& new_shape,
                         SparseCsrTensor* out) {
  /*将csr格式转化为coo格式后处理*/
-SparseCooTensor x_coo = CsrToCoo(dev_ctx, x);
+const SparseCooTensor x_coo = CsrToCoo<T, Context>(dev_ctx, x);
 SparseCooTensor out_coo;
-ReshapeCooKernel(dev_ctx, x_coo, new_shape, &out_coo);
-CooToCsrKernel(dev_ctx, out_coo, out);     
+ReshapeCooKernel<T, Context>(dev_ctx, x_coo, new_shape, &out_coo);
+CooToCsrKernel<T, Context>(dev_ctx, out_coo, out);     
 }
 
 }  // namespace sparse
