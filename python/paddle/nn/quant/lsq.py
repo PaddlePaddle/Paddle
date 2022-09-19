@@ -124,11 +124,23 @@ class FakeQuantActLSQPlus(Layer):
                  name=None,
                  reduce_type=None):
         super(FakeQuantActLSQPlus, self).__init__()
+        '''
+        Args:
+            quant_bits(int): quantization bit number for weights.
+            all_postive(bool): whether unsigned or signed quantization, where True for unsigned quantization and False for signed quantization.
+            symmetric(bool): whether symmetric or asymmetric quantization.
+            batch_init(int): number of batches that collect Gaussian approximation for the weight distribution in each layer.
+            dtype(str): data type.
+            name(str): the name of the weight.
+            reduce_type(str): the reduce type which is needed when parallel training.
+        '''
         self.bits = quant_bits
         self.all_positive = all_postive
         self.symmetric = symmetric
         self.batch_init = batch_init
         self.name = name
+        self.reduce_type = reduce_type
+
         if self.all_positive:
             # unsigned activation
             self.Qn = 0
@@ -164,6 +176,14 @@ class FakeQuantActLSQPlus(Layer):
         self.init_state = 0
 
     def forward(self, activation):
+        if self.reduce_type == "max":
+            paddle.distributed.all_reduce(self.s,
+                                          op=paddle.distributed.ReduceOp.MAX)
+
+        if not self.symmetric and self.reduce_type == "max":
+            paddle.distributed.all_reduce(self.beta,
+                                          op=paddle.distributed.ReduceOp.MAX)
+
         if self.init_state == 0:
             self.g = paddle.to_tensor(1.0 /
                                       math.sqrt(activation.numel() * self.Qp))
@@ -211,6 +231,18 @@ class FakeQuantWeightLSQPlus(Layer):
                  name=None,
                  reduce_type=None):
         super(FakeQuantWeightLSQPlus, self).__init__()
+        '''
+        Args:
+            quant_bits(int): quantization bit number for weights.
+            all_postive(bool): whether unsigned or signed quantization, where True for unsigned quantization and False for signed quantization.
+            per_channel(bool): whether layer-wise or channel-wise quantization, where True for layer-wise quantization and False for channel-wise quantization.
+            batch_init(int): number of batches that collect Gaussian approximation for the weight distribution in each layer.
+            channel_num(int): the channel number of the weight which is needed when per_channel is True.
+            quant_linear(bool): whether the weight is from Linear.
+            dtype(str): data type.
+            name(str): the name of the weight.
+            reduce_type(str): the reduce type which is needed when parallel training.
+        '''
 
         self.bits = quant_bits
         self.all_positive = all_postive
@@ -220,6 +252,8 @@ class FakeQuantWeightLSQPlus(Layer):
         self.name = name
         self.quant_axis = 1 if quant_linear else 0
         self.collect_axis = 0 if quant_linear else 1
+        self.reduce_type = reduce_type
+
         if self.all_positive:
             # unsigned weight
             self.Qn = 0
@@ -242,6 +276,10 @@ class FakeQuantWeightLSQPlus(Layer):
         self.s.stop_gradient = False
 
     def forward(self, weight):
+        if self.reduce_type == "max":
+            paddle.distributed.all_reduce(self.s,
+                                          op=paddle.distributed.ReduceOp.MAX)
+
         if self.init_state == 0:
             self.g = paddle.to_tensor(1.0 / math.sqrt(weight.numel() * self.Qp))
             self.div = 2**self.bits - 1
