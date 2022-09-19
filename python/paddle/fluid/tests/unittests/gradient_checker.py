@@ -268,9 +268,6 @@ def grad_check(x,
     for v in x:
         v.stop_gradient = False
         v.persistable = True
-    for u in y:
-        u.stop_gradient = False
-        u.persistable = True
     if place is None:
         place = fluid.CPUPlace()
     if program is None:
@@ -367,9 +364,6 @@ def double_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-    for u in y:
-        u.stop_gradient = False
-        u.persistable = True
 
     if program is None:
         program = fluid.default_main_program()
@@ -397,7 +391,9 @@ def double_grad_check(x,
         ]
 
     # append first order grads
-    target_grads = fluid.gradients(y, x, y_grads)
+    target_grads = []
+    if len(y) > 0:
+        target_grads = fluid.gradients(y, x, y_grads)
 
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
@@ -451,9 +447,6 @@ def triple_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-    for u in y:
-        u.stop_gradient = False
-        u.persistable = True
 
     if program is None:
         program = fluid.default_main_program()
@@ -481,7 +474,9 @@ def triple_grad_check(x,
         ]
 
     # append first order grads
-    target_grads = fluid.gradients(y, x, y_grads)
+    target_grads = []
+    if len(y) > 0:
+        target_grads = fluid.gradients(y, x, y_grads)
 
     if x_grads_grads is None:
         scope = fluid.executor.global_scope()
@@ -510,19 +505,22 @@ def triple_grad_check(x,
     x_init += y_grads_init
 
     # append second order grads
-    target_grads_grads = fluid.gradients(target_grads, x, x_grads_grads)
+    target_grads_grads = []
+    if len(target_grads > 0):
+        target_grads_grads = fluid.gradients(target_grads, x, x_grads_grads)
 
     # filter None in target_grads_grads for Dy/Dx may be None in kernel
-    filted = [(i, dyi) for i, dyi in enumerate(target_grads_grads)
-              if dyi is not None]
-    filted_idx, filted_target_grads_grads = zip(*filted)
+    target_grads_grads = [
+        target_grad_grad for target_grad_grad in target_grads_grads
+        if target_grad_grad is not None
+    ]
 
     x += x_grads_grads
     x_init += x_grads_grads_init
 
     # x <=> [x, dout, ddx]
     grad_check(x=x,
-               y=filted_target_grads_grads,
+               y=target_grads_grads,
                x_init=x_init,
                place=place,
                program=program,
@@ -569,7 +567,9 @@ def get_static_double_grad(x,
         y_grads.append(dy)
 
     # append first order grads
-    dx = fluid.gradients(y, x, y_grads)
+    dx = []
+    if len(y) > 0:
+        dx = fluid.gradients(y, x, y_grads)
 
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
@@ -587,9 +587,7 @@ def get_static_double_grad(x,
     for v in x:
         v.stop_gradient = False
         v.persistable = True
-    for u in y:
-        u.stop_gradient = False
-        u.persistable = True
+
     if place is None:
         place = fluid.CPUPlace()
     if program is None:
@@ -748,9 +746,6 @@ def double_grad_check_for_dygraph(func,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-    for u in y:
-        u.stop_gradient = False
-        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -917,9 +912,6 @@ def triple_grad_check_for_dygraph(func,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-    for u in y:
-        u.stop_gradient = False
-        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)
