@@ -13,14 +13,16 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/operators/sum_op.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
 using framework::Tensor;
-
+using SelectedRows = phi::SelectedRows;
+using LoDTensor = framework::LoDTensor;
 template <typename DeviceContext, typename T>
 class SumXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;

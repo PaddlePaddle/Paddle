@@ -14,21 +14,14 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_array.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
-// Note(YuanRisheng): std::vector<const TensorBase*> shouldn't be widely used in
-// PHI. Here, we use it to be compatible with Fluid.
 template <typename T, typename Context>
 void AddNKernel(const Context& dev_ctx,
-                const std::vector<const TensorBase*>& x,
-                DenseTensor* out);
-
-template <typename T, typename Context>
-void AddNArrayKernel(const Context& dev_ctx,
-                     const std::vector<const TensorArray*>& x,
-                     TensorArray* out);
-
+                const std::vector<const SelectedRows*>& x,
+                SelectedRows* out);
+}  // namespace sr
 }  // namespace phi
