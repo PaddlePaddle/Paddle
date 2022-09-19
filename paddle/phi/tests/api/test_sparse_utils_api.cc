@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 
-PD_DECLARE_KERNEL(dense_to_sparse_coo, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(dense_to_coo, CPU, ALL_LAYOUT);
 
 TEST(API, to_sparse_coo) {
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(

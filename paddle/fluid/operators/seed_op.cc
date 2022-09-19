@@ -39,23 +39,6 @@ class SeedOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddOutput("Out", "The output of seed op.");
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
-    AddAttr<bool>("deterministic",
-                  "(bool, default false) Whether to use deterministic "
-                  "RandomSeedGenerator which "
-                  "generate by `set_random_seed_generator`")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "rng_name",
-        "use deterministic RandomSeedGenerator which name is `rng_name`")
-        .SetDefault("")
-        .AsExtra();
-    AddAttr<bool>("force_cpu",
-                  "(bool, default false) Force fill output variable to cpu "
-                  "memory. Otherwise, fill output variable to the running "
-                  "device")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Seed Operator.
 )DOC");

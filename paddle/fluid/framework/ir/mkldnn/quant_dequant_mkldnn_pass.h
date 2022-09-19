@@ -43,12 +43,33 @@ class QuantDequantMkldnnPass : public FusePassBase {
       std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
       const;
 
-  void CollectInputScalesFromFake(
+  ///
+  /// \brief collect scale info for weight from onnx_format dequantize_linear op
+  /// onnx_format_dequantize_types: the onnx_format dequantize op type
+  /// weight_thresholds: scale info for weight
+  /// var_quant_scales: scale info for act
+  /// onnx_format_quantize_model: recorder if the quantize model is a
+  /// onnx_format quantize model
+  ///
+  void CollectWeightScalesInfoFromONNXFormatDequantize(
+      ir::Graph* graph,
+      Scope* scope,
+      std::unordered_map<std::string, std::vector<float>>* weight_thresholds,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+      bool* onnx_format_quantize_model) const;
+
+  void CollectInputScalesFromQuantize(
       ir::Graph* graph,
       Scope* scope,
       const std::unordered_set<std::string>& fake_quantize_types,
       std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
+
+  void ConvertFromINT8ToFP32(const std::vector<float>& scales,
+                             Tensor* weight_tensor,
+                             int8_t* int8_weight_data,
+                             float* fp32_weight_data,
+                             const std::string& weight_var_name) const;
 
   void CollectOutputScalesFromAttr(
       ir::Graph* graph,
@@ -64,12 +85,22 @@ class QuantDequantMkldnnPass : public FusePassBase {
       Node* op_node,
       std::unordered_set<const Node*>* nodes2rm) const;
 
+  ///
+  /// \brief collect all the onnx_format quantize related ops to remove
+  /// nodes2rm: record all quantize related ops to remove
+  ///
+  void CollectQuantizeDequantizeOpsFromONNXFormat(
+      ir::Graph* graph,
+      Node* op_node,
+      std::unordered_set<const Node*>* nodes2rm) const;
+
   void RemoveFakeOps(
       ir::Graph* graph,
       const std::unordered_set<std::string>& fake_quantize_types,
       const std::unordered_set<std::string>& fake_dequantize_types,
-      const std::unordered_set<std::string>& fake_quantize_dequantize_types)
-      const;
+      const std::unordered_set<std::string>& fake_quantize_dequantize_types,
+      const std::unordered_set<std::string>&
+          onnx_format_quantize_dequantize_types) const;
 
   bool IsInt8Weight(Node* op_node,
                     Scope* scope,
@@ -85,11 +116,23 @@ class QuantDequantMkldnnPass : public FusePassBase {
       const std::unordered_map<std::string, std::vector<float>>&
           weight_thresholds) const;
 
+  ///
+  /// \brief Dequantize weight in conv or matmul
+  /// weight_thresholds: recorded scale info for weight
+  ///
+  void DequantizeOpWeightsFromONNXFormat(
+      Node* op_node,
+      Scope* scope,
+      const std::string& weight_name,
+      const std::unordered_map<std::string, std::vector<float>>&
+          weight_thresholds) const;
+
   void DequantizeWeights(
       ir::Graph* graph,
       Scope* scope,
       const std::unordered_map<std::string, std::vector<float>>&
-          weight_thresholds) const;
+          weight_thresholds,
+      const bool& onnx_format_quantize_model) const;
 
   void UpdateActivations(ir::Graph* graph) const;
 

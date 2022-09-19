@@ -21,7 +21,7 @@ __all__ = []
 @dygraph_only
 def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
-    Note:    
+    Note:
         This API is only supported from ``CUDA 11.0`` .
 
     Applies matrix multiplication for `x` and `y` , `input` is added to
@@ -30,9 +30,9 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     ..  math::
 
         Out = alpha * x * y + beta * input
-    
+
     The supported input/output Tensor layout are as follows:
-    
+
     Note:
         input[SparseCsrTensor] + x[SparseCsrTensor] @ y[SparseCsrTensor] -> out[SparseCsrTensor]
         input[DenseTensor] + x[SparseCsrTensor] @ y[DenseTensor] -> out[DenseTensor]
@@ -50,10 +50,10 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         beta (float, optional): Coefficient of `input` . Default: 1.0
         alpha (float, optional): Coefficient of `x * y` . Default: 1.0
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         Tensor: Its layout is determined by that of `x` and `y` . dtype and shape is the same with `input`
-    
+
     Examples:
 
         .. code-block:: python
@@ -76,6 +76,6 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, [3, 3])
             y = paddle.rand([3, 2])
             out = paddle.incubate.sparse.addmm(input, x, y, 3.0, 2.0)
-            
+
     """
     return _C_ops.sparse_addmm(input, x, y, alpha, beta)

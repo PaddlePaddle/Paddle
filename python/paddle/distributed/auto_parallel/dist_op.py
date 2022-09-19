@@ -23,6 +23,7 @@ from .dist_attribute import append_op_input_suffix
 from .dist_attribute import append_op_output_suffix
 from .dist_attribute import get_tensor_dist_attr_field_keys
 from .dist_attribute import get_op_dist_attr_field_keys
+from .utils import convert_to_shard_spec, verify_shard_spec
 
 
 class DistributedOperator:
@@ -248,23 +249,106 @@ class DistributedOperator:
         return result
 
 
-class DistributedModule:
+class DistributedOperatorHelper:
 
-    def __init__(self, serial_module, dist_attr=None):
-        self._serial_module = serial_module
-        self._dist_attr = dist_attr
+    def __init__(self, serial_op, process_mesh, in_dims_mappings,
+                 out_dims_mappings):
+        self._serial_op = serial_op
+        self._process_mesh = process_mesh
+        self._in_dims_mappings = in_dims_mappings
+        self._out_dims_mappings = out_dims_mappings
 
     def __call__(self, *args, **kwargs):
-        from .dist_context import get_default_distributed_context
+        tensor_to_dims_mapping = {}
+        index = 0
+        if self._in_dims_mappings:
+            assert len(args) + len(kwargs) == len(self._in_dims_mappings), \
+                "The length of dims_mapping {} does not matching the length output {}.".format(len(self._in_dims_mappings), len(args) + len(kwargs))
+        for arg in args:
+            if isinstance(arg, Variable) and self._in_dims_mappings:
+                tensor_to_dims_mapping[arg.name] = self._in_dims_mappings[index]
+            index += 1
+        for arg in kwargs.values() and self._in_dims_mappings:
+            if isinstance(arg, Variable):
+                tensor_to_dims_mapping[arg.name] = self._in_dims_mappings[index]
+            index += 1
+
         default_prog = paddle.fluid.default_main_program()
         cur_block = default_prog.current_block()
         op_size = len(cur_block.ops)
-        output = self._serial_module(*args, **kwargs)
+        output = self._serial_op(*args, **kwargs)
         new_op_size = len(cur_block.ops)
+
+        if isinstance(output, tuple) or isinstance(output, list):
+            new_output = list(output)
+        elif isinstance(output, Variable):
+            new_output = [output]
+        else:
+            raise ValueError("Unrecognized outpout.")
+
+        if self._out_dims_mappings:
+            assert len(new_output) == len(self._out_dims_mappings), \
+                "The length of dims_mapping {} does not matching the length output {}.".format(len(self._out_dims_mappings), len(new_output))
+        for i, item in enumerate(new_output):
+            if isinstance(item, Variable) and self._out_dims_mappings:
+                tensor_to_dims_mapping[item.name] = self._out_dims_mappings[i]
+
+        from .dist_context import get_default_distributed_context
         default_dist_ctx = get_default_distributed_context()
         for idx in range(op_size, new_op_size):
             op = cur_block.ops[idx]
-            dist_op = DistributedOperator(op, self._dist_attr)
-            dist_op.dist_attr.mark_annotated_as(self._dist_attr)
+            dist_op = DistributedOperator(op)
+            for name in dist_op.serial_op.input_arg_names:
+                if name in tensor_to_dims_mapping.keys():
+                    tensor = dist_op.get_serial_input(name)
+                    tensor_dist_attr = dist_op.dist_attr.get_input_dist_attr(
+                        name)
+                    dims_mapping = tensor_to_dims_mapping[name]
+                    if tensor is None:
+                        tensor_shape = []
+                    else:
+                        if tensor.type == core.VarDesc.VarType.READER \
+                            or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+                            or tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+                            tensor_shape = []
+                        else:
+                            tensor_shape = tensor.shape
+                    if dims_mapping is not None:
+                        dims_mapping = tensor_to_dims_mapping[name]
+                        shard_spec = convert_to_shard_spec(
+                            dims_mapping, self._process_mesh)
+                        assert verify_shard_spec(shard_spec, tensor_shape, self._process_mesh), \
+                            "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+                                name, shard_spec, tensor_shape, self._process_mesh)
+                        tensor_dist_attr.dims_mapping = dims_mapping
+                        tensor_dist_attr.mark_annotated("dims_mapping")
+            for name in dist_op.serial_op.output_arg_names:
+                if name in tensor_to_dims_mapping.keys():
+                    tensor = dist_op.get_serial_output(name)
+                    tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(
+                        name)
+                    dims_mapping = tensor_to_dims_mapping[name]
+                    if tensor is None:
+                        tensor_shape = []
+                    else:
+                        if tensor.type == core.VarDesc.VarType.READER \
+                            or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+                            or tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+                            tensor_shape = []
+                        else:
+                            tensor_shape = tensor.shape
+                    if dims_mapping is not None:
+                        dims_mapping = tensor_to_dims_mapping[name]
+                        shard_spec = convert_to_shard_spec(
+                            dims_mapping, self._process_mesh)
+                        assert verify_shard_spec(shard_spec, tensor_shape, self._process_mesh), \
+                            "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+                                name, shard_spec, tensor_shape, self._process_mesh)
+                        tensor_dist_attr.dims_mapping = dims_mapping
+                        tensor_dist_attr.mark_annotated("dims_mapping")
+            dist_op.dist_attr.process_mesh = self._process_mesh
+            if self._process_mesh is not None:
+                dist_op.dist_attr.mark_annotated("process_mesh")
             default_dist_ctx.add_dist_op_for_program(dist_op)
+
         return output

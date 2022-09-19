@@ -66,6 +66,28 @@ class NCCLOpHandleBase : public OpHandleBase {
 #endif
     }
   }
+
+  const platform::NCCLCommunicator* GetNcclContext() const {
+    return nccl_ctxs_;
+  }
+
+  const ncclComm_t GetComm() const {
+    PADDLE_ENFORCE_EQ(
+        places_.size(),
+        1,
+        platform::errors::Unimplemented(
+            "Only supported for single place now, but got %d", places_.size()));
+    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
+                      0,
+                      platform::errors::Unimplemented(
+                          "Not supported use_hierarchical_allreduce_ now"));
+    auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
+    int dev_id = places_[0].device;
+    auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);
+    auto comm = nccl_ctx.comm_;
+    return comm;
+  }
+
   void SetRunEnv(int run_order, bool use_hierarchical_allreduce) {
     PADDLE_ENFORCE_GE(
         run_order,

@@ -41,8 +41,6 @@ TEST(op_debug_str, test_unknown_dtype) {
   desc.SetOutput(framework::GradVarName("Y"), {framework::GradVarName("Y")});
   desc.SetAttr("axis", -1);
   desc.SetAttr("use_mkldnn", false);
-  desc.SetAttr("x_data_format", "");
-  desc.SetAttr("y_data_format", "");
 
   auto x_tensor = scope.Var("X")->GetMutable<framework::LoDTensor>();
   x_tensor->Resize(dim);

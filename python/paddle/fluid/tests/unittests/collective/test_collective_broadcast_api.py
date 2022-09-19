@@ -35,6 +35,31 @@ class TestCollectiveBroadcastAPI(TestDistBase):
         self.check_with_place("collective_broadcast_api.py", "broadcast",
                               "gloo", "0")
 
+    def test_broadcast_nccl_dygraph(self):
+        dtypes_to_test = [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+            'bool'
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_broadcast_api_dygraph.py",
+                                  "broadcast",
+                                  "nccl",
+                                  static_mode="0",
+                                  dtype=dtype)
+
+    def test_broadcast_gloo_dygraph(self):
+        dtypes_to_test = [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+            'bool'
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_broadcast_api_dygraph.py",
+                                  "broadcast",
+                                  "gloo",
+                                  "0",
+                                  static_mode="0",
+                                  dtype=dtype)
+
 
 if __name__ == '__main__':
     unittest.main()

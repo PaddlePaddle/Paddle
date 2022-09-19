@@ -28,8 +28,8 @@ def forward_grad(outputs, inputs, grad_inputs=None):
     Args:
         outputs(Tensor|Sequence[Tensor]): The output tensor or tensors.
         inputs(Tensor|Sequence[Tensor]): The input tensor or tensors.
-        grad_inputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or 
-            Tensors of inputs which has the same shape with inputs, Defaults to 
+        grad_inputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or
+            Tensors of inputs which has the same shape with inputs, Defaults to
             None, in this case is equivalent to all ones.
 
     Returns:
@@ -50,7 +50,7 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 
             with paddle.static.program_guard(main_program, startup_program):
                 x = paddle.static.data('x', shape=[1], dtype='float32')
-                y = x * x 
+                y = x * x
                 y_grad = paddle.incubate.autograd.forward_grad(y, x)
                 paddle.incubate.autograd.prim2orig()
 
@@ -101,12 +101,12 @@ def grad(outputs, inputs, grad_outputs=None):
     Args:
         outputs(Tensor|Sequence[Tensor]): The output Tensor or Tensors.
         inputs(Tensor|Sequence[Tensor]): The input Tensor or Tensors.
-        grad_outputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or 
-            Tensors of outputs which has the same shape with outputs, Defaults 
+        grad_outputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or
+            Tensors of outputs which has the same shape with outputs, Defaults
             to None, in this case is equivalent to all ones.
 
     Returns:
-        grad_inputs(Tensor|Tensors): The gradients for inputs. 
+        grad_inputs(Tensor|Tensors): The gradients for inputs.
 
     Examples:
 
@@ -123,7 +123,7 @@ def grad(outputs, inputs, grad_outputs=None):
             with paddle.static.program_guard(main_program, startup_program):
                 x = paddle.static.data('x', shape=[1], dtype='float32')
                 x.stop_gradients = False
-                y = x * x 
+                y = x * x
                 x_grad = paddle.incubate.autograd.grad(y, x)
                 paddle.incubate.autograd.prim2orig()
 
@@ -132,7 +132,7 @@ def grad(outputs, inputs, grad_outputs=None):
             x_grad = exe.run(main_program, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[x_grad])
             print(x_grad)
             # [array([4.], dtype=float32)]
-            
+
             paddle.incubate.autograd.disable_prim()
             paddle.disable_static()
     """

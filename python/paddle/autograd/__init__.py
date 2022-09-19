@@ -26,9 +26,11 @@ else:
     from .py_layer import LegacyPyLayerContext as PyLayerContext  # noqa: F401
 from ..framework import set_grad_enabled, is_grad_enabled  # noqa: F401
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
+from .saved_tensors_hooks import saved_tensors_hooks
 
 __all__ = [  # noqa
     'backward',
     'PyLayer',
     'PyLayerContext',
+    'saved_tensors_hooks',
 ]

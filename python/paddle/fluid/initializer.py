@@ -127,7 +127,7 @@ class ConstantInitializer(Initializer):
     """Implements the constant initializer
 
     Args:
-        value (float32): constant value to initialize the variable 
+        value (float32): constant value to initialize the variable
 
     Examples:
         .. code-block:: python
@@ -278,13 +278,23 @@ class UniformInitializer(Initializer):
             out_var = var
 
         if framework._non_static_mode():
-            out_var = _legacy_C_ops.uniform_random(
-                'shape', var.shape, 'min', self._low, 'max', self._high, 'seed',
-                self._seed, 'dtype', out_dtype, 'diag_num', self._diag_num,
-                'diag_step', self._diag_step, 'diag_val', self._diag_val)
+            if in_dygraph_mode():
+                out_var = _C_ops.uniform_random(var.shape, out_dtype, self._low,
+                                                self._high, self._seed,
+                                                _current_expected_place())
+            elif _in_legacy_dygraph():
+                out_var = _legacy_C_ops.uniform_random(
+                    'shape', var.shape, 'min', self._low, 'max', self._high,
+                    'seed', self._seed, 'dtype', out_dtype, 'diag_num',
+                    self._diag_num, 'diag_step', self._diag_step, 'diag_val',
+                    self._diag_val)
             if var.dtype == VarDesc.VarType.FP16:
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
+                if in_dygraph_mode():
+                    var_tmp = _C_ops.cast(out_var, var.dtype)
+                elif _in_legacy_dygraph():
+                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
+                                                 out_var.dtype, 'out_dtype',
+                                                 var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -364,19 +374,6 @@ class NormalInitializer(Initializer):
                                  ["uint16", "float16", "float32", "float64"],
                                  "guassian_random")
 
-        # to be compatible of fp16 initalizers
-        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-            out_dtype = VarDesc.VarType.FP32
-            out_var = block.create_var(name=unique_name.generate(".".join(
-                ['normal_init', var.name, 'tmp'])),
-                                       shape=var.shape,
-                                       dtype=out_dtype,
-                                       type=VarDesc.VarType.LOD_TENSOR,
-                                       persistable=False)
-        else:
-            out_dtype = var.dtype
-            out_var = var
-
         if self._seed == 0:
             self._seed = block.program.random_seed
 
@@ -384,48 +381,29 @@ class NormalInitializer(Initializer):
             place = _current_expected_place()
             out_var = _C_ops.gaussian_random(var.shape, self._mean,
                                              self._std_dev, self._seed,
-                                             out_dtype, place)
-
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.cast(out_var, var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
+                                             var.dtype, place)
+            out_var._share_underline_tensor_to(var)
             return None
 
         if _in_legacy_dygraph():
             out_var = _legacy_C_ops.gaussian_random(
-                'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
+                'shape', var.shape, 'dtype', var.dtype, 'mean', self._mean,
                 'std', self._std_dev, 'seed', self._seed, 'use_mkldnn', False)
 
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
+            out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(type="gaussian_random",
-                                 outputs={"Out": out_var},
+                                 outputs={"Out": var},
                                  attrs={
                                      "shape": var.shape,
-                                     "dtype": out_dtype,
+                                     "dtype": var.dtype,
                                      "mean": self._mean,
                                      "std": self._std_dev,
                                      "seed": self._seed,
                                      "use_mkldnn": False
                                  },
                                  stop_gradient=True)
-
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                block.append_op(type="cast",
-                                inputs={"X": out_var},
-                                outputs={"Out": var},
-                                attrs={
-                                    "in_dtype": out_var.dtype,
-                                    "out_dtype": var.dtype
-                                })
             var.op = op
             return op
 
@@ -685,7 +663,7 @@ class XavierInitializer(Initializer):
                                      outputs={"Out": out_var},
                                      attrs={
                                          "shape": out_var.shape,
-                                         "dtype": out_dtype,
+                                         "dtype": out_var.dtype,
                                          "mean": 0.0,
                                          "std": std,
                                          "seed": self._seed
@@ -807,12 +785,14 @@ class MSRAInitializer(Initializer):
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 limit = gain * math.sqrt(3.0 / float(fan_in))
-
-                out_var = _legacy_C_ops.uniform_random('shape', out_var.shape,
-                                                       'min', -limit, 'max',
-                                                       limit, 'seed',
-                                                       self._seed, 'dtype',
-                                                       int(out_dtype))
+                if in_dygraph_mode():
+                    out_var = _C_ops.uniform_random(var.shape, out_dtype,
+                                                    -limit, limit, self._seed,
+                                                    _current_expected_place())
+                else:
+                    out_var = _legacy_C_ops.uniform_random(
+                        'shape', out_var.shape, 'min', -limit, 'max', limit,
+                        'seed', self._seed, 'dtype', int(out_dtype))
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 std = gain / math.sqrt(float(fan_in))
@@ -828,8 +808,12 @@ class MSRAInitializer(Initializer):
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
+                if in_dygraph_mode():
+                    var_tmp = _C_ops.cast(out_var, var.dtype)
+                elif _in_legacy_dygraph():
+                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
+                                                 out_var.dtype, 'out_dtype',
+                                                 var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -989,14 +973,23 @@ class BilinearInitializer(Initializer):
             raise ValueError("The size of input is too big. ")
 
         if framework._non_static_mode():
-            _legacy_C_ops.assign_value(out_var, 'shape', list(shape), 'dtype',
-                                       out_dtype, value_name, values)
+            if in_dygraph_mode():
+                _C_ops.assign_value_(out_var, list(shape), out_dtype, values,
+                                     _current_expected_place())
+            elif _in_legacy_dygraph():
+                _legacy_C_ops.assign_value(out_var, 'shape', list(shape),
+                                           'dtype', out_dtype, value_name,
+                                           values)
             if var.dtype in [
                     VarDesc.VarType.FP16, VarDesc.VarType.BF16,
                     VarDesc.VarType.FP64
             ]:
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
+                if in_dygraph_mode():
+                    var_tmp = _C_ops.cast(out_var, var.dtype)
+                elif _in_legacy_dygraph():
+                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
+                                                 out_var.dtype, 'out_dtype',
+                                                 var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -1096,12 +1089,21 @@ class NumpyArrayInitializer(Initializer):
                              "saving it to file and 'load_op' to load it")
 
         if framework._non_static_mode():
-            _legacy_C_ops.assign_value(out_var, 'shape',
-                                       list(self._value.shape), 'dtype',
-                                       out_dtype, value_name, values)
+            if in_dygraph_mode():
+                _C_ops.assign_value_(out_var,
+                                     list(self._value.shape), out_dtype, values,
+                                     _current_expected_place())
+            elif _in_legacy_dygraph():
+                _legacy_C_ops.assign_value(out_var, 'shape',
+                                           list(self._value.shape), 'dtype',
+                                           out_dtype, value_name, values)
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
+                if in_dygraph_mode():
+                    var_tmp = _C_ops.cast(out_var, var.dtype)
+                elif _in_legacy_dygraph():
+                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
+                                                 out_var.dtype, 'out_dtype',
+                                                 var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -1135,11 +1137,11 @@ def set_global_initializer(weight_init, bias_init=None):
 
     After this API is invoked, the global initializer will takes effect in subsequent code.
 
-    The model parameters include ``weight`` and ``bias`` . In the framework, they correspond 
+    The model parameters include ``weight`` and ``bias`` . In the framework, they correspond
     to ``paddle.ParamAttr`` , which is inherited from ``paddle.Tensor`` , and is a persistable Variable.
-    This API only takes effect for model parameters, not for variables created through apis such as 
+    This API only takes effect for model parameters, not for variables created through apis such as
     :ref:`api_fluid_layers_create_global_var` , :ref:`api_fluid_layers_create_tensor`.
-    
+
     If the initializer is also set up by ``param_attr`` or ``bias_attr`` when creating a network layer,
     the global initializer setting here will not take effect because it has a lower priority.
 
@@ -1147,7 +1149,7 @@ def set_global_initializer(weight_init, bias_init=None):
 
     Args:
         weight_init (Initializer): set the global initializer for ``weight`` of model parameters.
-        bias_init (Initializer, optional): set the global initializer for ``bias`` of model parameters. 
+        bias_init (Initializer, optional): set the global initializer for ``bias`` of model parameters.
             Default: None.
 
     Returns:
@@ -1170,7 +1172,7 @@ def set_global_initializer(weight_init, bias_init=None):
             # If set param_attr/bias_attr too, global initializer will not take effect
             # The weight of conv2 is initialized by Xavier
             # The bias of conv2 is initialized by Normal
-            conv2 = nn.Conv2D(4, 6, (3, 3), 
+            conv2 = nn.Conv2D(4, 6, (3, 3),
                 weight_attr=nn.initializer.XavierUniform(),
                 bias_attr=nn.initializer.Normal())
             y_var2 = conv2(x_var)
@@ -1206,13 +1208,13 @@ def _global_bias_initializer():
 
 def calculate_gain(nonlinearity, param=None):
     """
-    Get the recommended ``gain`` value of some nonlinearity function. ``gain`` value can be used in some 
+    Get the recommended ``gain`` value of some nonlinearity function. ``gain`` value can be used in some
     ``paddle.nn.initializer`` api to adjust the initialization value.
 
     Args:
-        nonlinearity(str): name of nonlinearity activation function. If it is a linear function, such as: 
+        nonlinearity(str): name of nonlinearity activation function. If it is a linear function, such as:
             `linear/conv1d/conv2d/conv3d/conv1d_transpose/conv2d_transpose/conv3d_transpose` , 1.0 will be returned.
-        param(bool|int|float, optional): optional parameter for somme nonlinearity function. Now, it only applies to 
+        param(bool|int|float, optional): optional parameter for somme nonlinearity function. Now, it only applies to
             'leaky_relu'. Default: None, it will be calculated as 0.01 in the formula.
 
     Returns:

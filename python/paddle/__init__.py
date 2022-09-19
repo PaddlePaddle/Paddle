@@ -38,6 +38,7 @@ from .framework import in_dynamic_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 
+from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
@@ -164,6 +165,7 @@ from .tensor.manipulation import shard_index  # noqa: F401
 from .tensor.manipulation import slice  # noqa: F401
 from .tensor.manipulation import crop  # noqa: F401
 from .tensor.manipulation import split  # noqa: F401
+from .tensor.manipulation import vsplit  # noqa: F401
 from .tensor.manipulation import squeeze  # noqa: F401
 from .tensor.manipulation import squeeze_  # noqa: F401
 from .tensor.manipulation import stack  # noqa: F401
@@ -386,6 +388,7 @@ if is_compiled_with_cinn():
 disable_static()
 
 __all__ = [  # noqa
+    'iinfo',
     'dtype',
     'uint8',
     'int8',
@@ -455,6 +458,7 @@ __all__ = [  # noqa
     'searchsorted',
     'bucketize',
     'split',
+    'vsplit',
     'logical_and',
     'full_like',
     'less_than',
