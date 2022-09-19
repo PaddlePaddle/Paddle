@@ -674,6 +674,7 @@ def fused_multi_transformer(x,
                             pre_layer_norm=True,
                             epsilon=1e-05,
                             cache_kvs=None,
+                            pre_caches=None,
                             time_step=None,
                             attn_mask=None,
                             dropout_rate=0.0,
@@ -826,12 +827,13 @@ def fused_multi_transformer(x,
     if _non_static_mode():
         cache_kv_out, final_out = _legacy_C_ops.fused_multi_transformer(
             x, ln_scales, ln_biases, qkv_weights, qkv_biases, cache_kvs,
-            time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
-            ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
-            cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
-            'dropout_rate', dropout_rate, 'is_test', not training,
-            'dropout_implementation', mode, 'act_method', activation,
-            'trans_qkvw', trans_qkvw, 'ring_id', ring_id)
+            pre_caches, time_step, attn_mask, linear_weights, linear_biases,
+            ffn_ln_scales, ffn_ln_biases, ffn1_weights, ffn1_biases,
+            ffn2_weights, ffn2_biases, cache_kvs, 'pre_layer_norm',
+            pre_layer_norm, 'epsilon', epsilon, 'dropout_rate', dropout_rate,
+            'is_test', not training, 'dropout_implementation', mode,
+            'act_method', activation, 'trans_qkvw', trans_qkvw, 'ring_id',
+            ring_id)
         if cache_kvs is not None:
             return final_out, cache_kv_out
         return final_out
@@ -857,6 +859,8 @@ def fused_multi_transformer(x,
             inputs['CacheKV'] = cache_kvs
             if time_step is not None:
                 inputs['TimeStep'] = time_step
+        if pre_caches is not None:
+            inputs['PreCaches'] = pre_caches
         inputs['SrcMask'] = attn_mask
         inputs['OutLinearW'] = linear_weights
         if linear_biases is not None:

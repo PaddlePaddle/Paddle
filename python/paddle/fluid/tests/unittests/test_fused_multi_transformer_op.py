@@ -114,6 +114,7 @@ class TestFusedMultiTransformerOp(OpTest):
         # True,         False,        generation decoder stage
         self.has_cache_kv = False
         self.gen_cache_kv = False
+        self.has_pre_cache = False
 
         self.training = False
 
@@ -121,6 +122,7 @@ class TestFusedMultiTransformerOp(OpTest):
         self.batch_size = 8
         self.query_length = 128
         self.cache_length = 128
+        self.pre_cache_num = 64
         self.head_dim = 64
         self.num_heads = 16
         self.embed_dim = self.head_dim * self.num_heads
@@ -149,6 +151,12 @@ class TestFusedMultiTransformerOp(OpTest):
                 out_seq_len += self.cache_length
         else:
             self.cache_kv = None
+
+        if self.has_pre_cache:
+            out_seq_len += self.pre_cache_num
+            self.pre_cache_kv = np.random.rand(
+                2, self.batch_size, self.num_heads, self.pre_cache_num,
+                self.head_dim).astype(self.x_type)
 
         if self.has_attn_mask:
             # [B, n_head, seq_len, out_seq_len]
@@ -188,6 +196,10 @@ class TestFusedMultiTransformerOp(OpTest):
         if self.has_cache_kv:
             cache_kv = paddle.to_tensor(self.cache_kv, stop_gradient=False)
 
+        if self.has_pre_cache:
+            pre_cache_kv = paddle.to_tensor(self.pre_cache_kv,
+                                            stop_gradient=False)
+
         if self.has_attn_mask:
             attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
         else:
@@ -226,6 +238,13 @@ class TestFusedMultiTransformerOp(OpTest):
                 else:
                     k_out = paddle.concat([cache_k, k_out], axis=-2)
                     v_out = paddle.concat([cache_v, v_out], axis=-2)
+
+            if self.has_pre_cache:
+                pre_cache_k, pre_cache_v = paddle.split(pre_cache_kv, 2)
+                pre_cache_k = paddle.squeeze(pre_cache_k, axis=0)
+                pre_cache_v = paddle.squeeze(pre_cache_v, axis=0)
+                k_out = paddle.concat([pre_cache_k, k_out], axis=-2)
+                v_out = paddle.concat([pre_cache_v, v_out], axis=-2)
 
             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
             # --> [B, n_head, seq_len, out_seq_len]
@@ -348,6 +367,7 @@ class TestFusedMultiTransformerOp(OpTest):
         x = paddle.to_tensor(self.query, stop_gradient=False)
         cache_kvs, cache_kv = None, None
         time_step = None
+        pre_caches, pre_cache = None, None
         if self.has_cache_kv:
             cache_kvs = []
 
@@ -387,6 +407,18 @@ class TestFusedMultiTransformerOp(OpTest):
                 time_step = paddle.to_tensor([self.cache_length],
                                              dtype='int32',
                                              place=paddle.CPUPlace())
+
+        if self.has_pre_cache:
+            cache_kvs = []
+            max_seq_length = (self.cache_length +
+                              128) // 128 * 128 + self.pre_cache_num
+            cache_kv = np.zeros([
+                2, self.batch_size, self.num_heads, max_seq_length,
+                self.head_dim
+            ],
+                                dtype=self.x_type)
+            pre_caches = []
+
         if self.has_attn_mask:
             attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
         else:
@@ -421,6 +453,12 @@ class TestFusedMultiTransformerOp(OpTest):
                 cache_kvs.append(paddle.to_tensor(cache_kv,
                                                   stop_gradient=False))
 
+            if self.has_pre_cache:
+                cache_kvs.append(paddle.to_tensor(cache_kv,
+                                                  stop_gradient=False))
+                pre_caches.append(
+                    paddle.to_tensor(self.pre_cache_kv, stop_gradient=False))
+
         final_out = fused_multi_transformer(x,
                                             ln_scales,
                                             ln_biases,
@@ -437,6 +475,7 @@ class TestFusedMultiTransformerOp(OpTest):
                                             pre_layer_norm=self.pre_layer_norm,
                                             epsilon=epsilon,
                                             cache_kvs=cache_kvs,
+                                            pre_caches=pre_caches,
                                             time_step=time_step,
                                             attn_mask=attn_mask,
                                             dropout_rate=self.dropout_prob,
@@ -444,6 +483,9 @@ class TestFusedMultiTransformerOp(OpTest):
 
         if self.has_cache_kv:
             return final_out[0], final_out[1]
+
+        if self.has_pre_cache:
+            return final_out[0]
 
         return final_out
 
@@ -601,6 +643,14 @@ class TestFusedMultiTransformerOpGenCacheKVPostLayerNormFp16(
         self.x_type = np.float16
         self.layers = 3  # odd layers
         self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpPreCache(TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.has_pre_cache = True
+        self.x_type = np.float16
 
 
 if __name__ == "__main__":
