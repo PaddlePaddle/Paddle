@@ -1173,7 +1173,8 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // Release gil and do tracing
       py::gil_scoped_release release;
       // use inplace set_value_ operator
-      if (self->tensor.dtype() != value_tensor.dtype()) {
+      if (value_tensor.initialized() &&
+          (self->tensor.dtype() != value_tensor.dtype())) {
         paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                              egr::kSlotSmallVectorSize>
             tmps = {{self->tensor}, {value_tensor}};
