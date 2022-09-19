@@ -1,101 +1,151 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include "paddle/phi/kernels/sparse/softmax_kernel.h"
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
-#include "paddle/fluid/platform/cpu_info.h"
+// #include "paddle/phi/core/ddim.cc"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/funcs/cpu_vec.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-
-namespace plt = paddle::platform;
+#include "paddle/phi/kernels/sparse/impl/unary_grad_kernel_impl.h"
+#include "paddle/phi/kernels/sparse/impl/unary_kernel_impl.h"
 
 namespace phi {
 namespace sparse {
 
+// template <typename T, typename Context>
+// void ReduceAnyCooKernel(const Context& dev_ctx,
+//                         const SparseCooTensor& x,
+//                         // const std::vector<int>& sparse_part_permutation,
+//                         const std::vector<int64_t>& new_shape,
+//                         SparseCooTensor* out) {
+
 template <typename T, typename Context>
-void SoftmaxCsrKernel(const Context& dev_ctx,
-                      const SparseCsrTensor& x,
-                      int axis,
-                      SparseCsrTensor* out) {
-  PADDLE_ENFORCE_EQ(axis,
-                    -1,
-                    phi::errors::Unimplemented(
-                        "SparseCsrTensor only support axis=-1 for softmax, "
-                        "which is faster when reading data by row (axis=-1)"));
-  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
-  auto x_dim = x.dims();
-  auto x_rank = x_dim.size();
-
-  int batch_size = 1;
-  int row_number = 1;
-  for (int i = 0; i < x_rank - 1; ++i) {
-    if (i < x_rank - 2) {
-      batch_size *= x_dim[i];
-    } else if (i == x_rank - 2) {
-      row_number = x_dim[i];
-    }
+void ReduceAnyCooKernel(const Context& dev_ctx,
+                  const SparseCooTensor& x,
+                  const std::vector<int>& axes,
+                  bool keepdims,
+                  SparseCooTensor* out) {
+   /*
+   目前只能针对 sparse part dims 部分进行reshape
+   */                       
+  // create "out" sparse tensor
+  int64_t x_nnz = x.nnz();
+  // DDim out_dims = x.dims().transpose(perm);
+  DDim out_dims = phi::make_ddim(new_shape);
+  ///////  get sparse part dimensions of x and out
+  std::vector<int64_t> x_sparse_part_dims;
+  std::vector<int64_t> out_sparse_part_dims;
+  for (int i = 0; i < x.sparse_dim(); ++i) {
+    x_sparse_part_dims.push_back(x.dims()[i]);
   }
+  for (int i = 0; i < out_dims.size() - x.dense_dim(); ++i) {
+    out_sparse_part_dims.push_back(out_dims[i]);
+  }
+  // std::vector<int64_t> out_dims(out_sparse_part_dims);
+  // for (int i = x.sparse_dim(); i < x.dims().size(); ++i) {
+  //   out_dims.push_back(x.dims()[i]);
+  // }
+  ////////
+  // DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
+  DenseTensor out_indices = Empty<int64_t, Context>(dev_ctx, 
+        {static_cast<int64_t>(out_sparse_part_dims.size()), x_nnz}
+  );
+  DenseTensor out_values(x.values());
+  out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
-  const DenseTensor& x_crows = x.non_zero_crows();
-  const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_values = out->mutable_non_zero_elements();
+  // compute values of indices
+  const DenseTensor& x_indices = x.indices();
+  const auto* x_indices_data = x_indices.data<int64_t>();
+  auto* out_indices_data = out_indices.data<int64_t>();
+//   //i 表示 indices 的 行标
+//   for (unsigned int i = 0; i < perm.size(); ++i) {
+//     // j 表示 indices 的 列标
+//     for (int64_t j = 0; j < x_nnz; ++j) {
+//         // 修改 out indices 的索引为 (i, j)的元素值
+//     /* Caution : 这是原来的计算逻辑，我认为是 错误的，
+//         这里计算逻辑是： 原tensor的shape是  (10, 20, 30, 40, 50)
+//         一个非零元素的索引为 (1, 2, 3, 4, 5)
+//         进行transpose 后, tensor的shape 是 (30, 10, 50, 20, 40)
+//         这里的计算逻辑就认为该非零元素的新索引就是 (3, 1, 5, 2, 4)
+//       没错，这就是transpose的计算逻辑，transpose后元素在内存中的位置改变了
+//     你更改的逻辑其实是 reshape的计算逻辑，reshape后所有元素在内存中的位置均不变
+//     */
+//      out_indices_data[j + i * x_nnz] = x_indices_data[j + perm[i] * x_nnz];
+//     }
+//   }
 
-  int row_nnz = 0;
-  T row_max_val = 0;
-  const T* x_data = x_values.data<T>();
-  T* out_data = out_values->data<T>();
+    // 我的更改后的计算逻辑如下：
+    const phi::DDim& x_sparse_part_strides = phi::stride(phi::make_ddim(x_sparse_part_dims));
+    const phi::DDim& out_sparse_part_strides = phi::stride(phi::make_ddim(out_sparse_part_dims));
+    int64_t location = 0;
 
-  // out = exp(x-x_max) / sum( exp(x-x_max ))
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_crows().dtype(), "CsrSoftmaxKernel", ([&] {
-        const data_t* x_crows_data = x_crows.data<data_t>();
-        for (int i = 0; i < batch_size; ++i) {
-          for (int j = 0; j < row_number; ++j) {
-            int crow_idx = i * (row_number + 1) + j;
-            row_nnz = static_cast<int>(x_crows_data[crow_idx + 1] -
-                                       x_crows_data[crow_idx]);
-
-            row_max_val = *std::max_element(x_data, x_data + row_nnz);
-            phi::funcs::vec_add_bias<T, plt::avx>(
-                row_nnz, static_cast<T>(-1) * row_max_val, x_data, out_data);
-
-            phi::funcs::vec_exp<T>(row_nnz, out_data, out_data);
-
-            T sum = 0;
-            phi::funcs::vec_sum<T, plt::avx>(row_nnz, out_data, &sum);
-            phi::funcs::vec_scal<T, plt::avx>(
-                row_nnz, static_cast<T>(1) / sum, out_data, out_data);
-
-            x_data = x_data + row_nnz;
-            out_data = out_data + row_nnz;
-          }
+    for (int64_t j = 0; j < x_nnz; ++j) {
+        location = 0;
+        for (int i = 0; i < x.sparse_dim(); ++i) {
+            location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
         }
-      }));
+        for (size_t i = 0; i < out_sparse_part_dims.size(); ++i) {
+            out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
+            location %= out_sparse_part_strides[i];
+        }
+    }
+
+}
+
+
+template <typename T, typename Context>
+void ReshapeCsrKernel(const Context& dev_ctx,
+                        const SparseCsrTensor& x,
+                        const std::vector<int64_t>& new_shape,
+                        SparseCsrTensor* out) {
+ /*将csr格式转化为coo格式后处理*/
+const SparseCooTensor x_coo = CsrToCoo<T, Context>(dev_ctx, x);
+SparseCooTensor out_coo;
+ReshapeCooKernel<T, Context>(dev_ctx, x_coo, new_shape, &out_coo);
+CooToCsrKernel<T, Context>(dev_ctx, out_coo, out);     
+
 }
 
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(softmax_csr,
+PD_REGISTER_KERNEL(reshape_coo,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::SoftmaxCsrKernel,
+                   phi::sparse::ReshapeCooKernel,
                    float,
-                   double) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
-}
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool) {}
+
+PD_REGISTER_KERNEL(reshape_csr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ReshapeCsrKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool) {}
