@@ -653,6 +653,22 @@ def _get_base_name_from_grad_name(grad_name):
     return base_name
 
 
+def _is_param_grad_sum_op(op, block):
+
+    if not is_backward_op(op):
+        return False
+    if op.type != "sum":
+        return False
+
+    output_name = op.output_arg_names[0]
+    base_name = _get_base_name_from_grad_name(output_name)
+
+    if not block.has_var(base_name):
+        return False
+
+    return block.var(base_name).is_parameter
+
+
 def _is_forward_op(op):
     return op.attr("op_role") == 0
 
