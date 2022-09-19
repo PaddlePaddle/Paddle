@@ -57,15 +57,10 @@ void FullKernel(const Context& dev_ctx,
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   T fill_value = val.to<T>();
+  out->Resize(make_ddim(shape.GetData()));
+
   funcs::FillConstantOneDNNHandler<T> handler(
       out, onednn_engine, dev_ctx.GetPlace());
-
-  auto out_dims_vec = vectorize(out->dims());
-  if (std::any_of(out_dims_vec.begin(), out_dims_vec.end(), [](int64_t i) {
-        return i < 0;
-      })) {
-    out->Resize(make_ddim(shape.GetData()));
-  }
 
   dnnl::memory constant_value_memory =
       dnnl::memory(funcs::FillConstantOneDNNHandler<T>::src1_md,
