@@ -23,7 +23,7 @@ import paddle.nn.functional as F
 import paddle.utils as utils
 from paddle.fluid import layers
 from paddle.distributed import fleet
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 import paddle.fluid.core as core
 
