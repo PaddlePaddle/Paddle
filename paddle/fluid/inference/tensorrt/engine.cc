@@ -393,10 +393,10 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
   auto *var_v = scope.FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
       var_v,
-      platform::errors::NotFound(
-          "You are convert a persistable weight to a tensor, but there is no "
-          "persistable variable called %s in scope.",
-          name));
+      platform::errors::NotFound("You are converting a persistable weight to a "
+                                 "tensor, but there is no "
+                                 "persistable variable called %s in scope.",
+                                 name));
   auto *var_t = var_v->GetMutable<framework::LoDTensor>();
   auto weight = this->GetTrtWeight(name, *var_t);
 
