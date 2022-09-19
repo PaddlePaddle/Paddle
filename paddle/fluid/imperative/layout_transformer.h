@@ -19,8 +19,24 @@
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/tensor_utils.h"
 namespace paddle {
 namespace imperative {
+template <typename VarType>
+void SetOutDataLayout(std::shared_ptr<VarType> var,
+                      const paddle::experimental::DataLayout layout) {
+  if (var != nullptr) {
+    paddle::imperative::SetDataLayout(var, layout);
+    // set out_tensor's layout
+    if (var->MutableVar()->IsInitialized()) {
+      paddle::framework::Variable* tmp_var = var->MutableVar();
+      auto* out = tmp_var->GetMutable<framework::LoDTensor>();
+      phi::DenseTensorUtils::GetMutableMeta(
+          static_cast<framework::LoDTensor*>(out))
+          ->layout = layout;
+    }
+  }
+}
 
 template <typename VarType>
 std::shared_ptr<VarType> TraceTransposeOp(
@@ -118,7 +134,7 @@ class LayoutTransformer {
           auto out_vars = outs.at(name);
           for (auto& var : out_vars) {
             if (var != nullptr) {
-              paddle::imperative::SetDataLayout(var, layout);
+              paddle::imperative::SetOutDataLayout(var, layout);
             }
           }
           not_in_out = false;
@@ -130,7 +146,7 @@ class LayoutTransformer {
       for (auto& pair : outs) {
         for (auto& var : pair.second) {
           if (var != nullptr) {
-            paddle::imperative::SetDataLayout(var, layout);
+            paddle::imperative::SetOutDataLayout(var, layout);
           }
         }
       }
