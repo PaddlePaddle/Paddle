@@ -2503,19 +2503,14 @@ All parameter, weight, gradient are variables in Paddle.
     return res;
   });
 
-  m.def("enable_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance()
-        .EnableLayoutAutoTune();
-  });
+  m.def("enable_layout_autotune",
+        [] { return egr::Controller::Instance().EnableLayoutAutoTune(); });
 
-  m.def("disable_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance()
-        .DisableLayoutAutoTune();
-  });
+  m.def("disable_layout_autotune",
+        [] { return egr::Controller::Instance().DisableLayoutAutoTune(); });
 
-  m.def("use_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune();
-  });
+  m.def("use_layout_autotune",
+        [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
 
   BindFleetWrapper(&m);
   BindIO(&m);
