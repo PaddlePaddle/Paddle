@@ -101,6 +101,12 @@ RUN curl -s -q https://glide.sh/get | sh
 # Downgrade TensorRT 
 COPY tools/dockerfile/build_scripts /build_scripts
 RUN bash /build_scripts/install_nccl2.sh
+
+# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
+# # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
+# # So install a newer version here.
+RUN bash /build_scripts/install_patchelf.sh
+
 RUN rm -rf /build_scripts
 
 # git credential to skip password typing
@@ -142,13 +148,6 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
 
 RUN apt-get install libprotobuf-dev -y
-
-# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
-# https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
-# So install a newer version here.
-RUN wget -q https://paddle-ci.cdn.bcebos.com/patchelf_0.10-2_amd64.deb && \
-    dpkg -i patchelf_0.10-2_amd64.deb && \
-    rm -rf patchelf_0.10-2_amd64.deb
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
