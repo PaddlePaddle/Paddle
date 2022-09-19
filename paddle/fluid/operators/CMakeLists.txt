@@ -254,3 +254,7 @@ cc_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc DEPS op_registry cop
 endif()
 
 copy_if_different(${pybind_file} ${pybind_file_final})
+
+if (WITH_CUSTOM_DEVICE)
+cc_library(custom_device_common_op_registry SRCS custom_device_common_op_registry.cc DEPS operator)
+endif()

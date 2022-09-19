@@ -71,14 +71,14 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
 
   if (flags & kHasScale) {
 #if CUDA_VERSION >= 11070
-    platform::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+    paddle::platform::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
 #else
     CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
 #endif
   }
   if (flags & kHasBias) {
 #if CUDA_VERSION >= 11070
-    platform::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+    paddle::platform::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
 #else
     CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
 #endif

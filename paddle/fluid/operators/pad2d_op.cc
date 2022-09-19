@@ -775,7 +775,7 @@ class Pad2dOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("NCHW");
     AddComment(R"DOC(
 Pad2d Operator.
-Pad 2-d images according to 'paddings' and 'mode'. 
+Pad 2-d images according to 'paddings' and 'mode'.
 If mode is 'reflect', paddings[0] and paddings[1] must be no greater
 than height-1. And the width dimension has the same condition.
 

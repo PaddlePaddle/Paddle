@@ -46,7 +46,7 @@ namespace operators {
 namespace reader {
 
 class BufferedReader : public framework::DecoratedReader {
-  using TensorVec = std::vector<framework::LoDTensor>;
+  using TensorVec = paddle::framework::LoDTensorArray;
   using VecFuture = std::future<TensorVec>;
 
  public:
@@ -65,7 +65,7 @@ class BufferedReader : public framework::DecoratedReader {
  protected:
   void ShutdownImpl() override;
   void StartImpl() override;
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
+  void ReadNextImpl(paddle::framework::LoDTensorArray* out) override;
 
  private:
   ThreadPool thread_pool_;

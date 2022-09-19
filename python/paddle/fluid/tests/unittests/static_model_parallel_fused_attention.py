@@ -36,7 +36,7 @@ def get_param_attr(weight, bias):
 DTYPE = "float32"
 MODEL_PARALLEL_SIZE = 2
 n_head = 2 * MODEL_PARALLEL_SIZE
-d_key = 4
+d_key = 2
 hidden = n_head * d_key
 
 

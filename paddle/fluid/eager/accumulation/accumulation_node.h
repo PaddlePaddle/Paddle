@@ -24,7 +24,7 @@ class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
   explicit GradNodeAccumulation(AutogradMeta* meta) : GradNodeBase(1, 1) {
-    VLOG(6) << "Construct GradNodeAccumulation";
+    VLOG(5) << "Construct GradNodeAccumulation";
     if (meta) {
       weak_grad_ = meta->WeakGrad();
     }
@@ -33,7 +33,7 @@ class GradNodeAccumulation : public GradNodeBase {
   }
 
   ~GradNodeAccumulation() override {
-    VLOG(6) << "Destruct GradNodeAccumulation";
+    VLOG(5) << "Destruct GradNodeAccumulation";
   }
 
   // Functor: perform backward computations
@@ -44,7 +44,7 @@ class GradNodeAccumulation : public GradNodeBase {
              bool create_graph = false,
              bool is_new_grad = false) override;
 
-  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  void ClearTensorWrappers() override { VLOG(5) << "Do nothing here now"; }
 
   std::string name() { return "GradNodeAccumulation"; }
 

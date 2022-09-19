@@ -388,11 +388,7 @@ PADDLE_DEFINE_EXPORTED_int32(
  *       enable garbage collection strategy when training large networks.
  */
 // Disable gc by default when inference library is built
-#ifdef PADDLE_ON_INFERENCE
-static const double kDefaultEagerDeleteTensorGB = -1;
-#else
 static const double kDefaultEagerDeleteTensorGB = 0;
-#endif
 
 PADDLE_DEFINE_EXPORTED_double(
     eager_delete_tensor_gb,
@@ -663,7 +659,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
  * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
  * message summary will be shown.
  */
-#ifdef PADDLE_ON_INFERENCE
+#ifdef PADDLE_NO_PYTHON
 static const int32_t kDefaultCallStackLevel = 2;
 #else
 static const int32_t kDefaultCallStackLevel = 1;
@@ -1019,6 +1015,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Note:
  * FLAGS_jit_engine_type == Executor, using ExecutorEngine by default
  * FLAGS_jit_engine_type == PE, using PEEngine by default
+ * FLAGS_jit_engine_type == New, using InterpreterEngine by default
  */
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "PE",
