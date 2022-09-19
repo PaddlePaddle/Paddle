@@ -404,11 +404,7 @@
   forward : concat_grad (Tensor[] x, Tensor grad_out, Scalar axis) -> Tensor[](grad_x)
   args : (Tensor[] grad_x_grad, Scalar axis = 0)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : ConcatInferMeta
-    param : [grad_x_grad, axis]
-  kernel :
-    func : concat
+  invoke : concat(grad_x_grad, axis)
 
 - backward_op : concat_grad
   forward : concat (Tensor[] x, Scalar axis) -> Tensor(out)
@@ -771,10 +767,7 @@
   forward : expand_grad (Tensor x, Tensor grad_out, IntArray shape) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray shape)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : ExpandInferMeta
-  kernel :
-    func : expand
+  invoke : expand(grad_x_grad, shape)
 
 - backward_op : expand_grad
   forward : expand (Tensor x, IntArray shape) -> Tensor(out)
@@ -2145,11 +2138,7 @@
   forward : slice_grad (Tensor input, Tensor grad_out, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(grad_input)
   args : (Tensor grad_input_grad, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [grad_input_grad]
-  kernel :
-    func : slice
+  invoke : slice(grad_input_grad, axes, starts, ends, infer_flags, decrease_axis)
 
 - backward_op : slice_grad
   forward : slice (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(out)
@@ -2507,10 +2496,7 @@
   forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray repeat_times)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : TileInferMeta
-  kernel :
-    func : tile
+  invoke : tile(grad_x_grad, repeat_times)
 
 - backward_op : tile_grad
   forward : tile (Tensor x, IntArray repeat_times) -> Tensor(out)
