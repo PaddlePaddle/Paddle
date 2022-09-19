@@ -13,13 +13,10 @@
 # limitations under the License.
 
 import math
-import warnings
 import paddle
 import numbers
-import scipy
 
 import numpy as np
-from paddle.distribution import distribution
 from paddle.distribution.uniform import Uniform
 from paddle.distribution.transformed_distribution import TransformedDistribution
 from paddle.distribution.transform import AffineTransform, ExpTransform
@@ -67,7 +64,7 @@ class Gumbel(TransformedDistribution):
                 f"Expected type of scale is Real|Variable, but got {type(scale)}"
             )
         self.loc, self.scale = paddle.broadcast_tensors([loc, scale])
-        finfo = np.finfo(self.loc.dtype)
+        finfo = np.finfo(type(self.loc))
         if isinstance(loc, numbers.Number) and isinstance(scale, numbers.Number):
             base_dist = Uniform(finfo.tiny, 1 - finfo.eps)
         else:
@@ -117,7 +114,7 @@ class Gumbel(TransformedDistribution):
             Tensor: The variance value.
 
         """
-        return self.scale.pow(2) * math.pi.pow(2) / 6
+        return math.pow(self.scale, 2) * math.pow(math.pi, 2) / 6
 
     @property
     def stddev(self):
@@ -127,7 +124,7 @@ class Gumbel(TransformedDistribution):
 
         .. math::
 
-            stddev = \sqrt(\sigma^2 * \pi^2 / 6)
+            stddev = \sqrt{\sigma^2 * \pi^2 / 6}
 
         In the above equation:
 
@@ -146,7 +143,7 @@ class Gumbel(TransformedDistribution):
 
         .. math::
 
-            prob(value) = e^({y} - e^{y}) / \sigma
+            prob(value) = e^{({y} - e^{y})} / \sigma
 
         .. math::
 
@@ -186,7 +183,7 @@ class Gumbel(TransformedDistribution):
 
         .. math::
 
-            entropy(\sigma) = \\log(\sigma) + 1 + γ
+            entropy(\sigma) = \\ln(\sigma) + 1 + γ
 
         In the above equation:
 
