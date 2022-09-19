@@ -114,7 +114,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
 
             $$\sigma{\mathbf{W}} = \mathbf{u}^{T} \mathbf{W} \mathbf{v}$$
 
-          For details of spectral normalization, please refer to paper: 
+          For details of spectral normalization, please refer to paper:
           `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
          )DOC");
   }

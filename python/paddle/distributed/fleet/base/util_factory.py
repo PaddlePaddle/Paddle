@@ -286,7 +286,7 @@ class UtilBase(object):
 
     def print_on_rank(self, message, rank_id):
         """
-        Woker of rank `rank_id` print some message. 
+        Woker of rank `rank_id` print some message.
 
         Args:
             message(str): Log to be printed.

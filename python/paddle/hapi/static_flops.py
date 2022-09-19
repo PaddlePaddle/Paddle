@@ -79,7 +79,7 @@ class GraphWrapper(object):
     for paddle slim framework.
 
     Args:
-        program(framework.Program): A program with 
+        program(framework.Program): A program with
         in_nodes(dict): A dict to indicate the input nodes of the graph.
                         The key is user-defined and human-readable name.
                         The value is the name of Variable.

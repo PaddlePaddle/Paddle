@@ -961,7 +961,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         2. prune cast_fp32_to_fp16; update amp_infine_checking
         3. prune gradient_clip related; update global_norm_sum
         4. prune optimizer op + param + gradient
-            
+
         """
         weightdecay_helper = WeightDecayHelper()
         weightdecay_helper.prune_weight_decay(block, shard)
@@ -1066,7 +1066,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         add broadcast allreduce op
         if enable gradient_merge, insert related ops
 
-        if combined with pipeline(grad accumulate), 
+        if combined with pipeline(grad accumulate),
         the grad allreduce should be done in optimize role
         """
         if len(self._segments) < 1:
@@ -1302,7 +1302,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             pp: 4
             pp-pair: >= 20
         if one parallelism is not enable: -1
-        and only support parallelism hierarchy: mp --> sharding --> pp --> dp        
+        and only support parallelism hierarchy: mp --> sharding --> pp --> dp
         """
         # step 1: initialize nccl
         self.global_word_size = self.role_maker._worker_num()
@@ -1688,7 +1688,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         grad@gradientmerge / acc_step
         re-create all optimize ops of origin main block and rename them
             cast(backward)
-            amp 
+            amp
             clip
             opt
         # fill constant grad@gradientmerge

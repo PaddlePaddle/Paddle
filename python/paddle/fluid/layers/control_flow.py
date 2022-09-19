@@ -42,7 +42,7 @@ __all__ = [
 
 def select_output(input, outputs, mask):
     """
-    **select_output**    
+    **select_output**
     This API takes in one input and multiple outputs and an integer mask. It
     selects the output specified by the mask and copy the input to selected
     output. It is useful in control flow.
@@ -92,7 +92,7 @@ def _select_input_infer_shape(first_shape, second_shape):
 def select_input(inputs, mask):
     """
     **select_input**
-    
+
     This API takes in multiple inputs and uses an integer mask to select one
     input to output. It is useful in control flow.
 
@@ -334,7 +334,7 @@ def Print(input,
         print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
         print_phase (str): Which phase to displace, including 'forward',
-                'backward' and 'both'. Default: 'both'. If set to 'backward', will 
+                'backward' and 'both'. Default: 'both'. If set to 'backward', will
                 only print the gradients of input tensor; If set to 'both', will
                 both print the input tensor itself and the gradients of input tensor.
 
@@ -348,11 +348,11 @@ def Print(input,
 
     Examples:
         .. code-block:: python
-           
+
            import paddle
 
            paddle.enable_static()
-        
+
            x = paddle.full(shape=[2, 3], fill_value=3, dtype='int64')
            out = paddle.static.Print(x, message="The content of input layer:")
 
@@ -576,7 +576,7 @@ class StaticRNN(object):
                 hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
                 # use hidden to update prev
                 rnn.update_memory(prev, hidden)
-                # mark hidden as output 
+                # mark hidden as output
                 rnn.step_output(hidden)
             # get StaticrNN final output
             result = rnn()
@@ -1077,7 +1077,7 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
 class While(object):
     """
     :api_attr: Static Graph
-    
+
     while loop control flow. Repeat while body until cond is False.
 
     Note:
@@ -1097,7 +1097,7 @@ class While(object):
 
     Examples 1:
           .. code-block:: python
-            
+
             import paddle.fluid as fluid
             import numpy as np
 
@@ -1285,7 +1285,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 i = paddle.full(shape=[1], fill_value=0, dtype='int64')     # loop counter
                 ten = paddle.full(shape=[1], fill_value=10, dtype='int64')  # loop length
                 i, ten = paddle.static.nn.while_loop(cond, body, [i, ten])
-                
+
                 exe = paddle.static.Executor(paddle.CPUPlace())
                 res = exe.run(main_program, feed={}, fetch_list=[i])
                 print(res) # [array([10])]
@@ -1365,7 +1365,7 @@ def _deal_with_undefined_var(output_vars, loop_vars):
                       (Variable, ) + support_ret_buildin_type) or o_var is None:
             return create_undefined_variable()
         if is_sequence(o_var):
-            """ 
+            """
             Create a complex container class inside the body of while, including Python list and python Dict
             """
             return map_structure(lambda x: create_undefined_variable(), o_var)
@@ -1618,8 +1618,8 @@ def array_write(x, i, array=None):
             Tensor or LoDTensor. Data type: float32, float64, int32, int64.
         i (Variable): 1-D Tensor with shape [1], which represents the position into which
             ``x`` is written. Data type: int64.
-        array (LoDTensorArray, optional): The LoDTensorArray into which ``x`` is written. 
-            The default value is None, when a new LoDTensorArray will be created and returned 
+        array (LoDTensorArray, optional): The LoDTensorArray into which ``x`` is written.
+            The default value is None, when a new LoDTensorArray will be created and returned
             as a result.
 
     Returns:
@@ -1651,8 +1651,8 @@ def array_write(x, i, array=None):
 
             # the output is 2-D Tensor with shape [3,2], which is tmp above.
             # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t, 
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
+            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
+            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
 
     """
@@ -1707,7 +1707,7 @@ def array_write(x, i, array=None):
 def create_array(dtype, initialized_list=None):
     """
     This OP creates an LOD_TENSOR_ARRAY. It is used as
-    the input of :ref:`api_fluid_layers_array_read` and 
+    the input of :ref:`api_fluid_layers_array_read` and
     :ref:`api_fluid_layers_array_write`. Also it can be used
     with  :ref:`api_fluid_layers_While` to create RNN network.
 
@@ -1824,7 +1824,7 @@ def less_equal(x, y, cond=None, name=None):
     This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *less_equal*.
             if cond is None, a new Varibale will be created to store the result.
@@ -1879,7 +1879,7 @@ def greater_than(x, y, cond=None, name=None):
     This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_than*.
             if cond is None, a new Varibale will be created to store the result.
@@ -1936,7 +1936,7 @@ def greater_equal(x, y, cond=None, name=None):
     This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_equal*.
             if cond is None, a new Varibale will be created to store the result.
@@ -1989,7 +1989,7 @@ def equal(x, y, cond=None, name=None):
     Args:
         x(Variable): Tensor, data type is float32, float64, int32, int64.
         y(Variable): Tensor, data type is float32, float64, int32, int64.
-        cond(Variable, optional): Optional output which can be any created 
+        cond(Variable, optional): Optional output which can be any created
             Variable that meets the requirements to store the result of *equal*.
             if cond is None, a new Varibale will be created to store the result.
         name(str, optional): The default value is None.  Normally there is no need for
@@ -2045,7 +2045,7 @@ def not_equal(x, y, cond=None, name=None):
     This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *not_equal*.
             if cond is None, a new Varibale will be created to store the result.
@@ -2059,7 +2059,7 @@ def not_equal(x, y, cond=None, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          
+
           label = fluid.layers.data(name='label', shape=[1], dtype='int64')
           limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.not_equal(x=label, y=limit)
@@ -2087,9 +2087,9 @@ def not_equal(x, y, cond=None, name=None):
 
 def array_read(array, i):
     """
-    This OP is used to read data at the specified position from the input array 
+    This OP is used to read data at the specified position from the input array
     :ref:`api_fluid_LoDTensorArray` . ``array`` is the input array and ``i``
-    is the specified read position. This OP is often used together with 
+    is the specified read position. This OP is often used together with
     :ref:`api_fluid_layers_array_write` OP.
 
     Case 1:
@@ -2142,8 +2142,8 @@ def array_read(array, i):
 
             # the output is 2-D Tensor with shape [3,2].
             # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t, 
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
+            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
+            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
     if _non_static_mode():
@@ -2219,7 +2219,7 @@ def shrink_memory(x, i, table):
 def array_length(array):
     """
     This OP is used to get the length of the input array :ref:`api_fluid_LoDTensorArray` .
-    It can be used together with :ref:`api_fluid_layers_array_read` , :ref:`api_fluid_layers_array_write` , 
+    It can be used together with :ref:`api_fluid_layers_array_read` , :ref:`api_fluid_layers_array_write` ,
     :ref:`api_fluid_layers_While` OP to traverse, read and write LoDTensorArray.
 
     Args:
@@ -2253,12 +2253,12 @@ def array_length(array):
             #    shape: [1,]
             #    dtype: l
             #    data: 11,
-            
+
             # 1-D Tensor with shape [1], whose value is 11. It means that the length of LoDTensorArray
             # is 11.
             # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t, 
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
+            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
+            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
@@ -2500,8 +2500,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     or both return ``None`` if user doens't like to return anything. A nest
     structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
     list of tensors.
-    
-    Note: 
+
+    Note:
         1. The tuples or lists returned by ``true_fn`` and ``false_fn`` must have
         the same shape because of dataflow model of PaddlePaddle while the
         tensors in the tuples or the lists can have different shapes.
@@ -2509,7 +2509,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         2. This API could be used under both static mode or dygraph mode. If it
         is in dygraph mode, the API only runs one branch based on condition.
 
-        3. If it is in static mode, any tensors or operations created outside 
+        3. If it is in static mode, any tensors or operations created outside
         or inside of ``true_fn`` and ``false_fn`` will be in net building
         regardless of which branch is selected at runtime. This has frequently
         surprised users who expected a lazy semantics. For example:
@@ -2538,9 +2538,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         name(str, optional): The default value is ``None`` . Normally users
              don't have to set this parameter. For more information, please
              refer to :ref:`api_guide_Name` .
-        return_names(sequence of string, optional): The default value is ``None`` . 
-             Normally users don't have to set this parameters.  A sequence of strings 
-             to represents the name of returned vars.  The structure of sequence must 
+        return_names(sequence of string, optional): The default value is ``None`` .
+             Normally users don't have to set this parameters.  A sequence of strings
+             to represents the name of returned vars.  The structure of sequence must
              be same with return values of true_fn and false_fn.
 
     Returns:
@@ -2586,7 +2586,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             # ret is a tuple containing 2 tensors
             # ret[0] = [[1 1]]
             # ret[1] = [[ True  True  True]
-            #           [ True  True  True]]            
+            #           [ True  True  True]]
 
     """
     if _non_static_mode():
@@ -2655,7 +2655,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     if return_names is None:
         return_names = ["no name"] * len(to_sequence(true_output))
     else:
-        """ 
+        """
         dy2static will set the return_names and expand the return values to UndefinedVar.
         """
         true_output, false_output = expand_undefined_var(
@@ -2862,11 +2862,11 @@ class Switch(object):
     """
     :api_attr: Static Graph
 
-    This class is used to implement Switch branch control function. 
-    Switch branch contains several case branches and one default branch. 
-    Switch control flow checks whether the case branch conditions are satisfied in turn, 
-    and only executes the statement after the first case branch that satisfies the conditions. 
-    If there is no case branch that satisfies the condition, 
+    This class is used to implement Switch branch control function.
+    Switch branch contains several case branches and one default branch.
+    Switch control flow checks whether the case branch conditions are satisfied in turn,
+    and only executes the statement after the first case branch that satisfies the conditions.
+    If there is no case branch that satisfies the condition,
     only the statement following the default branch is executed.
 
     Note:
@@ -2875,7 +2875,7 @@ class Switch(object):
 
     Member Functions:
         case(condition): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
-        
+
         default(): The default branch of Switch. When cond of all case branches is False, the statement after default branch is executed.
 
     Case and default functions can only be used inside the scope of Switch, as shown below:
@@ -2897,7 +2897,7 @@ class Switch(object):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
 
             lr = fluid.layers.create_global_var(
@@ -3031,7 +3031,7 @@ class IfElse(object):
     IfElse OP is different from other OPs in usage, which may cause some users confusion. Here is a simple example to illustrate this OP.
 
     .. code-block:: python
-        
+
         # The following code completes the function: subtract 10 from the data greater than 0 in x, add 10 to the data less than 0 in x, and sum all the data.
         import numpy as np
         import paddle.fluid as fluid
@@ -3041,7 +3041,7 @@ class IfElse(object):
 
         x_d = np.array([[3], [1], [-2], [-3]]).astype(np.float32)
         y_d = np.zeros((4, 1)).astype(np.float32)
-        
+
         # Compare the size of x, y pairs of elements, output cond, cond is shape [4, 1], data type bool 2-D tensor.
         # Based on the input data x_d, y_d, it can be inferred that the data in cond are [[true], [true], [false], [false]].
         cond = fluid.layers.greater_than(x, y)
@@ -3060,7 +3060,7 @@ class IfElse(object):
             ie.output(out_1)
 
         # According to cond condition, the data processed in the two blocks are merged. The output here is output, the type is List, and the element type in List is Variable.
-        output = ie() #  [array([[-7.], [-9.], [ 8.], [ 7.]], dtype=float32)] 
+        output = ie() #  [array([[-7.], [-9.], [ 8.], [ 7.]], dtype=float32)]
 
         # Get the first Variable in the output List and add all elements.
         out = fluid.layers.reduce_sum(output[0])
@@ -3070,7 +3070,7 @@ class IfElse(object):
 
         res = exe.run(fluid.default_main_program(), feed={"x":x_d, "y":y_d}, fetch_list=[out])
         print(res)
-        # [array([-1.], dtype=float32)] 
+        # [array([-1.], dtype=float32)]
 
     Args:
         cond (Variable): cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the corresponding execution conditions of N input data. The data type is bool.
@@ -3081,7 +3081,7 @@ class IfElse(object):
 
     Internal Functions:
         The block is constructed by calling the ``with ie. true_block()`` function in the object, and the computational logic under condition true is put into the block. If no corresponding block is constructed, the input data in the corresponding conditional dimension is unchanged.
- 
+
         The block is constructed by calling the ``with ie. false_block()`` function in the object, and the computational logic under condition false is put into the block. If no corresponding block is constructed, the input data in the corresponding conditional dimension is unchanged.
 
         ``Out = ie. input (x)`` will take out the data of the corresponding conditional dimension in X and put it into out, supporting the internal processing of multiple inputs in block.
@@ -3785,7 +3785,7 @@ class DynamicRNN(object):
 
         Returns:
             None
-        
+
         Raises:
             ValueError: When :code:`update_memory()` is called outside :code:`block()` .
             TypeError: When :code:`ex_mem` or :code:`new_mem` is not a Variable.
@@ -4014,7 +4014,7 @@ def reorder_lod_tensor_by_rank(x, rank_table):
     Args:
         x(${x_type}): ${x_comment}.
         rank_table(${rank_table_type}): ${rank_table_comment}.
-    
+
     Returns:
         out(${out_type}): ${out_comment}.
 
