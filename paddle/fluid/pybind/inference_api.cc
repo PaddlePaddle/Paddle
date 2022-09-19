@@ -35,7 +35,10 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/cuda_stream.h"
+#endif
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
