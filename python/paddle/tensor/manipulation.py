@@ -2106,7 +2106,8 @@ def unique_consecutive(x,
     r"""
     Eliminates all but the first element from every consecutive group of equivalent elements.
 
-    Note: This function is different from :func:`paddle.unique` in the sense that this function
+    Note:
+        This function is different from :func:`paddle.unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
 
     Args:
