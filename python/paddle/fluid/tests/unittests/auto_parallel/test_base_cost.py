@@ -24,7 +24,7 @@ import paddle.nn as nn
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
@@ -45,9 +45,10 @@ from test_cluster import cluster_json
 
 paddle.enable_static()
 _global_parallel_strategy = "dp_mp_pp"
-_global_process_mesh = auto.ProcessMesh([[[0, 1], [4, 5]], [[2, 3], [6, 7]]])
-PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]])
-PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]])
+_global_process_mesh = auto.ProcessMesh([[[0, 1], [4, 5]], [[2, 3], [6, 7]]],
+                                        dim_names=["x", "y", "z"])
+PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]], dim_names=["x", "y"])
+PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]], dim_names=["x", "y"])
 
 
 class MLPLayer(nn.Layer):
@@ -74,16 +75,8 @@ class MLPLayer(nn.Layer):
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
-        auto.shard_tensor(self.linear0.weight,
-                          dist_attr={
-                              "process_mesh": PP_MESH_0,
-                              "dims_mapping": [-1, 1]
-                          })
-        auto.shard_tensor(self.linear1.weight,
-                          dist_attr={
-                              "process_mesh": PP_MESH_1,
-                              "dims_mapping": [1, -1]
-                          })
+        auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, "y"])
+        auto.shard_tensor(self.linear1.weight, PP_MESH_1, ["y", None])
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -111,16 +104,8 @@ def mlp_forward(train_program, start_program):
         embedding = paddle.nn.Embedding(10, hidden_size, sparse=True)
         embedding_out = embedding(fill_constant_out)
 
-        auto.shard_tensor(input,
-                          dist_attr={
-                              "process_mesh": PP_MESH_0,
-                              "dims_mapping": [0, -1]
-                          })
-        auto.shard_tensor(label,
-                          dist_attr={
-                              "process_mesh": PP_MESH_1,
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(input, PP_MESH_0, ["x", None])
+        auto.shard_tensor(label, PP_MESH_1, ["x", None])
 
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,

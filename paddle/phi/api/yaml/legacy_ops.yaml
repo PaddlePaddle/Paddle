@@ -102,10 +102,7 @@
 - op : add_n
   args : (Tensor[] x)
   output : Tensor
-  infer_meta :
-    func : AddNInferMeta
-  kernel :
-    func : add_n
+  invoke : add_n_impl(x)
   backward : add_n_grad
 
 - op : addmm
@@ -1464,13 +1461,16 @@
   backward : linear_interp_grad
 
 - op : linspace
-  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
   output : Tensor(out)
   infer_meta :
     func : LinspaceInferMeta
+    param: [start, stop, number, dtype]
   kernel :
     func : linspace
+    param: [start, stop, number, dtype]
     data_type : dtype
+    backend : place
 
 - op : log
   args : (Tensor x)
@@ -2377,6 +2377,7 @@
     func : UnchangedInferMeta
   kernel :
     func : sign
+  backward : sign_grad
 
 - op : silu
   args : (Tensor x)

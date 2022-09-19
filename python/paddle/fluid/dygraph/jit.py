@@ -381,7 +381,8 @@ class _SaveLoadConfig(object):
 
 def _parse_save_configs(configs):
     supported_configs = [
-        'output_spec', "with_hook", "combine_params", "clip_extra"
+        'output_spec', "with_hook", "combine_params", "clip_extra",
+        "skip_forward"
     ]
 
     # input check
@@ -397,6 +398,7 @@ def _parse_save_configs(configs):
     inner_config.with_hook = configs.get('with_hook', False)
     inner_config.combine_params = configs.get("combine_params", False)
     inner_config.clip_extra = configs.get("clip_extra", False)
+    inner_config.skip_forward = configs.get("skip_forward", False)
 
     return inner_config
 
@@ -522,7 +524,10 @@ def _build_load_path_and_config(path, config):
             "don't know which one to load, please make sure that the specified target "
             "of ``path`` is unique." % (path, path))
     elif not prefix_format_exist and not directory_format_exist:
-        raise ValueError("The ``path`` (%s) to load model not exists." % path)
+        raise ValueError("The ``path`` (%s) to load model not exists. "
+                         "Please make sure that *.pdmodel exists or "
+                         "don't using ``skip_forward=True`` to jit.save." %
+                         path)
     else:
         if prefix_format_exist:
             file_prefix = os.path.basename(path)
@@ -906,6 +911,7 @@ def save(layer, path, input_spec=None, **configs):
 
     combine_vars = {}
     property_vals = []  # (value, key)
+    concrete_program = None
     for attr_func in functions:
         if isinstance(layer, Layer):
             static_func = getattr(inner_layer, attr_func, None)
@@ -921,6 +927,10 @@ def save(layer, path, input_spec=None, **configs):
                 concrete_program = static_func.concrete_program_specify_input_spec(
                     inner_input_spec, with_hook=with_hook)
             elif 'forward' == attr_func:
+                if configs.skip_forward:
+                    # do not jit.save forward function
+                    continue
+
                 # transform in jit.save, if input_spec is incomplete, declarative will throw error
                 # inner_input_spec is list[InputSpec], it should be packed with same structure
                 # as original input_spec here.
@@ -1080,8 +1090,9 @@ def save(layer, path, input_spec=None, **configs):
                                                ordered_vars)),
                                     filename=params_filename)
         # save property
-        property_filename = file_prefix + INFER_PROPERTY_SUFFIX
-        _save_property(property_filename, property_vals)
+        property_save_path = os.path.join(os.path.normpath(model_path),
+                                          file_prefix + INFER_PROPERTY_SUFFIX)
+        _save_property(property_save_path, property_vals)
 
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:
@@ -1100,10 +1111,10 @@ def save(layer, path, input_spec=None, **configs):
     # file `***.pdiparams.info`
 
     # "layer" can only be Layer or function or StaticFunction.
-
     contain_parameter = False
-    for var in concrete_program.main_program.list_vars():
-        contain_parameter |= isinstance(var, Parameter)
+    if concrete_program is not None:
+        for var in concrete_program.main_program.list_vars():
+            contain_parameter |= isinstance(var, Parameter)
 
     if (isinstance(layer, Layer) or contain_parameter) and extra_var_info:
         with scope_guard(scope):

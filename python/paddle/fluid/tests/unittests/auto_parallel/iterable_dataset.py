@@ -28,9 +28,8 @@ import paddle.utils as utils
 from paddle.fluid import layers
 from paddle.io import Dataset, IterableDataset, DataLoader
 from paddle.static import InputSpec
-from paddle.distributed import fleet
-import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.engine import Engine
+
+from paddle.distributed.fleet import auto
 from paddle.optimizer.lr import CosineAnnealingDecay
 from paddle.fluid.dataloader.collate import default_collate_fn
 
@@ -48,10 +47,9 @@ class_num = 10
 paddle.seed(44)
 
 
-class MyDataset(IterableDataset):
+class MyDataset(paddle.io.IterableDataset):
 
     def __init__(self, num_samples):
-        super(MyDataset, self).__init__()
         self.num_samples = num_samples
 
     def __iter__(self):
@@ -61,10 +59,9 @@ class MyDataset(IterableDataset):
             yield input, label
 
 
-class MyDataset1(Dataset):
+class MyDataset1(paddle.io.Dataset):
 
     def __init__(self, num_samples):
-        super(MyDataset1, self).__init__()
         self.num_samples = num_samples
         self.data = []
         for i in range(self.num_samples):
@@ -112,12 +109,10 @@ class MLPLayer(nn.Layer):
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
 
     def forward(self, input):
-        out = auto.shard_op(self.norm, dist_attr={"process_mesh":
-                                                  PP_MESH_0})(input)
+        out = auto.shard_op(self.norm, PP_MESH_0)(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
-        out = auto.shard_op(self.linear1, dist_attr={"process_mesh":
-                                                     PP_MESH_1})(out)
+        out = auto.shard_op(self.linear1, PP_MESH_1)(out)
         out = self.dropout(out)
         out = self.linear2(out)
         self.out = out
@@ -136,54 +131,36 @@ def train(fetch):
                                       epsilon=1e-08,
                                       grad_clip=None)
 
-    inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
-    labels_spec = InputSpec([batch_size], 'int64', 'label')
-
-    dist_strategy = fleet.DistributedStrategy()
-    dist_strategy.semi_auto = True
+    dist_strategy = auto.Strategy()
+    dist_strategy.auto_mode = "semi"
     dist_strategy.split_data = True
-    fleet.init(is_collective=True, strategy=dist_strategy)
 
     # init engine
-    engine = Engine(mlp,
-                    inputs_spec=inputs_spec,
-                    labels_spec=labels_spec,
-                    strategy=dist_strategy)
-    engine.prepare(optimizer, loss, metrics=paddle.metric.Accuracy())
-
-    # fetch
-    if fetch:
-        fetches = {'out': mlp.out}
-    else:
-        fetches = None
+    engine = auto.Engine(mlp,
+                         loss,
+                         optimizer,
+                         paddle.metric.Accuracy(),
+                         strategy=dist_strategy)
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)
-    train_dataset1 = MyDataset1(batch_num)
-    engine.fit(train_dataset,
-               epochs=2,
-               batch_size=batch_size,
-               steps_per_epoch=batch_num,
-               fetches=fetches)
+    engine.fit(train_dataset, epochs=2, batch_size=batch_size)
 
-    engine.fit(train_dataset1,
-               epochs=2,
-               batch_size=None,
-               steps_per_epoch=batch_num,
-               fetches=fetches)
+    train_dataset1 = MyDataset1(batch_size * batch_num)
+    engine.fit(train_dataset1, epochs=2, batch_size=None)
 
     # eval
     eval_dataset = MyDataset(batch_size)
-    engine.evaluate(eval_dataset, batch_size, fetches=fetches)
+    engine.evaluate(eval_dataset, batch_size=batch_size)
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size, fetches=fetches)
+    engine.predict(test_dataset, batch_size=batch_size)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
     model_filename = os.path.join(temp_dir.name, 'mlp_inf')
-    engine.save(model_filename, training=False, mode='predict')
+    engine.save(model_filename, training=False)
     temp_dir.cleanup()
 
 
