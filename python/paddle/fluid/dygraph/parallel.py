@@ -75,7 +75,7 @@ def prepare_context(strategy=None):
 
 class ParallelEnv(object):
     """
-    Note:
+    .. note::
         This API is not recommended, if you need to get rank and world_size,
         it is recommended to use ``paddle.distributed.get_rank()`` and
         ``paddle.distributed.get_world_size()`` .
@@ -529,7 +529,7 @@ class DataParallel(layers.Layer):
                 # train()
 
 
-    Note:
+    .. note::
         ``PyLayer`` is not supported in DataParallel. To solve problems of this kind,
         it's recommended to skip gradient synchronization among multiple cards by 'no_sync',
         and manually implement 'all_reduce' before model optimization. There is an example

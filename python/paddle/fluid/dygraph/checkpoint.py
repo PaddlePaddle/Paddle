@@ -130,7 +130,7 @@ def load_dygraph(model_path, **configs):
 
     Load parameter state dict from disk.
 
-    Note:
+    .. note::
         Due to some historical reasons, if you load ``state_dict`` from the saved
         result of `paddle.static.save_inference_model`, the structured variable name
         will cannot be restored. You need to set the argument `use_structured_name=False`

@@ -43,6 +43,9 @@ def convert_to_list(value, n, name, dtype=int):
     Returns:
       A list of n dtypes.
 
+    Raises:
+      ValueError: If something else than an int/long or iterable thereof was
+        passed.
     """
     if isinstance(value, dtype):
         return [

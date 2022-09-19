@@ -163,7 +163,7 @@ def enabled():
 def enable_dygraph(place=None):
     """
 
-    Note:
+    .. note::
         Dynamic graph mode is turn ON by default since paddle 2.0.0
 
     This API turn OFF static graph mode. You can turn ON static graph mode by `enable_static <./disable_dygraph_en.html>`_ .
@@ -202,7 +202,7 @@ def enable_dygraph(place=None):
 def disable_dygraph():
     """
 
-    Note:
+    .. note::
         Dynamic graph mode is turn ON by default since paddle 2.0.0
 
     This API turn ON static graph mode. You can turn ON static graph mode by `disable_static <./enable_dygraph_en.html>`_ .
@@ -438,7 +438,7 @@ def grad(outputs,
          allow_unused=False,
          no_grad_vars=None):
     '''
-    Note:
+    .. note::
         **This API is ONLY available in imperative mode.**
 
     This API computes the sum of gradients of `outputs` with respect to each `inputs` .

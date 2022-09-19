@@ -87,7 +87,7 @@ class IterableDataset(Dataset):
 
     :code:`__iter__`: yield sample sequentially. This method is required by reading dataset sample in :code:`paddle.io.DataLoader`.
 
-    Note:
+    .. note::
         do not implement :code:`__getitem__` and :code:`__len__` in IterableDataset, should not be called either.
 
     see :code:`paddle.io.DataLoader`.

@@ -705,7 +705,7 @@ def save(layer, path, input_spec=None, **configs):
       - ``paddle.static.load_inference_model``
       - Other C++ inference APIs
 
-    Note:
+    .. note::
         When using ``paddle.jit.save`` to save a function, parameters will not be saved. If you have to
         save the parameter, please pass the Layer containing function and parameter to ``paddle.jit.save``.
 
@@ -1132,7 +1132,7 @@ def load(path, **configs):
     paddle 1.x API ``paddle.fluid.io.save_inference_model`` as ``paddle.jit.TranslatedLayer``,
     then performing inference or fine-tune training.
 
-    Note:
+    .. note::
         If you load model saved by ``paddle.static.save_inference_model`` ,
         there will be the following limitations when using it in fine-tuning:
         1. Imperative mode do not support LoDTensor. All original model's feed targets or parametars that depend on LoD are temporarily unavailable.

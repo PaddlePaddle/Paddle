@@ -179,6 +179,10 @@ class StateCell(object):
             will be used to compute the score in beam search process.
         name (str): The name of the RNN cell. Default None.
 
+    Raises:
+        `ValueError`: If the initial state is not an instance of InitState, or
+            the out_state is not in the dict of states.
+
     Returns:
         StateCell: The initialized StateCell object.
 
@@ -550,23 +554,23 @@ class BeamSearchDecoder(object):
         BeamSearchDecoder: A initialized BeamSearchDecoder object.
 
     Examples:
-        .. code-block:: python
-          decoder = BeamSearchDecoder(
-              state_cell=state_cell,
-              init_ids=init_ids,
-              init_scores=init_scores,
-              target_dict_dim=target_dict_dim,
-              word_dim=word_dim,
-              init_var_dict={},
-              topk_size=topk_size,
-              sparse_emb=IS_SPARSE,
-              max_len=max_length,
-              beam_size=beam_size,
-              end_id=1,
-              name=None
-          )
-          decoder.decode()
-          translation_ids, translation_scores = decoder()
+    .. code-block:: python
+      decoder = BeamSearchDecoder(
+          state_cell=state_cell,
+          init_ids=init_ids,
+          init_scores=init_scores,
+          target_dict_dim=target_dict_dim,
+          word_dim=word_dim,
+          init_var_dict={},
+          topk_size=topk_size,
+          sparse_emb=IS_SPARSE,
+          max_len=max_length,
+          beam_size=beam_size,
+          end_id=1,
+          name=None
+      )
+      decoder.decode()
+      translation_ids, translation_scores = decoder()
     """
     BEFORE_BEAM_SEARCH_DECODER = 0
     IN_BEAM_SEARCH_DECODER = 1

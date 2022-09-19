@@ -1199,11 +1199,11 @@ def append_var_from_block_desc_static(block,
 
 class TranslatedLayer(layers.Layer):
     """
-    A ``paddle.nn.Layer`` for holding the model
+    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model
     loaded by :ref:`api_paddle_jit_load` . It can be used like a
     general Layer object in eval or train mode.
 
-    Note:
+    .. note:
         The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_paddle_jit_load` .
 
     Examples:
