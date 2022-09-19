@@ -79,7 +79,7 @@ void SumRawKernel(const Context& dev_ctx,
     out_dtype = out->dtype();
   }
   if (x.numel() > std::numeric_limits<int32_t>::max()) {
-#ifndef PADDLE_WITH_XPU_KP
+#ifndef PADDLE_WITH_XPU
     if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
       PADDLE_THROW(phi::errors::Fatal(
           "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
