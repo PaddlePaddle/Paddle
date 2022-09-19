@@ -20,28 +20,7 @@ endif()
 
 set(SETUP_LOG_FILE "setup.py.log")
 
-set(FLUID_CORE_NAME "core")
-if(WITH_AVX AND AVX_FOUND)
-  set(FLUID_CORE_NAME "${FLUID_CORE_NAME}_avx")
-  if(NOT DEFINED NOAVX_CORE_FILE OR NOAVX_CORE_FILE STREQUAL "")
-    message(
-      STATUS
-        "MESSAGE: This is just a message for publishing release.
-      You are building AVX version without NOAVX core.
-      So the wheel package may fail on NOAVX machine.
-      You can add -DNOAVX_CORE_FILE=/path/to/your/core_noavx.* in cmake command
-      to get a full wheel package to resolve this warning.
-      While, this version will still work on local machine.")
-  endif()
-
-  if(NOAVX_CORE_FILE AND NOT EXISTS "${NOAVX_CORE_FILE}")
-    message(FATAL_ERROR "The file ${NOAVX_CORE_FILE} does not exist!")
-  endif()
-
-  set(HAS_NOAVX_CORE ON)
-else()
-  set(FLUID_CORE_NAME "${FLUID_CORE_NAME}_noavx")
-endif()
+set(FLUID_CORE_NAME "libpaddle")
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
                ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
@@ -55,48 +34,20 @@ if(WIN32)
 
   add_custom_command(
     OUTPUT ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_LINKER_FILE:paddle_pybind> ${FLUID_CORE_LIB}
-    DEPENDS paddle_pybind)
-
-  set(FLUID_NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.pyd)
+    COMMAND cmake -E copy $<TARGET_FILE:libpaddle> ${FLUID_CORE}
+    COMMAND cmake -E copy $<TARGET_LINKER_FILE:libpaddle> ${FLUID_CORE_LIB}
+    DEPENDS libpaddle)
 else()
   set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.so)
   add_custom_command(
     OUTPUT ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
-    DEPENDS paddle_pybind)
-
-  set(FLUID_NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.so)
+    COMMAND cmake -E copy $<TARGET_FILE:libpaddle> ${FLUID_CORE}
+    DEPENDS libpaddle)
 endif()
 
 set(FLUID_CORE_DEPS ${FLUID_CORE})
 
-if(HAS_NOAVX_CORE AND EXISTS "${NOAVX_CORE_FILE}")
-  get_filename_component(NOAVX_CORE_NAME ${NOAVX_CORE_FILE} NAME)
-  get_filename_component(NOAVX_CORE_EXT ${NOAVX_CORE_FILE} EXT)
-  if(WIN32)
-    if(NOT NOAVX_CORE_EXT STREQUAL ".pyd")
-      message(
-        FATAL_ERROR
-          "Wrong file ${NOAVX_CORE_NAME}, the ext does not match windows *.pyd!"
-      )
-    endif()
-  else()
-    if(NOT NOAVX_CORE_EXT STREQUAL ".so")
-      message(
-        FATAL_ERROR
-          "Wrong file ${NOAVX_CORE_NAME}, the ext does not match *.so!")
-    endif()
-  endif()
-  add_custom_command(
-    OUTPUT ${FLUID_NOAVX_CORE}
-    COMMAND cmake -E copy ${NOAVX_CORE_FILE} ${FLUID_NOAVX_CORE}
-    DEPENDS paddle_pybind)
-  list(APPEND FLUID_CORE_DEPS ${FLUID_NOAVX_CORE})
-endif()
-
-add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE_DEPS})
+add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
 
 if(WIN32)
   add_custom_command(
@@ -107,8 +58,8 @@ if(WIN32)
     COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
             bdist_wheel
     COMMENT "Packing whl packages------>>>"
-    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto
-            profiler_py_proto pass_desc_py_proto ${PY_FILES})
+    DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+            pass_desc_py_proto ${PY_FILES})
 else()
   add_custom_command(
     OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
@@ -116,8 +67,8 @@ else()
     COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMENT "Packing whl packages------>>>"
-    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto
-            profiler_py_proto pass_desc_py_proto ${PY_FILES})
+    DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+            pass_desc_py_proto ${PY_FILES})
 endif()
 
 add_custom_target(paddle_python ALL

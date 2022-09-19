@@ -384,7 +384,7 @@ def templatedoc(op_type=None):
 
 def add_sample_code(func, sample_code):
     """
-    Append sample code for dynamically generated functions. 
+    Append sample code for dynamically generated functions.
 
     Args:
        func: The function of the function to be append sample code to.

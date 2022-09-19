@@ -718,10 +718,6 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "(int, default -1)"
         "The dtype of output, default value is -1, the dtype is same as intput")
         .SetDefault(-1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(string::Sprintf(R"DOC(
 %s Operator.
 

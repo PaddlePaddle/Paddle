@@ -91,7 +91,10 @@ xpu_test_op_type_white_list = [
     "lamb_float16",
     "lars_momentum_float32",
     "resnet_unit",
-    "resnet_unit_grad"
+    "resnet_unit_grad",
+    "c_embedding_float32",  # unittests of collective ops do not using xpu testing framework
+    "c_sync_comm_stream_float32",
+    "c_sync_calc_stream_float32",
 ]
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []

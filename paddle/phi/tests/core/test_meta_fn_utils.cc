@@ -91,5 +91,19 @@ TEST(MetaFnFactory, SplitInferMetaFn) {
   ASSERT_EQ(dense_out2.dims()[1], 10);
 }
 
+void TestEmptyVectorInputInferMeta(const std::vector<const MetaTensor*>& inputs,
+                                   std::vector<MetaTensor*> outputs) {
+  ASSERT_EQ(inputs.size(), 0UL);
+  ASSERT_EQ(outputs.size(), 0UL);
+}
+
+TEST(MetaFnFactory, EmptyVectorInputInferMetaFn) {
+  phi::InferMetaContext ctx;
+  ctx.EmplaceBackInput(MetaTensor());
+  ctx.EmplaceBackOutput(MetaTensor());
+
+  PD_INFER_META(TestEmptyVectorInputInferMeta)(&ctx);
+}
+
 }  // namespace tests
 }  // namespace phi

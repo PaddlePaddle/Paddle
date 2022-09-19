@@ -426,7 +426,7 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto inputs = ctx.MultiInput<LoDTensor>("X");
     auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
-
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     const auto slot_size = inputs.size();
     std::vector<const float *> input_data(slot_size);
     std::vector<const size_t *> lods_data(slot_size);
@@ -478,13 +478,13 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
       } else {
         output->Resize({batch_size, embedding_size - cvm_offset});
       }
-      output_data[i] =
-          reinterpret_cast<T *>(output->mutable_data<T>(ctx.GetPlace()));
+      output_data[i] = reinterpret_cast<T *>(
+          dev_ctx.Alloc<T>(output, output->numel() * sizeof(T)));
       mix_lods_v[i] = new paddle::framework::MixVector<size_t>(&lods);
       lods_data[i] = mix_lods_v[i]->CUDAData(ctx.GetPlace());
-      seqpool_output_data[i] =
-          reinterpret_cast<T *>(seqpool_outputs[i].mutable_data<T>(
-              {batch_size, embedding_size}, ctx.GetPlace()));
+      seqpool_outputs[i].Resize({batch_size, embedding_size});
+      seqpool_output_data[i] = reinterpret_cast<T *>(dev_ctx.Alloc<T>(
+          &seqpool_outputs[i], seqpool_outputs[i].numel() * sizeof(T)));
     }
 
     FusedSeqpoolCVM(ctx,
@@ -512,7 +512,7 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
     auto out_grads = ctx.MultiInput<LoDTensor>(framework::GradVarName("Out"));
     auto in_grads = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
     auto *cvm = ctx.Input<LoDTensor>("CVM");
-
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     std::string pooltype = ctx.Attr<std::string>("pooltype");
     auto use_cvm = ctx.Attr<bool>("use_cvm");
     const int cvm_offset = ctx.Attr<int>("cvm_offset");
@@ -559,8 +559,8 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
       auto *out_grad = out_grads[i];
       out_grads_data[i] = reinterpret_cast<const T *>(out_grad->data<T>());
 
-      in_grads_data[i] =
-          reinterpret_cast<T *>(in_grad->mutable_data<T>(ctx.GetPlace()));
+      in_grads_data[i] = reinterpret_cast<T *>(
+          dev_ctx.Alloc<T>(in_grad, in_grad->numel() * sizeof(T)));
       mix_lods_v[i] = new paddle::framework::MixVector<size_t>(&lods);
       lods_data[i] = mix_lods_v[i]->CUDAData(ctx.GetPlace());
       cvm_data[i] = reinterpret_cast<const T *>(cvm->data<T>());
