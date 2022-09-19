@@ -817,14 +817,7 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def clone(self):
-        if in_dygraph_mode():
-            return _C_ops.assign(self)
-
-        if _in_legacy_dygraph():
-            output = core.VarBase()
-        else:
-            output = core.eager.Tensor()
-        return _legacy_C_ops.assign(self, output)
+        return _C_ops.assign(self)
 
     @framework.dygraph_only
     def value(self):
