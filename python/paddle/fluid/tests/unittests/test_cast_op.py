@@ -205,6 +205,14 @@ class TestCastTripleGradCheck(unittest.TestCase):
                                                        x_init=[data_arr],
                                                        place=place)
 
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
 
 if __name__ == '__main__':
     paddle.enable_static()
