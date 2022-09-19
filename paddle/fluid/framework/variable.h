@@ -131,10 +131,6 @@ inline phi::DenseTensor::InplaceVersion* Variable::InplaceVersionCounter() {
     version_counter_ptr = &GetMutable<phi::SelectedRows>()
                                ->mutable_value()
                                ->InplaceVersionCounter();
-  } else if (IsType<framework::Tensor>()) {
-    version_counter_ptr = &GetMutable<phi::SparseCooTensor>()
-                               ->mutable_values()
-                               ->InplaceVersionCounter();
   } else {
     VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
                "TensorInplaceVersion, but received type "
