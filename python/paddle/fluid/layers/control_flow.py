@@ -1214,14 +1214,19 @@ def assign_skip_lod_tensor_array(unique_set, input, output):
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     Unique_set is used to remove duplicate assignments.
     """
+
     def assign_if_unique(unique_set, input, output):
-        assert isinstance(output, (Variable, core.VarBase)), f"The output in while_loop must be a Variable type. but get {type(output)}"
-        if output.name in unique_set: 
+        assert isinstance(
+            output, (Variable, core.VarBase)
+        ), f"The output in while_loop must be a Variable type. but get {type(output)}"
+        if output.name in unique_set:
             #  there is ambiguity when
             #  output: x     , y     , x     , x
             #  input : Var(1), Var(2), Var(1), Var(2)
             #  give a warning here.
-            warnings.warn(f"In assign stage of while_loop, there are multiply assignments for the var `{output.name}`, which may cause performance degradation or ambiguity.")
+            warnings.warn(
+                f"In assign stage of while_loop, there are multiply assignments for the var `{output.name}`, which may cause performance degradation or ambiguity."
+            )
             return
         unique_set.add(output.name)
         assign(input, output)
@@ -1331,7 +1336,8 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars")
             now_cond = cond(*output_vars).numpy()[0]
-            map_structure(partial(assign_skip_lod_tensor_array, set()), output_vars, loop_vars)
+            map_structure(partial(assign_skip_lod_tensor_array, set()),
+                          output_vars, loop_vars)
         return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
@@ -1356,7 +1362,8 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 "body in while_loop should return the same arity "
                 "(length and structure) as loop_vars: {0}".format(e))
         now_cond = cond(*output_vars)
-        map_structure(partial(assign_skip_lod_tensor_array, set()), output_vars, loop_vars)
+        map_structure(partial(assign_skip_lod_tensor_array, set()), output_vars,
+                      loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
 

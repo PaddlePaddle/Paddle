@@ -129,17 +129,21 @@ def for_break_single_return(max_len):
         x += 1
     return x
 
+
 def while_multi_assign(max_len):
     loop_time = paddle.to_tensor([4])
     a = paddle.to_tensor([1.0])
     dic = {'a': a}
-    def _update_dic(new_a): 
+
+    def _update_dic(new_a):
         dic['a'] = new_a
-        return dic 
+        return dic
+
     for i in range(loop_time):
         a = a * 2
         dic = _update_dic(a)
     return dic['a']
+
 
 def while_loop_bool_op(x):
     i = fluid.dygraph.to_variable(x)
@@ -443,6 +447,7 @@ class TestClassVarInForLoop(TestTransformForLoop):
     def _init_dyfunc(self):
         self.dyfunc = for_loop_class_var
 
+
 class TestMultiAssignInFor(TestTransformForLoop):
 
     def _init_dyfunc(self):
@@ -455,11 +460,13 @@ class TestMultiAssignInFor(TestTransformForLoop):
         unique_assignments = set()
         size = 0
         for op in program.block(0).ops:
-            if op.type == "assign": 
-                unique_assignments.add((op.unique_assignments[0], op.input_arg_names[0]))
+            if op.type == "assign":
+                unique_assignments.add(
+                    (op.unique_assignments[0], op.input_arg_names[0]))
                 size += 1
-        self.assertEqual(size, len(unique_assignments), "There exists duplicated assignments.")
-        
+        self.assertEqual(size, len(unique_assignments),
+                         "There exists duplicated assignments.")
+
 
 class TestVarCreateInForLoop(TestTransformForLoop):
 
