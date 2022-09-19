@@ -49,5 +49,11 @@ void ShapeKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    shape, OneDNN, ALL_LAYOUT, phi::ShapeKernel, float, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(shape,
+                   OneDNN,
+                   ALL_LAYOUT,
+                   phi::ShapeKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}
