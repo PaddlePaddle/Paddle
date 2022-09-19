@@ -54,10 +54,10 @@ def max_pool3d(x,
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-    
+
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-    
+
     Examples:
         .. code-block:: python
 

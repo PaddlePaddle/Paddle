@@ -270,15 +270,16 @@ class Inserter:
                                dtype=tensor_type,
                                type=tensor.type,
                                lod_level=tensor.lod_level)
-        block._insert_op(idx,
-                         type='cast',
-                         inputs={'X': [tensor]},
-                         outputs={'Out': [out]},
-                         attrs={
-                             'in_dtype': tensor.dtype,
-                             'out_dtype': out.dtype,
-                             'op_role': op_role
-                         })
+        cast_op = block._insert_op(idx,
+                                   type='cast',
+                                   inputs={'X': [tensor]},
+                                   outputs={'Out': [out]},
+                                   attrs={
+                                       'in_dtype': tensor.dtype,
+                                       'out_dtype': out.dtype,
+                                       'op_role': op_role
+                                   })
+        cast_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return out
 
     @staticmethod
@@ -287,16 +288,17 @@ class Inserter:
         op_type = 'send_v2'
         # use pair comm group
         process_group = new_process_group([src, dst])
-        block._insert_op(idx,
-                         type=op_type,
-                         inputs={'X': [tensor]},
-                         attrs={
-                             'ring_id': process_group.id,
-                             'peer': process_group.ranks.index(dst),
-                             'use_calc_stream': True,
-                             'op_role': op_role,
-                             'dynamic_shape': True
-                         })
+        send_op = block._insert_op(idx,
+                                   type=op_type,
+                                   inputs={'X': [tensor]},
+                                   attrs={
+                                       'ring_id': process_group.id,
+                                       'peer': process_group.ranks.index(dst),
+                                       'use_calc_stream': True,
+                                       'op_role': op_role,
+                                       'dynamic_shape': True
+                                   })
+        send_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
     @staticmethod
     def insert_recv_op(block, idx, tensor, src, dst, op_role):
@@ -304,19 +306,20 @@ class Inserter:
         op_type = 'recv_v2'
         # use pair group
         process_group = new_process_group([src, dst])
-        block._insert_op(idx,
-                         type=op_type,
-                         inputs={'X': [tensor]},
-                         outputs={'Out': [tensor]},
-                         attrs={
-                             'ring_id': process_group.id,
-                             'peer': process_group.ranks.index(src),
-                             'out_shape': tensor.shape,
-                             'dtype': tensor.dtype,
-                             'use_calc_stream': True,
-                             'op_role': op_role,
-                             'dynamic_shape': True
-                         })
+        recv_op = block._insert_op(idx,
+                                   type=op_type,
+                                   inputs={'X': [tensor]},
+                                   outputs={'Out': [tensor]},
+                                   attrs={
+                                       'ring_id': process_group.id,
+                                       'peer': process_group.ranks.index(src),
+                                       'out_shape': tensor.shape,
+                                       'dtype': tensor.dtype,
+                                       'use_calc_stream': True,
+                                       'op_role': op_role,
+                                       'dynamic_shape': True
+                                   })
+        recv_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
     @staticmethod
     def insert_reset_lod_op(block, idx, X, Y, op_role):
@@ -330,14 +333,15 @@ class Inserter:
                                          dtype=X.dtype,
                                          lod_level=X.lod_level)
 
-        block._insert_op(idx,
-                         type="lod_reset",
-                         inputs={
-                             'X': X,
-                             'Y': Y
-                         },
-                         outputs={'Out': reset_lod_out},
-                         attrs={'op_role': op_role})
+        reset_op = block._insert_op(idx,
+                                    type="lod_reset",
+                                    inputs={
+                                        'X': X,
+                                        'Y': Y
+                                    },
+                                    outputs={'Out': reset_lod_out},
+                                    attrs={'op_role': op_role})
+        reset_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return reset_lod_out
 
     @staticmethod
@@ -359,11 +363,12 @@ class Inserter:
                 type=tensors[0].type,
                 persistable=False,
                 stop_gradient=False)
-        block._insert_op(idx,
-                         type='concat',
-                         inputs=inputs,
-                         outputs={'Out': [out]},
-                         attrs=attrs)
+        concat_op = block._insert_op(idx,
+                                     type='concat',
+                                     inputs=inputs,
+                                     outputs={'Out': [out]},
+                                     attrs=attrs)
+        concat_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return out
 
     @staticmethod
@@ -391,11 +396,12 @@ class Inserter:
             inputs = {'X': [tensor]}
             outputs = {"Out": [out]}
             attrs = {"in_place": False}
-            block._insert_op(idx,
-                             type="assign",
-                             inputs=inputs,
-                             outputs=outputs,
-                             attrs=attrs)
+            slice_op = block._insert_op(idx,
+                                        type="assign",
+                                        inputs=inputs,
+                                        outputs=outputs,
+                                        attrs=attrs)
+            slice_op._set_attr('op_namescope', "/auto_parallel/reshard")
             return out
 
         # use split once
@@ -427,11 +433,12 @@ class Inserter:
                     for i in range(num_or_sections)
                 ]
                 out = outs[cur_idx]
-            op = block._insert_op(idx,
-                                  type="split",
-                                  inputs=inputs,
-                                  outputs={'Out': outs},
-                                  attrs=attrs)
+            split_op = block._insert_op(idx,
+                                        type="split",
+                                        inputs=inputs,
+                                        outputs={'Out': outs},
+                                        attrs=attrs)
+            split_op._set_attr('op_namescope', "/auto_parallel/reshard")
             return out
 
         # use slice
@@ -449,12 +456,12 @@ class Inserter:
                                    dtype=tensor.dtype,
                                    type=tensor.type,
                                    lod_level=tensor.lod_level)
-            block._insert_op(idx,
-                             type="slice",
-                             inputs=inputs,
-                             outputs={'Out': [out]},
-                             attrs=attrs)
-
+            slice_op = block._insert_op(idx,
+                                        type="slice",
+                                        inputs=inputs,
+                                        outputs={'Out': [out]},
+                                        attrs=attrs)
+            slice_op._set_attr('op_namescope', "/auto_parallel/reshard")
             return out
 
     @staticmethod
@@ -482,11 +489,12 @@ class Inserter:
                     persistable=False,
                     stop_gradient=False) for i in range(num_or_sections)
             ]
-        block._insert_op(idx,
-                         type="split",
-                         inputs=inputs,
-                         outputs={'Out': outs},
-                         attrs=attrs)
+        split_op = block._insert_op(idx,
+                                    type="split",
+                                    inputs=inputs,
+                                    outputs={'Out': outs},
+                                    attrs=attrs)
+        split_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return outs
 
     @staticmethod
@@ -514,12 +522,13 @@ class Inserter:
                                       attrs=attrs,
                                       shape=[0],
                                       op_type='fill_constant')
-        block._insert_op(idx,
-                         type='fill_constant',
-                         inputs=inputs,
-                         outputs={'Out': [out]},
-                         attrs=attrs)
+        fillconstant_op = block._insert_op(idx,
+                                           type='fill_constant',
+                                           inputs=inputs,
+                                           outputs={'Out': [out]},
+                                           attrs=attrs)
         out.stop_gradient = True
+        fillconstant_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return out
 
     @staticmethod
@@ -537,22 +546,25 @@ class Inserter:
             fill_constant_out.stop_gradient = True
 
             # insert c_allreduce_sum op
-            block._insert_op(idx + 1,
-                             type="c_allreduce_sum",
-                             inputs={'X': [fill_constant_out]},
-                             outputs={'Out': [fill_constant_out]},
-                             attrs={
-                                 'ring_id': 0,
-                                 'use_calc_stream': True,
-                                 'op_role': op_role
-                             })
-
+            allreduce_op = block._insert_op(
+                idx + 1,
+                type="c_allreduce_sum",
+                inputs={'X': [fill_constant_out]},
+                outputs={'Out': [fill_constant_out]},
+                attrs={
+                    'ring_id': 0,
+                    'use_calc_stream': True,
+                    'op_role': op_role
+                })
+            allreduce_op._set_attr('op_namescope', "/auto_parallel/reshard")
             # insert c_sync_calc_stream op
-            block._insert_op(idx + 2,
-                             type="c_sync_calc_stream",
-                             inputs={'X': [fill_constant_out]},
-                             outputs={'Out': [fill_constant_out]},
-                             attrs={'op_role': op_role})
+            sync_calc_op = block._insert_op(
+                idx + 2,
+                type="c_sync_calc_stream",
+                inputs={'X': [fill_constant_out]},
+                outputs={'Out': [fill_constant_out]},
+                attrs={'op_role': op_role})
+            sync_calc_op._set_attr('op_namescope', "/auto_parallel/reshard")
             idx_offset = 3
 
         # insert c_allgather op
@@ -569,16 +581,17 @@ class Inserter:
                 type=tensor.type,
                 persistable=False,
                 stop_gradient=False)
-        block._insert_op(idx + idx_offset,
-                         type=op_type,
-                         inputs={'X': [tensor]},
-                         outputs={'Out': [allgather_out]},
-                         attrs={
-                             'ring_id': group.id,
-                             'use_calc_stream': True,
-                             'nranks': group.nranks,
-                             'op_role': op_role
-                         })
+        allgather_op = block._insert_op(idx + idx_offset,
+                                        type=op_type,
+                                        inputs={'X': [tensor]},
+                                        outputs={'Out': [allgather_out]},
+                                        attrs={
+                                            'ring_id': group.id,
+                                            'use_calc_stream': True,
+                                            'nranks': group.nranks,
+                                            'op_role': op_role
+                                        })
+        allgather_op._set_attr('op_namescope', "/auto_parallel/reshard")
         idx_offset += 1
 
         # insert split op

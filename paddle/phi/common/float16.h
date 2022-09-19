@@ -14,6 +14,11 @@
 
 #pragma once
 
+#if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || \
+    defined(__i386__)
+#define __PADDLE_x86__
+#include <immintrin.h>
+#endif
 #include <stdint.h>
 
 #include <cmath>
@@ -108,7 +113,7 @@ struct PADDLE_ALIGN(2) float16 {
     float16_t res = vget_lane_f16(vcvt_f16_f32(tmp), 0);
     x = *reinterpret_cast<uint16_t*>(&res);
 
-#elif defined(__F16C__)
+#elif defined(__F16C__) and defined(__PADDLE_x86__)
     x = _cvtss_sh(val, 0);
 
 #else

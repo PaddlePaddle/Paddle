@@ -64,6 +64,12 @@ void MetaTensor::set_dims(const DDim& dims) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->dims = dims;
+  } else if (phi::SparseCooTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
+        ->dims = dims;
+  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
+        ->dims = dims;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
@@ -81,6 +87,13 @@ void MetaTensor::set_dtype(DataType dtype) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->dtype = dtype;
+  } else if (phi::SparseCooTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
+        ->dtype = dtype;
+  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
+        ->dtype = dtype;
+    // No need to set dtype
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
@@ -98,6 +111,12 @@ void MetaTensor::set_layout(DataLayout layout) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->layout = layout;
+  } else if (phi::SparseCooTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
+        ->layout = layout;
+  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
+        ->layout = layout;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting layout for `%s`.", tensor_->type_info().name()));
@@ -107,6 +126,10 @@ void MetaTensor::set_layout(DataLayout layout) {
 void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   ValidCheck(meta_tensor);
+  if (phi::SparseCooTensor::classof(tensor_) ||
+      phi::SparseCsrTensor::classof(tensor_)) {
+    return;
+  }
   if (meta_tensor.lod().size() == 0) {
     // no need share
     return;
@@ -128,7 +151,9 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
 void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_) ||
-      phi::SelectedRows::classof(tensor_)) {
+      phi::SelectedRows::classof(tensor_) ||
+      phi::SparseCooTensor::classof(tensor_) ||
+      phi::SparseCsrTensor::classof(tensor_)) {
     share_dims(meta_tensor);
     set_dtype(meta_tensor.dtype());
     set_layout(meta_tensor.layout());
@@ -139,11 +164,21 @@ void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
   }
 }
 
+TensorBase* MetaTensor::tensor() const { return tensor_; }
+
+bool MetaTensor::is_dense() const { return DenseTensor::classof(tensor_); }
+bool MetaTensor::is_selected_rows() const {
+  return SelectedRows::classof(tensor_);
+}
+bool MetaTensor::is_tensor_array() const { return false; }
+
 void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   bool is_dense_tensor = phi::DenseTensor::classof(tensor_);
   bool is_selected_rows = phi::SelectedRows::classof(tensor_);
-  if (is_dense_tensor || is_selected_rows) {
+  bool is_sparse_coo = phi::SparseCooTensor::classof(tensor_);
+  bool is_sparse_csr = phi::SparseCsrTensor::classof(tensor_);
+  if (is_dense_tensor || is_selected_rows || is_sparse_coo || is_sparse_csr) {
     set_dims(meta_tensor.dims());
     if (is_selected_rows) {
       const auto in_tensor_base = meta_tensor.tensor();
@@ -172,12 +207,14 @@ const LoD& MetaTensor::lod() const {
     return static_cast<DenseTensor*>(tensor_)->lod();
   } else if (phi::SelectedRows::classof(tensor_)) {
     return static_cast<SelectedRows*>(tensor_)->value().lod();
+  } else if (phi::SparseCooTensor::classof(tensor_)) {
+    return static_cast<SparseCooTensor*>(tensor_)->non_zero_elements().lod();
+  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+    return static_cast<SparseCsrTensor*>(tensor_)->non_zero_elements().lod();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented("Unsupported getting lod of `%s`.",
                                             tensor_->type_info().name()));
   }
 }
-
-TensorBase* MetaTensor::tensor() const { return tensor_; }
 
 }  // namespace phi

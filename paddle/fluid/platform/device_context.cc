@@ -65,6 +65,8 @@ DeviceType Place2DeviceType(const platform::Place& place) {
     return platform::DeviceType::NPU;
   } else if (platform::is_mlu_place(place)) {
     return platform::DeviceType::MLU;
+  } else if (platform::is_custom_place(place)) {
+    return platform::DeviceType::CUSTOM_DEVICE;
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Unsupported place %s to convert into platform::DeviceType.", place));

@@ -23,6 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/framework/details/nccl_op_handle.h"
+#include "paddle/fluid/platform/collective_helper.h"
+#endif
+
 DECLARE_bool(convert_all_blocks);
 PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
                               "",
@@ -481,6 +486,9 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
     desc->SetAttr(
         "dtype",
         dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->DType());
+    desc->SetAttr(
+        "value",
+        dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->Coeff());
   }
 
   desc->SetAttr("force_cpu", false);
@@ -495,6 +503,71 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   }
   desc->SetOutput("Out", output_names);
   return desc;
+}
+
+static void ReplaceAllReduceOp(const Node &node,
+                               proto::BlockDesc *block,
+                               std::vector<OpDesc> *ops) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  ops->emplace_back();
+  auto &desc1 = ops->back();
+  std::string name = "fake_coalesce_" + std::to_string(ops->size());
+  desc1.SetType("check_memory_continue");
+
+  ops->emplace_back();
+  auto &desc2 = ops->back();
+  desc2.SetType("c_allreduce_sum");
+
+  if (node.IsWrappedBy<details::OpHandleBase>()) {
+    details::OpHandleBase &op_hander =
+        const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
+
+    // set inputs
+    auto in_var_handles = op_hander.Inputs();
+    std::vector<std::string> in_names;
+    for (const auto &in : in_var_handles) {
+      if (dynamic_cast<details::DummyVarHandle *>(in) != nullptr) {
+        continue;
+      }
+      in_names.emplace_back(in->Name());
+    }
+    desc1.SetInput("X", in_names);
+
+    proto::VarDesc var_desc;
+    var_desc.set_name(name);
+    var_desc.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
+    block->mutable_vars()->Add()->CopyFrom(var_desc);
+    desc1.SetOutput("Out", {name});
+    desc1.SetOutput("XOut", in_names);
+    VLOG(4) << "add variable for check_memory_continue: " << name;
+
+    desc2.SetInput("X", {name});
+    // set outputs
+    auto out_var_handles = op_hander.Outputs();
+    std::vector<std::string> out_names;
+    for (const auto &out : out_var_handles) {
+      if (dynamic_cast<details::DummyVarHandle *>(out) != nullptr) {
+        continue;
+      }
+      out_names.emplace_back(out->Name());
+    }
+    desc2.SetOutput("Out", {name});
+
+    int ring_id = platform::NCCLCommContext::Instance().GetRingId(
+        dynamic_cast<details::NCCLOpHandleBase *>(&op_hander)->GetComm());
+    desc2.SetAttr("ring_id", ring_id);
+    desc2.SetAttr("use_calc_stream", true);
+  }
+
+  desc1.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                (static_cast<int>(OpRole::kBackward)));
+  desc2.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                (static_cast<int>(OpRole::kBackward)));
+#else
+  PADDLE_THROW(
+      platform::errors::Unimplemented("ReplaceAllReduceOp is only implemented "
+                                      "for paddle compiled with NCCL/RCCL."));
+#endif
 }
 
 void UpdateControlOpSkipEagerDeletionVars(const Node &node,
@@ -526,6 +599,7 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
 }
 
 static void GetGraphOpDesc(const std::vector<Node *> &nodes,
+                           proto::BlockDesc *block,
                            std::vector<OpDesc> *ops,
                            const Graph &graph,
                            const size_t graph_idx) {
@@ -552,6 +626,10 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       ops->emplace_back();
       auto &desc = ops->back();
       ReplaceScaleLossGradOp(*n, &desc);
+    } else if (n->Name() == "fused_all_reduce") {
+      VLOG(4) << "convert op node fused_all_reduce to desc c_allreduce_sum";
+      ReplaceAllReduceOp(*n, block, ops);
+      VLOG(4) << n->ToString();
     } else if (n->Op()) {
       VLOG(4) << "convert op node to desc " << n->Op()->Type();
       if (is_fused_opt(n)) {
@@ -645,7 +723,7 @@ static void GraphToBlock(const Graph &graph,
   }
 
   std::vector<OpDesc> ops;
-  GetGraphOpDesc(nodes, &ops, graph, graph_idx);
+  GetGraphOpDesc(nodes, block, &ops, graph, graph_idx);
 
   for (auto &op : ops) {
     RemoveControlDepInputAndOuput(&op);

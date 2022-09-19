@@ -45,5 +45,89 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllReduce(
       "ProcessGroup%s does not support do allreduce", GetBackendName()));
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
+    std::vector<phi::DenseTensor>& tensors, int dst_rank, bool sync_op) {
+  return Send(tensors,
+              dst_rank,
+              sync_op,
+              /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
+    std::vector<phi::DenseTensor>& tensors,
+    int dst_rank,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "ProcessGroup%s does not support do send", GetBackendName()));
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send_Partial(
+    phi::DenseTensor& tensors,
+    int dst_rank,
+    int offset,
+    int length,
+    bool sync_op) {
+  return Send_Partial(tensors,
+                      dst_rank,
+                      offset,
+                      length,
+                      sync_op,
+                      /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send_Partial(
+    phi::DenseTensor& tensors,
+    int dst_rank,
+    int offset,
+    int length,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "ProcessGroup%s does not support do send_partial", GetBackendName()));
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
+    std::vector<phi::DenseTensor>& tensors, int src_rank, bool sync_op) {
+  return Recv(tensors,
+              src_rank,
+              sync_op,
+              /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
+    std::vector<phi::DenseTensor>& tensors,
+    int src_rank,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "ProcessGroup%s does not support do recv", GetBackendName()));
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv_Partial(
+    phi::DenseTensor& tensors,
+    int src_rank,
+    int offset,
+    int length,
+    bool sync_op) {
+  return Recv_Partial(tensors,
+                      src_rank,
+                      offset,
+                      length,
+                      sync_op,
+                      /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv_Partial(
+    phi::DenseTensor& tensors,
+    int src_rank,
+    int offset,
+    int length,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "ProcessGroup%s does not support do recv_partial", GetBackendName()));
+}
+
 }  // namespace distributed
 }  // namespace paddle

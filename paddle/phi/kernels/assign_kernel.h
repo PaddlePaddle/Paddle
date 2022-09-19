@@ -18,6 +18,7 @@
 
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
@@ -47,8 +48,8 @@ void AssignRawKernel(const Context& dev_ctx,
 
 template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
-                       const std::vector<const DenseTensor*>& x,
-                       std::vector<DenseTensor*> out);
+                       const TensorArray& x,
+                       TensorArray* out);
 
 template <typename T, typename Context>
 void AssignValueKernel(const Context& dev_ctx,
