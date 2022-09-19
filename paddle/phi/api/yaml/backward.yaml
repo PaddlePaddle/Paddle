@@ -114,7 +114,7 @@
     param : [out]
   kernel :
     func : erfinv_grad
-    
+
 - backward_op : fft_c2c_grad
   forward: fft_c2c(Tensor x, int64_t[] axes, str normalization, bool forward) -> Tensor(out)
   args : (Tensor out_grad, int64_t[] axes, str normalization, bool forward)
