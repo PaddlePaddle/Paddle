@@ -76,6 +76,7 @@ void UniformRandomRawKernel(const Context& dev_ctx,
     // Use OP seed
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> fix uniform_rand fp16 dtype support
     auto func = UniformGenerator<T>(min.to<T>(),
@@ -92,6 +93,25 @@ void UniformRandomRawKernel(const Context& dev_ctx,
 =======
 >>>>>>> fix uniform_rand fp16 dtype support
     IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
+=======
+    if (std::is_same<T, double>()) {
+      auto func = UniformGenerator<double>(min.to<float>(),
+                                           max.to<float>(),
+                                           seed,
+                                           diag_num,
+                                           diag_step,
+                                           diag_val);
+      IndexKernel<double, UniformGenerator<double>>(dev_ctx, out, func);
+    } else {
+      auto func = UniformGenerator<T>(min.to<T>(),
+                                      max.to<T>(),
+                                      seed,
+                                      diag_num,
+                                      diag_step,
+                                      static_cast<T>(diag_val));
+      IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
+    }
+>>>>>>> fix uniform_rand fp16 dtype support
   }
 }
 
