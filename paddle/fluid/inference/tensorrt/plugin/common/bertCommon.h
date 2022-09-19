@@ -1,18 +1,17 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
- * SPDX-FileCopyrightText: Copyright (c) 1993-2022 NVIDIA CORPORATION &
-AFFILIATES. All rights reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// SPDX-FileCopyrightText: Copyright (c) 1993-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #ifndef PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
 #define PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
@@ -24,7 +23,6 @@ limitations under the License. */
 #include <numeric>
 #include <stdexcept>
 #include <vector>
-
 #include "NvInfer.h"
 #include "NvInferRuntimeCommon.h"
 #include "cublas_v2.h"
@@ -32,9 +30,7 @@ limitations under the License. */
 #include "plugin.h"
 
 #define TRT_UNUSED (void)
-
 #define BERT_PRINT_DEBUG_MSG 0
-
 #if BERT_PRINT_DEBUG_MSG
 #define TRANSFORMER_DEBUG_MSG(msg) (gLogVerbose << (msg) << std::endl)
 #define BERT_DEBUG_VALUE(key, value) (gLogVerbose << key << value << std::endl)
@@ -44,13 +40,11 @@ limitations under the License. */
   TRT_UNUSED(key);                   \
   TRT_UNUSED(value)
 #endif
-
 using half = __half;
 
 constexpr uint32_t BDIM = 1;  // batch dimension
 constexpr uint32_t SDIM = 0;  // seq len dimension
 constexpr uint32_t HDIM = 2;  // hidden dimension
-
 constexpr int32_t kSM_53 = 53;
 constexpr int32_t kSM_70 = 70;
 constexpr int32_t kSM_72 = 72;
@@ -58,11 +52,6 @@ constexpr int32_t kSM_75 = 75;
 constexpr int32_t kSM_80 = 80;
 constexpr int32_t kSM_86 = 86;
 constexpr int32_t kSM_87 = 87;
-
-// For full mask mode, we must produce the compressed mask format expected by
-// the fused attention path. Currently, only two sequence lengths are supported.
-// We hard code the sizes here. The number of threads per CTA: warps_m * warps_n
-// * warps_k * 32;
 constexpr size_t threadsPerCta128 = 2 * 2 * 32;
 constexpr size_t threadsPerCta384 = 1 * 8 * 32;
 
@@ -142,21 +131,17 @@ struct WeightsWithOwnership : public nvinfer1::Weights {
   void convertAndCopy(const nvinfer1::Weights& src, nvinfer1::DataType type) {
     this->type = type;
     this->count = src.count;
-
     if (type == nvinfer1::DataType::kFLOAT) {
       auto destBuf = new float[src.count];
       this->values = destBuf;
-
       if (src.type == nvinfer1::DataType::kFLOAT) {
         TRANSFORMER_DEBUG_MSG("Float Weights(Host) => Float Array(Host)");
         std::copy_n(static_cast<const float*>(src.values), src.count, destBuf);
       } else {
         assert(src.type == nvinfer1::DataType::kHALF);
-
         TRANSFORMER_DEBUG_MSG("Half Weights(Host) => Float Array(Host)");
         const auto s = static_cast<const half*>(src.values);
         auto d = static_cast<float*>(const_cast<void*>(this->values));
-
         for (auto it = 0; it < src.count; it++) {
           d[it] = __half2float(s[it]);
         }
@@ -164,17 +149,14 @@ struct WeightsWithOwnership : public nvinfer1::Weights {
     } else if (type == nvinfer1::DataType::kHALF) {
       auto destBuf = new half[src.count];
       this->values = destBuf;
-
       if (src.type == nvinfer1::DataType::kHALF) {
         TRANSFORMER_DEBUG_MSG("Half Weights(Host) => Half Array(Host)");
         std::copy_n(static_cast<const half*>(src.values), src.count, destBuf);
       } else {
         assert(src.type == nvinfer1::DataType::kFLOAT);
-
         TRANSFORMER_DEBUG_MSG("Float Weights(Host) => Half Array(Host)");
         const auto s = static_cast<const float*>(src.values);
         auto d = static_cast<half*>(const_cast<void*>(this->values));
-
         for (auto it = 0; it < src.count; it++) {
           d[it] = __float2half(s[it]);
         }
@@ -192,7 +174,6 @@ struct WeightsWithOwnership : public nvinfer1::Weights {
     const auto nbBytes = getWeightsSize(*this, type);
     auto destBuf = new char[nbBytes];
     this->values = destBuf;
-
     std::copy_n(srcBuf, nbBytes, destBuf);
     srcBuf += nbBytes;
   }
