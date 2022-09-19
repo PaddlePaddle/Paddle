@@ -288,7 +288,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "fused_token_prune",
-      "cel"};
+      "celu"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,
