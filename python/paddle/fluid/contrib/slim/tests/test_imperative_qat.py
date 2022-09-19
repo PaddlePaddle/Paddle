@@ -56,7 +56,10 @@ class TestImperativeQat(unittest.TestCase):
         self.activation_quantize_type = 'moving_average_abs_max'
         self.onnx_format = False
         self.check_export_model_accuracy = True
-        self.diff_threshold = 0.01
+        # The original model and quantized model may have different prediction.
+        # There are 32 test data and we allow at most one is different.
+        # Hence, the diff_threshold is 1 / 32 = 0.03125
+        self.diff_threshold = 0.03125
         self.fuse_conv_bn = False
 
     def func_qat(self):
@@ -207,7 +210,7 @@ class TestImperativeQat(unittest.TestCase):
             quant_acc = fluid.layers.accuracy(quant_out, label).numpy()
             paddle.enable_static()
             delta_value = fp32_acc - quant_acc
-            self.assertLess(delta_value, self.diff_threshold)
+            self.assertLessEqual(delta_value, self.diff_threshold)
 
     def test_qat(self):
         with _test_eager_guard():
@@ -221,7 +224,7 @@ class TestImperativeQatONNXFormat(unittest.TestCase):
         self.weight_quantize_type = 'abs_max'
         self.activation_quantize_type = 'moving_average_abs_max'
         self.onnx_format = True
-        self.diff_threshold = 0.025
+        self.diff_threshold = 0.03125
         self.fuse_conv_bn = False
 
 

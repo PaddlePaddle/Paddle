@@ -16,7 +16,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode, default_main_program
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid import core, dygraph_utils
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []
 
@@ -131,7 +131,7 @@ def fused_feedforward(x,
     if _non_static_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-        out, _, _, _, _, _, _, _, _, _, _ = _C_ops.fused_feedforward(
+        out, _, _, _, _, _, _, _, _, _, _ = _legacy_C_ops.fused_feedforward(
             x, None, None, linear1_weight, linear1_bias, linear2_weight,
             linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias,
             'pre_layer_norm', pre_layer_norm, 'ln1_epsilon', ln1_epsilon,
@@ -307,7 +307,7 @@ def fused_bias_dropout_residual_layer_norm(x,
     if _non_static_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-        _, _, _, _, final_out = _C_ops.fused_bias_dropout_residual_layer_norm(
+        _, _, _, _, final_out = _legacy_C_ops.fused_bias_dropout_residual_layer_norm(
             x, residual, bias, ln_scale, ln_bias, 'dropout_rate', dropout_rate,
             'ln_epsilon', ln_epsilon, 'is_test', not training,
             'dropout_fix_seed', seed is not None, 'dropout_seed',
@@ -531,7 +531,7 @@ def fused_multi_head_attention(x,
             assert qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[
                 3], "embed_dim must be divisible by num_heads."
 
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, cache_kv_out, final_out = _C_ops.fused_attention(
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, cache_kv_out, final_out = _legacy_C_ops.fused_attention(
             x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, cache_kv,
             attn_mask, linear_weight, linear_bias, ln_scale, ln_bias,
             'pre_layer_norm', pre_layer_norm, 'epsilon', pre_ln_epsilon,
@@ -824,7 +824,7 @@ def fused_multi_transformer(x,
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
     if _non_static_mode():
-        cache_kv_out, final_out = _C_ops.fused_multi_transformer(
+        cache_kv_out, final_out = _legacy_C_ops.fused_multi_transformer(
             x, ln_scales, ln_biases, qkv_weights, qkv_biases, cache_kvs,
             time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
             ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,

@@ -18,6 +18,7 @@ from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static import utils
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
 
 class BasicApiTransformer(BaseTransformer):
@@ -37,6 +38,8 @@ class BasicApiTransformer(BaseTransformer):
     def transform(self):
         to_tensor_transformer = ToTensorTransformer(self.root)
         to_tensor_transformer.transform()
+        attribute_transformer = AttributeJstTransformer(self.root)
+        attribute_transformer.transform()
         self.visit(self.root)
 
         return self.wrapper_root
@@ -118,6 +121,42 @@ class ToTensorTransformer(BaseTransformer):
         assert isinstance(node, gast.Call)
         if is_to_variable(node):
             node = to_assign_node(node)
+        self.generic_visit(node)
+        return node
+
+
+class AttributeJstTransformer(BaseTransformer):
+    """
+    change some special attribute into __jst.XXX(obj, "attr_name") format.
+    for example:
+        a.size  -->  __jst.attr(a, "size")
+
+    because `size` have different behavier when in dygraph / static mode
+    NOTE: we only deal with ctx=Load() case.
+    """
+
+    def __init__(self, node):
+        assert isinstance(
+            node, gast.AST
+        ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
+        self.interested_name = set([
+            'size',
+        ])
+        self.root = node
+
+    def transform(self):
+        self.visit(self.root)
+        return self.root
+
+    def visit_Attribute(self, node):
+        assert isinstance(node, gast.Attribute)
+        assert isinstance(node.attr, str)
+        if isinstance(node.ctx,
+                      gast.Load) and node.attr in self.interested_name:
+            attr = node.attr
+            value = node.value
+            node = gast.parse("_jst.Attr({}, \"{}\")".format(
+                ast_to_source_code(value).strip(), attr)).body[0].value
         self.generic_visit(node)
         return node
 

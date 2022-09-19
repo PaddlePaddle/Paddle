@@ -257,7 +257,7 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((counts.numpy() == np_counts).all(), True)
         paddle.enable_static()
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_dygraph_api_out()
             self.test_dygraph_api_attr()

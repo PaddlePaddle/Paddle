@@ -181,6 +181,37 @@ struct ExtractAttribute<float> {
 };
 
 template <>
+struct ExtractAttribute<double> {
+  explicit ExtractAttribute(const std::string& attr_name)
+      : attr_name_(attr_name) {}
+
+  double* operator()(Attribute& attr) const {
+    if (attr.type() == typeid(int)) {  // NOLINT
+      int val = PADDLE_GET_CONST(int, attr);
+      attr = static_cast<double>(val);
+    } else if (attr.type() == typeid(int64_t)) {  // NOLINT
+      int64_t val = PADDLE_GET_CONST(int64_t, attr);
+      attr = static_cast<double>(val);
+    } else if (attr.type() == typeid(float)) {  // NOLINT
+      int64_t val = PADDLE_GET_CONST(float, attr);
+      attr = static_cast<double>(val);
+    }
+    double* attr_value = nullptr;
+    try {
+      attr_value = &paddle::get<double>(attr);
+    } catch (paddle::bad_variant_access const& bad_get) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot get attribute (%s) by type double, its type is %s.",
+          attr_name_,
+          paddle::platform::demangle(attr.type().name())));
+    }
+    return attr_value;
+  }
+
+  const std::string& attr_name_;
+};
+
+template <>
 struct ExtractAttribute<std::vector<double>> {
   explicit ExtractAttribute(const std::string& attr_name)
       : attr_name_(attr_name) {}

@@ -102,6 +102,7 @@ class ProfilerTarget(Enum):
     CPU = 0
     GPU = 1
     MLU = 2
+    CUSTOM_DEVICE = 3
 
 
 def make_scheduler(*,
@@ -201,7 +202,7 @@ def export_chrome_tracing(dir_name: str,
     Args:
         dir_name(str): Directory to save profiling data.
         worker_name(str, optional): Prefix of the file name saved, default is [hostname]_[pid].
-    
+
     Returns:
         A callable, which takes a Profiler object as parameter and calls its export method to save data to chrome tracing format file.
 
@@ -296,10 +297,14 @@ def _get_supported_targets() -> Iterable[ProfilerTarget]:
     Get the current supported profiler target in the system.
     """
     if _Profiler.is_cupti_supported():
-        return [ProfilerTarget.CPU, ProfilerTarget.GPU]
+        return [
+            ProfilerTarget.CPU, ProfilerTarget.GPU, ProfilerTarget.CUSTOM_DEVICE
+        ]
     if _Profiler.is_cnpapi_supported():
-        return [ProfilerTarget.CPU, ProfilerTarget.MLU]
-    return [ProfilerTarget.CPU]
+        return [
+            ProfilerTarget.CPU, ProfilerTarget.MLU, ProfilerTarget.CUSTOM_DEVICE
+        ]
+    return [ProfilerTarget.CPU, ProfilerTarget.CUSTOM_DEVICE]
 
 
 class Profiler:
@@ -371,27 +376,27 @@ class Profiler:
 
                 import paddle
                 import paddle.profiler as profiler
-                
+
                 class RandomDataset(paddle.io.Dataset):
                     def __init__(self, num_samples):
                         self.num_samples = num_samples
-                
+
                     def __getitem__(self, idx):
                         image = paddle.rand(shape=[100], dtype='float32')
                         label = paddle.randint(0, 10, shape=[1], dtype='int64')
                         return image, label
-                
+
                     def __len__(self):
                         return self.num_samples
-                
+
                 class SimpleNet(paddle.nn.Layer):
                     def __init__(self):
                         super(SimpleNet, self).__init__()
                         self.fc = paddle.nn.Linear(100, 10)
-                
+
                     def forward(self, image, label=None):
                         return self.fc(image)
-                
+
                 dataset = RandomDataset(20 * 4)
                 simple_net = SimpleNet()
                 opt = paddle.optimizer.SGD(learning_rate=1e-3,
@@ -437,7 +442,8 @@ class Profiler:
                  record_shapes: Optional[bool] = False,
                  profile_memory=False,
                  timer_only: Optional[bool] = False,
-                 emit_nvtx: Optional[bool] = False):
+                 emit_nvtx: Optional[bool] = False,
+                 custom_device_types: Optional[list] = []):
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
@@ -455,8 +461,12 @@ class Profiler:
             profileoption.trace_switch |= (1 << 1)
         if ProfilerTarget.MLU in self.targets:
             profileoption.trace_switch |= (1 << 2)
+        if ProfilerTarget.CUSTOM_DEVICE in self.targets:
+            profileoption.trace_switch |= (1 << 3)
+            if not custom_device_types:
+                custom_device_types = paddle.device.get_all_custom_device_type()
         wrap_optimizers()
-        self.profiler = _Profiler.create(profileoption)
+        self.profiler = _Profiler.create(profileoption, custom_device_types)
         if callable(scheduler):
             self.scheduler = scheduler
         elif isinstance(scheduler, (tuple, list)):

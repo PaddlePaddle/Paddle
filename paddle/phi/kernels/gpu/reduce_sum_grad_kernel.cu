@@ -25,7 +25,7 @@ template <typename T, typename Context>
 void ReduceSumGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& out_grad,
-                         const std::vector<int64_t>& dims,
+                         const IntArray& dims,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* x_grad) {
@@ -41,7 +41,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
     reduce_all = true;
   }
   std::vector<int> reduce_dims =
-      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
+      funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
 
   auto update_dims = vectorize(d_x->dims());
   int reduce_num = 1;

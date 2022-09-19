@@ -50,7 +50,8 @@ class BincountOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) The output tensor of Bincount op,");
     AddAttr<int>("minlength", "(int) The minimal numbers of bins")
         .SetDefault(0)
-        .EqualGreaterThan(0);
+        .EqualGreaterThan(0)
+        .SupportTensor();
     AddComment(R"DOC(
           Bincount Operator.
           Computes frequency of each value in the input tensor.

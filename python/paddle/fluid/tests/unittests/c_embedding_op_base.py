@@ -42,6 +42,8 @@ class TestCEmbeddingCPU(OpTest):
         self.initcase()
         if core.is_compiled_with_npu():
             self.__class__.use_npu = True
+        elif core.is_compiled_with_xpu():
+            self.__class__.use_xpu = True
         elif core.is_compiled_with_cuda():
             self.__class__.exist_fp64_check_grad = True
 
@@ -59,6 +61,8 @@ class TestCEmbeddingCPU(OpTest):
         self.attrs = {'start_index': self.start_index}
         if core.is_compiled_with_npu():
             self.__class__.use_npu = True
+        elif core.is_compiled_with_xpu():
+            self.__class__.use_xpu = True
 
     def test_check_cpu(self):
         self.check_output_with_place(core.CPUPlace())
@@ -82,12 +86,16 @@ class TestCEmbeddingOpBase(TestCEmbeddingCPU):
             self.check_output_with_place(core.CUDAPlace(0))
         elif core.is_compiled_with_npu():
             self.check_output_with_place(core.NPUPlace(0))
+        elif core.is_compiled_with_xpu():
+            self.check_output_with_place(core.XPUPlace(0))
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(core.CUDAPlace(0), ['W'], 'Out')
         elif core.is_compiled_with_npu():
             self.check_grad_with_place(core.NPUPlace(0), ['W'], 'Out')
+        elif core.is_compiled_with_xpu():
+            self.check_grad_with_place(core.XPUPlace(0), ['W'], 'Out')
 
     def init_dtype(self):
         if core.is_compiled_with_cuda():
@@ -96,6 +104,9 @@ class TestCEmbeddingOpBase(TestCEmbeddingCPU):
         elif core.is_compiled_with_npu():
             self.dtype = "float32"
             self.ids_dtype = "int32"
+        elif core.is_compiled_with_xpu():
+            self.dtype = "float32"
+            self.ids_dtype = "int64"
 
 
 class TestCEmbeddingOpFP32(TestCEmbeddingOpBase):
@@ -123,6 +134,8 @@ class TestCEmbeddingOpFP32(TestCEmbeddingOpBase):
 
         if core.is_compiled_with_npu():
             self.__class__.use_npu = True
+        elif core.is_compiled_with_xpu():
+            self.__class__.use_xpu = True
         elif core.is_compiled_with_cuda():
             self.__class__.exist_fp64_check_grad = True
 

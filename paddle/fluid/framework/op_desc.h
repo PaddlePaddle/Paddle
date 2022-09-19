@@ -144,6 +144,10 @@ class OpDesc {
   // Only be used in C++
   void SetAttrMap(const AttributeMap &attr_map);
 
+  void SetRuntimeAttrMap(const AttributeMap &attr_map);
+
+  const AttributeMap &GetRuntimeAttrMap() const;
+
   std::vector<std::string> InputNames(bool with_attr_var = false) const {
     return MapKeys(inputs_);
   }
@@ -221,6 +225,12 @@ class OpDesc {
   VariableNameMap outputs_;
   // attribute name => all original attrs
   AttributeMap attrs_;
+  // runtime_attrs_ contains the attributes which used for dispatching kernel
+  // (use_mkldnn, use_cudnn, ...) or passing additional configuration for
+  // special heterogeneous kernel (workspace_size_MB, ...).
+  // The attributes in runtime_attrs_ are setted by framework (such as PASS),
+  // and not in the python api.
+  AttributeMap runtime_attrs_;
 
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.

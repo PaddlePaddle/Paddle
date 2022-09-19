@@ -1,5 +1,6 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-//
+// Copyright 2022 The DGL team for some useful functions.
+
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,6 +23,10 @@
 #include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
 namespace phi {
+
+#define CUDA_MAX_NUM_BLOCKS_X 0x7FFFFFFF
+#define CUDA_MAX_NUM_BLOCKS_Y 0xFFFF
+#define CUDA_MAX_NUM_BLOCKS_Z 0xFFFF
 
 inline void CopyBCastOff(const BroadCastInfo& bcast_info,
                          thrust::device_vector<int64_t>& l_bcastoff,
@@ -61,6 +66,37 @@ inline int FindNumThreads(int dim, int max_num_threads) {
   }
   res = res <= 32 ? 32 : res;
   return res;
+}
+
+inline int FindNumBlocks(char axis, int nblocks, int max_num_blocks = -1) {
+  int default_max_num_blocks = -1;
+  switch (axis) {
+    case 'x':
+      default_max_num_blocks = CUDA_MAX_NUM_BLOCKS_X;
+      break;
+    case 'y':
+      default_max_num_blocks = CUDA_MAX_NUM_BLOCKS_Y;
+      break;
+    case 'z':
+      default_max_num_blocks = CUDA_MAX_NUM_BLOCKS_Z;
+      break;
+    default:
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("%c axis is not recognized", axis));
+  }
+  if (max_num_blocks == -1) {
+    max_num_blocks = default_max_num_blocks;
+  }
+  PADDLE_ENFORCE_GT(
+      max_num_blocks,
+      0,
+      phi::errors::InvalidArgument("max_num_blocks should be larger than 0, "
+                                   "but received %d",
+                                   max_num_blocks));
+  if (nblocks < max_num_blocks) {
+    return nblocks;
+  }
+  return max_num_blocks;
 }
 
 template <typename T>

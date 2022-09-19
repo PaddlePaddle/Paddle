@@ -92,8 +92,10 @@ void StackGradKernel(const Context& dev_ctx,
   }
   dy_suf = out.numel() / (split_dim * dy_pre);
 
-  auto tmp_out_data =
-      paddle::memory::Alloc(dev_ctx, outputs.size() * sizeof(T*));
+  auto tmp_out_data = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      outputs.size() * sizeof(T*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        tmp_out_data->ptr(),
                        phi::CPUPlace(),

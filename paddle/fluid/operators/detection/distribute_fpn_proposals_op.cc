@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -22,52 +25,6 @@ namespace operators {
 class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("FpnRois"),
-        true,
-        platform::errors::NotFound("Input(FpnRois) of DistributeFpnProposalsOp"
-                                   " is not found"));
-    PADDLE_ENFORCE_GE(ctx->Outputs("MultiFpnRois").size(),
-                      1UL,
-                      platform::errors::InvalidArgument(
-                          "Outputs(MultiFpnRois) of "
-                          "DistributeFpnProposalsOp should not be empty"));
-    size_t min_level = static_cast<size_t>(ctx->Attrs().Get<int>("min_level"));
-    size_t max_level = static_cast<size_t>(ctx->Attrs().Get<int>("max_level"));
-    PADDLE_ENFORCE_GE(
-        max_level,
-        min_level,
-        platform::errors::InvalidArgument(
-            "max_level must not lower than "
-            "min_level. But received max_level = %d, min_level = %d",
-            max_level,
-            min_level));
-    // Set the output shape
-    size_t num_out_rois = max_level - min_level + 1;
-    std::vector<framework::DDim> outs_dims;
-    outs_dims.reserve(num_out_rois);
-    for (size_t i = 0; i < num_out_rois; ++i) {
-      framework::DDim out_dim = {-1, 4};
-      outs_dims.push_back(out_dim);
-    }
-    ctx->SetOutputsDim("MultiFpnRois", outs_dims);
-    ctx->SetOutputDim("RestoreIndex", {-1, 1});
-
-    if (ctx->HasOutputs("MultiLevelRoIsNum")) {
-      std::vector<framework::DDim> outs_num_dims;
-      for (size_t i = 0; i < num_out_rois; ++i) {
-        outs_num_dims.push_back({-1});
-      }
-      ctx->SetOutputsDim("MultiLevelRoIsNum", outs_num_dims);
-    }
-    if (!ctx->IsRuntime()) {
-      for (size_t i = 0; i < num_out_rois; ++i) {
-        ctx->SetLoDLevel("MultiFpnRois", ctx->GetLoDLevel("FpnRois"), i);
-      }
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -125,15 +82,19 @@ we return an array which indicate the original index of rois in
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(
+    distribute_fpn_proposals,
+    DistributeFpnProposalsInferShapeFunctor,
+    PD_INFER_META(phi::DistributeFpnProposalsInferMeta));
+
 REGISTER_OPERATOR(
     distribute_fpn_proposals,
     ops::DistributeFpnProposalsOp,
     ops::DistributeFpnProposalsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(distribute_fpn_proposals,
-                       ops::DistributeFpnProposalsOpKernel<float>,
-                       ops::DistributeFpnProposalsOpKernel<double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    DistributeFpnProposalsInferShapeFunctor);
 REGISTER_OP_VERSION(distribute_fpn_proposals)
     .AddCheckpoint(
         R"ROC(

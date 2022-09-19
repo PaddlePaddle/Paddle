@@ -24,6 +24,7 @@ from .dist_attribute import OperatorDistributedAttribute
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperator
 from .process_mesh import ProcessMesh
+from .utils import is_loss_grad_op, is_loss_op
 
 # There always exists a default context for user. And user can set it to another one.
 _g_default_distributed_context = None
@@ -124,9 +125,6 @@ class DistributedContext:
 
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
-
-        # flag whether using `to_static`
-        self._dygraph_mode = False
 
     @property
     def serial_main_program(self):
@@ -895,6 +893,11 @@ class DistributedOperatorContext:
         self.already_init_sync_vars = set()
         self.varname_mapping = None
         self.rank_id = None
+        # NOTE Support correct parallelism for high-order differential model.
+        # by default exceed_backward_init_op is False and it means we are in Forward phase; After exceed_backward_init_op = True,
+        # it means we are in Backward phase.
+        # And the final sulotion should be revise high-order differential logic for these two phases in future.
+        self._exceed_backward_init_op = False
 
     def __deepcopy__(self, memo):
         cls = self.__class__
@@ -951,9 +954,15 @@ class DistributedOperatorContext:
         assert self._cur_src_op is not None
         return self._cur_src_op
 
+    def in_backward_phase(self):
+        return self._exceed_backward_init_op
+
     def prepare_context(self, src_op):
 
         self._cur_src_op = src_op
+
+        if is_loss_grad_op(src_op):
+            self._exceed_backward_init_op = True
 
         # build input varname mapping
         kinputs = {}

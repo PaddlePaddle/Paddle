@@ -207,6 +207,8 @@ class CustomPlace : public Place {
 
 std::ostream& operator<<(std::ostream&, const Place&);
 
+Place GetPinnedPlace(const Place& place);
+
 }  // namespace phi
 
 namespace paddle {

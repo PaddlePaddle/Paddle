@@ -368,6 +368,39 @@ void DeviceInterface::BlasAXPBY(size_t dev_id,
   INTERFACE_UNIMPLEMENT;
 }
 
+// profiler
+void DeviceInterface::ProfilerInitialize(
+    paddle::platform::TraceEventCollector* collector, void** user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::ProfilerFinalize(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::ProfilerPrepareTracing(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::ProfilerStartTracing(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::ProfilerStopTracing(
+    paddle::platform::TraceEventCollector* collector, void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::ProfilerCollectTraceData(
+    paddle::platform::TraceEventCollector* collector,
+    uint64_t start_ns,
+    void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
 #undef INTERFACE_UNIMPLEMENT
 
 }  // namespace phi

@@ -18,42 +18,70 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const IntArray& num_or_sections,
+                 const IntArray& sections,
                  const Scalar& axis,
                  std::vector<DenseTensor*> out);
 
 template <typename T, typename Context>
+void SplitWithNumKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        int num,
+                        const Scalar& axis,
+                        std::vector<DenseTensor*> out);
+
+template <typename T, typename Context>
 std::vector<DenseTensor> Split(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const IntArray& num_or_sections,
+                               const IntArray& sections,
                                const Scalar& axis) {
   size_t out_number;
-  if (num_or_sections.GetData().size() == 1) {
-    out_number = num_or_sections.GetData()[0];
-  } else {
-    out_number = num_or_sections.GetData().size();
-  }
+  out_number = sections.GetData().size();
 
   std::vector<MetaTensor> out_meta;
   std::vector<MetaTensor*> out_meta_ptr;
   out_meta.reserve(out_number);
   out_meta_ptr.reserve(out_number);
-  std::vector<DenseTensor> result;
-  result.reserve(out_number);
+  std::vector<DenseTensor> result(out_number);
 
   for (size_t i = 0; i < out_number; ++i) {
-    result.emplace_back(DenseTensor());
-    out_meta.emplace_back(&result.back());
+    out_meta.emplace_back(&result[i]);
     out_meta_ptr.push_back(&out_meta.back());
   }
-  SplitInferMeta(x, num_or_sections, axis, out_meta_ptr);
+  SplitInferMeta(x, sections, axis, out_meta_ptr);
+  std::vector<DenseTensor*> outs;
+  outs.reserve(out_meta.size());
+  for (size_t i = 0; i < out_meta.size(); ++i) {
+    outs.push_back(&result[i]);
+  }
+
+  SplitKernel<T, Context>(dev_ctx, x, sections, axis, outs);
+  return result;
+}
+
+template <typename T, typename Context>
+std::vector<DenseTensor> SplitWithNum(const Context& dev_ctx,
+                                      const DenseTensor& x,
+                                      int num,
+                                      const Scalar& axis) {
+  size_t out_number = num;
+
+  std::vector<MetaTensor> out_meta;
+  std::vector<MetaTensor*> out_meta_ptr;
+  out_meta.reserve(out_number);
+  out_meta_ptr.reserve(out_number);
+  std::vector<DenseTensor> result(out_number);
+
+  for (size_t i = 0; i < out_number; ++i) {
+    out_meta.emplace_back(&result[i]);
+    out_meta_ptr.push_back(&out_meta.back());
+  }
+  SplitWithNumInferMeta(x, num, axis, out_meta_ptr);
 
   std::vector<DenseTensor*> outs;
   outs.reserve(out_meta.size());
@@ -61,7 +89,7 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
     outs.push_back(&result[i]);
   }
 
-  SplitKernel<T, Context>(dev_ctx, x, num_or_sections, axis, outs);
+  SplitWithNumKernel<T, Context>(dev_ctx, x, num, axis, outs);
 
   return result;
 }

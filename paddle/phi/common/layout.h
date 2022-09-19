@@ -40,7 +40,7 @@ enum class DataLayout {
   NCHW,
   NCDHW,
   NDHWC,
-  MKLDNN,
+  ONEDNN,
   SPARSE_COO,
   SPARSE_CSR,
   PSTRING_UNION,
@@ -62,7 +62,7 @@ enum class DataLayout {
   kAnyLayout = ANY,
   kNHWC = NHWC,
   kNCHW = NCHW,
-  kMKLDNN = MKLDNN,  // all layouts supported by MKLDNN internally
+  kMKLDNN = ONEDNN,  // all layouts supported by ONEDNN internally
   kNDHWC = NDHWC,
   kNCDHW = NCDHW,
 };

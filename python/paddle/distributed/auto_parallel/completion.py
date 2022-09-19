@@ -19,7 +19,7 @@ import time
 from paddle.fluid import core
 from paddle.fluid import framework
 
-from .utils import print_program_with_dist_attr, _is_gradient_clip_op
+from .utils import print_program_with_dist_attr, is_gradient_clip_op
 from .operators import find_compatible_distributed_operator_impls
 from .dist_context import get_default_distributed_context, _node_id
 from .dist_tensor import DistributedTensor
@@ -901,7 +901,7 @@ class Completer:
 
     def _complete_high_order_grad_annotation(self, serial_main_program=None):
         """
-        NOTE: 
+        NOTE:
             [HighOrderGrad] Complete the annotation of vars and ops only for high order gradient.
             This function is temporary to support high order gradient, and will be removed in the future.
         """
@@ -939,6 +939,12 @@ class Completer:
                         ops[idx - 1].attr('op_role')) == int(
                             core.op_proto_and_checker_maker.OpRole.Forward):
                 appended_grad_times += 1
+
+            if int(op.attr('op_role')) == int(
+                    int(core.op_proto_and_checker_maker.OpRole.Backward)
+                    | int(core.op_proto_and_checker_maker.OpRole.Loss)):
+                assert op.type == "fill_constant"
+                break
 
             # complete the annotation of grad op (xxx_grad op or sum op)
             # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
@@ -1031,7 +1037,7 @@ class Completer:
                     grad_op_dist_attr.set_output_dims_mapping(
                         output_name, ref_fwd_dims_mapping)
 
-                elif grad_op.type == 'fill_zeros_like':
+                elif grad_op.type == 'fill_any_like':
                     ref_var_name = grad_op.input_arg_names[0]
                     ref_var = vars[ref_var_name]
                     ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
@@ -1268,7 +1274,7 @@ class Completer:
                     grad_op_dist_attr.impl_type = "default"
                     grad_op_dist_attr.impl_idx = 0
 
-                elif grad_op.type == 'fill_zeros_like':
+                elif grad_op.type == 'fill_any_like':
                     ref_var_name = grad_op.input_arg_names[0]
                     ref_var = vars[ref_var_name]
                     ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
@@ -1319,11 +1325,7 @@ class Completer:
             # TODO to add attribute for moment var
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
-                # TODO:
-                # 1. move `generate_optimizer` before `partitioner`
-                # 2. implement grad_clip completion by `dist_op`
-                # 3. allreduce dist_gloabl_norm (mp-group) and no_dist_global_norm (pp-group, sharding-group)
-                if _is_gradient_clip_op(op):
+                if is_gradient_clip_op(op):
                     if op.type in [
                             "sum", "sqrt", "fill_constant", "elementwise_max",
                             "elementwise_div"
@@ -1347,7 +1349,6 @@ class Completer:
                                 out_var, out_dist_attr)
                             op_dist_attr.set_output_dist_attr(
                                 out_name, out_dist_attr)
-                        remove_no_need_in_op(op, self._dist_context)
                     else:
                         in_var = vars[op.input("X")[0]]
                         in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
@@ -1356,8 +1357,8 @@ class Completer:
                         ref_process_mesh = in_dist_attr.process_mesh
                         ref_dims_mapping = in_dist_attr.dims_mapping
 
-                        if op.type == "cast" and ops[
-                                idx + 1].type == "elementwise_mul":
+                        if op.type == "cast" and \
+                            ops[idx + 1].type == "elementwise_mul":
                             ref_var = vars[ops[idx + 1].input("X")[0]]
                             ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
                                 ref_var)
@@ -1530,20 +1531,3 @@ class Completer:
                             break
                         else:
                             dist_op.dist_attr = backup_op_dist_attr
-
-
-def remove_no_need_in_op(op, dist_context):
-    if op.type == "fill_constant":
-        return
-
-    filter_vars = []
-    main_block = op.block
-    rank_id = dist_context.dist_op_context.rank_id
-    for varname in op.input("X"):
-        if rank_id in dist_context.get_tensor_dist_attr_for_program(
-                main_block.var(varname)).process_mesh.processes:
-            filter_vars.append(varname)
-
-    if not filter_vars:
-        return
-    op.desc.set_input('X', filter_vars)

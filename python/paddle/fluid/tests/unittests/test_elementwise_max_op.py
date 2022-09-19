@@ -62,9 +62,11 @@ class TestElementwiseOp(OpTest):
                         no_grad_set=set('Y'))
 
 
-@unittest.skipIf(
-    core.is_compiled_with_cuda() and core.cudnn_version() < 8100,
-    "run test when gpu is availble and the minimum cudnn version is 8.1.0.")
+@unittest.skipIf(core.is_compiled_with_cuda() and (
+    core.cudnn_version() < 8100
+    or paddle.device.cuda.get_device_capability()[0] < 8
+), "run test when gpu is availble and the minimum cudnn version is 8.1.0 and gpu's compute capability is at least 8.0."
+                 )
 class TestElementwiseBF16Op(OpTest):
 
     def setUp(self):

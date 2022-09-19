@@ -58,7 +58,7 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
       x.dims(),
       mask.dims(),
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
-  const DenseTensor& indices = mask.non_zero_indices();
+  const DenseTensor& indices = mask.indices();
   const DenseTensor& values = mask.values();
   const int sparse_dim = mask.sparse_dim();
   DenseTensor sparse_offsets = phi::Empty<GPUContext>(
@@ -103,7 +103,7 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
 
 /**
  * @brief Filter the DenseTensor x by the
- * mask.non_zero_indices() and output a SparseCooTensor
+ * mask.indices() and output a SparseCooTensor
  * x and mask must have the same shape.
  **/
 template <typename T, typename Context>
@@ -112,7 +112,7 @@ void SparseMaskKernel(const Context& dev_ctx,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      mask.non_zero_indices().dtype(), "SparseMaskGPUKernel", ([&] {
+      mask.indices().dtype(), "SparseMaskGPUKernel", ([&] {
         SparseMaskGPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
 }
@@ -197,7 +197,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
                                              config.thread_per_block,
                                              0,
                                              dev_ctx.stream()>>>(
-      x.non_zero_indices().data<IntT>(),
+      x.indices().data<IntT>(),
       d_sparse_offsets.data<IntT>(),
       x_indexs.numel(),
       sparse_dim,
@@ -270,7 +270,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
                             const DenseTensor& mask_indices,
                             DenseTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
+      x.indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
         SparseMaskHelperGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));
 }

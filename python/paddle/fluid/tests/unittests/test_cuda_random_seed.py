@@ -23,6 +23,8 @@ import paddle.fluid as fluid
 import numpy as np
 import paddle
 import paddle.fluid.core as core
+import shutil
+import tempfile
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -168,6 +170,41 @@ class TestGeneratorSeed(unittest.TestCase):
             np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
             np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
             self.assertTrue(not np.allclose(out1_res2, out1_res1))
+
+    def test_generator_pickle(self):
+        output_dir = tempfile.mkdtemp()
+        random_file = os.path.join(output_dir, "random.pdmodel")
+
+        fluid.enable_dygraph()
+        x0 = paddle.randn([120], dtype="float32")
+
+        st = paddle.get_cuda_rng_state()
+        st_dict = {"random_state": st}
+        print("state: ", st[0])
+
+        paddle.save(st_dict, random_file)
+        x1 = paddle.randn([120], dtype="float32")
+
+        lt_dict = paddle.load(random_file)
+        st = lt_dict["random_state"]
+
+        paddle.set_cuda_rng_state(st)
+        x2 = paddle.randn([120], dtype="float32")
+
+        lt_dict = paddle.load(random_file)
+        st = lt_dict["random_state"]
+        paddle.set_cuda_rng_state(st)
+        x3 = paddle.randn([120], dtype="float32")
+
+        x1_np = x1.numpy()
+        x2_np = x2.numpy()
+        x3_np = x3.numpy()
+
+        print(">>>>>>> gaussian random dygraph state load/save >>>>>>>")
+        np.testing.assert_equal(x1_np, x2_np)
+        np.testing.assert_equal(x1_np, x2_np)
+
+        shutil.rmtree(output_dir)
 
 
 if __name__ == "__main__":

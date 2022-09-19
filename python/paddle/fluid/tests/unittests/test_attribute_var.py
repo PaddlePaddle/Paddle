@@ -37,6 +37,9 @@ class UnittestBase(unittest.TestCase):
         self.shapes = None
         self.save_path = None
 
+    def path_prefix(self):
+        return type(self).__name__
+
     def infer_prog(self):
         config = paddle_infer.Config(self.save_path + '.pdmodel',
                                      self.save_path + '.pdiparams')
@@ -44,15 +47,21 @@ class UnittestBase(unittest.TestCase):
         input_names = predictor.get_input_names()
         for i, shape in enumerate(self.shapes):
             input_handle = predictor.get_input_handle(input_names[i])
-            fake_input = np.random.randn(*shape).astype("float32")
+            self.fake_input = np.random.randn(*shape).astype("float32")
             input_handle.reshape(shape)
-            input_handle.copy_from_cpu(fake_input)
+            input_handle.copy_from_cpu(self.fake_input)
         predictor.run()
         output_names = predictor.get_output_names()
-        output_handle = predictor.get_output_handle(output_names[0])
-        output_data = output_handle.copy_to_cpu()
+        res = []
+        for out_name in output_names:
+            output_handle = predictor.get_output_handle(out_name)
+            output_data = output_handle.copy_to_cpu()
+            res.append(output_data)
 
-        return output_data
+        if len(output_names) == 1:
+            res = res[0]
+
+        return res
 
 
 class TestDropout(UnittestBase):
@@ -86,6 +95,10 @@ class TestDropout(UnittestBase):
             # Test for Inference Predictor
             infer_out = self.infer_prog()
             self.assertEqual(infer_out.shape, (10, 10))
+
+            self.assertEqual(
+                main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
+                p.name)
 
 
 class TestTileTensorList(UnittestBase):

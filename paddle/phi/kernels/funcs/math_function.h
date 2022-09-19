@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -52,6 +53,22 @@ struct SetConstant {
                   paddle::framework::Tensor* tensor,
                   T num);
 };
+
+#ifdef PADDLE_WITH_XPU
+template <typename T>
+struct SetConstant<XPUContext, T> {
+  void operator()(const XPUContext& context,
+                  paddle::framework::Tensor* tensor,
+                  T num);
+};
+
+template <typename T>
+struct SetConstant<paddle::platform::XPUDeviceContext, T> {
+  void operator()(const paddle::platform::XPUDeviceContext& context,
+                  paddle::framework::Tensor* tensor,
+                  T num);
+};
+#endif
 
 template <typename Place>
 void set_constant_with_place(const paddle::platform::DeviceContext& context,

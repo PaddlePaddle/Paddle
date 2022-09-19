@@ -36,15 +36,17 @@ using framework::ConvSearchCache;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
-// As the basic for SearchAlgorithm struct.
-template <typename PerfT>
-struct SearchAlgorithm {};
-
 // As the container of searchAlgorithm::Find() result.
 template <typename AlgoT>
 struct SearchResult {
   SearchResult() {}
+  explicit SearchResult(const phi::autotune::DnnNode& node)
+      : algo(static_cast<AlgoT>(node.algo)),
+        workspace_size(node.workspace_size) {}
+
   explicit SearchResult(AlgoT a) : algo(a) {}
+  explicit SearchResult(AlgoT a, float t, size_t size)
+      : algo(a), time(t), workspace_size(size) {}
 
   AlgoT algo = static_cast<AlgoT>(0);
   float time = -1.f;
@@ -76,28 +78,50 @@ struct ConvArgsBase {
   // dilations
   std::vector<int> d;
 
+  // groups
+  int group;
+
+  // data foramt
+  DataLayout data_layout;
+
   ConvArgsBase(const framework::Tensor* x,
                const framework::Tensor* w,
                const framework::Tensor* o,
                const std::vector<int> s,
                const std::vector<int> p,
                const std::vector<int> d,
-               DataT dtype)
-      : x(x), w(w), o(o), s(s), p(p), d(d), cudnn_dtype(dtype) {}
+               DataT dtype,
+               int g,
+               DataLayout layout)
+      : x(x),
+        w(w),
+        o(o),
+        s(s),
+        p(p),
+        d(d),
+        cudnn_dtype(dtype),
+        group(g),
+        data_layout(layout) {}
 
   template <typename T>
-  size_t GetCacheKey() const {
+  phi::autotune::ConvCacheKey Convert2ConvCacheKey() const {
     auto x_shape = phi::vectorize(x->dims());
     auto w_shape = phi::vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
-             << ", strides=" << s << ", paddings=" << p << ", dilations=" << d;
-    return phi::autotune::ConvKey(
+             << ", strides=" << s << ", paddings=" << p << ", dilations=" << d
+             << ",data= " << paddle::experimental::CppTypeToDataType<T>::Type()
+             << ", group=" << group
+             << ", data layout=" << static_cast<int64_t>(data_layout);
+
+    return phi::autotune::ConvCacheKey(
         x_shape,
         w_shape,
         p,
         s,
         d,
-        paddle::experimental::CppTypeToDataType<T>::Type());
+        paddle::experimental::CppTypeToDataType<T>::Type(),
+        group,
+        static_cast<int64_t>(data_layout));
   }
 };
 
