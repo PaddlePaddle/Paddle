@@ -85,7 +85,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         "cosh",     "asin",  "acos",
         "atan",     "asinh", "atanh",
         "ceil",     "floor", "erf",
-        "silu"};
+        "silu",     "celu"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
