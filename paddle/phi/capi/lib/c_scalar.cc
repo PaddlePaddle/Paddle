@@ -78,4 +78,9 @@ double PD_ScalarGetFloat64Data(PD_Scalar* scalar) {
   return cc_scalar->to<double>();
 }
 
+phi::dtype::float16 PD_ScalarGetFloat16Data(PD_Scalar* scalar) {
+  auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
+  return cc_scalar->to<phi::dtype::float16>();
+}
+
 PD_REGISTER_CAPI(scalar);

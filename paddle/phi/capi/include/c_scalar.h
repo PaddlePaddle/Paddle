@@ -46,6 +46,8 @@ float PD_ScalarGetFloat32Data(PD_Scalar *scalar);
 
 double PD_ScalarGetFloat64Data(PD_Scalar *scalar);
 
+phi::dtype::float16 PD_ScalarGetFloat16Data(PD_Scalar *scalar);
+
 PD_DataType PD_ScalarGetDataType(PD_Scalar *scalar);
 
 #ifdef __cplusplus
