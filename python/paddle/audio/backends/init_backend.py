@@ -90,7 +90,7 @@ def set_backend(backend_name: str):
         module = wave_backend
     else:
         import paddleaudio
-        paddleaudio.set_audio_backend(backend_name)
+        paddleaudio.backends.set_audio_backend(backend_name)
         module = paddleaudio
 
     for func in ["save", "load", "info"]:
