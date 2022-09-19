@@ -15,8 +15,8 @@
 import os
 
 import paddle.fluid.core as core
-from paddle.distributed.fleet.rpc.internal import serialize, deserialize, PythonFunc
-from paddle.distributed.fleet.rpc.utils import barrier, exchange_service_info
+from paddle.distributed.rpc.internal import serialize, deserialize, PythonFunc
+from paddle.distributed.rpc.utils import _barrier, _exchange_service_info
 
 MASTER_ADDR = None
 MASTER_PORT = None
@@ -31,8 +31,10 @@ def init_rpc(name,
     init rpc.
 
     Arguments:
-        name: worker name
-        current_endpoint (str): ip address of server(ip:port)
+        name (str): worker name.
+        rank (int): worker id.
+        world_size (int): number of workers.
+        server_endpoint (str): ip address of server(ip:port).
         master_endport (str): id address of master, other nodes communicate with the master to
             get the information of all service nodes.
     """
@@ -51,8 +53,8 @@ def init_rpc(name,
         assert (server_endpoint != master_endpoint
                 ), "current endpoint: {} must != master endpoint: {}".format(
                     server_endpoint, master_endpoint)
-    all_infos = exchange_service_info(name, rank, world_size, server_endpoint,
-                                      master_endpoint)
+    all_infos = _exchange_service_info(name, rank, world_size, server_endpoint,
+                                       master_endpoint)
     # init service info
     infos = []
     for node_info in all_infos:
@@ -60,27 +62,26 @@ def init_rpc(name,
         port = int(port)
         info = core.ServiceInfo(node_info.name, node_info.rank, ip, port)
         infos.append(info)
-    agent = core.RpcAgent(name, infos)
-    core.set_agent_instance(agent)
-    agent.start_server()
-    barrier(rank, world_size, master_endpoint)
-    agent.start_client()
+    core.init_and_set_agent_instance(name, infos)
+    core.rpc_start_server()
+    _barrier(rank, world_size, master_endpoint)
+    core.rpc_start_client()
 
 
-def rpc_sync(name, fn, args=None, kwargs=None):
-    fut = _invoke_rpc(name, fn, args, kwargs)
+def rpc_sync(name, fn, time_out_ms=500000, args=None, kwargs=None):
+    fut = _invoke_rpc(name, fn, time_out_ms, args, kwargs)
     return deserialize(fut.wait())
 
 
-def rpc_async(name, fn, args=None, kwargs=None):
-    return _invoke_rpc(name, fn, args, kwargs)
+def rpc_async(name, fn, time_out_ms=500000, args=None, kwargs=None):
+    return _invoke_rpc(name, fn, time_out_ms, args, kwargs)
 
 
-def _invoke_rpc(name, fn, args, kwargs):
+def _invoke_rpc(name, fn, time_out_ms, args, kwargs):
     args = args if args else ()
     kwargs = kwargs if kwargs else {}
     serial_obj = serialize(PythonFunc(fn, args, kwargs))
-    future = core.invoke_rpc(name, serial_obj)
+    future = core.invoke_rpc(name, serial_obj, time_out_ms)
     return future
 
 
@@ -88,7 +89,7 @@ def shutdown():
     rank = core.rpc_get_rank()
     world_size = core.rpc_get_world_size()
     end_point = "{}:{}".format(MASTER_ADDR, MASTER_PORT)
-    barrier(rank, world_size, end_point)
+    _barrier(rank, world_size, end_point)
     core.rpc_stop_server()
     core.rpc_clear_python_rpc_handler()
 

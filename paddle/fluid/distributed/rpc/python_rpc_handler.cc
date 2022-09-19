@@ -16,7 +16,7 @@
 
 namespace paddle {
 namespace distributed {
-constexpr auto kInternalModule = "paddle.distributed.fleet.rpc.internal";
+constexpr auto kInternalModule = "paddle.distributed.rpc.internal";
 
 py::object getFunction(const py::object& module, const char* name) {
   py::object fn = module.attr(name);

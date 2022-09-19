@@ -20,6 +20,8 @@
 #include <future>
 #include <string>
 
+#include "paddle/fluid/platform/macros.h"
+
 namespace py = pybind11;
 namespace paddle {
 namespace distributed {
@@ -27,10 +29,6 @@ class FutureWrapper {
  public:
   FutureWrapper() {}
   explicit FutureWrapper(std::future<std::string> fut) : fut_(std::move(fut)) {}
-  FutureWrapper(const FutureWrapper &) = delete;
-  FutureWrapper &operator=(const FutureWrapper &) = delete;
-  FutureWrapper(FutureWrapper &&) = default;
-  FutureWrapper &operator=(FutureWrapper &&) = default;
   py::bytes wait() {
     // GIL must be released, otherwise fut_.get() blocking will cause the
     // service to fail to process RPC requests, leading to deadlock
@@ -41,6 +39,7 @@ class FutureWrapper {
   }
 
  private:
+  DISABLE_COPY_AND_ASSIGN(FutureWrapper);
   std::future<std::string> fut_;
 };
 }  // namespace distributed

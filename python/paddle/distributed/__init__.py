@@ -69,6 +69,8 @@ from . import utils  # noqa: F401
 
 from .sharding import *  # noqa: F401
 
+from . import rpc
+
 __all__ = [  # noqa
     "spawn", "launch", "scatter", "broadcast", "ParallelEnv", "new_group",
     "init_parallel_env", "gloo_init_parallel_env", "gloo_barrier",
@@ -77,5 +79,5 @@ __all__ = [  # noqa
     "all_gather_object", "InMemoryDataset", "barrier", "all_reduce", "alltoall",
     "send", "reduce", "recv", "ReduceOp", "wait", "get_rank",
     "ProbabilityEntry", "ParallelMode", "is_initialized", "isend", "irecv",
-    "reduce_scatter"
+    "reduce_scatter", "rpc"
 ]

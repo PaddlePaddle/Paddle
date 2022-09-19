@@ -20,6 +20,8 @@
 #include <mutex>
 #include <string>
 
+#include "paddle/fluid/platform/macros.h"
+
 namespace py = pybind11;
 
 namespace paddle {
@@ -37,11 +39,6 @@ class PYBIND11_EXPORT PythonRpcHandler {
   // Deserialize a string into a py::object
   py::object Deserialize(const std::string& obj);
 
-  PythonRpcHandler(const PythonRpcHandler&) = delete;
-  PythonRpcHandler& operator=(const PythonRpcHandler&) = delete;
-  PythonRpcHandler(PythonRpcHandler&&) = delete;
-  PythonRpcHandler& operator=(PythonRpcHandler&&) = delete;
-
   // clear python_rpc_handler instance, otherwise memory leak will lead to
   // _tstate_lock is released
   void Clear();
@@ -49,6 +46,8 @@ class PYBIND11_EXPORT PythonRpcHandler {
  private:
   PythonRpcHandler();
   ~PythonRpcHandler() = default;
+
+  DISABLE_COPY_AND_ASSIGN(PythonRpcHandler);
 
   static PythonRpcHandler* python_rpc_handler_;
   // Ref to `paddle.distributed.fleet.rpc.internal.run_py_func`.

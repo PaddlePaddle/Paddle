@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/rpc/rpc_agent.h"
+#include "paddle/fluid/platform/enforce.h"
 
 #include <memory>
 #include <string>
@@ -21,6 +22,11 @@
 
 namespace paddle {
 namespace distributed {
+
+const int kTimeoutMs = 500000;
+const int kConnectTimeoutMs = 10000;
+const int kMaxRetry = 5;
+const int kCloseWaitMs = 1000;
 std::shared_ptr<RpcAgent> RpcAgent::rpcAgentInstance_ = nullptr;
 
 RpcAgent::RpcAgent(std::string name, std::vector<ServiceInfo> infos) {
@@ -56,10 +62,10 @@ int RpcAgent::StartClient() {
   // Initialize the channel, NULL means using default options.
   brpc::ChannelOptions channelOptions;
   channelOptions.protocol = "baidu_std";
-  channelOptions.timeout_ms = 500000;
+  channelOptions.timeout_ms = kTimeoutMs;
   channelOptions.connection_type = "pooled";
-  channelOptions.connect_timeout_ms = 100000;
-  channelOptions.max_retry = 5;
+  channelOptions.connect_timeout_ms = kConnectTimeoutMs;
+  channelOptions.max_retry = kMaxRetry;
   channels_.resize(nameToInfos_.size());
   // build connection from client to all servers
   for (std::size_t i = 0; i < channels_.size(); i++) {
@@ -78,8 +84,9 @@ int RpcAgent::StartClient() {
 
 int RpcAgent::Stop() {
   LOG(INFO) << "Start stopping server: " << name_;
-  server_.Stop(1000);
+  server_.Stop(kCloseWaitMs);
   server_.Join();
+  rpcAgentInstance_ = nullptr;
   LOG(INFO) << "Server " << name_ << " stoppped";
   return 0;
 }
@@ -93,7 +100,7 @@ void OnRpcDone::Run() {
               << " (attached=" << cntl_.response_attachment() << ")"
               << " latency=" << cntl_.latency_us() << "us";
   } else {
-    LOG(WARNING) << cntl_.ErrorText();
+    LOG(ERROR) << cntl_.ErrorText();
   }
 }
 std::string RpcAgent::Send(const std::string &msg, const std::string &to) {
@@ -102,7 +109,8 @@ std::string RpcAgent::Send(const std::string &msg, const std::string &to) {
   if (it != nameToInfos_.end()) {
     id = it->second.id_;
   } else {
-    LOG(WARNING) << "Worker " << to << "doesn't exesit!";
+    // LOG(ERROR) << "Worker " << to << "doesn't exist!";
+    platform::errors::Fatal("Worker %s doesn't exist!", to);
   }
   auto channel = channels_[id];
   brpc::Controller cntl;
@@ -121,23 +129,43 @@ std::string RpcAgent::Send(const std::string &msg, const std::string &to) {
 }
 
 std::future<std::string> RpcAgent::InvokeRpc(const std::string &py_func,
-                                             const std::string &to) {
+                                             const std::string &to,
+                                             int time_out_ms = kTimeoutMs) {
   auto it = nameToInfos_.find(to);
   uint32_t id = channels_.size();
   if (it != nameToInfos_.end()) {
     id = it->second.id_;
   } else {
-    LOG(WARNING) << "Worker " << to << "doesn't exesit!";
+    // LOG(ERROR) << "Worker " << to << "doesn't exist!";
+    platform::errors::Fatal("Worker %s doesn't exist!", to);
   }
   auto channel = channels_[id];
   // `done` must be allocated on the heap because its life cycle is after
   // calling done.Run().
   OnRpcDone *done = new OnRpcDone;
+  done->cntl.set_timeout_ms(time_out_ms);
   done->request_.set_message(py_func);
   std::future<std::string> fut = done->GetFuture();
   RpcBaseService_Stub stub(channel.get());
   stub.InvokeRpc(&done->cntl_, &done->request_, &done->response_, done);
   return fut;
+}
+
+std::shared_ptr<RpcAgent> RpcAgent::RpcAgentInstance() {
+  PADDLE_ENFORCE_NE(rpcAgentInstance_,
+                    nullptr,
+                    platform::errors::Fatal(
+                        "RpcAgent is not set, please calling "
+                        "paddle.distributed.rpc.int_rpc() to init rpc agent."));
+  return rpcAgentInstance_;
+}
+void RpcAgent::SetAgentInstance(std::shared_ptr<RpcAgent> agent) {
+  PADDLE_ENFORCE_EQ(
+      rpcAgentInstance_,
+      nullptr,
+      platform::errors::Fatal(
+          "RpcAgent has been set, please don't set rpc agent repeatly."));
+  rpcAgentInstance_ = agent;
 }
 }  // namespace distributed
 }  // namespace paddle

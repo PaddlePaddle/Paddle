@@ -54,14 +54,8 @@ class OnRpcDone : public google::protobuf::Closure {
 
 class RpcAgent {
  public:
-  static std::shared_ptr<RpcAgent> RpcAgentInstance() {
-    return rpcAgentInstance_;
-  }
-  static void SetAgentInstance(std::shared_ptr<RpcAgent> agent) {
-    if (rpcAgentInstance_ == nullptr) {
-      rpcAgentInstance_ = agent;
-    }
-  }
+  static std::shared_ptr<RpcAgent> RpcAgentInstance();
+  static void SetAgentInstance(std::shared_ptr<RpcAgent> agent);
   // init RpcAgent instance and get information of all services
   RpcAgent(std::string name, std::vector<ServiceInfo> infos);
   ~RpcAgent() {}
@@ -95,7 +89,8 @@ class RpcAgent {
   std::string Send(const std::string &msg, const std::string &to);
 
   std::future<std::string> InvokeRpc(const std::string &msg,
-                                     const std::string &to);
+                                     const std::string &to,
+                                     int time_out_ms);
 
  private:
   static std::shared_ptr<RpcAgent> rpcAgentInstance_;

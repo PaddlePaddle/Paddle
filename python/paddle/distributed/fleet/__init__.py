@@ -32,13 +32,12 @@ from .fleet import Fleet
 from .model import distributed_model
 from .optimizer import distributed_optimizer
 from .scaler import distributed_scaler
-from . import rpc
 
 __all__ = [  #noqa
     "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
     "MultiSlotStringDataGenerator", "UserDefinedRoleMaker",
     "DistributedStrategy", "Role", "MultiSlotDataGenerator",
-    "PaddleCloudRoleMaker", "Fleet", "rpc"
+    "PaddleCloudRoleMaker", "Fleet"
 ]
 
 fleet = Fleet()

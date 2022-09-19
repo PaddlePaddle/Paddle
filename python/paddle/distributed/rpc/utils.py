@@ -21,8 +21,8 @@ from contextlib import closing
 ServiceInfo = namedtuple("ServiceInfo", ["name", "rank", "endpoint"])
 
 
-def exchange_service_info(name, rank, world_size, current_endpoint,
-                          master_endpoint):
+def _exchange_service_info(name, rank, world_size, current_endpoint,
+                           master_endpoint):
     master_addr, master_port = master_endpoint.split(":")
     master_port = int(master_port)
     # compute the size of data to be received
@@ -80,7 +80,7 @@ def exchange_service_info(name, rank, world_size, current_endpoint,
         return data
 
 
-def barrier(rank, world_size, master_endpoint):
+def _barrier(rank, world_size, master_endpoint):
     """
     When all servers have executed here, they can continue to execute.
     reference: https://stackoverflow.com/questions/21626423/how-is-barrier-implemented-in-message-passing-systems

@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.fleet.rpc.rpc import init_rpc, shutdown, rpc_async, rpc_sync
+from paddle.distributed.rpc.rpc import init_rpc, shutdown, rpc_async, rpc_sync
 
 __all__ = ["init_rpc", "shutdown", "rpc_async", "rpc_sync"]
