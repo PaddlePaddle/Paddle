@@ -3,9 +3,13 @@ cc_library(
   SRCS ProcessGroup.cc
   DEPS dense_tensor)
 cc_library(
+  processgroup_stream
+  SRCS ProcessGroupStream.cc
+  DEPS dense_tensor)
+cc_library(
   eager_reducer
   SRCS reducer.cc
-  DEPS eager_api processgroup phi_api string_helper)
+  DEPS eager_api processgroup processgroup_stream phi_api string_helper)
 
 if(WITH_DISTRIBUTE)
   cc_library(
@@ -18,7 +22,12 @@ if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     processgroup_nccl
     SRCS ProcessGroupNCCL.cc NCCLTools.cc Common.cc
-    DEPS processgroup place enforce collective_helper device_context
+    DEPS processgroup
+         processgroup_stream
+         place
+         enforce
+         collective_helper
+         device_context
          dense_tensor)
   if(WITH_DISTRIBUTE AND WITH_PSCORE)
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)

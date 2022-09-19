@@ -116,7 +116,10 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
 
     // Temporary memory
-    auto tmp_ious_data = memory::Alloc(dev_ctx, num_classes * sizeof(float));
+    auto tmp_ious_data = memory::Alloc(
+        dev_ctx.GetPlace(),
+        num_classes * sizeof(float),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     float* ious_data = static_cast<float*>(tmp_ious_data->ptr());
 
     // Init out_wrong, out_correct and out_mean_iou

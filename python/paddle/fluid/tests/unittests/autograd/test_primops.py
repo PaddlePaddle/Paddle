@@ -41,7 +41,12 @@ paddle.enable_static()
         ('sin', primops.sin, randn(2, 3), {}, (2, 3), 'float64'),
         ('cos', primops.cos, randn(2, 3), {}, (2, 3), 'float64'),
         ('exp', primops.exp, randn(2, 3), {}, (2, 3), 'float64'),
+        ('erf', primops.erf, randn(2, 3), {}, (2, 3), 'float64'),
+        ('abs', primops.abs, randn(2, 3), {}, (2, 3), 'float64'),
         ('log', primops.log, randn(2, 3), {}, (2, 3), 'float64'),
+        ('cast', primops.cast, randn(2, 3), {
+            'dtype': paddle.int64
+        }, (2, 3), 'int64'),
         ('reshape', primops.reshape, randn(2, 3), {
             'shape': (3, 2)
         }, (3, 2), 'float64'),
@@ -57,10 +62,10 @@ paddle.enable_static()
         ('concat_axis1', primops.concat, ((randn(2, 3), randn(2, 3)), ), {
             'axis': 1
         }, (2, 6), 'float64'),
-        ('reduce_axis1', primops.reduce, randn(2, 3), {
+        ('reduce_axis1', primops.reduce_sum, randn(2, 3), {
             'axis': (1, )
         }, (2, ), 'float64'),
-        ('reduce_axis01', primops.reduce, randn(2, 3), {
+        ('reduce_axis01', primops.reduce_sum, randn(2, 3), {
             'axis': (0, 1)
         }, (1, ), 'float64'),
         ('split', primops.split, randn(2, 3), {
@@ -98,6 +103,9 @@ paddle.enable_static()
         ('select', primops.select,
          (randn(2, 3) > 0, randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
         ('eq', primops.eq, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'bool'),
+        ('ne', primops.ne, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'bool'),
+        ('gt', primops.gt, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'bool'),
+        ('ge', primops.ge, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'bool'),
         ('pow', primops.pow, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
         ('max', primops.max, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
     ))

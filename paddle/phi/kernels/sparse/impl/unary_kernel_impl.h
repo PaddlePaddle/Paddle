@@ -131,9 +131,9 @@ void CastCooKernel(const Context& dev_ctx,
                    SparseCooTensor* out) {
   out->set_dims(x.dims());
 
-  const DenseTensor& x_indices = x.non_zero_indices();
+  const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_indices = out->mutable_non_zero_indices();
+  DenseTensor* out_indices = out->mutable_indices();
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
   if (index_dtype == DataType::UNDEFINED) {
@@ -167,11 +167,11 @@ void CastCsrKernel(const Context& dev_ctx,
                    SparseCsrTensor* out) {
   out->set_dims(x.dims());
 
-  const DenseTensor& x_crows = x.non_zero_crows();
-  const DenseTensor& x_cols = x.non_zero_cols();
+  const DenseTensor& x_crows = x.crows();
+  const DenseTensor& x_cols = x.cols();
   const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_crows = out->mutable_non_zero_crows();
-  DenseTensor* out_cols = out->mutable_non_zero_cols();
+  DenseTensor* out_crows = out->mutable_crows();
+  DenseTensor* out_cols = out->mutable_cols();
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
   if (index_dtype == DataType::UNDEFINED) {

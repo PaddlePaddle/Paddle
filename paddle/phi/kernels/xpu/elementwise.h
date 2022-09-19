@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -88,13 +89,7 @@ void XPUElementwise(const XPUContext& dev_ctx,
              reinterpret_cast<XPUType*>(z_data),
              x_dims_vec,
              y_dims_vec);
-  PADDLE_ENFORCE_EQ(
-      ret,
-      xpu::SUCCESS,
-      errors::External(
-          "XPU kernel Elementwise occur error in XPUElementwise error code ",
-          ret,
-          XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "elementwise");
 }
 
 template <typename T, typename XPUType>
@@ -177,13 +172,7 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
                  reinterpret_cast<XPUType*>(dx_data),
                  x_dims_vec,
                  y_dims_vec);
-  PADDLE_ENFORCE_EQ(
-      ret,
-      xpu::SUCCESS,
-      errors::External(
-          "XPU kernel Elementwise occur error in XPUElementwise error code ",
-          ret,
-          XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "elementwise");
 }
 
 }  // namespace phi

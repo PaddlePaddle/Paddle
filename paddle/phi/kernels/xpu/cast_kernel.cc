@@ -41,7 +41,7 @@ void CastKernel(const Context& dev_ctx,
       r = xpu::cast_v2<XPUInTDType, float>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
-          out->mutable_data<float>(dev_ctx.GetPlace()),
+          dev_ctx.template Alloc<float>(out),
           numel);
       break;
     case phi::DataType::FLOAT16:
@@ -49,28 +49,35 @@ void CastKernel(const Context& dev_ctx,
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           reinterpret_cast<float16*>(
-              out->mutable_data<phi::dtype::float16>(dev_ctx.GetPlace())),
+              dev_ctx.template Alloc<phi::dtype::float16>(out)),
           numel);
       break;
     case phi::DataType::INT64:
       r = xpu::cast_v2<XPUInTDType, int64_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
-          out->mutable_data<int64_t>(dev_ctx.GetPlace()),
+          dev_ctx.template Alloc<int64_t>(out),
           numel);
       break;
     case phi::DataType::INT32:
       r = xpu::cast_v2<XPUInTDType, int32_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
-          out->mutable_data<int>(dev_ctx.GetPlace()),
+          dev_ctx.template Alloc<int>(out),
           numel);
       break;
     case phi::DataType::BOOL:
       r = xpu::cast_v2<XPUInTDType, bool>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
-          out->mutable_data<bool>(dev_ctx.GetPlace()),
+          dev_ctx.template Alloc<bool>(out),
+          numel);
+      break;
+    case phi::DataType::UINT8:
+      r = xpu::cast_v2<XPUInTDType, uint8_t>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUInTDType*>(in_data),
+          dev_ctx.template Alloc<uint8_t>(out),
           numel);
       break;
     default:

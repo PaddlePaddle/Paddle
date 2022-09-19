@@ -81,7 +81,7 @@ class YoloBoxHeadKernel : public framework::OpKernel<T> {
     const int grid_size_y = h;
     const int anchors_num = anchors.size() / 2;
     const T* input_data = x->data<T>();
-    T* output_data = out->mutable_data<T>(context.GetPlace());
+    T* output_data = device_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     auto stream = device_ctx.stream();
     const int volume = x_dims[1] * h * w;
     dim3 block(16, 16, 4);

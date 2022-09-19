@@ -58,9 +58,9 @@ class ArgsortOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Argsort operator
 
-Performs sorting on the input tensor along the given axis and outputs two 
-tensors, Output(Out) and Output(Indices). They reserve the same shape 
-with Input(X), and Output(Out) represents the sorted tensor while 
+Performs sorting on the input tensor along the given axis and outputs two
+tensors, Output(Out) and Output(Indices). They reserve the same shape
+with Input(X), and Output(Out) represents the sorted tensor while
 Output(Indices) gives the sorted order along the given axis Attr(axis).
 
  )DOC");

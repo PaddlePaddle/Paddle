@@ -213,6 +213,32 @@ class TestElementwiseFmin2Op(OpTest):
                         check_eager=True)
 
 
+class TestElementwiseFmin3Op(OpTest):
+    """TestElementwiseFmin2Op"""
+
+    def setUp(self):
+        """setUp"""
+        self.op_type = "elementwise_fmin"
+        self.python_api = paddle.fmin
+        # If x and y have the same value, the min() is not differentiable.
+        # So we generate test data by the following method
+        # to avoid them being too close to each other.
+        x = np.random.uniform(1, 1, [13, 17]).astype("float16")
+        sgn = np.random.choice([-1, 1], [13, 17]).astype("float16")
+        y = x + sgn * np.random.uniform(1, 1, [13, 17]).astype("float16")
+
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.fmin(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        """test_check_output"""
+        self.check_output(check_eager=True)
+
+    def test_check_grad_normal(self):
+        """test_check_grad_normal"""
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -1911,6 +1911,34 @@ struct LayerNorm : public PatternBase {
   PATTERN_DECL_NODE(shift_out);
 };
 
+//
+// \brief   Pattern looking for subgraph representing layernorm_shift_partition
+//          operation.
+//
+struct LayernormShiftPartitionPattern : public PatternBase {
+  LayernormShiftPartitionPattern(PDPattern* pattern,
+                                 const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "layernorm_shift_partition") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(layer_norm_in);
+  PATTERN_DECL_NODE(layer_norm_op);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_out);
+  PATTERN_DECL_NODE(reshape1_op);
+  PATTERN_DECL_NODE(reshape1_out);
+  PATTERN_DECL_NODE(reshape2_op);
+  PATTERN_DECL_NODE(reshape2_out);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(reshape3_op);
+  PATTERN_DECL_NODE(reshape3_out);
+  PATTERN_DECL_NODE(reshape4_op);
+  PATTERN_DECL_NODE(reshape4_out);
+};
+
 // Add support int8 flag
 struct AddSupportInt8 : public PatternBase {
   AddSupportInt8(PDPattern* pattern, const std::string& name_scope)

@@ -18,7 +18,7 @@ from operator import __add__, __sub__, __mul__, __truediv__
 
 import numpy as np
 import paddle
-from paddle.fluid.framework import _test_eager_guard
+import paddle.incubate.sparse as sparse
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
 
@@ -133,6 +133,35 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         if paddle.device.get_device() == "cpu":
             for op in op_list:
                 self.func_test_coo(op)
+
+    def test_add_same_indices(self):
+        indices_data = [[0, 1], [0, 3]]
+        values1_data = [[1.0], [2.0]]
+        values2_data = [[1.0], [2.0]]
+        shape = [2, 4, 2]
+
+        sp_a = sparse.sparse_coo_tensor(indices_data,
+                                        values1_data,
+                                        shape,
+                                        stop_gradient=False)
+        sp_b = sparse.sparse_coo_tensor(indices_data,
+                                        values2_data,
+                                        shape,
+                                        stop_gradient=False)
+
+        values1 = paddle.to_tensor(values1_data, stop_gradient=False)
+        values2 = paddle.to_tensor(values2_data, stop_gradient=False)
+
+        #c.values() = a.values() + b.values()
+        sp_c = sparse.add(sp_a, sp_b)
+        sp_c.backward()
+        ref_c = values1 + values2
+        ref_c.backward()
+        np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
+        np.testing.assert_allclose(sp_a.grad.values().numpy(),
+                                   values1.grad.numpy())
+        np.testing.assert_allclose(sp_b.grad.values().numpy(),
+                                   values2.grad.numpy())
 
 
 if __name__ == "__main__":

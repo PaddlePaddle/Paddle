@@ -105,6 +105,17 @@ class NCCLCommContext {
     return comm_map_.at(ring_id).begin()->second.get();
   }
 
+  int GetRingId(ncclComm_t comm) const {
+    for (const auto& pair : comm_map_) {
+      for (const auto& p : pair.second) {
+        if (p.second.get()->comm() == comm) {
+          return pair.first;
+        }
+      }
+    }
+    return -1;
+  }
+
   // retrieve a communicator by the ring id and the device id
   NCCLComm* Get(int ring_id, int dev_id) const {
     PADDLE_ENFORCE_GT(

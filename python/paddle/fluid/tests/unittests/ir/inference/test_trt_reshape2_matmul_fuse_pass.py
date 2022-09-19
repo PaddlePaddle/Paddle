@@ -27,15 +27,15 @@ import hypothesis.strategies as st
 
 class TestReshape2MatmulFusePass(PassAutoScanTest):
     """
-        x_var  
-          |          
-       reshape2 
+        x_var
+          |
+       reshape2
           \
     reshape2_out_var    y_var
              \           /
                  matmul      bias_var
                     \          /
-                   elementwise_add  
+                   elementwise_add
     """
 
     def sample_predictor_configs(self, program_config):

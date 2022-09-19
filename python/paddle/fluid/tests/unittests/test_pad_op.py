@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -21,6 +22,8 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+
+from test_attribute_var import UnittestBase
 
 
 class TestPadOp(OpTest):
@@ -123,5 +126,68 @@ class TestPadOpError(unittest.TestCase):
             fluid.layers.pad(x=data, paddings=[0, 1])
 
 
+class TestPaddingValueTensor(UnittestBase):
+
+    def init_info(self):
+        self.shapes = [[2, 4]]
+        self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
+
+    def test_static(self):
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            fc = paddle.nn.Linear(4, 10)
+            x = paddle.randn([2, 4])
+            x.stop_gradient = False
+            feat = fc(x)  # [2,3,10]
+
+            out = self.call_func(feat)
+
+            sgd = paddle.optimizer.SGD()
+            sgd.minimize(paddle.mean(out))
+            self.assertTrue(self.var_prefix() in str(main_prog))
+
+            exe = paddle.static.Executor()
+            exe.run(starup_prog)
+            res = exe.run(fetch_list=[feat, out])
+            gt = np.pad(res[0], [1, 1], 'constant', constant_values=[1., 1.])
+            np.testing.assert_allclose(res[1], gt)
+            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
+                                               exe)
+            # Test for Inference Predictor
+            infer_outs = self.infer_prog()
+            gt = np.pad(infer_outs[0], [1, 1],
+                        'constant',
+                        constant_values=[1., 1.])
+            np.testing.assert_allclose(infer_outs[1], gt)
+
+    def path_prefix(self):
+        return 'padding_value'
+
+    def var_prefix(self):
+        return "Var["
+
+    def call_func(self, x):
+        padding_value = paddle.assign([1.0])
+        out = paddle.nn.functional.pad(x,
+                                       pad=[1, 1, 1, 1],
+                                       value=padding_value,
+                                       mode='constant')
+        return out
+
+
+class TestPaddingValueTensor2(TestPaddingValueTensor):
+
+    def call_func(self, x):
+        padding_value = paddle.assign([1.0])
+        # test for int value
+        tmp = paddle.fluid.layers.pad(x, paddings=[1, 1, 1, 1], pad_value=1)
+        out = paddle.fluid.layers.pad(x,
+                                      paddings=[1, 1, 1, 1],
+                                      pad_value=padding_value)
+        return out
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

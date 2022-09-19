@@ -767,7 +767,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
+  AttrReader Attrs() const override {
+    return AttrReader(op_.Attrs(), op_.RuntimeAttrs());
+  }
 
   std::vector<std::string> Inputs(const std::string& name) const override {
     return op_.Inputs(name);
@@ -1326,8 +1328,10 @@ bool OperatorWithKernel::SupportsMKLDNN(
   auto has_phi_kernel =
       std::any_of(phi_kernels.begin(),
                   phi_kernels.end(),
-                  [](phi::KernelKeyMap::const_reference kern_pair) {
-                    return kern_pair.first.backend() == phi::Backend::ONEDNN;
+                  [data_type](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::ONEDNN &&
+                           kern_pair.first.dtype() ==
+                               framework::TransToPhiDataType(data_type);
                   });
   if (has_phi_kernel) {
     return true;
@@ -1389,10 +1393,9 @@ bool OperatorWithKernel::SupportsKernelType(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  const auto& attrs_map = ctx.Attrs();
-  auto iter = attrs_map.find("use_mkldnn");
-  bool use_mkldnn_ctx = iter != attrs_map.end() &&
-                        PADDLE_GET_CONST(bool, iter->second) &&
+  const std::string use_mkldnn_attr = "use_mkldnn";
+  bool use_mkldnn_ctx = ctx.HasAttr(use_mkldnn_attr) &&
+                        ctx.Attr<bool>(use_mkldnn_attr) &&
                         platform::is_cpu_place(ctx.GetPlace());
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
@@ -1446,6 +1449,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
                                  RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  bool fallback_to_cpu = false;
   auto* dev_ctx = pool.Get(place);
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -1636,6 +1640,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           || (is_xpu_unsupport && !is_xpu_kp_support)
 #endif
       ) {
+        fallback_to_cpu = true;
         auto phi_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), phi_kernel_key, *this);
         phi_kernel_.reset(
@@ -1718,6 +1723,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     } else {
       (*kernel_func_)(
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
+    }
+    if (fallback_to_cpu) {
+      phi_kernel_.release();
     }
   }
 
@@ -1882,7 +1890,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   PADDLE_ENFORCE_NE(
       kernels_iter,
       all_op_kernels.end(),
-      platform::errors::Unavailable(
+      platform::errors::Unimplemented(
           "There are no kernels which are registered in the %s operator.",
           type_));
 
@@ -2657,13 +2665,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::LoDTensorArray>()) {
         need_prepare_phi_data_ = true;
-        paddle::small_vector<const phi::TensorBase*> tensor_vector;
-        auto& tensor_array = var->Get<framework::LoDTensorArray>();
-        for (auto& t : tensor_array) {
-          tensor_vector.emplace_back(&t);
-        }
-        phi_kernel_context->EmplaceBackInputsWithoutSetRange(tensor_vector);
-        end_idx += tensor_array.size() - 1;
+        tensor_in = &(var->Get<framework::LoDTensorArray>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
@@ -2706,16 +2709,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::LoDTensorArray>()) {
-          paddle::small_vector<phi::TensorBase*> tensor_vector;
-          auto* tensor_array =
-              var->template GetMutable<framework::LoDTensorArray>();
+          tensor_out = var->template GetMutable<framework::LoDTensorArray>();
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
-          for (auto& t : *tensor_array) {
-            tensor_vector.emplace_back(&t);
-          }
-          phi_kernel_context->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-          end_idx += tensor_array->size() - 1;
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
@@ -2881,12 +2878,16 @@ void OperatorWithKernel::BuildPhiKernelContext(
         }
       } break;
       default: {
-        PADDLE_ENFORCE_NE(
-            attr_iter,
-            Attrs().end(),
-            platform::errors::NotFound("(%s) is not found in AttributeMap when "
-                                       "buildind static KernelContext.",
-                                       attr_names[i]));
+        if (attr_iter == Attrs().end()) {
+          attr_iter = RuntimeAttrs().find(attr_names[i]);
+          PADDLE_ENFORCE_NE(attr_iter,
+                            RuntimeAttrs().end(),
+                            platform::errors::NotFound(
+                                "(%s) is not found in AttributeMap when "
+                                "buildind static KernelContext.",
+                                attr_names[i]));
+        }
+
         switch (attr_defs[i].type_index) {
           case phi::AttributeType::FLOAT32:
             phi_kernel_context->EmplaceBackAttr(

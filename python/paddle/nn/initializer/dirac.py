@@ -27,7 +27,7 @@ __all__ = []
 
 class Dirac(Initializer):
     r"""Initialize the 3D/4D/5D Tensor with Dirac delta function.
-    
+
     It can reserve the feature of convolution layer input, which means that
     as many channels are reserved as possible.
 
@@ -37,11 +37,11 @@ class Dirac(Initializer):
     .. math::
 
         X[d, d, shape[2]//2, shape[3]//2, ...]=1,  \   d=0,1...N
-    
+
     where, ``N`` is the minimum value of ``in_channels`` and ``out_channels``
 
     Args:
-        groups(int, optional): 0-dimension of the Tensor will be divided by groups, 
+        groups(int, optional): 0-dimension of the Tensor will be divided by groups,
             each group has the same value. Default: 1.
         name(str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
@@ -53,9 +53,9 @@ class Dirac(Initializer):
         .. code-block:: python
 
             import paddle
-            
+
             #1. For kernel_size is uneven number:
-            
+
             attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
             conv = paddle.nn.Conv1D(3, 2, 3, weight_attr=attr)
             conv.weight
@@ -63,14 +63,14 @@ class Dirac(Initializer):
             #       [[[0., 1., 0.],
             #         [0., 0., 0.],
             #         [0., 0., 0.]],
-            # 
+            #
             #        [[0., 0., 0.],
             #         [0., 1., 0.],
             #         [0., 0., 0.]]])
 
             input = paddle.rand([8, 3, 10])
             output = conv(input)
-            output == input[:, 0:2, 1:9]  
+            output == input[:, 0:2, 1:9]
             # output.shape is [8, 2, 8], It means output is almost the same with input, 2 channels are reserved
 
 
@@ -82,7 +82,7 @@ class Dirac(Initializer):
             #       [[[0., 0., 1., 0.],
             #         [0., 0., 0., 0.],
             #         [0., 0., 0., 0.]],
-            # 
+            #
             #        [[0., 0., 0., 0.],
             #         [0., 0., 1., 0.],
             #         [0., 0., 0., 0.]]])
@@ -198,9 +198,9 @@ class Dirac(Initializer):
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
                 tmp_tensor = framework._varbase_creator()
-                _legacy_C_ops.assign_value(tmp_tensor, 'shape', [len(idx_list)],
-                                           'dtype', VarDesc.VarType.INT64,
-                                           'int64_values', idx_list)
+                _C_ops.assign_value_(tmp_tensor, [len(idx_list)],
+                                     VarDesc.VarType.INT64, idx_list,
+                                     _current_expected_place())
                 tmp_tensor._share_underline_tensor_to(index_tensor)
         else:
             block.append_op(type='assign_value',
@@ -220,10 +220,10 @@ class Dirac(Initializer):
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
                 tmp_tensor = framework._varbase_creator()
-                _legacy_C_ops.assign_value(tmp_tensor, 'shape',
-                                           [len(value_list)], 'dtype',
-                                           VarDesc.VarType.FP32, 'fp32_values',
-                                           value_list)
+                _C_ops.assign_value_(tmp_tensor, [len(value_list)],
+                                     VarDesc.VarType.FP32, value_list,
+                                     _current_expected_place())
+
                 tmp_tensor._share_underline_tensor_to(value_tensor)
         else:
             block.append_op(type='assign_value',
