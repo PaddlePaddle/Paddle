@@ -28,7 +28,7 @@ __all__ = ['load', 'info', 'save']
 
 def info(filepath: str, format: Optional[str] = None) -> AudioInfo:
     """Get signal information of an audio file.
-    only support WAV, PCM16 
+    only support WAV, PCM16
 
     Args:
         filepath (path-like object or file-like object):
@@ -174,7 +174,7 @@ def save(
         format (str or None, optional): wav only.
         encoding (str or None, optional): default PCM.
 
-        bits_per_sample (int or None, optional): 16bit only 
+        bits_per_sample (int or None, optional): 16bit only
 
     Supported formats/encodings/bit depth/compression are:
     ``"wav"``

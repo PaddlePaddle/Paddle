@@ -19,7 +19,7 @@ try:
 except ImportError:
     package = "paddleaudio"
     warn_msg = ("Failed importing {}. so wave_banckend supportted only"
-                "if want sox_io, soundfile backend, please"
+                "if want soundfile backend, please"
                 "manually installed (usually with `pip install {}`). ").format(
                     package, package)
     warnings.warn(warn_msg)
@@ -34,7 +34,7 @@ __all__ = [
 
 
 def list_available_backends() -> List[str]:
-    """ List available backends, the backends in paddleaudio and 
+    """ List available backends, the backends in paddleaudio and
         the default backend.
 
     Returns:
@@ -47,7 +47,7 @@ def list_available_backends() -> List[str]:
         package = "paddleaudio"
         warn_msg = (
             "Failed importing {}. so wave_banckend supportted only"
-            "if want sox_io, soundfile backend, please"
+            "if want soundfile backend, please"
             "manually installed (usually with `pip install {}`). ").format(
                 package, package)
         warnings.warn(warn_msg)
@@ -62,7 +62,7 @@ def list_available_backends() -> List[str]:
 
 def get_current_audio_backend() -> str:
     """ Get the name of the current audio backend
-    
+ 
     Returns:
         str: The name of the current backend,
         the wave_backend or backend imported from paddleaudio
@@ -80,9 +80,9 @@ def set_backend(backend_name: str):
     """Set the backend by one of the list_audio_backend return.
 
     Args:
-        backend (str): one of the list_audio_backend. 
+        backend (str): one of the list_audio_backend.
         "wave_backend" is the default.
-        "sox_io" or "soundfile" imported from paddleaudio.
+        "soundfile" imported from paddleaudio.
     """
     if backend_name not in list_available_backends():
         raise NotImplementedError
