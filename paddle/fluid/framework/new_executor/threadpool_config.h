@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,7 +43,8 @@ static constexpr size_t kMinOpNumForAsyncPrepare = 1000;
 // 1-size thread pool for preparation if the program contains two many ops
 // (1000+).
 
-// Note that the
+// Note that the purpose of the config is to limit the total 'possible'
+// threads introduced by interpretercore to avoid hurting performance.
 
 inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place place,
                                                      size_t op_num) {
@@ -61,7 +62,7 @@ inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place place,
     num_host_threads = 4;
   } else {
     processor_count = std::thread::hardware_concurrency();
-    if (!processor_count == 0) {
+    if (processor_count) {
       if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         device_count = phi::backends::gpu::GetGPUDeviceCount();
@@ -89,6 +90,7 @@ inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place place,
 #endif
       }
 
+      // Tricky implementation.
       // In multi-card training, each card may set env like
       // CUDA_VISIBLE_DEVICE=0 In that case, device_count is set to 8.
       if (device_count == 1) {
@@ -97,7 +99,7 @@ inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place place,
 
       // We expect processor_count = 2 * (the possible total threads when doing
       // multi-card training), to make sure that the system will not slow down
-      // because of two many threads. Here, 2 is experience value. Since each
+      // because of too many threads. Here, 2 is experience value. Since each
       // device has one interpretercore, the possible total threads when doing
       // multi-card training = device_count * (the possible total threads in one
       // interpretercore).
