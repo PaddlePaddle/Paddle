@@ -27,4 +27,4 @@ PD_REGISTER_KERNEL(set_value_grad,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16) {}
+                   phi::dtype::float16) {}
