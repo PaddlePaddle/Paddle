@@ -46,7 +46,6 @@ __device__ inline half2 __hadd2_with_fallback(const half2 a, const half2 b) {
     return __float22half2_rn(out);
 #endif
 }
-
 #if __CUDA_ARCH__ < 530
 template <typename T>
 __device__ inline T operator+(const T& a, const T& b);

@@ -1,5 +1,6 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-// SPDX-FileCopyrightText: Copyright (c) 1993-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 1993-2022 NVIDIA CORPORATION &
+// AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,9 +51,7 @@ __global__ void embLayerNormKernelHFace(int32_t ld,
     return;  // This CTA has nothing to do
   }
   T const rld = T(1.f) / T(ld);
-
   int32_t const seqPos = sumS + s;
-
   extern __shared__ int32_t word_id[];
 
   if (threadIdx.x == 0) {

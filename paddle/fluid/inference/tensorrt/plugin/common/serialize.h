@@ -1,5 +1,6 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-// SPDX-FileCopyrightText: Copyright (c) 1993-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 1993-2022 NVIDIA CORPORATION &
+// AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +33,6 @@ template <typename T>
 inline void deserialize_value(void const** buffer,
                               size_t* buffer_size,
                               T* value);
-
 namespace {
 
 template <typename T, class Enable = void>
