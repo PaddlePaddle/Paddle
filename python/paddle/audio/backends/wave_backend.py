@@ -100,7 +100,7 @@ def load(filepath: Union[str, Path],
 
     Returns:
         (paddle.Tensor, int): Resulting Tensor and sample rate.
-        If ``channels_first=True``, return `[channel, time]` 
+        If ``channels_first=True``, return `[channel, time]`
         else return [time, channel]`.
     """
     if hasattr(filepath, 'read'):

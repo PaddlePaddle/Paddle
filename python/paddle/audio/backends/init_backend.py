@@ -62,7 +62,7 @@ def list_available_backends() -> List[str]:
 
 def get_current_audio_backend() -> str:
     """ Get the name of the current audio backend
- 
+
     Returns:
         str: The name of the current backend,
         the wave_backend or backend imported from paddleaudio
