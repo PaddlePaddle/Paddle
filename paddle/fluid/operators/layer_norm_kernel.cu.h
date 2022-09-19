@@ -370,11 +370,12 @@ __global__ void LayerNormForward(
   var_val = BlockReduceSum<U>(var_val, shared_var);
 
   if (threadIdx.x == 0) {
-    auto scale = static_cast<U>(1.) / static_cast<U>(feature_size);
+    auto scale = static_cast<U>(static_cast<float>(1.) /
+                                static_cast<float>(feature_size));
     auto tmp = mean_val * scale;
     mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
     var_share = static_cast<U>(var_val * scale - mean_share * mean_share);
-    var_share = var_share > 0 ? var_share : 0;
+    var_share = var_share > U(0) ? var_share : U(0);
     var[blockIdx.x] = var_share;
   }
   __syncthreads();
@@ -412,6 +413,84 @@ __global__ void LayerNormForward(
       }
     }
   }
+}
+
+template <int BlockDim>
+__global__ void LayerNormForwardFP16(const half *x,
+                                     const float *scale,
+                                     const float *bias,
+                                     half *y,
+                                     float *mean,
+                                     float *var,
+                                     float epsilon,
+                                     int64_t feature_size) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+  __shared__ float mean_share;
+  __shared__ float var_share;
+  __shared__ float shared_mean[32];  // threadIdx.x / warpSize <= kMaxBlockDim /
+                                     // warpSize <= 1024/32 = 32;
+  __shared__ float shared_var[32];
+
+  int64_t beg_idx = blockIdx.x * feature_size + threadIdx.x;
+  int64_t end_idx = (blockIdx.x + 1) * feature_size;
+
+  // Step 1: Reduce to calculate mean and var
+  float mean_val = 0;
+  float var_val = 0;
+  for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
+    float tmp = __half2float(x[i]);
+    mean_val += tmp;
+    var_val += (tmp * tmp);
+  }
+
+  mean_val = BlockReduceSum<float>(mean_val, shared_mean);
+  var_val = BlockReduceSum<float>(var_val, shared_var);
+
+  if (threadIdx.x == 0) {
+    auto scale = static_cast<float>(static_cast<float>(1.) /
+                                    static_cast<float>(feature_size));
+    auto tmp = mean_val * scale;
+    mean[blockIdx.x] = mean_share = static_cast<float>(tmp);
+    var_share = static_cast<float>(var_val * scale - mean_share * mean_share);
+    var_share = var_share > 0 ? var_share : 0;
+    var[blockIdx.x] = var_share;
+  }
+  __syncthreads();
+
+  mean_val = mean_share;
+  float invvar = rsqrt_<float>(var_share + static_cast<float>(epsilon));
+
+  // Step 2: Calculate y
+  if (scale != nullptr) {
+    if (bias != nullptr) {
+      for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
+           i += BlockDim, j += BlockDim) {
+        y[i] = __float2half(__half2float(scale[j]) *
+                                (__half2float(x[i]) - mean_val) * invvar +
+                            __half2float(bias[j]));
+      }
+    } else {
+      for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
+           i += BlockDim, j += BlockDim) {
+        y[i] = __float2half(__half2float(scale[j]) *
+                            (__half2float(x[i]) - mean_val) * invvar);
+      }
+    }
+  } else {  // scale == nullptr
+    if (bias != nullptr) {
+      for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
+           i += BlockDim, j += BlockDim) {
+        y[i] = __float2half((__half2float(x[i]) - mean_val) * invvar +
+                            __half2float(bias[j]));
+      }
+    } else {
+      for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
+           i += BlockDim, j += BlockDim) {
+        y[i] = __float2half((__half2float(x[i]) - mean_val) * invvar);
+      }
+    }
+  }
+#endif
 }
 
 template <typename T, typename U, int VPT>

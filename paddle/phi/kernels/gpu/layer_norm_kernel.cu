@@ -49,6 +49,37 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
   }
 }
 
+// #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+template <>
+void LayerNormDirectCUDAFunctor<half, float>::operator()(
+    gpuStream_t stream,
+    const half *input,
+    std::vector<int> input_shape,
+    const float *bias,
+    const float *scale,
+    half *output,
+    float *mean,
+    float *variance,
+    int begin_norm_axis,
+    float eps) {
+  const auto x_dims = phi::make_ddim(input_shape);
+  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
+  int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
+  int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
+  switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
+    FIXED_BLOCK_DIM_CASE(
+        paddle::operators::LayerNormForwardFP16<kBlockDim>
+        <<<batch_size, kBlockDim, 0, stream>>>(
+            input, scale, bias, output, mean, variance, eps, feature_size));
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Product from begin_norm_axis to end in layer_norm must be larger "
+          "than 1"));
+      break;
+  }
+}
+// #endif
+
 template class LayerNormDirectCUDAFunctor<float, float>;
 template class LayerNormDirectCUDAFunctor<half, float>;
 
