@@ -1409,11 +1409,11 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
     ops_to_remove = []
     '''
-    NOTE(paddle-dev): while_grad op may hold some inputs which are not found 
-    in the parent/forward block, and they are also the outputs of while_grad 
-    op. These kinds of inputs are the recursive outputs inside while_grad op. 
-    They should be considered as "already created" when scanning the inner 
-    ops of while_grad ops.  
+    NOTE(paddle-dev): while_grad op may hold some inputs which are not found
+    in the parent/forward block, and they are also the outputs of while_grad
+    op. These kinds of inputs are the recursive outputs inside while_grad op.
+    They should be considered as "already created" when scanning the inner
+    ops of while_grad ops.
     '''
     parent_op = _find_parent_op_(block)
     parent_op_vars = []
@@ -1452,7 +1452,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             continue
         else:
             '''
-            If the output is not empty and there is any grad input, find 
+            If the output is not empty and there is any grad input, find
             whether there is any existing input. If not, just remove it.
             '''
             if grad_var_ins:
@@ -1464,11 +1464,11 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                 if not existing_grad_var_ins:
                     '''
                     FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
-                    in recurrent op. The input of this op does not even exist in 
-                    the program! Therefore, any dependency analysis would not 
+                    in recurrent op. The input of this op does not even exist in
+                    the program! Therefore, any dependency analysis would not
                     work to this op! If I do not add the following code, this op
-                    would be pruned, and the calculation result would be wrong. 
-                    Maybe we should re-design this op later...  
+                    would be pruned, and the calculation result would be wrong.
+                    Maybe we should re-design this op later...
                     '''
                     if op_desc.type() not in ['rnn_memory_helper_grad']:
                         ops_to_remove.append(op_idx)
@@ -2206,7 +2206,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         will be None.
 
     Examples:
-    
+
         .. code-block:: python
           :name: code-example
             import paddle

@@ -100,20 +100,20 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 :strong:`Row-convolution operator`
 
-The row convolution is called lookahead convolution.  This operator was 
+The row convolution is called lookahead convolution.  This operator was
 introduced in the following paper for DeepSpeech2:
-http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf 
+http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
 
-The main motivation is that a bidirectional RNN, useful in DeepSpeech 
-like speech models, learns representation for a sequence by performing a 
-forward and a backward pass through the entire sequence. However, unlike 
+The main motivation is that a bidirectional RNN, useful in DeepSpeech
+like speech models, learns representation for a sequence by performing a
+forward and a backward pass through the entire sequence. However, unlike
 unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
-and low-latency setting. The lookahead convolution incorporates information 
-from future subsequences in a computationally efficient manner to improve 
-unidirectional recurrent neural networks. The row convolution operator is 
+and low-latency setting. The lookahead convolution incorporates information
+from future subsequences in a computationally efficient manner to improve
+unidirectional recurrent neural networks. The row convolution operator is
 different from the 1D sequence convolution, and is computed as follows:
 
-Given an input sequence $X$ of length $t$ and input dimension $D$, 
+Given an input sequence $X$ of length $t$ and input dimension $D$,
 and a filter ($W$) of size $context \times D$,
 the output sequence is convolved as:
 

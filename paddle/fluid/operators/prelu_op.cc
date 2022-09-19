@@ -71,7 +71,7 @@ class PReluOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const framework::OpKernelType &expected_kernel_type) const override {
     return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
 };
@@ -150,7 +150,7 @@ class PReluGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const framework::OpKernelType &expected_kernel_type) const override {
     return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
 };

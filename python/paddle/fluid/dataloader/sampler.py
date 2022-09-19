@@ -47,20 +47,20 @@ class Sampler(object):
         Sampler: an iterable object for sample indices iterating
 
     Examples:
-        
+
         .. code-block:: python
-            
+
             from paddle.io import Dataset, Sampler
 
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
-            
+
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
-                
+
                 def __len__(self):
                     return self.num_samples
 
@@ -73,7 +73,7 @@ class Sampler(object):
 
                 def __len__(self):
                     return len(self.data_source)
-            
+
             sampler = MySampler(data_source=RandomDataset(100))
 
             for index in sampler:
@@ -110,18 +110,18 @@ class SequenceSampler(Sampler):
     Examples:
 
         .. code-block:: python
-            
+
             from paddle.io import Dataset, SequenceSampler
 
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
-            
+
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
-                
+
                 def __len__(self):
                     return self.num_samples
 
@@ -158,25 +158,25 @@ class RandomSampler(Sampler):
         num_samples(int): set sample number to draw if :attr:`replacement`
                 is True. Default None.
         generator(Generator): specify a generator to sample the data source. Default None
-        
+
     Returns:
         Sampler: a Sampler yield sample index randomly
 
     Examples:
 
         .. code-block:: python
-            
+
             from paddle.io import Dataset, RandomSampler
 
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
-            
+
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
-                
+
                 def __len__(self):
                     return self.num_samples
 
@@ -286,14 +286,14 @@ class WeightedRandomSampler(Sampler):
                 should be numpy array, paddle.Tensor, list or tuple
         num_samples(int): set sample number to draw from sampler.
         replacement(bool): Whether to draw sample with replacements, default True
-        
+
     Returns:
         Sampler: a Sampler yield sample index randomly by given weights
 
     Examples:
 
         .. code-block:: python
-            
+
             from paddle.io import WeightedRandomSampler
 
             sampler = WeightedRandomSampler(weights=[0.1, 0.3, 0.5, 0.7, 0.2],
