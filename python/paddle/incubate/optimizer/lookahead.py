@@ -29,18 +29,18 @@ class LookAhead(Optimizer):
     paper : https://arxiv.org/abs/1907.08610.
 
     Lookahead keeps two sets of params: the fast_params and
-    the slow_params. inner_optimizer update fast_params every 
-    training step. Lookahead updates the slow_params and fast_params 
+    the slow_params. inner_optimizer update fast_params every
+    training step. Lookahead updates the slow_params and fast_params
     every k training steps as follows:
 
     .. math::
-        
+
         slow\_param_t &= slow\_param_{t-1} + \\alpha * (fast\_param_{t-1} - slow\_param_{t-1})
-	    
+
         fast\_param_t &=  slow\_param_t
 
     Args:
-        inner_optimizer (Optimizer): The optimizer that update fast params step by step. 
+        inner_optimizer (Optimizer): The optimizer that update fast params step by step.
         alpha (float, optinal): The learning rate of Lookahead. The default value is 0.5.
         k (int, optinal): The slow params is updated every k steps. The default value is 5.
         name (str, optional): Normally there is no need for user to set this property.
@@ -50,7 +50,7 @@ class LookAhead(Optimizer):
     Examples:
 
         .. code-block:: python
-        
+
             import numpy as np
             import paddle
             import paddle.nn as nn
@@ -109,7 +109,7 @@ class LookAhead(Optimizer):
                 shuffle=True,
                 drop_last=True,
                 num_workers=2)
-            
+
             train(layer, loader, loss_fn, lookahead)
 
     """
@@ -147,7 +147,7 @@ class LookAhead(Optimizer):
     def step(self):
         """
         Execute the optimizer and update parameters once.
-        
+
         Returns:
             None
 
@@ -259,8 +259,8 @@ class LookAhead(Optimizer):
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) tensor pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
-            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
-            indicate program pruning. If so, the program will be pruned by ``feed`` and 
+            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
+            indicate program pruning. If so, the program will be pruned by ``feed`` and
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:

@@ -186,34 +186,12 @@ void Pool2dOpMaker::Make() {
       "pooling in each grid area to get output pooling value. "
       "Default False.")
       .SetDefault(false);
-
-  AddAttr<bool>(
-      "use_cudnn",
-      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<bool>(
       "ceil_mode",
       "(bool) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used. Default False")
       .SetDefault(false);
-  AddAttr<bool>("use_mkldnn",
-                "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>(
-      "use_quantizer",
-      "(bool, default false) "
-      "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<std::string>(
-      "mkldnn_data_type",
-      "(string, default \"float32\"). Data type of mkldnn kernel")
-      .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"})
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -221,12 +199,6 @@ void Pool2dOpMaker::Make() {
       "Defaults to \"NHWC\". Specify the data format of the output data, "
       "the input will be transformed automatically. ")
       .SetDefault("NCHW");
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false)
-      .AsExtra();
-
   AddAttr<std::string>(
       "padding_algorithm",
       "(string, default \"EXPLICIT\") An optional string from: \"EXPLICIT\","
@@ -234,7 +206,11 @@ void Pool2dOpMaker::Make() {
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
   // TODO(dzhwinter): need to registered layout transform function
-
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
+      .SetDefault(false)
+      .AsExtra();
   AddComment(R"DOC(
 This operation calculates the pooling output based on
 the input, pooling_type and pool_size, pool_stride, pool_padding parameters.
@@ -407,22 +383,12 @@ void Pool3dOpMaker::Make() {
       "pooling in each grid area to get output pooling value. "
       "Default False")
       .SetDefault(false);
-
-  AddAttr<bool>(
-      "use_cudnn",
-      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<bool>(
       "ceil_mode",
       "(bool) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used. Default False")
       .SetDefault(false);
-  AddAttr<bool>("use_mkldnn",
-                "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCDHW) Only used in "
@@ -436,8 +402,11 @@ void Pool3dOpMaker::Make() {
       "\"SAME\",\"VALID\". Set to \"EXPLICIT\" for explicit padding. "
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
-  // TODO(dzhwinter): need to registered layout transform function
-
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
+      .SetDefault(false)
+      .AsExtra();
   AddComment(R"DOC(
 This operation calculates the output based on
 the input, pooling_type, pool_size, pool_stride, and pool_padding parameters.

@@ -140,8 +140,8 @@ class FusedBiasDropoutResidualLnOpMaker
 
     AddComment(R"DOC(
     Add fused bias_dropout_residual_layer_norm op whose logic is as follows:
-    // @input: [batch_size, seq_len, embed_dim] 
-    // @final_out: [batch_size, seq_len, embed_dim] 
+    // @input: [batch_size, seq_len, embed_dim]
+    // @final_out: [batch_size, seq_len, embed_dim]
     y = layer_norm(residual + dropout(bias + x));
     )DOC");
   }

@@ -21,6 +21,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -154,6 +155,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/phi/capi/capi.h"
 #endif
 
@@ -202,6 +204,14 @@ namespace pybind {
 PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
+
+bool IsCompiledWithAVX() {
+#ifndef PADDLE_WITH_AVX
+  return false;
+#else
+  return true;
+#endif
+}
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -345,6 +355,52 @@ bool IsCompiledWithDIST() {
   return false;
 #endif
 }
+
+struct iinfo {
+  int64_t min, max;
+  int bits;
+  std::string dtype;
+
+  explicit iinfo(const framework::proto::VarType::Type &type) {
+    switch (type) {
+      case framework::proto::VarType::INT16:
+        min = std::numeric_limits<int16_t>::min();
+        max = std::numeric_limits<int16_t>::max();
+        bits = 16;
+        dtype = "int16";
+        break;
+      case framework::proto::VarType::INT32:
+        min = std::numeric_limits<int32_t>::min();
+        max = std::numeric_limits<int32_t>::max();
+        bits = 32;
+        dtype = "int32";
+        break;
+      case framework::proto::VarType::INT64:
+        min = std::numeric_limits<int64_t>::min();
+        max = std::numeric_limits<int64_t>::max();
+        bits = 64;
+        dtype = "int64";
+        break;
+      case framework::proto::VarType::INT8:
+        min = std::numeric_limits<int8_t>::min();
+        max = std::numeric_limits<int8_t>::max();
+        bits = 8;
+        dtype = "int8";
+        break;
+      case framework::proto::VarType::UINT8:
+        min = std::numeric_limits<uint8_t>::min();
+        max = std::numeric_limits<uint8_t>::max();
+        bits = 8;
+        dtype = "uint8";
+        break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.iinfo can only be paddle.int8, "
+            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"));
+        break;
+    }
+  }
+};
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
@@ -528,12 +584,7 @@ static int GetNCCLVersion() {
 }
 #endif
 
-#ifdef PADDLE_WITH_AVX
-PYBIND11_MODULE(core_avx, m) {
-#else
-PYBIND11_MODULE(core_noavx, m) {
-#endif
-
+PYBIND11_MODULE(libpaddle, m) {
   BindImperative(&m);
   BindEager(&m);
   BindEagerStringTensor(&m);
@@ -554,6 +605,21 @@ PYBIND11_MODULE(core_noavx, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  py::class_<iinfo>(m, "iinfo")
+      .def(py::init<const framework::proto::VarType::Type &>())
+      .def_readonly("min", &iinfo::min)
+      .def_readonly("max", &iinfo::max)
+      .def_readonly("bits", &iinfo::bits)
+      .def_readonly("dtype", &iinfo::dtype)
+      .def("__repr__", [](const iinfo &a) {
+        std::ostringstream oss;
+        oss << "paddle.iinfo(min=" << a.min;
+        oss << ", max=" << a.max;
+        oss << ", bits=" << a.bits;
+        oss << ", dtype=" << a.dtype << ")";
+        return oss.str();
+      });
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
@@ -975,7 +1041,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("name"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           its parent scope. Return None if not found.
 
            Args:
                name (str): the variable name.
@@ -990,7 +1056,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           its parent scope. Return None if not found.
 
            Args:
                name (str): the variable names to be erase.
@@ -1014,7 +1080,8 @@ All parameter, weight, gradient are variables in Paddle.
            R"DOC(
            Delete all sub-scopes of the current scope.
            )DOC")
-      .def("_kids", &Scope::kids);
+      .def("_kids", &Scope::kids)
+      .def_property("_can_reuesd", &Scope::CanReuesd, &Scope::SetCanReuesd);
 
   m.def(
       "Scope",
@@ -1184,12 +1251,12 @@ All parameter, weight, gradient are variables in Paddle.
       R"DOC(
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
-              
+
             Args:
                    program (ProgramDesc): The original program.
 
              Returns:
-                   tuple(ProgramDesc, map<int, int>): The first part is 
+                   tuple(ProgramDesc, map<int, int>): The first part is
                    the pruned program desc, and the second part is a map
                    which contains the id pair of pruned block and corresponding
                    origin block.
@@ -1632,9 +1699,17 @@ All parameter, weight, gradient are variables in Paddle.
     egr::Controller::Instance().MergeOpMetaInfoMap(
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });
-  m.def("init_devices", []() { framework::InitDevices(); });
+  m.def("init_devices", []() {
+    framework::InitDevices();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    for (auto &dev_type : phi::DeviceManager::GetAllCustomDeviceTypes()) {
+      paddle::operators::RegisterCustomDeviceCommonKernel(dev_type);
+    }
+#endif
+  });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
+  m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
@@ -1802,7 +1877,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("tensor"),
           R"DOC(
              Append a LoDensor to LoDTensorArray.
-              
+
              Args:
                    tensor (LoDTensor): The LoDTensor to be appended.
 
@@ -2428,19 +2503,14 @@ All parameter, weight, gradient are variables in Paddle.
     return res;
   });
 
-  m.def("enable_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance()
-        .EnableLayoutAutoTune();
-  });
+  m.def("enable_layout_autotune",
+        [] { return egr::Controller::Instance().EnableLayoutAutoTune(); });
 
-  m.def("disable_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance()
-        .DisableLayoutAutoTune();
-  });
+  m.def("disable_layout_autotune",
+        [] { return egr::Controller::Instance().DisableLayoutAutoTune(); });
 
-  m.def("use_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune();
-  });
+  m.def("use_layout_autotune",
+        [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
 
   BindFleetWrapper(&m);
   BindIO(&m);
@@ -2476,7 +2546,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
-#ifndef PADDLE_ON_INFERENCE
+#ifndef PADDLE_NO_PYTHON
   BindDistributed(&m);
 #endif
 #ifdef PADDLE_WITH_ASCEND

@@ -16,6 +16,12 @@ limitations under the License. */
 
 namespace phi {
 
+KernelSignature GumbelSoftmaxOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "gumbel_softmax", {"X"}, {"temperature", "hard", "axis"}, {"Out"});
+}
+
 KernelSignature GumbelSoftmaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
@@ -24,5 +30,6 @@ KernelSignature GumbelSoftmaxGradOpArgumentMapping(
 
 }  // namespace phi
 
+PD_REGISTER_ARG_MAPPING_FN(gumbel_softmax, phi::GumbelSoftmaxOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(gumbel_softmax_grad,
                            phi::GumbelSoftmaxGradOpArgumentMapping);

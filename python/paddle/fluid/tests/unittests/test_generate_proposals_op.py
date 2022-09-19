@@ -112,7 +112,7 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
 
 def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     """
-    Decode proposals by anchors and bbox_deltas from RPN 
+    Decode proposals by anchors and bbox_deltas from RPN
     """
     offset = 1 if pixel_offset else 0
     #proposals: xmin, ymin, xmax, ymax

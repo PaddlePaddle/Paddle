@@ -42,7 +42,7 @@ struct ValueClip {
   }
 };
 
-template <typename DeviceContext, typename T, bool is_test>
+template <typename DeviceContext, typename T>
 class SoftmaxEigen {
  public:
   void operator()(const DeviceContext& context,
@@ -103,8 +103,8 @@ class SoftmaxEigen {
   }
 };
 
-template <typename DeviceContext, bool is_test>
-class SoftmaxEigen<DeviceContext, platform::float16, is_test> {
+template <typename DeviceContext>
+class SoftmaxEigen<DeviceContext, platform::float16> {
  public:
   void operator()(const DeviceContext& context,
                   const int axis_dim,
@@ -161,8 +161,8 @@ class SoftmaxEigen<DeviceContext, platform::float16, is_test> {
   }
 };
 
-template <typename DeviceContext, bool is_test>
-class SoftmaxEigen<DeviceContext, platform::bfloat16, is_test> {
+template <typename DeviceContext>
+class SoftmaxEigen<DeviceContext, platform::bfloat16> {
  public:
   void operator()(const DeviceContext& context,
                   const int axis_dim,
@@ -219,21 +219,21 @@ class SoftmaxEigen<DeviceContext, platform::bfloat16, is_test> {
   }
 };
 
-template <typename DeviceContext, typename T, bool is_test, typename Enable>
-void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
+template <typename DeviceContext, typename T, typename Enable>
+void SoftmaxFunctor<DeviceContext, T, Enable>::operator()(
     const DeviceContext& context,
     const int axis_dim,
     const framework::Tensor* X,
     framework::Tensor* Y) {
-  SoftmaxEigen<DeviceContext, T, is_test>()(context, axis_dim, X, Y);
+  SoftmaxEigen<DeviceContext, T>()(context, axis_dim, X, Y);
 }
 
 template <class DeviceContext>
 using enable_if_CPU = typename std::enable_if<
     std::is_same<DeviceContext, phi::CPUContext>::value>::type;
 
-template <typename DeviceContext, typename T, bool is_test>
-class SoftmaxFunctor<DeviceContext, T, is_test, enable_if_CPU<DeviceContext>> {
+template <typename DeviceContext, typename T>
+class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
  public:
   void operator()(const DeviceContext& context,
                   const int axis_dim,
@@ -267,32 +267,8 @@ class SoftmaxFunctor<DeviceContext, T, is_test, enable_if_CPU<DeviceContext>> {
         out_data += num_classes;
       }
     } else {
-      SoftmaxEigen<DeviceContext, T, is_test>()(context, axis_dim, X, Y);
+      SoftmaxEigen<DeviceContext, T>()(context, axis_dim, X, Y);
     }
-  }
-};
-
-template <typename DeviceContext>
-class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
- public:
-  void operator()(const DeviceContext& context,
-                  const int axis_dim,
-                  const framework::Tensor* X,
-                  framework::Tensor* Y) {
-    const auto& in_dims = X->dims();
-    const float* in_data = X->data<float>();
-    float* out_data = Y->data<float>();
-    const int kBatchDim = 0;
-    const int kClassDim = 1;
-    // 2D data. Batch x C
-    auto compute_softmax =
-        jit::KernelFuncs<jit::SoftmaxTuple<float>, platform::CPUPlace>::Cache()
-            .At(in_dims[kClassDim]);
-    compute_softmax(in_data,
-                    out_data,
-                    in_dims[kClassDim],
-                    in_dims[kBatchDim],
-                    in_dims[kClassDim] / axis_dim);
   }
 };
 
