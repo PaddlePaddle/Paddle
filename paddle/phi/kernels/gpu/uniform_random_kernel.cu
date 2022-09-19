@@ -74,8 +74,12 @@ void UniformRandomRawKernel(const Context& dev_ctx,
     funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
   } else {
     // Use OP seed
-    auto func = UniformGenerator<T>(
-        min.to<T>(), max.to<T>(), seed, diag_num, diag_step, diag_val);
+    auto func = UniformGenerator<T>(min.to<T>(),
+                                    max.to<T>(),
+                                    seed,
+                                    diag_num,
+                                    diag_step,
+                                    static_cast<T>(diag_val));
     IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
   }
 }
@@ -88,5 +92,4 @@ PD_REGISTER_KERNEL(uniform_random_raw,
                    phi::UniformRandomRawKernel,
                    float,
                    double,
-                   phi::dtype
-                   : float16) {}
+                   phi::dtype::float16) {}
