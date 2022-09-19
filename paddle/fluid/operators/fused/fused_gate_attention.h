@@ -61,7 +61,7 @@ struct TernaryAddFunctor {
 template <>
 struct TernaryAddFunctor<phi::dtype::float16> {
   static constexpr bool IsIntrinsic = true;
-  __device__ inline __half2 operator()(__half2 a, __half2 b, __half2 c) const {
+  __device__ inline half2 operator()(half2 a, half2 b, half2 c) const {
     return __hadd2(__hadd2(a, b), c);
   }
 };

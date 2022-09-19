@@ -653,7 +653,7 @@ struct TypeConverter {
 
 template <int VecSize>
 struct FpTypeTrait {
-  using Type = __half2;
+  using Type = half2;
 };
 
 template <int VecSize>
@@ -672,6 +672,9 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
     using ct = TypeConverter<VecSize, InT, OutT, Functor::IsIntrinsic>;
     using Type1 = typename ct::InType;
     using Type2 = typename ct::OutType;
+    bool judge = std::is_same<InT, Type1>::value;
+    // printf("is_same<InT, Type1> = %d\n", judge);
+
     kps::ElementwiseTernary<Type1, Type2, ct::Size, 1, Functor>(
         reinterpret_cast<Type2 *>(result),
         reinterpret_cast<const Type1 *>(args[0]),
