@@ -1,13 +1,11 @@
-if(WITH_CINN)
-  pass_library(
-    build_cinn_pass
-    base
-    DEPS
-    subgraph_detector
-    cinn_compiler
-    errors
-    enforce)
-endif()
+pass_library(
+  build_cinn_pass
+  base
+  DEPS
+  subgraph_detector
+  cinn_compiler
+  errors
+  enforce)
 
 cc_library(
   cinn_cache_key
