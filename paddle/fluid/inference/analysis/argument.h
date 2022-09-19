@@ -177,6 +177,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
 #ifdef PADDLE_WITH_MKLDNN
+  // Calibration file path of quantize model
+  DECL_ARGUMENT_FIELD(calibration_file_path, CalibrationFilePath, std::string);
+
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types,
                       QuantizeEnabledOpTypes,
@@ -250,6 +253,22 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(dlnne_max_batch_size, DlnneMaxBatchSize, int);
+  DECL_ARGUMENT_FIELD(dlnne_use_static_batch, DlnneUseStaticBatch, bool);
+  DECL_ARGUMENT_FIELD(dlnne_weight_share_mode,
+                      DlnneWeightShareMode,
+                      std::string);
+  DECL_ARGUMENT_FIELD(dlnne_disable_nodes_by_outputs,
+                      DlnneDisableNodesByOutputs,
+                      std::unordered_set<std::string>);
+  DECL_ARGUMENT_FIELD(dlnne_use_calib_mode, DlnneUseCalibMode, bool);
+  DECL_ARGUMENT_FIELD(dlnne_precision_mode,
+                      DlnnePrecisionMode,
+                      AnalysisConfig::Precision);
+
+  using dlnne_input_shape_type = std::map<std::string, std::vector<int64_t>>;
+  DECL_ARGUMENT_FIELD(dlnne_input_shape_dict,
+                      DlnneInputShapeDict,
+                      dlnne_input_shape_type);
   DECL_ARGUMENT_FIELD(dlnne_workspace_size, DlnneWorkspaceSize, int);
 
   DECL_ARGUMENT_FIELD(lite_passes_filter,

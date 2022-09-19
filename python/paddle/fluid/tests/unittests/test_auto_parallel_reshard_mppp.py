@@ -21,7 +21,7 @@ import paddle.nn as nn
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
@@ -34,9 +34,9 @@ from paddle.distributed.auto_parallel.cluster import Cluster
 
 paddle.enable_static()
 _global_parallel_strategy = "mp_pp"
-_global_process_mesh = auto.ProcessMesh([[0, 1], [2, 3]])
-PP_MESH_0 = auto.ProcessMesh([0, 1])
-PP_MESH_1 = auto.ProcessMesh([2, 3])
+_global_process_mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+PP_MESH_0 = auto.ProcessMesh([0, 1], dim_names=["x"])
+PP_MESH_1 = auto.ProcessMesh([2, 3], dim_names=["x"])
 
 
 class MLPLayer(nn.Layer):
@@ -73,35 +73,15 @@ class MLPLayer(nn.Layer):
                                  bias_attr=bias_attr)
 
     def forward(self, input):
-        auto.shard_tensor(self.word_embeddings.weight,
-                          dist_attr={
-                              "process_mesh": PP_MESH_0,
-                              "dims_mapping": [0, -1]
-                          })
-        auto.shard_tensor(self.linear0.weight,
-                          dist_attr={
-                              "process_mesh": PP_MESH_0,
-                              "dims_mapping": [-1, 0]
-                          })
-        auto.shard_tensor(self.linear1.weight,
-                          dist_attr={
-                              "process_mesh": PP_MESH_1,
-                              "dims_mapping": [0, -1]
-                          })
-        auto.shard_tensor(self.linear2.weight,
-                          dist_attr={
-                              "process_mesh": PP_MESH_1,
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(self.word_embeddings.weight, PP_MESH_0, ["x", None])
+        auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, "x"])
+        auto.shard_tensor(self.linear1.weight, PP_MESH_1, ["x", None])
+        auto.shard_tensor(self.linear2.weight, PP_MESH_1, ["x", None])
         w_out = self.word_embeddings(input)
         out = self.linear0(w_out)
         param = paddle.fluid.layers.create_parameter([4096, 4096],
                                                      paddle.float32)
-        auto.shard_tensor(param,
-                          dist_attr={
-                              "process_mesh": PP_MESH_0,
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(param, PP_MESH_0, ["x", None])
         out = paddle.fluid.layers.mul(out, param)
         gelu_out = F.gelu(out, approximate=True)
         out = self.linear1(gelu_out)
@@ -122,16 +102,8 @@ def mlp_forward(train_program, start_program):
                             shape=[batch_size, 1],
                             dtype='float32')
 
-        auto.shard_tensor(input,
-                          dist_attr={
-                              "process_mesh": PP_MESH_0,
-                              "dims_mapping": [-1]
-                          })
-        auto.shard_tensor(label,
-                          dist_attr={
-                              "process_mesh": PP_MESH_1,
-                              "dims_mapping": [-1, -1]
-                          })
+        auto.shard_tensor(input, PP_MESH_0, [None])
+        auto.shard_tensor(label, PP_MESH_1, [None, None])
 
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
@@ -238,7 +210,6 @@ class TestMLPReshard(unittest.TestCase):
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
-        print_program_with_dist_attr(dist_main_prog, dist_context)
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
 
@@ -249,32 +220,15 @@ class TestMLPReshard(unittest.TestCase):
     def test_allgather(self):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        process_mesh = auto.ProcessMesh(mesh=[0, 1])
+        process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
         with static.program_guard(train_program, startup_program):
             x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
-            x = auto.shard_tensor(x,
-                                  dist_attr={
-                                      "process_mesh": process_mesh,
-                                      "dims_mapping": [0, -1]
-                                  })
-
+            x = auto.shard_tensor(x, process_mesh, ["x", None])
             w = paddle.static.data(name="w", shape=[4, 4], dtype='float32')
-            w = auto.shard_tensor(w,
-                                  dist_attr={
-                                      "process_mesh": process_mesh,
-                                      "dims_mapping": [-1, -1]
-                                  })
+            w = auto.shard_tensor(w, process_mesh, [None, None])
 
-            y = paddle.distributed.shard_op(paddle.matmul,
-                                            dist_attr={
-                                                "process_mesh": process_mesh,
-                                                x: {
-                                                    "dims_mapping": [-1, -1]
-                                                },
-                                                w: {
-                                                    "dims_mapping": [-1, -1]
-                                                }
-                                            })(x, w)
+            y = paddle.distributed.shard_op(paddle.matmul, process_mesh,
+                                            [[None, None], [None, None]])(x, w)
 
         rank_id = 0
         dist_context = DistributedContext()

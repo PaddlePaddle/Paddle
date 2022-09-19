@@ -28,26 +28,28 @@ namespace funcs {
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution1(T x, T A) {
-  return ((A + 2) * x - (A + 3)) * x * x + 1;
+  return ((A + static_cast<T>(2)) * x - (A + static_cast<T>(3))) * x * x +
+         static_cast<T>(1);
 }
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution2(T x, T A) {
-  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
+  return ((A * x - static_cast<T>(5) * A) * x + static_cast<T>(8) * A) * x -
+         static_cast<T>(4) * A;
 }
 
 template <typename T>
 HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
-  T A = -0.75;
+  T A = static_cast<T>(-0.75);
 
   T x1 = t;
-  coeffs[0] = CubicConvolution2<T>(x1 + 1.0, A);
+  coeffs[0] = CubicConvolution2<T>(x1 + static_cast<T>(1.0), A);
   coeffs[1] = CubicConvolution1<T>(x1, A);
 
   // opposite coefficients
-  T x2 = 1.0 - t;
+  T x2 = static_cast<T>(1.0) - t;
   coeffs[2] = CubicConvolution1<T>(x2, A);
-  coeffs[3] = CubicConvolution2<T>(x2 + 1.0, A);
+  coeffs[3] = CubicConvolution2<T>(x2 + static_cast<T>(1.0), A);
 }
 
 inline void ExtractNCDWH(const DDim& dims,
@@ -89,6 +91,14 @@ inline std::vector<int> get_new_shape(
         errors::InvalidArgument("The shape of dimension tensor should be [1],"
                                 "but received d%.",
                                 tensor->dims()));
+#ifdef PADDLE_WITH_XPU
+    if (tensor->place().GetType() == phi::AllocationType::XPU) {
+      DenseTensor temp;
+      paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
+      vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
+      continue;
+    }
+#endif
     if (paddle::platform::is_gpu_place(tensor->place())) {
       DenseTensor temp;
       paddle::framework::TensorCopySync(

@@ -16,11 +16,11 @@ import typing
 import unittest
 
 import numpy as np
-import autograd
-import autograd.numpy as np_autograd
-
 import paddle
 
+import autograd
+import autograd.numpy as anp
+import autograd.scipy as ascipy
 import config
 import utils
 
@@ -150,6 +150,8 @@ class TestWithoutProgramGuard(unittest.TestCase):
      (np.random.rand(3, 3), np.random.rand(3, 3)),
      (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
     ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
+    ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                           (10, 10)), ), None, 'float32'),
 ))
 # paddle.where, paddle.pow, paddle.maximum has no double grad definition,
 # can not compute forward grad use double trick
@@ -255,6 +257,8 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
         ('multiply', paddle.multiply,
          (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+        ('div', paddle.divide,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
         ('add', paddle.add,
          (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
         ('input_not_sequence', paddle.tanh,
@@ -278,7 +282,41 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
             np.array([1, 2, 3]),
             np.array([2, 2, 2]),
         ), None, 'float32'),
-    ))
+        ('erf', paddle.erf, (np.random.rand(300, 288), ), None, 'float32'),
+        ('gelu', paddle.nn.functional.gelu,
+         (np.random.rand(200, 189), ), None, 'float32'),
+        ('gelu_approximate', lambda x: paddle.nn.functional.gelu(x, True),
+         (np.random.rand(200, 189), ), None, 'float32'),
+        ('sum', paddle.sum, (np.random.rand(200, 345), ), None, 'float32'),
+        ('sum_with_axis', lambda x: paddle.sum(x, axis=1),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('sum_with_keepdim', lambda x: paddle.sum(x, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean', paddle.mean, (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_axis', lambda x: paddle.mean(x, axis=1),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_keepdim', lambda x: paddle.mean(x, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_axis_keepdim',
+         lambda x: paddle.mean(x, axis=0, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                               (200, 345)), ), None, 'float32'),
+        ('cast_float', lambda x: paddle.cast(x, paddle.float64),
+         (np.random.rand(10, 20), ), None, 'float32'),
+        ('cast_int', lambda x: paddle.cast(x, paddle.int32),
+         (np.random.rand(10, 20), ), None, 'float32'),
+        ('square', paddle.square, (np.random.rand(100), ), None, 'float32'),
+        ('pow_scalar', lambda x: paddle.pow(x, 2),
+         (np.random.rand(20, 30), ), None, 'float32'),
+        ('var', paddle.var, (np.random.rand(200, 324), ), None, 'float32'),
+        ('var_with_axis', lambda x: paddle.var(x, axis=1),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('var_without_unbiased',
+         lambda x: paddle.var(x, axis=1, unbiased=False),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('var_with_keepdim', lambda x: paddle.var(x, axis=1, keepdim=True),
+         (np.random.rand(10, 20, 30), ), None, 'float32')))
 class TestGrad(unittest.TestCase):
 
     def setUp(self):
@@ -397,25 +435,41 @@ def multiply_pd(x):
 
 
 multiply_ag = lambda xs: xs[0] * xs[0] * xs[0] * xs[0] * xs[0]
-sin_ag = lambda xs: np_autograd.sin(xs[0])
-cos_ag = lambda xs: np_autograd.cos(xs[0])
-exp_ag = lambda xs: np_autograd.exp(xs[0])
+sin_ag = lambda xs: anp.sin(xs[0])
+cos_ag = lambda xs: anp.cos(xs[0])
+exp_ag = lambda xs: anp.exp(xs[0])
 pow_ag = lambda xs: xs[0]**xs[1]
-log_ag = lambda xs: np_autograd.log(xs[0])
+log_ag = lambda xs: anp.log(xs[0])
+erf_ag = lambda xs: ascipy.special.erf(xs[0])
+
+
+def gelu_ag(x, approximate=False):
+    if approximate:
+        sqrt_2_over_pi = np.sqrt(2 / np.pi).astype(x.dtype)
+        cdf = 0.5 * (1.0 + anp.tanh(sqrt_2_over_pi * (x + 0.044715 * (x**3))))
+        return x * cdf
+    else:
+        return x * (ascipy.special.erf(x / np.sqrt(2)) + 1) / 2
 
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
-    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'), (
-        ('multiply', multiply_pd, multiply_ag,
-         (np.random.rand(3, 5), ), None, 'float32'),
-        ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
-        ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
-        ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
-        ('pow', paddle.pow, pow_ag,
-         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
-        ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
-    ))
+    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'),
+    (('multiply', multiply_pd, multiply_ag,
+      (np.random.rand(3, 5), ), None, 'float32'),
+     ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
+     ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
+     ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
+     ('pow', paddle.pow, pow_ag,
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+     ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
+     ('erf', paddle.erf, erf_ag, (np.random.rand(100, 200), ), None, 'float32'),
+     ('gelu', paddle.nn.functional.gelu, lambda xs: gelu_ag(xs[0]),
+      (np.random.rand(10, 20, 30), ), None, 'float32'),
+     ('gelu_approximate',
+      lambda x: paddle.nn.functional.gelu(x, approximate=True),
+      lambda xs: gelu_ag(xs[0], approximate=True),
+      (np.random.rand(10, 20, 30), ), None, 'float32')))
 class TestGradWithHigherOrder(unittest.TestCase):
 
     def setUp(self):

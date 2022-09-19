@@ -65,17 +65,24 @@ def parse_attr(attr_str):
         'name'), result.group('default_val')
 
 
-def generate_extra_info(api_compat_yaml_path, ops_extra_info_path):
+def generate_extra_info(op_compat_yaml_path, ops_extra_info_path):
     compat_apis = []
-    with open(api_compat_yaml_path, 'rt') as f:
+    with open(op_compat_yaml_path, 'rt') as f:
         compat_apis = yaml.safe_load(f)
+
+    def get_op_name(api_item):
+        names = api_item.split('(')
+        if len(names) == 1:
+            return names[0].strip()
+        else:
+            return names[1].split(')')[0].strip()
 
     extra_map_str_list = []
     extra_checker_str_list = []
 
-    for api_compat_args in compat_apis:
-        if 'extra' in api_compat_args:
-            extra_args_map = api_compat_args['extra']
+    for op_compat_args in compat_apis:
+        if 'extra' in op_compat_args:
+            extra_args_map = op_compat_args['extra']
             # TODO(chenweihang): add inputs and outputs
             if 'attrs' in extra_args_map:
                 attr_map_list = []
@@ -96,18 +103,19 @@ def generate_extra_info(api_compat_yaml_path, ops_extra_info_path):
                 api_extra_attr_checkers = ",\n      ".join(
                     attr_checker_func_list)
                 extra_map_str_list.append(
-                    f"{{\"{api_compat_args['api']}\", {{ {api_extra_attr_map} }}}}"
+                    f"{{\"{get_op_name(op_compat_args['op'])}\", {{ {api_extra_attr_map} }}}}"
                 )
                 extra_checker_str_list.append(
-                    f"{{\"{api_compat_args['api']}\", {{ {api_extra_attr_checkers} }}}}"
+                    f"{{\"{get_op_name(op_compat_args['op'])}\", {{ {api_extra_attr_checkers} }}}}"
                 )
-                if 'backward' in api_compat_args:
-                    extra_map_str_list.append(
-                        f"{{\"{api_compat_args['backward']}\", {{ {api_extra_attr_map} }}}}"
-                    )
-                    extra_checker_str_list.append(
-                        f"{{\"{api_compat_args['backward']}\", {{ {api_extra_attr_checkers} }}}}"
-                    )
+                if 'backward' in op_compat_args:
+                    for bw_item in op_compat_args['backward'].split(','):
+                        bw_op_name = get_op_name(bw_item)
+                        extra_map_str_list.append(
+                            f"{{\"{bw_op_name}\", {{ {api_extra_attr_map} }}}}")
+                        extra_checker_str_list.append(
+                            f"{{\"{bw_op_name}\", {{ {api_extra_attr_checkers} }}}}"
+                        )
 
     ops_extra_info_file = open(ops_extra_info_path, 'w')
     ops_extra_info_file.write(
@@ -119,9 +127,9 @@ def generate_extra_info(api_compat_yaml_path, ops_extra_info_path):
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle Extra Param Info for Op')
-    parser.add_argument('--api_compat_yaml_path',
+    parser.add_argument('--op_compat_yaml_path',
                         help='path to api compat yaml file',
-                        default='paddle/phi/api/yaml/api_compat.yaml')
+                        default='paddle/phi/api/yaml/op_compat.yaml')
 
     parser.add_argument('--ops_extra_info_path',
                         help='output of generated extra_prama_info code file',
@@ -129,10 +137,10 @@ def main():
 
     options = parser.parse_args()
 
-    api_compat_yaml_path = options.api_compat_yaml_path
+    op_compat_yaml_path = options.op_compat_yaml_path
     ops_extra_info_path = options.ops_extra_info_path
 
-    generate_extra_info(api_compat_yaml_path, ops_extra_info_path)
+    generate_extra_info(op_compat_yaml_path, ops_extra_info_path)
 
 
 if __name__ == '__main__':

@@ -13,12 +13,12 @@
 # limitations under the License.
 """
 please make sure to run in the tools path
-usage: python sample_test.py {cpu or gpu} 
+usage: python sample_test.py {cpu or gpu}
     {cpu or gpu}: running in cpu version or gpu version
 
 for example, you can run cpu version python2 testing like this:
 
-    python sampcd_processor.py cpu 
+    python sampcd_processor.py cpu
 
 """
 import os
@@ -115,7 +115,7 @@ def extract_code_blocks_from_docstr(docstr):
     Args:
         docstr(str): docstring
     Return:
-        code_blocks: A list of code-blocks, indent removed. 
+        code_blocks: A list of code-blocks, indent removed.
                      element {'name': the code-block's name, 'id': sequence id.
                               'codes': codes, 'required': 'gpu'}
     """
@@ -237,7 +237,7 @@ def get_test_capacity():
 def is_required_match(requirestr, cbtitle='not-specified'):
     """
     search the required instruction in the code-block, and check it match the current running environment.
-    
+
     environment values of equipped: cpu, gpu, xpu, distributed, skip
     the 'skip' is the special flag to skip the test, so is_required_match will return False directly.
 
@@ -387,7 +387,7 @@ def execute_samplecode(tfname):
 
     Args:
         tfname: the filename of the sample code
-    
+
     Returns:
         result: success or not
         tfname: same as the input argument
@@ -482,7 +482,7 @@ def get_api_md5(path):
 
     Args:
         path: the api spec file. ATTENTION the path relative
-    
+
     Returns:
         api_md5(dict): key is the api's real fullname, value is the md5sum.
     """

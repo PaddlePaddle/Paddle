@@ -29,13 +29,13 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
     """
           x_var   f_var(persistable)
             \       /
-                conv2d 
+                conv2d
                 |
                 conv2d_var    bias_var(persistable)
                     \          /
                 elementwise_add
                         |
-                elementwise_add_var Scale(persistable) Bias(persistable) Mean(persistable) Variance(persistable)  
+                elementwise_add_var Scale(persistable) Bias(persistable) Mean(persistable) Variance(persistable)
                         |
                     batch_norm
                         |

@@ -156,9 +156,9 @@ class CustomReaderInferVarType : public framework::VarTypeInference {
   }
 };
 
-void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
+void CustomReader::ReadNextImpl(paddle::framework::LoDTensorArray* out) {
   out->clear();
-  std::vector<framework::LoDTensor> underlying_outs;
+  paddle::framework::LoDTensorArray underlying_outs;
   reader_->ReadNext(&underlying_outs);
   if (underlying_outs.empty()) {
     // There is not next data.

@@ -200,18 +200,16 @@ class DataNormOp : public framework::OperatorWithKernel {
                             "bias input should be of float type"));
     }
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
 
-    return framework::OpKernelType(
-        input_data_type, ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -251,10 +249,6 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddAttr<bool>("sync_stats", "(bool, default false) only used in multi-GPU")
         .SetDefault(false);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddInput("X", "The input tensor");
     AddInput("BatchSize",
              "BatchSize is a 1-dimensional tensor of size C "
@@ -515,19 +509,18 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     }
 
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
 
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 };
 

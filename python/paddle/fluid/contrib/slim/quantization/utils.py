@@ -109,6 +109,7 @@ _act_supported_quantizable_op_type = [
     "softplus",
     "shuffle_channel",
     "reduce_max",
+    "scale",
 ]
 
 _out_scale_op_list = list(
@@ -191,7 +192,7 @@ _op_real_in_out_name = {
     "fill_any_like": [["X"], ["Out"]],
     "fill_constant": [[], ["Out"]],
     "gelu": [["X"], ["Out"]],
-    "instance_norm": [["X"], ["Out"]],
+    "instance_norm": [["X"], ["Y"]],
     "lookup_table": [["W", "Ids"], ["Out"]],
     "lookup_table_v2": [["W", "Ids"], ["Out"]],
     "norm": [["X"], ["Norm"]],
@@ -214,6 +215,7 @@ _op_real_in_out_name = {
     "softplus": [["X"], ["Out"]],
     "shuffle_channel": [["X"], ["Out"]],
     "reduce_max": [["X"], ["Out"]],
+    "scale": [["X"], ["Out"]],
 }
 
 

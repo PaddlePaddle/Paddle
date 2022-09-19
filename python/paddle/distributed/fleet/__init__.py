@@ -90,3 +90,5 @@ distributed_model = distributed_model
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
 distributed_scaler = distributed_scaler
+
+from .. import auto_parallel as auto

@@ -57,9 +57,9 @@ def save_dygraph(state_dict, model_path):
     :api_attr: imperative
 
     Save Layer's state_dict to disk. This will generate a file with suffix ".pdparams"
-    
+
     The state_dict is get from Layers.state_dict function
-    
+
     Args:
         state_dict(dict) : The state dict to be saved.
         model_path(str) : the file prefix to save the state_dict. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
@@ -127,24 +127,24 @@ def save_dygraph(state_dict, model_path):
 def load_dygraph(model_path, **configs):
     '''
     :api_attr: imperative
-    
+
     Load parameter state dict from disk.
 
     .. note::
-        Due to some historical reasons, if you load ``state_dict`` from the saved 
-        result of `paddle.static.save_inference_model`, the structured variable name 
-        will cannot be restored. You need to set the argument `use_structured_name=False` 
+        Due to some historical reasons, if you load ``state_dict`` from the saved
+        result of `paddle.static.save_inference_model`, the structured variable name
+        will cannot be restored. You need to set the argument `use_structured_name=False`
         when using `Layer.set_state_dict` later.
 
     Args:
-        model_path(str) : The file prefix store the state_dict. 
-            (The path should Not contain suffix '.pdparams') 
-        **configs (dict, optional): Other load configuration options for compatibility. We do not 
+        model_path(str) : The file prefix store the state_dict.
+            (The path should Not contain suffix '.pdparams')
+        **configs (dict, optional): Other load configuration options for compatibility. We do not
             recommend using these configurations, if not necessary, DO NOT use them. Default None.
             The following options are currently supported:
-            (1) model_filename (str): The inference model file name of the paddle 1.x ``save_inference_model`` 
-            save format. Default file name is :code:`__model__` . 
-            (2) params_filename (str): The persistable variables file name of the paddle 1.x ``save_inference_model`` 
+            (1) model_filename (str): The inference model file name of the paddle 1.x ``save_inference_model``
+            save format. Default file name is :code:`__model__` .
+            (2) params_filename (str): The persistable variables file name of the paddle 1.x ``save_inference_model``
             save format. No default file name, save variables separately by default.
 
     Returns:
@@ -163,7 +163,7 @@ def load_dygraph(model_path, **configs):
             state_dict = emb.state_dict()
             fluid.save_dygraph(state_dict, "paddle_dy")
 
-            scheduler = paddle.optimizer.lr.NoamDecay(	
+            scheduler = paddle.optimizer.lr.NoamDecay(
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
                 learning_rate=scheduler,

@@ -38,6 +38,7 @@ USE_OP_ITSELF(reduce_mean);
 USE_OP_ITSELF(feed);
 USE_OP_ITSELF(fetch);
 USE_OP_ITSELF(scale);
+USE_OP_ITSELF(transfer_layout);
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);

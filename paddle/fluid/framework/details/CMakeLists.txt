@@ -385,7 +385,8 @@ set(IR_PASS_DEPS
     runtime_context_cache_pass
     graph_to_program_pass
     fix_op_run_order_pass
-    fuse_gemm_epilogue_pass)
+    fuse_gemm_epilogue_pass
+    delete_dropout_op_pass)
 
 if(WITH_CINN)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} build_cinn_pass)
