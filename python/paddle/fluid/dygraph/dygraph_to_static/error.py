@@ -204,6 +204,7 @@ class ErrorData(object):
         header_message = "In transformed code:"
         message_lines.append(header_message)
         message_lines.append("")
+        error_line = None
 
         # Simplify error value to improve readability if error is raised in runtime
         if self.in_runtime:
@@ -255,8 +256,9 @@ class ErrorData(object):
         # is gather than 1, for example, the error_type is IndentationError.
         format_exception = traceback.format_exception_only(
             self.error_type, self.error_value)
-
-        format_exception = self.numpy_api_check(format_exception, error_line)
+        if error_line is not None:
+            format_exception = self.numpy_api_check(format_exception,
+                                                    error_line)
 
         error_message = [
             " " * BLANK_COUNT_BEFORE_FILE_STR + line
