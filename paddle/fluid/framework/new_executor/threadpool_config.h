@@ -29,7 +29,9 @@ namespace interpreter {
 static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
 static constexpr size_t kNumGcThreads = 1;
-static constexpr size_t kNumPrepareThreads = 1;
+static constexpr size_t kNumPrepareThreads = 0;
+
+static constexpr size_t kMinOpNumForAsyncPrepare = 1000;
 
 // By default, one interpretercore contains:
 // 1-size thread pool for device kernel launch (or 0 for cpu execution),
@@ -41,8 +43,18 @@ static constexpr size_t kNumPrepareThreads = 1;
 // 1-size thread pool for preparation if the program contains two many ops
 // (1000+).
 
-inline std::pair<int, int> GetThreadPoolConfig(const phi::Place place) {
-  int num_device_threads = 1, num_host_threads = 1;
+// Note that the
+
+inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place place,
+                                                     size_t op_num) {
+  int num_device_threads = kDeviceNumThreads,
+      num_host_threads = kHostNumThreads,
+      num_prepare_threads = kNumPrepareThreads;
+
+  if (op_num > kMinOpNumForAsyncPrepare) {
+    num_prepare_threads = 1;
+  }
+
   int device_count = 0, processor_count = 0;
   if (platform::is_cpu_place(place)) {
     num_device_threads = 0;
@@ -101,8 +113,10 @@ inline std::pair<int, int> GetThreadPoolConfig(const phi::Place place) {
   VLOG(4) << "place:" << place << ", processor_count:" << processor_count
           << ", device_count:" << device_count
           << ", num_host_threads:" << num_host_threads
-          << ", num_device_threads:" << num_device_threads;
-  return std::make_pair(num_host_threads, num_device_threads);
+          << ", num_device_threads:" << num_device_threads
+          << ", num_prepare_threads:" << num_prepare_threads;
+  return std::make_tuple(
+      num_host_threads, num_device_threads, num_prepare_threads);
 }
 
 }  // namespace interpreter
