@@ -23,7 +23,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(softmax);
-PD_DECLARE_KERNEL(softmax, OneDNN, ALL_LAYOUT);
+USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP_ITSELF(leaky_relu);
