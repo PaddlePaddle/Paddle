@@ -126,7 +126,7 @@ _group_map_backend = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl', 'mpi']
+_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl']
 _default_store = None  # the default tcp store
 _default_backend = None
 _default_timeout = datetime.timedelta(seconds=1800)
@@ -242,8 +242,7 @@ def _new_process_group_impl(backend,
                             pg_options,
                             group_id=0,
                             src_rank=None,
-                            dst_rank=None,
-                            src_ranks=[]):
+                            dst_rank=None):
     pg = None
     genv = _get_global_env()
     if backend != 'heter':
@@ -263,8 +262,6 @@ def _new_process_group_impl(backend,
     elif backend == "xccl":
         place = core.CustomPlace(genv.device_type, genv.device_id)
         pg = core.ProcessGroupCustom(store, rank, world_size, place, group_id)
-    elif backend == "mpi":
-        pg = core.ProcessGroupMPI.create(src_ranks, group_id)
     elif backend == "heter":
         place = None
         if core.is_compiled_with_cuda():
@@ -438,11 +435,8 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 "equal to that of the default global group.")
         size = len(ranks)
         ranks = sorted(ranks)
-        if backend in ['heter', 'mpi'] or (size > 1 and global_rank in ranks):
-            if backend == 'heter':
-                rank = 0
-            else:
-                rank = ranks.index(global_rank) if global_rank in ranks else -1
+        if backend == 'heter' or (size > 1 and global_rank in ranks):
+            rank = 0 if backend == 'heter' else ranks.index(global_rank)
             src_rank = ranks[0] if backend == 'heter' else None
             dst_rank = ranks[1] if backend == 'heter' else None
             pg = _new_process_group_impl(backend,
@@ -453,8 +447,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                                          pg_options=None,
                                          group_id=gid,
                                          src_rank=src_rank,
-                                         dst_rank=dst_rank,
-                                         src_ranks=ranks)
+                                         dst_rank=dst_rank)
         else:
             rank = -1
             pg = None
@@ -467,7 +460,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         # hang caused by tcp
         paddle.distributed.barrier(group=group)
         # NOTE(liyurui): All processors should hang and wait using tcp store, in case master exit before sub-group is created.
-        if backend not in ['heter', 'mpi']:
+        if backend != 'heter':
             _barrier_by_tcp_store(group_name, _default_store, timeout)
         else:
             print("Warning: store barrier is not supported for heter backend.")

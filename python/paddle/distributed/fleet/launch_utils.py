@@ -1966,13 +1966,12 @@ class ParameterServerLauncher(object):
 
 def check_backend(backend):
     if backend not in [
-            'nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter', 'xccl',
-            'mpi'
+            'nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter', 'xccl'
     ]:
         raise ValueError(
             "paddle.distributed initialize error, "
             "backend argument can only be one of "
-            "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'xccl', 'mpi' "
+            "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'xccl' "
             "but got %s" % backend)
 
     if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():

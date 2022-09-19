@@ -28,6 +28,9 @@ from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.collective import _group_map_by_name
 from paddle.distributed.collective import _default_group_name
+from paddle.distributed.collective import _set_group_map
+from paddle.distributed.collective import _set_group_map_by_name
+from paddle.distributed.collective import _set_group_map_by_nam
 import paddle.distributed as dist
 import ctypes
 
@@ -35,8 +38,25 @@ ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
 
 
 def init_process_group(strategy=None):
-    pg_group = dist.init_parallel_env()
-    return pg_group.process_group
+    gid = 0
+    pg = core.ProcessGroupMPI.create([], gid)
+    rank = pg.get_rank()
+    world_size = pg.get_world_size()
+
+    # support CPU
+    place = core.CPUPlace()
+    _set_expected_place(place)
+
+    group = Group(rank,
+                  world_size,
+                  id=0,
+                  ranks=list(range(world_size)),
+                  pg=pg,
+                  name=_default_group_name)
+    _set_group_map_by_name(_default_group_name, group)
+    _set_group_map(gid, group)
+
+    return group
 
 
 def test_new_group():
@@ -439,10 +459,8 @@ class TestProcessGroup(unittest.TestCase):
 
     def test_create_process_group_mpi(self):
         with _test_eager_guard():
-            pg = init_process_group()
-
-            # test new_group
-            sub_group = test_new_group()
+            group = init_process_group()
+            pg = group.process_group
 
             # test allreduce sum
             test_allreduce_sum(pg, self.shape, self.dtype)
@@ -484,7 +502,7 @@ class TestProcessGroup(unittest.TestCase):
             test_scatter(pg, self.shape, self.dtype)
 
             # test send recv.
-            test_send_recv(pg, sub_group, self.shape, self.dtype)
+            test_send_recv(pg, group, self.shape, self.dtype)
 
 
 if __name__ == "__main__":

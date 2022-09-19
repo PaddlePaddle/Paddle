@@ -595,7 +595,7 @@ if(WITH_PYTHON)
   endif()
 
   if(WITH_MPI)
-    target_link_libraries(paddle_pybind ${MPI_CXX_LIBRARIES})
+    target_link_libraries(libpaddle ${MPI_CXX_LIBRARIES})
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
