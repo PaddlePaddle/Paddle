@@ -430,6 +430,14 @@ def scaled_dot_product_attention(queries,
             It has the same data type with inputs, representing the output of \
             Multi-Head Attention.
 
+    Raises:
+        TypeError: The dtype of inputs keys, values and queries should be the same.
+        ValueError: Inputs queries, keys and values should all be 3-D tensors.
+        ValueError: The hidden size of queries and keys should be the same.
+        ValueError: The max sequence length in value batch and in key batch should be the same.
+        ValueError: he hidden size of keys must be divisible by the number of attention heads.
+        ValueError: he hidden size of values must be divisible by the number of attention heads.
+
     Examples:
         .. code-block:: python
 

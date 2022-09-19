@@ -189,7 +189,7 @@ class CompiledProgram(object):
         specifying the size of the thread pool used in the computation Graph running the model,
         and so on.
 
-        Note:
+        .. note::
             If build_strategy is specified when building CompiledProgram and calling
             with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore,
             if it is data parallel training, it is recommended to set build_strategy when calling

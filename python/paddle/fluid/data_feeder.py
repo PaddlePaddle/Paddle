@@ -286,6 +286,9 @@ class DataFeeder(object):
             feed data into, if program is None, it will use default_main_program().
             Default None.
 
+    Raises:
+        :code:`ValueError` - If some Variables are not in this Program.
+
     Example:
         ..  code-block:: python
 
@@ -420,7 +423,7 @@ class DataFeeder(object):
             :code:`generator`: a :code:`generator` that generate dict which contains (variable name - converted tensor) pairs,
             the total number of dicts will be generated matches with the :code:`num_places`
 
-        Note:
+        .. note::
             The number of devices - :code:`num_places` should equal to the generator (element of :code:`iterable` ) number
 
         Example:

@@ -1626,6 +1626,9 @@ def append_backward(loss,
         list of tuple ( :ref:`api_guide_tensor_en` , :ref:`api_guide_tensor_en` ): Pairs of parameter and its corresponding gradients.
         The key is the parameter and the value is gradient Tensor.
 
+    Raises:
+        AssertionError: If ``loss`` is not an instance of Tensor.
+
     Examples:
         .. code-block:: python
 

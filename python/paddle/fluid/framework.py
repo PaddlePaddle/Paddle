@@ -208,7 +208,7 @@ _fallback_legacy_dygraph()
 def in_dygraph_mode():
     """
 
-    Note:
+    .. note::
         Dynamic graph mode is turn ON by default since paddle 2.0.0
 
     This API checks whether paddle runs in dynamic graph mode.
@@ -1661,7 +1661,7 @@ class Variable(object):
         """
         Get readable debug string of Variable.
 
-        Note:
+        .. note::
             If you want to get the debug string in protobuf format,
             please use :code:`to_string` method.
 
@@ -2902,7 +2902,7 @@ class Operator(object):
         """
         Get readable debug string of Operator.
 
-        Note:
+        .. note::
             If you want to get the debug string in protobuf format,
             please use :code:`to_string` method.
 
@@ -3442,7 +3442,7 @@ class Block(object):
         """
         Get readable debug string of Block.
 
-        Note:
+        .. note::
             If you want to get the debug string in protobuf format,
             please use :code:`to_string` method.
 
@@ -5357,7 +5357,7 @@ class Program(object):
         """
         Get readable debug string of Program.
 
-        Note:
+        .. note::
             If you want to get the debug string in protobuf format,
             please use :code:`to_string` method.
 
@@ -5463,7 +5463,7 @@ class Program(object):
 
     def clone(self, for_test=False):
         """
-        Note:
+        .. note:::
             1. :code:`Program.clone()` method DOES NOT clone :ref:`api_paddle_io_DataLoader` .
             2. Recommend you to use :code:`clone` before using :code:`Opimizer.minimize` .
             3. This API has no effect in Dygraph Mode.
@@ -5509,7 +5509,7 @@ class Program(object):
 
         Examples:
 
-            Note:
+            .. note::
                 The Program's order maybe different after :code:`clone` and
                 this will not affect your training or testing progress. In the following
                 example we give you an simple method :code:`print_prog(program)` to
@@ -5959,7 +5959,7 @@ class Program(object):
     @staticmethod
     def parse_from_string(binary_str):
         """
-        Note:
+        .. note::
             1. All information about parameters will be lost after serialization;
             2. This API has no effect in Dygraph mode.
 
@@ -6025,7 +6025,7 @@ class Program(object):
         The default random seed for random operators in Program. ``0`` means get
         the random seed from random device.
 
-        Note:
+        .. note::
             It must be set before the operators have been added.
 
         Returns:
@@ -6063,7 +6063,7 @@ class Program(object):
         """
         The number of :ref:`api_guide_Block_en`  in this Program.
 
-        Note:
+        .. note::
             This API has no effect in Dygraph mode.
 
         Returns:
@@ -6100,7 +6100,7 @@ class Program(object):
 
     def global_block(self):
         """
-        Note:
+        .. note::
             This API has no effect in Dygraph mode.
 
         Get the first :ref:`api_guide_Block_en` of this Program.
@@ -6126,7 +6126,7 @@ class Program(object):
 
     def block(self, index):
         """
-        Note:
+        .. note::
             This API has no effect in Dygraph mode.
 
         Get the :code:`index`  :ref:`api_guide_Block_en`  of this Program
@@ -6153,7 +6153,7 @@ class Program(object):
 
     def current_block(self):
         """
-        Note:
+        .. note::
             This API has no effect in Dygraph mode.
 
         Get the current  :ref:`api_guide_Block_en` . The :code:`current`  :ref:`api_guide_Block_en`
@@ -6374,7 +6374,7 @@ class Program(object):
         Get parameters and persistable buffers of program as a dict. The key is the name of the parameter or the name of the buffer.
         The value is the tensor of this variable in the given scope.
 
-        Note:
+        .. note::
             This function MUST called after run start_up_program
 
         Args:
@@ -6473,7 +6473,7 @@ class Program(object):
         Set parameters and persistable buffers in state_dict to program.
         An exception will throw if shape or dtype of the parameters is not match.
 
-        Note:
+        .. note::
             This function MUST called after run start_up_program
 
         Args:
