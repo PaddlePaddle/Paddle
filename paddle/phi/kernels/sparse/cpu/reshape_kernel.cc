@@ -42,7 +42,7 @@ void ReshapeCooKernel(const Context& dev_ctx,
   int64_t x_nnz = x.nnz();
   // DDim out_dims = x.dims().transpose(perm);
   DDim out_dims = phi::make_ddim(new_shape);
-  /////  get sparse part dimensions of x and out
+  ////get sparse part dimensions of x and out
   std::vector<int64_t> x_sparse_part_dims;
   std::vector<int64_t> out_sparse_part_dims;
   for (int i = 0; i < x.sparse_dim(); ++i) {
@@ -139,4 +139,3 @@ PD_REGISTER_KERNEL(reshape_csr,
                    int,
                    int64_t,
                    bool) {}
-                   
