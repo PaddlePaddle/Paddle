@@ -1,3 +1,7 @@
+exclude: |
+    (?x)^(
+        patches/.+
+    )$
 repos:
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
     rev: v1.1.14
@@ -24,9 +28,9 @@ repos:
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
     -   id: sort-simple-yaml
-        files: (api|backward|api_[a-z_]+)\.yaml$
+        files: (op|backward|op_[a-z_]+)\.yaml$
     -   id: trailing-whitespace
-        files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists.txt)$
+        files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
 -   repo: local
     hooks:
     -   id: clang-format
@@ -47,6 +51,10 @@ repos:
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
+        args:
+            - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
+            - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
+            - --quiet
 -   repo: local
     hooks:
     -   id: pylint-doc-string

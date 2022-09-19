@@ -296,6 +296,7 @@ packages=['paddle',
           'paddle.distributed.launch.plugins',
           'paddle.distributed.launch.utils',
           'paddle.distributed.fleet.base',
+          'paddle.distributed.fleet.recompute',
           'paddle.distributed.fleet.elastic',
           'paddle.distributed.fleet.meta_optimizers',
           'paddle.distributed.fleet.meta_optimizers.sharding',
@@ -307,6 +308,8 @@ packages=['paddle',
           'paddle.distributed.fleet.metrics',
           'paddle.distributed.fleet.proto',
           'paddle.distributed.fleet.utils',
+          'paddle.distributed.fleet.layers',
+          'paddle.distributed.fleet.layers.mpu',
           'paddle.distributed.fleet.meta_parallel',
           'paddle.distributed.fleet.meta_parallel.pp_utils',
           'paddle.distributed.fleet.meta_parallel.sharding',
@@ -378,6 +381,7 @@ packages=['paddle',
           'paddle.incubate.optimizer.functional',
           'paddle.incubate.autograd',
           'paddle.incubate.distributed',
+          'paddle.incubate.distributed.fleet',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
@@ -450,8 +454,6 @@ else:
     package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
 package_data['paddle.fluid'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
-if '${HAS_NOAVX_CORE}' == 'ON':
-    package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -493,7 +495,7 @@ else:
         package_data['paddle.libs'] += ['openblas' + ext_name]
     elif os.name == 'posix' and platform.machine() == 'aarch64' and '${OPENBLAS_LIB}'.endswith('so'):
         # copy the libopenblas.so on linux+aarch64
-        # special: core_noavx.so depends on 'libopenblas.so.0', not 'libopenblas.so'
+        # special: libpaddle.so without avx depends on 'libopenblas.so.0', not 'libopenblas.so'
         if os.path.exists('${OPENBLAS_LIB}' + '.0'):
             shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
             package_data['paddle.libs'] += ['libopenblas.so.0']
@@ -588,8 +590,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
         else:
-            commands = ["patchelf --set-soname '${FLUID_CORE_NAME}.so' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
-            commands.append("patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
+            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
