@@ -178,6 +178,7 @@ class OpConverter {
                                         op_desc.Type()));
 
     it->SetEngine(engine);
+    engine->SetScope(scope);
     it->SetBlockDesc(block);
     (*it)(op, scope, test_mode);
 

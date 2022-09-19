@@ -34,7 +34,7 @@ class ReshapeOpConverter : public OpConverter {
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
-    auto* input = engine_->GetITensor(op_desc.Input("X")[0], scope);
+    auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
     std::vector<int> shape =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
@@ -47,12 +47,11 @@ class ReshapeOpConverter : public OpConverter {
       if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
           op_desc.Input("ShapeTensor").size() > 0) {
         for (auto name : op_desc.Input("ShapeTensor"))
-          concat_inputs.push_back(engine_->GetITensor(name, scope));
+          concat_inputs.push_back(engine_->GetITensor(name));
         real_shape_tensor = Concat(concat_inputs);
       } else if (op_desc.Inputs().find("Shape") != op_desc.Inputs().end() &&
                  op_desc.Input("Shape").size() > 0) {
-        real_shape_tensor =
-            engine_->GetITensor(op_desc.Input("Shape")[0], scope);
+        real_shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
       } else {
         reshape_dim.nbDims = nbDims_num;
         for (int i = 0; i < nbDims_num; ++i) {

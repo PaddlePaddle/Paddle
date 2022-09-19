@@ -51,7 +51,7 @@ class CustomPluginCreater : public OpConverter {
     auto &op_input_names = framework::OpMetaInfoHelper::GetInputs(op_info);
     for (auto &param_name : op_input_names) {
       for (auto &arg_name : op_desc.Input(param_name)) {
-        inputs.push_back(engine_->GetITensor(arg_name, scope));
+        inputs.push_back(engine_->GetITensor(arg_name));
       }
     }
     auto creator =
@@ -186,7 +186,7 @@ class GenericPluginCreater : public OpConverter {
 
     for (auto &param_name : phi_kernel_signature.input_names) {
       for (auto &arg_name : op_desc.Input(param_name)) {
-        inputs.push_back(engine_->GetITensor(arg_name, scope));
+        inputs.push_back(engine_->GetITensor(arg_name));
         auto *var = block_desc.FindVar(arg_name);
         PADDLE_ENFORCE_NOT_NULL(
             var,

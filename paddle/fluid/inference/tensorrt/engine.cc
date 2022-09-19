@@ -368,29 +368,20 @@ void TensorRTEngine::SetITensor(const std::string &name,
   itensor_map_[name] = tensor;
 }
 
-nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name,
-                                              const framework::Scope &scope) {
+nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
   if (itensor_map_.count(name)) {
     return itensor_map_[name];
   } else {
-    ConvertWeight2ITensor(name, scope);
+    ConvertWeight2ITensor(name);
     return itensor_map_[name];
   }
-}
-
-nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
-  PADDLE_ENFORCE_EQ(itensor_map_.count(name),
-                    true,
-                    platform::errors::NotFound(
-                        "Tensor named %s is not found in TRT engine", name));
-  return itensor_map_[name];
 }
 
 // For cases when input is not middle-tensor , but persistable tensor
 // you should call this.
 nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
-    const std::string &name, const framework::Scope &scope) {
-  auto *var_v = scope.FindVar(name);
+    const std::string &name) {
+  auto *var_v = scope_->FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
       var_v,
       platform::errors::NotFound("You are converting a persistable weight to a "

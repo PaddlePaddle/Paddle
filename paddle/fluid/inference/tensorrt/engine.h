@@ -283,10 +283,7 @@ class TensorRTEngine {
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
-  nvinfer1::ITensor* GetITensor(const std::string& name,
-                                const framework::Scope& scope);
-  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name,
-                                           const framework::Scope& scope);
+  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name);
   std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
@@ -695,12 +692,14 @@ class TensorRTEngine {
   void GetEngineInfo();
 
   void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
+  void SetScope(const framework::Scope& scope) { scope_ = &scope; }
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
   // freshDeviceId().
   void freshDeviceId();
+  const framework::Scope* scope_;
 
   // the max batch size
   int max_batch_;
