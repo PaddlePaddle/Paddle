@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.static import default_main_program
 
 
@@ -39,12 +39,12 @@ def dropout_nd(x,
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
 
-        out, mask = _C_ops.dropout_nd(x, 'dropout_prob', p, 'is_test',
-                                      not training, 'fix_seed', seed
-                                      is not None, 'seed',
-                                      seed if seed is not None else 0,
-                                      'dropout_implementation', mode, 'axis',
-                                      drop_axes)
+        out, mask = _legacy_C_ops.dropout_nd(x, 'dropout_prob', p, 'is_test',
+                                             not training, 'fix_seed', seed
+                                             is not None, 'seed',
+                                             seed if seed is not None else 0,
+                                             'dropout_implementation', mode,
+                                             'axis', drop_axes)
         return out
 
     helper = LayerHelper('dropout_nd', **locals())

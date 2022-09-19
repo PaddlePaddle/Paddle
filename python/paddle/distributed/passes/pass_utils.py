@@ -86,11 +86,11 @@ def prune_program(program, start_op_idx, end_op_idx):
 
 def split_program(program, op_indices):
     """
-    Split the program by op_indices. 
+    Split the program by op_indices.
 
     For examples, a program has 100 ops, and op_indices = [25, 60].
     Then the program is splitted into 3 parts, containing 25, 35 and 40
-    ops respectively.  
+    ops respectively.
 
     The return values are a tuple with 3 elements: the splitted program
     list, the input var names of each splitted program, and the output

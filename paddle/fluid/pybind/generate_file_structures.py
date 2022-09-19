@@ -20,7 +20,7 @@ if __name__ == "__main__":
     pybind_dir = sys.argv[1]
     split_count = int(sys.argv[2])
 
-    empty_files = [os.path.join(pybind_dir, "eager_final_state_op_function.cc")]
+    empty_files = [os.path.join(pybind_dir, "eager_legacy_op_function.cc")]
     empty_files.append(os.path.join(pybind_dir, "eager_op_function.cc"))
 
     for i in range(split_count):

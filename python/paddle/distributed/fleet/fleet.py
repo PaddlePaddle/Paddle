@@ -30,7 +30,7 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.ir import apply_build_strategy
 from .base import topology as tp
 from .meta_parallel import model_parallel_random_seed
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 
 __all__ = []
@@ -100,7 +100,7 @@ is_non_distributed_check = wrap_decorator(_is_non_distributed_check_)
 class Fleet(object):
     """
     Unified API for distributed training of PaddlePaddle
-    Please reference the https://github.com/PaddlePaddle/FleetX for details
+    Please reference the https://github.com/PaddlePaddle/PaddleFleetX for details
 
 
     Returns:
@@ -174,13 +174,14 @@ class Fleet(object):
 
         Args:
             role_maker (RoleMakerBase, optional): A ``RoleMakerBase`` containing the configuration
-                of environment variables related to distributed training.If you did not initialize 
+                of environment variables related to distributed training.If you did not initialize
                 the rolemaker by yourself, it will be automatically initialized to PaddleRoleMaker.
                 The default value is None.
-            is_collective (Boolean, optional): A ``Boolean`` variable determines whether the program 
-                runs on the CPU or GPU. False means set distributed training using CPU, and True means
-                GPU.The default value is False.The default value is False.
-            strategy (DistributedStrategy): Extra properties for distributed training. 
+            is_collective (Boolean, optional): A ``Boolean`` variable determines whether the program
+                runs on Collective mode or ParameterServer mode. True means the program runs on
+                Collective mode, and False means running on ParameterServer mode. The default value
+                is False.
+            strategy (DistributedStrategy): Extra properties for distributed training.
                 For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
 
 
@@ -990,10 +991,10 @@ class Fleet(object):
 
         Args:
             optimizer(Optimizer): The executor to run for init server.
-            strategy(DistributedStrategy): Extra properties for distributed optimizer. 
+            strategy(DistributedStrategy): Extra properties for distributed optimizer.
                 It is recommended to use DistributedStrategy in fleet.init(). The strategy
-                here is for compatibility. If the strategy in fleet.distributed_optimizer() 
-                is not None, then it will overwrite the DistributedStrategy in fleet.init(), 
+                here is for compatibility. If the strategy in fleet.distributed_optimizer()
+                is not None, then it will overwrite the DistributedStrategy in fleet.init(),
                 which will take effect in distributed training.
 
         Returns:
@@ -1056,14 +1057,14 @@ class Fleet(object):
                  use_fp16_test=False):
         """
         Init the amp training, such as cast fp32 parameters to fp16 type.
-  
+
         Args:
-            place(CUDAPlace): place is used to initialize 
+            place(CUDAPlace): place is used to initialize
                 fp16 parameters with fp32 values.
             scope(Scope): The scope is used to find fp32 parameters.
             test_program(Program): The program is used for testing.
             use_fp16_test(bool): Whether to use fp16 testing.
-            
+
         Examples:
             .. code-block:: python
 
@@ -1085,7 +1086,7 @@ class Fleet(object):
                         loss = paddle.mean(hidden)
                     # 2) Create the optimizer and set `multi_precision` to True.
                     # Setting `multi_precision` to True can avoid the poor accuracy
-                    # or the slow convergence in a way. 
+                    # or the slow convergence in a way.
                     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
                     amp_list = paddle.static.amp.CustomOpLists(
@@ -1105,9 +1106,9 @@ class Fleet(object):
                     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                     optimizer.amp_init(place, scope=paddle.static.global_scope())
-                    
+
                 if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-                    run_example_code()       
+                    run_example_code()
         """
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
@@ -1191,7 +1192,7 @@ class Fleet(object):
                 optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
                 optimizer.minimize(avg_cost)
 
-                # for more examples, please reference https://github.com/PaddlePaddle/FleetX
+                # for more examples, please reference https://github.com/PaddlePaddle/PaddleFleetX
 
         """
         if not isinstance(loss, list):

@@ -26,5 +26,11 @@ class TestPipelineParallel(TestMultipleGpus):
         self.run_mnist_2gpu('hybrid_parallel_pp_alexnet.py')
 
 
+class TestModelParallelWithRecompute(TestMultipleGpus):
+
+    def test_model_parallel_with_recompute(self):
+        self.run_mnist_2gpu("dygraph_recompute_hybrid.py")
+
+
 if __name__ == "__main__":
     unittest.main()

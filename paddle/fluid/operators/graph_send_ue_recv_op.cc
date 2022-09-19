@@ -97,7 +97,7 @@ intermediate memory consumption in the process of message passing.
 
 Take `X` as the input tensor, we first use `src_index` to gather corresponding data.
 Then the gather data should compute with `Y` in different message_ops, like add, sub, mul, and div,
-and get the computation result. Then, use `dst_index` to update the corresponding position of output 
+and get the computation result. Then, use `dst_index` to update the corresponding position of output
 tensor in different pooling types, like sum, mean, max, or min.
 
 )DOC");

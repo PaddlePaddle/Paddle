@@ -1470,7 +1470,7 @@ class CrossEntropyLoss(unittest.TestCase):
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
-    def test_soft_1d_dygraph_final_state_api(self):
+    def test_soft_1d_dygraph_api(self):
         with _test_eager_guard():
             self.test_cross_entropy_loss_soft_1d()
             self.test_cross_entropy_loss_soft_1d_weight()
@@ -1478,12 +1478,12 @@ class CrossEntropyLoss(unittest.TestCase):
             self.test_cross_entropy_loss_soft_1d_weight_mean()
 
     # put all testcases in one test will be failed
-    def test_soft_2d_dygraph_final_state_api(self):
+    def test_soft_2d_dygraph_api(self):
         with _test_eager_guard():
             self.test_cross_entropy_loss_soft_2d()
             self.test_cross_entropy_loss_soft_2d_weight_mean()
 
-    def test_other_dygraph_final_state_api(self):
+    def test_other_dygraph_api(self):
         with _test_eager_guard():
             self.test_cross_entropy_loss_1d_with_mean_ignore()
             self.test_cross_entropy_loss_1d_with_mean_ignore_negative()

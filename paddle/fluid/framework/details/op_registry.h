@@ -207,9 +207,9 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
                           "OpAttrChecker of %s has been registered.", op_type));
     info->proto_ = new proto::OpProto;
     info->checker_ = new OpAttrChecker();
+    info->proto_->set_type(op_type);
     T maker;
     maker(info->proto_, info->checker_);
-    info->proto_->set_type(op_type);
     PADDLE_ENFORCE_EQ(
         info->proto_->IsInitialized(),
         true,

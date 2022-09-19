@@ -17,7 +17,7 @@ from __future__ import print_function
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid import core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 def softmax_mask_fuse_upper_triangle(x):
@@ -59,7 +59,7 @@ def softmax_mask_fuse_upper_triangle(x):
             #     ... ]]]
     """
     if _non_static_mode():
-        out = _C_ops.fused_softmax_mask_upper_triangle(x)
+        out = _legacy_C_ops.fused_softmax_mask_upper_triangle(x)
         return out
 
     helper = LayerHelper('fused_softmax_mask_upper_triangle', **locals())

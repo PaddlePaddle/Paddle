@@ -18,8 +18,28 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from paddle.fluid import core
+import paddle.fluid as fluid
+import paddle
 
-alignment = 256
+
+def coalesce_tensor_eager_api(Input,
+                              datatype=core.VarDesc.VarType.FP32,
+                              copy_data=False,
+                              set_constant=False,
+                              persist_output=False,
+                              constant=0.0,
+                              use_align=True,
+                              align_size=-1,
+                              user_defined_size_of_dtype=-1,
+                              concated_shapes=[],
+                              concated_ranks=[]):
+    if datatype == int(core.VarDesc.VarType.FP32):
+        datatype = core.VarDesc.VarType.FP32
+    return paddle._C_ops.coalesce_tensor(Input, datatype, copy_data,
+                                         set_constant, persist_output, constant,
+                                         use_align, align_size,
+                                         user_defined_size_of_dtype,
+                                         concated_shapes, concated_ranks)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -27,17 +47,14 @@ alignment = 256
 class TestAllocContinuousSpace(OpTest):
 
     def setUp(self):
+        self.python_api = coalesce_tensor_eager_api
         self.op_type = "coalesce_tensor"
         self.dtype, self.fluid_dtype = self.init_dtype()
-        attrs = self.init_attr()
-        self.copy_data = attrs["copy_data"]
-        self.constant = attrs["constant"]
-        self.set_constant = attrs["set_constant"]
+        self.attrs = self.init_attr()
         self.Inputs = self.init_input()
         self.Outputs, self.FusedOutput = self.init_output(
-            self.Inputs, self.set_constant, self.constant)
+            self.Inputs, self.attrs["set_constant"], self.attrs["constant"])
         self.inputs = {'Input': self.Inputs}
-        self.attrs = attrs
         self.outputs = {'Output': self.Outputs, 'FusedOutput': self.FusedOutput}
 
     def init_dtype(self):
@@ -64,10 +81,14 @@ class TestAllocContinuousSpace(OpTest):
     def init_output(self, input_list, set_constant, constant):
         inputs = []
         outputs = input_list
+        # GpuMinChunkSize=256 bytes, FP32=4 bytes
+        alignment = 256 / 4
+        if 'user_defined_size_of_dtype' in self.attrs:
+            alignment = 256 / self.attrs['user_defined_size_of_dtype']
 
         for input in input_list:
             length = len(input[1].flatten())
-            aligned_len = (length + alignment) / alignment * alignment
+            aligned_len = (length + alignment) // alignment * alignment
             out = np.zeros(int(aligned_len))
             out[0:length] = input[1].flatten()
             inputs.append(out)
@@ -80,10 +101,45 @@ class TestAllocContinuousSpace(OpTest):
                        for out in outputs]
         return outputs, coalesce_tensor_var
 
+    def verify_output(self, place):
+        with fluid.dygraph.base.guard(place=place):
+            tensor_input = [
+                fluid.dygraph.base.to_variable(value=data[1])
+                for data in self.inputs["Input"]
+            ]
+            eager_outputs, eager_fused_output = coalesce_tensor_eager_api(
+                tensor_input,
+                datatype=self.attrs["dtype"],
+                copy_data=self.attrs["copy_data"]
+                if "copy_data" in self.attrs else False,
+                set_constant=self.attrs["set_constant"]
+                if "set_constant" in self.attrs else False,
+                persist_output=False,
+                constant=self.attrs["constant"]
+                if "constant" in self.attrs else 0.0,
+                use_align=True,
+                align_size=-1,
+                user_defined_size_of_dtype=self.
+                attrs["user_defined_size_of_dtype"]
+                if "user_defined_size_of_dtype" in self.attrs else -1,
+                concated_shapes=[],
+                concated_ranks=[])
+            for idx, (expected, eager_output) in enumerate(
+                    zip(self.outputs['Output'], eager_outputs)):
+                np.testing.assert_allclose(expected[1],
+                                           eager_output,
+                                           atol=1e-5,
+                                           err_msg=f'not equal {idx}')
+            np.testing.assert_allclose(self.outputs['FusedOutput'],
+                                       eager_fused_output,
+                                       atol=1e-5,
+                                       err_msg=f'not equal fusedoutput')
+
     def test_check_output(self):
         self.check_output_with_place(place=core.CUDAPlace(0),
                                      no_check_set=["FusedOutput"],
                                      atol=1e-5)
+        self.verify_output(core.CUDAPlace(0))
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -103,6 +159,7 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
         self.check_output_with_place(place=core.CUDAPlace(0),
                                      no_check_set=["FusedOutput"],
                                      atol=1e-5)
+        self.verify_output(core.CUDAPlace(0))
 
 
 if __name__ == '__main__':

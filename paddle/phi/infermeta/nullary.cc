@@ -51,12 +51,25 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
   out->set_layout(layout);
 }
 
-void EyeInferMeta(int64_t num_rows,
-                  int64_t num_columns,
+void EyeInferMeta(const Scalar& num_rows,
+                  const Scalar& num_columns,
                   DataType dtype,
-                  MetaTensor* out) {
-  if (num_columns == -1) num_columns = num_rows;
-  out->set_dims({num_rows, num_columns});
+                  MetaTensor* out,
+                  MetaConfig config) {
+  int64_t rows, columns;
+  if (!config.is_runtime && num_rows.FromTensor()) {
+    rows = -1;
+  } else {
+    rows = num_rows.to<int64_t>();
+  }
+
+  if (!config.is_runtime && num_columns.FromTensor()) {
+    columns = -1;
+  } else {
+    columns = num_columns.to<int64_t>();
+    if (columns == -1) columns = rows;
+  }
+  out->set_dims({rows, columns});
   out->set_dtype(dtype);
 }
 

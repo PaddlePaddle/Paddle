@@ -15,11 +15,11 @@
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_context.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_reuse.h"
 
 namespace phi {
 
@@ -75,10 +75,13 @@ void eltwise_grad(const OneDNNContext& dev_ctx,
                   float beta,
                   DenseTensor* dx,
                   dnnl::algorithm algorithm) {
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
-
-  funcs::ActivationMKLDNNHandler<T> handler(
-      algorithm, alpha, beta, mkldnn_engine, dev_ctx.GetPlace(), &x, &dout);
+  funcs::ActivationOneDNNHandler<T> handler(algorithm,
+                                            alpha,
+                                            beta,
+                                            dev_ctx.GetEngine(),
+                                            dev_ctx.GetPlace(),
+                                            &x,
+                                            &dout);
 
   auto src_memory_p = handler.AcquireBackwardSrcMemory(&x);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(&dout);
@@ -103,10 +106,13 @@ void eltwise_grad_use_out(const OneDNNContext& dev_ctx,
                           float beta,
                           DenseTensor* dx,
                           dnnl::algorithm algorithm) {
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
-
-  funcs::ActivationMKLDNNHandler<T> handler(
-      algorithm, alpha, beta, mkldnn_engine, dev_ctx.GetPlace(), &out, &dout);
+  funcs::ActivationOneDNNHandler<T> handler(algorithm,
+                                            alpha,
+                                            beta,
+                                            dev_ctx.GetEngine(),
+                                            dev_ctx.GetPlace(),
+                                            &out,
+                                            &dout);
 
   auto dst_memory_p = handler.AcquireBackwardSrcMemory(&out);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(&dout);
@@ -124,7 +130,7 @@ void eltwise_grad_use_out(const OneDNNContext& dev_ctx,
 }
 
 template <typename T, dnnl::algorithm algorithm>
-struct MKLDNNActivationGradFunc : public funcs::BaseActivationFunctor<T> {
+struct OneDNNActivationGradFunc : public funcs::BaseActivationFunctor<T> {
   void operator()(const OneDNNContext& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& dout,
@@ -136,7 +142,7 @@ struct MKLDNNActivationGradFunc : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T, dnnl::algorithm algorithm>
-struct MKLDNNActivationGradUseOutFunc : public funcs::BaseActivationFunctor<T> {
+struct OneDNNActivationGradUseOutFunc : public funcs::BaseActivationFunctor<T> {
   void operator()(const OneDNNContext& dev_ctx,
                   const DenseTensor& out,
                   const DenseTensor& dout,
@@ -148,61 +154,66 @@ struct MKLDNNActivationGradUseOutFunc : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
-using ReluMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
+using AbsOneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_abs>;
 
 template <typename T>
-using SwishMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_swish>;
+using ReluOneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
 
 template <typename T>
-using HardSwishMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_hardswish>;
+using SwishOneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_swish>;
 
 template <typename T>
-using MishMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_mish>;
+using HardSwishOneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_hardswish>;
 
 template <typename T>
-using SigmoidMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
+using MishOneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_mish>;
+
+template <typename T>
+using SigmoidOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
     T,
     dnnl::algorithm::eltwise_logistic_use_dst_for_bwd>;
 
 template <typename T>
-using TanhMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
+using TanhOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
     T,
     dnnl::algorithm::eltwise_tanh_use_dst_for_bwd>;
 
 template <typename T>
-using SqrtMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
+using SqrtOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
     T,
     dnnl::algorithm::eltwise_sqrt_use_dst_for_bwd>;
 
 template <typename T>
-using EluMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
+using EluOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
     T,
     dnnl::algorithm::eltwise_elu_use_dst_for_bwd>;
 
 template <typename T>
-using ExpMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
+using ExpOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
     T,
     dnnl::algorithm::eltwise_exp_use_dst_for_bwd>;
 
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhMKLDNNGradUseOutFunctor);
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtMKLDNNGradUseOutFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhOneDNNGradUseOutFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtOneDNNGradUseOutFunctor);
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid,
-                                            SigmoidMKLDNNGradUseOutFunctor);
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpMKLDNNGradUseOutFunctor);
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluMKLDNNGradFunctor);
+                                            SigmoidOneDNNGradUseOutFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpOneDNNGradUseOutFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Abs, AbsOneDNNGradFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluOneDNNGradFunctor);
 
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
-                                                  ReluMKLDNNGradFunctor,
+                                                  ReluOneDNNGradFunctor,
                                                   alpha);
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
-                                                  MishMKLDNNGradFunctor,
+                                                  MishOneDNNGradFunctor,
                                                   threshold);
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Swish,
-                                                  SwishMKLDNNGradFunctor,
+                                                  SwishOneDNNGradFunctor,
                                                   beta);
 template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,
@@ -212,7 +223,7 @@ void HardSwishGradKernel(const Context& dev_ctx,
                          float scale,
                          float offset,
                          DenseTensor* dx) {
-  HardSwishMKLDNNGradFunctor<T> functor;
+  HardSwishOneDNNGradFunctor<T> functor;
   functor(dev_ctx, x, dout, threshold, 0, dx);
 }
 
@@ -223,7 +234,7 @@ void EluGradKernel(const Context& dev_ctx,
                    const DenseTensor& dout,
                    float alpha,
                    DenseTensor* dx) {
-  EluMKLDNNGradUseOutFunctor<T> functor;
+  EluOneDNNGradUseOutFunctor<T> functor;
   functor(dev_ctx, out, dout, alpha, 0, dx);
 }
 
@@ -240,6 +251,7 @@ PD_REGISTER_KERNEL(relu_grad,
   PD_REGISTER_KERNEL(                                  \
       name, OneDNN, ALL_LAYOUT, phi::func, float, phi::dtype::bfloat16) {}
 
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(abs_grad, AbsGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_grad, EluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(exp_grad, ExpGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_swish_grad, HardSwishGradKernel)

@@ -16,7 +16,7 @@ from __future__ import print_function
 from ..layer_helper import LayerHelper, unique_name
 from ..framework import Variable, in_dygraph_mode, _in_legacy_dygraph
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):
@@ -124,7 +124,7 @@ def _c_allgather(x, nranks, ring_id=0, use_calc_stream=False):
     if _in_legacy_dygraph():
         attrs = ('nranks', nranks, 'ring_id', ring_id, 'use_calc_stream',
                  use_calc_stream)
-        return _C_ops.c_allgather(x, *attrs)
+        return _legacy_C_ops.c_allgather(x, *attrs)
 
     helper = LayerHelper(op_type, **locals())
     out_shape = list(x.shape[:])

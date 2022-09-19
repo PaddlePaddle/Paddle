@@ -30,6 +30,9 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+int TensorRTEngine::runtime_batch_ = 1;
+thread_local int TensorRTEngine::predictor_id_per_thread = -1;
+
 void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
   nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
   switch (type) {
@@ -59,8 +62,6 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
   w_.type = nv_type;
 }
 
-int TensorRTEngine::runtime_batch_ = 1;
-
 void TensorRTEngine::InitNetwork() {
   freshDeviceId();
   infer_builder_.reset(createInferBuilder(&logger_));
@@ -88,9 +89,7 @@ void TensorRTEngine::Execute(int batch_size,
   if (!with_dynamic_shape()) {
     infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
-#if IS_TRT_VERSION_GE(6000)
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
-#endif
   }
   SetRuntimeBatch(batch_size);
 }
@@ -133,7 +132,6 @@ void TensorRTEngine::FreezeNetwork() {
     } else {
       infer_builder_config_->setInt8Calibrator(nullptr);
 
-#if IS_TRT_VERSION_GE(5000)
       for (auto &quant_range : quant_dynamic_range_) {
         auto tensor = quant_range.first;
         float range = quant_range.second;
@@ -159,72 +157,6 @@ void TensorRTEngine::FreezeNetwork() {
                   << ", this might be ok when trt does not need this range";
         }
       }
-
-#if IS_TRT_VERSION_GE(5122)
-      auto layer_int8_fallback = [&](nvinfer1::ILayer *layer) -> bool {
-        if (layer->getType() == nvinfer1::LayerType::kSHAPE) {
-          return false;
-        }
-        bool all_int = true;
-        for (int j = 0; j < layer->getNbInputs(); j++) {
-          auto *temp_in = layer->getInput(j);
-          if (temp_in->getType() != nvinfer1::DataType::kINT32) {
-            all_int = false;
-          }
-        }
-        for (int j = 0; j < layer->getNbOutputs(); j++) {
-          auto *temp_out = layer->getOutput(j);
-          if (temp_out->getType() != nvinfer1::DataType::kINT32) {
-            all_int = false;
-          }
-        }
-        if (all_int) return false;
-
-        for (int j = 0; j < layer->getNbInputs(); j++) {
-          auto *temp_in = layer->getInput(j);
-          if (!temp_in->dynamicRangeIsSet()) {
-            VLOG(1) << "Layer(Name: " << layer->getName()
-                    << ") is set to float32 because its input("
-                    << temp_in->getName() << ") doesn't have dynamic range.";
-            return true;
-          }
-        }
-        for (int j = 0; j < layer->getNbOutputs(); j++) {
-          auto *temp_out = layer->getOutput(j);
-          if (!temp_out->dynamicRangeIsSet()) {
-            VLOG(1) << "Layer(Name: " << layer->getName()
-                    << ") is set to float32 because its output("
-                    << temp_out->getName() << ") doesn't have dynamic range.";
-            return true;
-          }
-        }
-        return false;
-      };
-      // If a layer's output is the network's output, or not all of its inputs
-      // and outputs have scales,
-      // this layer's precision and output type are set to float32.
-      // This step has no effect if this layer is fused during TRT optimization.
-      int layers_no_int8 = 0;
-      for (int i = 0; i < network()->getNbLayers(); i++) {
-        auto layer = network()->getLayer(i);
-        if (layer_int8_fallback(layer)) {
-          layer->setPrecision(nvinfer1::DataType::kFLOAT);
-          ++layers_no_int8;
-        }
-      }
-      // Disable int8 or build engine failed if all layers aren't int8
-      if (layers_no_int8 == network()->getNbLayers()) {
-        nvinfer1::BuilderFlags flags = infer_builder_config_->getFlags();
-        flags = flags & ~(1U << static_cast<int>(nvinfer1::BuilderFlag::kINT8));
-        // reset flags
-        infer_builder_config_->setFlags(flags);
-      }
-#else
-      LOG(WARNING) << "If your TensorRT version is lower than 5.1.2.2, you "
-                      "must provide quantization scales for all tensors using "
-                      "TRT to run.";
-#endif
-#endif
     }
   }
 
@@ -264,7 +196,6 @@ void TensorRTEngine::FreezeNetwork() {
   }
 
   if (with_dynamic_shape_) {
-#if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (int i = 0; i < max_profile_num_; i++) {
       for (auto &input : min_input_shape_) {
@@ -309,7 +240,6 @@ void TensorRTEngine::FreezeNetwork() {
                    "'config.SetDynamicShapeInfo(min_shape, max_shape, "
                    "opt_shape, false /*disable_trt_plugin_fp16*/)'";
     }
-#endif
   }
 #if IS_TRT_VERSION_GE(8200)
   if (use_inspector_) {
@@ -680,8 +610,9 @@ void TensorRTEngine::GetEngineInfo() {
   LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
       infer_engine_->createEngineInspector());
-  auto infer_context = context();
-  infer_inspector->setExecutionContext(infer_context);
+  auto infer_context = infer_ptr<nvinfer1::IExecutionContext>(
+      infer_engine_->createExecutionContextWithoutDeviceMemory());
+  infer_inspector->setExecutionContext(infer_context.get());
   LOG(INFO) << infer_inspector->getEngineInformation(
       nvinfer1::LayerInformationFormat::kONELINE);
   LOG(INFO) << "====== engine info end ======";

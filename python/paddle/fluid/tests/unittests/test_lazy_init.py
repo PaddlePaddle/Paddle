@@ -15,8 +15,8 @@
 import paddle
 import unittest
 import numpy as np
-from paddle import LazyInit
-from paddle.nn import Linear
+from paddle import LazyGuard
+from paddle.nn import Linear, Layer
 from paddle.nn.initializer import *
 from paddle.fluid import unique_name
 
@@ -47,11 +47,13 @@ class TestInitializerBase(unittest.TestCase):
         unique_name.dygraph_parameter_name_checker._name_set = set()
 
     def test_wrapper(self):
-        fc = LazyInit(Linear)(10,
-                              10,
-                              weight_attr=self.weight_attr,
-                              bias_attr=self.bias_attr)
-        program = fc.startup_program
+        with LazyGuard():
+            fc = Linear(10,
+                        10,
+                        weight_attr=self.weight_attr,
+                        bias_attr=self.bias_attr)
+        program = fc._startup_program()
+        print(program)
         self.check_program(program)
 
     def check_program(self, program):
@@ -64,10 +66,11 @@ class TestInitializerBase(unittest.TestCase):
 class TestDygraphLazy(TestInitializerBase):
 
     def test_wrapper(self):
-        fc = LazyInit(Linear)(10,
-                              10,
-                              weight_attr=self.weight_attr,
-                              bias_attr=self.bias_attr)
+        with LazyGuard():
+            fc = Linear(10,
+                        10,
+                        weight_attr=self.weight_attr,
+                        bias_attr=self.bias_attr)
 
         self.check_data(fc)
 
@@ -87,6 +90,66 @@ class TestDygraphLazy(TestInitializerBase):
                                    np.ones([10, 10], dtype=np.float32) * 0.6)
         np.testing.assert_allclose(model.bias.numpy(),
                                    np.ones([10], dtype=np.float32) * 0.3)
+
+
+class NestModel(Layer):
+
+    def __init__(self, base_model):
+        super(NestModel, self).__init__()
+        self.base_model = base_model
+        self.fc = Linear(10, 10)
+
+    def forward(self, x):
+        x = self.base_model(x)
+        x = self.fc(x)
+        return x
+
+
+class TestNestModelLazy(TestInitializerBase):
+
+    def test_wrapper(self):
+        with LazyGuard():
+            base_model = Linear(10,
+                                10,
+                                weight_attr=self.weight_attr,
+                                bias_attr=self.bias_attr)
+            nest_model = NestModel(base_model)
+
+        self.check_data(nest_model)
+        self.check_program(nest_model)
+
+    def check_data(self, model):
+        x = paddle.randn([2, 10])
+        # weight and bias have no memory
+        with self.assertRaises(RuntimeError):
+            out = model(x)
+
+        for param in model.parameters():
+            param.initialize()
+
+        out = model(x)
+        self.assertEqual(out.shape, [2, 10])
+
+        np.testing.assert_allclose(model.base_model.weight.numpy(),
+                                   np.ones([10, 10], dtype=np.float32) * 0.6)
+        np.testing.assert_allclose(model.base_model.bias.numpy(),
+                                   np.ones([10], dtype=np.float32) * 0.3)
+
+    def check_program(self, model):
+        # verify nest_model startup_program
+        whole_program = model._startup_program()
+        self.assertEqual(whole_program.block(0).var("weight").shape, (10, 10))
+        self.assertEqual(whole_program.block(0).var("bias").shape, (10, ))
+        ops = [op.type for op in whole_program.block(0).ops]
+        init_ops = self.init_ops + ['uniform_random', 'fill_constant']
+        self.assertEqual(ops, init_ops)
+
+        # verify base_model startup_program
+        sub_program = model.base_model._startup_program()
+        self.assertEqual(sub_program.block(0).var("weight").shape, (10, 10))
+        self.assertEqual(sub_program.block(0).var("bias").shape, (10, ))
+        ops = [op.type for op in sub_program.block(0).ops]
+        self.assertEqual(ops, self.init_ops)
 
 
 class TestUniform(TestInitializerBase):

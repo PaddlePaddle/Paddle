@@ -147,6 +147,7 @@ pass_library(delete_dropout_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
+pass_library(constant_folding_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
@@ -173,6 +174,7 @@ if(WITH_TENSORRT)
   pass_library(set_transformer_input_convert_pass inference)
   pass_library(remove_padding_recover_padding_pass inference)
   pass_library(delete_remove_padding_recover_padding_pass inference)
+  pass_library(layernorm_shift_partition_fuse_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -368,6 +370,10 @@ cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
+cc_test(
+  test_delete_dropout_pass_cc
+  SRCS delete_dropout_op_pass_test.cc
+  DEPS delete_dropout_op_pass)
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass

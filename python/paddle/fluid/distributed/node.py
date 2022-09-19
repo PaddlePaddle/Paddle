@@ -38,7 +38,7 @@ class DownpourServer(Server):
     """
         DownpourServer class is used to generate server program_desc
         Args:
-            server: it is pslib.ServerParameter() 
+            server: it is pslib.ServerParameter()
         Examples:
             server = DownpourServer()
     """
@@ -58,10 +58,10 @@ class DownpourServer(Server):
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
                 Can be a float value
-            slot_key_vars(string): slot key id 
+            slot_key_vars(string): slot key id
             slot_value_var(string): slot key value after embedding
         Returns:
-            return None 
+            return None
         """
         table = self.server_.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
@@ -93,7 +93,7 @@ class DownpourServer(Server):
             param_var(list): all dense param. it is a list.
             grad_var(list): all dense grad parm it is a list.
         Returns:
-            return None 
+            return None
         """
         table = self.server_.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
@@ -125,7 +125,7 @@ class DownpourWorker(Worker):
         DownpourWorker class is used to generate worker program_desc
         Args:
             window (int): push params frequency
-            worker: it is pslib.DownpourTrainerParameter 
+            worker: it is pslib.DownpourTrainerParameter
         Examples:
             worker = DownpourWorker(1)
     """
@@ -141,10 +141,10 @@ class DownpourWorker(Worker):
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
                 Can be a float value
-            slot_key_vars(string): slot key id 
+            slot_key_vars(string): slot key id
             slot_value_var(string): slot key value after embedding
         Returns:
-            return None 
+            return None
         """
         table = self.worker_.sparse_table.add()
         table.table_id = table_id
@@ -162,7 +162,7 @@ class DownpourWorker(Worker):
             param_var(list): all dense param. it is a list.
             grad_var(list): all dense grad parm it is a list.
         Returns:
-            return None 
+            return None
         """
         table = self.worker_.dense_table.add()
         table.table_id = table_id

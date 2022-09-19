@@ -26,7 +26,7 @@ from ..param_attr import ParamAttr
 from . import nn
 from . import tensor
 from ..data_feeder import check_variable_and_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['accuracy', 'auc']
 
@@ -76,10 +76,10 @@ def accuracy(input, label, k=1, correct=None, total=None):
             total = _varbase_creator(dtype="int32")
 
         _k = k.numpy().item(0) if isinstance(k, Variable) else k
-        topk_out, topk_indices = _C_ops.top_k_v2(input, 'k', _k, 'sorted',
-                                                 False)
-        _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label, correct,
-                                     total)
+        topk_out, topk_indices = _legacy_C_ops.top_k_v2(input, 'k', _k,
+                                                        'sorted', False)
+        _acc, _, _ = _legacy_C_ops.accuracy(topk_out, topk_indices, label,
+                                            correct, total)
         return _acc
 
     helper = LayerHelper("accuracy", **locals())
@@ -155,7 +155,7 @@ def auc(input,
                              the roc curve. Default 4095.
         topk(int): only topk number of prediction output will be used for auc.
         slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
-        ins_tag_weight(Tensor): A 2D int Tensor indicating the data's tag weight, 1 means real data, 0 means fake data. Default None, and it will be assigned to a tensor of value 1. 
+        ins_tag_weight(Tensor): A 2D int Tensor indicating the data's tag weight, 1 means real data, 0 means fake data. Default None, and it will be assigned to a tensor of value 1.
                          A Tensor with type float32,float64.
 
     Returns:
@@ -186,7 +186,7 @@ def auc(input,
             output= exe.run(feed={"input": x,"label": y},
                              fetch_list=[result[0]])
             print(output)
-            
+
             #you can learn the usage of ins_tag_weight by the following code.
             '''
             import paddle

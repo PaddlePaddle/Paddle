@@ -41,9 +41,8 @@ endif()
 if(WITH_XPU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op_xpu.cc)
-  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op_xpu.cc)
-  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc
-                    generate_proposals_v2_op_xpu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc)
+  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
 elseif(WITH_MLU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op_mlu.cc)

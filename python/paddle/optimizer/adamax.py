@@ -16,7 +16,7 @@ from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from ..fluid.dygraph import no_grad
 
 __all__ = []
@@ -24,7 +24,7 @@ __all__ = []
 
 class Adamax(Optimizer):
     r"""
-    The Adamax optimizer is implemented based on the Adamax Optimization 
+    The Adamax optimizer is implemented based on the Adamax Optimization
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
     which makes the learning rate update algorithm more stable and simple.
@@ -70,9 +70,9 @@ class Adamax(Optimizer):
 	    the regularization setting here in optimizer will be ignored for this parameter. \
 	    Otherwise, the regularization setting here in optimizer will take effect. \
 	    Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -83,7 +83,7 @@ class Adamax(Optimizer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import numpy as np
 
@@ -124,7 +124,7 @@ class Adamax(Optimizer):
                     'beta1': 0.8
                 }],
                 weight_decay=0.01,
-                beta1=0.9)                   
+                beta1=0.9)
             out.backward()
             adam.step()
             adam.clear_grad()
@@ -192,16 +192,16 @@ class Adamax(Optimizer):
                                               param_and_grad[0])
 
         if framework.in_dygraph_mode():
-            _C_ops.final_state_adamax_(param_and_grad[0], param_and_grad[1],
-                                       self._create_param_lr(param_and_grad),
-                                       moment, inf_norm, beta1_pow_acc,
-                                       self._beta1, self._beta2, self._epsilon)
+            _C_ops.adamax_(param_and_grad[0], param_and_grad[1],
+                           self._create_param_lr(param_and_grad), moment,
+                           inf_norm, beta1_pow_acc, self._beta1, self._beta2,
+                           self._epsilon)
         elif framework._in_legacy_dygraph():
-            _C_ops.adamax(param_and_grad[0], param_and_grad[1],
-                          self._create_param_lr(param_and_grad), moment,
-                          inf_norm, beta1_pow_acc, param_and_grad[0], moment,
-                          inf_norm, "beta1", self._beta1, "beta2", self._beta2,
-                          "epsilon", self._epsilon)
+            _legacy_C_ops.adamax(param_and_grad[0], param_and_grad[1],
+                                 self._create_param_lr(param_and_grad), moment,
+                                 inf_norm, beta1_pow_acc, param_and_grad[0],
+                                 moment, inf_norm, "beta1", self._beta1,
+                                 "beta2", self._beta2, "epsilon", self._epsilon)
         else:
             # create the adamax optimize op
             adamax_op = block.append_op(
@@ -240,8 +240,8 @@ class Adamax(Optimizer):
                     beta1_pow_acc = self._get_accumulator(
                         self._beta1_pow_acc_str, param)
                     with no_grad():
-                        tmp = _C_ops.final_state_scale(beta1_pow_acc,
-                                                       self._beta1, 0.0, True)
+                        tmp = _C_ops.scale(beta1_pow_acc, self._beta1, 0.0,
+                                           True)
                         beta1_pow_acc.copy_(tmp, False)
                     continue
                 with param.block.program._optimized_guard(
@@ -263,8 +263,8 @@ class Adamax(Optimizer):
                     self._beta1 = parameters_and_grads.get(
                         'beta1', self._default_dict['beta1'])
                     with no_grad():
-                        tmp = _C_ops.final_state_scale(beta1_pow_acc,
-                                                       self._beta1, 0.0, True)
+                        tmp = _C_ops.scale(beta1_pow_acc, self._beta1, 0.0,
+                                           True)
                         beta1_pow_acc.copy_(tmp, False)
                     continue
 
