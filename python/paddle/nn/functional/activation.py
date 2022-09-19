@@ -966,13 +966,14 @@ def silu(x, name=None):
 
         silu(x) = \frac{x}{1 + e^{-x}}
 
+    Where :math:`x` is the input Tensor.
+
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A Tensor with the same data type and shape as ``x`` .
+        A Tensor with the same data type and shape as :attr:`x`.
 
     Examples:
         .. code-block:: python

@@ -707,7 +707,7 @@ class LeakyReLU(Layer):
 
 
 class Sigmoid(Layer):
-    """
+    r"""
     this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.
 
     .. math::
@@ -715,7 +715,7 @@ class Sigmoid(Layer):
         sigmoid(x) = \frac{1}{1 + e^{-x}}
 
     Parameters:
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
         x: N-D tensor, available dtype is float16, float32, float64.
@@ -727,11 +727,11 @@ class Sigmoid(Layer):
 
         .. code-block:: python
 
-          import paddle
+            import paddle
 
-          m = paddle.nn.Sigmoid()
-          x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-          out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+            m = paddle.nn.Sigmoid()
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
     def __init__(self, name=None):
@@ -1103,16 +1103,16 @@ class ThresholdedReLU(Layer):
 
 
 class Silu(Layer):
-    """
+    r"""
     Silu Activation.
     .. math::
 
         silu(x) = \frac{x}{1 + e^{-x}}
 
+    Where :math:`x` is the input Tensor.
+
     Parameters:
-        x (Tensor): The input Tensor with data type float32, or float64.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
         - input: Tensor with any shape.
