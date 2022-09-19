@@ -63,17 +63,17 @@ DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
 
 
 template <typename T, typename Context>
-void AnyCooKernel(const Context& dev_ctx,
+void ReduceAnyCooKernel(const Context& dev_ctx,
                   const SparseCooTensor& x,
-                  const IntArray& axis,
-                  bool keepdim,
+                  const std::vector<int>& axes,
+                  bool keepdims,
                   SparseCooTensor* out);
 
 template <typename T, typename Context>
-void AnyCsrKernel(const Context& dev_ctx,
+void ReduceAnyCsrKernel(const Context& dev_ctx,
                   const SparseCsrTensor& x,
-                  const IntArray& axis,
-                  bool keepdim,
+                  const std::vector<int>& dims,
+                  bool keepdims,
                   SparseCsrTensor* out);
 
 template <typename T, typename Context>
