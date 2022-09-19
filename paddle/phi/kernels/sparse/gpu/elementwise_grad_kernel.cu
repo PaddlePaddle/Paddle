@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/elementwise_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 namespace phi {
@@ -28,13 +30,27 @@ void ElementWiseAddCooGradKernel(const Context& dev_ctx,
                                  SparseCooTensor* dx,
                                  SparseCooTensor* dy) {
   if (dx) {
-    EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    if (dx->dims() == dout.dims()) {
+      EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
+      Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    }
   }
 
   if (dy) {
-    EmptyLikeCooKernel<T, Context>(dev_ctx, y, dy);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    if (dy->dims() == dout.dims()) {
+      EmptyLikeCooKernel<T, Context>(dev_ctx, y, dy);
+      Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    } else if (y.dims()[0] == 1 && dout.dims()[dout.dims().size() - 1] ==
+                                       y.dims()[y.dims().size() - 1]) {
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(y.values().dims(), dout.values().dims(), 1);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx,
+          dout.values(),
+          dy->mutable_values(),
+          kps::IdentityFunctor<T>(),
+          reduce_dims);
+    }
   }
 }
 
