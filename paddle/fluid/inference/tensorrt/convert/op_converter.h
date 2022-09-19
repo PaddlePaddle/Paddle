@@ -571,35 +571,6 @@ class OpConverter {
     return Add1DConstantLayer(input_data, weight_name, scalar);
   }
 
-  // For cases when input is not middle-tensor , but persistable tensor
-  // you should call this.
-  nvinfer1::ITensor* ConvertWeight2ITensor(const framework::Scope& scope,
-                                           const std::string& name) {
-    auto* var_v = scope.FindVar(name);
-    auto* var_t = var_v->GetMutable<framework::LoDTensor>();
-    auto weight = engine_->GetTrtWeight(name, *var_t);
-
-    // Now we have create weights, then we need create a itensor
-    auto var_dims = var_t->dims();
-    nvinfer1::Dims trt_in_shape;
-    trt_in_shape.nbDims = var_t->dims().size();
-    for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
-      trt_in_shape.d[i] = var_dims[i];
-    }
-    // In fact , this is not always right, because we can't determine if the 0th
-    // dimension is batch. Just for run chenqu's model
-    if (!engine_->with_dynamic_shape()) {
-      trt_in_shape.nbDims--;
-      for (int i = 0; i < trt_in_shape.nbDims; i++) {
-        trt_in_shape.d[i] = trt_in_shape.d[i + 1];
-      }
-    }
-    nvinfer1::ILayer* layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_in_shape, weight.get());
-    engine_->SetITensor(name, layer->getOutput(0));
-    return layer->getOutput(0);
-  }
-
   void RreplenishLayerAndOutput(
       nvinfer1::ILayer* layer,
       const std::string& layer_type,

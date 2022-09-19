@@ -51,14 +51,7 @@ class CustomPluginCreater : public OpConverter {
     auto &op_input_names = framework::OpMetaInfoHelper::GetInputs(op_info);
     for (auto &param_name : op_input_names) {
       for (auto &arg_name : op_desc.Input(param_name)) {
-        framework::Variable *X_v = nullptr;
-        X_v = scope.FindVar(arg_name);
-        // If this weight is not shared between ops, it need to be convtered to
-        // itensor
-        if (X_v && !engine_->GetITensorMap()->count(arg_name)) {
-          ConvertWeight2ITensor(scope, arg_name);
-        }
-        inputs.push_back(engine_->GetITensor(arg_name));
+        inputs.push_back(engine_->GetITensor(arg_name, scope));
       }
     }
     auto creator =
@@ -193,15 +186,7 @@ class GenericPluginCreater : public OpConverter {
 
     for (auto &param_name : phi_kernel_signature.input_names) {
       for (auto &arg_name : op_desc.Input(param_name)) {
-        framework::Variable *X_v = nullptr;
-        X_v = scope.FindVar(arg_name);
-        // If this weight is not shared between ops, it need to be convtered to
-        // itensor
-        if (X_v && !engine_->GetITensorMap()->count(arg_name)) {
-          ConvertWeight2ITensor(scope, arg_name);
-        }
-
-        inputs.push_back(engine_->GetITensor(arg_name));
+        inputs.push_back(engine_->GetITensor(arg_name, scope));
         auto *var = block_desc.FindVar(arg_name);
         PADDLE_ENFORCE_NOT_NULL(
             var,
