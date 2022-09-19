@@ -53,7 +53,7 @@ std::vector<DenseTensor> ExecutorEngine::operator()(
                  out_names);
   std::vector<DenseTensor> outputs;
   utils::FetchOuts(out_names, scope_, &outputs);
-  // Erase output vars to avoid data rewritting.
+  // Erase output vars to avoid data rewriting.
   scope_.EraseVars(out_names);
   return outputs;
 }
