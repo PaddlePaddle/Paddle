@@ -458,7 +458,7 @@
   backward: mv_grad
 
 - op : reshape
-  args : (Tensor x, int[] new_shape)
+  args : (Tensor x, int64_t[] new_shape)
   output : Tensor(out)
   infer_meta :
     func : sparse::ReshapeInferMeta
