@@ -390,7 +390,7 @@
   extra :
     attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
              str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
-             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}',]
+             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}']
 
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
@@ -666,3 +666,46 @@
     x : X
   outputs :
     out : Out
+
+- op : expand (expand_v2)
+  backward : expand_grad (expand_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : full (fill_constant)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : gather
+  backward : gather_grad
+  extra :
+    attrs : [bool overwrite = true]
+
+- op : matmul_with_flatten (mul)
+  backward : matmul_with_flatten_grad (mul_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
+             float scale_out = 1.0f, bool force_fp32_output = false]
+
+- op : pool2d
+  backward : pool2d_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false,
+              str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : pool3d
+  backward : pool3d_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : stack
+  backward : stack_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+
+- op : transpose (transpose2)
+  backward : transpose_grad (transpose2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", bool use_quantizer = false,
+              str mkldnn_data_type = "float32"]
