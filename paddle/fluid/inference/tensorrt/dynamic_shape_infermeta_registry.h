@@ -12,21 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-#include "glog/logging.h"
+#include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
 
-namespace phi {
+namespace paddle {
+namespace inference {
+namespace tensorrt {
 
-KernelSignature MemcpyD2HOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsDenseTensorVectorInput("X")) {
-    return KernelSignature(
-        "memcpy_d2h_multi_io", {"X"}, {"dst_place_type"}, {"Out"});
-  }
-
-  return KernelSignature("memcpy_d2h", {"X"}, {"dst_place_type"}, {"Out"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(memcpy_d2h, phi::MemcpyD2HOpArgumentMapping);
+USE_TRT_DYNAMIC_INFER_META_FN(gather_nd);
+USE_TRT_DYNAMIC_INFER_META_FN(yolo_box);
+USE_TRT_DYNAMIC_INFER_META_FN(instance_norm);
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle

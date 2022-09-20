@@ -20,8 +20,6 @@ from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_flo
 from paddle.fluid.framework import _current_expected_place
 import paddle.fluid.core as core
 
-import sys
-
 
 @OpTestTool.skip_if(not (isinstance(_current_expected_place(), core.CPUPlace)),
                     "GPU is not supported")
@@ -91,6 +89,23 @@ class TestMKLDNNElementwiseSubOp4(TestMKLDNNElementwiseSubOp):
         self.out = np.subtract(self.x, self.y)
 
 
+class TestMKLDNNElementwiseSubOp40(TestMKLDNNElementwiseSubOp):
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 2, [180, 1]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [1, 256]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+
+
 class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
 
     def init_input_output(self):
@@ -108,23 +123,6 @@ class TestMKLDNNElementwiseSubOp_broadcast(TestMKLDNNElementwiseSubOp):
 
     def init_axis(self):
         self.axis = 1
-
-
-class TestMKLDNNElementwiseSubOp40(TestMKLDNNElementwiseSubOp):
-
-    def init_input_output(self):
-        self.x = np.random.uniform(0.1, 2, [180, 1]).astype(self.dtype)
-        self.y = np.random.uniform(0.1, 1, [1, 256]).astype(self.dtype)
-        self.out = np.subtract(self.x, self.y)
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
-
-    def test_check_grad_ignore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
-
-    def test_check_grad_ignore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
