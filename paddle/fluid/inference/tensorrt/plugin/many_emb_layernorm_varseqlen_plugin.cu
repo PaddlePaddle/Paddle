@@ -348,13 +348,13 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
   const float* beta = mBetaDev.get();
   const float* gamma = mGammaDev.get();
   int32_t** tem_inputs_ptr_dev;
-  cudaMalloc((void**)&tem_inputs_ptr_dev, sizeof(void*) * nbLookupTables_);
+  cudaMalloc(reinterpret_cast<void**>(&tem_inputs_ptr_dev), sizeof(void*) * nbLookupTables_);
   cudaMemcpy(tem_inputs_ptr_dev,
              inputs,
              sizeof(void*) * nbLookupTables_,
              cudaMemcpyHostToDevice);
   int32_t* mIdsVocabSize_dev;
-  cudaMalloc((void**)&mIdsVocabSize_dev,
+  cudaMalloc(reinterpret_cast<void**>(&mIdsVocabSize_dev),
              sizeof(int32_t) * mIdsVocabSize.size());
   cudaMemcpy(mIdsVocabSize_dev,
              &(mIdsVocabSize[0]),
@@ -363,7 +363,7 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
   if (mType == nvinfer1::DataType::kFLOAT) {
     auto output = static_cast<float*>(outputs[0]);
     float** mIdsEmbDev_float;
-    cudaMalloc((void**)&mIdsEmbDev_float, sizeof(void*) * nbLookupTables_);
+    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_float), sizeof(void*) * nbLookupTables_);
     cudaMemcpy(mIdsEmbDev_float,
                &(mIdsEmbDev[0]),
                sizeof(void*) * nbLookupTables_,
@@ -382,7 +382,7 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
   } else if (mType == nvinfer1::DataType::kHALF) {
     auto output = static_cast<half*>(outputs[0]);
     half** mIdsEmbDev_half;
-    cudaMalloc((void**)&mIdsEmbDev_half, sizeof(void*) * nbLookupTables_);
+    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_half), sizeof(void*) * nbLookupTables_);
     cudaMemcpy(mIdsEmbDev_half,
                &(mIdsEmbDev[0]),
                sizeof(void*) * nbLookupTables_,
@@ -426,13 +426,13 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
   const float* beta = mBetaDev.get();
   const float* gamma = mGammaDev.get();
   int32_t** tem_inputs_ptr_dev;
-  cudaMalloc((void**)&tem_inputs_ptr_dev, sizeof(void*) * nbLookupTables_);
+  cudaMalloc(reinterpret_cast<void**>(&tem_inputs_ptr_dev), sizeof(void*) * nbLookupTables_);
   cudaMemcpy(tem_inputs_ptr_dev,
              inputs,
              sizeof(void*) * nbLookupTables_,
              cudaMemcpyHostToDevice);
   int32_t* mIdsVocabSize_dev;
-  cudaMalloc((void**)&mIdsVocabSize_dev,
+  cudaMalloc(reinterpret_cast<void**>(&mIdsVocabSize_dev),
              sizeof(int32_t) * mIdsVocabSize.size());
   cudaMemcpy(mIdsVocabSize_dev,
              &(mIdsVocabSize[0]),
@@ -442,7 +442,7 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
     auto output = static_cast<float*>(outputs[0]);
     auto skip = static_cast<float*>(outputs[1]);
     float** mIdsEmbDev_float;
-    cudaMalloc((void**)&mIdsEmbDev_float, sizeof(void*) * nbLookupTables_);
+    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_float), sizeof(void*) * nbLookupTables_);
     cudaMemcpy(mIdsEmbDev_float,
                &(mIdsEmbDev[0]),
                sizeof(void*) * nbLookupTables_,
@@ -463,7 +463,7 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
     auto output = static_cast<half*>(outputs[0]);
     auto skip = static_cast<half*>(outputs[1]);
     half** mIdsEmbDev_half;
-    cudaMalloc((void**)&mIdsEmbDev_half, sizeof(void*) * nbLookupTables_);
+    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_half), sizeof(void*) * nbLookupTables_);
     cudaMemcpy(mIdsEmbDev_half,
                &(mIdsEmbDev[0]),
                sizeof(void*) * nbLookupTables_,
