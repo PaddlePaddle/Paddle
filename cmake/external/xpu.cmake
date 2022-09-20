@@ -9,7 +9,7 @@ set(XPU_RT_LIB_NAME "libxpurt.so")
 
 if(NOT DEFINED XPU_BASE_URL)
   set(XPU_BASE_URL_WITHOUT_DATE
-      "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev")
+      "https://baidu-kunlun-product.su.bcebos.com/KL-SDK/klsdk-dev")
   set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20220919")
 else()
   set(XPU_BASE_URL "${XPU_BASE_URL}")
