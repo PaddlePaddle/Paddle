@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
@@ -156,6 +157,18 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                         "shape = [%s], Y's shape = [%s].",
                         x.dims(),
                         y.dims()));
+
+  if (x.indices().numel() == y.indices().numel()) {
+    int compare_indices = memcmp(x.indices().data<IntT>(),
+                                 y.indices().data<IntT>(),
+                                 sizeof(IntT) * x.indices().numel());
+    if (compare_indices == 0) {
+      EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
+      phi::AddKernel<T, Context>(
+          dev_ctx, x.values(), y.values(), out->mutable_values());
+      return;
+    }
+  }
   int64_t element_size = 1;
   for (auto j = 1; j < x.values().dims().size(); ++j) {
     element_size *= x.values().dims()[j];

@@ -483,7 +483,7 @@ class TestStatic(unittest.TestCase):
         out = sparse.sparse_coo_tensor(indices, values, shape)
         out = out.to_dense()
 
-        exe = paddle.static.Executor(paddle.CUDAPlace(0))
+        exe = paddle.static.Executor()
 
         indices_data = [[0, 1], [1, 2]]
         values_data = [[1.0], [2.0]]

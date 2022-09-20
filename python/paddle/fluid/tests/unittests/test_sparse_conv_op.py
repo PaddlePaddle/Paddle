@@ -193,7 +193,7 @@ class TestStatic(unittest.TestCase):
                                           data_format="NDHWC")
         out = out.to_dense()
 
-        exe = paddle.static.Executor(paddle.CUDAPlace(0))
+        exe = paddle.static.Executor()
 
         indices_data = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
         values_data = [[1.0], [2.0], [3.0], [4.0]]
