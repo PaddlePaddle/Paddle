@@ -41,8 +41,7 @@ set(PYBIND_DEPS
     new_profiler
     auto_parallel
     jit_layer
-    jit_property
-    saved_tensors_hooks)
+    jit_property)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -571,6 +570,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
+    list(APPEND PYBIND_DEPS saved_tensors_hooks)
   endif()
 
   cc_library(
