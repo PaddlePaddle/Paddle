@@ -72,11 +72,15 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       }
 
       auto* shape_tensor = Shape(mask_id_tensor);
+      std::vector<nvinfer1::ITensor*> start_vec_tensor;
       std::vector<nvinfer1::ITensor*> size_vec_tensor;
       for (int i = 0; i < mask_dims.nbDims; i++) {
+        start_vec_tensor.push_back(Add1DConstantLayer(0));
         size_vec_tensor.push_back(Add1DConstantLayer(1));
       }
       size_vec_tensor[1] = GetEleTensorOfShape(shape_tensor, 1);
+
+      auto start_tensor = Concat(start_vec_tensor);
       auto size_tensor = Concat(size_vec_tensor);
 
       auto slice_layer =
@@ -86,6 +90,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                                slice_start_dims,
                                slice_start_dims,
                                slice_stride_dims);  // unuseful slice_start_dims
+      slice_layer->setInput(1, *start_tensor);
       slice_layer->setInput(2, *size_tensor);
       slice_layer->setName(
           ("Embeltwise_slice_layer (Output: slice_max_seqlen " +
