@@ -1,6 +1,7 @@
 exclude: |
     (?x)^(
-        patches/.+
+        patches/.+|
+        python/paddle/utils/gast/.+
     )$
 repos:
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
@@ -10,6 +11,11 @@ repos:
     -   id: remove-tabs
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
         args: [--whitespaces-count, '4']
+        exclude: |
+            (?x)^(
+                python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py|
+                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py
+            )$
 -   repo: https://github.com/google/yapf
     rev: v0.32.0
     hooks:
