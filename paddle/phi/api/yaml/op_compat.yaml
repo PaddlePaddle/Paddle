@@ -93,6 +93,11 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
 
+- op : conditional_block
+  backward : conditional_block_grad
+  extra :
+    attrs : ['str[] skip_eager_deletion_vars = {}']
+
 - op : conv2d
   backward : conv2d_grad
   extra :
@@ -504,11 +509,6 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
-- op : pool3d
-  backward : pool3d_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
 - op : prelu
   backward : prelu_grad
   extra :
@@ -750,3 +750,8 @@
     x : X
   outputs :
     out : Out
+
+- op : while
+  backward : while_grad
+  extra :
+    attrs : ['str[] skip_eager_deletion_vars = {}']
