@@ -68,6 +68,9 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
+    # Delete previous built paddle cache
+    rm -rf python/paddle 2>/dev/null || true
+
     # Support build for all python3 versions
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
@@ -991,7 +994,7 @@ function generate_upstream_develop_api_spec() {
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
     echo "pr_whl_size: ${pr_whl_size}"
 
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/python/paddle
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
 
     cd ${PADDLE_ROOT}

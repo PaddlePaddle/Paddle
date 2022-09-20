@@ -49,8 +49,9 @@ from functools import partial
 import paddle
 from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
-from ..pp_utils.utils import _hp_recompute, _initialize_recompute_setting
+from paddle.distributed import fleet
 from paddle.fluid.framework import in_dygraph_mode
+from paddle.incubate.distributed.fleet import recompute_hybrid
 
 __all__ = []
 
@@ -309,13 +310,13 @@ class PipelineLayer(Layer):
         self._loss_fn = loss_fn
         self._topo = topology
         self._recompute_interval = recompute_interval
+        self.recompute_ctx = recompute_ctx
 
         if recompute_interval > 0:
             assert recompute_ctx is not None, "recompute_ctx must be not None for recompute."
 
             offload = recompute_ctx.get('offload', False)
             partition = recompute_ctx.get('partition', False)
-            _initialize_recompute_setting(offload, partition)
             logger.info(
                 "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}"
                 .format(offload, partition))
@@ -638,7 +639,8 @@ class PipelineLayer(Layer):
                     input = (input, )
 
                 if self._need_recompute(funcs, input):
-                    input = _hp_recompute(
+                    input = recompute_hybrid(
+                        self.recompute_ctx,
                         self.forward_function(start_idx, end_idx), *input)
                 else:
                     input = self.forward_function(start_idx, end_idx)(*input)
