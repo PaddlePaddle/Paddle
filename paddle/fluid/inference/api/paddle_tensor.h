@@ -115,6 +115,12 @@ class PD_INFER_DECL Tensor {
                          PlaceType place,
                          DataLayout layout = DataLayout::kNCHW);
 
+  /// \brief Set the TensorMetaDim.
+  /// It's usually used to set the DenseTensorMeta's dim.
+  /// \param id The id of dim.
+  /// \param size The size to be set in dim[id].
+  void SetTensorDim(int id, int size);
+
   /// \brief Experimental interface.
   /// It's usually used to set the input tensor data with Strings data type.
   /// \param data The pointer of the data, from which the tensor will copy.

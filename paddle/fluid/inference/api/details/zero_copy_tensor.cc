@@ -346,6 +346,11 @@ void Tensor::ShareExternalData(const T *data,
   }
 }
 
+void Tensor::SetTensorDim(int id, int size) {
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor)
+  tensor->set_meta_dim(id, size);
+}
+
 void Tensor::CopyStringsFromCpu(const paddle_infer::Strings *data) {
   EAGER_GET_TENSOR(paddle_infer::Strings);
   PADDLE_ENFORCE_GE(tensor->size(),
