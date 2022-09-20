@@ -179,7 +179,7 @@ class ProcessGroupMPI : public ProcessGroup {
       const ScatterOptions&) override;
 
   static std::shared_ptr<ProcessGroupMPI> CreateProcessGroupMPI(
-      std::vector<int> ranks, int gid);
+      const std::vector<int>& ranks, int gid);
 
  protected:
   void workLoop();

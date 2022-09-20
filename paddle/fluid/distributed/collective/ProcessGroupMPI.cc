@@ -122,7 +122,7 @@ void ProcessGroupMPI::InitOneTimeMPI() {
 }
 
 std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::CreateProcessGroupMPI(
-    std::vector<int> ranks, int gid) {
+    const std::vector<int>& ranks, int gid) {
   InitOneTimeMPI();
 
   MPI_Comm groupComm = MPI_COMM_WORLD;
