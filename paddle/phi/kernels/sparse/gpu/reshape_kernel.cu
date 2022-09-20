@@ -20,7 +20,7 @@
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/impl/unary_kernel_impl.h"
 
-#include "paddle/phi/kernels/sparse/gpu/sparse_utils_kernel.cu"
+// #include "paddle/phi/kernels/sparse/gpu/sparse_utils_kernel.cu"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 
