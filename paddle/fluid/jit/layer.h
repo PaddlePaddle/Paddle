@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -21,7 +22,7 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 
-#include "base_function.h"
+#include "function.h"  //NOLINT
 
 namespace paddle {
 
@@ -31,22 +32,26 @@ class Variable;
 
 namespace jit {
 class CompilationUnit;
+class FunctionInfo;
 
 using DenseTensor = phi::DenseTensor;
 using Tensor = paddle::experimental::Tensor;
 using Variable = paddle::framework::Variable;
-using Name2VariableMap =
-    std::unordered_map<std::string, std::shared_ptr<Variable>>;
-using Name2FunctionMap =
-    std::unordered_map<std::string, std::shared_ptr<BaseFunction>>;
+using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
+using FunctionInfoMap =
+    std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
 
 class Layer {
  public:
-  Layer(const Name2VariableMap& params_dict, const phi::Place& place);
+  Layer(const VariableMap& params_map,
+        const VariableMap& attrs_map_,
+        const FunctionInfoMap& info_map,
+        const phi::Place& place);
 
-  std::shared_ptr<BaseFunction> Function(const std::string& name) const;
+  jit::Function Function(const std::string& name) const;
 
-  Variable Attribute(const std::string& name) const;
+  template <typename T>
+  T Attribute(const std::string& name) const;
 
   std::vector<Tensor> forward(const std::vector<Tensor>& inputs);
 
@@ -54,16 +59,18 @@ class Layer {
 
   void to(const phi::Place& place);
 
-  void SetFunction(const std::string& name,
-                   const std::shared_ptr<BaseFunction>& function);
+  void SetEngine(const std::string& name,
+                 const std::shared_ptr<BaseEngine>& engine);
+
+  const std::shared_ptr<jit::FunctionInfo>& FunctionInfo(
+      const std::string& name) const;
 
   std::vector<std::string> FunctionNames() const;
 
-  const Name2FunctionMap& FunctionMap() const;
-
  private:
-  Name2VariableMap params_dict_;
-  Name2VariableMap attrs_dict_;
+  VariableMap params_map_;
+  VariableMap attrs_map_;
+  FunctionInfoMap info_map_;
   std::shared_ptr<CompilationUnit> unit_;
 };
 

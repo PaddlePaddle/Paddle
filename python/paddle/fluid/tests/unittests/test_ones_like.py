@@ -18,8 +18,10 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+from paddle import _C_ops, _legacy_C_ops
 from paddle import ones_like
 from paddle.fluid import core, Program, program_guard
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestOnesLikeAPIError(unittest.TestCase):
@@ -76,6 +78,21 @@ class TestOnesLikeImpeartive(unittest.TestCase):
 
         out = paddle.tensor.creation.ones_like(x)
         self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
+        paddle.enable_static()
+
+
+class TestOnesAPI(unittest.TestCase):
+
+    def test_api(self):
+        shape = [3, 4]
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+        paddle.disable_static(place)
+
+        for dtype in [np.float32, np.float64, np.int32, np.int64]:
+            out = _C_ops.ones(shape, convert_np_dtype_to_dtype_(dtype), place)
+            self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
+
         paddle.enable_static()
 
 

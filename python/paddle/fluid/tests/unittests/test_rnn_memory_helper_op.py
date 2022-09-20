@@ -48,7 +48,7 @@ class RNNMemoryHelperOpTest(unittest.TestCase):
         out = exe.run(self.program,
                       feed=self.feed_map,
                       fetch_list=self.fetch_list)
-        self.assertTrue(np.allclose(out[0], x_np, rtol=1e-5))
+        np.testing.assert_allclose(out[0], x_np, rtol=1e-05)
 
 
 class RNNMemoryHelperGradOpTest(unittest.TestCase):
@@ -134,10 +134,9 @@ class RNNMemoryHelperGradOpWithoutInputTest(unittest.TestCase):
         out = exe.run(self.program,
                       feed=self.feed_map,
                       fetch_list=self.fetch_list)
-        self.assertTrue(
-            np.allclose(out[0],
-                        np.zeros(shape=(2, 3)).astype("float32"),
-                        rtol=1e-5))
+        np.testing.assert_allclose(out[0],
+                                   np.zeros(shape=(2, 3)).astype('float32'),
+                                   rtol=1e-05)
 
 
 if __name__ == '__main__':

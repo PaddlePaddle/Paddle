@@ -40,8 +40,8 @@ bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
 #ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(paddle::platform::CUDAPlace()));
+    auto* dev_ctx =
+        dynamic_cast<phi::GPUContext*>(pool.Get(paddle::platform::CUDAPlace()));
     auto stream = dev_ctx->stream();
 
     paddle::memory::Copy(paddle::platform::CPUPlace(),
@@ -79,8 +79,8 @@ bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
 #ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(paddle::platform::CUDAPlace()));
+    auto* dev_ctx =
+        dynamic_cast<phi::GPUContext*>(pool.Get(paddle::platform::CUDAPlace()));
     auto stream = dev_ctx->stream();
 
     paddle::memory::Copy(paddle::platform::CPUPlace(),

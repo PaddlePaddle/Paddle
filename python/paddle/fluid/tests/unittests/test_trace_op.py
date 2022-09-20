@@ -85,8 +85,8 @@ class TestTraceAPICase(unittest.TestCase):
                           return_numpy=True)
         target1 = np.trace(case)
         target2 = np.trace(case, offset=-5, axis1=1, axis2=-1)
-        self.assertTrue(np.allclose(results[0], target1))
-        self.assertTrue(np.allclose(results[1], target2))
+        np.testing.assert_allclose(results[0], target1, rtol=1e-05)
+        np.testing.assert_allclose(results[1], target2, rtol=1e-05)
 
 
 if __name__ == "__main__":

@@ -51,8 +51,7 @@ class TestRandintOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.001),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
     def test_check_output_eager(self):
         with _test_eager_guard():
@@ -102,8 +101,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.001),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
     def test_check_output_eager(self):
         with _test_eager_guard():
@@ -127,8 +125,7 @@ class TestRandint_attr_tensor(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.001),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
     def test_check_output_eager(self):
         with _test_eager_guard():
@@ -232,22 +229,22 @@ class TestRandomValue(unittest.TestCase):
         self.assertTrue(x.mean(), -0.7517569760481516)
         self.assertTrue(x.std(), 5773.696619107639)
         expect = [2535, 2109, 5916, -5011, -261]
-        self.assertTrue(np.array_equal(x[10, 0, 100, 100:105], expect))
+        np.testing.assert_array_equal(x[10, 0, 100, 100:105], expect)
         expect = [3465, 7206, -8660, -9628, -6574]
-        self.assertTrue(np.array_equal(x[20, 1, 600, 600:605], expect))
+        np.testing.assert_array_equal(x[20, 1, 600, 600:605], expect)
         expect = [881, 1560, 1100, 9664, 1669]
-        self.assertTrue(np.array_equal(x[30, 2, 1000, 1000:1005], expect))
+        np.testing.assert_array_equal(x[30, 2, 1000, 1000:1005], expect)
 
         x = paddle.randint(-10000, 10000, [32, 3, 1024, 1024],
                            dtype='int64').numpy()
         self.assertTrue(x.mean(), -1.461287518342336)
         self.assertTrue(x.std(), 5773.023477548159)
         expect = [7213, -9597, 754, 8129, -1158]
-        self.assertTrue(np.array_equal(x[10, 0, 100, 100:105], expect))
+        np.testing.assert_array_equal(x[10, 0, 100, 100:105], expect)
         expect = [-7159, 8054, 7675, 6980, 8506]
-        self.assertTrue(np.array_equal(x[20, 1, 600, 600:605], expect))
+        np.testing.assert_array_equal(x[20, 1, 600, 600:605], expect)
         expect = [3581, 3420, -8027, -5237, -2436]
-        self.assertTrue(np.array_equal(x[30, 2, 1000, 1000:1005], expect))
+        np.testing.assert_array_equal(x[30, 2, 1000, 1000:1005], expect)
 
 
 if __name__ == "__main__":

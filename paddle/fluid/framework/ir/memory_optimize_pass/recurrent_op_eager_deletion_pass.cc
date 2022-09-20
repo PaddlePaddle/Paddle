@@ -43,6 +43,21 @@ void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
     PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         graph->OriginProgram(), &op_pair);
   }
+
+  auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
+  for (auto op_hander : all_ops) {
+    auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op_hander);
+    if (compute_op == nullptr) continue;
+    if (compute_op->Name() == "recurrent" ||
+        compute_op->Name() == "recurrent_grad") {
+      ir::Node *op_node = op_hander->Node();
+      auto *op_base = compute_op->GetOp();
+      if (op_base->Attrs().count("skip_eager_deletion_vars")) {
+        op_node->Op()->SetAttr("skip_eager_deletion_vars",
+                               op_base->Attrs().at("skip_eager_deletion_vars"));
+      }
+    }
+  }
 }
 
 // Returns a std::unordered_map mapping from the device id to recurrent op and

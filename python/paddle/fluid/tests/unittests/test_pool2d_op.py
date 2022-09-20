@@ -1442,7 +1442,7 @@ class TestDygraphPool2DAPI(unittest.TestCase):
                                         paddings=[0, 0],
                                         pool_type='max',
                                         data_format='NHWC')
-            self.assertTrue(np.allclose(out1.numpy(), out2))
+            np.testing.assert_allclose(out1.numpy(), out2, rtol=1e-05)
 
     def test_lower_case(self):
         with fluid.dygraph.guard():
@@ -1459,7 +1459,7 @@ class TestDygraphPool2DAPI(unittest.TestCase):
                                         paddings=[0, 0],
                                         pool_type='max',
                                         data_format='NHWC')
-            self.assertTrue(np.allclose(out1.numpy(), out2))
+            np.testing.assert_allclose(out1.numpy(), out2, rtol=1e-05)
 
     def test_upper_case(self):
         with fluid.dygraph.guard():
@@ -1476,7 +1476,7 @@ class TestDygraphPool2DAPI(unittest.TestCase):
                                         paddings=[0, 0],
                                         pool_type='max',
                                         data_format='NHWC')
-            self.assertTrue(np.allclose(out1.numpy(), out2))
+            np.testing.assert_allclose(out1.numpy(), out2, rtol=1e-05)
 
 
 if __name__ == '__main__':

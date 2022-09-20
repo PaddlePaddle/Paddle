@@ -70,10 +70,10 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                 if math.isnan(float(avg_train_loss_val)):
                     sys.exit("got NaN loss, training failed.")
 
-                self.assertTrue(
-                    np.allclose(train_loss, test_loss,
-                                atol=1e-2), "Train loss: " + str(train_loss) +
-                    "\n Test loss:" + str(test_loss))
+                np.testing.assert_allclose(train_loss,
+                                           test_loss,
+                                           rtol=1e-05,
+                                           atol=0.01)
 
     def test_parallel_testing(self):
         build_strategy = fluid.BuildStrategy()

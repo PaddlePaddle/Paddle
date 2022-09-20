@@ -37,7 +37,7 @@ struct NormConvolutionArgs {
     compute_type = platform::CudnnDataType<float>::type;
   }
 
-  void Set(const platform::CUDADeviceContext &ctx,
+  void Set(const phi::GPUContext &ctx,
            const std::vector<int> &input_shape,
            const std::vector<int> &filter_shape,
            const std::vector<int> &output_shape,
@@ -124,7 +124,7 @@ struct NormConvolutionArgs {
     conv_desc.set(dtype, paddings, strides, dilations, false, group);
   }
 
-  bool IsSupport(const platform::CUDADeviceContext &ctx,
+  bool IsSupport(const phi::GPUContext &ctx,
                  const std::vector<int> &filter_shape,
                  int stride,
                  int dilation,
@@ -167,7 +167,7 @@ struct NormConvolutionArgs {
 template <typename T>
 class CudnnNormConvolution {
  public:
-  CudnnNormConvolution(const platform::CUDADeviceContext &ctx,
+  CudnnNormConvolution(const phi::GPUContext &ctx,
                        const std::vector<int> &input_shape,
                        const std::vector<int> &filter_shape,
                        const std::vector<int> &output_shape,
@@ -186,14 +186,13 @@ class CudnnNormConvolution {
   }
   ~CudnnNormConvolution() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx,
+  void Forward(const phi::GPUContext &ctx,
                const Tensor &input,
                const Tensor &filter,
                Tensor *output,
                Tensor *sum,
                Tensor *sum_of_squares) {
     auto cudnn_handle = ctx.cudnn_handle();
-    auto place = ctx.GetPlace();
 
     CudnnFusionOp *fwd_op = GetForwardOp(ctx);
     size_t workspace_size = RoundUp(
@@ -210,9 +209,11 @@ class CudnnNormConvolution {
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &workspace_size);
 
     // output ptr
-    T *output_ptr = output->mutable_data<T>(place);
-    float *sum_ptr = sum->mutable_data<float>(place);
-    float *sum_of_squares_ptr = sum_of_squares->mutable_data<float>(place);
+    T *output_ptr = ctx.template Alloc<T>(output, output->numel() * sizeof(T));
+    float *sum_ptr =
+        ctx.template Alloc<float>(sum, sum->numel() * sizeof(float));
+    float *sum_of_squares_ptr = ctx.template Alloc<float>(
+        sum_of_squares, sum_of_squares->numel() * sizeof(float));
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, output_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSUM, sum_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSQSUM, sum_of_squares_ptr);
@@ -228,7 +229,7 @@ class CudnnNormConvolution {
   }
 
  private:
-  CudnnFusionOp *GetForwardOp(const platform::CUDADeviceContext &ctx) {
+  CudnnFusionOp *GetForwardOp(const phi::GPUContext &ctx) {
     framework::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetForward());
 
@@ -284,7 +285,7 @@ class CudnnNormConvolution {
 template <typename T>
 class CudnnNormConvolutionGrad {
  public:
-  CudnnNormConvolutionGrad(const platform::CUDADeviceContext &ctx,
+  CudnnNormConvolutionGrad(const phi::GPUContext &ctx,
                            const std::vector<int> &input_shape,
                            const std::vector<int> &filter_shape,
                            const std::vector<int> &output_shape,
@@ -304,30 +305,31 @@ class CudnnNormConvolutionGrad {
   }
   ~CudnnNormConvolutionGrad() {}
 
-  void Backward(const platform::CUDADeviceContext &ctx,
+  void Backward(const phi::GPUContext &ctx,
                 const Tensor &input,
                 const Tensor &filter,
                 const Tensor &output_grad,
                 Tensor *input_grad,
                 Tensor *filter_grad,
                 bool use_addto = false) {
-    auto place = ctx.GetPlace();
     T *input_ptr = const_cast<T *>(input.data<T>());
     T *filter_ptr = const_cast<T *>(filter.data<T>());
     T *output_grad_ptr = const_cast<T *>(output_grad.data<T>());
 
     if (filter_grad) {
-      T *filter_grad_ptr = filter_grad->mutable_data<T>(place);
+      T *filter_grad_ptr =
+          ctx.template Alloc<T>(filter_grad, filter_grad->numel() * sizeof(T));
       BackwardFilter(ctx, output_grad_ptr, input_ptr, filter_grad_ptr);
     }
     if (input_grad) {
-      T *input_grad_ptr = input_grad->mutable_data<T>(place);
+      T *input_grad_ptr =
+          ctx.template Alloc<T>(input_grad, input_grad->numel() * sizeof(T));
       BackwardData(ctx, output_grad_ptr, filter_ptr, input_grad_ptr, use_addto);
     }
   }
 
  private:
-  void BackwardFilter(const platform::CUDADeviceContext &ctx,
+  void BackwardFilter(const phi::GPUContext &ctx,
                       T *output_grad_ptr,
                       T *input_ptr,
                       T *filter_grad_ptr) {
@@ -355,7 +357,7 @@ class CudnnNormConvolutionGrad {
         workspace_size);
   }
 
-  void BackwardData(const platform::CUDADeviceContext &ctx,
+  void BackwardData(const phi::GPUContext &ctx,
                     T *output_grad_ptr,
                     T *filter_ptr,
                     T *input_grad_ptr,
@@ -387,7 +389,7 @@ class CudnnNormConvolutionGrad {
         workspace_size);
   }
 
-  CudnnFusionOp *GetBackwardFilterOp(const platform::CUDADeviceContext &ctx) {
+  CudnnFusionOp *GetBackwardFilterOp(const phi::GPUContext &ctx) {
     framework::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetBackward());
 
@@ -430,7 +432,7 @@ class CudnnNormConvolutionGrad {
     return wgrad_op;
   }
 
-  size_t GetWorkspaceSizeBwdData(const platform::CUDADeviceContext &ctx) {
+  size_t GetWorkspaceSizeBwdData(const phi::GPUContext &ctx) {
     size_t workspace_size = 0U;
     auto handle = ctx.cudnn_handle();
     PADDLE_ENFORCE_GPU_SUCCESS(

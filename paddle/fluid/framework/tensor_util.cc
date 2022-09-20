@@ -261,8 +261,7 @@ void TensorCopyImpl(const TENSOR& src,
                           "place is %s, context place is %s.",
                           src_gpu_place,
                           ctx_gpu_place));
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   }
   else if (platform::is_cpu_place(src_place) &&  // NOLINT
@@ -284,8 +283,7 @@ void TensorCopyImpl(const TENSOR& src,
                           "destination place is %s, context place is %s.",
                           dst_gpu_place,
                           ctx_gpu_place));
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   }
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
@@ -308,8 +306,7 @@ void TensorCopyImpl(const TENSOR& src,
                           "device context GPU number is %d.",
                           src_gpu_place.device,
                           ctx_gpu_place.device));
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   }
@@ -333,8 +330,7 @@ void TensorCopyImpl(const TENSOR& src,
                           "device context GPU number is %d.",
                           dst_gpu_place.device,
                           ctx_gpu_place.device));
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   }
@@ -349,8 +345,7 @@ void TensorCopyImpl(const TENSOR& src,
         platform::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     if (platform::is_same_place(src_place, dst_place)) {
       memory::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
@@ -656,393 +651,6 @@ void TensorCopySync(const Tensor& src,
 #endif
 }
 
-template <typename Predicate, typename DevCtx>
-struct AnyDTypeVisitor {
-  Predicate predicate_;
-  const Tensor& tensor_;
-  const DevCtx& ctx_;
-  Tensor* out_;
-
-  AnyDTypeVisitor(Predicate predicate,
-                  const Tensor& tensor,
-                  const DevCtx& ctx,
-                  Tensor* out)
-      : predicate_(predicate), tensor_(tensor), ctx_(ctx), out_(out) {}
-
-  template <typename T>
-  void apply() const {
-    auto t = EigenVector<T>::Flatten(tensor_);
-    auto o = EigenScalar<bool>::From(*out_);
-    // return any of predicate_(t) is true.
-    o.device(*ctx_.eigen_device()) = predicate_(t).any();
-  }
-};
-
-template <typename Predicate, typename DevCtx>
-inline void AnyImpl(Predicate predicate,
-                    const framework::Tensor& tensor,
-                    const DevCtx& ctx,
-                    framework::Tensor* out) {
-  VisitDataType(
-      framework::TransToProtoVarType(tensor.dtype()),
-      AnyDTypeVisitor<Predicate, DevCtx>(predicate, tensor, ctx, out));
-}
-
-template <typename Predicate>
-class AnyVisitor : public std::unary_function<const Place&, bool> {
- private:
-  const framework::Tensor& tensor_;
-  Predicate predicate_;
-
-  bool GetResultHelper(const framework::Tensor& out,
-                       const platform::Place& place) const {
-    platform::CPUPlace cpu;
-    framework::Tensor tmp;
-    tmp.Resize({1});
-    tmp.mutable_data<bool>(cpu);
-    auto ctx = platform::DeviceContextPool::Instance().Get(place);
-    ctx->Wait();
-    TensorCopy(out, cpu, *ctx, &tmp);
-    ctx->Wait();
-    return GetResult(tmp, cpu);
-  }
-
- public:
-  AnyVisitor(const framework::Tensor& tensor, Predicate predicate)
-      : tensor_(tensor), predicate_(std::move(predicate)) {}
-
-  template <typename Place>
-  bool operator()(const Place& place) const {
-    framework::Tensor out;
-    out.Resize({1});
-    out.mutable_data<bool>(place);
-    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
-    AnyImpl(predicate_, tensor_, *ctx, &out);
-    return this->GetResult(out, place);
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::XPUPlace& xpu) const {
-    return GetResultHelper(out, xpu);
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::MLUPlace& mlu) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Not supported on place (%s) ", mlu));
-    return true;
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::CUDAPlace& gpu) const {
-    return GetResultHelper(out, gpu);
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::NPUPlace& npu) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Not supported on place (%s) ", npu));
-    // return GetResultHelper(out, npu);
-  }
-  bool GetResult(const framework::Tensor& out,
-                 const platform::IPUPlace& ipu) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Not supported on place (%s) ", ipu));
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::NPUPinnedPlace& cpu) const {
-    return *out.data<bool>();
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::CPUPlace& cpu) const {
-    return *out.data<bool>();
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::CUDAPinnedPlace& cpu) const {
-    return *out.data<bool>();
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::CustomPlace& custom_dev) const {
-    PADDLE_THROW(platform::errors::Unimplemented("Not supported on place (%s) ",
-                                                 custom_dev));
-    return false;
-  }
-};
-
-template <typename Predicate>
-class AnyOutVisitor : public std::unary_function<const Place&, void> {
- private:
-  const framework::Tensor& tensor_;
-  mutable framework::Tensor* out_;
-  Predicate predicate_;
-
- public:
-  AnyOutVisitor(const framework::Tensor& tensor,
-                Predicate predicate,
-                framework::Tensor* out)
-      : tensor_(tensor), out_(out), predicate_(std::move(predicate)) {}
-
-  template <typename Place>
-  void operator()(const Place& place) const {
-    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
-    out_->Resize({1});
-    out_->mutable_data<bool>(place);
-    AnyImpl(predicate_, tensor_, *ctx, out_);
-  }
-};
-
-template <typename Predicate>
-inline bool Any(const framework::Tensor& tensor, Predicate predicate) {
-  AnyVisitor<Predicate> visitor(tensor, predicate);
-  auto place = tensor.place();
-  return platform::VisitPlace(place, visitor);
-}
-
-template <typename Predicate>
-inline void Any(const framework::Tensor& tensor,
-                Predicate predicate,
-                framework::Tensor* out) {
-  AnyOutVisitor<Predicate> visitor(tensor, predicate, out);
-  auto place = tensor.place();
-  platform::VisitPlace(place, visitor);
-}
-
-template <typename Predicate, typename DevCtx>
-struct AllDTypeVisitor {
-  Predicate predicate_;
-  const Tensor& tensor_;
-  const DevCtx& ctx_;
-  Tensor* out_;
-
-  AllDTypeVisitor(Predicate predicate,
-                  const Tensor& tensor,
-                  const DevCtx& ctx,
-                  Tensor* out)
-      : predicate_(predicate), tensor_(tensor), ctx_(ctx), out_(out) {}
-
-  template <typename T>
-  void apply() const {
-    auto t = EigenVector<T>::Flatten(tensor_);
-    auto o = EigenVector<bool>::Flatten(*out_);
-    o.device(*ctx_.eigen_device()) = predicate_(t);
-  }
-};
-
-template <typename Predicate, typename DevCtx>
-inline void AllImpl(Predicate predicate,
-                    const framework::Tensor& tensor,
-                    const DevCtx& ctx,
-                    framework::Tensor* out) {
-  VisitDataType(
-      framework::TransToProtoVarType(tensor.dtype()),
-      AllDTypeVisitor<Predicate, DevCtx>(predicate, tensor, ctx, out));
-}
-
-template <typename Predicate>
-class AllOutVisitor : public std::unary_function<const Place&, void> {
- private:
-  const framework::Tensor& tensor_;
-  mutable framework::Tensor* out_;
-  Predicate predicate_;
-
- public:
-  AllOutVisitor(const framework::Tensor& tensor,
-                Predicate predicate,
-                framework::Tensor* out)
-      : tensor_(tensor), out_(out), predicate_(predicate) {}
-
-  template <typename Place>
-  void operator()(const Place& place) const {
-    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
-    out_->Resize(tensor_.dims());
-    out_->mutable_data<bool>(place);
-    AllImpl(predicate_, tensor_, *ctx, out_);
-  }
-};
-
-template <typename Predicate>
-inline void All(const framework::Tensor& tensor,
-                Predicate predicate,
-                framework::Tensor* out) {
-  AllOutVisitor<Predicate> visitor(tensor, predicate, out);
-  auto place = tensor.place();
-  platform::VisitPlace(place, visitor);
-}
-
-struct ContainsNANPredicate {
-  template <typename T>
-  auto operator()(const T& eigen_vec) const
-      -> decltype(std::declval<T>().isnan()) {
-    // Cast eigen_vector to vector of bool. true if is inf.
-    return eigen_vec.isnan();
-  }
-};
-
-bool TensorContainsNAN(const framework::Tensor& tensor) {
-  ContainsNANPredicate predicate;
-  return Any(tensor, predicate);
-}
-
-void TensorContainsNAN(const framework::Tensor& tensor,
-                       framework::Tensor* out) {
-  ContainsNANPredicate predicate;
-  Any(tensor, predicate, out);
-}
-
-void TensorContainsNANV2(const framework::Tensor& tensor,
-                         framework::Tensor* out) {
-  ContainsNANPredicate predicate;
-  All(tensor, predicate, out);
-}
-
-struct ContainsInfPredicate {
-  template <typename T>
-  auto operator()(const T& eigen_vec) const
-      -> decltype(std::declval<T>().isinf()) {
-    // Cast eigen_vector to vector of bool. true if is inf.
-    return eigen_vec.isinf();
-  }
-};
-
-bool TensorContainsInf(const framework::Tensor& tensor) {
-  ContainsInfPredicate predicate;
-  return Any(tensor, predicate);
-}
-
-void TensorContainsInf(const framework::Tensor& tensor,
-                       framework::Tensor* out) {
-  ContainsInfPredicate predicate;
-  Any(tensor, predicate, out);
-}
-
-void TensorContainsInfV2(const framework::Tensor& tensor,
-                         framework::Tensor* out) {
-  ContainsInfPredicate predicate;
-  All(tensor, predicate, out);
-}
-
-// NOTE(dzhwinter):
-// Isfinite need a AllVisitor to loop through all the elements.
-// We choose two cuda call instead of one allvisitor. The AllVisitor
-// should be implemented if the performance hurts.
-bool TensorIsfinite(const framework::Tensor& tensor) {
-  ContainsInfPredicate pred_inf;
-  ContainsNANPredicate pred_nan;
-  return !Any(tensor, pred_inf) && !Any(tensor, pred_nan);
-}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <typename T>
-static inline void __global__ BothFalse(const T* cmp, T* out, int element_num) {
-  CUDA_KERNEL_LOOP(i, element_num) { out[i] = (!cmp[i]) && (!out[i]); }
-}
-#endif
-
-struct BothFalseVisitor : public std::unary_function<const Place&, void> {
-  const framework::Tensor& in_;
-  mutable framework::Tensor* out_;
-  BothFalseVisitor(const framework::Tensor& in, framework::Tensor* out)
-      : in_(in), out_(out) {}
-
-  template <typename Place>
-  void operator()(const Place& place) const {
-    VisitorImpl(place);
-  }
-
-  void VisitorImpl(const platform::XPUPlace& xpu) const {
-    PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
-  }
-  void VisitorImpl(const platform::IPUPlace& ipu) const {
-    PADDLE_THROW(platform::errors::Unimplemented("IPUPlace is not supported"));
-  }
-
-  void VisitorImpl(const platform::CUDAPlace& gpu) const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
-    constexpr int MAX_BLOCK_DIM = 512;
-    const int MAX_GRID_DIM = ctx->GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
-    int element_num = in_.numel();
-    int block_size = (element_num >= MAX_BLOCK_DIM)
-                         ? MAX_BLOCK_DIM
-                         : (1 << static_cast<int>(std::log2(element_num)));
-    int grid_size = element_num / block_size;
-    grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
-    BothFalse<bool><<<grid_size, block_size, 0, ctx->stream()>>>(
-        in_.data<bool>(), out_->mutable_data<bool>(gpu), element_num);
-#endif
-  }
-
-  void VisitorImpl(const platform::NPUPlace& npu) const {
-    // TODO(zhiqiu)
-  }
-
-  void VisitorImpl(const platform::MLUPlace& mlu) const {
-    PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
-  }
-
-  void VisitorImpl(const platform::CPUPlace& cpu) const {
-    int num = in_.numel();
-    const bool* in_ptr = in_.data<bool>();
-    bool* out_ptr = out_->data<bool>();
-    for (int i = 0; i < num; ++i) {
-      bool lhs = !in_ptr[i];
-      bool rhs = !out_ptr[i];
-      out_ptr[i] = lhs && rhs;
-    }
-  }
-
-  void VisitorImpl(
-      const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
-    int num = in_.numel();
-    const bool* in_ptr = in_.data<bool>();
-    bool* out_ptr = out_->data<bool>();
-    for (int i = 0; i < num; ++i) {
-      bool lhs = !in_ptr[i];
-      bool rhs = !out_ptr[i];
-      out_ptr[i] = lhs && rhs;
-    }
-  }
-
-  void VisitorImpl(
-      const platform::NPUPinnedPlace& cpu /* equals to cpu*/) const {
-    int num = in_.numel();
-    const bool* in_ptr = in_.data<bool>();
-    bool* out_ptr = out_->data<bool>();
-    for (int i = 0; i < num; ++i) {
-      bool lhs = !in_ptr[i];
-      bool rhs = !out_ptr[i];
-      out_ptr[i] = lhs && rhs;
-    }
-  }
-
-  void VisitorImpl(const platform::CustomPlace& custom_dev) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("CustomPlace is not supported"));
-  }
-};
-
-void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
-  framework::Tensor tmp;
-  TensorContainsInf(tensor, &tmp);
-  TensorContainsNAN(tensor, out);
-  BothFalseVisitor visitor(tmp, out);
-  auto place = tensor.place();
-  platform::VisitPlace(place, visitor);
-}
-
-void TensorIsfiniteV2(const framework::Tensor& tensor, framework::Tensor* out) {
-  framework::Tensor tmp;
-  TensorContainsInfV2(tensor, &tmp);
-  TensorContainsNANV2(tensor, out);
-  BothFalseVisitor visitor(tmp, out);
-  auto place = tensor.place();
-  platform::VisitPlace(place, visitor);
-}
-
 void TensorToStream(std::ostream& os,
                     const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx) {
@@ -1076,8 +684,7 @@ void TensorToStream(std::ostream& os,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
-      auto& gpu_dev_ctx =
-          static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+      auto& gpu_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
       platform::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
@@ -1482,13 +1089,12 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
         platform::CUDAPlace(dl_tensor.device.device_id);
     dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(*ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_XPU

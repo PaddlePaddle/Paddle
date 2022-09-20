@@ -100,7 +100,7 @@ struct ScaleBiasAddReluArgs {
 template <typename T>
 class CudnnScaleBiasAddRelu {
  public:
-  CudnnScaleBiasAddRelu(const platform::CUDADeviceContext &ctx,
+  CudnnScaleBiasAddRelu(const phi::GPUContext &ctx,
                         const std::string &act_type,
                         bool fuse_add,
                         bool has_shortcut,
@@ -116,7 +116,7 @@ class CudnnScaleBiasAddRelu {
 
   ~CudnnScaleBiasAddRelu() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx,
+  void Forward(const phi::GPUContext &ctx,
                const Tensor &x,
                const Tensor &x_scale,
                const Tensor &x_bias,
@@ -127,7 +127,6 @@ class CudnnScaleBiasAddRelu {
                Tensor *bitmask) {
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
-    auto place = ctx.GetPlace();
     auto workspace_handle = ctx.cudnn_workspace_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
@@ -156,8 +155,9 @@ class CudnnScaleBiasAddRelu {
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &fwd_workspace_byte_);
 
     // output ptr
-    T *out_ptr = out->mutable_data<T>(place);
-    int32_t *bitmask_ptr = bitmask->mutable_data<int32_t>(place);
+    T *out_ptr = ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+    int32_t *bitmask_ptr = ctx.template Alloc<int32_t>(
+        bitmask, bitmask->numel() * sizeof(int32_t));
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, out_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
 
@@ -171,7 +171,7 @@ class CudnnScaleBiasAddRelu {
         fwd_workspace_byte_);
   }
 
-  void Backward(const platform::CUDADeviceContext &ctx,
+  void Backward(const phi::GPUContext &ctx,
                 const Tensor &dy,
                 const Tensor &x,
                 const Tensor &scale,
@@ -186,7 +186,6 @@ class CudnnScaleBiasAddRelu {
                 double eps) {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();
-    auto place = ctx.GetPlace();
     auto workspace_handle = ctx.cudnn_workspace_handle();
     bwd_workspace_byte_ = bwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
@@ -199,10 +198,15 @@ class CudnnScaleBiasAddRelu {
     float *saved_invstd_ptr = const_cast<float *>(saved_invstd.data<float>());
     int32_t *bitmask_ptr =
         bitmask ? const_cast<int32_t *>(bitmask->data<int32_t>()) : nullptr;
-    T *dx_ptr = dx->mutable_data<T>(place);
-    T *dz_ptr = dz ? dz->mutable_data<T>(place) : nullptr;
-    float *dscale_ptr = dscale ? dscale->mutable_data<float>(place) : nullptr;
-    float *dbias_ptr = dbias ? dbias->mutable_data<float>(place) : nullptr;
+    T *dx_ptr = ctx.template Alloc<T>(dx, dx->numel() * sizeof(T));
+    T *dz_ptr =
+        dz ? ctx.template Alloc<T>(dz, dz->numel() * sizeof(T)) : nullptr;
+    float *dscale_ptr = dscale ? ctx.template Alloc<float>(
+                                     dscale, dscale->numel() * sizeof(float))
+                               : nullptr;
+    float *dbias_ptr =
+        dbias ? ctx.template Alloc<float>(dbias, dbias->numel() * sizeof(float))
+              : nullptr;
 
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, dy_ptr);
@@ -237,7 +241,7 @@ class CudnnScaleBiasAddRelu {
   }
 
  private:
-  void ForwardInit(const platform::CUDADeviceContext &ctx) {
+  void ForwardInit(const phi::GPUContext &ctx) {
     // Set constant_param
     fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
                                  CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
@@ -285,7 +289,7 @@ class CudnnScaleBiasAddRelu {
                                 CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
   }
 
-  void BackwardInit(const platform::CUDADeviceContext &ctx) {
+  void BackwardInit(const phi::GPUContext &ctx) {
     // Set constant_param
     bwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
                                  CUDNN_PARAM_DYDATA_PLACEHOLDER,

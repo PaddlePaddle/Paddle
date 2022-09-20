@@ -21,14 +21,128 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/kernels/isfinite_kernel.h"
+#include "paddle/phi/kernels/reduce_all_kernel.h"
+#include "paddle/phi/kernels/reduce_any_kernel.h"
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
 namespace paddle {
-namespace operators {
+namespace framework {
+// store the result bool in gpu tensor, async operation. Faster than above ones.
+void TensorContainsNAN(const framework::Tensor& tensor, framework::Tensor* out);
+void TensorContainsInf(const framework::Tensor& tensor, framework::Tensor* out);
+void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out);
 
+// copy the result bool to cpu
+bool TensorContainsNAN(const framework::Tensor& tensor);
+bool TensorContainsInf(const framework::Tensor& tensor);
+bool TensorIsfinite(const framework::Tensor& tensor);
+
+#define FiniteVisitor(type, reduce_type, device)                             \
+  struct type##Visitor##device {                                             \
+    type##Visitor##device(const phi::DenseTensor& in, phi::DenseTensor* out) \
+        : in_(in), out_(out) {}                                              \
+    template <typename T>                                                    \
+    void apply() const {                                                     \
+      auto place = in_.place();                                              \
+      auto* ctx = static_cast<phi::device##Context*>(                        \
+          platform::DeviceContextPool::Instance().Get(place));               \
+      Tensor tmp;                                                            \
+      tmp.Resize(in_.dims());                                                \
+      out_->Resize({1});                                                     \
+      std::vector<int64_t> dims(tmp.dims().size());                          \
+      std::iota(dims.begin(), dims.end(), 0);                                \
+      phi::type##Kernel<T, phi::device##Context>(*ctx, in_, &tmp);           \
+      phi::reduce_type##Kernel<bool, phi::device##Context>(                  \
+          *ctx, tmp, dims, false, out_);                                     \
+    }                                                                        \
+    const phi::DenseTensor& in_;                                             \
+    phi::DenseTensor* out_;                                                  \
+  };
+
+FiniteVisitor(Isnan, Any, CPU);
+FiniteVisitor(Isinf, Any, CPU);
+FiniteVisitor(Isfinite, All, CPU);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+FiniteVisitor(Isnan, Any, GPU);
+FiniteVisitor(Isinf, Any, GPU);
+FiniteVisitor(Isfinite, All, GPU);
+#endif
+
+// store the result bool in gpu tensor, async operation. Faster than above ones.
+inline void TensorContainsNAN(const framework::Tensor& tensor,
+                              framework::Tensor* out) {
+  auto place = tensor.place();
+  if (platform::is_cpu_place(tensor.place())) {
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsnanVisitorCPU(tensor, out));
+    return;
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::is_gpu_place(place)) {
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsnanVisitorGPU(tensor, out));
+    return;
+  }
+#endif
+  PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
+}
+inline void TensorContainsInf(const framework::Tensor& tensor,
+                              framework::Tensor* out) {
+  auto place = tensor.place();
+  if (platform::is_cpu_place(tensor.place())) {
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsinfVisitorCPU(tensor, out));
+    return;
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::is_gpu_place(place)) {
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsinfVisitorGPU(tensor, out));
+    return;
+  }
+#endif
+  PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
+}
+inline void TensorIsfinite(const framework::Tensor& tensor,
+                           framework::Tensor* out) {
+  auto place = tensor.place();
+  if (platform::is_cpu_place(tensor.place())) {
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsfiniteVisitorCPU(tensor, out));
+    return;
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::is_gpu_place(place)) {
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsfiniteVisitorGPU(tensor, out));
+    return;
+  }
+#endif
+  PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
+}
+
+// copy the result bool to cpu
+inline bool TensorContainsNAN(const framework::Tensor& tensor) {
+  Tensor out;
+  TensorContainsNAN(tensor, &out);
+  return GetValue<bool>(&out);
+}
+inline bool TensorContainsInf(const framework::Tensor& tensor) {
+  Tensor out;
+  TensorContainsInf(tensor, &out);
+  return GetValue<bool>(&out);
+}
+inline bool TensorIsfinite(const framework::Tensor& tensor) {
+  Tensor out;
+  TensorIsfinite(tensor, &out);
+  return GetValue<bool>(&out);
+}
+}  // namespace framework
+namespace operators {
 struct InfinityFunctor {
   void operator()(const framework::Tensor& tensor, framework::Tensor* out) {
     framework::TensorContainsInf(tensor, out);

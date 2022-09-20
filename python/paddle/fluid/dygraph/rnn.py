@@ -66,18 +66,18 @@ class LSTMCell(Layer):
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
             of LSTMCell.
-            If it is set to None or one attribute of ParamAttr, LSTMCell will 
+            If it is set to None or one attribute of ParamAttr, LSTMCell will
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized as zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
                                   Default: 'fluid.layers.sigmoid'
         activation (function|None): The activation function for cells (actNode).
                              Default: 'fluid.layers.tanh'
-        forget_bias(float|1.0): forget bias used when computing forget gate. This 
+        forget_bias(float|1.0): forget bias used when computing forget gate. This
             is not used in default LSTMCell implementation (CUDNN compatiable)
         use_cudnn_impl(bool|True): whether to use CUDNN compatible LSTMCell
         dtype(string): data type used in this cell
-    
+
     Returns:
         None
 
@@ -107,7 +107,7 @@ class LSTMCell(Layer):
                 step_input_var = fluid.dygraph.to_variable(step_input_np)
                 pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
                 pre_cell_var = fluid.dygraph.to_variable(pre_cell_np)
-                new_hidden, new_cell = cudnn_lstm(step_input_var, pre_hidden_var, pre_cell_var) 
+                new_hidden, new_cell = cudnn_lstm(step_input_var, pre_hidden_var, pre_cell_var)
 
     """
 
@@ -273,7 +273,7 @@ class GRUCell(Layer):
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
             of GRUCell.
-            If it is set to None or one attribute of ParamAttr, GRUCell will 
+            If it is set to None or one attribute of ParamAttr, GRUCell will
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
@@ -282,7 +282,7 @@ class GRUCell(Layer):
                              Default: 'fluid.layers.tanh'
         use_cudnn_impl(bool|True): whether to use CUDNN compatible LSTMCell
         dtype(string): data type used in this cell
-    
+
     Returns:
         None
 

@@ -47,7 +47,9 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -56,86 +58,6 @@ typedef SSIZE_T ssize_t;
 
 namespace paddle {
 namespace pybind {
-
-namespace py = ::pybind11;
-
-class PyTensorHook : public egr::TensorHook {
- public:
-  explicit PyTensorHook(PyObject* func) : py_func_(func) {
-    Py_INCREF(py_func_);
-  }
-
-  ~PyTensorHook() {
-    py::gil_scoped_acquire gil;
-    Py_DECREF(py_func_);
-  }
-
-  paddle::experimental::Tensor operator()(
-      const paddle::experimental::Tensor& var) override {
-    py::gil_scoped_acquire gil;
-    VLOG(3) << "Call PyTensorHook for var " << var.name();
-
-    PyObject* res = nullptr;
-    try {
-      PyObject* p_tmp_var = ToPyObject(var);
-      res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
-      Py_DECREF(p_tmp_var);
-    } catch (platform::EnforceNotMet& e) {
-      throw std::move(e);
-    } catch (std::exception& e) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Hook function of Tensor raises an exception: %s.", e.what()));
-    } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Hook function of Tensor raises an unknown exception."));
-    }
-
-    PADDLE_ENFORCE_NOT_NULL(res,
-                            platform::errors::Unavailable(
-                                "Hook function of Tensor return a nullptr."));
-    if (res == Py_None) {
-      return var;
-    }
-    auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
-    Py_DECREF(res);
-    return res_tensor;
-  }
-
- private:
-  PyObject* py_func_;
-};
-
-class PyTensorVoidHook : public egr::TensorVoidHook {
- public:
-  explicit PyTensorVoidHook(PyObject* func) : py_func_(func) {
-    Py_INCREF(py_func_);
-  }
-
-  ~PyTensorVoidHook() {
-    py::gil_scoped_acquire gil;
-    Py_DECREF(py_func_);
-  }
-
-  void operator()() override {
-    py::gil_scoped_acquire gil;
-    VLOG(3) << "Call PyTensorVoidHook";
-
-    try {
-      PyObject_CallFunctionObjArgs(py_func_, nullptr);
-    } catch (platform::EnforceNotMet& e) {
-      throw std::move(e);
-    } catch (std::exception& e) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Hook function of Tensor raises an exception: %s.", e.what()));
-    } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Hook function of Tensor raises an unknown exception."));
-    }
-  }
-
- private:
-  PyObject* py_func_;
-};
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
@@ -802,6 +724,33 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__get_tensor_from_selected_rows(
+    TensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(self->tensor.is_selected_rows(),
+                 paddle::platform::errors::Fatal(
+                     "this method is only effective for SelectedRows."));
+
+  auto* selected_rows =
+      static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+
+  PADDLE_ENFORCE(
+      selected_rows->initialized(),
+      paddle::platform::errors::Fatal("SelectedRows must be initialized."));
+
+  auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+      selected_rows->mutable_value());
+  VLOG(1) << "dense_tensor: " << dense_tensor->IsInitialized();
+
+  auto t = paddle::experimental::Tensor(
+      egr::Controller::Instance().GenerateUniqueName());
+  t.set_impl(std::make_shared<phi::DenseTensor>(*dense_tensor));
+
+  return ToPyObject(t);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                                   PyObject* args,
                                                   PyObject* kwargs) {
@@ -812,8 +761,10 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       decrease_axis, none_axes, infer_flags, list_select_idxs;
   // if index is a list, list_select_flag will be true
   bool list_select_flag = false;
+  // Note(0x45f): Using defined() instead of initialized()
+  // to support slice tensor which shape like [0, 0, 0].
   PADDLE_ENFORCE_EQ(
-      self->tensor.initialized(),
+      self->tensor.defined(),
       true,
       platform::errors::InvalidArgument(
           "tensor %s has not been initialized, we can only slice initialized "
@@ -859,14 +810,14 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                            decrease_axis.end());
 
     if (op_type == "slice") {
-      out = slice_final_state_dygraph_function(self->tensor,
-                                               slice_axes_tmp,
-                                               slice_starts,
-                                               slice_ends,
-                                               infer_flags_tmp,
-                                               decrease_axis_tmp);
+      out = slice_ad_func(self->tensor,
+                          slice_axes_tmp,
+                          slice_starts,
+                          slice_ends,
+                          infer_flags_tmp,
+                          decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
-      out = strided_slice_final_state_dygraph_function(
+      out = strided_slice_ad_func(
           self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -905,8 +856,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       }
 
       paddle::experimental::Tensor new_out;
-      framework::AttributeMap attrs = {{"axes", none_axes}};
-      new_out = std::get<0>(unsqueeze2_dygraph_function(out, std::move(attrs)));
+      new_out = unsqueeze_ad_func(out, none_axes);
       return ToPyObject(new_out);
     }
   }
@@ -922,8 +872,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(
         list_select_idxs, *dev_ctx, idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_final_state_dygraph_function(
-        self->tensor, select_index, 0);
+    out = index_select_ad_func(self->tensor, select_index, 0);
   }
 
   return ToPyObject(out);
@@ -1224,6 +1173,17 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // Release gil and do tracing
       py::gil_scoped_release release;
       // use inplace set_value_ operator
+      if (value_tensor.initialized() &&
+          (self->tensor.dtype() != value_tensor.dtype())) {
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            tmps = {{self->tensor}, {value_tensor}};
+        auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
+        self->tensor = egr::EagerAmpAutoCast(
+            self->tensor.name(), self->tensor, amp_dtype, "set_value");
+        value_tensor = egr::EagerAmpAutoCast(
+            value_tensor.name(), value_tensor, amp_dtype, "set_value");
+      }
       self->tensor = set_value__dygraph_function(
           self->tensor, value_tensor, {}, {}, {}, attrs);
     }
@@ -1363,7 +1323,7 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self,
   auto accumulation_grad_node =
       std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
   accumulation_grad_node->RegisterReduceHook(
-      std::make_shared<PyTensorVoidHook>(hook_func));
+      std::make_shared<PyVoidHook>(hook_func));
 
   RETURN_PY_NONE
 
@@ -1621,6 +1581,15 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
       ->SetPersistable(
           egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
   return ToPyObject(csr_tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_is_same_shape(TensorObject* self,
+                                             PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  auto other = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  return ToPyObject(self->tensor.shape() == other.shape());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1933,6 +1902,10 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_get_underline_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+    {"_get_tensor_from_selected_rows",
+     (PyCFunction)(void (*)(void))tensor_method__get_tensor_from_selected_rows,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
     {"_getitem_index_not_tensor",
      (PyCFunction)(void (*)(void))tensor__getitem_index_not_tensor,
      METH_VARARGS | METH_KEYWORDS,
@@ -2013,6 +1986,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"is_sparse_csr",
      (PyCFunction)(void (*)(void))tensor_method_is_sparse_csr,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"is_same_shape",
+     (PyCFunction)(void (*)(void))tensor_method_is_same_shape,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"to_sparse_csr",

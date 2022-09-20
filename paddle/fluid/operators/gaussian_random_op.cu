@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
 namespace paddle {
@@ -61,8 +60,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 
     int device_id = context.GetPlace().GetDeviceId();
     auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
-    auto& dev_cxt =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto& dev_cxt = context.template device_context<phi::GPUContext>();
 
     if (seed == 0) {
       // use global Generator seed

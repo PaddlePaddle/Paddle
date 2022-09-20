@@ -32,7 +32,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn.initializer import Constant
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid.framework import _non_static_mode, default_main_program
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.incubate.nn.functional import fused_multi_transformer
 
 default_main_program().random_seed = 42
@@ -546,6 +546,61 @@ class TestFusedMultiTransformerOpGenCacheKVFp16(TestFusedMultiTransformerOp):
         self.gen_cache_kv = True
         self.x_type = np.float16
         self.layers = 3  # odd layers
+
+
+class TestFusedMultiTransformerOpPostLayerNormFp16(TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpCacheKVPostLayerNorm(
+        TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpCacheKVPostLayerNormFp16(
+        TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpGenCacheKVPostLayerNorm(
+        TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpGenCacheKVPostLayerNormFp16(
+        TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
 
 
 if __name__ == "__main__":

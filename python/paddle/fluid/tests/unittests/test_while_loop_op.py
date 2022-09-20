@@ -50,8 +50,9 @@ class TestApiWhileLoop(unittest.TestCase):
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
         res = exe.run(main_program, fetch_list=out)
-        self.assertTrue(
-            np.allclose(np.asarray(res[0]), np.full((1), 10, np.int64)))
+        np.testing.assert_allclose(np.asarray(res[0]),
+                                   np.full(1, 10, np.int64),
+                                   rtol=1e-05)
 
     def test_var_list(self):
 
@@ -81,7 +82,7 @@ class TestApiWhileLoop(unittest.TestCase):
         res = exe.run(main_program, feed={'mem': data}, fetch_list=out)
         for i in range(10):
             data = np.add(data, data_one)
-        self.assertTrue(np.allclose(np.asarray(res[1]), data))
+        np.testing.assert_allclose(np.asarray(res[1]), data, rtol=1e-05)
 
     def test_var_dict(self):
 
@@ -127,15 +128,21 @@ class TestApiWhileLoop(unittest.TestCase):
                           test_dict["test_key"], test_list[0],
                           test_list_dict[0]["test_key"]
                       ])
-        self.assertTrue(
-            np.allclose(np.asarray(res[0]),
-                        np.full(shape=(1), fill_value=10, dtype=np.int64)))
-        self.assertTrue(
-            np.allclose(np.asarray(res[1]),
-                        np.full(shape=(2, 1), fill_value=10, dtype=np.int64)))
-        self.assertTrue(
-            np.allclose(np.asarray(res[2]),
-                        np.full(shape=(1), fill_value=10, dtype=np.float32)))
+        np.testing.assert_allclose(np.asarray(res[0]),
+                                   np.full(shape=1,
+                                           fill_value=10,
+                                           dtype=np.int64),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[1]),
+                                   np.full(shape=(2, 1),
+                                           fill_value=10,
+                                           dtype=np.int64),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[2]),
+                                   np.full(shape=1,
+                                           fill_value=10,
+                                           dtype=np.float32),
+                                   rtol=1e-05)
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
@@ -196,7 +203,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             data_sums = np.add(data, data_sums)
         for j in range(2):
             data_sums = np.add(data, data_sums)
-        self.assertTrue(np.allclose(np.asarray(res[3]), data_sums))
+        np.testing.assert_allclose(np.asarray(res[3]), data_sums, rtol=1e-05)
 
 
 class TestApiWhileLoop_Backward(unittest.TestCase):
@@ -240,10 +247,8 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                           'x': feed_x
                       },
                       fetch_list=[mean.name, i.grad_name])
-        self.assertTrue(np.allclose(np.asarray(res[0]), data))
-        self.assertTrue(np.allclose(np.asarray(res[1]), i_grad),
-                        msg=" \nres = \n{} \n\n ans = \n{}".format(
-                            res[1], i_grad))
+        np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
 
     def test_while_loop_backward2(self):
 
@@ -283,13 +288,9 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                           'x': feed_x
                       },
                       fetch_list=[mean.name, i.grad_name, x.grad_name])
-        self.assertTrue(np.allclose(np.asarray(res[0]), data))
-        self.assertTrue(np.allclose(np.asarray(res[1]), i_grad),
-                        msg=" \nres = \n{} \n\n ans = \n{}".format(
-                            res[1], i_grad))
-        self.assertTrue(np.allclose(np.asarray(res[2]), x_grad),
-                        msg=" \nres = \n{} \n\n ans = \n{}".format(
-                            res[2], x_grad))
+        np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
 
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
@@ -372,8 +373,8 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                               'x': feed_x
                           },
                           fetch_list=[sum_result.name, x.grad_name])
-            self.assertTrue(np.allclose(res[0], data_sum))
-            self.assertTrue(np.allclose(res[1], x_grad))
+            np.testing.assert_allclose(res[0], data_sum, rtol=1e-05)
+            np.testing.assert_allclose(res[1], x_grad, rtol=1e-05)
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
@@ -419,7 +420,7 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
         res = exe.run(main_program, fetch_list=out)
 
         data = np.asarray([25]).astype('int64')
-        self.assertTrue(np.allclose(np.asarray(res[0]), data))
+        np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
 
 
 class TestApiWhileLoop_Error(unittest.TestCase):
@@ -587,7 +588,7 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
 
         np_x = np.array([1, 2, 3, 4, 5], dtype='int32')
         res = exe.run(main_program, feed={'x': np_x}, fetch_list=[z])
-        self.assertTrue(np.array_equal(res[0], [np.sum(np_x)]))
+        np.testing.assert_array_equal(res[0], [np.sum(np_x)])
 
 
 if __name__ == '__main__':

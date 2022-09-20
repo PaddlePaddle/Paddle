@@ -34,7 +34,7 @@ set(TEST_EAGER_OPS
 list(REMOVE_ITEM TEST_OPS test_lac)
 # NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope
 # will be removed and will cause some random failed in multi-thread.
-if(NOT ON_INFER)
+if(WITH_PYTHON)
   py_test_modules(test_lac MODULES test_lac ENVS FLAGS_enable_eager_mode=1)
   set_tests_properties(test_lac PROPERTIES TIMEOUT 120)
 endif()
@@ -57,7 +57,7 @@ set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
 set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS
                                             "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 120)
-set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 120)
+set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 150)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
 set_tests_properties(test_bert PROPERTIES TIMEOUT 120)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 120)

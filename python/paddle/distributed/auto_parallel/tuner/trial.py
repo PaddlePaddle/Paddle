@@ -115,6 +115,56 @@ class Trial(Storable):
         return trial
 
 
+class OptimizationTunerTrial(Trial):
+
+    def __init__(self,
+                 config,
+                 name,
+                 changed_configs,
+                 trial_id=None,
+                 status=TrialStatus.RUNNING):
+        super(OptimizationTunerTrial, self).__init__(config, trial_id, status)
+        self._name = name
+        self._changed_configs = changed_configs
+
+    @property
+    def name(self):
+        return self._name
+
+    def summary(self):
+
+        spacing = 2
+        max_k = 38
+        max_v = 38
+
+        length = max_k + max_v + spacing
+
+        h1_format = "    " + "|{{:^{}s}}|\n".format(length)
+        h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
+            max_k, " " * spacing, max_v)
+
+        border = "    +" + "".join(["="] * length) + "+"
+        line = "    +" + "".join(["-"] * length) + "+"
+
+        draws = border + "\n"
+        draws += h1_format.format("")
+        draws += h1_format.format("Tuned Configuartions Overview")
+        draws += h1_format.format("")
+
+        for name in self._changed_configs:
+            draws += border + "\n"
+            draws += h1_format.format("{} auto=True <-> {}".format(name, name))
+            draws += line + "\n"
+            my_configs = getattr(self.space, name)
+            keys = my_configs.to_dict().keys()
+            for key in keys:
+                draws += h2_format.format(
+                    key, str(my_configs.to_dict().get(key, None)))
+
+        result_res = draws + border
+        return result_res
+
+
 def _generate_trial_id():
     s = str(time.time()) + str(random.randint(1, int(1e7)))
     return hashlib.sha256(s.encode("utf-8")).hexdigest()[:32]

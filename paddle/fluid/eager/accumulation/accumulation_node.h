@@ -24,7 +24,7 @@ class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
   explicit GradNodeAccumulation(AutogradMeta* meta) : GradNodeBase(1, 1) {
-    VLOG(6) << "Construct GradNodeAccumulation";
+    VLOG(5) << "Construct GradNodeAccumulation";
     if (meta) {
       weak_grad_ = meta->WeakGrad();
     }
@@ -33,7 +33,7 @@ class GradNodeAccumulation : public GradNodeBase {
   }
 
   ~GradNodeAccumulation() override {
-    VLOG(6) << "Destruct GradNodeAccumulation";
+    VLOG(5) << "Destruct GradNodeAccumulation";
   }
 
   // Functor: perform backward computations
@@ -44,14 +44,14 @@ class GradNodeAccumulation : public GradNodeBase {
              bool create_graph = false,
              bool is_new_grad = false) override;
 
-  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  void ClearTensorWrappers() override { VLOG(5) << "Do nothing here now"; }
 
   std::string name() { return "GradNodeAccumulation"; }
 
   /**
    * Register ReduceHook
    * **/
-  void RegisterReduceHook(std::shared_ptr<TensorVoidHook>&& hook);
+  void RegisterReduceHook(std::shared_ptr<VoidHook>&& hook);
 
   /**
    * Apply ReduceHook here
@@ -70,7 +70,7 @@ class GradNodeAccumulation : public GradNodeBase {
   // TODO(Jiabin): remove this when we make our clear gradient really cleared;
   bool is_fake_empty_ = {false};
   std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
-  std::vector<std::shared_ptr<TensorVoidHook>> reduce_hooks_;
+  std::vector<std::shared_ptr<VoidHook>> reduce_hooks_;
   std::function<paddle::experimental::Tensor(
       const paddle::experimental::Tensor&)>
       retain_grad_hook_;

@@ -51,7 +51,7 @@ class TestNanmeanAPI(unittest.TestCase):
                           fetch_list=[out1, out2, out3, out4, out5])
         out_ref = np.nanmean(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-04), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.0001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
@@ -70,10 +70,9 @@ class TestNanmeanAPI(unittest.TestCase):
                 out_ref[nan_mask] = 0
                 out_np = out.numpy()
                 out_np[nan_mask] = 0
-                self.assertEqual(np.allclose(out_np, out_ref, rtol=1e-04), True)
+                np.testing.assert_allclose(out_np, out_ref, rtol=0.0001)
             else:
-                self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-04),
-                                 True)
+                np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
 
         test_case(self.x)
         test_case(self.x, [])
@@ -111,7 +110,7 @@ class TestNanmeanAPI(unittest.TestCase):
             if (cnt == 0).sum():
                 dx[np.isnan(dx)] = 0
             sum_dx = dx.sum()
-            self.assertEqual(np.allclose(sum_dx, sum_dx_ref, rtol=1e-04), True)
+            np.testing.assert_allclose(sum_dx, sum_dx_ref, rtol=0.0001)
 
         test_case(self.x)
         test_case(self.x, [])

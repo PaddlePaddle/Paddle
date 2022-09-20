@@ -181,7 +181,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_api_impl$|\
 ^test_tensordot$|\
-^disable_wingpu_test$"
+^disable_win_inference_test$"
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -252,6 +252,7 @@ NIGHTLY_MODE=$1
 PRECISION_TEST=$2
 WITH_GPU=$3
 
+# Step1: Print disable_ut_quickly
 export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
     nightly_label=""
@@ -271,8 +272,7 @@ else
     disable_ut_quickly=''
 fi
 
-# check added ut
-
+# Step2: Check added ut
 set +e
 cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
 bash $PADDLE_ROOT/tools/check_added_ut_win.sh
@@ -288,9 +288,10 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         exit 8;
     fi
 fi
+
+
+# Step3: Get precision UT and intersect with parallel UT, generate tools/*_new file
 set -e
-
-
 if [ ${WITH_GPU:-OFF} == "ON" ];then
     export CUDA_VISIBLE_DEVICES=0
 
@@ -336,7 +337,13 @@ function run_unittest_gpu() {
     if [ "$2" == "" ]; then
         parallel_job=$parallel_level_base
     else
-        parallel_job=`expr $2 \* $parallel_level_base`
+        # set parallel_job according to CUDA memory and suggested parallel num,
+        # the latter is derived in linux server with 16G CUDA memory.
+        cuda_memory=$(nvidia-smi --query-gpu=memory.total --format=csv | tail -1 | awk -F ' ' '{print $1}')
+        parallel_job=$(($2 * $cuda_memory / 16000))
+        if [ $parallel_job -lt 1 ]; then
+            parallel_job=1
+        fi
     fi
     echo "************************************************************************"
     echo "********These unittests run $parallel_job job each time with 1 GPU**********"
@@ -431,27 +438,9 @@ function show_ut_retry_result() {
     fi
 }
 
+# Step4: Run UT gpu or cpu
 set +e
-
 export FLAGS_call_stack_level=2
-
-# if nvcc --version | grep 11.2; then
-#     echo "Only test added_ut and inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
-#     export CUDA_VISIBLE_DEVICES=0
-#     tmpfile=$tmp_dir/$RANDOM
-#     inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
-#     (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
-#     wait;
-#     collect_failed_tests
-#     set -e
-#     rm -f $tmp_dir/*
-#     if [[ "$failed_test_lists" != "" ]]; then
-#         unittests_retry
-#         show_ut_retry_result
-#     fi
-#     exit 0;
-# fi
-
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
 
     single_ut_mem_0_startTime_s=`date +%s`

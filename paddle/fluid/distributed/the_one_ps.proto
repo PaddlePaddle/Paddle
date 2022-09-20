@@ -120,19 +120,27 @@ message TableParameter {
   optional bool enable_sparse_table_cache = 10 [ default = true ];
   optional double sparse_table_cache_rate = 11 [ default = 0.00055 ];
   optional uint32 sparse_table_cache_file_num = 12 [ default = 16 ];
-  optional bool enable_revert = 13 [ default = true ];
+  // for patch model
+  optional bool enable_revert = 13 [ default = false ];
   optional float shard_merge_rate = 14 [ default = 1.0 ];
 }
 
 message TableAccessorParameter {
   optional string accessor_class = 1;
-  optional uint32 fea_dim = 4 [ default = 11 ];
-  optional uint32 embedx_dim = 5 [ default = 8 ];
-  optional uint32 embedx_threshold = 6 [ default = 10 ];
+  optional uint32 fea_dim = 4 [ default = 11 ];   // field size of one value
+  optional uint32 embedx_dim = 5 [ default = 8 ]; // embedx feature size
+  optional uint32 embedx_threshold = 6
+      [ default = 10 ]; // embedx feature create threshold
   optional CtrAccessorParameter ctr_accessor_param = 7;
   repeated TableAccessorSaveParameter table_accessor_save_param = 8;
   optional SparseCommonSGDRuleParameter embed_sgd_param = 10;
   optional SparseCommonSGDRuleParameter embedx_sgd_param = 11;
+  optional GraphSGDParameter graph_sgd_param = 12;
+}
+
+message GraphSGDParameter {
+  optional uint32 nodeid_slot = 1 [ default = 9008 ];
+  optional float feature_learning_rate = 2 [ default = 0.05 ];
 }
 
 message CtrAccessorParameter {
@@ -160,6 +168,7 @@ message CtrAccessorParameter {
   optional int32 ssd_unseenday_threshold = 9
       [ default = 1 ]; // threshold to save ssd
   optional bool show_scale = 10 [ default = true ];
+  optional bool zero_init = 11 [ default = true ];
 }
 
 message TensorAccessorParameter {
@@ -182,6 +191,7 @@ message CommonAccessorParameter {
   optional bool sync = 9;
   optional uint32 table_num = 10;
   optional uint32 table_dim = 11;
+  optional string attr = 12;
 }
 
 message TableAccessorSaveParameter {
@@ -232,6 +242,7 @@ message GraphParameter {
   optional string table_type = 9 [ default = "" ];
   optional int32 shard_num = 10 [ default = 127 ];
   optional int32 search_level = 11 [ default = 1 ];
+  optional bool build_sampler_on_cpu = 12 [ default = true ];
 }
 
 message GraphFeature {

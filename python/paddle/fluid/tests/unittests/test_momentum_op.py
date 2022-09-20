@@ -904,10 +904,9 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
         output2, params2 = self._momentum_optimize_dygraph(
             place=place, use_amp=use_amp, use_multi_tensor=False)
 
-        self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
+        np.testing.assert_allclose(output1, output2, rtol=1e-05)
         for idx in range(len(params1)):
-            self.assertEqual(
-                np.allclose(params1[idx], params2[idx], rtol=1e-05), True)
+            np.testing.assert_allclose(params1[idx], params2[idx], rtol=1e-05)
 
     def _check_with_param_arrt(self, place, use_amp):
         output1, params1 = self._momentum_optimize_dygraph(
@@ -920,10 +919,9 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             use_amp=use_amp,
             use_param_attr=True,
             use_multi_tensor=False)
-        self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
+        np.testing.assert_allclose(output1, output2, rtol=1e-05)
         for idx in range(len(params1)):
-            self.assertEqual(
-                np.allclose(params1[idx], params2[idx], rtol=1e-05), True)
+            np.testing.assert_allclose(params1[idx], params2[idx], rtol=1e-05)
 
     def _check_with_param_group(self, place, use_amp):
         output1, params1 = self._momentum_optimize_dygraph(
@@ -936,10 +934,9 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             use_amp=use_amp,
             use_param_group=True,
             use_multi_tensor=False)
-        self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
+        np.testing.assert_allclose(output1, output2, rtol=1e-05)
         for idx in range(len(params1)):
-            self.assertEqual(
-                np.allclose(params1[idx], params2[idx], rtol=1e-05), True)
+            np.testing.assert_allclose(params1[idx], params2[idx], rtol=1e-05)
 
     def test_main(self):
         for place in self._get_places():
@@ -1017,8 +1014,7 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
                                                  use_amp=use_amp,
                                                  use_multi_tensor=False)
         for idx in range(len(output1)):
-            self.assertEqual(
-                np.allclose(output1[idx], output2[idx], rtol=1e-05), True)
+            np.testing.assert_allclose(output1[idx], output2[idx], rtol=1e-05)
 
     def test_main(self):
         for place in self._get_places():

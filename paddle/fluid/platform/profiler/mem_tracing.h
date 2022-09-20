@@ -27,6 +27,7 @@ namespace platform {
 // The events can be used to draw memory variation curve.
 class RecordMemEvent {
  public:
+  static bool IsEnabled();
   /**
    * @param ptr:  Pointer address allocated or free.
    * @param place: Device for this memory event.

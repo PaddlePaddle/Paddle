@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
@@ -40,7 +41,7 @@ namespace operators {
  * 2D grids: gridDim.y = rows
  */
 inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
-    const platform::CUDADeviceContext &ctx,
+    const phi::GPUContext &ctx,
     const uint32_t rows,
     const uint32_t cols,
     const int vec_size) {
@@ -101,9 +102,7 @@ __forceinline__ __device__ void RandVec<8>(curandStatePhilox4_32_10_t *state,
 }
 
 template <typename T>
-inline void SetZero(const platform::CUDADeviceContext &ctx,
-                    T *ptr,
-                    const size_t size) {
+inline void SetZero(const phi::GPUContext &ctx, T *ptr, const size_t size) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(ptr, 0, size * sizeof(T), ctx.stream()));
 }

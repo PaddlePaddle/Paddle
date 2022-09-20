@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -74,8 +75,8 @@ void InstanceNormInferMeta(const MetaTensor& x,
 void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
-                            const std::string& pool_type,
-                            int64_t out_size,
+                            const std::string& reduce_op,
+                            const IntArray& out_size,
                             MetaTensor* out,
                             MetaTensor* dst_count);
 
@@ -122,6 +123,21 @@ void LinspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& number,
                        DataType dtype,
                        MetaTensor* out);
+
+void MultiClassNMSInferMeta(const MetaTensor& bboxes,
+                            const MetaTensor& scores,
+                            const MetaTensor& rois_num,
+                            float score_threshold,
+                            int nms_top_k,
+                            int keep_top_k,
+                            float nms_threshold,
+                            bool normalized,
+                            float nms_eta,
+                            int background_label,
+                            MetaTensor* out,
+                            MetaTensor* index,
+                            MetaTensor* nms_rois_num,
+                            MetaConfig config = MetaConfig());
 
 void NllLossRawInferMeta(const MetaTensor& input,
                          const MetaTensor& label,

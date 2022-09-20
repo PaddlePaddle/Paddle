@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/lu_op.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -25,7 +24,7 @@ namespace operators {
 class LUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddComment(R"DOC(LU decomposition, 
+    AddComment(R"DOC(LU decomposition,
                 Computes the LU factorization of a matrix or batches of matrices A.
                 )DOC");
     AddInput("X", "(Tensor) The input tensor, shape of (*,m,n)");

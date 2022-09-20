@@ -23,11 +23,11 @@ limitations under the License. */
 namespace phi {
 
 template <typename InT, typename OutT = InT>
-struct FullFuctor {
+struct FullFunctor {
   OutT value;
 
   template <typename VType>
-  explicit inline FullFuctor(VType val) {
+  explicit inline FullFunctor(VType val) {
     value = static_cast<OutT>(val);
   }
 
@@ -42,14 +42,11 @@ void CooFullLikeKernel(const Context& dev_ctx,
                        const Scalar& val,
                        DataType dtype,
                        SparseCooTensor* out) {
-  phi::Copy<Context>(dev_ctx,
-                     x.non_zero_indices(),
-                     dev_ctx.GetPlace(),
-                     false,
-                     out->mutable_non_zero_indices());
+  phi::Copy<Context>(
+      dev_ctx, x.indices(), dev_ctx.GetPlace(), false, out->mutable_indices());
 
-  DenseTensor* values = out->mutable_non_zero_elements();
-  values->Resize(x.non_zero_elements().dims());
+  DenseTensor* values = out->mutable_values();
+  values->Resize(x.values().dims());
   dev_ctx.template Alloc<T>(values);
 
   std::vector<const DenseTensor*> inputs = {};
@@ -57,7 +54,7 @@ void CooFullLikeKernel(const Context& dev_ctx,
   int numel = values->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
+        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
   }
   out->set_dims(x.dims());
 }
@@ -68,20 +65,14 @@ void CsrFullLikeKernel(const Context& dev_ctx,
                        const Scalar& val,
                        DataType dtype,
                        SparseCsrTensor* out) {
-  phi::Copy<Context>(dev_ctx,
-                     x.non_zero_crows(),
-                     dev_ctx.GetPlace(),
-                     false,
-                     out->mutable_non_zero_crows());
+  phi::Copy<Context>(
+      dev_ctx, x.crows(), dev_ctx.GetPlace(), false, out->mutable_crows());
 
-  phi::Copy<Context>(dev_ctx,
-                     x.non_zero_cols(),
-                     dev_ctx.GetPlace(),
-                     false,
-                     out->mutable_non_zero_cols());
+  phi::Copy<Context>(
+      dev_ctx, x.cols(), dev_ctx.GetPlace(), false, out->mutable_cols());
 
-  DenseTensor* values = out->mutable_non_zero_elements();
-  values->Resize(x.non_zero_elements().dims());
+  DenseTensor* values = out->mutable_values();
+  values->Resize(x.values().dims());
   dev_ctx.template Alloc<T>(values);
 
   std::vector<const DenseTensor*> inputs = {};
@@ -89,7 +80,7 @@ void CsrFullLikeKernel(const Context& dev_ctx,
   int numel = values->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
+        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
   }
   out->set_dims(x.dims());
 }

@@ -570,23 +570,28 @@ class TestDygraphOCRAttention(unittest.TestCase):
                         static_grad_value[static_grad_name_list[
                             i - grad_start_pos]] = out[i]
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-8)
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+            np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key], rtol=1e-05))
+            np.testing.assert_allclose(value,
+                                       dy_param_value[key],
+                                       rtol=1e-05,
+                                       atol=1e-8)
 
         # check eager here
-        self.assertTrue(np.allclose(static_out, eager_out))
+        np.testing.assert_allclose(static_out, eager_out, rtol=1e-05, atol=1e-8)
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.array_equal(value, eager_param_init_value[key]))
+            np.testing.assert_array_equal(value, eager_param_init_value[key])
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(
-                np.allclose(value, eager_param_value[key], rtol=1e-05))
+            np.testing.assert_allclose(value,
+                                       eager_param_value[key],
+                                       rtol=1e-05,
+                                       atol=1e-8)
 
 
 if __name__ == '__main__':

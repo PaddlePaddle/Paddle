@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,17 +69,10 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64, np.float16]:
-                self.check_grad_with_place(place, ['X'], 'Out')
-            elif self.dtype == np.bool_:
+            if self.dtype == np.bool_:
                 return
             else:
-                user_defined_grad_outputs = np.random.random(
-                    self.new_shape).astype(self.dtype)
-                self.check_grad_with_place(
-                    place, ['X'],
-                    'Out',
-                    user_defined_grad_outputs=user_defined_grad_outputs)
+                self.check_grad_with_place(place, ['X'], 'Out')
 
     # Correct: Single input index.
     class TestUnsqueeze2Op1(TestUnsqueeze2Op):

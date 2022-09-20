@@ -69,8 +69,8 @@ class TestDiagEmbedAPICase(unittest.TestCase):
             [np.stack([np.diag(s, 0) for s in r], 0) for r in diag_embed], 0)
         target2 = np.stack(
             [np.stack([np.diag(s, 1) for s in r], 0) for r in diag_embed], 0)
-        self.assertTrue(np.allclose(results[0], target1))
-        self.assertTrue(np.allclose(results[1], target2))
+        np.testing.assert_allclose(results[0], target1, rtol=1e-05)
+        np.testing.assert_allclose(results[1], target2, rtol=1e-05)
 
 
 if __name__ == "__main__":

@@ -48,7 +48,9 @@ class TestTensorBackward(unittest.TestCase):
 
                     x_grad = np.matmul(grad, y.T)
 
-                    self.assertTrue(np.allclose(x_grad, x_tensor.grad.numpy()))
+                    np.testing.assert_allclose(x_grad,
+                                               x_tensor.grad.numpy(),
+                                               rtol=1e-05)
 
     def test_tensor_backward(self):
         with _test_eager_guard():
@@ -83,8 +85,9 @@ class TestBackwardAPI(unittest.TestCase):
 
                     x_grad = np.matmul(grad, y.T)
 
-                    self.assertTrue(
-                        np.allclose(x_grad * 2, x_tensor.grad.numpy()))
+                    np.testing.assert_allclose(x_grad * 2,
+                                               x_tensor.grad.numpy(),
+                                               rtol=1e-05)
 
     def test_backward_api(self):
         with _test_eager_guard():
@@ -108,7 +111,9 @@ class TestBackwardAPI(unittest.TestCase):
 
                     x_grad = np.matmul(grad, y.T)
 
-                    self.assertTrue(np.allclose(x_grad, x_tensor.grad.numpy()))
+                    np.testing.assert_allclose(x_grad,
+                                               x_tensor.grad.numpy(),
+                                               rtol=1e-05)
 
     def test_backward_single_tensor(self):
         with _test_eager_guard():
@@ -131,7 +136,9 @@ class TestBackwardAPI(unittest.TestCase):
 
                     x_grad = np.matmul(grad, y.T)
 
-                    self.assertTrue(np.allclose(x_grad, x_tensor.grad.numpy()))
+                    np.testing.assert_allclose(x_grad,
+                                               x_tensor.grad.numpy(),
+                                               rtol=1e-05)
 
     def test_backward_none_grad_tensor(self):
         with _test_eager_guard():
@@ -165,7 +172,9 @@ class TestBackwardAPI(unittest.TestCase):
                     z = x**3
                     x_grad = 2 * x * (y_grad + 3 * y * y * z_grad)
 
-                    self.assertTrue(np.allclose(x_grad, x_tensor.grad.numpy()))
+                    np.testing.assert_allclose(x_grad,
+                                               x_tensor.grad.numpy(),
+                                               rtol=1e-05)
 
     def test_backward_accumulator_with_init_grad(self):
         with _test_eager_guard():

@@ -74,8 +74,9 @@ class TestUnpool1DOpAPI_dygraph(unittest.TestCase):
                                            stride=2)
             expected_output_unpool = unpool1dmax_forward_naive(
                 output.numpy(), indices.numpy(), [2], [2], [0], [16])
-            self.assertTrue(
-                np.allclose(output_unpool.numpy(), expected_output_unpool))
+            np.testing.assert_allclose(output_unpool.numpy(),
+                                       expected_output_unpool,
+                                       rtol=1e-05)
 
         paddle.enable_static()
 
@@ -100,8 +101,9 @@ class TestUnpool1DOpAPI_dygraph2(unittest.TestCase):
                                            stride=None)
             expected_output_unpool = unpool1dmax_forward_naive(
                 output.numpy(), indices.numpy(), [2], [2], [0], [16])
-            self.assertTrue(
-                np.allclose(output_unpool.numpy(), expected_output_unpool))
+            np.testing.assert_allclose(output_unpool.numpy(),
+                                       expected_output_unpool,
+                                       rtol=1e-05)
 
         paddle.enable_static()
 
@@ -125,8 +127,9 @@ class TestUnpool1DOpAPI_dygraph3(unittest.TestCase):
             output_unpool = UnPool1d(output, indices)
             expected_output_unpool = unpool1dmax_forward_naive(
                 output.numpy(), indices.numpy(), [2], [2], [0], [16])
-            self.assertTrue(
-                np.allclose(output_unpool.numpy(), expected_output_unpool))
+            np.testing.assert_allclose(output_unpool.numpy(),
+                                       expected_output_unpool,
+                                       rtol=1e-05)
 
         paddle.enable_static()
 
@@ -167,7 +170,9 @@ class TestUnpool1DOpAPI_static(unittest.TestCase):
                                                          3]]]).astype("int32")
                 expected_output_unpool = unpool1dmax_forward_naive(
                     pool1d_out_np, indices_np, [2], [2], [0], [4])
-                self.assertTrue(np.allclose(fetches[0], expected_output_unpool))
+                np.testing.assert_allclose(fetches[0],
+                                           expected_output_unpool,
+                                           rtol=1e-05)
 
 
 if __name__ == '__main__':

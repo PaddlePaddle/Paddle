@@ -18,6 +18,8 @@
 
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 
@@ -25,6 +27,16 @@ template <typename Context>
 void AssignKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out);
+
+template <typename Context>
+DenseTensor Assign(const Context& dev_ctx, const DenseTensor& x) {
+  DenseTensor out;
+  MetaTensor meta_out(&out);
+  MetaTensor meta_x(x);
+  UnchangedInferMeta(meta_x, &meta_out);
+  AssignKernel<Context>(dev_ctx, x, &out);
+  return out;
+}
 
 // In order to be compatible with the `AsDispensable` input in the original
 // assign op maker, the input parameter here needs to be dispensable, but
@@ -36,8 +48,8 @@ void AssignRawKernel(const Context& dev_ctx,
 
 template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
-                       const std::vector<const DenseTensor*>& x,
-                       std::vector<DenseTensor*> out);
+                       const TensorArray& x,
+                       TensorArray* out);
 
 template <typename T, typename Context>
 void AssignValueKernel(const Context& dev_ctx,

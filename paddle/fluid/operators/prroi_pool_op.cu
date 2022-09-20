@@ -287,7 +287,10 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     auto cplace = platform::CPUPlace();
     auto& dev_ctx = ctx.cuda_device_context();
     int bytes = rois_batch_id_list.numel() * sizeof(int);
-    auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+    auto roi_ptr = memory::Alloc(
+        dev_ctx.GetPlace(),
+        bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     const auto gplace = ctx.GetPlace();
     memory::Copy(gplace,
@@ -377,7 +380,10 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       auto cplace = platform::CPUPlace();
       auto& dev_ctx = ctx.cuda_device_context();
       int bytes = rois_batch_id_list.numel() * sizeof(int);
-      auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+      auto roi_ptr = memory::Alloc(
+          dev_ctx.GetPlace(),
+          bytes,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
       int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
       const auto gplace = ctx.GetPlace();
       memory::Copy(gplace,
@@ -426,7 +432,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(prroi_pool,
                         ops::GPUPRROIPoolOpKernel<float>,
                         ops::GPUPRROIPoolOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(
-    prroi_pool_grad,
-    ops::GPUPRROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GPUPRROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(prroi_pool_grad,
+                        ops::GPUPRROIPoolGradOpKernel<phi::GPUContext, float>,
+                        ops::GPUPRROIPoolGradOpKernel<phi::GPUContext, double>);

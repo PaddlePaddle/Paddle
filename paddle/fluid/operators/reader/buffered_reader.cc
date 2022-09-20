@@ -52,8 +52,8 @@ BufferedReader::BufferedReader(
   if (platform::is_gpu_place(place_) && !pin_memory) {
     int dev_idx = place_.device;
     compute_stream_ =
-        ((platform::CUDADeviceContext *)(platform::DeviceContextPool::Instance()
-                                             .Get(place_)))
+        ((phi::GPUContext *)(platform::DeviceContextPool::Instance().Get(
+             place_)))
             ->stream();
     events_.resize(buffer_size);
     for (auto &event : events_) {
@@ -502,7 +502,7 @@ void BufferedReader::StartImpl() {
   ReadTillBufferFullAsync();
 }
 
-void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
+void BufferedReader::ReadNextImpl(paddle::framework::LoDTensorArray *out) {
   if (position_.empty()) {
     out->clear();
     return;

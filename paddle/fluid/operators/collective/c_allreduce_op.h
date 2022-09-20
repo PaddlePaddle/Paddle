@@ -419,10 +419,14 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
+    VLOG(10) << "all reduce buffer:" << sendbuff << ", numel:" << numel
+             << ", redtype:" << static_cast<int>(red_type)
+             << ", dtype:" << dtype << ", comm:" << comm
+             << ", stream:" << stream;
 
     ncclRedOp_t nccl_red_type = ncclSum;
     switch (red_type) {

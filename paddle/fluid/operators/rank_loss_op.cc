@@ -155,7 +155,7 @@ class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
 RankLoss Operator.
 
 RankLoss operator for RankNet
-(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf). 
+(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf).
 RankNet is a pairwise ranking model with
 one training sample consisting of a pair of doc A and B, and the label P
 indicating that A is ranked higher than B or not:
@@ -164,8 +164,8 @@ P = {0, 1} or {0, 0.5, 1}, where 0.5 means no information about the rank of
 the input pair.
 
 The RankLoss operator takes three inputs: Left (o_i), Right (o_j) and Label
-(P_{i,j}), which represent the output score of RankNet for the two docs and 
-the label respectively, and yields the rank loss C_{i,j} using the following 
+(P_{i,j}), which represent the output score of RankNet for the two docs and
+the label respectively, and yields the rank loss C_{i,j} using the following
 equation:
 
 $$
@@ -245,10 +245,7 @@ REGISTER_OP_CPU_KERNEL(rank_loss_grad,
                        ops::RankLossGradKernel<phi::CPUContext, float>);
 
 REGISTER_OP_CUDA_KERNEL(
-    rank_loss,
-    paddle::operators::RankLossKernel<paddle::platform::CUDADeviceContext,
-                                      float>);
+    rank_loss, paddle::operators::RankLossKernel<phi::GPUContext, float>);
 REGISTER_OP_CUDA_KERNEL(
     rank_loss_grad,
-    paddle::operators::RankLossGradKernel<paddle::platform::CUDADeviceContext,
-                                          float>);
+    paddle::operators::RankLossGradKernel<phi::GPUContext, float>);

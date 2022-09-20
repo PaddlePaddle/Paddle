@@ -18,8 +18,10 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle import zeros_like
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core, Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestZerosLikeAPIError(unittest.TestCase):
@@ -84,6 +86,22 @@ class TestZerosLikeImpeartive(unittest.TestCase):
     def test_eager(self):
         with _test_eager_guard():
             self.test_out()
+
+
+class TestZerosAPI(unittest.TestCase):
+
+    def test_api(self):
+        shape = [3, 4]
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+        paddle.disable_static(place)
+
+        for dtype in [np.float32, np.float64, np.int32, np.int64]:
+            out = _C_ops.zeros(shape, convert_np_dtype_to_dtype_(dtype), place)
+            self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(),
+                             True)
+
+        paddle.enable_static()
 
 
 if (__name__ == '__main__'):

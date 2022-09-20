@@ -67,7 +67,7 @@ void PutAlongAxisKernel(const Context& dev_ctx,
     PADDLE_THROW(errors::InvalidArgument(
         "can not support reduce: '%s' for scatter kernel, only "
         "support reduce op: 'add', 'assign', 'mul' and 'multiply', the "
-        "defalut reduce "
+        "default reduce "
         "op is 'assign' ",
         reduce));
     return;

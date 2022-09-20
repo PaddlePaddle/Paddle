@@ -111,7 +111,7 @@ class TestHistogramOpError(unittest.TestCase):
                                                             value=3.0)
             paddle.histogram(input=input_value, bins=1, min=-np.inf, max=5)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             self.run_network(net_func)
 
     def test_type_errors(self):

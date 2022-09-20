@@ -40,7 +40,10 @@ cc_library(
 cc_library(
   dense_tensor
   SRCS dense_tensor.cc dense_tensor_impl.cc
-  DEPS convert_utils fluid_convert_utils tensor_meta tensor_base)
+  DEPS convert_utils fluid_convert_utils tensor_meta tensor_base ddim)
+
+target_link_libraries(dense_tensor malloc)
+
 cc_library(
   sparse_coo_tensor
   SRCS sparse_coo_tensor.cc
@@ -55,6 +58,11 @@ cc_library(
   DEPS convert_utils tensor_meta tensor_base)
 
 cc_library(
+  tensor_array
+  SRCS tensor_array.cc
+  DEPS dense_tensor tensor_base)
+
+cc_library(
   meta_tensor
   SRCS meta_tensor.cc
   DEPS tensor_base tensor_meta dense_tensor)
@@ -65,11 +73,15 @@ cc_library(
 cc_library(
   selected_rows
   SRCS selected_rows_impl.cc selected_rows.cc
-  DEPS tensor_base dense_tensor phi_enforce ddim memcpy)
+  DEPS tensor_base dense_tensor phi_enforce ddim)
 cc_library(
   phi_device_context
   SRCS device_context.cc
   DEPS dense_tensor selected_rows)
+cc_library(
+  serialization
+  SRCS serialization.cc
+  DEPS version tensor phi_device_context)
 
 cc_library(
   custom_kernel

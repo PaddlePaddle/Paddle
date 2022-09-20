@@ -22,6 +22,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -37,6 +38,10 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
+#endif
+
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"
 #endif
 
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
@@ -131,6 +136,25 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+              "allreduce",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 distributed::ReduceOp op,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                distributed::AllreduceOptions opts;
+                opts.reduce_op = op;
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.AllReduce(tensors, tensors, opts, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("op"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
               "broadcast",
               [](distributed::ProcessGroup &self,
                  py::handle py_tensor,
@@ -173,6 +197,23 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+              "send",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 int dst,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Send(tensors, dst, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("dst"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
               "send_partial",
               [](distributed::ProcessGroup &self,
                  py::handle py_tensor,
@@ -194,6 +235,30 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+              "send_partial",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 int dst_rank,
+                 int nranks,
+                 int rank_id,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                int numel = (*dense).numel();
+                int send_numel = numel / nranks;
+                int offset = send_numel * rank_id;
+                return self.Send_Partial(
+                    *dense, dst_rank, offset, send_numel, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("dst"),
+              py::arg("num"),
+              py::arg("id"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
               "recv",
               [](distributed::ProcessGroup &self,
                  py::handle py_tensor,
@@ -206,6 +271,23 @@ void BindDistributed(py::module *m) {
               },
               py::arg("tensor"),
               py::arg("src"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "recv",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 int src,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Recv(tensors, src, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("src"),
+              py::arg("sync_op"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
@@ -227,6 +309,30 @@ void BindDistributed(py::module *m) {
               py::arg("src"),
               py::arg("num"),
               py::arg("id"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "recv_partial",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 int src_rank,
+                 int nranks,
+                 int rank_id,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                int numel = (*dense).numel();
+                int recv_numel = numel / nranks;
+                int offset = recv_numel * rank_id;
+                return self.Recv_Partial(
+                    *dense, src_rank, offset, recv_numel, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("src"),
+              py::arg("num"),
+              py::arg("id"),
+              py::arg("sync_op"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
@@ -380,11 +486,124 @@ void BindDistributed(py::module *m) {
               py::arg("op") = distributed::ReduceOp::SUM,
               py::call_guard<py::gil_scoped_release>());
 
+  auto ProcessGroupStream =
+      py::class_<distributed::ProcessGroupStream,
+                 std::shared_ptr<distributed::ProcessGroupStream>>(
+          *m, "ProcessGroupStream", ProcessGroup)
+          .def(
+              "allreduce_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 distributed::ReduceOp op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                distributed::AllreduceOptions opts;
+                opts.reduce_op = op;
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.AllReduce(tensors,
+                                      tensors,
+                                      opts,
+                                      /*sync_op*/ true,
+                                      /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "send_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 int dst) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Send(tensors,
+                                 dst,
+                                 /*sync_op*/ true,
+                                 /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("dst"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "send_partial_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 int dst_rank,
+                 int nranks,
+                 int rank_id) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                int numel = (*dense).numel();
+                int send_numel = numel / nranks;
+                int offset = send_numel * rank_id;
+                return self.Send_Partial(*dense,
+                                         dst_rank,
+                                         offset,
+                                         send_numel,
+                                         /*sync_op*/ true,
+                                         /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("dst"),
+              py::arg("num"),
+              py::arg("id"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "recv_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 int src) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Recv(tensors,
+                                 src,
+                                 /*sync_op*/ true,
+                                 /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("src"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "recv_partial_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 int src_rank,
+                 int nranks,
+                 int rank_id) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                int numel = (*dense).numel();
+                int recv_numel = numel / nranks;
+                int offset = recv_numel * rank_id;
+                return self.Recv_Partial(*dense,
+                                         src_rank,
+                                         offset,
+                                         recv_numel,
+                                         /*sync_op*/ true,
+                                         /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("src"),
+              py::arg("num"),
+              py::arg("id"),
+              py::call_guard<py::gil_scoped_release>());
+
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
   auto processGroupNCCL =
       py::class_<distributed::ProcessGroupNCCL,
                  std::shared_ptr<distributed::ProcessGroupNCCL>>(
-          *m, "ProcessGroupNCCL", ProcessGroup)
+          *m, "ProcessGroupNCCL", ProcessGroupStream)
           .def(py::init<const std::shared_ptr<distributed::Store> &,
                         int,
                         int,
@@ -460,9 +679,28 @@ void BindDistributed(py::module *m) {
 
 #endif
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  py::class_<distributed::ProcessGroupCustom,
+             std::shared_ptr<distributed::ProcessGroupCustom>>(
+      *m, "ProcessGroupCustom", ProcessGroup)
+      .def(py::init<const std::shared_ptr<distributed::Store> &,
+                    int,
+                    int,
+                    const platform::CustomPlace &,
+                    int>(),
+           py::arg("store"),
+           py::arg("rank"),
+           py::arg("world_size"),
+           py::arg("place"),
+           py::arg("group_id") = 0,
+           py::call_guard<py::gil_scoped_release>());
+
+#endif
+
   py::class_<distributed::ProcessGroup::Task,
              std::shared_ptr<distributed::ProcessGroup::Task>>(*m, "task")
       .def("is_completed", &distributed::ProcessGroup::Task::IsCompleted)
+      .def("is_sync", &distributed::ProcessGroup::Task::IsSync)
       .def("wait",
            &distributed::ProcessGroup::Task::Wait,
            py::arg("timeout") = kWaitTimeout,

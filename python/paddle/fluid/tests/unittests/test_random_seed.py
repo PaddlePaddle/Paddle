@@ -63,8 +63,8 @@ class TestGeneratorSeed(unittest.TestCase):
         x3_np = x3.numpy()
 
         if not core.is_compiled_with_cuda():
-            self.assertTrue(np.allclose(x1_np, x2_np))
-            self.assertTrue(np.allclose(x_np, x3_np))
+            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
+            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
     def test_generator_uniform_random_static(self):
         fluid.disable_dygraph()
@@ -96,8 +96,8 @@ class TestGeneratorSeed(unittest.TestCase):
             out2_res2 = np.array(out2[1])
 
             if not core.is_compiled_with_cuda():
-                self.assertTrue(np.allclose(out1_res1, out2_res1))
-                self.assertTrue(np.allclose(out1_res2, out2_res2))
+                np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
+                np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
     def test_gen_dropout_dygraph(self):
@@ -123,7 +123,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
         if not core.is_compiled_with_cuda():
             print(">>>>>>> dropout dygraph >>>>>>>")
-            self.assertTrue(np.allclose(y_np, y1_np))
+            np.testing.assert_allclose(y_np, y1_np, rtol=1e-05)
 
     def test_gen_dropout_static(self):
         fluid.disable_dygraph()
@@ -148,7 +148,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
         if not core.is_compiled_with_cuda():
             print(">>>>>>> dropout static >>>>>>>")
-            self.assertTrue(np.allclose(out1_np, out2_np))
+            np.testing.assert_allclose(out1_np, out2_np, rtol=1e-05)
 
     def test_generator_gaussian_random_dygraph(self):
         """Test Generator seed."""
@@ -169,8 +169,8 @@ class TestGeneratorSeed(unittest.TestCase):
 
         if not core.is_compiled_with_cuda():
             print(">>>>>>> gaussian random dygraph >>>>>>>")
-            self.assertTrue(np.allclose(x1_np, x2_np))
-            self.assertTrue(np.allclose(x_np, x3_np))
+            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
+            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
     def test_generator_gaussian_random_static(self):
         fluid.disable_dygraph()
@@ -203,8 +203,8 @@ class TestGeneratorSeed(unittest.TestCase):
 
             if not core.is_compiled_with_cuda():
                 print(">>>>>>> gaussian random static >>>>>>>")
-                self.assertTrue(np.allclose(out1_res1, out2_res1))
-                self.assertTrue(np.allclose(out1_res2, out2_res2))
+                np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
+                np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
     def test_generator_randint_dygraph(self):
@@ -228,8 +228,8 @@ class TestGeneratorSeed(unittest.TestCase):
 
         if not core.is_compiled_with_cuda():
             print(">>>>>>> randint dygraph >>>>>>>")
-            self.assertTrue(np.allclose(x1_np, x2_np))
-            self.assertTrue(np.allclose(x_np, x3_np))
+            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
+            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
     def test_generator_uniform_random_static_1(self):
         fluid.disable_dygraph()
@@ -261,8 +261,8 @@ class TestGeneratorSeed(unittest.TestCase):
             out2_res2 = np.array(out2[1])
 
             if not core.is_compiled_with_cuda():
-                self.assertTrue(np.allclose(out1_res1, out2_res1))
-                self.assertTrue(np.allclose(out1_res2, out2_res2))
+                np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
+                np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
     def test_generator_randint_dygraph_1(self):
@@ -282,8 +282,8 @@ class TestGeneratorSeed(unittest.TestCase):
         x2_np = x2.numpy()
         x3_np = x3.numpy()
         if not core.is_compiled_with_cuda():
-            self.assertTrue(np.allclose(x1_np, x2_np))
-            self.assertTrue(np.allclose(x_np, x3_np))
+            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
+            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
     def test_generator_ranint_static(self):
         fluid.disable_dygraph()
@@ -316,8 +316,8 @@ class TestGeneratorSeed(unittest.TestCase):
 
             if not core.is_compiled_with_cuda():
                 print(">>>>>>> randint static >>>>>>>")
-                self.assertTrue(np.allclose(out1_res1, out2_res1))
-                self.assertTrue(np.allclose(out1_res2, out2_res2))
+                np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
+                np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
     def test_generator_randperm_dygraph(self):
@@ -340,8 +340,8 @@ class TestGeneratorSeed(unittest.TestCase):
 
         if not core.is_compiled_with_cuda():
             print(">>>>>>> randperm dygraph >>>>>>>")
-            self.assertTrue(np.allclose(x1_np, x2_np))
-            self.assertTrue(np.allclose(x_np, x3_np))
+            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
+            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
     def test_generator_randperm_static(self):
 
@@ -375,8 +375,8 @@ class TestGeneratorSeed(unittest.TestCase):
 
             if not core.is_compiled_with_cuda():
                 print(">>>>>>> randperm static >>>>>>>")
-                self.assertTrue(np.allclose(out1_res1, out2_res1))
-                self.assertTrue(np.allclose(out1_res2, out2_res2))
+                np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
+                np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
     def test_generator_sampling_id_dygraph(self):
@@ -420,8 +420,8 @@ class TestGeneratorSeed(unittest.TestCase):
 
         if not core.is_compiled_with_cuda():
             print(">>>>>>> sampling id dygraph >>>>>>>")
-            self.assertTrue(np.allclose(x1_np, x2_np))
-            self.assertTrue(np.allclose(x_np, x3_np))
+            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
+            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
     def test_generator_randperm_static_1(self):
 
@@ -456,8 +456,8 @@ class TestGeneratorSeed(unittest.TestCase):
 
             if not core.is_compiled_with_cuda():
                 print(">>>>>>> sampling id static >>>>>>>")
-                self.assertTrue(np.allclose(out1_res1, out2_res1))
-                self.assertTrue(np.allclose(out1_res2, out2_res2))
+                np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
+                np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
     def test_gen_TruncatedNormal_initializer(self):
@@ -503,8 +503,8 @@ class TestGeneratorSeed(unittest.TestCase):
 
         if not core.is_compiled_with_cuda():
             print(">>>>>>> sampling id static >>>>>>>")
-            self.assertTrue(np.allclose(out1_res1, out2_res1))
-            self.assertTrue(np.allclose(out1_res2, out2_res2))
+            np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
+            np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
             self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
 

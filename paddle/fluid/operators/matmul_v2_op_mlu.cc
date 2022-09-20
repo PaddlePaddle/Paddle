@@ -69,6 +69,37 @@ static void MatMul2D(const framework::ExecutionContext& ctx,
 }
 
 template <typename T>
+static void MatMul2DwithReduceBatch(const framework::ExecutionContext& ctx,
+                                    const Tensor& X,
+                                    const Tensor& Y,
+                                    Tensor* Out,
+                                    const bool trans_x,
+                                    const bool trans_y) {
+  if (!Out->initialized()) {
+    Out->mutable_data<T>(ctx.GetPlace());
+  }
+  // reshape to 2D matmul
+  std::vector<int64_t> x_dims = phi::vectorize(X.dims());
+  std::vector<int64_t> y_dims = phi::vectorize(Y.dims());
+  std::vector<int> realx_dims(
+      {static_cast<int>(x_dims[0] * x_dims[1]), static_cast<int>(x_dims[2])});
+  std::vector<int> realy_dims(
+      {static_cast<int>(y_dims[0] * y_dims[1]), static_cast<int>(y_dims[2])});
+  MLUCnnlTensorDesc x_desc(2, realx_dims.data(), ToCnnlDataType<T>());
+  MLUCnnlTensorDesc y_desc(2, realy_dims.data(), ToCnnlDataType<T>());
+  MLUCnnlTensorDesc out_desc(*Out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
+  MLUCnnl::Matmul(ctx,
+                  trans_x,
+                  trans_y,
+                  x_desc.get(),
+                  GetBasePtr(&X),
+                  y_desc.get(),
+                  GetBasePtr(&Y),
+                  out_desc.get(),
+                  GetBasePtr(Out));
+}
+
+template <typename T>
 static void MatMulND(const framework::ExecutionContext& ctx,
                      const Tensor& X,
                      const Tensor& Y,
@@ -333,22 +364,32 @@ class MatMulGradV2MLUKernel : public framework::OpKernel<T> {
     }
 
     if (dY) {
-      Tensor dy_temp(Y->type());
-      if (y_dims != y_bcast_dims) {
-        dy_temp.Resize(phi::make_ddim(y_bcast_dims));
+      // Case 3: [B, M, K] x [K, N] =  [B, M, N]  better performance
+      // otherwise, tensor dy_temp in else branch might encounter
+      // numel overflow due to cnnlTensorDescriptor limitation
+      if (x_dims.size() == 3 && phi::vectorize(Y->dims()).size() == 2) {
+        if (trans_y) {
+          MatMul2DwithReduceBatch<T>(ctx, dout_temp, x_temp, dY, true, trans_x);
+        } else {
+          MatMul2DwithReduceBatch<T>(
+              ctx, x_temp, dout_temp, dY, !trans_x, false);
+        }
       } else {
-        dY->mutable_data<T>(ctx.GetPlace());
-        dy_temp.ShareDataWith(*dY);
-      }
-
-      if (trans_y) {
-        MatMulND<T>(ctx, dout_temp, x_temp, &dy_temp, true, trans_x);
-      } else {
-        MatMulND<T>(ctx, x_temp, dout_temp, &dy_temp, !trans_x, false);
-      }
-
-      if (y_dims != y_bcast_dims) {
-        ReduceDims<T>(ctx, y_dims, y_bcast_dims, dy_temp, dY);
+        Tensor dy_temp(Y->type());
+        if (y_dims != y_bcast_dims) {
+          dy_temp.Resize(phi::make_ddim(y_bcast_dims));
+        } else {
+          dY->mutable_data<T>(ctx.GetPlace());
+          dy_temp.ShareDataWith(*dY);
+        }
+        if (trans_y) {
+          MatMulND<T>(ctx, dout_temp, x_temp, &dy_temp, true, trans_x);
+        } else {
+          MatMulND<T>(ctx, x_temp, dout_temp, &dy_temp, !trans_x, false);
+        }
+        if (y_dims != y_bcast_dims) {
+          ReduceDims<T>(ctx, y_dims, y_bcast_dims, dy_temp, dY);
+        }
       }
     }
   }

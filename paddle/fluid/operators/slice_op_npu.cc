@@ -130,9 +130,22 @@ class SliceNPUKernel : public framework::OpKernel<T> {
 
     UpdateAttr(in_dims, axes, starts, ends, &offsets, &size);
 
-    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
-    const auto& runner = NpuOpRunner(
-        "SliceD", {*input}, {*out}, {{"offsets", offsets}, {"size", size}});
+    auto& dev_ctx = ctx.template device_context<NPUDeviceContext>();
+    auto stream = dev_ctx.stream();
+#if CANN_VERSION_CODE < 512000
+    const auto& runner =
+        NpuOpRunner("SliceD", {*input}, {*out}, {{"offsets", offsets}, {
+                                                   "size",
+                                                   size
+                                                 }});
+#else
+    NpuOpRunner runner;
+    runner.SetType("Slice")
+        .AddInput(*input)
+        .AddInput(std::move(offsets))
+        .AddInput(std::move(size))
+        .AddOutput(*out);
+#endif
     runner.Run(stream);
   }
 };

@@ -21,7 +21,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.jit import TracedLayer
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 class TestTracedLayer(fluid.dygraph.Layer):
@@ -30,7 +30,7 @@ class TestTracedLayer(fluid.dygraph.Layer):
         super(TestTracedLayer, self).__init__(name_scope)
 
     def forward(self, input):
-        return _C_ops.relu(input)
+        return _legacy_C_ops.relu(input)
 
 
 class TestVariable(unittest.TestCase):
@@ -49,9 +49,9 @@ class TestVariable(unittest.TestCase):
             x.stop_gradient = False
 
             res1 = layers.elementwise_add(x, y)
-            res2 = _C_ops.elementwise_add(x, y)
+            res2 = _legacy_C_ops.elementwise_add(x, y)
 
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_elementwise_mul(self):
         with fluid.dygraph.guard():
@@ -61,9 +61,9 @@ class TestVariable(unittest.TestCase):
             y = fluid.dygraph.to_variable(b)
 
             res1 = layers.elementwise_mul(x, y)
-            res2 = _C_ops.elementwise_mul(x, y)
+            res2 = _legacy_C_ops.elementwise_mul(x, y)
 
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_relu(self):
         with fluid.dygraph.guard():
@@ -71,9 +71,9 @@ class TestVariable(unittest.TestCase):
             x = fluid.dygraph.to_variable(a)
 
             res1 = layers.relu(x)
-            res2 = _C_ops.relu(x)
+            res2 = _legacy_C_ops.relu(x)
 
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_trace_backward(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -85,14 +85,14 @@ class TestVariable(unittest.TestCase):
             x.stop_gradient = False
             y.stop_gradient = False
 
-            loss = _C_ops.elementwise_mul(x, y)
+            loss = _legacy_C_ops.elementwise_mul(x, y)
 
             loss.backward()
             x_grad = x.gradient()
             y_grad = y.gradient()
 
-            self.assertTrue(np.array_equal(x_grad, loss.gradient() * b))
-            self.assertTrue(np.array_equal(y_grad, loss.gradient() * a))
+            np.testing.assert_array_equal(x_grad, loss.gradient() * b)
+            np.testing.assert_array_equal(y_grad, loss.gradient() * a)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_traced_layer(self):
@@ -106,8 +106,7 @@ class TestVariable(unittest.TestCase):
                 layer, inputs=x)  # dygraph out
             res_static_graph = static_layer([x])[0]
 
-            self.assertTrue(
-                np.array_equal(res_dygraph.numpy(), res_static_graph))
+            np.testing.assert_array_equal(res_dygraph.numpy(), res_static_graph)
 
 
 if __name__ == '__main__':

@@ -82,7 +82,7 @@ take any values from (-inf, inf), but the labels should be either -1 or 1.
 Then, the hinge loss is computed as follows:
 
 $$
-L_(x, y) = max(1 - y.x, 0) 
+L_(x, y) = max(1 - y.x, 0)
 $$
 
 Note that the labels passed as input will have values as either 0 or 1.
@@ -155,9 +155,7 @@ REGISTER_OP_CPU_KERNEL(hinge_loss,
 REGISTER_OP_CPU_KERNEL(hinge_loss_grad,
                        ops::HingeLossGradKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(
-    hinge_loss,
-    ops::HingeLossKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    hinge_loss_grad,
-    ops::HingeLossGradKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(hinge_loss,
+                        ops::HingeLossKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(hinge_loss_grad,
+                        ops::HingeLossGradKernel<phi::GPUContext, float>);

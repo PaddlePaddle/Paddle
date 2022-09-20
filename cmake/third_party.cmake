@@ -27,6 +27,9 @@ set(THIRD_PARTY_CACHE_PATH
 set(THIRD_PARTY_BUILD_TYPE Release)
 set(third_party_deps)
 
+include(ProcessorCount)
+ProcessorCount(NPROC)
+
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
 # 1. URL:           specify download url of 3rd party
@@ -233,7 +236,7 @@ endif()
 if(WIN32
    OR APPLE
    OR NOT WITH_GPU
-   OR ON_INFER)
+   OR (ON_INFER AND NOT WITH_PYTHON))
   set(WITH_DGC OFF)
 endif()
 

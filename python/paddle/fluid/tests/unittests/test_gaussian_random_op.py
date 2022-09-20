@@ -66,8 +66,7 @@ class TestGaussianRandomOp(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
-        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
-                        "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -114,8 +113,7 @@ class TestGaussianRandomBF16Op(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
-        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.05),
-                        "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.05)
 
 
 class TestMeanStdAreInt(TestGaussianRandomOp):
@@ -363,7 +361,9 @@ class TestRandomValue(unittest.TestCase):
         def _check_random_value(dtype, expect, expect_mean, expect_std):
             x = paddle.randn([32, 3, 1024, 1024], dtype=dtype)
             actual = x.numpy()
-            self.assertTrue(np.allclose(actual[2, 1, 512, 1000:1010], expect))
+            np.testing.assert_allclose(actual[2, 1, 512, 1000:1010],
+                                       expect,
+                                       rtol=1e-05)
             self.assertTrue(np.mean(actual), expect_mean)
             self.assertTrue(np.std(actual), expect_std)
 
