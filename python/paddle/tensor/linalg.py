@@ -276,7 +276,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
             If `axis < 0`, the dimension to norm operation is rank(input) + axis.
             If axis is a list(int)/tuple(int) with two elements, the matrix norm is computed over the axis.
-            Defalut value is `None`.
+            Default value is `None`.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
@@ -2589,7 +2589,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             True.
 
         rcond(Tensor, optional): the tolerance value to determine
-            when is a singular value zero. Defalut:1e-15.
+            when is a singular value zero. Default:1e-15.
 
         hermitian(bool, optional): indicates whether x is Hermitian
             if complex or symmetric if real. Default: False.

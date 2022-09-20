@@ -321,7 +321,7 @@ void BindCudaStream(py::module *m_ptr) {
       Parameters:
         enable_timing(bool, optional): Whether the event will measure time. Default: False.
         blocking(bool, optional): Whether the wait() func will be blocking. Default: False;
-        interprocess(bool, optional): Whether the event can be shared between processes. Defalut: False.
+        interprocess(bool, optional): Whether the event can be shared between processes. Default: False.
 
       Examples:
         .. code-block:: python
