@@ -167,6 +167,12 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      bool sync_op,
+      bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
@@ -256,6 +262,17 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream);
 
+  template <typename PreFn, typename Fn, typename PostFn>
+  std::shared_ptr<ProcessGroupStream::Task> Collective(
+      std::vector<phi::DenseTensor>& inputs,   // NOLINT
+      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      PreFn pre,
+      Fn fn,
+      PostFn post,
+      CommType comm_type,
+      bool sync_op,
+      bool use_calc_stream);
+
   template <typename Fn>
   void Collective(const phi::DenseTensor*,
                   phi::DenseTensor*,
@@ -273,6 +290,17 @@ class ProcessGroupNCCL : public ProcessGroupStream {
   std::shared_ptr<ProcessGroup::Task> PointToPoint(
       std::vector<phi::DenseTensor>& tensors,  // NOLINT
       Fn fn,
+      int dst_rank,
+      CommType op_type,
+      bool sync_op,
+      bool use_calc_stream);
+
+  template <typename PreFn, typename Fn, typename PostFn>
+  std::shared_ptr<ProcessGroup::Task> PointToPoint(
+      std::vector<phi::DenseTensor>& tensors,  // NOLINT
+      PreFn pre,
+      Fn fn,
+      PostFn post,
       int dst_rank,
       CommType op_type,
       bool sync_op,

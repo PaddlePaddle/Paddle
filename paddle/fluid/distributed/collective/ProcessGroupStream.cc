@@ -23,6 +23,25 @@ ProcessGroupStream::ProcessGroupStream(int rank,
                                        int gid)
     : ProcessGroup(rank, size, place, gid) {}
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather(
+    std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
+    std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
+    bool sync_op) {
+  return AllGather(input_tensors,
+                   output_tensors,
+                   sync_op,
+                   /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather(
+    std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
+    std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "ProcessGroup%s does not support do all_gather", GetBackendName()));
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllReduce(
     std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
     std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
@@ -42,7 +61,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllReduce(
     bool sync_op,
     bool use_calc_stream) {
   PADDLE_THROW(platform::errors::InvalidArgument(
-      "ProcessGroup%s does not support do allreduce", GetBackendName()));
+      "ProcessGroup%s does not support do all_reduce", GetBackendName()));
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(

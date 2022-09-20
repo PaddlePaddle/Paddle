@@ -263,6 +263,27 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
+  return Collective(
+      inputs,
+      outputs,
+      [&](const std::vector<Place>& places, const std::string& places_key) {},
+      fn,
+      [&](const std::vector<Place>& places, const std::string& places_key) {},
+      comm_type,
+      sync_op,
+      use_calc_stream);
+}
+
+template <typename PreFn, typename Fn, typename PostFn>
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
+    std::vector<phi::DenseTensor>& inputs,
+    std::vector<phi::DenseTensor>& outputs,
+    PreFn pre,
+    Fn fn,
+    PostFn post,
+    CommType comm_type,
+    bool sync_op,
+    bool use_calc_stream) {
   const auto& places = GetPlaceList(inputs);
   const auto& key = GetKeyFromPlaces(places);
 
@@ -283,6 +304,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
       CreateTask(places, rank_, comm_type, inputs, sync_op, use_calc_stream);
 
   platform::CUDADeviceGuard cuda_guard;
+
+  pre(places, key);
 
   {
     platform::NCCLGroupGuard nccl_guard;
@@ -320,6 +343,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
       memory::RecordStream(inputs[i].Holder(), nccl_stream);
     }
   }
+
+  post(places, key);
 
   // Adding stream event dependency only when use comm stream
   if (!use_calc_stream) {
@@ -423,6 +448,27 @@ template <typename Fn>
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
     std::vector<phi::DenseTensor>& tensors,
     Fn fn,
+    int dst_rank,
+    CommType op_type,
+    bool sync_op,
+    bool use_calc_stream) {
+  return PointToPoint(
+      tensors,
+      [&](const std::vector<Place>& places, const std::string& places_key) {},
+      fn,
+      [&](const std::vector<Place>& places, const std::string& places_key) {},
+      dst_rank,
+      op_type,
+      sync_op,
+      use_calc_stream);
+}
+
+template <typename PreFn, typename Fn, typename PostFn>
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
+    std::vector<phi::DenseTensor>& tensors,
+    PreFn pre,
+    Fn fn,
+    PostFn post,
     int dst_rank,
     CommType op_type,
     bool sync_op,
@@ -934,6 +980,70 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
             stream);
       },
       CommType::ALLGATHER);
+}
+
+phi::DenseTensor EmptyLikeFlatten(
+    const std::vector<phi::DenseTensor>& tensors_list) {
+  platform::CUDADeviceGuard cuda_guard;
+  const auto& place = tensors_list[0].place();
+  cuda_guard.SetDevice(place);
+
+  auto dtype = tensors_list[0].dtype();
+  auto dims = phi::vectorize(tensors_list[0].dims());
+  dims[0] *= tensors_list.size();
+  phi::DenseTensorMeta meta(dtype, phi::make_ddim(dims));
+  auto allocator = std::unique_ptr<phi::Allocator>(
+      new experimental::DefaultAllocator(place));
+
+  return phi::DenseTensor(allocator.get(), meta);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    bool sync_op,
+    bool use_calc_stream) {
+  std::vector<phi::DenseTensor> flattened_out = {EmptyLikeFlatten(out_tensors)};
+
+  return Collective(
+      in_tensors,
+      flattened_out,
+      [&](const std::vector<Place>& places, const std::string& places_key) {},
+      [&](const phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          ncclComm_t comm,
+          const gpuStream_t& stream) {
+        return platform::dynload::ncclAllGather(
+            input.data(),
+            output.data(),
+            input.numel(),
+            platform::ToNCCLDataType(input.dtype()),
+            comm,
+            stream);
+      },
+      [&](const std::vector<Place>& places, const std::string& places_key) {
+        platform::CUDADeviceGuard cuda_guard;
+        for (size_t i = 0; i < flattened_out.size(); ++i) {
+          cuda_guard.SetDevice(places[i]);
+
+          if (!use_calc_stream) {
+            SyncDefaultStream(places,
+                              places_to_events_[places_key],
+                              places_to_ctx_[places_key]);
+          }
+
+          std::vector<phi::DenseTensor> res;
+          auto dims = flattened_out[i].dims();
+          for (size_t j = 0; j < size_t(dims[0]); ++j) {
+            framework::TensorCopy(flattened_out[i].Slice(j, j + 1),
+                                  out_tensors[j].place(),
+                                  &out_tensors[j]);
+          }
+        }
+      },
+      CommType::ALLGATHER,
+      sync_op,
+      use_calc_stream);
 }
 
 void* GetPointerByOffset(void* raw_pointer,
