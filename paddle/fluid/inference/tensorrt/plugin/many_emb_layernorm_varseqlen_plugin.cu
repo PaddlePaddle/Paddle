@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "many_emb_layernorm_varseqlen_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_varseqlen_plugin.h"
 #include <cuda.h>
 #include <cstring>
 #include <vector>
@@ -56,7 +56,7 @@ EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(
       mLd(beta.count),
       mType(type),
       mIdsEmb_(IdsEmb),
-      nbLookupTables_(int(IdsEmb.size())) {
+      nbLookupTables_(static_cast<int>(IdsEmb.size())) {
   // Assuming Weights.count is the number of elements and not bytes
   assert(beta.count == gamma.count);
   mBeta.convertAndCopy(beta, nvinfer1::DataType::kFLOAT);
