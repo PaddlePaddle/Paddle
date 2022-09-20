@@ -45,7 +45,7 @@ class AddOneDNNHandler
     std::vector<float> scales(num_inputs_, 1.0f);
 
     auto dst_md = dnnl::memory::desc(
-        dst_tz, oneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
+        dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
 
     this->AcquireForwardPrimitiveDescriptor(dst_md, scales, srcs_md);
   }
