@@ -287,8 +287,9 @@ class DistributedFusedLamb(Optimizer):
 
         step = self._get_or_create_step()
 
-        rank = paddle.distributed.get_rank()
-        nranks = paddle.distributed.get_world_size()
+        from paddle.distributed import get_rank, get_world_size
+        rank = get_rank()
+        nranks = get_world_size()
         if self._nproc_per_node is None:
             nproc_per_node = nranks
         else:
