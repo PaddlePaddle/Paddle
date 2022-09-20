@@ -42,7 +42,7 @@ class TransposeOneDNNHandler {
     }
 
     auto src_md = fmt != OneDNNMemoryFormat::nchw
-                      ? OneDNNMemDesc(dims_, oneDNNGetDataType<T>(), fmt)
+                      ? OneDNNMemDesc(dims_, OneDNNGetDataType<T>(), fmt)
                       : Axis2MemoryDesc(dims_, logical_axis_);
     return std::make_shared<dnnl::memory>(src_md, engine_, ptr);
   }
@@ -74,7 +74,7 @@ class TransposeOneDNNHandler {
       strides[axis[i]] = total_stride;
       total_stride *= nchw_tz[axis[i]];
     }
-    dnnl::memory::desc mem_d(nchw_tz, oneDNNGetDataType<T>(), strides);
+    dnnl::memory::desc mem_d(nchw_tz, OneDNNGetDataType<T>(), strides);
 
     return mem_d;
   }
