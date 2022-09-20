@@ -107,10 +107,11 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
                                             cur_w + dx,
                                             height,
                                             width);
-
-          //          慢在这 ，不支持float16
-          paddle::platform::CudaAtomicAdd(grad_im + cur_bottom_grad_pos,
-                                          static_cast<T>(weight * cur_top_grad));
+          paddle::platform::fastAtomicAdd<T>(
+              grad_im,
+              cur_bottom_grad_pos,
+              nthreads,
+              static_cast<T>(weight * cur_top_grad));
         }
       }
     }
@@ -365,4 +366,4 @@ PD_REGISTER_KERNEL(deformable_conv_grad,
                    phi::DeformableConvGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   paddle::platform::float16) {}
