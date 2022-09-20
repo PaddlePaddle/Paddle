@@ -994,9 +994,14 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     int* actual_size_array = (int*)(node_info_list + shard_len);
     uint64_t* sample_array =
         (uint64_t*)(actual_size_array + shard_len + shard_len % 2);
-    int grid_size_ = (shard_len - 1) / block_size_ + 1;
-    neighbor_sample_kernel2<<<
-        grid_size_, block_size_, 0, resource_->remote_stream(i, gpu_id)>>>(
+
+    constexpr int WARP_SIZE = 32;
+    constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
+    constexpr int TILE_SIZE = BLOCK_WARPS * 16;
+    const dim3 block(WARP_SIZE, BLOCK_WARPS);
+    const dim3 grid((shard_len + TILE_SIZE - 1) / TILE_SIZE);
+    neighbor_sample_kernel<WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+        <<<grid, block, 0, resource_->remote_stream(i, gpu_id)>>>(
             graph,
             node_info_list,
             actual_size_array,
