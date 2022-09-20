@@ -324,12 +324,13 @@ PD_REGISTER_KERNEL(csr_to_coo,
                    phi::sparse::CsrToCooKernel,
                    float,
                    double,
-                   paddle::float16,
+                   phi::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(coo_to_csr,
                    CPU,
@@ -342,7 +343,8 @@ PD_REGISTER_KERNEL(coo_to_csr,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(dense_to_csr,
                    CPU,
