@@ -16,11 +16,14 @@
 #include <limits>
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#ifndef PADDLE_WITH_XPU_KP
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#endif
 
 namespace phi {
 
+#ifndef PADDLE_WITH_XPU_KP
 template <typename T,
           int EigenDimSize = 5,
           int ReducedDimSize = 1,
@@ -66,6 +69,7 @@ void ReduceSumEigen(const KPDevice& dev_ctx,
       eigen_x_tensor.sum(eigen_reduce_dim);
   out->Resize(origin_out_dims);
 }
+#endif
 
 template <typename T, typename Context>
 void SumRawKernel(const Context& dev_ctx,

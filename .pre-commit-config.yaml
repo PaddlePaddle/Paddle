@@ -9,7 +9,6 @@ repos:
     rev: v1.1.14
     hooks:
     -   id: remove-crlf
-        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: remove-tabs
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
         args: [--whitespaces-count, '2']
@@ -30,7 +29,6 @@ repos:
     -   id: check-merge-conflict
     -   id: check-symlinks
     -   id: detect-private-key
-        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
     -   id: sort-simple-yaml
         files: (op|backward|op_[a-z_]+)\.yaml$

@@ -463,6 +463,18 @@
     func : celu
   backward : celu_grad
 
+- op : check_finite_and_unscale_
+  args : (Tensor[] x, Tensor scale, Tensor input_found_infinite)
+  output : Tensor[](out){x.size()}, Tensor(output_found_infinite)
+  infer_meta :
+    func : CheckFiniteAndUnscaleInferMeta
+    param : [x, scale]
+  kernel :
+    func : check_finite_and_unscale
+    param : [x, scale]
+    data_type : x
+  inplace : (x -> out), (input_found_infinite -> output_found_infinite)
+
 - op : class_center_sample
   args : (Tensor label, int num_classes, int num_samples, int ring_id, int rank, int nranks, bool fix_seed, int seed)
   output : Tensor(remapped_label), Tensor(sampled_local_class_center)
@@ -2762,6 +2774,17 @@
     param : [shape, mean, std, seed, dtype]
     backend : place
     data_type : dtype
+
+- op : update_loss_scaling_
+  args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update)
+  output : Tensor[](out){x.size()}, Tensor(loss_scaling), Tensor(out_good_steps), Tensor(out_bad_steps)
+  infer_meta :
+    func : UpdateLossScalingInferMeta
+    param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+  kernel :
+    func : update_loss_scaling
+    data_type : x
+  inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
 
 - op : unbind
   args : (Tensor input, int axis)
