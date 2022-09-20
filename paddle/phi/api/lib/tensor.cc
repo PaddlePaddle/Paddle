@@ -92,7 +92,15 @@ int64_t Tensor::numel() const { return impl_->numel(); }
 
 int64_t Tensor::size() const { return impl_->numel(); }
 
-const phi::DDim &Tensor::dims() const { return impl_->dims(); }
+const phi::DDim &Tensor::dims() const {
+  if (is_selected_rows()) {
+    return static_cast<phi::SelectedRows *>(impl_.get())
+        ->mutable_value()
+        ->dims();
+  } else {
+    return impl_->dims();
+  }
+}
 
 std::vector<int64_t> Tensor::shape() const {
   auto dims = impl_->dims();
