@@ -79,7 +79,7 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
     with multiple group convolutional layers.
     please get more information from the following paper:
     https://arxiv.org/pdf/1707.01083.pdf
-        )DOC");
+    )DOC");
   }
 };
 

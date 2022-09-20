@@ -50,16 +50,15 @@ class PixelUnshuffleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
     Pixel Unshuffle operator
     This operator rearranges elements in a tensor of shape :math:`(*, C, H, W)`
-        to a tensor of shape :math:`(*, C\times r^2, H / r, W / r)`.
+    to a tensor of shape :math:`(*, C\times r^2, H / r, W / r)`.
 
     This operation is the reversion of PixelShuffle operation.
 
     Please refer to the paper:
-     `Real-Time Single Image and Video Super-Resolution Using an Efficient
-     Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_
-        by Shi et. al (2016) for more details.
-
-        )DOC");
+    `Real-Time Single Image and Video Super-Resolution Using an Efficient
+    Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_
+    by Shi et. al (2016) for more details.
+    )DOC");
   }
 };
 
