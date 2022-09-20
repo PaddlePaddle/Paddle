@@ -17,6 +17,8 @@
 #ifndef PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
 #define PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
 
+#include <cublas_v2.h>
+#include <cuda_fp16.h>
 #include <cuda_runtime_api.h>
 #include <algorithm>
 #include <cassert>
@@ -26,9 +28,7 @@
 #include <vector>
 #include "NvInfer.h"
 #include "NvInferRuntimeCommon.h"
-#include "cublas_v2.h"
-#include "cuda_fp16.h"
-#include "plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/common/plugin.h"
 
 #define TRT_UNUSED (void)
 #define BERT_PRINT_DEBUG_MSG 0
@@ -93,7 +93,7 @@ inline int64_t getWeightsSize(const nvinfer1::Weights& w,
 }
 
 template <typename T>
-inline void serFromDev(char*& buffer, const T* data, size_t nbElem) {
+inline void serFromDev(char** buffer, const T* data, size_t nbElem) {
   const size_t len = sizeof(T) * nbElem;
   cudaMemcpy(
       buffer, static_cast<const void*>(data), len, cudaMemcpyDeviceToHost);
@@ -112,8 +112,8 @@ template <typename T>
 using cuda_shared_ptr = std::shared_ptr<T>;
 
 template <typename T>
-void make_cuda_shared(cuda_shared_ptr<T>& ptr, void* cudaMem) {
-  ptr.reset(static_cast<T*>(cudaMem), CudaDeleter<T>());
+void make_cuda_shared(cuda_shared_ptr<T>* ptr, void* cudaMem) {
+  ptr->reset(static_cast<T*>(cudaMem), CudaDeleter<T>());
 }
 
 struct WeightsWithOwnership : public nvinfer1::Weights {
@@ -166,7 +166,7 @@ struct WeightsWithOwnership : public nvinfer1::Weights {
     }
   }
 
-  void convertAndCopy(const char*& srcBuf,
+  void convertAndCopy(const char** srcBuf,
                       size_t count,
                       nvinfer1::DataType type) noexcept {
     this->type = type;
@@ -180,14 +180,14 @@ struct WeightsWithOwnership : public nvinfer1::Weights {
 };
 
 template <typename T>
-inline void copyToDevice(WeightsWithOwnership& hostWeights,
+inline void copyToDevice(WeightsWithOwnership* hostWeights,
                          size_t nbBytes,
-                         cuda_unique_ptr<T>& cudaWeights) {
-  if (hostWeights.values) {
+                         cuda_unique_ptr<T>* cudaWeights) {
+  if (hostWeights->values) {
     void* cudaMem{nullptr};
     cudaMalloc(&cudaMem, nbBytes);
-    cudaMemcpy(cudaMem, hostWeights.values, nbBytes, cudaMemcpyHostToDevice);
-    cudaWeights.reset(static_cast<T*>(cudaMem));
+    cudaMemcpy(cudaMem, hostWeights->values, nbBytes, cudaMemcpyHostToDevice);
+    cudaWeights->reset(static_cast<T*>(cudaMem));
   }
 }
 
