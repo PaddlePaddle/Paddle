@@ -186,7 +186,7 @@ class Conv1D(_ConvNd):
     Output are in NCL format or NLC format, where N is batch size, C is the number of
     the feature map, L is the length of the feature map.
     Filter's shape is [MCK] , where M is the number of output feature map,
-    C is the number of input feature map, K is the size of the kernel. 
+    C is the number of input feature map, K is the size of the kernel.
     If the groups is greater than 1, C will equal the number of input feature map divided by the groups.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
@@ -273,7 +273,7 @@ class Conv1D(_ConvNd):
         - weight: 3-D tensor with shape: (out_channels, in_channels, kernel_size)
         - bias: 1-D tensor with shape: (out_channels)
         - output: 3-D tensor with same shape as input x.
-    
+
     Raises:
         None
 
@@ -461,7 +461,7 @@ class Conv1DTranspose(_ConvNd):
           import paddle
           from paddle.nn import Conv1DTranspose
           import numpy as np
-          
+
           # shape: (1, 2, 4)
           x=np.array([[[4, 0, 9, 7],
                        [8, 0, 9, 2]]]).astype(np.float32)
@@ -473,7 +473,7 @@ class Conv1DTranspose(_ConvNd):
           conv.weight.set_value(y)
           y_t = conv(x_t)
           print(y_t)
-          
+
           # [[[60. 16. 99. 75.  4.]]]
     """
 
@@ -549,7 +549,7 @@ class Conv2D(_ConvNd):
     * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
-    
+
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
@@ -559,7 +559,7 @@ class Conv2D(_ConvNd):
             stride_H = stride_W = stride. The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
-            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
@@ -616,11 +616,11 @@ class Conv2D(_ConvNd):
 
           import paddle
           import paddle.nn as nn
-          
+
           paddle.disable_static()
-          
+
           x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
-          
+
           conv = nn.Conv2D(4, 6, (3, 3))
           y_var = conv(x_var)
           y_np = y_var.numpy()
@@ -707,7 +707,7 @@ class Conv2DTranspose(_ConvNd):
     * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
-    
+
     Parameters:
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of channels produced by the convolution.
@@ -719,7 +719,7 @@ class Conv2DTranspose(_ConvNd):
             stride_H = stride_W = stride. Default: 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
-            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` on both sides 
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` on both sides
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
@@ -781,7 +781,7 @@ class Conv2DTranspose(_ConvNd):
 
           import paddle
           import paddle.nn as nn
-          
+
           paddle.disable_static()
 
           x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
@@ -843,7 +843,7 @@ class Conv3D(_ConvNd):
     **Convlution3d Layer**
     The convolution3d layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
-    Output(Output) are multidimensional tensors with a shape of 
+    Output(Output) are multidimensional tensors with a shape of
     :math:`[N, C, D, H, W]` . Where N is batch size, C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
     and W is the width of the feature. Convlution3D is similar with Convlution2D
@@ -874,7 +874,7 @@ class Conv3D(_ConvNd):
             stride_D = stride_H = stride_W = stride. The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
-            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
@@ -937,11 +937,11 @@ class Conv3D(_ConvNd):
 
           import paddle
           import paddle.nn as nn
-          
+
           paddle.disable_static()
 
           x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
-          
+
           conv = nn.Conv3D(4, 6, (3, 3, 3))
           y_var = conv(x_var)
           y_np = y_var.numpy()
@@ -1012,7 +1012,7 @@ class Conv3DTranspose(_ConvNd):
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
     For each input :math:`X`, the equation is:
-    
+
     ..  math::
 
         Out = \sigma (W \ast X + b)
@@ -1029,14 +1029,14 @@ class Conv3DTranspose(_ConvNd):
     **Note**:
 
           The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
-          when stride > 1, conv3d maps multiple input shape to the same output shape, 
+          when stride > 1, conv3d maps multiple input shape to the same output shape,
           so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
           If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
-          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output 
-          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, 
-          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
-          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`, 
+          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output
+          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`,
+          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
+          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`,
           conv3d_transpose can compute the kernel size automatically.
 
     Parameters:
@@ -1045,13 +1045,13 @@ class Conv3DTranspose(_ConvNd):
         kernel_size(int|list|tuple): The kernel size. If kernel_size is a list/tuple,
             it must contain three integers, (kernel_size_D, kernel_size_H, kernel_size_W).
             Otherwise, the kernel will be a square.
-        stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution. 
-            If stride is a list/tuple, it must contain three integers, (stride_depth, stride_height, 
-            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
+        stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution.
+            If stride is a list/tuple, it must contain three integers, (stride_depth, stride_height,
+            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride.
             The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
-            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
@@ -1100,11 +1100,11 @@ class Conv3DTranspose(_ConvNd):
         ..  math::
 
            D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel\_size[0] - 1) + 1
-           
+
            H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1
-           
+
            W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (kernel\_size[2] - 1) + 1
-           
+
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
                     groups mismatch.
@@ -1114,11 +1114,11 @@ class Conv3DTranspose(_ConvNd):
 
           import paddle
           import paddle.nn as nn
-          
+
           paddle.disable_static()
 
           x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
-          
+
           conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
           y_var = conv(x_var)
           y_np = y_var.numpy()

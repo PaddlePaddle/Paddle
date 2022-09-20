@@ -23,32 +23,32 @@ class Dirichlet(exponential_family.ExponentialFamily):
     r"""
     Dirichlet distribution with parameter "concentration".
 
-    The Dirichlet distribution is defined over the `(k-1)-simplex` using a 
+    The Dirichlet distribution is defined over the `(k-1)-simplex` using a
     positive, lenght-k vector concentration(`k > 1`).
     The Dirichlet is identically the Beta distribution when `k = 2`.
 
-    For independent and identically distributed continuous random variable 
-    :math:`\boldsymbol X \in R_k` , and support 
-    :math:`\boldsymbol X \in (0,1), ||\boldsymbol X|| = 1` , 
+    For independent and identically distributed continuous random variable
+    :math:`\boldsymbol X \in R_k` , and support
+    :math:`\boldsymbol X \in (0,1), ||\boldsymbol X|| = 1` ,
     The probability density function (pdf) is
 
     .. math::
-    
-        f(\boldsymbol X; \boldsymbol \alpha) = \frac{1}{B(\boldsymbol \alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1} 
 
-    where :math:`\boldsymbol \alpha = {\alpha_1,...,\alpha_k}, k \ge 2` is 
+        f(\boldsymbol X; \boldsymbol \alpha) = \frac{1}{B(\boldsymbol \alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1}
+
+    where :math:`\boldsymbol \alpha = {\alpha_1,...,\alpha_k}, k \ge 2` is
     parameter, the normalizing constant is the multivariate beta function.
 
     .. math::
 
         B(\boldsymbol \alpha) = \frac{\prod_{i=1}^{k} \Gamma(\alpha_i)}{\Gamma(\alpha_0)}
 
-    :math:`\alpha_0=\sum_{i=1}^{k} \alpha_i` is the sum of parameters, 
+    :math:`\alpha_0=\sum_{i=1}^{k} \alpha_i` is the sum of parameters,
     :math:`\Gamma(\alpha)` is gamma function.
 
     Args:
-        concentration (Tensor): "Concentration" parameter of dirichlet 
-            distribution, also called :math:`\alpha`. When it's over one 
+        concentration (Tensor): "Concentration" parameter of dirichlet
+            distribution, also called :math:`\alpha`. When it's over one
             dimension, the last axis denotes the parameter of distribution,
             ``event_shape=concentration.shape[-1:]`` , axes other than last are
             condsider batch dimensions with ``batch_shape=concentration.shape[:-1]`` .

@@ -123,6 +123,10 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
+                              MetaTensor* out,
+                              MetaConfig config);
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -215,6 +219,11 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
                              std::vector<MetaTensor*> output,
                              MetaTensor* fused_output,
                              MetaConfig config = MetaConfig());
+
+void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
+                                  MetaTensor* output,
+                                  std::vector<MetaTensor*> xout,
+                                  MetaConfig config = MetaConfig());
 
 void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,

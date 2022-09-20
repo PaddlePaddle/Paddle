@@ -165,6 +165,7 @@ from .tensor.manipulation import shard_index  # noqa: F401
 from .tensor.manipulation import slice  # noqa: F401
 from .tensor.manipulation import crop  # noqa: F401
 from .tensor.manipulation import split  # noqa: F401
+from .tensor.manipulation import vsplit  # noqa: F401
 from .tensor.manipulation import squeeze  # noqa: F401
 from .tensor.manipulation import squeeze_  # noqa: F401
 from .tensor.manipulation import stack  # noqa: F401
@@ -457,6 +458,7 @@ __all__ = [  # noqa
     'searchsorted',
     'bucketize',
     'split',
+    'vsplit',
     'logical_and',
     'full_like',
     'less_than',

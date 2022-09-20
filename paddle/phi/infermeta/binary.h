@@ -358,6 +358,10 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            bool right,
                            MetaTensor* out);
 
+void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
+                              const MetaTensor& mask,
+                              MetaTensor* out);
+
 void SegmentPoolInferMeta(const MetaTensor& x,
                           const MetaTensor& segment_ids,
                           const std::string& pooltype,
