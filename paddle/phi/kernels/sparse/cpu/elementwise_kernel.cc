@@ -156,6 +156,21 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                         "shape = [%s], Y's shape = [%s].",
                         x.dims(),
                         y.dims()));
+
+  // temporary policy: for broadcast add
+  // TODO(zhangkaihuo): implement a correct function
+  const bool is_add = std::is_same<Functor, funcs::AddFunctor<T>>::value;
+  if (is_add && x.indices().numel() == y.indices().numel()) {
+    int compare_indices = memcmp(x.indices().data<IntT>(),
+                                 y.indices().data<IntT>(),
+                                 sizeof(IntT) * x.indices().numel());
+    if (compare_indices == 0) {
+      EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
+      phi::AddKernel<T, Context>(
+          dev_ctx, x.values(), y.values(), out->mutable_values());
+      return;
+    }
+  }
   int64_t element_size = 1;
   for (auto j = 1; j < x.values().dims().size(); ++j) {
     element_size *= x.values().dims()[j];
@@ -434,4 +449,15 @@ PD_REGISTER_KERNEL(divide_coo_coo,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(add_coo_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ElementWiseAddDenseKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

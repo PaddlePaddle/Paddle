@@ -173,27 +173,21 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                                         shape,
                                         stop_gradient=False)
 
-        bias_indices = [[0, 0], [0, 1]]
         bias_values = [1.0, 2.0]
-        bias_shape = [1, 2]
-        sp_b = sparse.sparse_coo_tensor(bias_indices,
-                                        bias_values,
-                                        bias_shape,
-                                        stop_gradient=False)
 
         values1 = paddle.to_tensor(values_data, stop_gradient=False)
         values2 = paddle.to_tensor(bias_values, stop_gradient=False)
+        values3 = paddle.to_tensor(bias_values, stop_gradient=False)
 
-        #c.values() = a.values() + b.values()
-        sp_c = sparse.add(sp_a, sp_b)
+        #c.values() = a.values() + b
+        sp_c = sparse.add(sp_a, values2)
         sp_c.backward()
-        ref_c = values1 + values2
+        ref_c = values1 + values3
         ref_c.backward()
         np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
         np.testing.assert_allclose(sp_a.grad.values().numpy(),
                                    values1.grad.numpy())
-        np.testing.assert_allclose(sp_b.grad.values().numpy(),
-                                   values2.grad.numpy())
+        np.testing.assert_allclose(values2.grad.numpy(), values3.grad.numpy())
 
 
 if __name__ == "__main__":

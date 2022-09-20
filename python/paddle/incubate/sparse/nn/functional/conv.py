@@ -69,19 +69,7 @@ def _conv3d(x,
                                     groups, subm,
                                     key if key is not None else "")
     if bias is not None:
-        print(bias.shape)
-        bias_indices = arange(bias.shape[0])
-        sp_bias = sparse_coo_tensor(bias_indices,
-                                    bias,
-                                    stop_gradient=bias.stop_gradient)
-        return sparse.add(pre_bias, sp_bias)
-
-        #values = pre_bias.values()
-        #add_bias = elementwise_add(values, bias, axis=1)
-        #return sparse_coo_tensor(pre_bias.indices(),
-        #                         add_bias,
-        #                         shape=pre_bias.shape,
-        #                         stop_gradient=pre_bias.stop_gradient)
+        return add(pre_bias, bias)
     else:
         return pre_bias
 

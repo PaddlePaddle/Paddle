@@ -31,48 +31,32 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
                                 const SparseCooTensor& x,
                                 const SparseCooTensor& y,
                                 SparseCooTensor* out) {
-  const auto& x_dims = x.dims();
-  const auto& y_dims = y.dims();
-
-  if (x_dims == y_dims) {  // same shpae
-    const auto& x_indices = x.indices();
-    const auto& y_indices = y.indices();
-    PADDLE_ENFORCE_EQ(
-        x_indices.numel(),
-        y_indices.numel(),
-        phi::errors::InvalidArgument(
-            "Currently, GPU ElementWiseAddCooKernel only supports the case "
-            "where x and y have the same indices"));
-    const IntT* x_indices_ptr = x_indices.data<IntT>();
-    const IntT* y_indices_ptr = y_indices.data<IntT>();
+  const auto& x_indices = x.indices();
+  const auto& y_indices = y.indices();
+  PADDLE_ENFORCE_EQ(
+      x_indices.numel(),
+      y_indices.numel(),
+      phi::errors::PreconditionNotMet(
+          "The numel of x.indices() and y.indices() should be equal"));
+  const IntT* x_indices_ptr = x_indices.data<IntT>();
+  const IntT* y_indices_ptr = y_indices.data<IntT>();
 #ifdef PADDLE_WITH_HIP
-    bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
+  bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
 #else
-    bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
+  bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
-                                 x_indices_ptr,
-                                 x_indices_ptr + x_indices.numel(),
-                                 y_indices_ptr);
-    PADDLE_ENFORCE_EQ(
-        is_same,
-        true,
-        phi::errors::InvalidArgument(
-            "Currently, GPU ElementWiseAddCooKernel only supports the case "
-            "where x and y have the same indices"));
-    EmptyLikeCooKernel<T, GPUContext>(dev_ctx, x, out);
-    phi::AddKernel<T, GPUContext>(
-        dev_ctx, x.values(), y.values(), out->mutable_values());
-  } else if (y_dims[0] == 1 && x_dims[x_dims.size() - 1] ==
-                                   y_dims[y_dims.size() - 1]) {  // add bias
-    EmptyLikeCooKernel<T, GPUContext>(dev_ctx, x, out);
-    phi::AddKernel<T, GPUContext>(
-        dev_ctx, x.values(), y.values(), out->mutable_values());
-    out->SetIndicesDict(x.GetIndicesDict());
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Currently, GPU ElementWiseAddCooKernel only supports the case "
-        "where x and y have the same indices or "));
-  }
+                               x_indices_ptr,
+                               x_indices_ptr + x_indices.numel(),
+                               y_indices_ptr);
+  PADDLE_ENFORCE_EQ(
+      is_same,
+      true,
+      phi::errors::PreconditionNotMet(
+          "Currently, ElementWiseAddCooKernel only supports the case "
+          "where x and y have the same indices"));
+  EmptyLikeCooKernel<T, GPUContext>(dev_ctx, x, out);
+  phi::AddKernel<T, GPUContext>(
+      dev_ctx, x.values(), y.values(), out->mutable_values());
 }
 
 template <typename T, typename Context>
@@ -80,10 +64,10 @@ void ElementWiseAddCooKernel(const Context& dev_ctx,
                              const SparseCooTensor& x,
                              const SparseCooTensor& y,
                              SparseCooTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.indices().dtype(), "ElementWiseAddCooGPUKernel", ([&] {
-        ElementWiseAddCooGPUKernel<T, data_t>(dev_ctx, x, y, out);
-      }));
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "VerifyIndices", ([&] {
+                                 ElementWiseAddCooGPUKernel<T, data_t>(
+                                     dev_ctx, x, y, out);
+                               }));
 }
 
 }  // namespace sparse
@@ -101,4 +85,16 @@ PD_REGISTER_KERNEL(add_coo_coo,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(add_coo_dense,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ElementWiseAddDenseKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
