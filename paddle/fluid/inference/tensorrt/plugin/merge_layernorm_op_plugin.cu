@@ -188,7 +188,6 @@ template void invokeMergeLayernorm<half>(half *output,
                                          int n,
                                          cudaStream_t stream);
 
-
 template <typename T>
 static void convertAndCopy(const std::vector<float> &host, T *dev) {
   T *host_ptr = new T[host.size()];
@@ -293,49 +292,46 @@ nvinfer1::DataType MergeLayernormPluginDynamic::getOutputDataType(
 }
 
 nvinfer1::DimsExprs MergeLayernormPluginDynamic::getOutputDimensions(
-        int output_index,
-        const nvinfer1::DimsExprs *inputs,
-        int nb_inputs,
-        nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
-//TODO
-    PADDLE_ENFORCE_EQ(
-        output_index,
-        0,
-        platform::errors::InvalidArgument(
-            "There is only one output of the MergeLayernorm, "
-            "so the index should be zero,"
-            "but it's (%d)",
-            output_index));
-    PADDLE_ENFORCE_EQ(
+    int output_index,
+    const nvinfer1::DimsExprs *inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
+  // TODO
+  PADDLE_ENFORCE_EQ(output_index,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "There is only one output of the MergeLayernorm, "
+                        "so the index should be zero,"
+                        "but it's (%d)",
+                        output_index));
+  PADDLE_ENFORCE_EQ(
       nb_inputs,
       1,
       platform::errors::InvalidArgument(
           "The Input of the MergeLayernorm should be 1, but we found "
           "it has (%d) inputs",
           nb_inputs));
-    nvinfer1::DimsExprs ret;
-    ret.nbDims = 3;
-    ret.d[0] = inputs[0].d[0];
-    ret.d[1] = expr_builder.operation(
-        nvinfer1::DimensionOperation::kFLOOR_DIV,
-        *inputs[0].d[1],
-        *expr_builder.constant(4));
-    ret.d[2] = expr_builder.operation(
-        nvinfer1::DimensionOperation::kPROD,
-        *inputs[0].d[2],
-        *expr_builder.constant(4));
-    return ret;
+  nvinfer1::DimsExprs ret;
+  ret.nbDims = 3;
+  ret.d[0] = inputs[0].d[0];
+  ret.d[1] = expr_builder.operation(nvinfer1::DimensionOperation::kFLOOR_DIV,
+                                    *inputs[0].d[1],
+                                    *expr_builder.constant(4));
+  ret.d[2] = expr_builder.operation(nvinfer1::DimensionOperation::kPROD,
+                                    *inputs[0].d[2],
+                                    *expr_builder.constant(4));
+  return ret;
 }
 
-template <typename T>
-__global__ void print_float(const T* src, int start, int end, int lineLen){
-    for (int i=start;i<end;i++){
-        printf("%f, ",static_cast<float>(src[i]));
-        if((i-start)%lineLen==lineLen-1){
-            printf("\r\n");
-        }
-    }
-}
+// template <typename T>
+// __global__ void print_float(const T* src, int start, int end, int lineLen){
+//     for (int i=start;i<end;i++){
+//         printf("%f, ",static_cast<float>(src[i]));
+//         if((i-start)%lineLen==lineLen-1){
+//             printf("\r\n");
+//         }
+//     }
+// }
 
 int MergeLayernormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
@@ -355,47 +351,49 @@ int MergeLayernormPluginDynamic::enqueue(
       platform::errors::InvalidArgument(
           "The MergeLayernorm TRT Plugin get invalid input_resolution %d",
           input_resolution));
-  printf("@@@ eps_:%f, batch:%d, input_res:%d, dim:%d \r\n",eps_,batch,input_resolution,dim);
-  cudaDeviceSynchronize();
-  print_float<float><<<1,1>>>(reinterpret_cast<const float*>(scale_device_.get()),0,10,10);
-  cudaDeviceSynchronize();
-  printf("\r\n");
-  cudaDeviceSynchronize();
-  print_float<float><<<1,1>>>(reinterpret_cast<const float*>(bias_device_.get()),0,10,10);
-  cudaDeviceSynchronize();
-  printf("\r\n");
-  
+
+  // printf("@@@ eps_:%f, batch:%d, input_res:%d, dim:%d
+  // \r\n",eps_,batch,input_resolution,dim); cudaDeviceSynchronize();
+  // print_float<float><<<1,1>>>(reinterpret_cast<const
+  // float*>(scale_device_.get()),0,10,10); cudaDeviceSynchronize();
+  // printf("\r\n");
+  // cudaDeviceSynchronize();
+  // print_float<float><<<1,1>>>(reinterpret_cast<const
+  // float*>(bias_device_.get()),0,10,10); cudaDeviceSynchronize();
+  // printf("\r\n");
+
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(3) << "TRT Plugin DataType selected. MergeLayernorm-->fp32";
-    invokeMergeLayernorm<float>(reinterpret_cast<float *>(outputs[0]),
-                                reinterpret_cast<const float *>(inputs[0]),
-                                reinterpret_cast<const float *>(scale_device_.get()),
-                                reinterpret_cast<const float *>(bias_device_.get()),
-                                eps_,
-                                batch,
-                                input_resolution,
-                                input_resolution,
-                                dim,
-                                stream);
+    invokeMergeLayernorm<float>(
+        reinterpret_cast<float *>(outputs[0]),
+        reinterpret_cast<const float *>(inputs[0]),
+        reinterpret_cast<const float *>(scale_device_.get()),
+        reinterpret_cast<const float *>(bias_device_.get()),
+        eps_,
+        batch,
+        input_resolution,
+        input_resolution,
+        dim,
+        stream);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(3) << "TRT Plugin DataType selected. MergeLayernorm-->fp16";
-    invokeMergeLayernorm<half>(reinterpret_cast<half *>(outputs[0]),
-                               reinterpret_cast<const half *>(inputs[0]),
-                               reinterpret_cast<const half *>(scale_device_.get()),
-                               reinterpret_cast<const half *>(bias_device_.get()),
-                               eps_,
-                               batch,
-                               input_resolution,
-                               input_resolution,
-                               dim,
-                               stream);
+    invokeMergeLayernorm<half>(
+        reinterpret_cast<half *>(outputs[0]),
+        reinterpret_cast<const half *>(inputs[0]),
+        reinterpret_cast<const half *>(scale_device_.get()),
+        reinterpret_cast<const half *>(bias_device_.get()),
+        eps_,
+        batch,
+        input_resolution,
+        input_resolution,
+        dim,
+        stream);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The MergeLayernorm TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }
-
 
 }  // namespace plugin
 }  // namespace tensorrt
