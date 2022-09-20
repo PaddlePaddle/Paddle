@@ -32,7 +32,7 @@ class ParallelMode(object):
     - DATA_PARALLEL: Distribute input data to different devices.
     - TENSOR_PARALLEL: Shards tensors in the network to different devices.
     - PIPELINE_PARALLEL: Place different layers of the network on different devices.
-    - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states 
+    - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states
                          corresponding to the parameters to each device.
 
     Examples:
@@ -50,6 +50,7 @@ class ParallelMode(object):
 
 
 class CommunicateTopology(object):
+
     def __init__(self,
                  hybrid_group_names=["data", "pipe", "sharding", "model"],
                  dims=[1, 1, 1, 1]):
@@ -131,6 +132,7 @@ class CommunicateTopology(object):
 
 
 class HybridCommunicateGroup(object):
+
     def __init__(self, topology):
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
@@ -189,7 +191,7 @@ class HybridCommunicateGroup(object):
 
     def get_parallel_mode(self):
         # there are four modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel
-        # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and 
+        # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic
         # TODO modify 3 others parallel to support sharding
@@ -238,6 +240,14 @@ class HybridCommunicateGroup(object):
 
         return parallel_group, parallel_comm_group
 
+    def _get_p2p_next_rank(self):
+        assert hasattr(self, 'next_rank'), "next_rank has not been inited"
+        return self.next_rank
+
+    def _get_p2p_prev_rank(self):
+        assert hasattr(self, 'prev_rank'), "prev_rank has not been inited"
+        return self.prev_rank
+
     def _set_p2p_group(self):
         comm_lists = self._topo.get_comm_list('pipe')
 
@@ -252,6 +262,10 @@ class HybridCommunicateGroup(object):
                 curr_rank = rank
                 next_rank = comm_ranks[(idx + 1) % self._pp_degree]
                 prev_rank = comm_ranks[(idx - 1) % self._pp_degree]
+
+                if self.global_rank == curr_rank:
+                    self.next_rank = next_rank
+                    self.prev_rank = prev_rank
 
                 next_group = paddle.distributed.new_group(
                     ranks=[curr_rank, next_rank])
@@ -349,8 +363,9 @@ class HybridCommunicateGroup(object):
         return self._check_comm_group
 
     def get_rank_from_stage(self, stage_id, **kwargs):
-        return self._topo.get_rank_from_stage(
-            self.global_rank, pipe=stage_id, **kwargs)
+        return self._topo.get_rank_from_stage(self.global_rank,
+                                              pipe=stage_id,
+                                              **kwargs)
 
 
 class _CommunicateGroup(object):

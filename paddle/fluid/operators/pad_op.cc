@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/complex.h"
@@ -53,11 +54,12 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("pad_value",
                    "(float, default 0.0) "
                    "The value to fill the padded areas.")
-        .SetDefault(0.0f);
+        .SetDefault(0.0f)
+        .SupportTensor();
     AddComment(R"DOC(
 Pad Operator.
 
-Pad input into output, as specified by paddings and pad_value. 
+Pad input into output, as specified by paddings and pad_value.
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
 Given:
@@ -131,13 +133,17 @@ class PadOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(pad, PadInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pad,
+                            PadInferShapeFunctor,
                             PD_INFER_META(phi::PadInferMeta));
 
-REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
+REGISTER_OPERATOR(pad,
+                  ops::PadOp,
+                  ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpGradMaker<paddle::imperative::OpBase>,
                   PadInferShapeFunctor);
-REGISTER_OPERATOR(pad_grad, ops::PadOpGrad,
+REGISTER_OPERATOR(pad_grad,
+                  ops::PadOpGrad,
                   ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);

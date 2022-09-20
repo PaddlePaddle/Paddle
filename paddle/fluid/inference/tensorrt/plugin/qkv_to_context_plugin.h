@@ -43,8 +43,8 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit QkvToContextPluginDynamic(int hidden, int head_number, int head_size,
-                                     float scale, bool with_fp16)
+  explicit QkvToContextPluginDynamic(
+      int hidden, int head_number, int head_size, float scale, bool with_fp16)
       : hidden_(hidden),
         head_number_(head_number),
         head_size_(head_size),
@@ -60,8 +60,8 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new QkvToContextPluginDynamic(hidden_, head_number_, head_size_,
-                                         scale_, with_fp16_);
+    return new QkvToContextPluginDynamic(
+        hidden_, head_number_, head_size_, scale_, with_fp16_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -83,9 +83,11 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, with_fp16_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* in_out,
@@ -95,7 +97,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nb_inputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nb_outputs) TRT_NOEXCEPT override {}
+                       int nb_outputs) TRT_NOEXCEPT override;
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nb_inputs,
@@ -106,11 +108,14 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* input_types,
-      int nb_inputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
 
@@ -119,6 +124,9 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int head_number_;
   int head_size_;
   float scale_;
+  framework::Tensor tensor_;
+  half* mask_half_;
+  float* fake_qk_bias_;
 };
 
 class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {
@@ -140,9 +148,10 @@ class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {
     return nullptr;
   }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     auto plugin = new QkvToContextPluginDynamic(serial_data, serial_length);
     return plugin;
   }

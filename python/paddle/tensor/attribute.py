@@ -24,7 +24,7 @@ from .creation import _complex_to_real_dtype
 
 # TODO: define functions to get tensor attributes
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from ..static import Variable
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
@@ -115,11 +115,11 @@ def shape(input):
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
     if in_dygraph_mode():
-        out = _C_ops.final_state_shape(input)
+        out = _C_ops.shape(input)
         out.stop_gradient = True
         return out
     if _in_legacy_dygraph():
-        out = _C_ops.shape(input)
+        out = _legacy_C_ops.shape(input)
         out.stop_gradient = True
         return out
 
@@ -129,11 +129,10 @@ def shape(input):
     ], 'shape')
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(
-        type='shape',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        stop_gradient=True)
+    helper.append_op(type='shape',
+                     inputs={'Input': input},
+                     outputs={'Out': out},
+                     stop_gradient=True)
 
     return out
 
@@ -168,8 +167,8 @@ def is_complex(x):
         raise TypeError("Expected Tensor, but received type of x: {}".format(
             type(x)))
     dtype = x.dtype
-    is_complex_dtype = (dtype == core.VarDesc.VarType.COMPLEX64 or
-                        dtype == core.VarDesc.VarType.COMPLEX128)
+    is_complex_dtype = (dtype == core.VarDesc.VarType.COMPLEX64
+                        or dtype == core.VarDesc.VarType.COMPLEX128)
     return is_complex_dtype
 
 
@@ -199,10 +198,10 @@ def is_floating_point(x):
         raise TypeError("Expected Tensor, but received type of x: {}".format(
             type(x)))
     dtype = x.dtype
-    is_fp_dtype = (dtype == core.VarDesc.VarType.FP32 or
-                   dtype == core.VarDesc.VarType.FP64 or
-                   dtype == core.VarDesc.VarType.FP16 or
-                   dtype == core.VarDesc.VarType.BF16)
+    is_fp_dtype = (dtype == core.VarDesc.VarType.FP32
+                   or dtype == core.VarDesc.VarType.FP64
+                   or dtype == core.VarDesc.VarType.FP16
+                   or dtype == core.VarDesc.VarType.BF16)
     return is_fp_dtype
 
 
@@ -236,11 +235,11 @@ def is_integer(x):
         raise TypeError("Expected Tensor, but received type of x: {}".format(
             type(x)))
     dtype = x.dtype
-    is_int_dtype = (dtype == core.VarDesc.VarType.UINT8 or
-                    dtype == core.VarDesc.VarType.INT8 or
-                    dtype == core.VarDesc.VarType.INT16 or
-                    dtype == core.VarDesc.VarType.INT32 or
-                    dtype == core.VarDesc.VarType.INT64)
+    is_int_dtype = (dtype == core.VarDesc.VarType.UINT8
+                    or dtype == core.VarDesc.VarType.INT8
+                    or dtype == core.VarDesc.VarType.INT16
+                    or dtype == core.VarDesc.VarType.INT32
+                    or dtype == core.VarDesc.VarType.INT64)
     return is_int_dtype
 
 
@@ -252,7 +251,7 @@ def real(x, name=None):
         x (Tensor): the input Tensor, its data type could be complex64 or complex128.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-      
+
     Returns:
         Tensor: a Tensor containing real values of the input Tensor.
 
@@ -278,9 +277,9 @@ def real(x, name=None):
             #         [4., 5., 6.]])
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_real(x)
-    if _in_legacy_dygraph():
         return _C_ops.real(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'real')
     helper = LayerHelper('real', **locals())
@@ -324,9 +323,9 @@ def imag(x, name=None):
             #         [3., 2., 1.]])
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_imag(x)
-    if _in_legacy_dygraph():
         return _C_ops.imag(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.imag(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'imag')
     helper = LayerHelper('imag', **locals())

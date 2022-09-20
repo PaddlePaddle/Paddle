@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <memory>
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/place.h"
+#include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 #include "paddle/phi/kernels/activation_kernel.h"
@@ -42,15 +42,14 @@ TEST(DEV_API, sparse_relu) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   DenseTensor dense_x =
       phi::Empty(dev_ctx_cpu,
                  DenseTensorMeta(DataType::FLOAT32, {3, 4}, DataLayout::NCHW));
   memcpy(dense_x.data<float>(), data.data(), data.size() * sizeof(float));
-  auto sparse_coo = sparse::DenseToSparseCoo<float>(dev_ctx_cpu, dense_x, 2);
+  auto sparse_coo = sparse::DenseToCoo<float>(dev_ctx_cpu, dense_x, 2);
 
-  auto sparse_out = sparse::SparseRelu<float>(dev_ctx_cpu, sparse_coo);
+  auto sparse_out = sparse::ReluCoo<float>(dev_ctx_cpu, sparse_coo);
   DenseTensor dense_out =
       phi::EmptyLike<float>(dev_ctx_cpu, sparse_out.non_zero_elements());
   ReluKernel<float>(dev_ctx_cpu, sparse_coo.non_zero_elements(), &dense_out);
@@ -70,7 +69,7 @@ TEST(DEV_API, sparse_relu) {
 
   SparseCooTensor sparse_out_grad(
       sparse_coo.non_zero_indices(), dense_out, {3, 4});
-  sparse::SparseCooReluGradKernel<float>(
+  sparse::ReluCooGradKernel<float>(
       dev_ctx_cpu, sparse_coo, sparse_out_grad, &sparse_grad_x);
 
   cmp = memcmp(dense_grad_x.data<float>(),

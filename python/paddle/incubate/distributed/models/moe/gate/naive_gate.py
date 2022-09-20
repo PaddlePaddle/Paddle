@@ -3,9 +3,9 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,6 +27,7 @@ import paddle.nn.functional as F
 
 
 class NaiveGate(BaseGate):
+
     def __init__(self, d_model, num_expert, world_size, topk=2):
         super().__init__(num_expert, world_size)
         self.gate = nn.Linear(d_model, self.tot_expert)
@@ -36,8 +37,11 @@ class NaiveGate(BaseGate):
 
     def forward(self, inp, return_all_scores=False):
         gate = self.gate(inp)
-        gate_top_k_val, gate_top_k_idx = paddle.topk(
-            gate, k=self.top_k, axis=-1, largest=True, sorted=False)
+        gate_top_k_val, gate_top_k_idx = paddle.topk(gate,
+                                                     k=self.top_k,
+                                                     axis=-1,
+                                                     largest=True,
+                                                     sorted=False)
 
         if return_all_scores:
             return gate_top_k_val, gate_top_k_idx, gate

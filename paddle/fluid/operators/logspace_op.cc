@@ -54,11 +54,11 @@ class LogspaceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype", "The output data type.");
     AddOutput("Out", "A sequence of numbers.");
     AddComment(R"DOC(
-        Return fixed number of logarithmical-evenly spaced values within a given 
-        interval. First entry is exponential of Start with base Base, and last 
-        entry is exponential of Stop with base Base. In the case when Num is 1, 
-        only exponential of Start with base Base is returned. If dtype is int32 
-        or int64, the decimal part of values will be truncated. 
+        Return fixed number of logarithmical-evenly spaced values within a given
+        interval. First entry is exponential of Start with base Base, and last
+        entry is exponential of Stop with base Base. In the case when Num is 1,
+        only exponential of Start with base Base is returned. If dtype is int32
+        or int64, the decimal part of values will be truncated.
         Like logspace function of numpy.
     )DOC");
   }
@@ -67,10 +67,13 @@ class LogspaceOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(logspace, LogspaceInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(logspace,
+                            LogspaceInferShapeFunctor,
                             PD_INFER_META(phi::LogspaceInferMeta));
 REGISTER_OPERATOR(
-    logspace, ops::LogspaceOp, ops::LogspaceOpMaker,
+    logspace,
+    ops::LogspaceOp,
+    ops::LogspaceOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     LogspaceInferShapeFunctor);

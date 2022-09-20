@@ -66,6 +66,7 @@ def tensordot_np(x, y, axes):
 
 
 class TestTensordotAPI(unittest.TestCase):
+
     def setUp(self):
         self.set_place()
         self.set_dtype()
@@ -90,50 +91,60 @@ class TestTensordotAPI(unittest.TestCase):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
 
     def set_test_axes(self):
-        self.all_axes = [
-            [[3, 2], [3]], [[2, 1, 0], [2, 1]], [[1, 2, 0], [1, 3, 2]], [3, 0],
-            [[], [0, 3, 1]], [[2, 1, 0, 3], [2, 0, 1, 3]],
-            [[3, 1, 2], [1, 3, 2, 0]], [[2, 1], [0, 2]], [[2, 0, 1, 3], [2]],
-            [[1, 2, 0, 3], [0, 2, 1]], [[2, 1, 3, 0], [1, 2, 3]],
-            [[2, 0, 1, 3], [3, 1, 0, 2]], [[0, 3], [0, 3, 2, 1]],
-            [[1, 3, 2, 0], [2, 1, 0, 3]], [[1, 3, 2, 0], [1, 3, 2, 0]],
-            [[1, 0, 2], [0, 1]], [[2, 3, 0], [3, 1]],
-            [[1, 3, 2, 0], [3, 0, 1, 2]], [[3, 2, 1], [2, 0, 1]], [[0], []],
-            [[2, 3, 0], [1, 2, 0]], [[3, 0, 2, 1], [2, 1, 0, 3]],
-            [[3, 1, 2], [2, 3, 1]], [[1, 0, 2, 3], []], [[1, 2], [1, 2, 3]],
-            [[2, 0, 1, 3], [2, 0, 1]], [[3, 1, 2], [1, 3, 2]],
-            [[3, 1, 2, 0], [1, 2, 3, 0]], [[0, 2, 3], [0, 1, 2]],
-            [[3, 2, 0], [2, 0, 3, 1]], [[2, 1, 0, 3], [3, 1, 2, 0]],
-            [[1, 2, 3, 0], [1, 3, 0, 2]], [[3, 0], [2, 1]],
-            [[0, 1, 3, 2], [0, 2, 1, 3]], [[1, 0], [2, 1, 3]],
-            [[1, 0, 3, 2], [2, 3, 0, 1]], [[1, 2], [3]],
-            [[1, 2, 3, 0], [3, 2, 1, 0]], [[0, 3, 2, 1], [2, 1, 3, 0]], [0],
-            [[0, 2, 3], [3, 2, 0, 1]], [[1, 2, 3, 0], [3, 2, 1, 0]],
-            [[3, 1], [3]], [[3, 2, 0, 1], [3, 2, 0]], [[2, 3, 0, 1], [0, 3, 2]],
-            [[1], [1, 3]], [[1, 2], [2, 1, 0]], [[3, 1, 2], [3, 1, 0]],
-            [[1, 3], [3, 1, 2]], [[2, 0, 1, 3], [3, 1, 0, 2]],
-            [[1, 3, 0], [1, 3]], [[2, 3, 1], [1, 0, 2]],
-            [[1, 2, 0, 3], [0, 2, 1, 3]], [[2], [0, 1, 3]], [[1], [1, 2]],
-            [[1, 0, 2, 3], [3, 0, 1, 2]], [[0, 1, 3, 2], [1, 3, 0, 2]],
-            [[3, 0, 2, 1], [0, 2, 3]], [[1, 2, 0], [1, 2, 3]],
-            [[1, 0, 3], [2, 3, 0]], [[2, 3, 0], [3, 1, 0]], [[1, 3], [1, 0]],
-            [[2, 1, 0, 3], [2, 0, 3, 1]], [[3, 2, 0], [2, 1, 0]],
-            [[0, 1, 3], [0, 3, 1]], [[3, 1, 0], [3, 2, 1]], [[3, 2], [3, 1]],
-            [[3], [2, 1, 0]], [[1, 2, 3, 0], []], [[1, 3, 2, 0], [3, 1, 2]],
-            [[1], [0, 2]], [[3, 2, 0], [3, 2, 0]], [[3], []],
-            [[1, 0, 3], [2, 1]], [[3, 1, 0, 2], [2, 3, 1, 0]],
-            [[0, 1], [0, 3, 2]], [[0, 2, 3], [0, 2, 1]], [[1, 3, 0], [3, 0, 2]],
-            [[3, 1, 2], [1, 2, 3]], [[3, 1, 2], [3, 1, 0]],
-            [[0, 3, 1, 2], [3, 2, 1, 0]], [[0, 3], [3, 2, 1]],
-            [[2, 3], [1, 3, 0]], [[0, 3, 2], [2, 0, 3, 1]], [[2, 3], [1, 3]],
-            [[3, 1, 2, 0], [2, 3, 1, 0]], [[1, 0, 3, 2], [3, 0, 1, 2]],
-            [[3, 2, 1, 0], [0, 1, 3, 2]], [[3, 1, 2], [3]],
-            [[0, 1, 3, 2], [2, 3, 0, 1]], [[1, 2, 3, 0], [1, 3, 0, 2]],
-            [3, 1, 2], [[3, 1, 2], [0, 3, 2]], [[2, 3, 0], [1, 2, 0]],
-            [[2, 0, 3], [2, 0]], [[3, 1, 0, 2], [3, 1, 0, 2]],
-            [[0, 1, 2], [2, 0, 1]], [[1, 0, 3], [2, 3, 0]],
-            [[2, 0, 1], [0, 1, 3]], [[2, 1], [0, 1, 3]]
-        ]
+        self.all_axes = [[[3, 2], [3]], [[2, 1, 0], [2, 1]],
+                         [[1, 2, 0], [1, 3, 2]], [3, 0], [[], [0, 3, 1]],
+                         [[2, 1, 0, 3], [2, 0, 1, 3]], [[3, 1, 2], [1, 3, 2,
+                                                                    0]],
+                         [[2, 1], [0, 2]], [[2, 0, 1, 3], [2]],
+                         [[1, 2, 0, 3], [0, 2, 1]], [[2, 1, 3, 0], [1, 2, 3]],
+                         [[2, 0, 1, 3], [3, 1, 0, 2]], [[0, 3], [0, 3, 2, 1]],
+                         [[1, 3, 2, 0], [2, 1, 0, 3]],
+                         [[1, 3, 2, 0], [1, 3, 2, 0]], [[1, 0, 2], [0, 1]],
+                         [[2, 3, 0], [3, 1]], [[1, 3, 2, 0], [3, 0, 1, 2]],
+                         [[3, 2, 1], [2, 0, 1]], [[0], []],
+                         [[2, 3, 0], [1, 2, 0]], [[3, 0, 2, 1], [2, 1, 0, 3]],
+                         [[3, 1, 2], [2, 3, 1]], [[1, 0, 2, 3], []],
+                         [[1, 2], [1, 2, 3]], [[2, 0, 1, 3], [2, 0, 1]],
+                         [[3, 1, 2], [1, 3, 2]], [[3, 1, 2, 0], [1, 2, 3, 0]],
+                         [[0, 2, 3], [0, 1, 2]], [[3, 2, 0], [2, 0, 3, 1]],
+                         [[2, 1, 0, 3], [3, 1, 2, 0]],
+                         [[1, 2, 3, 0], [1, 3, 0, 2]], [[3, 0], [2, 1]],
+                         [[0, 1, 3, 2], [0, 2, 1, 3]], [[1, 0], [2, 1, 3]],
+                         [[1, 0, 3, 2], [2, 3, 0, 1]], [[1, 2], [3]],
+                         [[1, 2, 3, 0], [3, 2, 1, 0]],
+                         [[0, 3, 2, 1], [2, 1, 3, 0]], [0],
+                         [[0, 2, 3], [3, 2, 0, 1]], [[1, 2, 3, 0], [3, 2, 1,
+                                                                    0]],
+                         [[3, 1], [3]], [[3, 2, 0, 1], [3, 2, 0]],
+                         [[2, 3, 0, 1], [0, 3, 2]], [[1], [1, 3]],
+                         [[1, 2], [2, 1, 0]], [[3, 1, 2], [3, 1, 0]],
+                         [[1, 3], [3, 1, 2]], [[2, 0, 1, 3], [3, 1, 0, 2]],
+                         [[1, 3, 0], [1, 3]], [[2, 3, 1], [1, 0, 2]],
+                         [[1, 2, 0, 3], [0, 2, 1, 3]], [[2], [0, 1, 3]],
+                         [[1], [1, 2]], [[1, 0, 2, 3], [3, 0, 1, 2]],
+                         [[0, 1, 3, 2], [1, 3, 0, 2]], [[3, 0, 2, 1], [0, 2,
+                                                                       3]],
+                         [[1, 2, 0], [1, 2, 3]], [[1, 0, 3], [2, 3, 0]],
+                         [[2, 3, 0], [3, 1, 0]], [[1, 3], [1, 0]],
+                         [[2, 1, 0, 3], [2, 0, 3, 1]], [[3, 2, 0], [2, 1, 0]],
+                         [[0, 1, 3], [0, 3, 1]], [[3, 1, 0], [3, 2, 1]],
+                         [[3, 2], [3, 1]], [[3], [2, 1, 0]], [[1, 2, 3, 0], []],
+                         [[1, 3, 2, 0], [3, 1, 2]], [[1], [0, 2]],
+                         [[3, 2, 0], [3, 2, 0]], [[3], []], [[1, 0, 3], [2, 1]],
+                         [[3, 1, 0, 2], [2, 3, 1, 0]], [[0, 1], [0, 3, 2]],
+                         [[0, 2, 3], [0, 2, 1]], [[1, 3, 0], [3, 0, 2]],
+                         [[3, 1, 2], [1, 2, 3]], [[3, 1, 2], [3, 1, 0]],
+                         [[0, 3, 1, 2], [3, 2, 1, 0]], [[0, 3], [3, 2, 1]],
+                         [[2, 3], [1, 3, 0]], [[0, 3, 2], [2, 0, 3, 1]],
+                         [[2, 3], [1, 3]], [[3, 1, 2, 0], [2, 3, 1, 0]],
+                         [[1, 0, 3, 2], [3, 0, 1, 2]],
+                         [[3, 2, 1, 0], [0, 1, 3, 2]], [[3, 1, 2], [3]],
+                         [[0, 1, 3, 2], [2, 3, 0, 1]],
+                         [[1, 2, 3, 0], [1, 3, 0, 2]], [3, 1, 2],
+                         [[3, 1, 2], [0, 3, 2]], [[2, 3, 0], [1, 2, 0]],
+                         [[2, 0, 3], [2, 0]], [[3, 1, 0, 2], [3, 1, 0, 2]],
+                         [[0, 1, 2], [2, 0, 1]], [[1, 0, 3], [2, 3, 0]],
+                         [[2, 0, 1], [0, 1, 3]], [[2, 1], [0, 1, 3]]]
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -151,63 +162,74 @@ class TestTensordotAPI(unittest.TestCase):
             for place in self.places:
                 with paddle.static.program_guard(paddle.static.Program(),
                                                  paddle.static.Program()):
-                    x = paddle.static.data(
-                        name='x', shape=self.x_shape, dtype=self.dtype)
-                    y = paddle.static.data(
-                        name='y', shape=self.y_shape, dtype=self.dtype)
+                    x = paddle.static.data(name='x',
+                                           shape=self.x_shape,
+                                           dtype=self.dtype)
+                    y = paddle.static.data(name='y',
+                                           shape=self.y_shape,
+                                           dtype=self.dtype)
                     z = paddle.tensordot(x, y, axes)
                     exe = paddle.static.Executor(place)
-                    paddle_res = exe.run(feed={'x': self.x,
-                                               'y': self.y},
+                    paddle_res = exe.run(feed={
+                        'x': self.x,
+                        'y': self.y
+                    },
                                          fetch_list=[z])
                     np_res = tensordot_np(self.x, self.y, axes)
                     np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
 
 
 class TestTensordotAPIFloat64(TestTensordotAPI):
+
     def set_dtype(self):
         self.dtype = np.float64
 
 
-class TestTensordotAPIBroadcastCase1(TestTensordotAPI):
+class TestTensordotAPIBroadcastCase1(TestTensordotAPIFloat64):
+
     def set_input_shape(self):
         self.x_shape = [1, 1, 1, 5]
         self.y_shape = [1, 5, 1, 1]
 
 
-class TestTensordotAPIBroadcastCase2(TestTensordotAPI):
+class TestTensordotAPIBroadcastCase2(TestTensordotAPIFloat64):
+
     def set_input_shape(self):
         self.x_shape = [1, 5, 5, 5]
         self.y_shape = [1, 1, 1, 5]
 
 
-class TestTensordotAPIBroadcastCase3(TestTensordotAPI):
+class TestTensordotAPIBroadcastCase3(TestTensordotAPIFloat64):
+
     def set_input_shape(self):
         self.x_shape = [5, 5, 5, 1]
         self.y_shape = [5, 5, 1, 5]
 
 
-class TestTensordotAPIBroadcastCase4(TestTensordotAPI):
+class TestTensordotAPIBroadcastCase4(TestTensordotAPIFloat64):
+
     def set_input_shape(self):
         self.x_shape = [5, 5, 5, 1]
         self.y_shape = [1, 1, 1, 1]
 
 
-class TestTensordotAPIBroadcastCase5(TestTensordotAPI):
+class TestTensordotAPIBroadcastCase5(TestTensordotAPIFloat64):
+
     def set_input_shape(self):
         self.x_shape = [1, 1, 5, 5]
         self.y_shape = [5, 5, 1, 5]
 
 
 class TestTensordotAPIAxesType(TestTensordotAPI):
+
     def set_input_shape(self):
         self.x_shape = [3, 4, 4]
         self.y_shape = [4, 4, 5]
 
     def set_test_axes(self):
         self.all_axes = [
-            0, 1, 2, (1, ), [1], ((1, ), ), ([1], ), ((2, 1), (0, )), (
-                (1, 2), (0, 1)), ([1, 2], [0, 1]), ([1, 2], [0, 1]),
+            0, 1, 2, (1, ), [1], ((1, ), ), ([1], ), ((2, 1), (0, )),
+            ((1, 2), (0, 1)), ([1, 2], [0, 1]), ([1, 2], [0, 1]),
             [[1, 2], [0, 1]]
         ]
 
@@ -217,7 +239,8 @@ class TestTensordotAPIAxesType(TestTensordotAPI):
         tensor_axes = [
             paddle.to_tensor([1]), (paddle.to_tensor([1])),
             (paddle.to_tensor([1, 2]), paddle.to_tensor([0, 1])),
-            [paddle.to_tensor([1, 2]), paddle.to_tensor([0, 1])],
+            [paddle.to_tensor([1, 2]),
+             paddle.to_tensor([0, 1])],
             paddle.to_tensor([[1, 2], [0, 1]])
         ]
 
@@ -241,6 +264,7 @@ class TestTensordotAPIAxesType(TestTensordotAPI):
 
 
 class TestTensordotAPIAxesTypeFloat64(TestTensordotAPIAxesType):
+
     def set_dtype(self):
         self.dtype = np.float64
 

@@ -36,68 +36,82 @@ class YoloBoxOp : public framework::OperatorWithKernel {
     auto iou_aware = ctx->Attrs().Get<bool>("iou_aware");
     auto iou_aware_factor = ctx->Attrs().Get<float>("iou_aware_factor");
 
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4, platform::errors::InvalidArgument(
-                                           "Input(X) should be a 4-D tensor."
-                                           "But received X dimension(%s)",
-                                           dim_x.size()));
+    PADDLE_ENFORCE_EQ(
+        dim_x.size(),
+        4,
+        platform::errors::InvalidArgument("Input(X) should be a 4-D tensor."
+                                          "But received X dimension(%s)",
+                                          dim_x.size()));
     if (iou_aware) {
       PADDLE_ENFORCE_EQ(
-          dim_x[1], anchor_num * (6 + class_num),
+          dim_x[1],
+          anchor_num * (6 + class_num),
           platform::errors::InvalidArgument(
               "Input(X) dim[1] should be equal to (anchor_mask_number * (6 "
               "+ class_num)) while iou_aware is true."
               "But received dim[1](%s) != (anchor_mask_number * "
               "(6+class_num)(%s).",
-              dim_x[1], anchor_num * (6 + class_num)));
+              dim_x[1],
+              anchor_num * (6 + class_num)));
       PADDLE_ENFORCE_GE(
-          iou_aware_factor, 0,
+          iou_aware_factor,
+          0,
           platform::errors::InvalidArgument(
               "Attr(iou_aware_factor) should greater than or equal to 0."
               "But received iou_aware_factor (%s)",
               iou_aware_factor));
       PADDLE_ENFORCE_LE(
-          iou_aware_factor, 1,
+          iou_aware_factor,
+          1,
           platform::errors::InvalidArgument(
               "Attr(iou_aware_factor) should less than or equal to 1."
               "But received iou_aware_factor (%s)",
               iou_aware_factor));
     } else {
       PADDLE_ENFORCE_EQ(
-          dim_x[1], anchor_num * (5 + class_num),
+          dim_x[1],
+          anchor_num * (5 + class_num),
           platform::errors::InvalidArgument(
               "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
               "+ class_num))."
               "But received dim[1](%s) != (anchor_mask_number * "
               "(5+class_num)(%s).",
-              dim_x[1], anchor_num * (5 + class_num)));
+              dim_x[1],
+              anchor_num * (5 + class_num)));
     }
-    PADDLE_ENFORCE_EQ(dim_imgsize.size(), 2,
+    PADDLE_ENFORCE_EQ(dim_imgsize.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Input(ImgSize) should be a 2-D tensor."
                           "But received Imgsize size(%s)",
                           dim_imgsize.size()));
     if ((dim_imgsize[0] > 0 && dim_x[0] > 0) || ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
-          dim_imgsize[0], dim_x[0],
+          dim_imgsize[0],
+          dim_x[0],
           platform::errors::InvalidArgument(
               "Input(ImgSize) dim[0] and Input(X) dim[0] should be same."));
     }
     PADDLE_ENFORCE_EQ(
-        dim_imgsize[1], 2,
+        dim_imgsize[1],
+        2,
         platform::errors::InvalidArgument("Input(ImgSize) dim[1] should be 2."
                                           "But received imgsize dim[1](%s).",
                                           dim_imgsize[1]));
-    PADDLE_ENFORCE_GT(anchors.size(), 0,
+    PADDLE_ENFORCE_GT(anchors.size(),
+                      0,
                       platform::errors::InvalidArgument(
                           "Attr(anchors) length should be greater than 0."
                           "But received anchors length(%s).",
                           anchors.size()));
-    PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
+    PADDLE_ENFORCE_EQ(anchors.size() % 2,
+                      0,
                       platform::errors::InvalidArgument(
                           "Attr(anchors) length should be even integer."
                           "But received anchors length (%s)",
                           anchors.size()));
-    PADDLE_ENFORCE_GT(class_num, 0,
+    PADDLE_ENFORCE_GT(class_num,
+                      0,
                       platform::errors::InvalidArgument(
                           "Attr(class_num) should be an integer greater than 0."
                           "But received class_num (%s)",
@@ -178,19 +192,19 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.5);
     AddComment(R"DOC(
          This operator generates YOLO detection boxes from output of YOLOv3 network.
-         
+
          The output of previous network is in shape [N, C, H, W], while H and W
-         should be the same, H and W specify the grid size, each grid point predict 
+         should be the same, H and W specify the grid size, each grid point predict
          given number boxes, this given number, which following will be represented as S,
          is specified by the number of anchors. In the second dimension(the channel
          dimension), C should be equal to S * (5 + class_num) if :attr:`iou_aware` is false,
          otherwise C should be equal to S * (6 + class_num). class_num is the object
-         category number of source dataset(such as 80 in coco dataset), so the 
-         second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
-         also includes confidence score of the box and class one-hot key of each anchor 
+         category number of source dataset(such as 80 in coco dataset), so the
+         second(channel) dimension, apart from 4 box location coordinates x, y, w, h,
+         also includes confidence score of the box and class one-hot key of each anchor
          box.
 
-         Assume the 4 location coordinates are :math:`t_x, t_y, t_w, t_h`, the box 
+         Assume the 4 location coordinates are :math:`t_x, t_y, t_w, t_h`, the box
          predictions should be as follows:
 
          $$
@@ -211,9 +225,9 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
 
          The logistic regression value of the 5th channel of each anchor prediction boxes
          represents the confidence score of each prediction box, and the logistic
-         regression value of the last :attr:`class_num` channels of each anchor prediction 
+         regression value of the last :attr:`class_num` channels of each anchor prediction
          boxes represents the classifcation scores. Boxes with confidence scores less than
-         :attr:`conf_thresh` should be ignored, and box final scores is the product of 
+         :attr:`conf_thresh` should be ignored, and box final scores is the product of
          confidence scores and classification scores.
 
          $$
@@ -237,19 +251,21 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(yolo_box, YoloBoxInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(yolo_box,
+                            YoloBoxInferShapeFunctor,
                             PD_INFER_META(phi::YoloBoxInferMeta));
 REGISTER_OPERATOR(
-    yolo_box, ops::YoloBoxOp, ops::YoloBoxOpMaker,
+    yolo_box,
+    ops::YoloBoxOp,
+    ops::YoloBoxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     YoloBoxInferShapeFunctor);
 
-REGISTER_OP_VERSION(yolo_box)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(yolo_box).AddCheckpoint(
+    R"ROC(
       Upgrade yolo box to add new attribute [iou_aware, iou_aware_factor].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("iou_aware", "Whether use iou aware", false)
-            .NewAttr("iou_aware_factor", "iou aware factor", 0.5f));
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("iou_aware", "Whether use iou aware", false)
+        .NewAttr("iou_aware_factor", "iou aware factor", 0.5f));

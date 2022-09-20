@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,17 +20,17 @@ class Independent(distribution.Distribution):
     Reinterprets some of the batch dimensions of a distribution as event dimensions.
 
     This is mainly useful for changing the shape of the result of
-    :meth:`log_prob`. 
+    :meth:`log_prob`.
 
     Args:
         base (Distribution): The base distribution.
-        reinterpreted_batch_rank (int): The number of batch dimensions to 
+        reinterpreted_batch_rank (int): The number of batch dimensions to
             reinterpret as event dimensions.
 
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
             from paddle.distribution import independent
 
@@ -51,7 +51,8 @@ class Independent(distribution.Distribution):
     def __init__(self, base, reinterpreted_batch_rank):
         if not isinstance(base, distribution.Distribution):
             raise TypeError(
-                f"Expected type of 'base' is Distribution, but got {type(base)}")
+                f"Expected type of 'base' is Distribution, but got {type(base)}"
+            )
         if not (0 < reinterpreted_batch_rank <= len(base.batch_shape)):
             raise ValueError(
                 f"Expected 0 < reinterpreted_batch_rank <= {len(base.batch_shape)}, but got {reinterpreted_batch_rank}"
@@ -60,11 +61,11 @@ class Independent(distribution.Distribution):
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
 
         shape = base.batch_shape + base.event_shape
-        super(Independent, self).__init__(
-            batch_shape=shape[:len(base.batch_shape) -
-                              reinterpreted_batch_rank],
-            event_shape=shape[len(base.batch_shape) -
-                              reinterpreted_batch_rank:])
+        super(Independent,
+              self).__init__(batch_shape=shape[:len(base.batch_shape) -
+                                               reinterpreted_batch_rank],
+                             event_shape=shape[len(base.batch_shape) -
+                                               reinterpreted_batch_rank:])
 
     @property
     def mean(self):
@@ -78,8 +79,8 @@ class Independent(distribution.Distribution):
         return self._base.sample(shape)
 
     def log_prob(self, value):
-        return self._sum_rightmost(
-            self._base.log_prob(value), self._reinterpreted_batch_rank)
+        return self._sum_rightmost(self._base.log_prob(value),
+                                   self._reinterpreted_batch_rank)
 
     def prob(self, value):
         return self.log_prob(value).exp()

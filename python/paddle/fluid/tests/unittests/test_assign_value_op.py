@@ -15,15 +15,19 @@
 from __future__ import print_function
 
 import unittest
-import numpy
+import numpy as np
 
 import op_test
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 
+paddle.enable_static()
+
 
 class TestAssignValueOp(op_test.OpTest):
+
     def setUp(self):
         self.op_type = "assign_value"
         self.inputs = {}
@@ -35,7 +39,7 @@ class TestAssignValueOp(op_test.OpTest):
         self.outputs = {"Out": self.value}
 
     def init_data(self):
-        self.value = numpy.random.random(size=(2, 5)).astype(numpy.float32)
+        self.value = np.random.random(size=(2, 5)).astype(np.float32)
         self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
 
     def test_forward(self):
@@ -43,31 +47,35 @@ class TestAssignValueOp(op_test.OpTest):
 
 
 class TestAssignValueOp2(TestAssignValueOp):
+
     def init_data(self):
-        self.value = numpy.random.random(size=(2, 5)).astype(numpy.int32)
+        self.value = np.random.random(size=(2, 5)).astype(np.int32)
         self.attrs["int32_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignValueOp3(TestAssignValueOp):
+
     def init_data(self):
-        self.value = numpy.random.random(size=(2, 5)).astype(numpy.int64)
+        self.value = np.random.random(size=(2, 5)).astype(np.int64)
         self.attrs["int64_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignValueOp4(TestAssignValueOp):
+
     def init_data(self):
-        self.value = numpy.random.choice(
-            a=[False, True], size=(2, 5)).astype(numpy.bool)
+        self.value = np.random.choice(a=[False, True],
+                                      size=(2, 5)).astype(np.bool)
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignApi(unittest.TestCase):
+
     def setUp(self):
         self.init_dtype()
-        self.value = (
-            -100 + 200 * numpy.random.random(size=(2, 5))).astype(self.dtype)
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.value = (-100 + 200 * np.random.random(size=(2, 5))).astype(
+            self.dtype)
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 
     def init_dtype(self):
         self.dtype = "float32"
@@ -80,29 +88,30 @@ class TestAssignApi(unittest.TestCase):
 
         exe = fluid.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
-        self.assertTrue(
-            numpy.array_equal(fetched_x, self.value),
-            "fetch_x=%s val=%s" % (fetched_x, self.value))
+        np.testing.assert_array_equal(fetched_x, self.value)
         self.assertEqual(fetched_x.dtype, self.value.dtype)
 
 
 class TestAssignApi2(TestAssignApi):
+
     def init_dtype(self):
         self.dtype = "int32"
 
 
 class TestAssignApi3(TestAssignApi):
+
     def init_dtype(self):
         self.dtype = "int64"
 
 
 class TestAssignApi4(TestAssignApi):
+
     def setUp(self):
         self.init_dtype()
-        self.value = numpy.random.choice(
-            a=[False, True], size=(2, 5)).astype(numpy.bool)
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.value = np.random.choice(a=[False, True],
+                                      size=(2, 5)).astype(np.bool)
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 
     def init_dtype(self):
         self.dtype = "bool"

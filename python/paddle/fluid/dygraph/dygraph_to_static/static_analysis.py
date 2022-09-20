@@ -181,8 +181,9 @@ class AstVarEnv(object):
         self.cur_scope = AstVarScope()
 
     def enter_scope(self, scope_name, scope_type):
-        self.cur_scope = AstVarScope(
-            scope_name, scope_type, parent_scope=self.cur_scope)
+        self.cur_scope = AstVarScope(scope_name,
+                                     scope_type,
+                                     parent_scope=self.cur_scope)
         return self.cur_scope
 
     def exit_scope(self):
@@ -351,8 +352,8 @@ class StaticAnalysisVisitor(object):
             if node.value:
                 node_value_type = self.node_to_wrapper_map[
                     node.value].node_var_type
-                if not (node_value_type &
-                        {NodeVarType.UNKNOWN, NodeVarType.STATEMENT}):
+                if not (node_value_type
+                        & {NodeVarType.UNKNOWN, NodeVarType.STATEMENT}):
                     ret_type = node_value_type
             if isinstance(node.target, gast.Name):
                 self.node_to_wrapper_map[node.target].node_var_type = ret_type
@@ -407,11 +408,11 @@ class StaticAnalysisVisitor(object):
     def _get_func_argument_type(self, parent_node_wrapper, node):
         """
         Returns type information by parsing annotation or default values.
-        
+
         For example:
             1. parse by default values.
                 foo(x, y=1, z='s') -> x: UNKNOWN, y: INT, z: STR
-            
+
             2. parse by Py3 type annotation.
                 foo(x: Tensor, y: int, z: str) -> x: Tensor, y: INT, z: STR
 

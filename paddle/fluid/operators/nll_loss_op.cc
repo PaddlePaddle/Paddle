@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/infermeta/backward.h"
@@ -81,10 +82,10 @@ The loss can be described as:
 
 $Out[i] = -X[Label[i]]*Weight[Label[i]]$
 
-It can also be used for higher dimension inputs, such as 2D images, by 
-providing an input of shape (batch_size, C, d1, d2, ..., dK), with 
-K >= 1, where K is the number of dimensions, and a Label of 
-appropriate shape. In the case of images, it computes NLL loss 
+It can also be used for higher dimension inputs, such as 2D images, by
+providing an input of shape (batch_size, C, d1, d2, ..., dK), with
+K >= 1, where K is the number of dimensions, and a Label of
+appropriate shape. In the case of images, it computes NLL loss
 per-pixel.
 
 )DOC");
@@ -129,14 +130,19 @@ class NLLLossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(nll_loss, NllLossRawInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(nll_loss,
+                            NllLossRawInferShapeFunctor,
                             PD_INFER_META(phi::NllLossRawInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(nll_loss_grad, NllLossGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(nll_loss_grad,
+                            NllLossGradInferShapeFunctor,
                             PD_INFER_META(phi::NllLossGradInferMeta));
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(nll_loss, ops::NLLLossOp, ops::NLLLossOpMaker,
+REGISTER_OPERATOR(nll_loss,
+                  ops::NLLLossOp,
+                  ops::NLLLossOpMaker,
                   ops::NLLLossGradMaker<paddle::framework::OpDesc>,
                   ops::NLLLossGradMaker<paddle::imperative::OpBase>,
                   NllLossRawInferShapeFunctor);
-REGISTER_OPERATOR(nll_loss_grad, ops::NLLLossGradOp,
+REGISTER_OPERATOR(nll_loss_grad,
+                  ops::NLLLossGradOp,
                   NllLossGradInferShapeFunctor);

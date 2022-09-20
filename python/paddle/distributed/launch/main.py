@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +18,7 @@ from .context import Context
 def launch():
     """
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
-    
+
     Usage:
         .. code-block:: bash
             :name: code-block-bash1
@@ -77,7 +77,7 @@ def launch():
         - ``--heter_workers``: User defined heter workers ip1:port1;ip2:port2, e.g., ``--heter_workers="192.168.0.16:6172;192.168.0.17:6172"``
 
         - ``--heter_worker_num``: Number of heter_workers in each stage (It recommend to set when in the emulated distributed environment using single node)
-        
+
         - ``--heter_devices``: Type of heter_device in each stage
 
         - ``--gloo_port``: Gloo http Port. Default ``--gloo_port=6767``.
@@ -91,6 +91,26 @@ def launch():
 
         - ``--elastic_timeout``: Seconds to wait before elastic job begin to train. Default ``--elastic_timeout=30``.
 
+    IPU Parameters:
+        IPU distributed launch only requires and allowes three arguments ``--devices``, ``training_script`` and ``training_script_args``.
+        The ``--devices`` is the number of IPU devices. e.g., ``--devices=4`` will launch the training program with four IPU devices.
+        The ``training_script`` is only allowed to set as ``ipu``.
+        The ``training_script_args`` includes arguments required by IPU distributed launch and illustrated as below.
+        ``Examples 10`` has provided a example of paddle.distributed.launch with IPUs.
+
+        - ``--hosts``: The hosts for IPU distributd training. Each host is able to include multiple processes.
+
+        - ``--nproc_per_host``: The number of processes launched per host. Each process is able to include multiple replicas.
+
+        - ``--ipus_per_replica``: The number of IPUs requested per replica. Each replica is able to include multiple IPUs.
+
+        - ``--ipu_partition``: The partition name of IPU devices.
+
+        - ``--vipu_server``: The ip of the IPU device manager.
+
+        - ``training_script``: The full path to the IPU distributed training program/script to be launched in parallel. e.g., ``training.py``.
+
+        - ``training_script_args``: The args of the IPU distributed training program/script. e.g., ``--lr=0.1``.
 
     Returns:
         - ``None``
@@ -124,16 +144,16 @@ def launch():
     Examples 1 (collective, single node):
         .. code-block:: bash
             :name: code-block-example-bash1
-            
+
             # For training on single node using 4 gpus.
 
             python -m paddle.distributed.launch --devices=0,1,2,3 train.py --lr=0.01
-        
+
     Examples 2 (collective, multi node):
         .. code-block:: bash
             :name: code-block-example-bash2
 
-            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17
 
             # On 192.168.0.16:
 
@@ -141,15 +161,15 @@ def launch():
 
             # On 192.168.0.17:
             python -m paddle.distributed.launch --devices=0,1,2,3 --master=192.168.0.16:8090 train.py --lr=0.01
-        
+
     Examples 3 (ps, cpu, single node):
         .. code-block:: bash
             :name: code-block-example-bash3
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers.
-            
+
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
-        
+
     Examples 4 (ps, cpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash4
@@ -174,10 +194,10 @@ def launch():
             :name: code-block-example-bash5
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, each worker use single gpu.
-            
+
             export CUDA_VISIBLE_DEVICES=0,1,2,3
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
-            
+
     Examples 6 (ps, gpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash6
@@ -199,10 +219,10 @@ def launch():
             :name: code-block-example-bash7
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, two workers use gpu, two workers use cpu.
-            
+
             export CUDA_VISIBLE_DEVICES=0,1
             python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
-            
+
     Examples 8 (ps-heter, cpu + gpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash8
@@ -226,8 +246,19 @@ def launch():
             # With the following command, the job will begin to run immediately if 4 nodes are ready,
             # or it will run after elastic_timeout if only 2 or 3 nodes ready
             python -m paddle.distributed.launch --master etcd://10.0.0.1:2379 --nnodes 2:4 train.py
-            
+
             # once the number of nodes changes between 2:4 during training, the strategy holds
+
+    Examples 10 (ipu):
+        .. code-block:: bash
+            :name: code-block-example-bash10
+
+            # With the following command, the job will begin to run the distributhed program with IPUs
+            # Require `devices` as the number of IPUs
+            # Require `training_script` to be set as `ipu`
+            # Require `training_script_args` as the arguments of IPU distributed training instead of the arguments of the training program/script
+            # Please Check the `IPU Parameters` for details
+            python -m paddle.distributed.launch --devices 4 ipu --hosts=localhost --nproc_per_host=2 --ipus_per_replica=1 --ipu_partition=pod16 --vipu_server=127.0.0.1 train.py
 
     """
 

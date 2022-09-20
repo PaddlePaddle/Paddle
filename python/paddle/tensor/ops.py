@@ -19,6 +19,8 @@ from ..framework import core
 from ..framework import convert_np_dtype_to_dtype_
 from ..static import Variable
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.framework import in_dygraph_mode
+from .. import _C_ops, _legacy_C_ops
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -54,7 +56,6 @@ __unary_func__ = [
     'round',
     'reciprocal',
     'square',
-    'lgamma',
     'acosh',
     'asinh',
     'atanh',
@@ -107,7 +108,8 @@ for _OP in set(__inplace_unary_func__):
     _func = generate_inplace_fn(_OP)
     globals()[_OP] = _func
 
-add_sample_code(globals()["sigmoid"], r"""
+add_sample_code(
+    globals()["sigmoid"], r"""
 Examples:
     .. code-block:: python
 
@@ -121,7 +123,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["silu"], r"""
+add_sample_code(
+    globals()["silu"], r"""
 Examples:
     .. code-block:: python
 
@@ -135,7 +138,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["logsigmoid"], r"""
+add_sample_code(
+    globals()["logsigmoid"], r"""
 Examples:
     .. code-block:: python
 
@@ -149,7 +153,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["exp"], r"""
+add_sample_code(
+    globals()["exp"], r"""
 Examples:
     .. code-block:: python
 
@@ -162,7 +167,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["expm1"], r"""
+add_sample_code(
+    globals()["expm1"], r"""
 Examples:
     .. code-block:: python
 
@@ -175,7 +181,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tanh"], r"""
+add_sample_code(
+    globals()["tanh"], r"""
 Examples:
     .. code-block:: python
 
@@ -188,7 +195,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["atan"], r"""
+add_sample_code(
+    globals()["atan"], r"""
 Examples:
     .. code-block:: python
 
@@ -201,7 +209,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tanh_shrink"], r"""
+add_sample_code(
+    globals()["tanh_shrink"], r"""
 Examples:
     .. code-block:: python
 
@@ -209,13 +218,14 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.tanhshrink(x) 
+        out = F.tanhshrink(x)
         print(out)
         # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
 
 """)
 
-add_sample_code(globals()["sqrt"], r"""
+add_sample_code(
+    globals()["sqrt"], r"""
 Examples:
     .. code-block:: python
 
@@ -228,7 +238,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["rsqrt"], r"""
+add_sample_code(
+    globals()["rsqrt"], r"""
 Examples:
     .. code-block:: python
 
@@ -241,7 +252,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["abs"], r"""
+add_sample_code(
+    globals()["abs"], r"""
 Examples:
     .. code-block:: python
 
@@ -254,7 +266,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["ceil"], r"""
+add_sample_code(
+    globals()["ceil"], r"""
 Examples:
     .. code-block:: python
 
@@ -267,7 +280,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["floor"], r"""
+add_sample_code(
+    globals()["floor"], r"""
 Examples:
     .. code-block:: python
 
@@ -280,7 +294,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["cos"], r"""
+add_sample_code(
+    globals()["cos"], r"""
 Examples:
     .. code-block:: python
 
@@ -293,7 +308,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tan"], r"""
+add_sample_code(
+    globals()["tan"], r"""
 Examples:
     .. code-block:: python
 
@@ -306,7 +322,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["acos"], r"""
+add_sample_code(
+    globals()["acos"], r"""
 Examples:
     .. code-block:: python
 
@@ -319,7 +336,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["sin"], r"""
+add_sample_code(
+    globals()["sin"], r"""
 Examples:
     .. code-block:: python
 
@@ -332,7 +350,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["asin"], r"""
+add_sample_code(
+    globals()["asin"], r"""
 Examples:
     .. code-block:: python
 
@@ -345,7 +364,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["cosh"], r"""
+add_sample_code(
+    globals()["cosh"], r"""
 Examples:
     .. code-block:: python
 
@@ -358,7 +378,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["sinh"], r"""
+add_sample_code(
+    globals()["sinh"], r"""
 Examples:
     .. code-block:: python
 
@@ -371,7 +392,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["asinh"], r"""
+add_sample_code(
+    globals()["asinh"], r"""
 Examples:
     .. code-block:: python
 
@@ -384,7 +406,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["acosh"], r"""
+add_sample_code(
+    globals()["acosh"], r"""
 Examples:
     .. code-block:: python
 
@@ -397,7 +420,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["atanh"], r"""
+add_sample_code(
+    globals()["atanh"], r"""
 Examples:
     .. code-block:: python
 
@@ -410,7 +434,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["round"], r"""
+add_sample_code(
+    globals()["round"], r"""
 Examples:
     .. code-block:: python
 
@@ -423,7 +448,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["reciprocal"], r"""
+add_sample_code(
+    globals()["reciprocal"], r"""
 Examples:
     .. code-block:: python
 
@@ -436,7 +462,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["square"], r"""
+add_sample_code(
+    globals()["square"], r"""
 Examples:
     .. code-block:: python
 
@@ -449,20 +476,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["lgamma"], r"""
-Examples:
-    .. code-block:: python
-
-        import paddle
-
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.lgamma(x)
-        print(out)
-        # [1.31452441, 1.76149750, 2.25271273, 1.09579802]
-
-""")
-
-add_sample_code(globals()["softplus"], r"""
+add_sample_code(
+    globals()["softplus"], r"""
 Examples:
     .. code-block:: python
 
@@ -470,13 +485,14 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softplus(x) 
+        out = F.softplus(x)
         print(out)
         # [0.513015, 0.598139, 0.744397, 0.854355]
 
 """)
 
-add_sample_code(globals()["softsign"], r"""
+add_sample_code(
+    globals()["softsign"], r"""
 Examples:
     .. code-block:: python
 
@@ -484,7 +500,7 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softsign(x) 
+        out = F.softsign(x)
         print(out)
         # [-0.285714, -0.166667, 0.0909091, 0.230769]
 
@@ -496,6 +512,9 @@ _erf_ = generate_layer_fn('erf')
 
 
 def erf(x, name=None):
+    if in_dygraph_mode():
+        return _C_ops.erf(x)
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -522,11 +541,11 @@ Returns:
     Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
-    
+
     .. code-block:: python
-    
+
         import paddle
-        
+
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.erf(x)
         print(out)

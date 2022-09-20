@@ -114,23 +114,33 @@ message TableParameter {
   optional TensorAccessorParameter tensor = 5;
   optional CommonAccessorParameter common = 6;
   optional TableType type = 7;
-  optional bool compress_in_save = 8 [ default = false ];
+  optional bool compress_in_save = 8 [ default = true ];
   optional GraphParameter graph_parameter = 9;
   // for cache model
   optional bool enable_sparse_table_cache = 10 [ default = true ];
   optional double sparse_table_cache_rate = 11 [ default = 0.00055 ];
   optional uint32 sparse_table_cache_file_num = 12 [ default = 16 ];
+  // for patch model
+  optional bool enable_revert = 13 [ default = false ];
+  optional float shard_merge_rate = 14 [ default = 1.0 ];
 }
 
 message TableAccessorParameter {
   optional string accessor_class = 1;
-  optional uint32 fea_dim = 4 [ default = 11 ];
-  optional uint32 embedx_dim = 5 [ default = 8 ];
-  optional uint32 embedx_threshold = 6 [ default = 10 ];
+  optional uint32 fea_dim = 4 [ default = 11 ];   // field size of one value
+  optional uint32 embedx_dim = 5 [ default = 8 ]; // embedx feature size
+  optional uint32 embedx_threshold = 6
+      [ default = 10 ]; // embedx feature create threshold
   optional CtrAccessorParameter ctr_accessor_param = 7;
   repeated TableAccessorSaveParameter table_accessor_save_param = 8;
   optional SparseCommonSGDRuleParameter embed_sgd_param = 10;
   optional SparseCommonSGDRuleParameter embedx_sgd_param = 11;
+  optional GraphSGDParameter graph_sgd_param = 12;
+}
+
+message GraphSGDParameter {
+  optional uint32 nodeid_slot = 1 [ default = 9008 ];
+  optional float feature_learning_rate = 2 [ default = 0.05 ];
 }
 
 message CtrAccessorParameter {
@@ -158,6 +168,7 @@ message CtrAccessorParameter {
   optional int32 ssd_unseenday_threshold = 9
       [ default = 1 ]; // threshold to save ssd
   optional bool show_scale = 10 [ default = true ];
+  optional bool zero_init = 11 [ default = true ];
 }
 
 message TensorAccessorParameter {
@@ -180,6 +191,7 @@ message CommonAccessorParameter {
   optional bool sync = 9;
   optional uint32 table_num = 10;
   optional uint32 table_dim = 11;
+  optional string attr = 12;
 }
 
 message TableAccessorSaveParameter {
@@ -230,10 +242,37 @@ message GraphParameter {
   optional string table_type = 9 [ default = "" ];
   optional int32 shard_num = 10 [ default = 127 ];
   optional int32 search_level = 11 [ default = 1 ];
+  optional bool build_sampler_on_cpu = 12 [ default = true ];
 }
 
 message GraphFeature {
   repeated string name = 1;
   repeated string dtype = 2;
   repeated int32 shape = 3;
+}
+
+message FLParameter {
+  optional FLStrategy fl_strategy = 1;
+  optional FLClientInfo client_info = 2;
+}
+
+message FLStrategy {
+  optional uint64 iteration_num = 1;
+  optional uint64 client_id = 2;
+  optional string next_state = 3 [default = "JOIN"];
+  optional string init_gflags = 4 [ default = "" ];
+}
+
+message FLClientInfo {
+  optional uint32 client_id = 1;
+  optional string device_type = 2;
+  optional int32 compute_capacity = 3;
+  optional int32 bandwidth = 4;
+  optional LocalTrainingResult local_training_result = 5;
+  optional string init_gflags = 6 [ default = "" ];
+}
+
+message LocalTrainingResult {
+  optional double acc = 1;
+  optional double loss = 2;
 }

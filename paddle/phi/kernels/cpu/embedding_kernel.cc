@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_kernel.h"
-#include "paddle/phi/kernels/funcs/embedding_util.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/embedding_util.h"
 
 namespace phi {
 
@@ -47,6 +47,10 @@ struct EmbeddingCPUFunctor {
 
     dev_ctx_.template Alloc<T>(out_);
     auto* output = out_->data<T>();
+
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#pragma omp parallel for
+#endif
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       if (padding_idx_ != kNoPadding && ids[i] == padding_idx_) {

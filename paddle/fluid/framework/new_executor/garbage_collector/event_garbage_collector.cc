@@ -24,50 +24,38 @@
 namespace paddle {
 namespace framework {
 
-InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector() {
-  WorkQueueOptions options(/*name*/ "GarbageCollector", /*num_threads*/ 1,
+InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
+    const std::vector<Instruction>& vec_instruction) {
+  WorkQueueOptions options(/*name*/ "GarbageCollector",
+                           /*num_threads*/ 1,
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
+  for (auto& instruc : vec_instruction) {
+    gc_event_.emplace_back(instruc.DeviceContext().GetPlace(),
+                           platform::GenerateDeviceEventFlag());
+  }
 }
 
 InterpreterCoreEventGarbageCollector::~InterpreterCoreEventGarbageCollector() {
   queue_.reset(nullptr);
 }
 
-void InterpreterCoreEventGarbageCollector::Add(
-    Garbage garbage, platform::DeviceEvent* event,
-    const platform::DeviceContext* ctx) {
-  if (!garbage) {
-    return;
-  }
-
-  if (max_memory_size_ <= 1) {
-    Free(garbage, event, ctx);
-  } else {
-    std::unique_ptr<GarbageQueue> pending_delete_garbages;
-    {  // lock guard
-      std::lock_guard<memory::SpinLock> guard(spinlock_);
-      cur_memory_size_ += garbage->size();
-      garbages_->push_back(std::move(garbage));
-
-      if (cur_memory_size_ >= max_memory_size_) {
-        cur_memory_size_ = 0;
-        pending_delete_garbages = std::move(garbages_);
-        garbages_ = std::make_unique<GarbageQueue>();
-      }
-    }
-  }
-}
-
-void InterpreterCoreEventGarbageCollector::Add(Variable* var) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Add(Variable* var) is not implemented for "
-      "InterpreterCoreEventGarbageCollector."));
+void InterpreterCoreEventGarbageCollector::Add(Variable* var,
+                                               const Instruction& instr) {
+  PADDLE_ENFORCE_LT(instr.Id(),
+                    gc_event_.size(),
+                    platform::errors::OutOfRange(
+                        "The index should be less than the size of gc event "
+                        ", but got index is %d and size is %d",
+                        instr.Id(),
+                        gc_event_.size()));
+  Add(var, &gc_event_.at(instr.Id()), &instr.DeviceContext());
 }
 
 void InterpreterCoreEventGarbageCollector::Add(
-    Variable* var, platform::DeviceEvent* event,
+    Variable* var,
+    platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {
     return;
@@ -87,7 +75,8 @@ void InterpreterCoreEventGarbageCollector::Add(
     Add(var->GetMutable<phi::SelectedRows>()
             ->mutable_value()
             ->MoveMemoryHolder(),
-        event, ctx);
+        event,
+        ctx);
     var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
@@ -105,30 +94,37 @@ void InterpreterCoreEventGarbageCollector::Add(
   }
 }
 
-void InterpreterCoreEventGarbageCollector::Free(
-    GarbageQueue* garbages, platform::DeviceEvent* event,
+void InterpreterCoreEventGarbageCollector::Add(
+    Garbage garbage,
+    platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
-  event->Record(ctx);
-  event->SetFininshed();  // Only for CPU Event
-  queue_->AddTask([ container = garbages, event = event ]() {
-    while (!event->Query()) {
-#if defined(_WIN32)
-      SleepEx(50, FALSE);
-#else
-      sched_yield();
-#endif
-      continue;
+  if (!garbage) {
+    return;
+  }
+
+  if (max_memory_size_ <= 1) {
+    Free(garbage, event, ctx);
+  } else {
+    {  // lock guard
+      std::lock_guard<memory::SpinLock> guard(spinlock_);
+      cur_memory_size_ += garbage->size();
+      garbages_->push_back(std::move(garbage));
+      events_[ctx] = event;
+
+      if (cur_memory_size_ >= max_memory_size_) {
+        FreeGarbages();
+      }
     }
-    delete container;
-  });
+  }
 }
 
 void InterpreterCoreEventGarbageCollector::Free(
-    const Garbage& garbage, platform::DeviceEvent* event,
+    const Garbage& garbage,
+    platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   event->Record(ctx);
   event->SetFininshed();  // Only for CPU Event
-  queue_->AddTask([ container = garbage, event = event ]() {
+  queue_->AddTask([container = garbage, event = event]() {
     while (!event->Query()) {
 #if defined(_WIN32)
       SleepEx(50, FALSE);
@@ -138,6 +134,29 @@ void InterpreterCoreEventGarbageCollector::Free(
       continue;
     }
   });
+}
+
+void InterpreterCoreEventGarbageCollector::FreeGarbages() {
+  for (auto& vals : events_) {
+    vals.second->Record(vals.first);
+    vals.second->SetFininshed();  // Only for CPU Event
+  }
+  queue_->AddTask(
+      [container = std::move(*garbages_), events = std::move(events_)]() {
+        for (auto& vals : events) {
+          while (!vals.second->Query()) {
+#if defined(_WIN32)
+            SleepEx(50, FALSE);
+#else
+            sched_yield();
+#endif
+            continue;
+          }
+        }
+      });
+  cur_memory_size_ = 0;
+  garbages_->clear();
+  events_.clear();
 }
 
 }  // namespace framework

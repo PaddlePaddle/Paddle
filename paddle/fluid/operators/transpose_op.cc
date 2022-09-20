@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/transpose_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -38,24 +39,29 @@ class TransposeOp : public framework::OperatorWithKernel {
     size_t x_rank = x_dims.size();
     size_t axis_size = axis.size();
 
-    PADDLE_ENFORCE_EQ(x_rank, axis_size,
+    PADDLE_ENFORCE_EQ(x_rank,
+                      axis_size,
                       platform::errors::InvalidArgument(
                           "The input tensor's dimension "
                           "should be equal to the axis's size. "
                           "But received input tensor's dimension is %d, "
                           "axis's size is %d",
-                          x_rank, axis_size));
+                          x_rank,
+                          axis_size));
 
     std::vector<int> count(axis_size, 0);
     for (size_t i = 0; i < axis_size; i++) {
-      PADDLE_ENFORCE_GE(axis[i], 0,
+      PADDLE_ENFORCE_GE(axis[i],
+                        0,
                         platform::errors::InvalidArgument(
                             "The axis should be greater than or equal to 0."
                             "But received %d of axis[%d]",
-                            axis[i], i));
+                            axis[i],
+                            i));
 
       PADDLE_ENFORCE_EQ(
-          axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1, true,
+          axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
+          true,
           platform::errors::InvalidArgument(
               "Each element of Attribute axis should "
               "be a unique value range from 0 to (dims - 1), "
@@ -63,14 +69,18 @@ class TransposeOp : public framework::OperatorWithKernel {
               "unique value means this axis value can appear only once. "
               "But received axis[%d] is %d, axis_size is %d, "
               "count[axis[%d]] is %d",
-              i, axis[i], axis_size, i, count[axis[i]]));
+              i,
+              axis[i],
+              axis_size,
+              i,
+              count[axis[i]]));
     }
 
     framework::DDim out_dims(x_dims);
 #ifdef PADDLE_WITH_MKLDNN
     // Here we need to match dims to paddle layout
     // as we are producing non-oneDNN result
-    if ((x_dims.size() >= 3) &&
+    if (ctx->IsRunMKLDNNKernel() && (x_dims.size() >= 3) &&
         (paddle::platform::MKLDNNDeviceContext::tls()
              .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC)) {
       auto dims = phi::vectorize<int>(x_dims);
@@ -100,8 +110,8 @@ class TransposeOp : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_,
-                                   library_);
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_);
   }
 };
 
@@ -179,8 +189,10 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "TransposeOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "TransposeOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "TransposeOpGrad");
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     if (ctx->HasOutput(framework::GradVarName("X"))) {
@@ -203,8 +215,8 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_,
-                                   library_);
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_);
   }
 };
 
@@ -258,18 +270,54 @@ class Transpose2Op : public TransposeOp {
                                   : kTransposeMKLDNNFP32;
     }
 #endif
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_,
-                                   customized_type_value);
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_, customized_type_value);
   }
 };
 
-class Transpose2OpMaker : public TransposeOpMaker {
+class Transpose2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    TransposeOpMaker::Make();
+    AddInput(
+        "X",
+        "(Tensor) The input tensor, tensors with rank up to 6 are supported.");
+    AddOutput("Out", "(Tensor)The output tensor.");
+    AddAttr<std::vector<int>>(
+        "axis",
+        "(vector<int>) A list of values, and the size of the list should be "
+        "the same with the input tensor rank. This operator permutes the input "
+        "tensor's axes according to the values given.");
     AddOutput("XShape", "(Tensor)The output tensor.")
         .AsIntermediate()
         .AsExtra();
+    AddComment(R"DOC(
+Transpose Operator.
+
+The input tensor will be permuted according to the axes given.
+The behavior of this operator is similar to how `numpy.transpose` works.
+
+- suppose the input `X` is a 2-D tensor:
+    $$
+    X = \begin{pmatrix}
+    0 &1 &2 \\
+    3 &4 &5
+    \end{pmatrix}$$
+
+    the given `axes` is: $[1, 0]$, and $Y$ = transpose($X$, axis)
+
+    then the output $Y$ is:
+
+    $$
+    Y = \begin{pmatrix}
+         0 &3 \\
+         1 &4  \\
+         2 &5
+    \end{pmatrix}$$
+
+- Given a input tensor with shape $(N, C, H, W)$ and the `axes` is
+$[0, 2, 3, 1]$, then shape of the output tensor will be: $(N, H, W, C)$.
+
+)DOC");
   }
 };
 
@@ -306,10 +354,12 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("XShape"), "Input", "XShape",
+    OP_INOUT_CHECK(
+        ctx->HasInput("XShape"), "Input", "XShape", "Transpose2OpGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
                    "Transpose2OpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "Transpose2OpGrad");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       auto xshape_dim = ctx->GetInputDim("XShape");
       auto x_shape_dim = phi::slice_ddim(xshape_dim, 1, xshape_dim.size());
@@ -334,8 +384,8 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_,
-                                   library_);
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_);
   }
 };
 
@@ -352,16 +402,22 @@ class TransposeGradInferVarType : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    transpose, ops::TransposeOp, ops::TransposeOpMaker,
+    transpose,
+    ops::TransposeOp,
+    ops::TransposeOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad,
+REGISTER_OPERATOR(transpose_grad,
+                  ops::TransposeOpGrad,
                   ops::TransposeGradInferVarType);
 
-REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
+REGISTER_OPERATOR(transpose2,
+                  ops::Transpose2Op,
+                  ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2GradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad,
+REGISTER_OPERATOR(transpose2_grad,
+                  ops::Transpose2OpGrad,
                   ops::TransposeGradInferVarType,
                   ops::Transpose2DoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>);

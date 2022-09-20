@@ -16,23 +16,23 @@ import paddle
 import warnings
 import logging
 import numpy as np
-from ..utils import get_logger
+from .utils import get_logger
 
 
 class Converter(object):
     """
-    Converter is a class object for auto parallel to convert tensors from 
-    one parallel strategy to another one. Tensors will merge and slice value 
+    Converter is a class object for auto parallel to convert tensors from
+    one parallel strategy to another one. Tensors will merge and slice value
     with their strategy when strategies are different.
     """
 
     def __init__(self, tensors_dict, pre_strategy, cur_strategy):
         """
         Args:
-            tensors_dict(dict): tensors' value of all ranks that to be converted. 
+            tensors_dict(dict): tensors' value of all ranks that to be converted.
                 key is tensor's name(str), value is all ranks' data(list(numpy.ndarray))
             pre_strategy(dict): tensors' distributed attribute of last training process.
-                key is tensor's name(str), value is tensor's distributed attribute in last 
+                key is tensor's name(str), value is tensor's distributed attribute in last
                 training process.
             cur_strategy(dict): tensors' distributed attribute of current rank.
                 key is tensor's name(str), value is tensor's distributed attribute in current
@@ -133,8 +133,9 @@ class Converter(object):
                 tensors_dict[tensor_name] = Converter.merge_and_slice(
                     tensor_list, pre_dist_attr, cur_dist_attr)
             except ValueError as err:
-                raise ValueError("Fail to convert tensor '{}'. "
-                                 .format(str(tensor_name)) + str(err))
+                raise ValueError(
+                    "Fail to convert tensor '{}'. ".format(str(tensor_name)) +
+                    str(err))
 
         for tensor_name in self._pre_strategy:
             if tensor_name not in self._cur_strategy:
@@ -150,17 +151,17 @@ class Converter(object):
         tensor_not_in_cur = set(tensor_not_in_cur) - set(tensor_match_with_cur)
         if tensor_not_in_pre:
             warnings.warn(
-                "tensors [{}] are not found in last training strategy."
-                .format(str(tensor_not_in_pre)))
+                "tensors [{}] are not found in last training strategy.".format(
+                    str(tensor_not_in_pre)))
         if tensor_not_in_cur:
             warnings.warn(
-                "tensors [{}] are not found in current training strategy."
-                .format(str(tensor_not_in_cur)))
+                "tensors [{}] are not found in current training strategy.".
+                format(str(tensor_not_in_cur)))
         if tensor_not_in_ckpt:
             warnings.warn(
                 "tensors [{}] are found in pre_strategy, but are not found"
-                "in checkpoint files, please check your checkpoint files."
-                .format(str(tensor_not_in_ckpt)))
+                "in checkpoint files, please check your checkpoint files.".
+                format(str(tensor_not_in_ckpt)))
 
         return tensors_dict
 
@@ -360,8 +361,9 @@ class Converter(object):
         """
         sliced_tensor_list = []
         axis = len(complete_tensor.shape) - length
-        sliced_tensor = np.split(
-            complete_tensor, partition_index_list[axis], axis=axis)
+        sliced_tensor = np.split(complete_tensor,
+                                 partition_index_list[axis],
+                                 axis=axis)
         if length == 1:
             return sliced_tensor
         for tensor in sliced_tensor:
@@ -430,7 +432,7 @@ class Converter(object):
                 process_group = [0, 1, 2]
 
                 slice_tensor = _slice_tensor(complete_tensor, [[], [], [2, 4]], 3)
-                # slice_tensor: 
+                # slice_tensor:
                 # [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
 
                 index = _get_sliced_index(rank, complete_shape, dims_mapping

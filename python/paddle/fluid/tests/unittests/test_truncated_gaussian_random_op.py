@@ -27,6 +27,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTrunctedGaussianRandomOp(unittest.TestCase):
+
     def setUp(self):
         self.op_type = "truncated_gaussian_random"
         self.inputs = {}
@@ -52,8 +53,9 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
         program = fluid.Program()
         block = program.global_block()
         vout = block.create_var(name="Out")
-        op = block.append_op(
-            type=self.op_type, outputs={"Out": vout}, attrs=self.attrs)
+        op = block.append_op(type=self.op_type,
+                             outputs={"Out": vout},
+                             attrs=self.attrs)
 
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
@@ -73,7 +75,7 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
     def gaussian_random_test_eager(self, place):
         with fluid.dygraph.guard(place):
             with _test_eager_guard():
-                out = paddle._C_ops.final_state_truncated_gaussian_random(
+                out = paddle._C_ops.truncated_gaussian_random(
                     self.attrs["shape"], self.attrs["mean"], self.attrs["std"],
                     self.attrs["seed"], core.VarDesc.VarType.FP32, place)
                 self.assertAlmostEqual(numpy.mean(out.numpy()), .0, delta=0.1)

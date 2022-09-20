@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -27,6 +28,7 @@ SEED = 2021
 
 
 class TestExpand(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"
@@ -55,6 +57,7 @@ class TestExpand(OpTest):
 
 
 class TestExpandV2(TestExpand):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"
@@ -82,6 +85,7 @@ class TestExpandFp16(TestExpand):
 
 
 class TestExpandNet(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -94,8 +98,9 @@ class TestExpandNet(unittest.TestCase):
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 1], dtype='float32')
-            label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
 
             res = paddle.fluid.layers.expand(a, [1, 32])
             loss = res.sum()
@@ -113,8 +118,10 @@ class TestExpandNet(unittest.TestCase):
         for epoch in range(100):
 
             loss_res = exe.run(main_prog,
-                               feed={"a": a_np,
-                                     "label": label_np},
+                               feed={
+                                   "a": a_np,
+                                   "label": label_np
+                               },
                                fetch_list=[loss])
             if epoch % 10 == 0:
                 print("Epoch {} | Loss: {}".format(epoch, loss))
@@ -125,7 +132,7 @@ class TestExpandNet(unittest.TestCase):
         cpu_loss = self._test(False)
         npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 # ------------------------------------------------
@@ -134,6 +141,7 @@ class TestExpandNet(unittest.TestCase):
 
 
 class TestExpand_expand_times_all_one(TestExpand):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"

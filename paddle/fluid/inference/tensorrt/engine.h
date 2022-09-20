@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <NvInfer.h>
+
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -23,7 +24,9 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
+#include "NvInferRuntimeCommon.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -33,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -66,13 +70,16 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
 
 // The T can be int32 or int64 type.
 template <typename T>
-nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
+nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
+                            std::string input,
                             bool with_dynamic_shape = false) {
-  PADDLE_ENFORCE_GT(shape.size(), 0UL,
+  PADDLE_ENFORCE_GT(shape.size(),
+                    0UL,
                     platform::errors::InvalidArgument(
                         "TensorRT's tensor input requires at least 1 "
                         "dimensions, but input %s has %d dims.",
-                        input, shape.size()));
+                        input,
+                        shape.size()));
 
   auto ShapeStr = [](const std::vector<T>& shape) {
     std::ostringstream os;
@@ -93,7 +100,8 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The input [%s] shape of trt subgraph is %s, please enable "
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input, ShapeStr(shape)));
+            input,
+            ShapeStr(shape)));
       }
       return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
     } else if (shape.size() == 5UL) {
@@ -101,7 +109,8 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The input [%s] shape of trt subgraph is %s, please enable "
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input, ShapeStr(shape)));
+            input,
+            ShapeStr(shape)));
       }
       return nvinfer1::Dims4(shape[1], shape[2], shape[3], shape[4]);
     } else if (shape.size() == 3UL) {
@@ -109,7 +118,8 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The input [%s] shape of trt subgraph is %s, please enable "
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input, ShapeStr(shape)));
+            input,
+            ShapeStr(shape)));
       }
       return nvinfer1::Dims2(shape[1], shape[2]);
     } else if (shape.size() == 2UL) {
@@ -117,7 +127,8 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The input [%s] shape of trt subgraph is %s, please enable "
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input, ShapeStr(shape)));
+            input,
+            ShapeStr(shape)));
       }
       nvinfer1::Dims dims;
       dims.nbDims = 1;
@@ -125,11 +136,13 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
       return dims;
     }
     // static shape doesn't support 1D op so far.
-    PADDLE_ENFORCE_NE(shape.size(), 1UL,
+    PADDLE_ENFORCE_NE(shape.size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "The input [%s] shape of trt subgraph is %s."
                           "it's not supported by trt so far",
-                          input, ShapeStr(shape)));
+                          input,
+                          ShapeStr(shape)));
 
     nvinfer1::Dims dims;
     dims.nbDims = shape.size() - 1;
@@ -151,7 +164,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
     return dims;
   }
 }
-}  // NOLINT
+}  // namespace
 
 class TRTInt8Calibrator;
 
@@ -164,6 +177,7 @@ class TRTInt8Calibrator;
 class TensorRTEngine {
   using DescType = ::paddle::framework::proto::BlockDesc;
   using ShapeMapType = std::map<std::string, std::vector<int>>;
+  using PredictorID = int;
 
  public:
   // Weight is model parameter.
@@ -177,6 +191,14 @@ class TensorRTEngine {
     }
     const nvinfer1::Weights& get() { return w_; }
 
+    void SetDataType(nvinfer1::DataType type) { w_.type = type; }
+
+    void SetDataType(phi::DataType type);
+
+    void SetValues(const void* values) { w_.values = values; }
+
+    void SetCount(int64_t num) { w_.count = num; }
+
     std::vector<int64_t> dims;
 
    private:
@@ -184,13 +206,16 @@ class TensorRTEngine {
   };
 
   TensorRTEngine(
-      int max_batch, int max_workspace,
+      int max_batch,
+      int64_t max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
-      TRTInt8Calibrator* calibrator = nullptr, int device_id = 0,
+      TRTInt8Calibrator* calibrator = nullptr,
+      int device_id = 0,
       const ShapeMapType min_input_shape = {},
       const ShapeMapType max_input_shape = {},
       const ShapeMapType optim_input_shape = {},
       bool disable_trt_plugin_fp16 = false,
+      phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
@@ -201,21 +226,26 @@ class TensorRTEngine {
         max_input_shape_(max_input_shape),
         optim_input_shape_(optim_input_shape),
         disable_trt_plugin_fp16_(disable_trt_plugin_fp16),
+        model_precision_(model_precision),
         logger_(logger) {
     if (min_input_shape_.size() != 0 && max_input_shape_.size() != 0 &&
         optim_input_shape_.size() != 0) {
       PADDLE_ENFORCE_EQ(
-          min_input_shape_.size(), max_input_shape_.size(),
+          min_input_shape_.size(),
+          max_input_shape_.size(),
           platform::errors::InvalidArgument(
               "The min_input_shape_'s size(%d) should be equal to the "
               "size(%d) of max_input_shape_",
-              min_input_shape_.size(), max_input_shape_.size()));
+              min_input_shape_.size(),
+              max_input_shape_.size()));
       PADDLE_ENFORCE_EQ(
-          min_input_shape_.size(), optim_input_shape_.size(),
+          min_input_shape_.size(),
+          optim_input_shape_.size(),
           platform::errors::InvalidArgument(
               "The min_input_shape_'s size(%d) should be equal to the "
               "size(%d) of optim_input_shape_",
-              min_input_shape_.size(), optim_input_shape_.size()));
+              min_input_shape_.size(),
+              optim_input_shape_.size()));
 #if IS_TRT_VERSION_GE(6000)
       with_dynamic_shape_ = true;
 #else
@@ -242,21 +272,33 @@ class TensorRTEngine {
                                   const nvinfer1::Dims& dim);
   // Set the offset-th output from a layer as the network's output, and set its
   // name.
-  void DeclareOutput(const nvinfer1::ILayer* layer, int offset,
+  void DeclareOutput(const nvinfer1::ILayer* layer,
+                     int offset,
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
   void ClearTensorMap() { itensor_map_.clear(); }
 
+  void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
+  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name);
+  std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context() {
+#ifndef PADDLE_WITH_TESTING
+    PADDLE_ENFORCE_GT(
+        predictor_id_per_thread,
+        -1,
+        platform::errors::InvalidArgument(
+            "thread local var predictor_id_per_thread must be "
+            "initialized to >= 0, but now predictor_id_per_thread = %d",
+            predictor_id_per_thread));
+#endif
     std::unique_lock<std::mutex> lock(mutex_);
-    const std::thread::id tid = std::this_thread::get_id();
-    if (infer_context_.find(tid) == infer_context_.end()) {
+    if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
       PADDLE_ENFORCE_NOT_NULL(
           infer_engine_,
           platform::errors::InvalidArgument(
@@ -264,24 +306,34 @@ class TensorRTEngine {
       // We may see trt warning: Profile 0 has been chosen by another
       // IExecutionContext...
       // It's ok. We will set it later.
-      infer_context_[tid].reset(infer_engine_->createExecutionContext());
+      infer_context_[predictor_id_per_thread].reset(
+          infer_engine_->createExecutionContext());
       if (with_dynamic_shape_) {
         // need new profile if it's not the first
         if (cur_profile_num_ > 0) {
-          infer_context_[tid]->setOptimizationProfile(cur_profile_num_);
+          infer_context_[predictor_id_per_thread]->setOptimizationProfile(
+              cur_profile_num_);
         }
-        profile_index_[tid] = cur_profile_num_;
+        profile_index_[predictor_id_per_thread] = cur_profile_num_;
         ++cur_profile_num_;
       }
     }
-    return infer_context_[tid].get();
+    return infer_context_[predictor_id_per_thread].get();
   }
 
   int GetProfileIndex() {
     if (max_profile_num_ > 1) {
+#ifndef PADDLE_WITH_TESTING
+      PADDLE_ENFORCE_GT(
+          predictor_id_per_thread,
+          -1,
+          platform::errors::InvalidArgument(
+              "thread local var predictor_id_per_thread must be "
+              "initialized to >= 0, but now predictor_id_per_thread = %d",
+              predictor_id_per_thread));
+#endif
       std::unique_lock<std::mutex> lock(mutex_);
-      const std::thread::id tid = std::this_thread::get_id();
-      return profile_index_[tid];
+      return profile_index_[predictor_id_per_thread];
     } else {
       return 0;
     }
@@ -294,14 +346,22 @@ class TensorRTEngine {
   int GetNbBindings() { return binding_num_; }
 
   void ResetContext() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    const std::thread::id tid = std::this_thread::get_id();
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
         platform::errors::InvalidArgument(
             "You should build engine first and then set the context."));
-    infer_context_[tid].reset(nullptr);
-    infer_context_.erase(tid);
+#ifndef PADDLE_WITH_TESTING
+    PADDLE_ENFORCE_GT(
+        predictor_id_per_thread,
+        -1,
+        platform::errors::InvalidArgument(
+            "thread local var predictor_id_per_thread must be "
+            "initialized to >= 0, but now predictor_id_per_thread = %d",
+            predictor_id_per_thread));
+#endif
+    std::unique_lock<std::mutex> lock(mutex_);
+    infer_context_[predictor_id_per_thread].reset(nullptr);
+    infer_context_.erase(predictor_id_per_thread);
   }
 
   nvinfer1::IHostMemory* Serialize() {
@@ -374,7 +434,8 @@ class TensorRTEngine {
   int GetDeviceId() { return device_id_; }
 
   nvinfer1::IPluginV2Layer* AddPlugin(nvinfer1::ITensor* const* inputs,
-                                      int num_inputs, plugin::PluginTensorRT*);
+                                      int num_inputs,
+                                      plugin::PluginTensorRT*);
 
   nvinfer1::IPluginV2Layer* AddPluginV2Ext(nvinfer1::ITensor* const* inputs,
                                            int num_inputs,
@@ -388,8 +449,25 @@ class TensorRTEngine {
     quant_dynamic_range_[tensor] = range;
   }
 
-  float* GetWeightCPUData(const std::string& name,
-                          framework::Tensor* weight_tensor);
+  // Get fp16 trt weight. If src weight is not fp16, we will cast.
+  Weight GetFp16TrtWeight(const std::string& name,
+                          const framework::Tensor& weight_tensor);
+
+  // Get fp32 trt weight. If src weight is not fp32, we will cast.
+  Weight GetFp32TrtWeight(const std::string& name,
+                          const framework::Tensor& weight_tensor);
+
+  // if the src weight type is fp16, then return fp16 trt weight, etc.
+  Weight GetTrtWeight(const std::string& name,
+                      const framework::Tensor& weight_tensor);
+
+  float GetTensorDynamicRange(nvinfer1::ITensor* tensor) {
+    return quant_dynamic_range_[tensor];
+  }
+
+  bool DynamicRangeIsSet(nvinfer1::ITensor* tensor) {
+    return quant_dynamic_range_.count(tensor);
+  }
 
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
@@ -406,18 +484,30 @@ class TensorRTEngine {
     static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";
-    weight_map[w_name + splitter + suffix] = std::move(w_tensor);
+    std::string name_with_suffix = w_name + splitter + suffix;
+    PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
+                      0,
+                      platform::errors::AlreadyExists(
+                          "The weight named %s is set into the weight map "
+                          "twice in TRT OP converter.",
+                          name_with_suffix));
+    weight_map[name_with_suffix] = std::move(w_tensor);
     suffix_counter += 1;
   }
 
-  void SetUseOSS(bool use_oss) { use_oss_ = use_oss; }
+  void SetUseOSS(bool use_varseqlen) { use_varseqlen_ = use_varseqlen; }
   void SetUseDLA(bool use_dla) { use_dla_ = use_dla; }
   void SetDLACore(int dla_core) { dla_core_ = dla_core; }
   void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
   void SetWithInterleaved(bool with_interleaved) {
     with_interleaved_ = with_interleaved;
   }
-
+  void SetTransformerPosid(std::string tensorrt_transformer_posid) {
+    tensorrt_transformer_posid_ = tensorrt_transformer_posid;
+  }
+  void SetTransformerMaskid(std::string tensorrt_transformer_maskid) {
+    tensorrt_transformer_maskid_ = tensorrt_transformer_maskid;
+  }
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
       weight_pair.second.reset(nullptr);
@@ -431,7 +521,8 @@ class TensorRTEngine {
   // After finishing adding ops, freeze this network and creates the execution
   // environment.
   void FreezeNetwork();
-  void Execute(int batch_size, std::vector<void*>* buffers,
+  void Execute(int batch_size,
+               std::vector<void*>* buffers,
                cudaStream_t stream = nullptr);
 
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
@@ -448,15 +539,20 @@ class TensorRTEngine {
       auto name = it.first;
       auto input_shape = it.second;
       PADDLE_ENFORCE_EQ(
-          min_input_shape_.count(name), true,
+          min_input_shape_.count(name),
+          true,
           platform::errors::InvalidArgument(
               "TRT dynamic_shape min_input_shape %s not found.", name));
-      PADDLE_ENFORCE_EQ(min_input_shape_[name].size(), input_shape.size(),
+      PADDLE_ENFORCE_EQ(min_input_shape_[name].size(),
+                        input_shape.size(),
                         platform::errors::InvalidArgument(
                             "TRT dynamic_shape min_input_shape %s size not "
                             "equal, the min_input_shape[%s].size()=%d"
                             ", but the runtime_input_shape[%s].size()=%d.",
-                            name, name, min_input_shape_[name].size(), name,
+                            name,
+                            name,
+                            min_input_shape_[name].size(),
+                            name,
                             input_shape.size()));
       auto bak_min_shape = min_input_shape_[name];
       auto bak_max_shape = max_input_shape_[name];
@@ -488,16 +584,23 @@ class TensorRTEngine {
     return ret;
   }
 
-  bool use_oss() { return use_oss_; }
+  bool use_varseqlen() { return use_varseqlen_; }
   bool with_ernie() { return with_ernie_; }
   bool with_interleaved() { return with_interleaved_; }
+  std::string tensorrt_transformer_posid() {
+    return tensorrt_transformer_posid_;
+  }
+  std::string tensorrt_transformer_maskid() {
+    return tensorrt_transformer_maskid_;
+  }
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
   AnalysisConfig::Precision precision() { return precision_; }
 
 #if IS_TRT_VERSION_GE(6000)
   nvinfer1::IPluginV2Layer* AddDynamicPlugin(
-      nvinfer1::ITensor* const* inputs, int num_inputs,
+      nvinfer1::ITensor* const* inputs,
+      int num_inputs,
       plugin::DynamicPluginTensorRT* plugin) {
     owned_pluginv2_.emplace_back(plugin);
     return network()->addPluginV2(inputs, num_inputs, *plugin);
@@ -524,7 +627,8 @@ class TensorRTEngine {
   void Set(const std::string& attr_name, AttrType* attr) {
     if (attrs_.count(attr_name) == 0) {
       PADDLE_ENFORCE_EQ(
-          attrs_.count(attr_name), 0,
+          attrs_.count(attr_name),
+          0,
           platform::errors::AlreadyExists(
               "Attribute %s already set in trt engine.", attr_name));
     } else {
@@ -543,7 +647,8 @@ class TensorRTEngine {
   template <typename AttrType>
   void SetNotOwned(const std::string& attr_name, AttrType* attr) {
     PADDLE_ENFORCE_EQ(
-        attrs_.count(attr_name), 0,
+        attrs_.count(attr_name),
+        0,
         platform::errors::AlreadyExists(
             "Attribute %s already set in trt engine.", attr_name));
     attrs_[attr_name] = attr;
@@ -552,7 +657,8 @@ class TensorRTEngine {
   // Get a reference to the attributed previously set.
   template <typename AttrType>
   AttrType& Get(const std::string& attr_name) const {
-    PADDLE_ENFORCE_NE(attrs_.find(attr_name), attrs_.end(),
+    PADDLE_ENFORCE_NE(attrs_.find(attr_name),
+                      attrs_.end(),
                       platform::errors::InvalidArgument(
                           "Attribute %s not found in trt engine.", attr_name));
     try {
@@ -574,7 +680,8 @@ class TensorRTEngine {
       };
 
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid type for attritube %s, expected: %s, actual: %s.", attr_name,
+          "Invalid type for attritube %s, expected: %s, actual: %s.",
+          attr_name,
           TypeToString(typeid(AttrType*)),
           TypeToString(attrs_.at(attr_name).type())));
     }
@@ -585,19 +692,22 @@ class TensorRTEngine {
   void GetEngineInfo();
 
   void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
+  void SetScope(const framework::Scope& scope) { scope_ = &scope; }
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
   // freshDeviceId().
   void freshDeviceId();
+  // Used for convert weight into Itensor
+  const framework::Scope* scope_;
 
   // the max batch size
   int max_batch_;
   // the runtime batch size
   static int runtime_batch_;
   // the max memory size the engine uses
-  int max_workspace_;
+  int64_t max_workspace_;
 
   AnalysisConfig::Precision precision_;
   TRTInt8Calibrator* calibrator_;
@@ -607,16 +717,19 @@ class TensorRTEngine {
   int device_id_;
   int max_profile_num_{1};
   int cur_profile_num_{0};
-  std::unordered_map<std::thread::id, int> profile_index_;
+  std::unordered_map<PredictorID, int> profile_index_;
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
   bool disable_trt_plugin_fp16_{false};
-  bool use_oss_{false};
+  phi::DataType model_precision_{phi::DataType::FLOAT32};
+  bool use_varseqlen_{false};
   bool use_dla_{false};
   int dla_core_{0};
   bool with_ernie_{false};
   bool with_interleaved_{false};
+  std::string tensorrt_transformer_posid_;
+  std::string tensorrt_transformer_maskid_;
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
@@ -641,7 +754,7 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
-  std::unordered_map<std::thread::id, infer_ptr<nvinfer1::IExecutionContext>>
+  std::unordered_map<PredictorID, infer_ptr<nvinfer1::IExecutionContext>>
       infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
@@ -659,6 +772,9 @@ class TensorRTEngine {
 #endif
   std::mutex mutex_;
   bool use_inspector_;
+
+ public:
+  thread_local static int predictor_id_per_thread;
 };  // class TensorRTEngine
 
 // Add a layer__ into engine__ with args ARGS.
@@ -672,7 +788,7 @@ class TensorRTEngine {
 // them, and an macro like this is more extensible when underlying TensorRT
 // library add new layer supports.
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ...) \
-  engine__->network()->add##layer__(__VA_ARGS__);
+  engine__->network()->add##layer__(__VA_ARGS__)
 
 class TRTEngineManager {
  public:
@@ -687,18 +803,29 @@ class TRTEngineManager {
   }
 
   TensorRTEngine* Create(
-      std::string name, int max_batch, int max_workspace,
+      std::string name,
+      int max_batch,
+      int64_t max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
-      TRTInt8Calibrator* calibrator = nullptr, int device_id = 0,
+      TRTInt8Calibrator* calibrator = nullptr,
+      int device_id = 0,
       const std::map<std::string, std::vector<int>> min_input_shape = {},
       const std::map<std::string, std::vector<int>> max_input_shape = {},
       const std::map<std::string, std::vector<int>> optim_input_shape = {},
       bool disable_trt_plugin_fp16 = false,
+      phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global()) {
-    auto* p =
-        new TensorRTEngine(max_batch, max_workspace, precision, calibrator,
-                           device_id, min_input_shape, max_input_shape,
-                           optim_input_shape, disable_trt_plugin_fp16, logger);
+    auto* p = new TensorRTEngine(max_batch,
+                                 max_workspace,
+                                 precision,
+                                 calibrator,
+                                 device_id,
+                                 min_input_shape,
+                                 max_input_shape,
+                                 optim_input_shape,
+                                 disable_trt_plugin_fp16,
+                                 model_precision,
+                                 logger);
     engines_[name].reset(p);
     return p;
   }

@@ -31,31 +31,39 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
        \       /
         matmul
           |
-        scale  
+        scale
     """
 
     def sample_predictor_configs(self, program_config):
         # cpu
         config = self.create_inference_config(use_gpu=False)
-        yield config, ["matmul", ], (1e-5, 1e-5)
+        yield config, [
+            "matmul",
+        ], (1e-5, 1e-5)
 
         # mkldnn
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, ["matmul", ], (1e-5, 1e-5)
+        yield config, [
+            "matmul",
+        ], (1e-5, 1e-5)
+
+        # gpu
+        config = self.create_inference_config(use_gpu=True)
+        yield config, [
+            "matmul",
+        ], (1e-5, 1e-5)
 
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of matmul
         x_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=8), min_size=2, max_size=5))
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=2,
+                     max_size=5))
         x_shape_rank = len(x_shape)
         y_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=8),
-                min_size=x_shape_rank,
-                max_size=x_shape_rank))
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=x_shape_rank,
+                     max_size=x_shape_rank))
         y_shape_rank = len(y_shape)
         y_shape[-2] = x_shape[-1]
         for i in range(y_shape_rank - 3, -1, -1):
@@ -73,8 +81,10 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
 
         matmul_op = OpConfig(
             "matmul",
-            inputs={"X": ["matmul_x"],
-                    "Y": ["matmul_y"]},
+            inputs={
+                "X": ["matmul_x"],
+                "Y": ["matmul_y"]
+            },
             outputs={"Out": ["matmul_out"]},
             transpose_X=transpose_X,
             transpose_Y=transpose_Y,
@@ -85,25 +95,32 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
             fused_transpose_Y=[],
             fused_reshape_Out=[],
             fused_transpose_Out=[],
-            head_number=1, )
+            head_number=1,
+        )
         is_scale_tensor = draw(st.booleans())
         if is_scale_tensor:
             scale_op = OpConfig(
                 "scale",
-                inputs={"X": ["matmul_out"],
-                        "ScaleTensor": ["scale_tensor"]},
+                inputs={
+                    "X": ["matmul_out"],
+                    "ScaleTensor": ["scale_tensor"]
+                },
                 outputs={"Out": ["scale_out"]},
                 scale=scale_value,
                 bias=0.0,
-                bias_after_scale=draw(st.booleans()), )
+                bias_after_scale=draw(st.booleans()),
+            )
         else:
             scale_op = OpConfig(
                 "scale",
-                inputs={"X": ["matmul_out"], },
+                inputs={
+                    "X": ["matmul_out"],
+                },
                 outputs={"Out": ["scale_out"]},
                 scale=scale_value,
                 bias=0.0,
-                bias_after_scale=draw(st.booleans()), )
+                bias_after_scale=draw(st.booleans()),
+            )
 
         ops = [matmul_op, scale_op]
         weights = {}
@@ -113,7 +130,9 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
                 "matmul_y": TensorConfig(shape=y_shape),
                 "scale_tensor": TensorConfig(shape=scale_shape)
             }
-            inputs = {"matmul_x": TensorConfig(shape=x_shape), }
+            inputs = {
+                "matmul_x": TensorConfig(shape=x_shape),
+            }
         else:
             inputs = {
                 "matmul_x": TensorConfig(shape=x_shape),
@@ -124,14 +143,16 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
             ops=ops,
             weights=weights,
             inputs=inputs,
-            outputs=ops[-1].outputs["Out"], )
+            outputs=ops[-1].outputs["Out"],
+        )
         return program_config
 
     def test(self):
         self.run_and_statis(
             quant=False,
             max_examples=100,
-            passes=["matmul_scale_fuse_pass"], )
+            passes=["matmul_scale_fuse_pass"],
+        )
 
 
 if __name__ == "__main__":

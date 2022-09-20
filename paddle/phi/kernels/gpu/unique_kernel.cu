@@ -21,12 +21,14 @@
 #include <thrust/scatter.h>
 #include <thrust/sequence.h>
 #include <thrust/unique.h>
+
 #include <iostream>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor_util.h"  // TensorToVector()
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unique_functor.h"
 
 namespace phi {
@@ -331,9 +333,11 @@ static void ComputeUniqueDims(const Context& context,
   // 3. counts: 'counts'
   counts->Resize(phi::make_ddim({num_out}));
   auto* count_data = context.template Alloc<IndexT>(counts);
-  thrust::fill(thrust::device, count_data, count_data + row, 0);
-  thrust::adjacent_difference(
-      thrust::device, range_data_ptr + 1, range_data_ptr + row + 1, count_data);
+  thrust::fill(thrust::device, count_data, count_data + num_out, 0);
+  thrust::adjacent_difference(thrust::device,
+                              range_data_ptr + 1,
+                              range_data_ptr + num_out + 1,
+                              count_data);
 }
 
 // Calculate unique when 'axis' is set

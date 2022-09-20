@@ -57,17 +57,20 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     }
 #endif
 
-#ifndef PADDLE_WITH_ASCEND_CL
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
-                            platform::is_xpu_place(ctx.GetPlace()),
-                        true, platform::errors::InvalidArgument(
-                                  "float16 can only be used on GPU/XPU place"));
+      PADDLE_ENFORCE_EQ(
+          platform::is_gpu_place(ctx.GetPlace()) ||
+              platform::is_npu_place(ctx.GetPlace()) ||
+              platform::is_xpu_place(ctx.GetPlace()) ||
+              platform::is_mlu_place(ctx.GetPlace()) ||
+              platform::is_custom_place(ctx.GetPlace()),
+          true,
+          platform::errors::InvalidArgument(
+              "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
     }
-#endif
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
-                                   library_);
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout_, library_);
   }
 };
 
@@ -82,11 +85,6 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The dimension index of Input(x) to perform softmax,"
                  "default -1 for last dimension")
         .SetDefault(-1);
-    AddAttr<bool>(
-        "use_cudnn",
-        "(bool, default false) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<std::string>(
         "data_format",
         "(string, default NCHW) Only used in "
@@ -94,21 +92,6 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Softmax Operator.
 
@@ -173,13 +156,15 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
     if (input_data_type == framework::proto::VarType::FP16) {
       if (!(platform::is_gpu_place(ctx.GetPlace()) ||
             platform::is_npu_place(ctx.GetPlace()) ||
-            platform::is_xpu_place(ctx.GetPlace())))
+            platform::is_xpu_place(ctx.GetPlace()) ||
+            platform::is_mlu_place(ctx.GetPlace()) ||
+            platform::is_custom_place(ctx.GetPlace())))
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "float16 can only be used on GPU/NPU/XPU place"));
+            "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
     }
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
-                                   library_);
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout_, library_);
   }
 };
 
@@ -208,14 +193,20 @@ DECLARE_INPLACE_OP_INFERER(SoftmaxInplaceInferer, {"X", "Out"});
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(softmax, SoftmaxInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(softmax,
+                            SoftmaxInferShapeFunctor,
                             PD_INFER_META(phi::SoftmaxInferMeta));
-REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
+REGISTER_OPERATOR(softmax,
+                  ops::SoftmaxOp,
+                  ops::SoftmaxOpMaker,
                   ops::SoftmaxOpInferVarType,
                   ops::SoftmaxOpGradMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxOpGradMaker<paddle::imperative::OpBase>,
-                  ops::SoftmaxInplaceInferer, SoftmaxInferShapeFunctor);
-DECLARE_INFER_SHAPE_FUNCTOR(softmax_grad, SoftmaxGradInferShapeFunctor,
+                  ops::SoftmaxInplaceInferer,
+                  SoftmaxInferShapeFunctor);
+DECLARE_INFER_SHAPE_FUNCTOR(softmax_grad,
+                            SoftmaxGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralUnaryGradInferMeta));
-REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad,
+REGISTER_OPERATOR(softmax_grad,
+                  ops::SoftmaxOpGrad,
                   SoftmaxGradInferShapeFunctor);

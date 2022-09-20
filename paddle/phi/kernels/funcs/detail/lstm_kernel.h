@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
+
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 

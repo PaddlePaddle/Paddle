@@ -28,13 +28,20 @@ paddle.enable_static()
 
 
 class TestWhileOp(unittest.TestCase):
+
     def simple_net(self):
-        d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32')
-        d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32')
-        d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32')
+        d0 = layers.data("d0",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d1 = layers.data("d1",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d2 = layers.data("d2",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
@@ -74,7 +81,7 @@ class TestWhileOp(unittest.TestCase):
                 layers.array_write(result2, i=j, array=mem_array)
                 layers.less_than(x=j, y=array_len2, cond=cond2)
         sum_result = layers.array_read(array=mem_array, i=j)
-        loss = layers.mean(sum_result)
+        loss = paddle.mean(sum_result)
         return loss, sum_result
 
     def test_simple_net(self):
@@ -92,9 +99,11 @@ class TestWhileOp(unittest.TestCase):
             for i in range(3):
                 d.append(numpy.random.random(size=[10]).astype('float32'))
 
-            outs = exe.run(feed={'d0': d[0],
-                                 'd1': d[1],
-                                 'd2': d[2]},
+            outs = exe.run(feed={
+                'd0': d[0],
+                'd1': d[1],
+                'd2': d[2]
+            },
                            fetch_list=[sum_result])
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
@@ -127,6 +136,7 @@ class TestWhileOp(unittest.TestCase):
 
 
 class BadInputTest(unittest.TestCase):
+
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
 
@@ -138,7 +148,9 @@ class BadInputTest(unittest.TestCase):
 
 
 class TestIgnoreVarNameInWhile(unittest.TestCase):
+
     def test_ignore_var(self):
+
         def cond(i, ten, temp, y):
             return i < ten
 
@@ -169,11 +181,53 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
         input_y = input_y.reshape(3, 1, 1)
 
         res, = exe.run(fluid.default_main_program(),
-                       feed={'x': input_x,
-                             'y': input_y},
+                       feed={
+                           'x': input_x,
+                           'y': input_y
+                       },
                        fetch_list=[output])
 
         self.assertListEqual(list(res.shape), [3, 1, 5])
+
+
+class TestOutputsMustExistsInputs(unittest.TestCase):
+
+    def test_outputs_exists_inputs(self):
+        """
+        We guarantee that the output tensor must be in the input tensor, so that the output and input can correspond to each other, but the input can be greater than the number of outputs. It's required in paddle2onnx.
+        """
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+
+            def func(x):
+                s = paddle.zeros([1])
+                i = paddle.ones([1])
+                max_len = paddle.shape(x)[0]
+
+                def cond(i, s, x):
+                    return i < max_len
+
+                def body(i, s, x):
+                    iter = x[i]
+                    s += iter
+                    i += 1
+                    return i, s, x
+
+                [i, s, x] = paddle.static.nn.while_loop(cond, body, [i, s, x])
+                return s
+
+            paddle.enable_static()
+            x = paddle.static.data(shape=[-1], name='x')
+            func(x)
+        for op in main_program.block(0).ops:
+            if op.type == "while":
+                for out_name in op.output("Out"):
+                    if out_name in op.input("Condition"): continue
+                    self.assertTrue(
+                        out_name in op.input("X"),
+                        "In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{}` not meet the precondition."
+                        .format(out_name))
 
 
 if __name__ == '__main__':

@@ -21,8 +21,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-#include "glog/logging.h"
-
 namespace phi {
 
 // TODO(chenweihang): add other flags if needed
@@ -69,6 +67,12 @@ class MetaTensor {
   virtual void share_dims(const MetaTensor& meta_tensor);
 
   virtual bool initialized() const;
+
+  virtual bool is_selected_rows() const;
+  virtual bool is_dense() const;
+  // TODO(YuanRisheng) This API is for compatible with Fluid
+  //  and it will be deleted in the future.
+  virtual bool is_tensor_array() const;
 
   virtual operator unspecified_bool_type() const {
     return tensor_ == nullptr ? 0 : unspecified_bool_true;

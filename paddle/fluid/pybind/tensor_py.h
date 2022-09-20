@@ -15,12 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -33,9 +35,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/unicode.h"
 #include "pybind11/numpy.h"
@@ -180,14 +184,17 @@ template <typename T>
 class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
  public:
   explicit NumpyAllocation(const py::array &arr)
-      : Allocation(const_cast<void *>(arr.data()), sizeof(T) * (arr.size()),
+      : Allocation(const_cast<void *>(arr.data()),
+                   sizeof(T) * (arr.size()),
                    paddle::platform::CPUPlace()),
         arr_(arr.ptr()) {
-    PADDLE_ENFORCE_NOT_NULL(arr_, platform::errors::InvalidArgument(
-                                      "The underlying PyObject pointer of "
-                                      "numpy array cannot be nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(
+        arr_,
+        platform::errors::InvalidArgument("The underlying PyObject pointer of "
+                                          "numpy array cannot be nullptr"));
     PADDLE_ENFORCE_NE(
-        arr_, Py_None,
+        arr_,
+        Py_None,
         platform::errors::PreconditionNotMet(
             "The underlying PyObject pointer of numpy array cannot be None"));
     Py_INCREF(arr_);
@@ -241,7 +248,8 @@ inline std::string TensorDTypeToPyDTypeStr(
     } else {                                                                \
       constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
       PADDLE_ENFORCE_EQ(                                                    \
-          kIsValidDType, true,                                              \
+          kIsValidDType,                                                    \
+          true,                                                             \
           platform::errors::Unimplemented(                                  \
               "This type [%s] of tensor cannot be expose to Python",        \
               typeid(T).name()));                                           \
@@ -259,7 +267,8 @@ inline std::string TensorDTypeToPyDTypeStr(
 
 template <typename T>
 T TensorGetElement(const framework::Tensor &self, size_t offset) {
-  PADDLE_ENFORCE_LT(offset, self.numel(),
+  PADDLE_ENFORCE_LT(offset,
+                    self.numel(),
                     platform::errors::InvalidArgument(
                         "The offset exceeds the size of tensor."));
 
@@ -276,29 +285,29 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     const T *a = self.data<T>();
     auto p = self.place();
-    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
-                         nullptr);
+    paddle::memory::Copy(
+        platform::CPUPlace(), &b, p, a + offset, sizeof(T), nullptr);
 #endif
   } else if (platform::is_mlu_place(self.place())) {
 #ifdef PADDLE_WITH_MLU
     const T *a = self.data<T>();
     auto p = self.place();
-    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
-                         nullptr);
+    paddle::memory::Copy(
+        platform::CPUPlace(), &b, p, a + offset, sizeof(T), nullptr);
 #endif
   } else if (platform::is_npu_place(self.place())) {
 #if defined(PADDLE_WITH_ASCEND_CL)
     const T *a = self.data<T>();
     auto p = self.place();
-    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
-                         nullptr);
+    paddle::memory::Copy(
+        platform::CPUPlace(), &b, p, a + offset, sizeof(T), nullptr);
 #endif
   } else if (platform::is_custom_place(self.place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     const T *a = self.data<T>();
     auto p = self.place();
-    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
-                         nullptr);
+    paddle::memory::Copy(
+        platform::CPUPlace(), &b, p, a + offset, sizeof(T), nullptr);
 #endif
   }
   VLOG(10) << "TensorGetElement, place: " << self.place()
@@ -308,7 +317,8 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
 
 template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
-  PADDLE_ENFORCE_LT(offset, self->numel(),
+  PADDLE_ENFORCE_LT(offset,
+                    self->numel(),
                     platform::errors::InvalidArgument(
                         "The offset exceeds the size of tensor."));
   VLOG(10) << "TensorSetElement, place: " << self->place()
@@ -325,29 +335,29 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
-    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
-                         nullptr);
+    paddle::memory::Copy(
+        p, a + offset, platform::CPUPlace(), &elem, sizeof(T), nullptr);
 #endif
   } else if (platform::is_mlu_place(self->place())) {
 #ifdef PADDLE_WITH_MLU
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
-    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
-                         nullptr);
+    paddle::memory::Copy(
+        p, a + offset, platform::CPUPlace(), &elem, sizeof(T), nullptr);
 #endif
   } else if (platform::is_npu_place(self->place())) {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
-    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
-                         nullptr);
+    paddle::memory::Copy(
+        p, a + offset, platform::CPUPlace(), &elem, sizeof(T), nullptr);
 #endif
   } else if (platform::is_custom_place(self->place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
-    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
-                         nullptr);
+    paddle::memory::Copy(
+        p, a + offset, platform::CPUPlace(), &elem, sizeof(T), nullptr);
 #endif
   }
 }
@@ -356,11 +366,12 @@ template <typename T, typename P>
 void SetTensorFromPyArrayT(
     framework::Tensor *self,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
-    const P &place, bool zero_copy) {
+    const P &place,
+    bool zero_copy) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
+    dims.push_back(static_cast<int64_t>(array.shape()[i]));
   }
   self->Resize(phi::make_ddim(dims));
 
@@ -380,8 +391,11 @@ void SetTensorFromPyArrayT(
     platform::Place tmp_place = place;
     platform::XPUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
-    memory::Copy(tmp_place, static_cast<void *>(dst), platform::CPUPlace(),
-                 static_cast<const void *>(array.data()), array.nbytes());
+    memory::Copy(tmp_place,
+                 static_cast<void *>(dst),
+                 platform::CPUPlace(),
+                 static_cast<const void *>(array.data()),
+                 array.nbytes());
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use XPUPlace in CPU/GPU version, "
@@ -413,8 +427,8 @@ void SetTensorFromPyArrayT(
     platform::Place tmp_place = place;
     platform::NPUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
-    platform::NPUMemcpySync(dst, array.data(), array.nbytes(),
-                            ACL_MEMCPY_HOST_TO_DEVICE);
+    platform::NPUMemcpySync(
+        dst, array.data(), array.nbytes(), ACL_MEMCPY_HOST_TO_DEVICE);
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(place);
     ctx.Wait();
@@ -428,7 +442,11 @@ void SetTensorFromPyArrayT(
     platform::Place tmp_place = place;
     platform::MLUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
-    paddle::platform::MLUMemcpyH2DSync(dst, array.data(), array.nbytes());
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto dev_ctx = static_cast<platform::MLUDeviceContext *>(pool.Get(place));
+    paddle::platform::MLUMemcpyH2DAsync(
+        dst, array.data(), array.nbytes(), dev_ctx->stream());
+    dev_ctx->Wait();
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use MLUPlace in CPU/GPU version, "
@@ -460,11 +478,11 @@ void SetTensorFromPyArrayT(
       platform::CUDADeviceGuard guard(place.device);
       auto dst = self->mutable_data<T>(place);
 #ifdef PADDLE_WITH_HIP
-      paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
-                                      hipMemcpyHostToDevice);
+      paddle::platform::GpuMemcpySync(
+          dst, array.data(), array.nbytes(), hipMemcpyHostToDevice);
 #else
-      paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
-                                      cudaMemcpyHostToDevice);
+      paddle::platform::GpuMemcpySync(
+          dst, array.data(), array.nbytes(), cudaMemcpyHostToDevice);
 #endif
 
     } else if (paddle::platform::is_cuda_pinned_place(place)) {
@@ -486,8 +504,10 @@ void SetTensorFromPyArrayT(
 }
 
 template <typename P>
-void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
-                          const P &place, bool zero_copy) {
+void SetTensorFromPyArray(framework::Tensor *self,
+                          const py::object &obj,
+                          const P &place,
+                          bool zero_copy) {
   auto array = obj.cast<py::array>();
   if (py::isinstance<py::array_t<float>>(array)) {
     SetTensorFromPyArrayT<float, P>(self, array, place, zero_copy);
@@ -504,8 +524,8 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   } else if (py::isinstance<py::array_t<uint8_t>>(array)) {
     SetTensorFromPyArrayT<uint8_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
-    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
-                                                        zero_copy);
+    SetTensorFromPyArrayT<paddle::platform::float16, P>(
+        self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::complex<float>>>(
                  array)) {
     SetTensorFromPyArrayT<paddle::platform::complex<float>, P>(
@@ -514,8 +534,7 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
                  array)) {
     SetTensorFromPyArrayT<paddle::platform::complex<double>, P>(
         self, array, place, zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::bfloat16>>(array) ||
-             py::isinstance<py::array_t<uint16_t>>(array)) {
+  } else if (py::isinstance<py::array_t<paddle::platform::bfloat16>>(array)) {
     py::handle bfloat16(paddle_bfloat::Bfloat16Dtype());
     py::dtype dtype =
         py::dtype::from_args(py::reinterpret_borrow<py::object>(bfloat16));
@@ -536,11 +555,13 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
 }
 
 template <typename P>
-void SetStringTensorFromPyArray(phi::StringTensor *self, const py::array &array,
+void SetStringTensorFromPyArray(phi::StringTensor *self,
+                                const py::array &array,
                                 const P &place) {
   bool is_string_pyarray =
       array.dtype().kind() == 'S' || array.dtype().kind() == 'U';
-  PADDLE_ENFORCE_EQ(is_string_pyarray, true,
+  PADDLE_ENFORCE_EQ(is_string_pyarray,
+                    true,
                     platform::errors::InvalidArgument(
                         "Expect the dtype of numpy array is string or "
                         "unicode, but recevie dtype %s",
@@ -578,7 +599,8 @@ void SetStringTensorFromPyArray(phi::StringTensor *self, const py::array &array,
         pstring pstr(utf8_len - 1, 0);
         phi::strings::GetUTF8Str(
             reinterpret_cast<const uint32_t *>(array.data()) + unicode_len * i,
-            pstr.mdata(), unicode_len);
+            pstr.mdata(),
+            unicode_len);
         dst[i] = pstr;
       }
     }
@@ -591,31 +613,35 @@ void SetStringTensorFromPyArray(phi::StringTensor *self, const py::array &array,
 
 template <typename T>
 void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
-                                 const py::array_t<T> &array, int device_id) {
+                                 const py::array_t<T> &array,
+                                 int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArrayImpl.";
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   int64_t numel = 1;
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.emplace_back(static_cast<int>(array.shape()[i]));
-    numel *= static_cast<int>(array.shape()[i]);
+    dims.emplace_back(static_cast<int64_t>(array.shape()[i]));
+    numel *= static_cast<int64_t>(array.shape()[i]);
   }
   self_tensor->Resize(phi::make_ddim(dims));
 
   auto data_type = framework::ToDataType(std::type_index(typeid(T)));
   const auto &need_allocate_size = numel * framework::SizeOfType(data_type);
   T *data_ptr;
-  cudaHostAlloc(reinterpret_cast<void **>(&data_ptr), need_allocate_size,
+  cudaHostAlloc(reinterpret_cast<void **>(&data_ptr),
+                need_allocate_size,
                 cudaHostAllocWriteCombined | cudaHostAllocMapped);
   std::memcpy(data_ptr, array.data(), array.nbytes());
 
   void *cuda_device_pointer = nullptr;
   cudaHostGetDevicePointer(reinterpret_cast<void **>(&cuda_device_pointer),
-                           reinterpret_cast<void *>(data_ptr), 0);
+                           reinterpret_cast<void *>(data_ptr),
+                           0);
   std::shared_ptr<memory::allocation::Allocation> holder =
       std::make_shared<memory::allocation::Allocation>(
-          cuda_device_pointer, need_allocate_size,
+          cuda_device_pointer,
+          need_allocate_size,
           platform::CUDAPlace(device_id));
   self_tensor->ResetHolderWithType(holder,
                                    framework::TransToPhiDataType(data_type));
@@ -625,7 +651,8 @@ void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
 template <typename T>
 void SetUVATensorFromPyArray(
     const std::shared_ptr<paddle::imperative::VarBase> &self,
-    const py::array_t<T> &array, int device_id) {
+    const py::array_t<T> &array,
+    int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for VarBase.";
   auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
@@ -636,7 +663,8 @@ void SetUVATensorFromPyArray(
 template <typename T>
 void SetUVATensorFromPyArray(
     const std::shared_ptr<paddle::experimental::Tensor> &self,
-    const py::array_t<T> &array, int device_id) {
+    const py::array_t<T> &array,
+    int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
   phi::DenseTensorMeta meta =
@@ -655,8 +683,9 @@ void SetUVATensorFromPyArray(
 }
 
 template <typename T, size_t D>
-void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
-                   const platform::CPUDeviceContext &ctx,
+void _sliceCompute(const framework::Tensor *in,
+                   framework::Tensor *out,
+                   const phi::CPUContext &ctx,
                    const std::vector<int> &axes,
                    const std::vector<int> &starts) {
   auto &eigen_place = *ctx.eigen_device();
@@ -691,27 +720,36 @@ void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
 template <typename T>
 void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
                     paddle::framework::Tensor *out,
-                    const platform::CPUDeviceContext &ctx, int64_t axis) {
+                    const phi::CPUContext &ctx,
+                    int64_t axis) {
   if (axis == 0 && ins.size() < 10) {
     size_t output_offset = 0;
     for (auto &in : ins) {
       auto in_stride = phi::stride_numel(in.dims());
       auto out_stride = phi::stride_numel(out->dims());
       paddle::operators::StridedNumelCopyWithAxis<T>(
-          ctx, axis, out->data<T>() + output_offset, out_stride, in.data<T>(),
-          in_stride, in_stride[axis]);
+          ctx,
+          axis,
+          out->data<T>() + output_offset,
+          out_stride,
+          in.data<T>(),
+          in_stride,
+          in_stride[axis]);
       output_offset += in_stride[axis];
     }
   } else {
-    paddle::operators::math::ConcatFunctor<platform::CPUDeviceContext, T>
-        concat_functor;
+    paddle::operators::math::ConcatFunctor<phi::CPUContext, T> concat_functor;
     concat_functor(ctx, ins, static_cast<int>(axis), out);
   }
 }
 
-inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
-                          const int64_t dim, int64_t *pstart, int64_t *pstop,
-                          int64_t *pstep, int64_t *pslicelength) {
+inline void _getSliceinfo(const framework::Tensor &self,
+                          py::object obj,
+                          const int64_t dim,
+                          int64_t *pstart,
+                          int64_t *pstop,
+                          int64_t *pstep,
+                          int64_t *pslicelength) {
   auto &start = *pstart;
   auto &stop = *pstop;
   auto &step = *pstep;
@@ -721,7 +759,8 @@ inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
       0 <= dim && dim < srcDDim.size(),
       platform::errors::OutOfRange("The dim %d of slice is out of bounds, it "
                                    "shound be in the range of [0, %d).",
-                                   dim, srcDDim.size()));
+                                   dim,
+                                   srcDDim.size()));
 
   if (py::isinstance<py::slice>(obj)) {
     size_t lstart, lstop, lstep, lslicelength;
@@ -742,7 +781,9 @@ inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
         std::abs(start) < srcDDim[dim],
         platform::errors::OutOfRange("The start %d of slice is out of bounds, "
                                      "it shound be in the range of (%d, %d).",
-                                     start, -srcDDim[dim], srcDDim[dim]));
+                                     start,
+                                     -srcDDim[dim],
+                                     srcDDim[dim]));
     start = (start >= 0) ? start : srcDDim[dim] - start;
     stop = start + 1;
     step = 1;
@@ -782,9 +823,11 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
 }
 
 template <typename T>
-void _sliceDapper(const framework::Tensor *in, framework::Tensor *out,
-                  const platform::CPUDeviceContext &ctx,
-                  const std::vector<int> &axes, const std::vector<int> &starts,
+void _sliceDapper(const framework::Tensor *in,
+                  framework::Tensor *out,
+                  const phi::CPUContext &ctx,
+                  const std::vector<int> &axes,
+                  const std::vector<int> &starts,
                   int size) {
   switch (size) {
     case 1:
@@ -823,8 +866,10 @@ void _sliceDapper(const framework::Tensor *in, framework::Tensor *out,
 
 template <typename T>
 inline framework::Tensor *_sliceWrapper(const framework::Tensor &self,
-                                        const platform::CPUDeviceContext &ctx,
-                                        py::object obj, int dim, int64_t start,
+                                        const phi::CPUContext &ctx,
+                                        py::object obj,
+                                        int dim,
+                                        int64_t start,
                                         int64_t slicelength) {
   framework::DDim dstDDim = self.dims();
   dstDDim[dim] = static_cast<int64_t>(slicelength);
@@ -837,8 +882,9 @@ inline framework::Tensor *_sliceWrapper(const framework::Tensor &self,
 
 template <typename T>
 inline framework::Tensor *_sliceAndConcat(const framework::Tensor &self,
-                                          py::object obj, int dim) {
-  platform::CPUDeviceContext ctx;
+                                          py::object obj,
+                                          int dim) {
+  phi::CPUContext ctx;
   int64_t start, stop, step, slicelength;
   _getSliceinfo(self, obj, dim, &start, &stop, &step, &slicelength);
   if (step == 1 || slicelength == 1) {
@@ -859,7 +905,8 @@ inline framework::Tensor *_sliceAndConcat(const framework::Tensor &self,
 }
 
 inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
-                                       py::object obj, int dim) {
+                                       py::object obj,
+                                       int dim) {
   auto src_type = framework::TransToProtoVarType(self.dtype());
   switch (src_type) {
     case framework::proto::VarType::FP16:
@@ -974,19 +1021,21 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     } else {
       py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
       PADDLE_ENFORCE_EQ(
-          py_arr.writeable(), true,
+          py_arr.writeable(),
+          true,
           platform::errors::InvalidArgument(
               "PyArray is not writable, in which case memory leak "
               "or double free would occur"));
       PADDLE_ENFORCE_EQ(
-          py_arr.owndata(), true,
+          py_arr.owndata(),
+          true,
           platform::errors::InvalidArgument(
               "PyArray does not own data, in which case  memory leak "
               "or double free would occur"));
       platform::CPUPlace place;
       size_t copy_bytes = sizeof_dtype * numel;
-      paddle::memory::Copy(place, py_arr.mutable_data(), place, tensor_buf_ptr,
-                           copy_bytes);
+      paddle::memory::Copy(
+          place, py_arr.mutable_data(), place, tensor_buf_ptr, copy_bytes);
       return py_arr;
     }
   } else if (is_xpu_tensor) {
@@ -997,15 +1046,19 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
                           "PyArray is not writable, in which case memory leak "
                           "or double free would occur"));
     PADDLE_ENFORCE_EQ(
-        py_arr.owndata(), true,
+        py_arr.owndata(),
+        true,
         platform::errors::InvalidArgument(
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
     auto p = tensor.place();
-    paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
-                         tensor_buf_ptr, copy_bytes);
+    paddle::memory::Copy(platform::CPUPlace(),
+                         py_arr.mutable_data(),
+                         p,
+                         tensor_buf_ptr,
+                         copy_bytes);
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -1020,15 +1073,20 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
                           "PyArray is not writable, in which case memory leak "
                           "or double free would occur"));
     PADDLE_ENFORCE_EQ(
-        py_arr.owndata(), true,
+        py_arr.owndata(),
+        true,
         platform::errors::InvalidArgument(
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
     auto p = tensor.place();
-    paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
-                         tensor_buf_ptr, copy_bytes, nullptr);
+    paddle::memory::Copy(platform::CPUPlace(),
+                         py_arr.mutable_data(),
+                         p,
+                         tensor_buf_ptr,
+                         copy_bytes,
+                         nullptr);
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -1043,7 +1101,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
                           "PyArray is not writable, in which case memory leak "
                           "or double free would occur"));
     PADDLE_ENFORCE_EQ(
-        py_arr.owndata(), true,
+        py_arr.owndata(),
+        true,
         platform::errors::InvalidArgument(
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
@@ -1053,7 +1112,10 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());
     paddle::memory::Copy(
-        platform::CPUPlace(), py_arr.mutable_data(), p, tensor_buf_ptr,
+        platform::CPUPlace(),
+        py_arr.mutable_data(),
+        p,
+        tensor_buf_ptr,
         copy_bytes,
         reinterpret_cast<const platform::NPUDeviceContext &>(ctx).stream());
     ctx.Wait();
@@ -1071,7 +1133,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
                           "PyArray is not writable, in which case memory leak "
                           "or double free would occur"));
     PADDLE_ENFORCE_EQ(
-        py_arr.owndata(), true,
+        py_arr.owndata(),
+        true,
         platform::errors::InvalidArgument(
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
@@ -1081,7 +1144,10 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());
     paddle::memory::Copy(
-        platform::CPUPlace(), py_arr.mutable_data(), p, tensor_buf_ptr,
+        platform::CPUPlace(),
+        py_arr.mutable_data(),
+        p,
+        tensor_buf_ptr,
         copy_bytes,
         reinterpret_cast<const platform::MLUDeviceContext &>(ctx).stream());
     ctx.Wait();
@@ -1099,7 +1165,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
                           "PyArray is not writable, in which case memory leak "
                           "or double free would occur"));
     PADDLE_ENFORCE_EQ(
-        py_arr.owndata(), true,
+        py_arr.owndata(),
+        true,
         platform::errors::InvalidArgument(
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
@@ -1108,8 +1175,11 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());
     paddle::memory::Copy(
-        platform::CPUPlace(), py_arr.mutable_data(), tensor.place(),
-        tensor_buf_ptr, copy_bytes,
+        platform::CPUPlace(),
+        py_arr.mutable_data(),
+        tensor.place(),
+        tensor_buf_ptr,
+        copy_bytes,
         reinterpret_cast<const platform::CustomDeviceContext &>(ctx).stream());
     ctx.Wait();
     return py_arr;

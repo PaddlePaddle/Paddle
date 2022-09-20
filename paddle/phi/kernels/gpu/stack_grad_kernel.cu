@@ -92,8 +92,10 @@ void StackGradKernel(const Context& dev_ctx,
   }
   dy_suf = out.numel() / (split_dim * dy_pre);
 
-  auto tmp_out_data =
-      paddle::memory::Alloc(dev_ctx, outputs.size() * sizeof(T*));
+  auto tmp_out_data = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      outputs.size() * sizeof(T*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        tmp_out_data->ptr(),
                        phi::CPUPlace(),
@@ -105,27 +107,27 @@ void StackGradKernel(const Context& dev_ctx,
       dev_ctx, dy_pre * split_dim * dy_suf);
 
   if (out.numel() < std::numeric_limits<int32_t>::max()) {
-    UnStackHelperCUDAKernel<T, int32_t><<<config.block_per_grid.x,
-                                          config.thread_per_block.x,
-                                          0,
-                                          dev_ctx.stream()>>>(
-        dy_data,
-        dy_pre,
-        split_dim,
-        dy_suf,
-        split_dim,
-        reinterpret_cast<T**>(tmp_out_data->ptr()));
+    UnStackHelperCUDAKernel<T, int32_t>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(dy_data,
+                               dy_pre,
+                               split_dim,
+                               dy_suf,
+                               split_dim,
+                               reinterpret_cast<T**>(tmp_out_data->ptr()));
   } else {
-    UnStackHelperCUDAKernel<T, int64_t><<<config.block_per_grid.x,
-                                          config.thread_per_block.x,
-                                          0,
-                                          dev_ctx.stream()>>>(
-        dy_data,
-        dy_pre,
-        split_dim,
-        dy_suf,
-        split_dim,
-        reinterpret_cast<T**>(tmp_out_data->ptr()));
+    UnStackHelperCUDAKernel<T, int64_t>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(dy_data,
+                               dy_pre,
+                               split_dim,
+                               dy_suf,
+                               split_dim,
+                               reinterpret_cast<T**>(tmp_out_data->ptr()));
   }
 }
 

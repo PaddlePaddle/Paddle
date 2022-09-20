@@ -28,6 +28,7 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphSparseEmdedding_GLOO(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._gloo_mode = True
@@ -35,11 +36,10 @@ class TestParallelDygraphSparseEmdedding_GLOO(TestDistBase):
         self._diff_batch = True
 
     def test_sparse_embedding(self):
-        self.check_with_place(
-            "parallel_dygraph_sparse_embedding.py",
-            delta=1e-5,
-            check_error_log=True,
-            log_name=flag_name)
+        self.check_with_place("parallel_dygraph_sparse_embedding.py",
+                              delta=1e-5,
+                              check_error_log=True,
+                              log_name=flag_name)
 
 
 if __name__ == "__main__":

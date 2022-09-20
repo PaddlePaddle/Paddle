@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -67,6 +67,7 @@ def _update_grad_persistable(main_program):
 
 def apply_build_strategy(main_program, startup_program, build_strategy,
                          pass_attrs):
+
     def update_attr(attrs, attr_types, name, value, typ=None):
         if name not in attrs:
             attrs[name] = value
@@ -101,6 +102,9 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
     if build_strategy.enable_auto_fusion and use_cuda:
         apply_pass("fusion_group_pass")
         build_strategy.enable_auto_fusion = False
+    if build_strategy.fuse_gemm_epilogue:
+        apply_pass("fuse_gemm_epilogue_pass")
+        build_strategy.fuse_gemm_epilogue = False
     if build_strategy.fuse_elewise_add_act_ops:
         apply_pass("fuse_elewise_add_act_pass")
         build_strategy.fuse_elewise_add_act_ops = False
@@ -117,7 +121,7 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
         apply_pass("runtime_context_cache_pass")
         build_strategy.cache_runtime_context = False
     if build_strategy.enable_addto and use_cuda:
-        # NOTE: how to get fetch vars to skip memory optimization?  
+        # NOTE: how to get fetch vars to skip memory optimization?
         apply_pass("inplace_addto_op_pass")
         build_strategy.enable_addto = False
     if build_strategy.enable_inplace:
@@ -188,8 +192,8 @@ class RegisterPassHelper(object):
                     op_outs = out.Outputs()
                     if len(op_outs) != 1:
                         raise ValueError(
-                            "Operator '{}' has multiple outputs, please specify one output variable.".
-                            format(out._type))
+                            "Operator '{}' has multiple outputs, please specify one output variable."
+                            .format(out._type))
                     for op_out in op_outs.values():
                         vars.extend(op_out)
                 else:
@@ -201,6 +205,7 @@ class RegisterPassHelper(object):
         return vars, program.current_block().ops
 
     def _convert_vars_to_pass_desc(self, patterns, replaces, desc):
+
         def _add_element_conditions(conditions, elements):
             for element in elements:
                 if element._condition:
@@ -247,7 +252,7 @@ class RegisterPassHelper(object):
         multi_pass_desc = pass_desc_pb2.MultiPassDesc()
         multi_pass_desc.pass_type = self._pass_type
         # Traverse all pass pairs and convert them to PassDesc data.
-        # Here need to add cache in the future. 
+        # Here need to add cache in the future.
         for (pattern, replace) in self._pass_pairs:
             pass_desc = multi_pass_desc.pass_descs.add()
             # Convert ProgramDescs of pattern and replace subgraphs.
@@ -264,7 +269,9 @@ class RegisterPassHelper(object):
 
 
 class PassDesc(object):
+
     class AttrHelper(object):
+
         def __init__(self, obj, name, element_index=None):
             self._obj = obj
             self._name = name
@@ -276,8 +283,9 @@ class PassDesc(object):
             self._mapped = None
 
         def __getitem__(self, index):
-            element = PassDesc.AttrHelper(
-                self._obj, self._name, element_index=index)
+            element = PassDesc.AttrHelper(self._obj,
+                                          self._name,
+                                          element_index=index)
             self._elements.append(element)
             return element
 
@@ -370,12 +378,14 @@ class PassDesc(object):
                     raise ValueError(
                         "Index '{}' of operator '{}' is incorrect.".format(
                             index, op))
-                return PassDesc.AttrHelper(
-                    ops[index], name, element_index=element_index)
+                return PassDesc.AttrHelper(ops[index],
+                                           name,
+                                           element_index=element_index)
 
             self._mapped = mapped_op if var is None else mapped_var
 
     class VarHelper(paddle.static.Variable):
+
         def __init__(self, *args, **kwargs):
             block = paddle.static.default_main_program().current_block()
             self._var = paddle.static.data(*args, **kwargs)
@@ -392,6 +402,7 @@ class PassDesc(object):
             return attr
 
     class OpHelper(object):
+
         def __init__(self, type=None):
             self._type = type
 
@@ -422,8 +433,8 @@ class PassDesc(object):
                         op_outs = in_arg.Outputs()
                         if len(op_outs) != 1:
                             raise ValueError(
-                                "The size of outputs of operator '{}' is not equal 1, please specify one output variable.".
-                                format(in_arg._type))
+                                "The size of outputs of operator '{}' is not equal 1, please specify one output variable."
+                                .format(in_arg._type))
                         for op_out in op_outs.values():
                             op_input.extend(op_out)
                     else:

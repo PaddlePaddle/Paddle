@@ -52,9 +52,11 @@ void benchmark_eager_scale(const paddle::experimental::Tensor& tensor,
 
   size_t max_num_runs = accuracy_check ? 10 : max_num_benchmark_runs;
   for (size_t i = 0; i < max_num_runs; i++) {
-    input_tensor =
-        egr::scale(input_tensor, scale, bias, true /*bias_after_scale*/,
-                   true /*trace_backward*/);
+    input_tensor = egr::scale(input_tensor,
+                              scale,
+                              bias,
+                              true /*bias_after_scale*/,
+                              true /*trace_backward*/);
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor};
@@ -75,8 +77,7 @@ void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
 
   size_t max_num_runs = accuracy_check ? 2 : max_num_benchmark_runs;
   for (size_t i = 0; i < max_num_runs; i++) {
-    input_tensor0 =
-        matmul_final_state_dygraph_function(input_tensor0, Y, false, false);
+    input_tensor0 = matmul_ad_func(input_tensor0, Y, false, false);
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
@@ -123,7 +124,8 @@ void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
 void benchmark_eager_intermediate_mlp(
     const paddle::experimental::Tensor& X,
     const std::vector<paddle::experimental::Tensor>& Ws,
-    const std::vector<paddle::experimental::Tensor>& Bs, bool accuracy_check) {
+    const std::vector<paddle::experimental::Tensor>& Bs,
+    bool accuracy_check) {
   paddle::experimental::Tensor input0 = X;
 
   for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
@@ -168,13 +170,15 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
   if (place == paddle::platform::CUDAPlace()) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx =
-        dynamic_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+    auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
-                         paddle::platform::CUDAPlace(), t_ptr,
-                         sizeof(float) * tensor->numel(), stream);
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         host_data.data(),
+                         paddle::platform::CUDAPlace(),
+                         t_ptr,
+                         sizeof(float) * tensor->numel(),
+                         stream);
     t_ptr = host_data.data();
   }
 #endif
@@ -188,7 +192,8 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
 
 static void FluidCheckGradTensorValue(
     const std::shared_ptr<imperative::VarBase>& X,
-    const paddle::platform::Place& place, float value) {
+    const paddle::platform::Place& place,
+    float value) {
   auto* grad_tensor = X->MutableGradVar()->GetMutable<framework::LoDTensor>();
   float* g_ptr = grad_tensor->mutable_data<float>(place);
   std::vector<float> g_host_data(grad_tensor->numel());
@@ -197,13 +202,15 @@ static void FluidCheckGradTensorValue(
   if (place == paddle::platform::CUDAPlace()) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx =
-        dynamic_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+    auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(), g_host_data.data(),
-                         paddle::platform::CUDAPlace(), g_ptr,
-                         sizeof(float) * grad_tensor->numel(), stream);
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         g_host_data.data(),
+                         paddle::platform::CUDAPlace(),
+                         g_ptr,
+                         sizeof(float) * grad_tensor->numel(),
+                         stream);
     g_ptr = g_host_data.data();
   }
 #endif
@@ -300,7 +307,8 @@ void benchmark_fluid_mlp(
     const std::shared_ptr<imperative::VarBase>& X,
     const std::vector<std::shared_ptr<imperative::VarBase>>& Ws,
     const std::vector<std::shared_ptr<imperative::VarBase>>& Bs,
-    const paddle::platform::Place& place, bool accuracy_check) {
+    const paddle::platform::Place& place,
+    bool accuracy_check) {
   imperative::Tracer tracer;
 
   imperative::NameVarBaseMap ins;

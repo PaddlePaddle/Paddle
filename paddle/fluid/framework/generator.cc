@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 
 #include <glog/logging.h>
+
 #include <memory>
 #include <utility>
 
@@ -72,14 +73,16 @@ const std::shared_ptr<Generator>& SetRandomSeedGenerator(
     const std::string& name, uint64_t seed) {
   auto& rng_map = GetRandomSeedGeneratorMap();
   auto iter = rng_map.find(name);
-  PADDLE_ENFORCE_EQ(iter == rng_map.end(), true,
+  PADDLE_ENFORCE_EQ(iter == rng_map.end(),
+                    true,
                     platform::errors::AlreadyExists(
                         "%s RandomSeedGenerator is already exist", name));
 
   auto generator = std::make_shared<Generator>(seed);
   bool emplace_success = rng_map.emplace(name, generator).second;
   PADDLE_ENFORCE_EQ(
-      emplace_success, true,
+      emplace_success,
+      true,
       platform::errors::PermissionDenied(
           "SetRandomSeedGenerator cannot emplace %s RandomSeedGenerator",
           name));
@@ -90,7 +93,8 @@ const std::shared_ptr<Generator>& GetRandomSeedGenerator(
     const std::string& name) {
   auto& rng_map = GetRandomSeedGeneratorMap();
   auto iter = rng_map.find(name);
-  PADDLE_ENFORCE_EQ(iter != rng_map.end(), true,
+  PADDLE_ENFORCE_EQ(iter != rng_map.end(),
+                    true,
                     platform::errors::NotFound(
                         "%s RandomSeedGenerator is not found, please "
                         "use `set_random_seed_generator` to set rng first",
@@ -127,6 +131,11 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
 phi::Generator::GeneratorState Generator::GetState() {
   std::lock_guard<std::mutex> lock(this->mu_);
   state_.cpu_engine = *engine_;
+  VLOG(4) << "Get Random state: "
+          << "device id: " << (uint64_t)(this->state_.device)
+          << ", current_seed: " << this->state_.current_seed
+          << ", thread_offset: " << this->state_.thread_offset
+          << ", cpu engine: " << *(this->engine_);
   return this->state_;
 }
 
@@ -134,6 +143,11 @@ void Generator::SetState(const phi::Generator::GeneratorState& state) {
   std::lock_guard<std::mutex> lock(this->mu_);
   this->state_ = state;
   this->engine_ = std::make_shared<std::mt19937_64>(state.cpu_engine);
+  VLOG(4) << "Set Random state: "
+          << "device id: " << (uint64_t)(this->state_.device)
+          << ", current_seed: " << this->state_.current_seed
+          << ", thread_offset: " << this->state_.thread_offset
+          << ", cpu engine: " << *(this->engine_);
 }
 
 uint64_t Generator::GetCurrentSeed() {

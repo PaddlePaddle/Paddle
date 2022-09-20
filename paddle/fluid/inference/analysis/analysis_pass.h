@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
+
 #include <iosfwd>
 #include <string>
 

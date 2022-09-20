@@ -25,6 +25,7 @@ from ..dygraph_utils import _append_activation_in_dygraph
 
 
 class LayerObjectHelper(LayerHelperBase):
+
     def __init__(self, name):
         super(LayerObjectHelper, self).__init__(name, layer_type=name)
 
@@ -169,11 +170,10 @@ class LayerObjectHelper(LayerHelperBase):
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-            self.append_op(
-                type=act_type,
-                inputs={"X": [input_var]},
-                outputs={"Out": [tmp]},
-                attrs=act)
+            self.append_op(type=act_type,
+                           inputs={"X": [input_var]},
+                           outputs={"Out": [tmp]},
+                           attrs=act)
             return tmp
 
     def is_instance(self, param, cls):

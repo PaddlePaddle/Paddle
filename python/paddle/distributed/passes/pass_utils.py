@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,7 +27,7 @@ def list_to_ordered_dict(list_obj, ordered_dict=None):
 
 
 # The inputs of a program are the variables
-# that first occur as the input of the op. 
+# that first occur as the input of the op.
 def get_inputs_of_program(program):
     visited_vars = set()
     input_vars = []
@@ -86,11 +86,11 @@ def prune_program(program, start_op_idx, end_op_idx):
 
 def split_program(program, op_indices):
     """
-    Split the program by op_indices. 
+    Split the program by op_indices.
 
     For examples, a program has 100 ops, and op_indices = [25, 60].
     Then the program is splitted into 3 parts, containing 25, 35 and 40
-    ops respectively.  
+    ops respectively.
 
     The return values are a tuple with 3 elements: the splitted program
     list, the input var names of each splitted program, and the output

@@ -15,11 +15,13 @@
 #pragma once
 #include <stdint.h>
 #include <stdio.h>
+
 #include <vector>
+
 #include "paddle/fluid/distributed/common/registerer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
@@ -52,10 +54,24 @@ class CtrDymfAccessor : public ValueAccessor {
     int ClickIndex() { return ShowIndex() + 1; }
     int EmbedWIndex() { return ClickIndex() + 1; }
     int EmbedG2SumIndex() { return EmbedWIndex() + 1; }
-    int SlotIndex() { return EmbedG2SumIndex() + 1; }
+    int SlotIndex() { return EmbedG2SumIndex() + embed_sgd_dim; }
     int MfDimIndex() { return SlotIndex() + 1; }
     int EmbedxG2SumIndex() { return MfDimIndex() + 1; }
-    int EmbedxWIndex() { return EmbedxG2SumIndex() + 1; }
+    int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
+
+    // 根据mf_dim计算的总长度
+    int Dim(int& mf_dim) {
+      int tmp_embedx_sgd_dim = 1;
+      if (optimizer_name == "SparseAdamSGDRule") {  // adam
+        tmp_embedx_sgd_dim = mf_dim * 2 + 2;
+      } else if (optimizer_name == "SparseSharedAdamSGDRule") {  // shared_adam
+        tmp_embedx_sgd_dim = 4;
+      }
+      return 7 + embed_sgd_dim + tmp_embedx_sgd_dim + mf_dim;
+    }
+
+    // 根据mf_dim计算的总byte数
+    int Size(int& mf_dim) { return (Dim(mf_dim)) * sizeof(float); }
 
     float& UnseenDays(float* val) { return val[UnseenDaysIndex()]; }
     float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }
@@ -71,6 +87,7 @@ class CtrDymfAccessor : public ValueAccessor {
     int embed_sgd_dim;
     int embedx_dim;
     int embedx_sgd_dim;
+    std::string optimizer_name;
   };
 
   struct CtrDymfPushValue {
@@ -156,14 +173,15 @@ class CtrDymfAccessor : public ValueAccessor {
   // 判断该value是否保存到ssd
   // virtual bool save_ssd(float* value);
   virtual bool NeedExtendMF(float* value);
-  virtual bool HasMF(size_t size);
+  virtual bool HasMF(int size);
   // 判断该value是否在save阶段dump,
   // param作为参数用于标识save阶段，如downpour的xbox与batch_model
   // param = 0, save all feature
   // param = 1, save delta feature
   // param = 2, save xbox base feature
   bool Save(float* value, int param) override;
-  bool SaveCache(float* value, int param,
+  bool SaveCache(float* value,
+                 int param,
                  double global_cache_threshold) override;
   bool SaveSSD(float* value) override;
   // update delta_score and unseen_days after save
@@ -172,15 +190,18 @@ class CtrDymfAccessor : public ValueAccessor {
   // 要求value的内存由外部调用者分配完毕
   virtual int32_t Create(float** value, size_t num);
   // 从values中选取到select_values中
-  virtual int32_t Select(float** select_values, const float** values,
+  virtual int32_t Select(float** select_values,
+                         const float** values,
                          size_t num);
   // 将update_values聚合到一起
   virtual int32_t Merge(float** update_values,
-                        const float** other_update_values, size_t num);
+                        const float** other_update_values,
+                        size_t num);
   // 将update_values聚合到一起，通过it.next判定是否进入下一个key
   // virtual int32_t Merge(float** update_values, iterator it);
   // 将update_values更新应用到values中
-  virtual int32_t Update(float** values, const float** update_values,
+  virtual int32_t Update(float** values,
+                         const float** update_values,
                          size_t num);
 
   std::string ParseToString(const float* value, int param) override;

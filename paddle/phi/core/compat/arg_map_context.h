@@ -99,7 +99,7 @@ class ArgumentMappingContext {
   virtual bool HasAttr(const std::string& name) const = 0;
 
   // now we can't use Attribute here, it will cause phi relay on
-  // boost::variant and BlockDesc
+  // paddle::variant and BlockDesc
   virtual paddle::any Attr(const std::string& name) const = 0;
 
   virtual size_t InputSize(const std::string& name) const = 0;
@@ -108,6 +108,7 @@ class ArgumentMappingContext {
   virtual bool IsDenseTensorInput(const std::string& name) const = 0;
   virtual bool IsDenseTensorInputs(const std::string& name) const = 0;
   virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
+  virtual bool IsSelectedRowsInputs(const std::string& name) const = 0;
   // For compatibility with LoDTensorArray
   virtual bool IsDenseTensorVectorInput(const std::string& name) const = 0;
 

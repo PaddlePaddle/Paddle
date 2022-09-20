@@ -15,6 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/tests/api/analyzer_seq_pool1_tester_helper.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -39,7 +40,7 @@ TEST(Analyzer_seq_pool1_fuse_statis, fuse_statis) {
   EXPECT_EQ(fuse_statis.at("squared_mat_sub_fuse"), 0);
   EXPECT_EQ(fuse_statis.at("repeated_fc_relu_fuse"), 2);
   LOG(INFO) << "num_ops: " << num_ops;
-  EXPECT_EQ(num_ops, 185);
+  EXPECT_EQ(num_ops, 183);
 }
 
 }  // namespace seq_pool1_tester

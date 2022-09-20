@@ -28,33 +28,40 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "teacher_student_sigmoid_loss");
+    OP_INOUT_CHECK(ctx->HasInput("Label"),
+                   "Input",
+                   "Label",
                    "teacher_student_sigmoid_loss");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
-                   "teacher_student_sigmoid_loss");
-    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y",
-                   "teacher_student_sigmoid_loss");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Y"), "Output", "Y", "teacher_student_sigmoid_loss");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(x_dims.size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "Input(X)'s rank should be 2. But received: "
                           "Input(X)'s rank is [%d]",
                           x_dims.size()));
-    PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(label_dims.size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "Input(Label)'s rank should be 2. But "
                           "received Input(Label)'s rank is [%d]",
                           label_dims.size()));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
-          x_dims[0], label_dims[0],
+          x_dims[0],
+          label_dims[0],
           platform::errors::InvalidArgument(
               "The 1st dimension of Input(X) and Input(Label) should "
               "be equal. The difference is [%d]: [%d]",
-              x_dims[0], label_dims[0]));
-      PADDLE_ENFORCE_EQ(label_dims[1], 1UL,
+              x_dims[0],
+              label_dims[0]));
+      PADDLE_ENFORCE_EQ(label_dims[1],
+                        1UL,
                         platform::errors::InvalidArgument(
                             "The 2nd dimension of "
                             "Input(Label) should be 1. But received "
@@ -103,54 +110,69 @@ class TeacherStudentSigmoidLossGradientOp
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "teacher_student_sigmoid_loss_grad");
+    OP_INOUT_CHECK(ctx->HasInput("Label"),
+                   "Input",
+                   "X",
                    "teacher_student_sigmoid_loss_grad");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "X",
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input",
+                   "Y@Grad",
                    "teacher_student_sigmoid_loss_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
-                   "Y@Grad", "teacher_student_sigmoid_loss_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
-                   "X@Grad", "teacher_student_sigmoid_loss_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Input",
+                   "X@Grad",
+                   "teacher_student_sigmoid_loss_grad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
     auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 2,
+        x_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(X)'s rank should be 2. But received Input(X)'s rank is [%d]",
             x_dims.size()));
-    PADDLE_ENFORCE_EQ(dy_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(dy_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Input(Y@Grad)'s rank should be 2. But received "
                           "Input(Y@Grad)'s rank is [%d]",
                           dy_dims.size()));
-    PADDLE_ENFORCE_EQ(label_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(label_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Input(Label)'s rank should be 2. But received "
                           "Input(Y@Grad)'s rank is [%d]",
                           label_dims.size()));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
-          x_dims[0], label_dims[0],
+          x_dims[0],
+          label_dims[0],
           platform::errors::InvalidArgument(
               "The 1st dimension of Input(X) and Input(Label) should "
               "be equal. The difference is [%d]: [%d]",
-              x_dims[0], label_dims[0]));
+              x_dims[0],
+              label_dims[0]));
       PADDLE_ENFORCE_EQ(
-          x_dims[0], dy_dims[0],
+          x_dims[0],
+          dy_dims[0],
           platform::errors::InvalidArgument(
               "The 1st dimension of Input(X) and Input(Y@Grad) should "
               "be equal. The difference is [%d]: [%d]",
-              x_dims[0], dy_dims[0]));
+              x_dims[0],
+              dy_dims[0]));
       PADDLE_ENFORCE_EQ(
-          dy_dims[1], 1,
+          dy_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The 2nd dimension of Input(Y@Grad) should be 1. "
               "But received Input(Y@Grad)'s 2nd dimension is [%d]",
               dy_dims[1]));
       PADDLE_ENFORCE_EQ(
-          label_dims[1], 1,
+          label_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "When Attr(soft_label) == false, the 2nd dimension of "
               "Input(Label) should be 1. But received Input(Label)'s 2nd "
@@ -204,7 +226,7 @@ It's similarity to SigmoidCrossEntropyWithLogits Operator. The difference is tha
 we add another label(z') to original.
         loss = max(x, 0) - x * z + log(1 + exp(-abs(x))) + max(x, 0) - x * z' + log(1 + exp(-abs(x)))
         z is click or not
-        z' is teacher value 
+        z' is teacher value
         label = {-2, -1, [0, 2]}
         when z' is not exist, clk = 0 : label = -2;
         when z' is not exist, clk = 1 : label = -1;
@@ -220,7 +242,8 @@ we add another label(z') to original.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    teacher_student_sigmoid_loss, ops::TeacherStudentSigmoidLossOp,
+    teacher_student_sigmoid_loss,
+    ops::TeacherStudentSigmoidLossOp,
     ops::TeacherStudentSigmoidLossOpMaker,
     ops::TeacherStudentSigmoidLossGradOpMaker<paddle::framework::OpDesc>,
     ops::TeacherStudentSigmoidLossGradOpMaker<paddle::imperative::OpBase>);

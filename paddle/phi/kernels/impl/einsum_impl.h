@@ -14,6 +14,9 @@
 #pragma once
 
 #include <set>
+
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -380,7 +383,8 @@ DenseTensor PerformReduction(const Context& dev_ctx,
   VLOG(5) << "call PerformReduction: with axis: "
           << paddle::string::join_strings(indices, ",");
   if (indices.size() == 0) return tensor;
-  return Sum<T, Context>(dev_ctx, tensor, indices, tensor.dtype(), true);
+  return Sum<T, Context>(
+      dev_ctx, tensor, phi::IntArray(indices), tensor.dtype(), true);
 }
 
 inline bool is_no_need_transpose(const std::vector<int>& axis) {
@@ -458,7 +462,7 @@ DenseTensor PerformContraction(
     }
     // reduction
     DenseTensor trans_t;
-    if (FLAGS_einsum_opt && use_cache && cache[operand_idx] != nullptr &&
+    if (use_cache && cache[operand_idx] != nullptr &&
         cache[operand_idx]->IsInitialized()) {
       trans_t.ShareBufferWith(*(cache[operand_idx]));
       VLOG(5) << "Cache Used!";
@@ -467,7 +471,7 @@ DenseTensor PerformContraction(
           dev_ctx, t, perm, all_labels, ellipsis, label2type);
       trans_t = PerformTranspose<T, Context>(
           dev_ctx, reduct_t, perm, reordered_all_labels, ellipsis, label2type);
-      if (FLAGS_einsum_opt && cache[operand_idx] != nullptr)
+      if (cache[operand_idx] != nullptr)
         cache[operand_idx]->ShareBufferWith(trans_t);
     }
     auto mul_dims = GetShapeByType<int>(all_labels,
@@ -598,6 +602,11 @@ void EinsumKernelImpl(const Context& dev_ctx,
                                   out);
     // Reshape Procedure
   } else if (inputs.size() == 1) {
+    if (cache[0] != nullptr) {  // For compatibility, may be cache is nullptr if
+                                // loading the program from v2.3.0
+      (*cache[0]) = *(inputs[0]);  // ShareBuffer for backward, because backward
+                                   // we can only see cached tensor.
+    }
     auto reduce_A = PerformReduction<T, Context>(dev_ctx,
                                                  *inputs[0],
                                                  label2perms[0],
@@ -626,7 +635,8 @@ void EinsumKernelRaw(const Context& dev_ctx,
                      const std::vector<const DenseTensor*>& inputs,
                      const std::string& equation,
                      DenseTensor* out,
-                     std::vector<DenseTensor*> cache) {
+                     std::vector<DenseTensor*> cache,
+                     std::vector<DenseTensor*> xshape) {
   std::vector<char> tmp;
   // for the sake of compatibility, we may load and run v2.3 EinsumOp. Output
   // may have nullptr and the cache.size() is not equal to inputs.size(). refer

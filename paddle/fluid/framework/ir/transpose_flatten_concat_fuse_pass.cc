@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/transpose_flatten_concat_fuse_pass.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -116,17 +117,18 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
                                      input_nodes[i]->name()));
 
       if (i == 0) {
-        trans_axis0 = BOOST_GET_CONST(
+        trans_axis0 = PADDLE_GET_CONST(
             std::vector<int>,
             subgraph.at(pattern.GetPDNode("transpose" + std::to_string(0)))
                 ->Op()
                 ->GetAttr("axis"));
-        flatten_axis0 = BOOST_GET_CONST(
-            int, subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
-                     ->Op()
-                     ->GetAttr("axis"));
+        flatten_axis0 = PADDLE_GET_CONST(
+            int,
+            subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
+                ->Op()
+                ->GetAttr("axis"));
       } else {
-        std::vector<int> trans_axis = BOOST_GET_CONST(
+        std::vector<int> trans_axis = PADDLE_GET_CONST(
             std::vector<int>,
             subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i)))
                 ->Op()
@@ -134,10 +136,11 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
         // All axis of transpose should be the same
         if (trans_axis0 != trans_axis) return;
 
-        int flatten_axis = BOOST_GET_CONST(
-            int, subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
-                     ->Op()
-                     ->GetAttr("axis"));
+        int flatten_axis = PADDLE_GET_CONST(
+            int,
+            subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
+                ->Op()
+                ->GetAttr("axis"));
         // All axis of flatten should be the same
         if (flatten_axis0 != flatten_axis) return;
       }
@@ -156,11 +159,11 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
     Node *concat_op = subgraph.at(pattern.GetPDNode("concat"));
     Node *concat_out = subgraph.at(pattern.GetPDNode("concat_out"));
     std::vector<std::string> input_names;
-    std::vector<int> trans_axis = BOOST_GET_CONST(
+    std::vector<int> trans_axis = PADDLE_GET_CONST(
         std::vector<int>, nodes[kTransOffset]->Op()->GetAttr("axis"));
     int flatten_axis =
-        BOOST_GET_CONST(int, nodes[kFlattenOffset]->Op()->GetAttr("axis"));
-    int concat_axis = BOOST_GET_CONST(int, concat_op->Op()->GetAttr("axis"));
+        PADDLE_GET_CONST(int, nodes[kFlattenOffset]->Op()->GetAttr("axis"));
+    int concat_axis = PADDLE_GET_CONST(int, concat_op->Op()->GetAttr("axis"));
     std::string output_name = concat_out->Name();
 
     for (int i = 0; i < times; i++) {

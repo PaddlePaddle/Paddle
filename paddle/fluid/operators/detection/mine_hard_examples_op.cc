@@ -26,7 +26,8 @@ bool SortScoreDescend(const std::pair<float, T>& pair1,
   return pair1.first > pair2.first;
 }
 
-inline bool IsEligibleMining(const MiningType mining_type, const int match_idx,
+inline bool IsEligibleMining(const MiningType mining_type,
+                             const int match_idx,
                              const float match_dist,
                              const float neg_dist_threshold) {
   if (mining_type == MiningType::kMaxNegative) {
@@ -67,8 +68,8 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
     auto out_match_indices =
         ctx.Output<framework::Tensor>("UpdatedMatchIndices");
 
-    framework::TensorCopy(*in_matched_indices, ctx.GetPlace(),
-                          out_match_indices);
+    framework::TensorCopy(
+        *in_matched_indices, ctx.GetPlace(), out_match_indices);
 
     int batch_size = in_matched_indices->dims()[0];
     int prior_num = in_matched_indices->dims()[1];
@@ -92,7 +93,9 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
       std::vector<std::pair<T, size_t>> loss_idx;
       int neg_sel = 0;
       for (int m = 0; m < prior_num; ++m) {
-        if (IsEligibleMining(mining_type, match_indices(n, m), match_dist(n, m),
+        if (IsEligibleMining(mining_type,
+                             match_indices(n, m),
+                             match_dist(n, m),
                              neg_dist_threshold)) {
           T loss = cls_loss[n * prior_num + m];
           if (mining_type == MiningType::kHardExample && loc_loss != nullptr) {
@@ -116,7 +119,8 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
       std::sort(loss_idx.begin(), loss_idx.end(), SortScoreDescend<size_t>);
       std::set<int> sel_indices;
       std::vector<int> neg_indices;
-      std::transform(loss_idx.begin(), loss_idx.begin() + neg_sel,
+      std::transform(loss_idx.begin(),
+                     loss_idx.begin() + neg_sel,
                      std::inserter(sel_indices, sel_indices.begin()),
                      [](std::pair<T, size_t>& l) -> int {
                        return static_cast<int>(l.second);
@@ -165,114 +169,141 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("ClsLoss"), "Input", "ClsLoss",
+    OP_INOUT_CHECK(
+        ctx->HasInput("ClsLoss"), "Input", "ClsLoss", "mine_hard_examples");
+    OP_INOUT_CHECK(ctx->HasInput("MatchIndices"),
+                   "Input",
+                   "MatchIndices",
                    "mine_hard_examples");
-    OP_INOUT_CHECK(ctx->HasInput("MatchIndices"), "Input", "MatchIndices",
+    OP_INOUT_CHECK(
+        ctx->HasInput("MatchDist"), "Input", "MatchDist", "mine_hard_examples");
+    OP_INOUT_CHECK(ctx->HasOutput("NegIndices"),
+                   "Output",
+                   "NegIndices",
                    "mine_hard_examples");
-    OP_INOUT_CHECK(ctx->HasInput("MatchDist"), "Input", "MatchDist",
+    OP_INOUT_CHECK(ctx->HasOutput("UpdatedMatchIndices"),
+                   "Output",
+                   "UpdatedMatchIndices",
                    "mine_hard_examples");
-    OP_INOUT_CHECK(ctx->HasOutput("NegIndices"), "Output", "NegIndices",
-                   "mine_hard_examples");
-    OP_INOUT_CHECK(ctx->HasOutput("UpdatedMatchIndices"), "Output",
-                   "UpdatedMatchIndices", "mine_hard_examples");
 
     auto cls_loss_dims = ctx->GetInputDim("ClsLoss");
     auto idx_dims = ctx->GetInputDim("MatchIndices");
     auto dis_dims = ctx->GetInputDim("MatchDist");
 
-    PADDLE_ENFORCE_EQ(cls_loss_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(cls_loss_dims.size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "The shape of ClsLoss is [N, Np]. But received %d.",
                           cls_loss_dims.size()));
     PADDLE_ENFORCE_EQ(
-        idx_dims.size(), 2UL,
+        idx_dims.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "The shape of MatchIndices is [N, Np]. But received %d.",
             idx_dims.size()));
-    PADDLE_ENFORCE_EQ(dis_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(dis_dims.size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "The shape of MatchDist is [N, Np]. But received %d.",
                           dis_dims.size()));
 
     if (ctx->HasInput("LocLoss")) {
       auto loc_loss_dims = ctx->GetInputDim("LocLoss");
-      PADDLE_ENFORCE_EQ(loc_loss_dims.size(), 2UL,
+      PADDLE_ENFORCE_EQ(loc_loss_dims.size(),
+                        2UL,
                         platform::errors::InvalidArgument(
                             "The shape of LocLoss is [N, Np]. But received %d.",
                             loc_loss_dims.size()));
       if (ctx->IsRuntime()) {
-        PADDLE_ENFORCE_EQ(cls_loss_dims[0], loc_loss_dims[0],
+        PADDLE_ENFORCE_EQ(cls_loss_dims[0],
+                          loc_loss_dims[0],
                           platform::errors::InvalidArgument(
                               "Batch size of ClsLoss and LocLoss must be the "
                               "same. But received batch size of ClsLoss was "
                               "%d, batch size of LocLoss was %d.",
-                              cls_loss_dims[0], loc_loss_dims[0]));
-        PADDLE_ENFORCE_EQ(cls_loss_dims[1], loc_loss_dims[1],
+                              cls_loss_dims[0],
+                              loc_loss_dims[0]));
+        PADDLE_ENFORCE_EQ(cls_loss_dims[1],
+                          loc_loss_dims[1],
                           platform::errors::InvalidArgument(
                               "Prior box number of ClsLoss and LocLoss must be "
                               "the same. But received box number of ClsLoss "
                               "was %d, box number of LocLoss was %d.",
-                              cls_loss_dims[1], loc_loss_dims[1]));
+                              cls_loss_dims[1],
+                              loc_loss_dims[1]));
       }
     }
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(cls_loss_dims[0], idx_dims[0],
+      PADDLE_ENFORCE_EQ(cls_loss_dims[0],
+                        idx_dims[0],
                         platform::errors::InvalidArgument(
                             "Batch size of ClsLoss and MatchIndices must be "
                             "the same. But received batch size of ClsLoss was "
                             "%d, batch size of MatchIndices was %d.",
-                            cls_loss_dims[0], idx_dims[0]));
+                            cls_loss_dims[0],
+                            idx_dims[0]));
       PADDLE_ENFORCE_EQ(
-          cls_loss_dims[1], idx_dims[1],
+          cls_loss_dims[1],
+          idx_dims[1],
           platform::errors::InvalidArgument(
               "Prior box number of ClsLoss and "
               "MatchIndices must be the same. But received box number of "
               "ClsLoss was %d, box number of MatchIndices was %d.",
-              cls_loss_dims[1], idx_dims[1]));
+              cls_loss_dims[1],
+              idx_dims[1]));
 
-      PADDLE_ENFORCE_EQ(cls_loss_dims[0], dis_dims[0],
+      PADDLE_ENFORCE_EQ(cls_loss_dims[0],
+                        dis_dims[0],
                         platform::errors::InvalidArgument(
                             "Batch size of ClsLoss and MatchDist must be the "
                             "same. But received batch size of ClsLoss was %d, "
                             "batch size of MatchDist was %d.",
-                            cls_loss_dims[0], dis_dims[0]));
-      PADDLE_ENFORCE_EQ(cls_loss_dims[1], idx_dims[1],
+                            cls_loss_dims[0],
+                            dis_dims[0]));
+      PADDLE_ENFORCE_EQ(cls_loss_dims[1],
+                        idx_dims[1],
                         platform::errors::InvalidArgument(
                             "Prior box number of ClsLoss and MatchDist must be "
                             "the same. But received box number of ClsLoss was "
                             "%d, box number of MatchDist was %d.",
-                            cls_loss_dims[1], idx_dims[1]));
+                            cls_loss_dims[1],
+                            idx_dims[1]));
     }
 
     auto mining_type =
         GetMiningType(ctx->Attrs().Get<std::string>("mining_type"));
 
-    PADDLE_ENFORCE_NE(mining_type, MiningType::kNone,
+    PADDLE_ENFORCE_NE(mining_type,
+                      MiningType::kNone,
                       platform::errors::InvalidArgument(
                           "mining_type must be hard_example or max_negative"));
 
     if (mining_type == MiningType::kMaxNegative) {
       auto neg_pos_ratio = ctx->Attrs().Get<float>("neg_pos_ratio");
       auto neg_dist_threshold = ctx->Attrs().Get<float>("neg_dist_threshold");
-      PADDLE_ENFORCE_GT(neg_pos_ratio, 0.0f,
+      PADDLE_ENFORCE_GT(neg_pos_ratio,
+                        0.0f,
                         platform::errors::InvalidArgument(
                             "neg_pos_ratio must greater than zero in "
                             "max_negative mode. But received %f.",
                             neg_pos_ratio));
-      PADDLE_ENFORCE_LT(neg_dist_threshold, 1.0f,
+      PADDLE_ENFORCE_LT(neg_dist_threshold,
+                        1.0f,
                         platform::errors::InvalidArgument(
                             "neg_dist_threshold must less than one in "
                             "max_negative mode. But received %f.",
                             neg_dist_threshold));
-      PADDLE_ENFORCE_GT(neg_dist_threshold, 0.0f,
+      PADDLE_ENFORCE_GT(neg_dist_threshold,
+                        0.0f,
                         platform::errors::InvalidArgument(
                             "neg_dist_threshold must greater "
                             "than zero in max_negative mode. But received %f.",
                             neg_dist_threshold));
     } else if (mining_type == MiningType::kHardExample) {
       auto sample_size = ctx->Attrs().Get<int>("sample_size");
-      PADDLE_ENFORCE_GT(sample_size, 0,
+      PADDLE_ENFORCE_GT(sample_size,
+                        0,
                         platform::errors::InvalidArgument(
                             "sample_size must greater than zero in "
                             "hard_example mode. But received %d.",
@@ -352,11 +383,11 @@ class MineHardExamplesOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Mine hard examples Operator.
 This operator implements hard example mining to select a subset of negative box indices.
-For each image, selects the box with highest losses. subject to the condition that the 
-box cannot have an Matcht > neg_dist_threshold when mining_type is max_negative. 
-The selected number is min(sample_size, max_negative_box_number) when mining_type is 
-hard_example, or min(neg_pos_ratio * positive_box_number, max_negative_box_number) 
-when mining_type is max_negative, where the max_negative_box_number is the count of 
+For each image, selects the box with highest losses. subject to the condition that the
+box cannot have an Matcht > neg_dist_threshold when mining_type is max_negative.
+The selected number is min(sample_size, max_negative_box_number) when mining_type is
+hard_example, or min(neg_pos_ratio * positive_box_number, max_negative_box_number)
+when mining_type is max_negative, where the max_negative_box_number is the count of
 MatchIndices elements with value -1.
 )DOC");
   }
@@ -366,11 +397,12 @@ MatchIndices elements with value -1.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    mine_hard_examples, ops::MineHardExamplesOp, ops::MineHardExamplesOpMaker,
+    mine_hard_examples,
+    ops::MineHardExamplesOp,
+    ops::MineHardExamplesOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    mine_hard_examples,
-    ops::MineHardExamplesKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MineHardExamplesKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(mine_hard_examples,
+                       ops::MineHardExamplesKernel<phi::CPUContext, float>,
+                       ops::MineHardExamplesKernel<phi::CPUContext, double>);

@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,8 +21,11 @@ from paddle.distributed.passes import new_pass, PassManager
 import unittest
 from dist_pass_test_base import DistPassTestBase
 
+paddle.enable_static()
+
 
 class DemoNet(nn.Layer):
+
     def __init__(self):
         super(DemoNet, self).__init__()
 
@@ -39,13 +42,15 @@ class DemoNet(nn.Layer):
 
 
 class TestFuseAdamPass(DistPassTestBase):
+
     def init(self):
         self.atol = 1e-4
         self.rtol = 1e-4
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
-        image = paddle.static.data(
-            shape=[batch_size] + image_shape, dtype='float32', name='image')
+        image = paddle.static.data(shape=[batch_size] + image_shape,
+                                   dtype='float32',
+                                   name='image')
 
         model = DemoNet()
         pred_out = model(image)

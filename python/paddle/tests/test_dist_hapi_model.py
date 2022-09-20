@@ -103,6 +103,7 @@ def start_local_trainers(cluster,
 
 
 class TestMultipleGpus(unittest.TestCase):
+
     def run_mnist_2gpu(self, target_file_name, eager_mode=True):
         if fluid.core.get_cuda_device_count() == 0:
             return
@@ -113,12 +114,11 @@ class TestMultipleGpus(unittest.TestCase):
 
         cluster, pod = get_cluster_from_args(selected_gpus)
 
-        procs = start_local_trainers(
-            cluster,
-            pod,
-            eager_mode=eager_mode,
-            training_script=target_file_name,
-            training_script_args=[])
+        procs = start_local_trainers(cluster,
+                                     pod,
+                                     eager_mode=eager_mode,
+                                     training_script=target_file_name,
+                                     training_script_args=[])
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_nranks())

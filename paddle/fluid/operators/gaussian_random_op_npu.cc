@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -49,8 +48,10 @@ class NPUGaussianRandomKernel : public framework::OpKernel<T> {
       cpu_data[i] = dist(*engine);
     }
     framework::TensorCopy(
-        cpu_tensor, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), tensor);
+        cpu_tensor,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        tensor);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
   }

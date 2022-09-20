@@ -17,11 +17,11 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
 
+namespace paddle {
+namespace distributed {
 DEFINE_int32(heter_world_size, 100, "group size");  // group max size
 DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
 
-namespace paddle {
-namespace distributed {
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = nullptr;
 std::mutex HeterClient::mtx_;
 std::shared_ptr<HeterClient> HeterClient::switch_s_instance_ = nullptr;
@@ -29,7 +29,8 @@ std::shared_ptr<HeterClient> HeterClient::switch_s_instance_ = nullptr;
 int GetMicroId(const platform::DeviceContext& ctx,
                const framework::Scope* scope) {
   framework::Variable* var = scope->FindVar("microbatch_id");
-  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
+  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(),
+                    true,
                     platform::errors::InvalidArgument(
                         "the type of micro id shoulde be LoDTensor."));
   auto micro_id = -1;
@@ -42,11 +43,13 @@ int GetMicroId(const platform::DeviceContext& ctx,
     std::vector<char> temp;
     temp.resize(tensor->numel() * framework::DataTypeSize(tensor->dtype()));
     char* temp_ptr = temp.data();
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(
-        platform::CPUPlace(), temp_ptr, tensor->place(), tensor->data(),
-        tensor->numel() * framework::DataTypeSize(tensor->dtype()), stream);
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+    memory::Copy(platform::CPUPlace(),
+                 temp_ptr,
+                 tensor->place(),
+                 tensor->data(),
+                 tensor->numel() * framework::DataTypeSize(tensor->dtype()),
+                 stream);
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
     micro_id = static_cast<int>(temp_ptr_float[0]);
 #endif
@@ -94,8 +97,8 @@ void HeterClient::CreateClient2XpuConnection() {
   previous_xpu_channels_.resize(previous_xpu_list_.size());
   for (size_t i = 0; i < previous_xpu_list_.size(); ++i) {
     previous_xpu_channels_[i].reset(new brpc::Channel());
-    if (previous_xpu_channels_[i]->Init(previous_xpu_list_[i].c_str(), "",
-                                        &options) != 0) {
+    if (previous_xpu_channels_[i]->Init(
+            previous_xpu_list_[i].c_str(), "", &options) != 0) {
       VLOG(0) << "HeterClient channel init fail. Try Again";
       auto ip_port = paddle::string::Split(previous_xpu_list_[i], ':');
       std::string ip = ip_port[0];
@@ -110,10 +113,12 @@ void HeterClient::CreateClient2XpuConnection() {
 }
 
 void HeterClient::SendAndRecvAsync(
-    const platform::DeviceContext& ctx, const framework::Scope& scope,
+    const platform::DeviceContext& ctx,
+    const framework::Scope& scope,
     const std::string& message_name,
     const std::vector<std::string>& send_var_name,
-    const std::vector<std::string>& recv_var_name, const std::string& mode) {
+    const std::vector<std::string>& recv_var_name,
+    const std::string& mode) {
   platform::RecordEvent record_event("HeterClient->SendAndRecvAsync",
                                      platform::TracerEventType::Communication,
                                      1);
@@ -127,7 +132,8 @@ void HeterClient::SendAndRecvAsync(
   OnHeterRpcDone* closure = new OnHeterRpcDone([](void* done) {
     auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
     PADDLE_ENFORCE_NE(
-        closure->cntl.Failed(), true,
+        closure->cntl.Failed(),
+        true,
         platform::errors::Unimplemented(
             "HeterClient::SendAndRecv meets brpc error, error message is %s",
             closure->cntl.ErrorText()));
@@ -135,12 +141,17 @@ void HeterClient::SendAndRecvAsync(
   });
   closure->cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
   auto& request_io_buffer = closure->cntl.request_attachment();
-  distributed::SerializeToMultiVarMsgAndIOBuf(
-      message_name, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
-      &request, &request_io_buffer);
+  distributed::SerializeToMultiVarMsgAndIOBuf(message_name,
+                                              send_var_name_val,
+                                              recv_var_name_val,
+                                              *p_ctx,
+                                              p_scope,
+                                              &request,
+                                              &request_io_buffer);
 
-  int micro_id = GetMicroId(ctx, p_scope);
+  int micro_id = GetMicroId(ctx, p_scope);  // global
   auto minibatch_id = micro_id / 10;
+  VLOG(4) << "micro_id: " << micro_id;
   // select channel according to micro id
   if (mode == "forward") {
     int num = minibatch_id % xpu_channels_.size();
@@ -163,8 +174,8 @@ void HeterClient::SendAndRecvAsync(
     return;
   }
   ::paddle::distributed::PsService_Stub stub(channel);
-  stub.SendAndRecvVariable(&closure->cntl, &request, &closure->response,
-                           closure);
+  stub.SendAndRecvVariable(
+      &closure->cntl, &request, &closure->response, closure);
 }
 
 std::future<int32_t> HeterClient::SendCmd(
@@ -196,8 +207,8 @@ std::future<int32_t> HeterClient::SendCmd(
     ::paddle::distributed::PsService_Stub rpc_stub(xpu_channels_[i].get());
     closure->cntl(i)->set_timeout_ms(
         FLAGS_pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
-    rpc_stub.service(closure->cntl(i), closure->request(i),
-                     closure->response(i), closure);
+    rpc_stub.service(
+        closure->cntl(i), closure->request(i), closure->response(i), closure);
   }
   return fut;
 }
@@ -213,7 +224,8 @@ int HeterClient::Send(const platform::DeviceContext& ctx,
     closure->set_promise_value(ret);
     if (closure->cntl.Failed()) {
       PADDLE_ENFORCE_NE(
-          closure->cntl.Failed(), true,
+          closure->cntl.Failed(),
+          true,
           platform::errors::Unimplemented(
               "HeterClient::SendToSwitch meets brpc error, error message is %s",
               closure->cntl.ErrorText()));
@@ -267,8 +279,10 @@ int HeterClient::Send(const platform::DeviceContext& ctx,
   return 0;
 }
 
-int HeterClient::Send(int group_id, const std::vector<std::string>& var_names,
-                      const std::vector<int64_t>& vars_size, void* data_ptr,
+int HeterClient::Send(int group_id,
+                      const std::vector<std::string>& var_names,
+                      const std::vector<int64_t>& vars_size,
+                      void* data_ptr,
                       int64_t data_size) {
   OnHeterRpcDone* closure = new OnHeterRpcDone([](void* done) {
     auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
@@ -364,8 +378,10 @@ int HeterClient::Recv(const platform::DeviceContext& ctx,
   return 0;
 }
 
-int HeterClient::Recv(int group_id, const std::vector<std::string>& var_names,
-                      void* data_ptr, int64_t data_size) {
+int HeterClient::Recv(int group_id,
+                      const std::vector<std::string>& var_names,
+                      void* data_ptr,
+                      int64_t data_size) {
   OnHeterRpcDone* closure = new OnHeterRpcDone([](void* done) {
     auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
     int ret = 0;

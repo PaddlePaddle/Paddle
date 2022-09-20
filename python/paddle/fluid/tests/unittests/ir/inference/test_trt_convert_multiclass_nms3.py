@@ -22,6 +22,7 @@ import unittest
 
 
 class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -58,21 +59,25 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
             return config
 
     def sample_program_configs(self):
+
         def generate_boxes(batch, num_boxes):
-            return np.arange(
-                batch * num_boxes * 4,
-                dtype=np.float32).reshape([batch, num_boxes, 4])
+            return np.arange(batch * num_boxes * 4,
+                             dtype=np.float32).reshape([batch, num_boxes, 4])
 
         def generate_scores(batch, num_boxes, num_classes):
-            return np.arange(
-                batch * num_classes * num_boxes,
-                dtype=np.float32).reshape([batch, num_classes, num_boxes])
+            return np.arange(batch * num_classes * num_boxes,
+                             dtype=np.float32).reshape(
+                                 [batch, num_classes, num_boxes])
             # return np.random.rand(batch, num_classes, num_boxes).astype(np.float32)
 
         for batch in [1, 2]:
-            for num_boxes in [4, 12]:
-                for num_classes in [2, 6]:
-                    for score_threshold in [0.01, ]:
+            self.batch = batch
+            for nms_eta in [0.8, 1.1]:
+                for num_boxes, num_classes in [[80, 100], [40, 200], [20, 400]]:
+                    self.num_boxes, self.num_classes = num_boxes, num_classes
+                    for score_threshold in [
+                            0.01,
+                    ]:
                         ops_config = [{
                             "op_type": "multiclass_nms3",
                             "op_inputs": {
@@ -91,7 +96,7 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                                 "keep_top_k": num_boxes,
                                 "nms_threshold": 0.3,
                                 "normalized": False,
-                                "nms_eta": 1.1
+                                "nms_eta": nms_eta
                             }
                         }]
                         ops = self.generate_op_config(ops_config)
@@ -99,9 +104,11 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                             ops=ops,
                             weights={},
                             inputs={
-                                "input_bboxes": TensorConfig(data_gen=partial(
+                                "input_bboxes":
+                                TensorConfig(data_gen=partial(
                                     generate_boxes, batch, num_boxes)),
-                                "input_scores": TensorConfig(
+                                "input_scores":
+                                TensorConfig(
                                     data_gen=partial(generate_scores, batch,
                                                      num_boxes, num_classes))
                             },
@@ -109,11 +116,26 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                                 "nms_output_boxes", "nms_output_num",
                                 "nms_output_index"
                             ])
-
                         yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
+        def generate_dynamic_shape(attrs):
+            # The last dim of input_bboxes should be static.
+            self.dynamic_shape.min_input_shape = {
+                "input_bboxes": [1, self.num_boxes, 4],
+                "input_scores": [1, self.num_classes, self.num_boxes],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_bboxes": [8, self.num_boxes, 4],
+                "input_scores": [8, self.num_classes, self.num_boxes],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_bboxes": [self.batch, self.num_boxes, 4],
+                "input_scores": [self.batch, self.num_classes, self.num_boxes],
+            }
+
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -123,8 +145,7 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
             return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -136,9 +157,16 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), 1e-2
 
-    def assert_tensors_near(self,
-                            atol: float,
-                            rtol: float,
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+        # self.trt_param.precision = paddle_infer.PrecisionType.Half
+        # yield self.create_inference_config(), generate_trt_nodes_num(
+        #     attrs, True), (1e-2, 1e-2)
+
+    def assert_tensors_near(self, atol: float, rtol: float,
                             tensor: Dict[str, np.array],
                             baseline: Dict[str, np.array]):
         # the order of tensorrt outputs are not consistent with paddle
@@ -147,12 +175,10 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                 continue
             if key == "nms_output_boxes":
                 basline_arr = np.array(
-                    sorted(
-                        baseline[key].reshape((-1, 6)),
-                        key=lambda i: [i[0], i[1]]))
+                    sorted(baseline[key].reshape((-1, 6)),
+                           key=lambda i: [i[0], i[1]]))
                 arr = np.array(
-                    sorted(
-                        arr.reshape((-1, 6)), key=lambda i: [i[0], i[1]]))
+                    sorted(arr.reshape((-1, 6)), key=lambda i: [i[0], i[1]]))
             else:
                 basline_arr = np.array(baseline[key].reshape((-1, 1)))
                 arr = np.array(arr.reshape((-1, 1)))
@@ -162,10 +188,12 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                 "The output shapes are not equal, the baseline shape is " +
                 str(basline_arr.shape) + ', but got ' + str(arr.shape))
             diff = abs(basline_arr - arr)
-            self.assertTrue(
-                np.allclose(
-                    basline_arr, arr, atol=atol, rtol=rtol),
-                "Output has diff, Maximum absolute error: {}".format(
+            np.testing.assert_allclose(
+                basline_arr,
+                arr,
+                rtol=rtol,
+                atol=atol,
+                err_msg='Output has diff, Maximum absolute error: {}'.format(
                     np.amax(diff)))
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
@@ -173,7 +201,7 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
         return True
 
     def test(self):
-        self.trt_param.workspace_size = 1 << 20
+        self.trt_param.workspace_size = 1 << 25
         self.run_test()
 
 

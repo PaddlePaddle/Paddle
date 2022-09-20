@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import unittest
@@ -25,6 +26,7 @@ paddle.enable_static()
 
 
 class TestUnStackOpBase(OpTest):
+
     def initDefaultParameters(self):
         self.input_dim = (5, 6, 7)
         self.axis = 0
@@ -74,21 +76,25 @@ class TestUnStackOpBase(OpTest):
 
 
 class TestStackOp3(TestUnStackOpBase):
+
     def initParameters(self):
         self.axis = -1
 
 
 class TestStackOp4(TestUnStackOpBase):
+
     def initParameters(self):
         self.axis = -3
 
 
 class TestStackOp5(TestUnStackOpBase):
+
     def initParameters(self):
         self.axis = 1
 
 
 class TestStackOp6(TestUnStackOpBase):
+
     def initParameters(self):
         self.axis = 2
 

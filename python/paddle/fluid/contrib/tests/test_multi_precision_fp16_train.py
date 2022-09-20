@@ -26,6 +26,7 @@ paddle.enable_static()
 
 
 class RandomDataset(Dataset):
+
     def __init__(self, num_samples, seed=123):
         super(RandomDataset, self).__init__()
         np.random.seed(seed)
@@ -41,6 +42,7 @@ class RandomDataset(Dataset):
 
 
 def reader_decorator(reader):
+
     def __reader__():
         for i in range(len(reader)):
             yield reader[i]
@@ -49,6 +51,7 @@ def reader_decorator(reader):
 
 
 def resnet_cifar10(input, depth=32):
+
     def conv_bn_layer(input,
                       ch_out,
                       filter_size,
@@ -56,14 +59,13 @@ def resnet_cifar10(input, depth=32):
                       padding,
                       act='relu',
                       bias_attr=False):
-        tmp = fluid.layers.conv2d(
-            input=input,
-            filter_size=filter_size,
-            num_filters=ch_out,
-            stride=stride,
-            padding=padding,
-            act=None,
-            bias_attr=bias_attr)
+        tmp = fluid.layers.conv2d(input=input,
+                                  filter_size=filter_size,
+                                  num_filters=ch_out,
+                                  stride=stride,
+                                  padding=padding,
+                                  act=None,
+                                  bias_attr=bias_attr)
         return fluid.layers.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
@@ -86,14 +88,19 @@ def resnet_cifar10(input, depth=32):
 
     assert (depth - 2) % 6 == 0
     n = (depth - 2) // 6
-    conv1 = conv_bn_layer(
-        input=input, ch_out=16, filter_size=3, stride=1, padding=1)
+    conv1 = conv_bn_layer(input=input,
+                          ch_out=16,
+                          filter_size=3,
+                          stride=1,
+                          padding=1)
     with paddle.static.amp.fp16_guard():
         res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
         res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
         res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
-    pool = fluid.layers.pool2d(
-        input=res3, pool_size=8, pool_type='avg', pool_stride=1)
+    pool = fluid.layers.pool2d(input=res3,
+                               pool_size=8,
+                               pool_type='avg',
+                               pool_stride=1)
     return pool
 
 
@@ -107,24 +114,25 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
     train_program.random_seed = 123
     startup_prog.random_seed = 456
     with fluid.program_guard(train_program, startup_prog):
-        images = fluid.layers.data(
-            name='pixel', shape=data_shape, dtype='float32')
+        images = fluid.layers.data(name='pixel',
+                                   shape=data_shape,
+                                   dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         net = resnet_cifar10(images)
         logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
-        cost = fluid.layers.softmax_with_cross_entropy(
-            logits, label, return_softmax=False)
+        cost = fluid.layers.softmax_with_cross_entropy(logits,
+                                                       label,
+                                                       return_softmax=False)
         sum_cost = fluid.layers.reduce_sum(cost)
 
         # Test program
         test_program = train_program.clone(for_test=True)
 
         if optimizer == "Adam":
-            optimizer = paddle.optimizer.AdamW(
-                learning_rate=0.001,
-                epsilon=1e-8,
-                weight_decay=0.0,
-                multi_precision=True)
+            optimizer = paddle.optimizer.AdamW(learning_rate=0.001,
+                                               epsilon=1e-8,
+                                               weight_decay=0.0,
+                                               multi_precision=True)
         elif optimizer == "Lars":
             optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
                 learning_rate=0.001,
@@ -147,17 +155,14 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
 
         optimizer.minimize(sum_cost)
 
-    train_reader = paddle.batch(
-        reader_decorator(RandomDataset(
-            16 * 5, seed=123)),
-        batch_size=16,
-        drop_last=True)
+    train_reader = paddle.batch(reader_decorator(RandomDataset(16 * 5,
+                                                               seed=123)),
+                                batch_size=16,
+                                drop_last=True)
 
-    test_reader = paddle.batch(
-        reader_decorator(RandomDataset(
-            4 * 5, seed=456)),
-        batch_size=4,
-        drop_last=True)
+    test_reader = paddle.batch(reader_decorator(RandomDataset(4 * 5, seed=456)),
+                               batch_size=4,
+                               drop_last=True)
 
     place = fluid.CUDAPlace(0)
     exe = fluid.Executor(place)
@@ -166,8 +171,9 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
     def train_loop():
         exe.run(startup_prog)
         if use_pure_fp16:
-            optimizer.amp_init(
-                place, test_program=test_program, use_fp16_test=True)
+            optimizer.amp_init(place,
+                               test_program=test_program,
+                               use_fp16_test=True)
 
         train_loss_list = []
         test_loss_list = []
@@ -195,6 +201,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
 
 
 class TestImageMultiPrecision(unittest.TestCase):
+
     def test_resnet_pure_fp16(self):
         if not fluid.core.is_compiled_with_cuda():
             return
@@ -221,22 +228,18 @@ class TestImageMultiPrecision(unittest.TestCase):
                     use_nesterov=use_nesterov,
                     optimizer=optimizer)
 
-            self.assertTrue(
-                np.allclose(
-                    np.array(train_loss_fp16),
-                    np.array(train_loss_fp32),
-                    rtol=1e-02,
-                    atol=1e-05,
-                    equal_nan=True),
-                msg='Failed to train in pure FP16.')
-            self.assertTrue(
-                np.allclose(
-                    np.array(test_loss_fp16),
-                    np.array(test_loss_fp32),
-                    rtol=1e-02,
-                    atol=1e-05,
-                    equal_nan=True),
-                msg='Failed to test in pure FP16.')
+            np.testing.assert_allclose(np.array(train_loss_fp16),
+                                       np.array(train_loss_fp32),
+                                       rtol=0.01,
+                                       atol=1e-05,
+                                       equal_nan=True,
+                                       err_msg='Failed to train in pure FP16.')
+            np.testing.assert_allclose(np.array(test_loss_fp16),
+                                       np.array(test_loss_fp32),
+                                       rtol=0.01,
+                                       atol=1e-05,
+                                       equal_nan=True,
+                                       err_msg='Failed to test in pure FP16.')
 
         do_test(use_nesterov=False)
         do_test(use_nesterov=True)
@@ -254,24 +257,29 @@ class TestImageMultiPrecision(unittest.TestCase):
 
 
 class TestAmpWithNonIterableDataLoader(unittest.TestCase):
+
     def decorate_with_data_loader(self):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
             with paddle.fluid.unique_name.guard():
-                image = fluid.layers.data(
-                    name='image', shape=[3, 224, 224], dtype='float32')
-                label = fluid.layers.data(
-                    name='label', shape=[1], dtype='int64')
+                image = fluid.layers.data(name='image',
+                                          shape=[3, 224, 224],
+                                          dtype='float32')
+                label = fluid.layers.data(name='label',
+                                          shape=[1],
+                                          dtype='int64')
                 py_reader = fluid.io.DataLoader.from_generator(
                     feed_list=[image, label],
                     capacity=4,
                     iterable=False,
                     use_double_buffer=False)
-                zero_var = fluid.layers.fill_constant(
-                    shape=[1], dtype='int64', value=0)
-                one_var = fluid.layers.fill_constant(
-                    shape=[1], dtype='int64', value=1)
+                zero_var = fluid.layers.fill_constant(shape=[1],
+                                                      dtype='int64',
+                                                      value=0)
+                one_var = fluid.layers.fill_constant(shape=[1],
+                                                     dtype='int64',
+                                                     value=1)
                 with fluid.layers.control_flow.Switch() as switch:
                     with switch.case(label != zero_var):
                         fluid.layers.assign(input=zero_var, output=label)

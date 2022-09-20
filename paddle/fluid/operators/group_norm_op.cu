@@ -55,9 +55,15 @@ __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
 }
 
 template <typename T>
-__global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
-                                              int imsize, int groups,
-                                              int group_size, T* mean, T* var) {
+__global__ void GroupNormForwardGetMeanAndVar(const T* x,
+                                              int N,
+                                              int C,
+                                              int W,
+                                              int imsize,
+                                              int groups,
+                                              int group_size,
+                                              T* mean,
+                                              T* var) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
@@ -83,8 +89,10 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
 
 template <typename T, typename AccT, int VecSize, int Num>
 __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
-                                             int size, const int offset,
-                                             AccT* out_mean, AccT* out_var) {
+                                             int size,
+                                             const int offset,
+                                             AccT* out_mean,
+                                             AccT* out_var) {
   const T* x = arrs[0];
   const T* y;
   if (Num == 2) {
@@ -153,8 +161,8 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
 }
 
 template <typename T>
-__device__ __forceinline__ void ReduceMeanAndVar(T* mean, T* var, T x_mean,
-                                                 T x_var, int size) {
+__device__ __forceinline__ void ReduceMeanAndVar(
+    T* mean, T* var, T x_mean, T x_var, int size) {
   const int nc = blockIdx.x;
   x_mean = kps::details::BlockXReduce<T, kps::AddFunctor<T>>(
       x_mean, kps::AddFunctor<T>());
@@ -181,7 +189,9 @@ __global__ void ScalarGetMeanAndVarNCHW(const T* x, T* mean, T* var, int size) {
 }
 
 template <typename T, typename AccT, int VecSize>
-__global__ void VectorizedGetMeanAndVarNCHW(const T* x, T* mean, T* var,
+__global__ void VectorizedGetMeanAndVarNCHW(const T* x,
+                                            T* mean,
+                                            T* var,
                                             int size) {
   int i = blockIdx.x;
   AccT x_mean = static_cast<AccT>(0);
@@ -195,10 +205,20 @@ __global__ void VectorizedGetMeanAndVarNCHW(const T* x, T* mean, T* var,
 }
 
 template <typename T, int flags>
-__global__ void GroupNormForward(const T* x, const T* mean, const T* var,
-                                 const T* scale, const T* bias, int N, int C,
-                                 int W, int imsize, int groups, int group_size,
-                                 T epsilon, T* y, T* real_var,
+__global__ void GroupNormForward(const T* x,
+                                 const T* mean,
+                                 const T* var,
+                                 const T* scale,
+                                 const T* bias,
+                                 int N,
+                                 int C,
+                                 int W,
+                                 int imsize,
+                                 int groups,
+                                 int group_size,
+                                 T epsilon,
+                                 T* y,
+                                 T* real_var,
                                  const DataLayout data_layout) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
@@ -241,8 +261,7 @@ __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
 }
 
 template <typename T>
-class GroupNormKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -271,8 +290,8 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     y->mutable_data<T>(ctx.GetPlace());
     mean->mutable_data<T>(ctx.GetPlace());
     var->mutable_data<T>(ctx.GetPlace());
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     Tensor temp_var;
     temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
     auto* x_data = x->data<T>();
@@ -322,32 +341,62 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
         ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
             x_data, mean_data, temp_var_data, size);
       } else {
-        VectorizedGetMeanAndVarNCHW<
-            T, AccT, vec_size><<<grids, blocks, 0, dev_ctx.stream()>>>(
-            x_data, mean_data, temp_var_data, size);
+        VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
+            <<<grids, blocks, 0, dev_ctx.stream()>>>(
+                x_data, mean_data, temp_var_data, size);
       }
     } else {
       set_zero(dev_ctx, mean, static_cast<T>(0));
       set_zero(dev_ctx, &temp_var, static_cast<T>(0));
-      GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
-          x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
-          temp_var_data);
+      GroupNormForwardGetMeanAndVar<T>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,
+                                                   x_dims[0],
+                                                   C,
+                                                   W,
+                                                   imsize,
+                                                   groups,
+                                                   group_size,
+                                                   mean_data,
+                                                   temp_var_data);
     }
     int flags =
         (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
-    UNROLL_ALL_CASES(flags, GroupNormForward, x_data, mean_data, temp_var_data,
-                     scale_data, bias_data, x_dims[0], C, W, imsize, groups,
-                     group_size, epsilon, y_data, var_data, data_layout);
+    UNROLL_ALL_CASES(flags,
+                     GroupNormForward,
+                     x_data,
+                     mean_data,
+                     temp_var_data,
+                     scale_data,
+                     bias_data,
+                     x_dims[0],
+                     C,
+                     W,
+                     imsize,
+                     groups,
+                     group_size,
+                     epsilon,
+                     y_data,
+                     var_data,
+                     data_layout);
   }
 };
 
 template <typename T, int flags>
-__global__ void GroupNormBackwardGetMeanAndVar(const T* x, const T* scale,
-                                               const T* bias, const T* d_y,
-                                               int N, int C, int W, int imsize,
-                                               int groups, int group_size,
-                                               T epsilon, T* d_mean, T* d_var,
-                                               T* d_scale, T* d_bias) {
+__global__ void GroupNormBackwardGetMeanAndVar(const T* x,
+                                               const T* scale,
+                                               const T* bias,
+                                               const T* d_y,
+                                               int N,
+                                               int C,
+                                               int W,
+                                               int imsize,
+                                               int groups,
+                                               int group_size,
+                                               T epsilon,
+                                               T* d_mean,
+                                               T* d_var,
+                                               T* d_scale,
+                                               T* d_bias) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
@@ -378,16 +427,39 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x, const T* scale,
   }
   CudaAtomicAddWithWarp(&(d_mean[bid * groups + gid]), d_mean_data);
   CudaAtomicAddWithWarp(&(d_var[bid * groups + gid]), d_var_data);
-  if (flags & kHasScale) CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
-  if (flags & kHasBias) CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
+
+  if (flags & kHasScale) {
+#if CUDA_VERSION >= 11070
+    platform::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+#else
+    CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
+#endif
+  }
+  if (flags & kHasBias) {
+#if CUDA_VERSION >= 11070
+    platform::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+#else
+    CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
+#endif
+  }
 }
 
 template <typename T, int flags>
-__global__ void GroupNormBackward(const T* x, const T* d_y, const T* scale,
-                                  const T* bias, const T* var, const T* d_mean,
-                                  const T* d_var, int N, int C, int W,
-                                  int imsize, int groups, int group_size,
-                                  T epsilon, T* d_x) {
+__global__ void GroupNormBackward(const T* x,
+                                  const T* d_y,
+                                  const T* scale,
+                                  const T* bias,
+                                  const T* var,
+                                  const T* d_mean,
+                                  const T* d_var,
+                                  int N,
+                                  int C,
+                                  int W,
+                                  int imsize,
+                                  int groups,
+                                  int group_size,
+                                  T epsilon,
+                                  T* d_x) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
@@ -420,8 +492,8 @@ __global__ void GroupNormBackward(const T* x, const T* d_y, const T* scale,
 }
 
 template <typename T>
-__global__ void ScalarGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
-                                        T* ds, T* db) {
+__global__ void ScalarGetDsDbCUDAKernel(
+    int imsize, const T* x, const T* dy, T* ds, T* db) {
   const int nc = blockIdx.x;
   T ds_sum = 0;
   T db_sum = 0;
@@ -434,10 +506,15 @@ __global__ void ScalarGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
 }
 
 template <typename T>
-__global__ void GetScaleBiasGradientCUDAKernel(int N, int C, int group,
-                                               T epsilon, const T* mean,
-                                               const T* var, const T* ds,
-                                               const T* db, T* d_scale,
+__global__ void GetScaleBiasGradientCUDAKernel(int N,
+                                               int C,
+                                               int group,
+                                               T epsilon,
+                                               const T* mean,
+                                               const T* var,
+                                               const T* ds,
+                                               const T* db,
+                                               T* d_scale,
                                                T* d_bias) {
   const int c = blockIdx.x * blockDim.x + threadIdx.x;
   if (c < C) {
@@ -464,11 +541,18 @@ __global__ void GetScaleBiasGradientCUDAKernel(int N, int C, int group,
 }
 
 template <typename T, int BlockDim>
-__global__ void GetBackwardParamsCUDAKernel(int imsize, int groups,
-                                            int group_size, T epsilon,
-                                            const T* mean, const T* var,
-                                            const T* scale, const T* ds,
-                                            const T* db, T* p1, T* p2, T* p3) {
+__global__ void GetBackwardParamsCUDAKernel(int imsize,
+                                            int groups,
+                                            int group_size,
+                                            T epsilon,
+                                            const T* mean,
+                                            const T* var,
+                                            const T* scale,
+                                            const T* ds,
+                                            const T* db,
+                                            T* p1,
+                                            T* p2,
+                                            T* p3) {
   const int n = blockIdx.x;
   const int g = blockIdx.y;
   const int ng = n * groups + g;
@@ -502,9 +586,16 @@ __global__ void GetBackwardParamsCUDAKernel(int imsize, int groups,
 }
 
 template <typename T>
-__global__ void GetXGradientCUDAKernel(int imsize, int C, int group_size,
-                                       int groups, T* p1, T* p2, T* p3,
-                                       const T* x, const T* dy, T* dx) {
+__global__ void GetXGradientCUDAKernel(int imsize,
+                                       int C,
+                                       int group_size,
+                                       int groups,
+                                       T* p1,
+                                       T* p2,
+                                       T* p3,
+                                       const T* x,
+                                       const T* dy,
+                                       T* dx) {
   int cid = blockIdx.x;
   int gid = blockIdx.y;
   int bid = blockIdx.z;
@@ -518,8 +609,7 @@ __global__ void GetXGradientCUDAKernel(int imsize, int C, int group_size,
 }
 
 template <typename T>
-class GroupNormGradKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -550,8 +640,8 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
                                           : x_dims[x_dims.size() - 2]);
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     Tensor ds, db;
     ds.mutable_data<T>({x_dims[0], C}, ctx.GetPlace());
@@ -613,16 +703,24 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
       }
       block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
       dim3 blocks(block_size_nchw);
-      ScalarGetDsDbCUDAKernel<
-          T><<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
-          imsize, x_data, dy_data, ds_data, db_data);
+      ScalarGetDsDbCUDAKernel<T>
+          <<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
+              imsize, x_data, dy_data, ds_data, db_data);
 
       if (d_scale || d_bias) {
         const int block = 256;
-        GetScaleBiasGradientCUDAKernel<
-            T><<<(C + block - 1) / block, block, 0, dev_ctx.stream()>>>(
-            x_dims[0], C, groups, epsilon, mean_data, var_data, ds_data,
-            db_data, d_scale_data, d_bias_data);
+        GetScaleBiasGradientCUDAKernel<T>
+            <<<(C + block - 1) / block, block, 0, dev_ctx.stream()>>>(
+                x_dims[0],
+                C,
+                groups,
+                epsilon,
+                mean_data,
+                var_data,
+                ds_data,
+                db_data,
+                d_scale_data,
+                d_bias_data);
       }
 
       if (d_x_data != nullptr) {
@@ -639,13 +737,31 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
         T* p2_data = p2.data<T>();
         T* p3_data = p3.data<T>();
 
-        GetBackwardParamsCUDAKernel<T, block_dims><<<
-            dim3(x_dims[0], groups), block_dims, 0, dev_ctx.stream()>>>(
-            imsize, groups, group_size, epsilon, mean_data, var_data,
-            scale_data, ds_data, db_data, p1_data, p2_data, p3_data);
-        GetXGradientCUDAKernel<T><<<grid, threads, 0, dev_ctx.stream()>>>(
-            imsize, C, group_size, groups, p1_data, p2_data, p3_data, x_data,
-            dy_data, d_x_data);
+        GetBackwardParamsCUDAKernel<T, block_dims>
+            <<<dim3(x_dims[0], groups), block_dims, 0, dev_ctx.stream()>>>(
+                imsize,
+                groups,
+                group_size,
+                epsilon,
+                mean_data,
+                var_data,
+                scale_data,
+                ds_data,
+                db_data,
+                p1_data,
+                p2_data,
+                p3_data);
+        GetXGradientCUDAKernel<T>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(imsize,
+                                                     C,
+                                                     group_size,
+                                                     groups,
+                                                     p1_data,
+                                                     p2_data,
+                                                     p3_data,
+                                                     x_data,
+                                                     dy_data,
+                                                     d_x_data);
       }
     } else {
       if (d_scale) {
@@ -667,14 +783,40 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
 
       int flags = (scale_data != nullptr) * kHasScale +
                   (bias_data != nullptr) * kHasBias;
-      UNROLL_ALL_CASES(flags, GroupNormBackwardGetMeanAndVar, y_data,
-                       scale_data, bias_data, dy_data, x_dims[0], C, W, imsize,
-                       groups, group_size, epsilon, temp_mean_data,
-                       temp_var_data, d_scale_data, d_bias_data);
+      UNROLL_ALL_CASES(flags,
+                       GroupNormBackwardGetMeanAndVar,
+                       y_data,
+                       scale_data,
+                       bias_data,
+                       dy_data,
+                       x_dims[0],
+                       C,
+                       W,
+                       imsize,
+                       groups,
+                       group_size,
+                       epsilon,
+                       temp_mean_data,
+                       temp_var_data,
+                       d_scale_data,
+                       d_bias_data);
       if (d_x_data != nullptr) {
-        UNROLL_ALL_CASES(flags, GroupNormBackward, y_data, dy_data, scale_data,
-                         bias_data, var_data, temp_mean_data, temp_var_data,
-                         x_dims[0], C, W, imsize, groups, group_size, epsilon,
+        UNROLL_ALL_CASES(flags,
+                         GroupNormBackward,
+                         y_data,
+                         dy_data,
+                         scale_data,
+                         bias_data,
+                         var_data,
+                         temp_mean_data,
+                         temp_var_data,
+                         x_dims[0],
+                         C,
+                         W,
+                         imsize,
+                         groups,
+                         group_size,
+                         epsilon,
                          d_x_data);
       }
     }
@@ -685,11 +827,9 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    group_norm,
-    ops::GroupNormKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GroupNormKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    group_norm_grad,
-    ops::GroupNormGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GroupNormGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(group_norm,
+                        ops::GroupNormKernel<phi::GPUContext, float>,
+                        ops::GroupNormKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(group_norm_grad,
+                        ops::GroupNormGradKernel<phi::GPUContext, float>,
+                        ops::GroupNormGradKernel<phi::GPUContext, double>);

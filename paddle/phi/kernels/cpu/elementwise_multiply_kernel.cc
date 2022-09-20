@@ -12,27 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
 namespace phi {
 
 // Create the definition of Multiply
 DEFINE_CPU_ELEMENTWISE_OP(Multiply)
-
-template <typename T, typename Context>
-void MultiplyKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
-  int axis = -1;
-  MultiplyRawKernel<T>(dev_ctx, x, y, axis, out);
-}
 
 }  // namespace phi
 
@@ -46,19 +37,6 @@ PD_REGISTER_KERNEL(multiply_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::MultiplyRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   complex64,
-                   complex128,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(multiply,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::MultiplyKernel,
                    float,
                    double,
                    int,

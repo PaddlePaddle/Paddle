@@ -23,10 +23,10 @@ class RandomRoutingOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Prob"), "Input", "Porb", "RandomRouting");
-    OP_INOUT_CHECK(ctx->HasInput("TopK_Value"), "Input", "TopKValue",
-                   "RandomRouting");
-    OP_INOUT_CHECK(ctx->HasInput("TopK_Idx"), "Input", "TopKIdx",
-                   "RandomRouting");
+    OP_INOUT_CHECK(
+        ctx->HasInput("TopK_Value"), "Input", "TopKValue", "RandomRouting");
+    OP_INOUT_CHECK(
+        ctx->HasInput("TopK_Idx"), "Input", "TopKIdx", "RandomRouting");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "RandomRouting");
 
     // check dims
@@ -35,15 +35,18 @@ class RandomRoutingOp : public framework::OperatorWithKernel {
     auto prob_dims = ctx->GetInputDim("Prob");
     auto topk_idx_dims = ctx->GetInputDim("TopK_Idx");
 
-    PADDLE_ENFORCE_EQ(prob_dims[0], topk_val_dims[0],
+    PADDLE_ENFORCE_EQ(prob_dims[0],
+                      topk_val_dims[0],
                       platform::errors::InvalidArgument(
                           "Output(Out) of ScatterNdAddOp should not be null."));
 
-    PADDLE_ENFORCE_EQ(topk_idx_dims[1], topk_val_dims[1],
+    PADDLE_ENFORCE_EQ(topk_idx_dims[1],
+                      topk_val_dims[1],
                       platform::errors::InvalidArgument(
                           "Output(Out) of ScatterNdAddOp should not be null."));
 
-    PADDLE_ENFORCE_EQ(topk_idx_dims[0], topk_val_dims[0],
+    PADDLE_ENFORCE_EQ(topk_idx_dims[0],
+                      topk_val_dims[0],
                       platform::errors::InvalidArgument(
                           "Output(Out) of ScatterNdAddOp should not be null."));
 
@@ -57,7 +60,8 @@ class RandomRoutingOp : public framework::OperatorWithKernel {
     // the dtype of the gate_idx should be same as int64
     const auto topk_idx_dtype =
         OperatorWithKernel::IndicateVarDataType(ctx, "TopK_Idx");
-    PADDLE_ENFORCE_EQ(topk_idx_dtype, framework::proto::VarType::INT64,
+    PADDLE_ENFORCE_EQ(topk_idx_dtype,
+                      framework::proto::VarType::INT64,
                       platform::errors::InvalidArgument(
                           "The dtype of the topk_idx_dtype should be int64"));
 
@@ -87,10 +91,13 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(
-    random_routing, ops::RandomRoutingOp, ops::RandomRoutingOpMaker,
+    random_routing,
+    ops::RandomRoutingOp,
+    ops::RandomRoutingOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::RandomRoutingInplaceInferer)
 
-REGISTER_OP_CPU_KERNEL(random_routing, ops::RandomRoutingOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(random_routing,
+                       ops::RandomRoutingOpCPUKernel<float>,
                        ops::RandomRoutingOpCPUKernel<double>);

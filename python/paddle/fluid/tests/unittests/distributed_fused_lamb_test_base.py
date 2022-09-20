@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -76,6 +76,7 @@ def prune_fwd_bwd_ops(program, start_idx):
 
 
 class GradClipDecorator(ClipGradBase):
+
     def __init__(self, clip, clip_after_allreduce):
         self.clip = clip
         self.clip_after_allreduce = clip_after_allreduce
@@ -91,17 +92,17 @@ class GradClipDecorator(ClipGradBase):
         scale = 1.0 / world_size
         # scale = 1.0
         for p, g in params_grads:
-            block.append_op(
-                type='c_allreduce_sum',
-                inputs={'X': [g]},
-                outputs={'Out': [g]},
-                attrs={'ring_id': 0,
-                       'use_calc_stream': True})
-            block.append_op(
-                type='scale',
-                inputs={'X': [g]},
-                outputs={'Out': [g]},
-                attrs={'scale': scale})
+            block.append_op(type='c_allreduce_sum',
+                            inputs={'X': [g]},
+                            outputs={'Out': [g]},
+                            attrs={
+                                'ring_id': 0,
+                                'use_calc_stream': True
+                            })
+            block.append_op(type='scale',
+                            inputs={'X': [g]},
+                            outputs={'Out': [g]},
+                            attrs={'scale': scale})
 
     def _static_clip(self, params_grads):
         if self.clip_after_allreduce:
@@ -114,6 +115,7 @@ class GradClipDecorator(ClipGradBase):
 
 
 class IdentityGradClip(ClipGradBase):
+
     def _dygraph_clip(self, params_grads):
         return params_grads
 
@@ -130,12 +132,12 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
     with paddle.static.program_guard(main, startup):
         with paddle.fluid.unique_name.guard():
             with paddle.static.amp.fp16_guard():
-                image = paddle.static.data(
-                    name='image',
-                    shape=[None, 3, 224, 224],
-                    dtype=paddle.float32)
-                label = paddle.static.data(
-                    name='label', shape=[None, 1], dtype=paddle.int64)
+                image = paddle.static.data(name='image',
+                                           shape=[None, 3, 224, 224],
+                                           dtype=paddle.float32)
+                label = paddle.static.data(name='label',
+                                           shape=[None, 1],
+                                           dtype=paddle.int64)
                 model = resnet()
                 pred = model(image)
                 loss_fn = paddle.nn.loss.CrossEntropyLoss()
@@ -160,6 +162,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
                 kwargs = dict(kwargs)
                 kwargs.pop('clip_after_allreduce', None)
                 kwargs.pop('alignment', None)
+                kwargs.pop('use_master_acc_grad', None)
                 base_clip = grad_clip if grad_clip is not None else IdentityGradClip(
                 )
                 kwargs['grad_clip'] = GradClipDecorator(base_clip,
@@ -222,8 +225,8 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
 
     def reader():
         for _ in range(6):
-            yield dict(
-                [(grad.name, gen_random_grad_tensor(grad)) for grad in grads])
+            yield dict([(grad.name, gen_random_grad_tensor(grad))
+                        for grad in grads])
 
     scope = paddle.static.Scope()
     fetch_list = params
@@ -253,6 +256,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
 
 
 class TestDistributedFusedLamb(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         if not paddle.is_compiled_with_cuda():
@@ -265,20 +269,28 @@ class TestDistributedFusedLamb(unittest.TestCase):
 
     def config(self):
         clip_after_allreduce = bool(
-            distutils.util.strtobool(
-                os.getenv('CLIP_AFTER_ALLREDUCE', 'True')))
+            distutils.util.strtobool(os.getenv('CLIP_AFTER_ALLREDUCE', 'True')))
         max_global_norm = float(os.getenv('MAX_GLOBAL_NORM', -1.0))
         gm_steps = int(os.getenv('GRADIENT_MERGE_STEPS', 1))
+        use_master_acc_grad = bool(int(os.getenv('USE_MASTER_ACC_GRAD', '1')))
         print('clip_after_allreduce = {}, max_global_norm = {}'.format(
             clip_after_allreduce, max_global_norm))
         return {
-            'clip_after_allreduce': clip_after_allreduce,
-            'gradient_accumulation_steps': gm_steps,
-            'grad_clip': paddle.nn.ClipGradByGlobalNorm(max_global_norm)
+            'clip_after_allreduce':
+            clip_after_allreduce,
+            'gradient_accumulation_steps':
+            gm_steps,
+            'grad_clip':
+            paddle.nn.ClipGradByGlobalNorm(max_global_norm)
             if max_global_norm > 0 else None,
+            'use_master_acc_grad':
+            use_master_acc_grad,
         }
 
-    def run_main(self, use_fp16, use_master_param_norm=True):
+    def run_main(self,
+                 use_fp16,
+                 use_master_param_norm=True,
+                 use_master_acc_grad=True):
         if not paddle.is_compiled_with_cuda():
             return
 
@@ -303,7 +315,7 @@ class TestDistributedFusedLamb(unittest.TestCase):
         if use_fp16:
             atol = 8e-4 if use_master_param_norm else 1e-3
         else:
-            atol = 1e-7
+            atol = 1.5e-7
         for ret1, ret2 in zip(result1, result2):
             max_diff = np.max(np.abs(ret1 - ret2))
             msg = 'max_diff = {} atol = {} when use_fp16 = {} , use_master_param_norm = {}'.format(

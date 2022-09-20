@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
@@ -33,7 +34,8 @@ class ScaleOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -73,10 +75,6 @@ $$Out = scale*(X + bias)$$
         "Apply bias addition after or before scaling. It is useful for "
         "numeric stability in some circumstances.")
         .SetDefault(true);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
   }
 };
 
@@ -106,11 +104,6 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
     VLOG(6) << "Finish Set Attr bias";
     grad_op->SetAttr("bias_after_scale", true);
     VLOG(6) << "Finish Set Attr bias_after_scale";
-    if (grad_op->HasAttr("use_mkldnn")) {
-      VLOG(6) << "Finish Check Attr use_mkldnn";
-      grad_op->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
-      VLOG(6) << "Finish Set Attr use_mkldnn";
-    }
     VLOG(6) << "Finish Apply";
   }
 };
@@ -121,10 +114,14 @@ DECLARE_INPLACE_OP_INFERER(ScaleOpInplaceInferer, {"X", "Out"});
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(scale, ScaleInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(scale,
+                            ScaleInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
+REGISTER_OPERATOR(scale,
+                  ops::ScaleOp,
+                  ops::ScaleOpMaker,
                   ops::ScaleGradMaker<paddle::framework::OpDesc>,
                   ops::ScaleGradMaker<paddle::imperative::OpBase>,
-                  ScaleInferShapeFunctor, ops::ScaleOpVarTypeInference,
+                  ScaleInferShapeFunctor,
+                  ops::ScaleOpVarTypeInference,
                   ops::ScaleOpInplaceInferer);

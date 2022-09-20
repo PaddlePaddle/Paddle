@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
@@ -27,6 +28,7 @@ SEED = 2021
 
 
 class TestConcatOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "concat"
@@ -43,8 +45,8 @@ class TestConcatOp(OpTest):
             self.actual_axis = self.axis
 
         self.outputs = {
-            'Out': np.concatenate(
-                (self.x0, self.x1, self.x2), axis=self.actual_axis)
+            'Out':
+            np.concatenate((self.x0, self.x1, self.x2), axis=self.actual_axis)
         }
 
     def set_npu(self):
@@ -69,6 +71,7 @@ class TestConcatOp(OpTest):
 
 
 class TestConcatOp2(TestConcatOp):
+
     def init_test_data(self):
         self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
@@ -79,6 +82,7 @@ class TestConcatOp2(TestConcatOp):
 @skip_check_grad_ci(
     reason="The function 'check_grad' for large inputs is too slow.")
 class TestConcatOp3(TestConcatOp):
+
     def init_test_data(self):
         self.x0 = np.random.random((1, 256, 170, 256)).astype(self.dtype)
         self.x1 = np.random.random((1, 128, 170, 256)).astype(self.dtype)
@@ -90,9 +94,11 @@ class TestConcatOp3(TestConcatOp):
 
 
 @skip_check_grad_ci(
-    reason="This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
+    reason=
+    "This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
 )
 class TestConcatOp4(TestConcatOp):
+
     def init_test_data(self):
         self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
@@ -104,6 +110,7 @@ class TestConcatOp4(TestConcatOp):
 
 
 class TestConcatOp5(TestConcatOp):
+
     def init_test_data(self):
         self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
@@ -113,7 +120,9 @@ class TestConcatOp5(TestConcatOp):
 
 #----------------Concat Fp16----------------
 def create_test_fp16(parent):
+
     class TestConcatFp16(parent):
+
         def init_dtype(self):
             self.dtype = np.float16
 
@@ -131,7 +140,9 @@ create_test_fp16(TestConcatOp5)
 
 #----------------Concat Int64----------------
 def create_test_int64(parent):
+
     class TestConcatInt64(parent):
+
         def init_dtype(self):
             self.dtype = np.int64
 
@@ -170,8 +181,9 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
             with fluid.program_guard(self.program):
                 input = fluid.layers.assign(self.x)
                 tensor_array = fluid.layers.create_array(dtype='float32')
-                zero = fluid.layers.fill_constant(
-                    shape=[1], value=0, dtype="int64")
+                zero = fluid.layers.fill_constant(shape=[1],
+                                                  value=0,
+                                                  dtype="int64")
 
                 for i in range(self.iter_num):
                     fluid.layers.array_write(input, zero + i, tensor_array)
@@ -206,11 +218,8 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
-        self.assertTrue(
-            np.array_equal(
-                res[0],
-                np.concatenate(
-                    [self.x] * self.iter_num, axis=self.axis)))
+        np.testing.assert_allclose(
+            res[0], np.concatenate([self.x] * self.iter_num, axis=self.axis))
 
 
 if __name__ == '__main__':

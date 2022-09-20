@@ -16,12 +16,15 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle.tensor.manipulation import fill_
 
 
 class TestFillAnyOp(OpTest):
+
     def setUp(self):
         self.op_type = "fill_any"
         self.dtype = 'float64'
@@ -48,26 +51,66 @@ class TestFillAnyOp(OpTest):
 
 
 class TestFillAnyOpFloat32(TestFillAnyOp):
+
     def init(self):
         self.dtype = np.float32
         self.value = 0.0
 
 
 class TestFillAnyOpFloat16(TestFillAnyOp):
+
     def init(self):
         self.dtype = np.float16
 
 
 class TestFillAnyOpvalue1(TestFillAnyOp):
+
     def init(self):
         self.dtype = np.float32
         self.value = 111111555
 
 
 class TestFillAnyOpvalue2(TestFillAnyOp):
+
     def init(self):
         self.dtype = np.float32
         self.value = 11111.1111
+
+
+class TestFillAnyInplace(unittest.TestCase):
+
+    def test_fill_any_version(self):
+        with paddle.fluid.dygraph.guard():
+            var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
+            self.assertEqual(var.inplace_version, 0)
+
+            var.fill_(0)
+            self.assertEqual(var.inplace_version, 1)
+
+            var.fill_(0)
+            self.assertEqual(var.inplace_version, 2)
+
+            var.fill_(0)
+            self.assertEqual(var.inplace_version, 3)
+
+    def test_fill_any_eqaul(self):
+        with paddle.fluid.dygraph.guard():
+            tensor = paddle.to_tensor(
+                np.random.random((20, 30)).astype(np.float32))
+            target = tensor.numpy()
+            target[...] = 1
+
+            tensor.fill_(1)
+            self.assertEqual((tensor.numpy() == target).all().item(), True)
+
+    def test_backward(self):
+        with paddle.fluid.dygraph.guard():
+            x = paddle.full([10, 10], -1., dtype='float32')
+            x.stop_gradient = False
+            y = 2 * x
+            y.fill_(1)
+            y.backward()
+            np.testing.assert_array_equal(x.grad.numpy(), np.zeros([10, 10]))
 
 
 if __name__ == "__main__":

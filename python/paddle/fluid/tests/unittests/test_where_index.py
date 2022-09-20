@@ -24,6 +24,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestWhereIndexOp(OpTest):
+
     def setUp(self):
         self.op_type = "where_index"
         self.init_config()
@@ -32,12 +33,15 @@ class TestWhereIndexOp(OpTest):
         self.check_output()
 
     def init_config(self):
-        self.inputs = {'Condition': np.array([True, False, True]), }
+        self.inputs = {
+            'Condition': np.array([True, False, True]),
+        }
 
         self.outputs = {'Out': np.array([[0], [2]], dtype='int64')}
 
 
 class TestAllFalse(unittest.TestCase):
+
     def setUp(self):
         self.op_type = "where_index"
         self.init_config()
@@ -69,28 +73,34 @@ class TestAllFalse(unittest.TestCase):
 
 
 class TestRank2(TestWhereIndexOp):
+
     def init_config(self):
-        self.inputs = {'Condition': np.array([[True, False], [False, True]]), }
+        self.inputs = {
+            'Condition': np.array([[True, False], [False, True]]),
+        }
 
         self.outputs = {'Out': np.array([[0, 0], [1, 1]], dtype='int64')}
 
 
 class TestRank3(TestWhereIndexOp):
+
     def init_config(self):
         self.inputs = {
-            'Condition': np.array([[[True, False], [False, True]],
-                                   [[False, True], [True, False]],
-                                   [[False, False], [False, True]]]),
+            'Condition':
+            np.array([[[True, False], [False, True]],
+                      [[False, True], [True, False]],
+                      [[False, False], [False, True]]]),
         }
 
         self.outputs = {
-            'Out': np.array(
-                [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
-                dtype='int64')
+            'Out':
+            np.array([[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
+                     dtype='int64')
         }
 
 
 class TestWhereOpError(unittest.TestCase):
+
     def test_api(self):
         with program_guard(Program(), Program()):
             cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
@@ -103,7 +113,9 @@ class TestWhereOpError(unittest.TestCase):
 
 
 class TestWhereRaiseError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.where([10])
 

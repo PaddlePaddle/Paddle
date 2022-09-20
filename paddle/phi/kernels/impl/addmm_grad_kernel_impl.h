@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/addmm_grad_kernel.h"
-
 #include <type_traits>
+
+#include "paddle/phi/kernels/addmm_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -44,6 +44,10 @@ void AddmmGradKernel(const Context& dev_ctx,
                      DenseTensor* x_grad,
                      DenseTensor* y_grad) {
   auto in_dims = input.dims();
+  if (input.dims().size() == 1) {
+    in_dims = {1, input.dims()[0]};
+    input_grad->Resize(in_dims);
+  }
   int total_elems = 0;
 
   VLOG(3) << "alpha: " << alpha << " beta: " << beta;
@@ -85,6 +89,10 @@ void AddmmGradKernel(const Context& dev_ctx,
     }
 
     blas.SCAL(total_elems, beta, input_grad->data<T>());
+
+    if (input.dims().size() == 1) {
+      input_grad->Resize(input.dims());
+    }
   }
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);

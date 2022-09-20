@@ -17,7 +17,7 @@
 #include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -79,8 +79,7 @@ void TopkKernel(const Context& dev_ctx,
     // The conclusion is drawn from the data through multiple sets of
     // statistics
     if (input_width >= 128 && k >= input_width * 0.75) {
-      auto* ctx = reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
-          &dev_ctx);
+      auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
       if (ops::SortTopk<T>(*ctx,
                            input,
                            input_width,
@@ -102,25 +101,23 @@ void TopkKernel(const Context& dev_ctx,
       // 1. Gather TopK, but without sorting
       constexpr int max_num_threads = 1024;
       if (largest) {
-        ops::RadixTopK<
-            T,
-            true><<<input_height, max_num_threads, 0, dev_ctx.stream()>>>(
-            input_data,
-            k,
-            input_height,
-            input_width,
-            output_data,
-            indices_data);
+        ops::RadixTopK<T, true>
+            <<<input_height, max_num_threads, 0, dev_ctx.stream()>>>(
+                input_data,
+                k,
+                input_height,
+                input_width,
+                output_data,
+                indices_data);
       } else {
-        ops::RadixTopK<
-            T,
-            false><<<input_height, max_num_threads, 0, dev_ctx.stream()>>>(
-            input_data,
-            k,
-            input_height,
-            input_width,
-            output_data,
-            indices_data);
+        ops::RadixTopK<T, false>
+            <<<input_height, max_num_threads, 0, dev_ctx.stream()>>>(
+                input_data,
+                k,
+                input_height,
+                input_width,
+                output_data,
+                indices_data);
       }
       // 2. Sort if needed
       if (sorted) {
@@ -133,9 +130,7 @@ void TopkKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<T>(&sorted_output);
         dev_ctx.template Alloc<int64_t>(&sorted_indices);
         dev_ctx.template Alloc<int64_t>(&gather_indices);
-        auto* ctx =
-            reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
-                &dev_ctx);
+        auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
         if (ops::SortTopk<T>(*ctx,
                              out,
                              k,
@@ -165,35 +160,31 @@ void TopkKernel(const Context& dev_ctx,
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
     switch (ops::GetDesiredBlockDim(input_width)) {
 #ifdef PADDLE_WITH_HIP
-      FIXED_BLOCK_DIM(ops::KeMatrixTopK<
-                      T,
-                      20,
-                      kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
-          output_data,
-          k,
-          indices_data,
-          input_data,
-          input_width,
-          input_width,
-          static_cast<int>(k),
-          gridx,
-          input_height,
-          largest));
+      FIXED_BLOCK_DIM(
+          ops::KeMatrixTopK<T, 20, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
+                                                      k,
+                                                      indices_data,
+                                                      input_data,
+                                                      input_width,
+                                                      input_width,
+                                                      static_cast<int>(k),
+                                                      gridx,
+                                                      input_height,
+                                                      largest));
 #else
-      FIXED_BLOCK_DIM(ops::KeMatrixTopK<
-                      T,
-                      5,
-                      kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
-          output_data,
-          k,
-          indices_data,
-          input_data,
-          input_width,
-          input_width,
-          static_cast<int>(k),
-          gridx,
-          input_height,
-          largest));
+      FIXED_BLOCK_DIM(
+          ops::KeMatrixTopK<T, 5, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
+                                                      k,
+                                                      indices_data,
+                                                      input_data,
+                                                      input_width,
+                                                      input_width,
+                                                      static_cast<int>(k),
+                                                      gridx,
+                                                      input_height,
+                                                      largest));
 #endif
       default:
         PADDLE_THROW(errors::Fatal(
@@ -245,8 +236,7 @@ void TopkKernel(const Context& dev_ctx,
     // The conclusion is drawn from the data through multiple sets of
     // statistics
     if (input_width >= 128 && k >= input_width * 0.75) {
-      auto* ctx = reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
-          &dev_ctx);
+      auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
       if (ops::SortTopk<T>(*ctx,
                            &trans_input,
                            input_width,
@@ -271,35 +261,31 @@ void TopkKernel(const Context& dev_ctx,
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
     switch (ops::GetDesiredBlockDim(input_width)) {
 #ifdef PADDLE_WITH_HIP
-      FIXED_BLOCK_DIM(ops::KeMatrixTopK<
-                      T,
-                      20,
-                      kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
-          trans_out.data<T>(),
-          k,
-          trans_ind.data<int64_t>(),
-          trans_input.data<T>(),
-          input_width,
-          input_width,
-          static_cast<int>(k),
-          gridx,
-          input_height,
-          largest));
+      FIXED_BLOCK_DIM(
+          ops::KeMatrixTopK<T, 20, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(trans_out.data<T>(),
+                                                      k,
+                                                      trans_ind.data<int64_t>(),
+                                                      trans_input.data<T>(),
+                                                      input_width,
+                                                      input_width,
+                                                      static_cast<int>(k),
+                                                      gridx,
+                                                      input_height,
+                                                      largest));
 #else
-      FIXED_BLOCK_DIM(ops::KeMatrixTopK<
-                      T,
-                      5,
-                      kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
-          trans_out.data<T>(),
-          k,
-          trans_ind.data<int64_t>(),
-          trans_input.data<T>(),
-          input_width,
-          input_width,
-          static_cast<int>(k),
-          gridx,
-          input_height,
-          largest));
+      FIXED_BLOCK_DIM(
+          ops::KeMatrixTopK<T, 5, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(trans_out.data<T>(),
+                                                      k,
+                                                      trans_ind.data<int64_t>(),
+                                                      trans_input.data<T>(),
+                                                      input_width,
+                                                      input_width,
+                                                      static_cast<int>(k),
+                                                      gridx,
+                                                      input_height,
+                                                      largest));
 #endif
       default:
         PADDLE_THROW(errors::Fatal(

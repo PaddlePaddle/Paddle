@@ -52,9 +52,10 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     PADDLE_ENFORCE_EQ(
-        nranks, comm->nranks(),
-        platform::errors::InvalidArgument("nranks: %s should equal to %s",
-                                          nranks, comm->nranks()));
+        nranks,
+        comm->nranks(),
+        platform::errors::InvalidArgument(
+            "nranks: %s should equal to %s", nranks, comm->nranks()));
 
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;
@@ -67,14 +68,18 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
-        send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
-        comm->comm(), stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::ncclAllGather(send_buff,
+                                         recv_buff,
+                                         send_numel,
+                                         static_cast<ncclDataType_t>(dtype),
+                                         comm->comm(),
+                                         stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
@@ -88,8 +93,15 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_allgather, ops::CAllGatherOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(c_allgather,
+                        ops::CAllGatherOpCUDAKernel<float>,
                         ops::CAllGatherOpCUDAKernel<double>,
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+                        ops::CAllGatherOpCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CAllGatherOpCUDAKernel<int>,
+                        ops::CAllGatherOpCUDAKernel<uint8_t>,
+                        ops::CAllGatherOpCUDAKernel<int8_t>,
                         ops::CAllGatherOpCUDAKernel<int64_t>,
+                        ops::CAllGatherOpCUDAKernel<bool>,
                         ops::CAllGatherOpCUDAKernel<plat::float16>);

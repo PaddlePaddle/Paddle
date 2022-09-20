@@ -28,7 +28,7 @@ RUN apt-get update && \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib \
-    automake locales clang-format swig  \
+    automake locales swig  \
     liblapack-dev liblapacke-dev \
     net-tools libtool module-init-tools && \
     apt-get clean -y
@@ -143,9 +143,14 @@ RUN curl -s -q https://glide.sh/get | sh
 #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
 
 # Downgrade TensorRT 
+
+# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
+# # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
+# # So install a newer version here.
 COPY tools/dockerfile/build_scripts /build_scripts
 RUN bash /build_scripts/install_trt.sh && \
-    bash /build_scripts/install_nccl2.sh
+    bash /build_scripts/install_nccl2.sh && \
+    bash /build_scripts/install_patchelf.sh
 RUN rm -rf /build_scripts
 
 # git credential to skip password typing
@@ -172,23 +177,38 @@ RUN pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
-RUN pip3.6 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+RUN pip3.6 --no-cache-dir install 'ipython==5.3.0' && \
     pip3.6 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.7 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3.7 --no-cache-dir install 'ipython==5.3.0' && \
     pip3.7 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.8 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3.8 --no-cache-dir install 'ipython==5.3.0' && \
     pip3.8 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.9 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3.9 --no-cache-dir install 'ipython==5.3.0' && \
     pip3.9 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
 #For docstring checker
-RUN pip3.6 --no-cache-dir install pylint pytest astroid isort && \
-    pip3.7 --no-cache-dir install pylint pytest astroid isort && \
-    pip3.8 --no-cache-dir install pylint pytest astroid isort && \
-    pip3.9 --no-cache-dir install pylint pytest astroid isort && \
+RUN pip3.6 --no-cache-dir install pytest astroid isort && \
+    pip3.7 --no-cache-dir install pytest astroid isort && \
+    pip3.8 --no-cache-dir install pytest astroid isort && \
+    pip3.9 --no-cache-dir install pytest astroid isort && \
     pip --no-cache-dir install pylint pytest astroid isort
+
+#For pre-commit
+RUN pip3.6 --no-cache-dir install --upgrade pip==20.3.3 && \
+    pip3.7 --no-cache-dir install --upgrade pip && \
+    pip3.8 --no-cache-dir install --upgrade pip && \
+    pip3.9 --no-cache-dir install --upgrade pip
+
+RUN pip3.6 --no-cache-dir install pre-commit==2.1.1 pylint==2.12.0 && \
+    pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
+    pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
+    pip3.9 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
+    pip3.6 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.7 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
 
 RUN pip3.6 --no-cache-dir install coverage && \
     pip3.7 --no-cache-dir install coverage && \
@@ -205,10 +225,6 @@ RUN pip3.6 --no-cache-dir install -r /root/requirements.txt && \
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev && apt-get clean -y && \
-    pip3.6 install --upgrade pip==20.3.3 && \ 
-    pip3.7 install --upgrade pip && \ 
-    pip3.8 install --upgrade pip && \ 
-    pip3.9 install --upgrade pip && \ 
     pip3.6 --no-cache-dir install certifi urllib3[secure] && \
     pip3.7 --no-cache-dir install certifi urllib3[secure] && \
     pip3.8 --no-cache-dir install certifi urllib3[secure] && \
@@ -224,13 +240,6 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
 
 RUN apt-get install libprotobuf-dev -y
-
-# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
-# https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
-# So install a newer version here.
-RUN wget -q https://paddle-ci.cdn.bcebos.com/patchelf_0.10-2_amd64.deb && \
-    dpkg -i patchelf_0.10-2_amd64.deb && \
-    rm -rf patchelf_0.10-2_amd64.deb
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config

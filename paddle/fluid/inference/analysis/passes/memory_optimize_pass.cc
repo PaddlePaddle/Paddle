@@ -52,7 +52,8 @@ typedef struct {
 // The traversal order also affect the lifecycles, so different sort_kind is
 // used.
 void MemoryOptimizePass::CollectLifeCycle(
-    Graph* graph, std::unordered_map<std::string, lifecycle_t>* lifecycles,
+    Graph* graph,
+    std::unordered_map<std::string, lifecycle_t>* lifecycles,
     int sort_kind) const {
   int max_lifecycle = 0;
   for (auto* op_node : framework::ir::TopologyVarientSort(
@@ -61,7 +62,8 @@ void MemoryOptimizePass::CollectLifeCycle(
     auto reads = op_node->inputs;
     auto writes = op_node->outputs;
 
-    std::vector<Node*> requires(reads.begin(), reads.end());
+    std::vector<Node*>
+    requires(reads.begin(), reads.end());
     requires.insert(requires.end(), writes.begin(), writes.end());
 
     // Disable reuse of feed variables.
@@ -153,8 +155,8 @@ void MemoryOptimizePass::CollectVarMemorySize(
         if (v < 0) v = fake_batch_size;
       }
 
-      int size = std::accumulate(shape.begin(), shape.end(), 1,
-                                 std::multiplies<int>());
+      int size = std::accumulate(
+          shape.begin(), shape.end(), 1, std::multiplies<int>());
       (*space_table)[node->Var()->Name()] =
           size * paddle::framework::SizeOfType(node->Var()->GetDataType());
     }
@@ -243,7 +245,8 @@ void UpdateOpDescsByReuse(
 
       // modify the graph
       for (auto input_node : node->inputs) {
-        PADDLE_ENFORCE_EQ(input_node->IsVar(), true,
+        PADDLE_ENFORCE_EQ(input_node->IsVar(),
+                          true,
                           platform::errors::PreconditionNotMet(
                               "The input node should be a variable."));
         std::string input_node_name = input_node->Name();
@@ -267,7 +270,8 @@ void UpdateOpDescsByReuse(
 
       // modify the graph
       for (auto out_node : node->outputs) {
-        PADDLE_ENFORCE_EQ(out_node->IsVar(), true,
+        PADDLE_ENFORCE_EQ(out_node->IsVar(),
+                          true,
                           platform::errors::PreconditionNotMet(
                               "The output node should be a variable."));
         std::string out_node_name = out_node->Name();

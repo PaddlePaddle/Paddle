@@ -59,6 +59,7 @@ class ElasticStatus:
 
 
 class LauncherInterface(object):
+
     def __init__(self, args):
         self.args = args
         self.procs = []
@@ -109,8 +110,8 @@ class LauncherInterface(object):
                     return ret
                 logger.error("ABORT!!! ABORT!!! ABORT!!!")
                 logger.error(
-                    "ERROR rank {} error with exit code {}, check log for detail.".
-                    format(p.rank, ret))
+                    "ERROR rank {} error with exit code {}, check log for detail."
+                    .format(p.rank, ret))
                 result = ret
         if not alive and result is None:
             return 0
@@ -128,6 +129,7 @@ class LauncherInterface(object):
 
 
 class ElasticManager(object):
+
     def __init__(self, args, etcd_client):
 
         self.args = args
@@ -238,12 +240,13 @@ class ElasticManager(object):
             ]
             self.hosts = list(set(self.hosts)) if self.hosts else self.hosts
             logger.info(
-                f"host_call_back curr_host={self.curr_host}, hosts:{self.hosts}")
+                f"host_call_back curr_host={self.curr_host}, hosts:{self.hosts}"
+            )
             self.need_sync = True
             self.elastic_startup_time = None
 
-        host_watch = self.etcd.add_watch_prefix_callback(self.node_prefix,
-                                                         host_call_back)
+        host_watch = self.etcd.add_watch_prefix_callback(
+            self.node_prefix, host_call_back)
         host_lease = self.etcd.lease(elastic_ttl)
 
         # register etcd lease heartbeat
@@ -267,13 +270,15 @@ class ElasticManager(object):
                                       six.b(self.curr_host),
                                       lease=host_lease)
                 except Exception as e:
-                    logger.error("[lease_heartbeat] internal error:{} {}".
-                                 format(e, traceback.format_exc()))
+                    logger.error(
+                        "[lease_heartbeat] internal error:{} {}".format(
+                            e, traceback.format_exc()))
                     break
                 time.sleep(elastic_ttl / 3)
 
-        keepalived_thread = threading.Thread(
-            name='lease_heartbeat', target=lease_heartbeat, daemon=True)
+        keepalived_thread = threading.Thread(name='lease_heartbeat',
+                                             target=lease_heartbeat,
+                                             daemon=True)
         keepalived_thread.start()
 
         self.etcd.put(self.host_path, six.b(self.curr_host), lease=host_lease)
@@ -300,7 +305,7 @@ class ElasticManager(object):
     def _host_to_endpoints(self,
                            ip_port_list: list,
                            devices_per_proc: list,
-                           start_port: int=6170) -> str:
+                           start_port: int = 6170) -> str:
         endpoint_list = []
         for ip_port in ip_port_list:
             endpoints = ip_port.split(":")
@@ -343,12 +348,11 @@ class ElasticManager(object):
             return
         logger.info("execute pre_hook...")
         current_env = copy.copy(os.environ.copy())
-        out, err = subprocess.Popen(
-            self.args.elastic_pre_hook,
-            env=current_env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=True).communicate()
+        out, err = subprocess.Popen(self.args.elastic_pre_hook,
+                                    env=current_env,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    shell=True).communicate()
         if err:
             logger.warn("pre_hook exec failed")
         else:
@@ -356,7 +360,7 @@ class ElasticManager(object):
 
     def _parse_np(self, np: str):
         """
-        np format is "MIN" or "MIN:MAX" 
+        np format is "MIN" or "MIN:MAX"
         """
         np_str = np or os.getenv('PADDLE_ELASTIC_NP', "0")
         np_dict = np_str.split(":")
@@ -390,7 +394,7 @@ class ElasticManager(object):
 
         return int(self.etcd.get(self.prefix)[0]) == 1
 
-    def _match(self, host_list: list=None):
+    def _match(self, host_list: list = None):
         if host_list:
             self.hosts = host_list
         else:
@@ -449,7 +453,7 @@ class ElasticManager(object):
             logger.info("update env PADDLE_TRAINERS {} ".format(self.trainers))
             return
 
-        # fault tolerance 
+        # fault tolerance
         idx = self.hosts.index(self.curr_host)
 
         # swap if self.host not in the right position
@@ -490,7 +494,7 @@ class ElasticManager(object):
         )
 
         # If scale in node from the first of the rank list, you need to minimize the movement of the rank
-        # eg: 
+        # eg:
         #   the source trainers is:10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3
         #   10.10.10.0 is removed
         #   the new trainers is:10.10.10.3,10.10.10.1,10.10.10.2
@@ -557,8 +561,8 @@ class ElasticManager(object):
                 logger.info('ready with hosts {}'.format(self.hosts))
                 self._update_hosts()
                 return
-            logger.info('not ready for np {} with hosts {}'.format(self.np,
-                                                                   self.hosts))
+            logger.info('not ready for np {} with hosts {}'.format(
+                self.np, self.hosts))
             idx += 1
             time.sleep(2)
         return

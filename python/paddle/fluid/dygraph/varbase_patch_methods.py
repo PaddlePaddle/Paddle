@@ -31,7 +31,7 @@ from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 _grad_scalar = None
 
@@ -70,6 +70,7 @@ _already_patch_repr = False
 
 
 def monkey_patch_varbase():
+
     @switch_to_static_graph
     def _to_static_var(self, to_parameter=False, **kwargs):
         """
@@ -118,6 +119,10 @@ def monkey_patch_varbase():
         attr_keys = ['block', 'shape', 'dtype', 'type', 'name', 'persistable']
         for attr in attr_keys:
             attr_kwargs[attr] = getattr(self, attr, None)
+
+        # If specify block, use it instead of self.block
+        if 'block' in kwargs:
+            attr_kwargs['block'] = kwargs['block']
 
         attr_kwargs.update(kwargs)
 
@@ -258,12 +263,12 @@ def monkey_patch_varbase():
             if grad_tensor is not None:
                 if framework._in_eager_mode_:
                     assert isinstance(
-                        grad_tensor, core.eager.
-                        Tensor), "The type of grad_tensor must be paddle.Tensor"
+                        grad_tensor, core.eager.Tensor
+                    ), "The type of grad_tensor must be paddle.Tensor"
                 else:
                     assert isinstance(
-                        grad_tensor, paddle.
-                        Tensor), "The type of grad_tensor must be paddle.Tensor"
+                        grad_tensor, paddle.Tensor
+                    ), "The type of grad_tensor must be paddle.Tensor"
                 assert grad_tensor.shape == self.shape, \
                     "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape)
@@ -304,7 +309,8 @@ def monkey_patch_varbase():
     @deprecated(
         since="2.1.0",
         level=1,
-        reason="Please use tensor.grad, which returns the tensor value of the gradient."
+        reason=
+        "Please use tensor.grad, which returns the tensor value of the gradient."
     )
     def gradient(self):
         """
@@ -341,9 +347,9 @@ def monkey_patch_varbase():
 
             new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
             if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
-                return (
-                    np.array(new_ivar.value().get_selected_rows().get_tensor()),
-                    np.array(new_ivar.value().get_selected_rows().rows()))
+                return (np.array(
+                    new_ivar.value().get_selected_rows().get_tensor()),
+                        np.array(new_ivar.value().get_selected_rows().rows()))
             else:
                 return np.array(new_ivar.value().get_tensor())
 
@@ -423,12 +429,14 @@ def monkey_patch_varbase():
         if device is not None:
             if isinstance(device, str):
                 device = paddle.device._convert_to_place(device)
-            elif isinstance(device, (core.CPUPlace, core.CUDAPlace,
-                                     core.CUDAPinnedPlace, core.XPUPlace)):
+            elif isinstance(
+                    device,
+                (core.CPUPlace, core.CUDAPlace, core.CUDAPinnedPlace,
+                 core.XPUPlace, core.CustomPlace)):
                 pass
             else:
                 raise ValueError(
-                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of device is "
+                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace() or paddle.CustomPlace(), but the type of device is "
                     + type(device).__name__)
 
         if blocking is None:
@@ -715,7 +723,9 @@ def monkey_patch_varbase():
         return False
 
     def __getitem__(self, item):
+
         def is_list_tuple(index, contain_type):
+
             def _is_list_tuple(item):
                 if isinstance(item, (tuple, list)):
                     for s in item:
@@ -743,6 +753,7 @@ def monkey_patch_varbase():
             return self._getitem_index_not_tensor(item)
 
     def __setitem__(self, item, value):
+
         def contain_tensor_or_list(item):
             if not isinstance(item, tuple):
                 item = [item]
@@ -799,6 +810,7 @@ def monkey_patch_varbase():
     def _set_grad_ivar(self, value):
         if isinstance(self, EagerParamBase):
             self.grad = value
+            self._unset_fake_empty()
         else:
             raise TypeError(
                 "_set_grad_ivar is only supported for Parameter Tensor")
@@ -806,13 +818,13 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     def clone(self):
         if in_dygraph_mode():
-            return _C_ops.final_state_assign(self)
+            return _C_ops.assign(self)
 
         if _in_legacy_dygraph():
             output = core.VarBase()
         else:
             output = core.eager.Tensor()
-        return _C_ops.assign(self, output)
+        return _legacy_C_ops.assign(self, output)
 
     @framework.dygraph_only
     def value(self):
@@ -860,15 +872,20 @@ def monkey_patch_varbase():
             return res
 
     @framework.dygraph_only
-    def cuda(self, device_id=0, blocking=True):
+    def cuda(self, device_id=None, blocking=True):
         if device_id is None:
-            device_id = 0
-        if not isinstance(device_id, int):
-            raise ValueError("\'device_id\' must be a positive integer")
-        if self.place.is_gpu_place():
+            res_place = framework._current_expected_place()
+            if not isinstance(res_place, core.CUDAPlace):
+                res_place = core.CUDAPlace(0)
+        elif isinstance(device_id, int):
+            res_place = core.CUDAPlace(device_id)
+        else:
+            raise ValueError("device_id must be int|None")
+
+        if self.place._equals(res_place):
             return self
         else:
-            res = self._copy_to(core.CUDAPlace(device_id), True)
+            res = self._copy_to(res_place, True)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
@@ -902,16 +919,11 @@ def monkey_patch_varbase():
                     indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                     values = [1, 2, 3, 4, 5]
                     dense_shape = [3, 4]
-                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                    sparse_x = paddle.incubate.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
                     print(sparse_x.values())
                     #[1, 2, 3, 4, 5]
         """
-
-        if self.is_sparse_coo() or self.is_sparse_csr():
-            return _C_ops.final_state_sparse_values(self)
-        else:
-            raise ValueError(
-                "only SparseCooTensor and SparseCsrTensor have method values")
+        return _C_ops.sparse_values(self)
 
     @framework.dygraph_only
     def to_dense(self):
@@ -932,19 +944,14 @@ def monkey_patch_varbase():
                     indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                     values = [1, 2, 3, 4, 5]
                     dense_shape = [3, 4]
-                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                    sparse_x = paddle.incubate.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
                     dense_x = sparse_x.to_dense()
                     #[[0., 1., 0., 2.],
                     # [0., 0., 3., 0.],
                     # [4., 5., 0., 0.]]
         """
 
-        if self.is_sparse_coo():
-            return _C_ops.final_state_sparse_coo_to_dense(self)
-        elif self.is_sparse_csr():
-            return _C_ops.final_state_sparse_to_dense(self)
-        else:
-            return self
+        return _C_ops.sparse_to_dense(self)
 
     @framework.dygraph_only
     def to_sparse_coo(self, sparse_dim):
@@ -970,31 +977,30 @@ def monkey_patch_varbase():
                     #values=[1., 2., 3., 4.]
         """
 
-        if self.is_sparse_csr():
-            return _C_ops.final_state_sparse_to_sparse_coo(self, sparse_dim)
-        elif self.is_sparse_coo():
-            return self
-        elif self.is_selected_rows():
-            raise ValueError(
-                "SelectedRows does not support to_sparse_coo method")
-        else:
-            #is dense tensor
-            return _C_ops.final_state_sparse_dense_to_coo(self, sparse_dim)
+        return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
-    for method_name, method in (
-        ("__bool__", __bool__), ("__nonzero__", __nonzero__),
-        ("_to_static_var", _to_static_var), ("set_value", set_value),
-        ("block", block), ("backward", backward), ("clear_grad", clear_grad),
-        ("inplace_version", inplace_version), ("gradient", gradient),
-        ("register_hook", register_hook), ("__str__", __str__),
-        ("__repr__", __str__), ("__deepcopy__", __deepcopy__),
-        ("__module__", "paddle"), ("__array__", __array__),
-        ("__getitem__", __getitem__), ("item", item),
-        ("__setitem__", __setitem__), ("_to", _to), ("values", values),
-        ("to_dense", to_dense), ("to_sparse_coo", to_sparse_coo)):
+    for method_name, method in (("__bool__", __bool__), ("__nonzero__",
+                                                         __nonzero__),
+                                ("_to_static_var",
+                                 _to_static_var), ("set_value", set_value),
+                                ("block", block), ("backward", backward),
+                                ("clear_grad", clear_grad), ("inplace_version",
+                                                             inplace_version),
+                                ("gradient", gradient), ("register_hook",
+                                                         register_hook),
+                                ("__str__", __str__), ("__repr__", __str__),
+                                ("__deepcopy__", __deepcopy__), ("__module__",
+                                                                 "paddle"),
+                                ("__array__",
+                                 __array__), ("__getitem__",
+                                              __getitem__), ("item", item),
+                                ("__setitem__",
+                                 __setitem__), ("_to", _to), ("values", values),
+                                ("to_dense", to_dense), ("to_sparse_coo",
+                                                         to_sparse_coo)):
         if framework._in_eager_mode_:
             setattr(core.eager.Tensor, method_name, method)
         else:
@@ -1025,8 +1031,11 @@ def monkey_patch_varbase():
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
+                numpy_dtype = _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+                if numpy_dtype == 'uint16':
+                    numpy_dtype = 'bfloat16'
                 prefix = 'paddle.'
-                return prefix + _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+                return prefix + numpy_dtype
             else:
                 # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)

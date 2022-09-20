@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,7 +21,8 @@ from .fft import fft_r2c, fft_c2r, fft_c2c
 from .fluid.data_feeder import check_variable_and_dtype
 from .fluid.framework import _non_static_mode
 from .fluid.layer_helper import LayerHelper
-from . import _C_ops
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = [
     'stft',
@@ -38,15 +39,15 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
             with shape `[..., seq_length]` or `[seq_length, ...]`.
         frame_length (int): Length of the frame and `0 < frame_length <= x.shape[axis]`.
         hop_length (int): Number of steps to advance between adjacent frames
-            and `0 < hop_length`. 
+            and `0 < hop_length`.
         axis (int, optional): Specify the axis to operate on the input Tensors. Its
             value should be 0(the first dimension) or -1(the last dimension). If not
-            specified, the last axis is used by default. 
+            specified, the last axis is used by default.
 
     Returns:
         The output frames tensor with shape `[..., frame_length, num_frames]` if `axis==-1`,
             otherwise `[num_frames, frame_length, ...]` where
-        
+
             `num_framse = 1 + (x.shape[axis] - frame_length) // hop_length`
 
     Examples:
@@ -55,7 +56,7 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
 
         import paddle
         from paddle.signal import frame
-        
+
         # 1D
         x = paddle.arange(8)
         y0 = frame(x, frame_length=4, hop_length=2, axis=-1)  # [4, 3]
@@ -127,27 +128,29 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
 
     op_type = 'frame'
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.frame(x, frame_length, hop_length, axis)
+
+    if _in_legacy_dygraph():
         attrs = ('frame_length', frame_length, 'hop_length', hop_length, 'axis',
                  axis)
-        op = getattr(_C_ops, op_type)
+        op = getattr(_legacy_C_ops, op_type)
         out = op(x, *attrs)
     else:
         check_variable_and_dtype(
-            x, 'x', ['int32', 'int64', 'float16', 'float32',
-                     'float64'], op_type)
+            x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
+            op_type)
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype=dtype)
-        helper.append_op(
-            type=op_type,
-            inputs={'X': x},
-            attrs={
-                'frame_length': frame_length,
-                'hop_length': hop_length,
-                'axis': axis
-            },
-            outputs={'Out': out})
+        helper.append_op(type=op_type,
+                         inputs={'X': x},
+                         attrs={
+                             'frame_length': frame_length,
+                             'hop_length': hop_length,
+                             'axis': axis
+                         },
+                         outputs={'Out': out})
     return out
 
 
@@ -160,10 +163,10 @@ def overlap_add(x, hop_length, axis=-1, name=None):
             with shape `[..., frame_length, num_frames]` or
             `[num_frames, frame_length ...]`.
         hop_length (int): Number of steps to advance between adjacent frames and
-            `0 < hop_length <= frame_length`. 
+            `0 < hop_length <= frame_length`.
         axis (int, optional): Specify the axis to operate on the input Tensors. Its
             value should be 0(the first dimension) or -1(the last dimension). If not
-            specified, the last axis is used by default. 
+            specified, the last axis is used by default.
 
     Returns:
         The output frames tensor with shape `[..., seq_length]` if `axis==-1`,
@@ -177,7 +180,7 @@ def overlap_add(x, hop_length, axis=-1, name=None):
 
         import paddle
         from paddle.signal import overlap_add
-        
+
         # 2D
         x0 = paddle.arange(16).reshape([8, 2])
         # [[0 , 1 ],
@@ -202,7 +205,7 @@ def overlap_add(x, hop_length, axis=-1, name=None):
         y0 = overlap_add(x0, hop_length=2, axis=-1)  # [2, 1, 10]
 
         x1 = paddle.arange(32).reshape([2, 8, 1, 2])
-        y1 = overlap_add(x1, hop_length=2, axis=0)   # [10, 1, 2] 
+        y1 = overlap_add(x1, hop_length=2, axis=0)   # [10, 1, 2]
     """
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')
@@ -214,23 +217,26 @@ def overlap_add(x, hop_length, axis=-1, name=None):
 
     op_type = 'overlap_add'
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.overlap_add(x, hop_length, axis)
+    elif paddle.in_dynamic_mode():
         attrs = ('hop_length', hop_length, 'axis', axis)
-        op = getattr(_C_ops, op_type)
+        op = getattr(_legacy_C_ops, op_type)
         out = op(x, *attrs)
     else:
         check_variable_and_dtype(
-            x, 'x', ['int32', 'int64', 'float16', 'float32',
-                     'float64'], op_type)
+            x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
+            op_type)
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype=dtype)
-        helper.append_op(
-            type=op_type,
-            inputs={'X': x},
-            attrs={'hop_length': hop_length,
-                   'axis': axis},
-            outputs={'Out': out})
+        helper.append_op(type=op_type,
+                         inputs={'X': x},
+                         attrs={
+                             'hop_length': hop_length,
+                             'axis': axis
+                         },
+                         outputs={'Out': out})
     return out
 
 
@@ -249,19 +255,19 @@ def stft(x,
 
     The STFT computes the discrete Fourier transforms (DFT) of short overlapping
     windows of the input using this formula:
-    
+
     .. math::
         X_t[\omega] = \sum_{n = 0}^{N-1}%
                       \text{window}[n]\ x[t \times H + n]\ %
                       e^{-{2 \pi j \omega n}/{N}}
-    
+
     Where:
     - :math:`t`: The :math:`t`-th input window.
     - :math:`\omega`: Frequency :math:`0 \leq \omega < \text{n\_fft}` for `onesided=False`,
-        or :math:`0 \leq \omega < \lfloor \text{n\_fft} / 2 \rfloor + 1` for `onesided=True`. 
+        or :math:`0 \leq \omega < \lfloor \text{n\_fft} / 2 \rfloor + 1` for `onesided=True`.
     - :math:`N`: Value of `n_fft`.
-    - :math:`H`: Value of `hop_length`.  
-    
+    - :math:`H`: Value of `hop_length`.
+
     Args:
         x (Tensor): The input data which is a 1-dimensional or 2-dimensional Tensor with
             shape `[..., seq_length]`. It can be a real-valued or a complex Tensor.
@@ -284,30 +290,31 @@ def stft(x,
             tensor. It can not be `True` if input is a complex tensor. Default: `True`
         name (str, optional): The default value is None. Normally there is no need for user
             to set this property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         The complex STFT output tensor with shape `[..., n_fft//2 + 1, num_frames]`(
             real-valued input and `onesided` is `True`) or `[..., n_fft, num_frames]`(
             `onesided` is `False`)
-    
+
     Examples:
         .. code-block:: python
-    
+
             import paddle
             from paddle.signal import stft
-    
+
             # real-valued input
             x = paddle.randn([8, 48000], dtype=paddle.float64)
             y1 = stft(x, n_fft=512)  # [8, 257, 376]
             y2 = stft(x, n_fft=512, onesided=False)  # [8, 512, 376]
-    
+
             # complex input
             x = paddle.randn([8, 48000], dtype=paddle.float64) + \
                     paddle.randn([8, 48000], dtype=paddle.float64)*1j  # [8, 48000] complex128
             y1 = stft(x, n_fft=512, center=False, onesided=False)  # [8, 512, 372]
     """
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'stft')
+    check_variable_and_dtype(x, 'x',
+                             ['float32', 'float64', 'complex64', 'complex128'],
+                             'stft')
 
     x_rank = len(x.shape)
     assert x_rank in [1, 2], \
@@ -368,17 +375,20 @@ def stft(x,
             'onesided should be False when input or window is a complex Tensor.'
 
     if not is_complex(x):
-        out = fft_r2c(
-            x=x_frames,
-            n=None,
-            axis=-1,
-            norm=norm,
-            forward=True,
-            onesided=onesided,
-            name=name)
+        out = fft_r2c(x=x_frames,
+                      n=None,
+                      axis=-1,
+                      norm=norm,
+                      forward=True,
+                      onesided=onesided,
+                      name=name)
     else:
-        out = fft_c2c(
-            x=x_frames, n=None, axis=-1, norm=norm, forward=True, name=name)
+        out = fft_c2c(x=x_frames,
+                      n=None,
+                      axis=-1,
+                      norm=norm,
+                      forward=True,
+                      name=name)
 
     out = out.transpose(perm=[0, 2, 1])  # (batch, n_fft, num_frames)
 
@@ -403,7 +413,7 @@ def istft(x,
     Inverse short-time Fourier transform (ISTFT).
 
     Reconstruct time-domain signal from the giving complex input and window tensor when
-        nonzero overlap-add (NOLA) condition is met: 
+        nonzero overlap-add (NOLA) condition is met:
 
     .. math::
         \sum_{t = -\infty}^{\infty}%
@@ -422,7 +432,7 @@ def istft(x,
 
     Args:
         x (Tensor): The input data which is a 2-dimensional or 3-dimensional **complesx**
-            Tensor with shape `[..., n_fft, num_frames]`. 
+            Tensor with shape `[..., n_fft, num_frames]`.
         n_fft (int): The size of Fourier transform.
         hop_length (int, optional): Number of steps to advance between adjacent windows
             from time-domain signal and `0 < hop_length < win_length`. Default: `None`(
@@ -442,10 +452,10 @@ def istft(x,
             and `istft` will return a real-valued tensor when it is set to `True`.
             Default: `True`.
         length (int, optional): Specify the length of time-domain signal. Default: `None`(
-            treated as the whole length of signal). 
+            treated as the whole length of signal).
         return_complex (bool, optional): It means that whether the time-domain signal is
             real-valued. If `return_complex` is set to `True`, `onesided` should be set to
-            `False` cause the output is complex. 
+            `False` cause the output is complex.
         name (str, optional): The default value is None. Normally there is no need for user
             to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -541,14 +551,14 @@ def istft(x,
 
     out = paddle.multiply(out, window).transpose(
         perm=[0, 2, 1])  # (batch, n_fft, num_frames)
-    out = overlap_add(
-        x=out, hop_length=hop_length, axis=-1)  # (batch, seq_length)
+    out = overlap_add(x=out, hop_length=hop_length,
+                      axis=-1)  # (batch, seq_length)
 
     window_envelop = overlap_add(
         x=paddle.tile(
             x=paddle.multiply(window, window).unsqueeze(0),
-            repeat_times=[n_frames, 1]).transpose(
-                perm=[1, 0]),  # (n_fft, num_frames)
+            repeat_times=[n_frames,
+                          1]).transpose(perm=[1, 0]),  # (n_fft, num_frames)
         hop_length=hop_length,
         axis=-1)  # (seq_length, )
 

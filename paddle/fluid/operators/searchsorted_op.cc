@@ -54,7 +54,7 @@ class SearchSortedOpMaker : public framework::OpProtoAndCheckerMaker {
   Searchsorted Operator.
 
   This OP is used to find the index of the corresponding sorted_sequence in the innermost dimension based on the given values.
- 
+
 )DOC");
   }
 };
@@ -63,7 +63,10 @@ class SearchSortedOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(searchsorted, SearchsortedInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(searchsorted,
+                            SearchsortedInferShapeFunctor,
                             PD_INFER_META(phi::SearchsortedInferMeta));
-REGISTER_OPERATOR(searchsorted, ops::SearchSortedOp, ops::SearchSortedOpMaker,
+REGISTER_OPERATOR(searchsorted,
+                  ops::SearchSortedOp,
+                  ops::SearchSortedOpMaker,
                   SearchsortedInferShapeFunctor);

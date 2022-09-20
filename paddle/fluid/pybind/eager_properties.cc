@@ -74,7 +74,8 @@ PyObject* tensor_properties_is_leaf(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int tensor_properties_set_name(TensorObject* self, PyObject* value,
+int tensor_properties_set_name(TensorObject* self,
+                               PyObject* value,
                                void* closure) {
   EAGER_TRY
   self->tensor.set_name(CastPyArg2AttrString(value, 0));
@@ -94,6 +95,7 @@ PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
   auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
+  VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
   if (meta && meta->Grad().initialized()) {
     return ToPyObject(meta->Grad());
   } else {
@@ -102,7 +104,8 @@ PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int tensor_properties_set_grad(TensorObject* self, PyObject* value,
+int tensor_properties_set_grad(TensorObject* self,
+                               PyObject* value,
                                void* closure) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(value, 0);
@@ -122,7 +125,8 @@ int tensor_properties_set_grad(TensorObject* self, PyObject* value,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-int tensor_properties_set_stop_gradient(TensorObject* self, PyObject* value,
+int tensor_properties_set_stop_gradient(TensorObject* self,
+                                        PyObject* value,
                                         void* closure) {
   EAGER_TRY
   auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
@@ -141,7 +145,8 @@ PyObject* tensor_properties_get_persistable(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int tensor_properties_set_persistable(TensorObject* self, PyObject* value,
+int tensor_properties_set_persistable(TensorObject* self,
+                                      PyObject* value,
                                       void* closure) {
   EAGER_TRY
   auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
@@ -180,6 +185,25 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   }
 
   return ToPyObject(value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
+  EAGER_TRY
+  std::string layout = "";
+  if (!self->tensor.defined()) {
+    return ToPyObject(layout);
+  }
+
+  if (egr::IsVariableCompatTensor(self->tensor)) {
+    VLOG(3) << "VariableCompatTensor does not support `layout` method.";
+    return ToPyObject(layout);
+  } else {
+    return ToPyObject(
+        paddle::framework::DataLayoutToString(self->tensor.layout()));
+  }
+
+  return ToPyObject(layout);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -223,20 +247,36 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
 }
 
 struct PyGetSetDef variable_properties[] = {
-    {"grad", (getter)tensor_properties_get_grad,
-     (setter)tensor_properties_set_grad, nullptr, nullptr},
-    {"name", (getter)tensor_properties_get_name,
-     (setter)tensor_properties_set_name, nullptr, nullptr},
-    {"stop_gradient", (getter)tensor_properties_get_stop_gradient,
-     (setter)tensor_properties_set_stop_gradient, nullptr, nullptr},
-    {"persistable", (getter)tensor_properties_get_persistable,
-     (setter)tensor_properties_set_persistable, nullptr, nullptr},
+    {"grad",
+     (getter)tensor_properties_get_grad,
+     (setter)tensor_properties_set_grad,
+     nullptr,
+     nullptr},
+    {"name",
+     (getter)tensor_properties_get_name,
+     (setter)tensor_properties_set_name,
+     nullptr,
+     nullptr},
+    {"stop_gradient",
+     (getter)tensor_properties_get_stop_gradient,
+     (setter)tensor_properties_set_stop_gradient,
+     nullptr,
+     nullptr},
+    {"persistable",
+     (getter)tensor_properties_get_persistable,
+     (setter)tensor_properties_set_persistable,
+     nullptr,
+     nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
+    {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
     // {"is_leaf", (getter)tensor_properties_get_is_leaf, nullptr,
     // nullptr,
     //  nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
-    {"_place_str", (getter)tensor_properties_get_place_str, nullptr, nullptr,
+    {"_place_str",
+     (getter)tensor_properties_get_place_str,
+     nullptr,
+     nullptr,
      nullptr},
     {"dtype", (getter)tensor_properties_get_dtype, nullptr, nullptr, nullptr},
     {"type", (getter)tensor_properties_get_type, nullptr, nullptr, nullptr},
@@ -245,11 +285,18 @@ struct PyGetSetDef variable_properties[] = {
 
 // variable_properties for core.eager.StringTensor
 struct PyGetSetDef string_tensor_variable_properties[] = {
-    {"name", (getter)tensor_properties_get_name,
-     (setter)tensor_properties_set_name, nullptr, nullptr},
+    {"name",
+     (getter)tensor_properties_get_name,
+     (setter)tensor_properties_set_name,
+     nullptr,
+     nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
+    {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
-    {"_place_str", (getter)tensor_properties_get_place_str, nullptr, nullptr,
+    {"_place_str",
+     (getter)tensor_properties_get_place_str,
+     nullptr,
+     nullptr,
      nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 

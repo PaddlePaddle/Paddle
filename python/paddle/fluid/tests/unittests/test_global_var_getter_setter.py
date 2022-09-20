@@ -17,6 +17,7 @@ import unittest as unittest
 
 
 class VarInfo(object):
+
     def __init__(self, var_name, var_type, writable):
         self.name = var_name
         self.type = var_type
@@ -24,6 +25,7 @@ class VarInfo(object):
 
 
 class TestGlobalVarGetterSetter(unittest.TestCase):
+
     def test_main(self):
         var_infos = [
             VarInfo("FLAGS_free_idle_chunk", bool, False),

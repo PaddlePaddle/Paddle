@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <fstream>
+
 #include "paddle/fluid/framework/io/fs.h"
 
 #if defined _WIN32 || defined __APPLE__
@@ -43,5 +45,18 @@ TEST(FS, mv) {
   } catch (...) {
     VLOG(3) << "test hdfs_mv, catch expected errors of unknown prefix";
   }
+
+  try {
+    paddle::framework::dataset_hdfs_set_command(
+        "hadoop -D hadoop.job.ugi=anotherxxx fs -text");
+    int err_no = 0;
+    paddle::framework::hdfs_open_read("afs:/none.gz", &err_no, "", true);
+    paddle::framework::hdfs_open_read("afs:/none.gz", &err_no, "", false);
+    paddle::framework::hdfs_open_read("afs:/none", &err_no, "", true);
+    paddle::framework::hdfs_open_read("afs:/none", &err_no, "", false);
+  } catch (...) {
+    VLOG(3) << "test hdfs_open_read, catch expected errors of unknown path";
+  }
+
 #endif
 }

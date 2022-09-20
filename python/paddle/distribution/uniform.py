@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,12 +16,12 @@ import math
 import warnings
 
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
                                       check_variable_and_dtype, convert_dtype)
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
                                  elementwise_mul, elementwise_sub, nn, ops,
                                  tensor)
@@ -116,13 +116,11 @@ class Uniform(distribution.Distribution):
         else:
             if isinstance(low, float) and isinstance(high, float):
                 self.all_arg_is_float = True
-            if isinstance(
-                    low,
-                    np.ndarray) and str(low.dtype) in ['float32', 'float64']:
+            if isinstance(low, np.ndarray) and str(
+                    low.dtype) in ['float32', 'float64']:
                 self.dtype = low.dtype
-            elif isinstance(
-                    high,
-                    np.ndarray) and str(high.dtype) in ['float32', 'float64']:
+            elif isinstance(high, np.ndarray) and str(
+                    high.dtype) in ['float32', 'float64']:
                 self.dtype = high.dtype
             # pylint: disable=unbalanced-tuple-unpacking
             self.low, self.high = self._to_tensor(low, high)
@@ -161,16 +159,16 @@ class Uniform(distribution.Distribution):
             zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
             uniform_random_tmp_reshape = nn.reshape(uniform_random_tmp,
                                                     output_shape)
-            output = uniform_random_tmp_reshape * (
-                zero_tmp_reshape + self.high - self.low)
+            output = uniform_random_tmp_reshape * (zero_tmp_reshape +
+                                                   self.high - self.low)
             output = elementwise_add(output, self.low, name=name)
             return output
         else:
             output_shape = shape + batch_shape
             output = nn.uniform_random(
                 output_shape, dtype=self.dtype, min=0., max=1.,
-                seed=seed) * (tensor.zeros(
-                    output_shape, dtype=self.dtype) + (self.high - self.low))
+                seed=seed) * (tensor.zeros(output_shape, dtype=self.dtype) +
+                              (self.high - self.low))
             output = elementwise_add(output, self.low, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
@@ -193,19 +191,26 @@ class Uniform(distribution.Distribution):
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = _C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
-                             value.dtype)
-            ub = _C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
-                             value.dtype)
-            return nn.log(lb * ub) - nn.log(self.high - self.low)
+            if in_dygraph_mode():
+                lb = _C_ops.cast(lb_bool, value.dtype)
+                ub = _C_ops.cast(ub_bool, value.dtype)
+                return nn.log(lb * ub) - nn.log(self.high - self.low)
+
+            if _in_legacy_dygraph():
+                lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
+                                        'out_dtype', value.dtype)
+                ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
+                                        'out_dtype', value.dtype)
+                return nn.log(lb * ub) - nn.log(self.high - self.low)
 
         name = self.name + '_log_prob'
         lb_bool = self.low < value
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_sub(
-            nn.log(lb * ub), nn.log(self.high - self.low), name=name)
+        return elementwise_sub(nn.log(lb * ub),
+                               nn.log(self.high - self.low),
+                               name=name)
 
     def probs(self, value):
         """Probability density/mass function.
@@ -222,11 +227,17 @@ class Uniform(distribution.Distribution):
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = _C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
-                             value.dtype)
-            ub = _C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
-                             value.dtype)
-            return (lb * ub) / (self.high - self.low)
+            if in_dygraph_mode():
+                lb = _C_ops.cast(lb_bool, value.dtype)
+                ub = _C_ops.cast(ub_bool, value.dtype)
+                return (lb * ub) / (self.high - self.low)
+
+            if _in_legacy_dygraph():
+                lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
+                                        'out_dtype', value.dtype)
+                ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
+                                        'out_dtype', value.dtype)
+                return (lb * ub) / (self.high - self.low)
 
         name = self.name + '_probs'
         lb_bool = self.low < value

@@ -97,7 +97,8 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 }
 
 template <typename T>
-void HogwildWorker::SetZero(LoDTensor *tensor, LoDTensor *root_tensor,
+void HogwildWorker::SetZero(LoDTensor *tensor,
+                            LoDTensor *root_tensor,
                             int tensor_dim) {
   T *ptr = tensor->mutable_data<T>(root_tensor->dims(), platform::CPUPlace());
   memset(ptr, 0, sizeof(T) * tensor_dim);
@@ -118,6 +119,12 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
 
 void HogwildWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
+#if defined(PADDLE_WITH_HETERPS) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+  platform::SetDeviceId(thread_id_);
+#elif defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_XPU_BKCL)
+  platform::SetXPUDeviceId(thread_id_);
+#endif
   device_reader_->Start();
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
@@ -174,8 +181,6 @@ void HogwildWorker::TrainFilesWithProfiler() {
     PrintFetchVars();
 #ifdef PADDLE_WITH_HETERPS
     dev_ctx_->Wait();
-    VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time
-            << " seconds, ins_num: " << total_inst;
     for (size_t i = 0; i < op_name.size(); ++i) {
       VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
               << ", mean time: " << op_total_time[i] / total_inst
@@ -185,8 +190,11 @@ void HogwildWorker::TrainFilesWithProfiler() {
     if (thread_id_ == 0) {
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         for (size_t i = 0; i < ops_.size(); ++i) {
-          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          fprintf(stderr,
+                  "op_name:[%zu][%s], op_mean_time:[%fs]\n",
+                  i,
+                  op_name[i].c_str(),
+                  op_total_time[i] / batch_cnt);
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
@@ -197,6 +205,9 @@ void HogwildWorker::TrainFilesWithProfiler() {
     thread_scope_->DropKids();
     timeline.Start();
   }
+  VLOG(0) << "GpuPs worker " << thread_id_ << " train cost " << total_time
+          << " seconds, ins_num: " << total_inst << " read time: " << read_time
+          << "seconds ";
 
   if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
@@ -213,16 +224,19 @@ void HogwildWorker::TrainFiles() {
   platform::SetNumThreads(1);
   platform::Timer timeline;
   timeline.Start();
+#if defined(PADDLE_WITH_HETERPS) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+  platform::SetDeviceId(thread_id_);
+#elif defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_XPU_BKCL)
+  platform::SetXPUDeviceId(thread_id_);
+#endif
 
-  int total_ins_num = 0;
+  int total_batch_num = 0;
   // how to accumulate fetched values here
   device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
 
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_CUDA)
-  platform::SetDeviceId(thread_id_);
-#endif
   while ((cur_batch = device_reader_->Next()) > 0) {
     for (auto &op : ops_) {
       bool need_skip = false;
@@ -244,7 +258,7 @@ void HogwildWorker::TrainFiles() {
       DumpParam(*thread_scope_, batch_cnt);
     }
 
-    total_ins_num += cur_batch;
+    total_batch_num += cur_batch;
     ++batch_cnt;
     PrintFetchVars();
     thread_scope_->DropKids();
@@ -253,8 +267,8 @@ void HogwildWorker::TrainFiles() {
 #endif
   }
   timeline.Pause();
-  VLOG(1) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
-          << " seconds, ins_num: " << total_ins_num;
+  VLOG(0) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+          << " seconds, batch_num: " << total_batch_num;
 
   if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
@@ -281,16 +295,18 @@ void HogwildWorker::PrintFetchVars() {
     time_t curtime;
     time(&curtime);
     char mbstr[80];
-    std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S",
-                  std::localtime(&curtime));
+    std::strftime(
+        mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S", std::localtime(&curtime));
 
     std::stringstream ss;
     ss << "time: [" << mbstr << "], ";
     ss << "batch: [" << batch_num_ << "], ";
 
     for (int i = 0; i < fetch_var_num; ++i) {
-      platform::PrintVar(thread_scope_, fetch_config_.fetch_var_names(i),
-                         fetch_config_.fetch_var_str_format(i), &ss);
+      platform::PrintVar(thread_scope_,
+                         fetch_config_.fetch_var_names(i),
+                         fetch_config_.fetch_var_str_format(i),
+                         &ss);
       if (i < fetch_var_num - 1) {
         ss << ", ";
       }

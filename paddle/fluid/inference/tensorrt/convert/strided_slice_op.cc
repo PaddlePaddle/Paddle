@@ -33,7 +33,8 @@ namespace tensorrt {
 class StridedSliceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid StridedSlice op to tensorrt Slice layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -41,13 +42,13 @@ class StridedSliceOpConverter : public OpConverter {
     nvinfer1::Dims input_dims = input->getDimensions();
     auto output_name = op_desc.Output("Out")[0];
     std::vector<int> axes =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     std::vector<int> starts =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
     std::vector<int> ends =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
     std::vector<int> strides =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
     int axes_size = axes.size();
     nvinfer1::Dims start;
     nvinfer1::Dims stride;
@@ -82,8 +83,8 @@ class StridedSliceOpConverter : public OpConverter {
       }
       auto* layer =
           TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, start, size, stride);
-      RreplenishLayerAndOutput(layer, "strided_slice", {output_name},
-                               test_mode);
+      RreplenishLayerAndOutput(
+          layer, "strided_slice", {output_name}, test_mode);
     } else {
       for (int i = 0; i < axes_size; i++) {
         start.d[axes[i]] = starts[i];
@@ -151,12 +152,15 @@ class StridedSliceOpConverter : public OpConverter {
       auto* layer =
           TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, start, size, stride);
       // elementwise layer for get size tensor
-      auto size_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, ElementWise, *shape_layer->getOutput(0),
-          *const_layer->getOutput(0), nvinfer1::ElementWiseOperation::kSUB);
+      auto size_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *shape_layer->getOutput(0),
+                               *const_layer->getOutput(0),
+                               nvinfer1::ElementWiseOperation::kSUB);
       layer->setInput(2, *size_layer->getOutput(0));
-      RreplenishLayerAndOutput(layer, "strided_slice", {output_name},
-                               test_mode);
+      RreplenishLayerAndOutput(
+          layer, "strided_slice", {output_name}, test_mode);
     }
   }
 };

@@ -14,6 +14,7 @@
 
 #pragma once
 #include <string>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"

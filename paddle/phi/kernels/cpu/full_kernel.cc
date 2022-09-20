@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
@@ -45,7 +44,7 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype,
                     DenseTensor* out) {
-  auto value = val.to<float>();
+  auto value = val.to<double>();
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<std::is_same<T, phi::dtype::float16>::value,

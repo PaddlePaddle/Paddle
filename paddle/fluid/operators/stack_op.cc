@@ -14,6 +14,7 @@
 
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -37,7 +38,8 @@ class StackOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -54,11 +56,6 @@ class StackOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The axis along which all of the Inputs(X) should be stacked.")
         .SetDefault(0);
-    AddAttr<bool>(
-        "use_mkldnn",
-        "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Stack Operator.
 Stack all of the Inputs(X) into one tensor along Attr(axis). The dims of all Inputs(X) must be the same.
@@ -88,11 +85,15 @@ class StackGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(stack, StackInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(stack,
+                            StackInferMetaFunctor,
                             PD_INFER_META(phi::StackInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(stack_grad, StackGradInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(stack_grad,
+                            StackGradInferMetaFunctor,
                             PD_INFER_META(phi::StackGradInferMeta));
-REGISTER_OPERATOR(stack, ops::StackOp, ops::StackOpMaker,
+REGISTER_OPERATOR(stack,
+                  ops::StackOp,
+                  ops::StackOpMaker,
                   ops::StackGradOpMaker<paddle::framework::OpDesc>,
                   ops::StackGradOpMaker<paddle::imperative::OpBase>,
                   StackInferMetaFunctor);

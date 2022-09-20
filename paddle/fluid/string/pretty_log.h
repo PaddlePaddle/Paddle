@@ -17,6 +17,6 @@
 #include <sstream>
 #include <string>
 #include <utility>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/utils/string/pretty_log.h"

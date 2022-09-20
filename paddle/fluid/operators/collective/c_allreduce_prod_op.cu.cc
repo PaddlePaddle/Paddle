@@ -18,7 +18,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    c_allreduce_prod, ops::CAllReduceOpCUDAKernel<ops::kRedProd, float>,
+    c_allreduce_prod,
+    ops::CAllReduceOpCUDAKernel<ops::kRedProd, float>,
     ops::CAllReduceOpCUDAKernel<ops::kRedProd, double>,
     ops::CAllReduceOpCUDAKernel<ops::kRedProd, int>,
     ops::CAllReduceOpCUDAKernel<ops::kRedProd, int64_t>,

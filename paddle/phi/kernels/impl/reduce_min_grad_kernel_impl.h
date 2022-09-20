@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/reduce_min_grad_kernel.h"
-
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/reduce_grad.h"
+#include "paddle/phi/kernels/reduce_min_grad_kernel.h"
 
 namespace phi {
 
@@ -26,12 +25,12 @@ void ReduceMinGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& out,
                          const DenseTensor& out_grad,
-                         const std::vector<int64_t>& dims,
+                         const IntArray& dims,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* x_grad) {
   ReduceGradKernel<Context, T, funcs::MaxOrMinGradFunctor>(
-      dev_ctx, x, out, out_grad, dims, keep_dim, reduce_all, x_grad);
+      dev_ctx, x, out, out_grad, dims.GetData(), keep_dim, reduce_all, x_grad);
 }
 
 }  // namespace phi

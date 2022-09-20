@@ -12,15 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/dense_tensor.h"
-
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
-
 #include "paddle/phi/core/compat/convert_utils.h"
-
-#include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_utils.h"
@@ -56,7 +53,7 @@ void DenseTensor::check_memory_size() const {
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
-          "But received Tensor's dimension is d%, memory's size is %d.",
+          "But received Tensor's dimension is %d, memory's size is %d.",
           numel() * SizeOf(dtype()),
           memory_size()));
 }
@@ -116,7 +113,7 @@ void* DenseTensor::mutable_data(const Place& place,
     size = requested_size;
   }
 
-  /* some versions of boost::variant don't have operator!= */
+  /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset) {
     holder_.reset();
@@ -145,7 +142,7 @@ void* DenseTensor::mutable_data(const Place& place,
           "] now"));
   size_t size = numel() * SizeOf(dtype());
 
-  /* some versions of boost::variant don't have operator!= */
+  /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset ||
       !(place.GetType() == phi::AllocationType::GPU &&
@@ -356,7 +353,7 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 dnnl::memory::desc DenseTensor::mem_desc() const {
   return mem_desc_ ? mem_desc_
                    : dnnl::memory::desc(phi::vectorize(meta_.dims),
-                                        phi::TransToMKLDNNDataType(meta_.dtype),
+                                        phi::TransToOneDNNDataType(meta_.dtype),
                                         format_);
 }
 

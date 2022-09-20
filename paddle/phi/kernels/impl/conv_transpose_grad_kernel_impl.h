@@ -14,12 +14,11 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/conv_transpose_grad_kernel.h"
-
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/conv_transpose_grad_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
@@ -311,7 +310,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
                                const std::vector<int>& strides,
                                const std::vector<int>& paddings,
                                const std::vector<int>& output_padding,
-                               const std::vector<int>& output_size,
+                               const IntArray& output_size,
                                const std::string& padding_algorithm,
                                int groups,
                                const std::vector<int>& dilations,

@@ -23,14 +23,17 @@ class DpsgdOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"),
+                      true,
                       platform::errors::NotFound(
                           "Input(Param) of DpsgdOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"),
+                      true,
                       platform::errors::NotFound(
                           "Input(Grad) of DpsgdOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("LearningRate"), true,
+        ctx->HasInput("LearningRate"),
+        true,
         platform::errors::NotFound(
             "Input(LearningRate) of DpsgdOp should not be null."));
     PADDLE_ENFORCE_EQ(
@@ -46,23 +49,27 @@ class DpsgdOp : public framework::OperatorWithKernel {
             "The input var's type should be LoDTensor, but the received is %s",
             ctx->GetInputsVarType("Grad").front()));
 
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"),
+                      true,
                       platform::errors::NotFound(
                           "Output(ParamOut) of DpsgdOp should not be null."));
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_EQ(phi::product(lr_dims), 1,
+    PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                      1,
                       platform::errors::InvalidArgument(
                           "Learning rate should have 1 dimension. But Received "
                           "LearningRate's dims [%s].",
                           phi::product(lr_dims)));
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Grad"),
+        param_dims,
+        ctx->GetInputDim("Grad"),
         platform::errors::InvalidArgument(
             "Param and Grad input of DpsgdOp should have same dimension. But "
             "received Para's dim [%s] and Grad's dim [%s].",
-            param_dims, ctx->GetInputDim("Grad")));
+            param_dims,
+            ctx->GetInputDim("Grad")));
 
     ctx->SetOutputDim("ParamOut", param_dims);
   }
@@ -109,7 +116,7 @@ class DpsgdOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Dpsgd Optimizer.
 
-We implement the Dpsgd optimizer according to CCS16 paper - 
+We implement the Dpsgd optimizer according to CCS16 paper -
 Deep Learning with Differential Privacy.
 
 Dpsgd updates:
@@ -125,6 +132,6 @@ CCS16 - Deep Learning with Differential Privacy.
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(dpsgd, ops::DpsgdOp, ops::DpsgdOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    dpsgd, ops::DpsgdOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DpsgdOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(dpsgd,
+                       ops::DpsgdOpKernel<phi::CPUContext, float>,
+                       ops::DpsgdOpKernel<phi::CPUContext, double>);

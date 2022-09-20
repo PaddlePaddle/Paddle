@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,7 @@ import math
 import warnings
 
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
@@ -55,7 +55,7 @@ class Normal(distribution.Distribution):
 
     Examples:
         .. code-block:: python
-          
+
           import paddle
           from paddle.distribution import Normal
 
@@ -115,13 +115,11 @@ class Normal(distribution.Distribution):
         else:
             if isinstance(loc, float) and isinstance(scale, float):
                 self.all_arg_is_float = True
-            if isinstance(
-                    loc,
-                    np.ndarray) and str(loc.dtype) in ['float32', 'float64']:
+            if isinstance(loc, np.ndarray) and str(
+                    loc.dtype) in ['float32', 'float64']:
                 self.dtype = loc.dtype
-            elif isinstance(
-                    scale,
-                    np.ndarray) and str(scale.dtype) in ['float32', 'float64']:
+            elif isinstance(scale, np.ndarray) and str(
+                    scale.dtype) in ['float32', 'float64']:
                 self.dtype = scale.dtype
             # pylint: disable=unbalanced-tuple-unpacking
             self.loc, self.scale = self._to_tensor(loc, scale)
@@ -154,8 +152,11 @@ class Normal(distribution.Distribution):
                 self.loc + self.scale, batch_shape + shape, self.dtype, 0.)
             zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
             zero_tmp_shape = nn.shape(zero_tmp_reshape)
-            normal_random_tmp = nn.gaussian_random(
-                zero_tmp_shape, mean=0., std=1., seed=seed, dtype=self.dtype)
+            normal_random_tmp = nn.gaussian_random(zero_tmp_shape,
+                                                   mean=0.,
+                                                   std=1.,
+                                                   seed=seed,
+                                                   dtype=self.dtype)
             output = normal_random_tmp * (zero_tmp_reshape + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             return output
@@ -188,12 +189,13 @@ class Normal(distribution.Distribution):
         """
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
-        zero_tmp = tensor.fill_constant_batch_size_like(
-            self.loc + self.scale, batch_shape, self.dtype, 0.)
-        return elementwise_add(
-            0.5 + zero_tmp,
-            0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp)),
-            name=name)
+        zero_tmp = tensor.fill_constant_batch_size_like(self.loc + self.scale,
+                                                        batch_shape, self.dtype,
+                                                        0.)
+        return elementwise_add(0.5 + zero_tmp,
+                               0.5 * math.log(2 * math.pi) + nn.log(
+                                   (self.scale + zero_tmp)),
+                               name=name)
 
     def log_prob(self, value):
         """Log probability density/mass function.
@@ -210,10 +212,10 @@ class Normal(distribution.Distribution):
 
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
-        return elementwise_sub(
-            -1. * ((value - self.loc) * (value - self.loc)) / (2. * var),
-            log_scale + math.log(math.sqrt(2. * math.pi)),
-            name=name)
+        return elementwise_sub(-1. * ((value - self.loc) * (value - self.loc)) /
+                               (2. * var),
+                               log_scale + math.log(math.sqrt(2. * math.pi)),
+                               name=name)
 
     def probs(self, value):
         """Probability density/mass function.
@@ -229,10 +231,10 @@ class Normal(distribution.Distribution):
         value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
-        return elementwise_div(
-            ops.exp(-1. * ((value - self.loc) * (value - self.loc)) /
-                    (2. * var)), (math.sqrt(2 * math.pi) * self.scale),
-            name=name)
+        return elementwise_div(ops.exp(-1. * ((value - self.loc) *
+                                              (value - self.loc)) / (2. * var)),
+                               (math.sqrt(2 * math.pi) * self.scale),
+                               name=name)
 
     def kl_divergence(self, other):
         r"""The KL-divergence between two normal distributions.
@@ -246,7 +248,7 @@ class Normal(distribution.Distribution):
         .. math::
 
             ratio = \\frac{\sigma_0}{\sigma_1}
-        
+
         .. math::
 
             diff = \mu_1 - \mu_0
@@ -275,5 +277,6 @@ class Normal(distribution.Distribution):
         var_ratio = (var_ratio * var_ratio)
         t1 = (self.loc - other.loc) / other.scale
         t1 = (t1 * t1)
-        return elementwise_add(
-            0.5 * var_ratio, 0.5 * (t1 - 1. - nn.log(var_ratio)), name=name)
+        return elementwise_add(0.5 * var_ratio,
+                               0.5 * (t1 - 1. - nn.log(var_ratio)),
+                               name=name)

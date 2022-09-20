@@ -68,7 +68,9 @@ def Pmat_to_perm(Pmat_org, cut):
             sP[idx, :] = tmp
 
         permmat.append(permlst)
-    Pivot = np.array(permmat).reshape(list(shape[:-2]) + [rows, ]) + 1
+    Pivot = np.array(permmat).reshape(list(shape[:-2]) + [
+        rows,
+    ]) + 1
     return Pivot[..., :cut]
 
 
@@ -111,21 +113,23 @@ class TestLUOp(OpTest):
         lshape = np.array(sL.shape)
         ushape = np.array(sU.shape)
 
-        lpad = (len(sL.shape) - 2) * [(0, 0)] + list((
-            (0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1])))
-        upad = (len(sU.shape) - 2) * [(0, 0)] + list((
-            (0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1])))
+        lpad = (len(sL.shape) - 2) * [(0, 0)] + list(
+            ((0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1])))
+        upad = (len(sU.shape) - 2) * [(0, 0)] + list(
+            ((0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1])))
 
         NsL = np.pad(sL, lpad)
         NsU = np.pad(sU, upad)
         NLU = NsL + NsU
         self.output = NLU
         self.Pivots = Pmat_to_perm(sP, min(ashape[-2], ashape[-1]))
-        self.Infos = np.zeros(self.x_shape[:-2]) if len(
-            X.shape) > 2 else np.array([0])
+        self.Infos = np.zeros(
+            self.x_shape[:-2]) if len(X.shape) > 2 else np.array([0])
 
     def setUp(self):
         self.op_type = "lu"
+        self.python_api = paddle.tensor.linalg.lu
+        self.python_out_sig = ["Out", "Pivots"]
         self.config()
 
         self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
@@ -138,10 +142,10 @@ class TestLUOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'])
+        self.check_grad(['X'], ['Out'], check_eager=True)
 
 
 # m = n 2D
@@ -171,7 +175,9 @@ class TestLUOp3(TestLUOp):
 
 
 class TestLUAPI(unittest.TestCase):
+
     def test_dygraph(self):
+
         def run_lu_dygraph(shape, dtype):
             if dtype == "float32":
                 np_dtype = np.float32
@@ -199,15 +205,15 @@ class TestLUAPI(unittest.TestCase):
                 mtp = Pmat_to_perm(sP, min(m, n))
                 nP = perm_to_Pmat(P, sP.shape[-1])
 
-                self.assertTrue(np.allclose(sU, triu, atol=1e-5))
-                self.assertTrue(np.allclose(sL, tril, atol=1e-5))
-                self.assertTrue(np.allclose(P, mtp, atol=1e-5))
-                self.assertTrue(np.allclose(nP, sP, atol=1e-5))
+                np.testing.assert_allclose(sU, triu, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(sL, tril, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(P, mtp, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(nP, sP, rtol=1e-05, atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors
@@ -246,28 +252,34 @@ class TestLUAPI(unittest.TestCase):
                     lshape = np.array(sL.shape)
                     ushape = np.array(sU.shape)
 
-                    lpad = (len(sL.shape) - 2) * [(0, 0)] + list((
-                        (0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1])))
-                    upad = (len(sU.shape) - 2) * [(0, 0)] + list((
-                        (0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1])))
+                    lpad = (len(sL.shape) - 2) * [(0, 0)] + list(
+                        ((0, (ashape - lshape)[-2]), (0,
+                                                      (ashape - lshape)[-1])))
+                    upad = (len(sU.shape) - 2) * [(0, 0)] + list(
+                        ((0, (ashape - ushape)[-2]), (0,
+                                                      (ashape - ushape)[-1])))
 
                     NsL = np.pad(sL, lpad)
                     NsU = np.pad(sU, upad)
                     NLU = NsL + NsU
 
-                    x = paddle.fluid.data(
-                        name="input", shape=shape, dtype=dtype)
+                    x = paddle.fluid.data(name="input",
+                                          shape=shape,
+                                          dtype=dtype)
                     lu, p = paddle.linalg.lu(x, pivot=pivot)
                     exe = fluid.Executor(place)
                     fetches = exe.run(fluid.default_main_program(),
                                       feed={"input": a},
                                       fetch_list=[lu, p])
-                    self.assertTrue(np.allclose(fetches[0], NLU, atol=1e-5))
+                    np.testing.assert_allclose(fetches[0],
+                                               NLU,
+                                               rtol=1e-05,
+                                               atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors

@@ -41,10 +41,19 @@ std::string GetKeyFromPlaces(const std::vector<Place>& places) {
 }
 
 bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors) {
-  return std::all_of(tensors.cbegin(), tensors.cend(),
-                     [&](const phi::DenseTensor& t) {
-                       return platform::is_gpu_place(t.place());
-                     });
+  return std::all_of(
+      tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
+        return platform::is_gpu_place(t.place());
+      });
+}
+
+bool CheckTensorsInCustomPlace(const std::vector<phi::DenseTensor>& tensors,
+                               const std::string& dev_type) {
+  return std::all_of(
+      tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
+        return platform::places_are_same_class(
+            t.place(), paddle::platform::CustomPlace(dev_type));
+      });
 }
 
 }  //  namespace distributed

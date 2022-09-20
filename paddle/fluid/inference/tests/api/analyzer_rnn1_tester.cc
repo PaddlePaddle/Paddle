@@ -106,7 +106,8 @@ struct DataRecord {
   }
 };
 
-void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
+void PrepareInputs(std::vector<PaddleTensor> *input_slots,
+                   DataRecord *data,
                    int batch_size) {
   PaddleTensor lod_attention_tensor, init_zero_tensor, lod_tensor_tensor,
       week_tensor, minute_tensor;
@@ -125,7 +126,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   init_zero_tensor.lod.assign({one_batch.lod3});
   lod_tensor_tensor.shape = rnn_link_data_shape;
   lod_tensor_tensor.lod.assign({one_batch.lod1});
-  // clang-format off
   week_tensor.shape.assign(
       {static_cast<int>(one_batch.rnn_week_datas.size()),
        static_cast<int>(one_batch.rnn_week_datas.front().size())});
@@ -134,7 +134,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
       {static_cast<int>(one_batch.rnn_minute_datas.size()),
        static_cast<int>(one_batch.rnn_minute_datas.front().size())});
   minute_tensor.lod.assign({one_batch.lod3});
-  // clang-format on
   // assign data
   TensorAssignData<float>(&lod_attention_tensor,
                           std::vector<std::vector<float>>({{0, 0}}));
@@ -146,8 +145,11 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   // Set inputs.
   auto init_zero_tensor1 = init_zero_tensor;
   init_zero_tensor1.name = "hidden_init";
-  input_slots->assign({week_tensor, init_zero_tensor, minute_tensor,
-                       init_zero_tensor1, lod_attention_tensor,
+  input_slots->assign({week_tensor,
+                       init_zero_tensor,
+                       minute_tensor,
+                       init_zero_tensor1,
+                       lod_attention_tensor,
                        lod_tensor_tensor});
   for (auto &tensor : *input_slots) {
     tensor.dtype = PaddleDType::FLOAT32;
@@ -160,7 +162,8 @@ void PrepareZeroCopyInputs(ZeroCopyTensor *lod_attention_tensor,
                            ZeroCopyTensor *hidden_init_tensor,
                            ZeroCopyTensor *week_tensor,
                            ZeroCopyTensor *minute_tensor,
-                           DataRecord *data_record, int batch_size) {
+                           DataRecord *data_record,
+                           int batch_size) {
   auto one_batch = data_record->NextBatch();
   std::vector<int> rnn_link_data_shape(
       {static_cast<int>(one_batch.rnn_link_data.size()),
@@ -190,12 +193,14 @@ void PrepareZeroCopyInputs(ZeroCopyTensor *lod_attention_tensor,
   // assign data
   float arr0[] = {0, 0};
   std::vector<float> zeros(batch_size * 15, 0);
-  std::copy_n(arr0, 2,
-              lod_attention_tensor->mutable_data<float>(PaddlePlace::kCPU));
+  std::copy_n(
+      arr0, 2, lod_attention_tensor->mutable_data<float>(PaddlePlace::kCPU));
   std::copy_n(arr0, 2, data_tensor->mutable_data<float>(PaddlePlace::kCPU));
-  std::copy_n(zeros.begin(), zeros.size(),
+  std::copy_n(zeros.begin(),
+              zeros.size(),
               cell_init_tensor->mutable_data<float>(PaddlePlace::kCPU));
-  std::copy_n(zeros.begin(), zeros.size(),
+  std::copy_n(zeros.begin(),
+              zeros.size(),
               hidden_init_tensor->mutable_data<float>(PaddlePlace::kCPU));
   ZeroCopyTensorAssignData(data_tensor, one_batch.rnn_link_data);
   ZeroCopyTensorAssignData(week_tensor, one_batch.rnn_week_datas);
@@ -234,7 +239,9 @@ TEST(Analyzer_rnn1, profile) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+                 input_slots_all,
+                 &outputs,
+                 FLAGS_num_threads);
 }
 
 // Check the fuse status
@@ -285,7 +292,9 @@ TEST(Analyzer_rnn1, multi_thread) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, 2 /* multi_thread */);
+                 input_slots_all,
+                 &outputs,
+                 2 /* multi_thread */);
 }
 
 // Compare result of AnalysisConfig and AnalysisConfig + ZeroCopy
@@ -302,7 +311,8 @@ TEST(Analyzer_rnn1, compare_zero_copy) {
   outputs_name.emplace_back("final_output.tmp_1");
   CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
                              reinterpret_cast<PaddlePredictor::Config *>(&cfg1),
-                             input_slots_all, outputs_name);
+                             input_slots_all,
+                             outputs_name);
 }
 
 }  // namespace inference

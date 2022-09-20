@@ -23,6 +23,7 @@ from paddle.fluid import compiler, Program, program_guard
 
 
 class TestElementwiseAddOp(OpTest):
+
     def init_kernel_type(self):
         self.use_mkldnn = False
 
@@ -46,41 +47,37 @@ class TestElementwiseAddOp(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(
-            check_dygraph=(self.use_mkldnn == False),
-            check_eager=self.check_eager())
+        self.check_output(check_dygraph=(self.use_mkldnn == False),
+                          check_eager=self.check_eager())
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            check_dygraph=(self.use_mkldnn == False),
-            check_eager=self.check_eager())
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        check_dygraph=(self.use_mkldnn == False),
+                        check_eager=self.check_eager())
 
     def test_check_grad_ingore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            check_dygraph=(self.use_mkldnn == False),
-            check_eager=self.check_eager())
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        check_dygraph=(self.use_mkldnn == False),
+                        check_eager=self.check_eager())
 
     def test_check_grad_ingore_y(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            check_dygraph=(self.use_mkldnn == False),
-            check_eager=self.check_eager())
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        check_dygraph=(self.use_mkldnn == False),
+                        check_eager=self.check_eager())
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -97,6 +94,7 @@ class TestElementwiseAddOp(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -110,9 +108,12 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
-    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0"
+)
 class TestBF16ElementwiseAddOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_add"
         self.dtype = np.uint16
@@ -126,8 +127,7 @@ class TestBF16ElementwiseAddOp(OpTest):
         self.inputs = {
             'X':
             OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.x)),
-            'Y':
-            OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.y))
+            'Y': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.y))
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
@@ -142,18 +142,23 @@ class TestBF16ElementwiseAddOp(OpTest):
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['Y'], 'Out', no_grad_set=set("X"), check_eager=False)
+        self.check_grad_with_place(place, ['Y'],
+                                   'Out',
+                                   no_grad_set=set("X"),
+                                   check_eager=False)
 
     def test_check_grad_ingore_y(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', no_grad_set=set('Y'), check_eager=False)
+        self.check_grad_with_place(place, ['X'],
+                                   'Out',
+                                   no_grad_set=set('Y'),
+                                   check_eager=False)
 
 
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -163,6 +168,7 @@ class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -172,6 +178,7 @@ class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
 class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1, 1).astype(self.dtype)
@@ -181,6 +188,7 @@ class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
 class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1, 1).astype(self.dtype)
@@ -188,6 +196,7 @@ class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.random((100, )).astype(self.dtype)
         self.y = np.random.random((100, )).astype(self.dtype)
@@ -195,6 +204,7 @@ class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_Vector(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.random((100, )).astype(self.dtype)
         self.y = np.random.random((100, )).astype(self.dtype)
@@ -202,6 +212,7 @@ class TestFP16ElementwiseAddOp_Vector(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -212,6 +223,7 @@ class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -222,6 +234,7 @@ class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 100, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -232,6 +245,7 @@ class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_1(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 100, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -242,6 +256,7 @@ class TestFP16ElementwiseAddOp_broadcast_1(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -249,6 +264,7 @@ class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_2(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -256,6 +272,7 @@ class TestFP16ElementwiseAddOp_broadcast_2(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 1).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -266,6 +283,7 @@ class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_3(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -276,6 +294,7 @@ class TestFP16ElementwiseAddOp_broadcast_3(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 1, 2).astype(self.dtype)
         self.y = np.random.rand(100, 1).astype(self.dtype)
@@ -286,6 +305,7 @@ class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_4(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 1, 2).astype(self.dtype)
         self.y = np.random.rand(100, 1).astype(self.dtype)
@@ -296,6 +316,7 @@ class TestFP16ElementwiseAddOp_broadcast_4(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_5(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 12).astype(self.dtype)
         self.y = np.random.rand(10, 1, 12).astype(self.dtype)
@@ -303,6 +324,7 @@ class TestElementwiseAddOp_broadcast_5(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_5(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 12).astype(self.dtype)
         self.y = np.random.rand(10, 1, 12).astype(self.dtype)
@@ -310,6 +332,7 @@ class TestFP16ElementwiseAddOp_broadcast_5(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
         self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
@@ -317,6 +340,7 @@ class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
 
 
 class TestElementwiseAddOp_broadcast_7(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(1, 1, 20, 5).astype(self.dtype)
         self.y = np.random.rand(20, 5, 1, 1).astype(self.dtype)
@@ -324,6 +348,7 @@ class TestElementwiseAddOp_broadcast_7(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_broadcast_6(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
         self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
@@ -331,6 +356,7 @@ class TestFP16ElementwiseAddOp_broadcast_6(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -341,6 +367,7 @@ class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -353,6 +380,7 @@ class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -365,6 +393,7 @@ class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -375,6 +404,7 @@ class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100, 1, 1).astype(self.dtype)
@@ -385,6 +415,7 @@ class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
 
 
 class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100, 1, 1).astype(self.dtype)
@@ -395,6 +426,7 @@ class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(1, 1, 100).astype(self.dtype)
@@ -405,6 +437,7 @@ class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
 
 
 class TestElementwiseFP16AddOp_commonuse_add1(TestFP16ElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(1, 1, 100).astype(self.dtype)
@@ -415,6 +448,7 @@ class TestElementwiseFP16AddOp_commonuse_add1(TestFP16ElementwiseAddOp):
 
 
 class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 1, 4).astype(self.dtype)
         self.y = np.random.rand(10, 1, 12, 1).astype(self.dtype)
@@ -425,6 +459,7 @@ class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
 
 
 class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(10, 12).astype(self.dtype)
         self.y = np.random.rand(2, 2, 10, 12).astype(self.dtype)
@@ -435,6 +470,7 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
 
 
 class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(10, 1, 12).astype(self.dtype)
         self.y = np.random.rand(10, 2, 12).astype(self.dtype)
@@ -445,13 +481,14 @@ class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
 
 
 class TestElementwiseAddOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of elementwise_add must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
-            y1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
 
             # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
@@ -462,6 +499,7 @@ class TestElementwiseAddOpError(unittest.TestCase):
 
 
 class TestAddApi(unittest.TestCase):
+
     def _executed_api(self, x, y, name=None):
         return paddle.add(x, y, name)
 
@@ -505,11 +543,13 @@ class TestAddApi(unittest.TestCase):
 
 
 class TestAddInplaceApi(TestAddApi):
+
     def _executed_api(self, x, y, name=None):
         return x.add_(y, name)
 
 
 class TestAddInplaceBroadcastSuccess(unittest.TestCase):
+
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 4).astype('float')
         self.y_numpy = np.random.rand(3, 4).astype('float')
@@ -526,18 +566,21 @@ class TestAddInplaceBroadcastSuccess(unittest.TestCase):
 
 
 class TestAddInplaceBroadcastSuccess2(TestAddInplaceBroadcastSuccess):
+
     def init_data(self):
         self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
         self.y_numpy = np.random.rand(3, 1).astype('float')
 
 
 class TestAddInplaceBroadcastSuccess3(TestAddInplaceBroadcastSuccess):
+
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
         self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
 
 
 class TestAddInplaceBroadcastError(unittest.TestCase):
+
     def init_data(self):
         self.x_numpy = np.random.rand(3, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
@@ -556,18 +599,21 @@ class TestAddInplaceBroadcastError(unittest.TestCase):
 
 
 class TestAddInplaceBroadcastError2(TestAddInplaceBroadcastError):
+
     def init_data(self):
         self.x_numpy = np.random.rand(2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 
 class TestAddInplaceBroadcastError3(TestAddInplaceBroadcastError):
+
     def init_data(self):
         self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 
 class TestComplexElementwiseAddOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_add"
         self.dtype = np.float64
@@ -593,8 +639,8 @@ class TestComplexElementwiseAddOp(OpTest):
         self.out = self.x + self.y
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
-            self.shape, self.dtype)
+        self.grad_out = np.ones(
+            self.shape, self.dtype) + 1J * np.ones(self.shape, self.dtype)
         self.grad_x = self.grad_out
         self.grad_y = self.grad_out
 
@@ -602,30 +648,28 @@ class TestComplexElementwiseAddOp(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[self.grad_x, self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        user_defined_grads=[self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out])
 
 
 class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.y = np.random.random(self.shape).astype(
@@ -633,13 +677,14 @@ class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
         self.out = self.x + self.y
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
-            self.shape, self.dtype)
+        self.grad_out = np.ones(
+            self.shape, self.dtype) + 1J * np.ones(self.shape, self.dtype)
         self.grad_x = np.real(self.grad_out)
         self.grad_y = self.grad_out
 
 
 class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
+
     def test_static_add(self):
         paddle.enable_static()
         a = 1.5

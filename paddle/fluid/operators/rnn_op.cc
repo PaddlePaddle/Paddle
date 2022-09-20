@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -102,9 +103,6 @@ class RNNOpMaker : public framework::OpProtoAndCheckerMaker {
         "mode",
         "(string) rnn types, including: LSTM, GRU, RNN_RELU, RNN_TANH.");
     AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(0);
-    AddAttr<bool>("is_test", "True if in test phase.")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 )DOC");
   }
@@ -188,10 +186,13 @@ class NotImpleKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(rnn, RnnInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(rnn,
+                            RnnInferShapeFunctor,
                             PD_INFER_META(phi::RnnInferMeta));
 
-REGISTER_OPERATOR(rnn, ops::RNNOp, ops::RNNOpMaker,
+REGISTER_OPERATOR(rnn,
+                  ops::RNNOp,
+                  ops::RNNOpMaker,
                   ops::RNNGradOpMaker<paddle::framework::OpDesc>,
                   ops::RNNGradOpMaker<paddle::imperative::OpBase>,
                   RnnInferShapeFunctor);

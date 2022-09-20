@@ -29,7 +29,7 @@ from .data_feeder import check_variable_and_dtype
 from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from .layer_helper import LayerHelper
 from .framework import default_main_program
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'set_gradient_clip', 'ErrorClipByValue', 'ClipGradByValue',
@@ -71,13 +71,9 @@ def _squared_l2_norm(x):
         return sum_square
 
     if in_dygraph_mode():
-        if x.is_selected_rows():
-            new_x = paddle.to_tensor(x.numpy())
-            return _C_ops.squared_l2_norm(new_x)
         return _C_ops.squared_l2_norm(x)
-    else:
-        if _in_legacy_dygraph():
-            return _C_ops.squared_l2_norm(x)
+    elif _in_legacy_dygraph():
+        return _legacy_C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
@@ -91,6 +87,7 @@ def _squared_l2_norm(x):
 
 
 class BaseErrorClipAttr(object):
+
     def __str__(self):
         raise NotImplementedError()
 
@@ -165,8 +162,8 @@ def error_clip_callback(block, context):
     for grad_n in [n for n in op_desc.output_arg_names() if n in grad_to_var]:
         fwd_var = block._var_recursive(grad_to_var[grad_n])
         error_clip = getattr(fwd_var, "error_clip", None)
-        if not (error_clip is None or isinstance(error_clip,
-                                                 BaseErrorClipAttr)):
+        if not (error_clip is None
+                or isinstance(error_clip, BaseErrorClipAttr)):
             raise TypeError(
                 "Variable's error_clip should be an instance of BaseErrorClipAttr or None."
             )
@@ -175,6 +172,7 @@ def error_clip_callback(block, context):
 
 
 class ClipGradBase(object):
+
     def __init__(self):
         super(ClipGradBase, self).__init__()
 
@@ -211,34 +209,34 @@ class ClipGradBase(object):
 class ClipGradByValue(ClipGradBase):
     """
     Limit the value of multi-dimensional Tensor :math:`X` to the range [min, max].
-    
+
     - Any values less than min are set to ``min``.
-    
+
     - Any values greater than max are set to ``max``.
 
-    The multi-dimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters set in ``optimizer``. 
+    The multi-dimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters set in ``optimizer``.
     If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
-    
-    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
+
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer``
     (for example: :ref:`api_paddle_optimizer_SGD`).
 
     Note:
-        ``need_clip`` of ``ClipGradByValue`` HAS BEEN DEPRECATED since 2.0. 
+        ``need_clip`` of ``ClipGradByValue`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
-    
+
     Args:
         max (float): The maximum value to clip by.
-        min (float, optional): The minimum value to clip by. if not set by user, it will be set to ``-max`` 
+        min (float, optional): The minimum value to clip by. if not set by user, it will be set to ``-max``
             automatically. In this case, ``max`` must be greater than 0.
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10, 
-                                      weight_attr=paddle.ParamAttr(need_clip=True), 
+            linear = paddle.nn.Linear(in_features=10, out_features=10,
+                                      weight_attr=paddle.ParamAttr(need_clip=True),
                                       bias_attr=paddle.ParamAttr(need_clip=False))
             out = linear(x)
             loss = paddle.mean(out)
@@ -269,7 +267,7 @@ class ClipGradByValue(ClipGradBase):
             if getattr(p, 'need_clip', True) is False:
                 params_and_grads.append((p, g))
                 continue
-            new_grad = layers.clip(x=g, min=self.min, max=self.max)
+            new_grad = paddle.clip(x=g, min=self.min, max=self.max)
             params_and_grads.append((p, new_grad))
         return params_and_grads
 
@@ -302,17 +300,17 @@ class ClipGradByValue(ClipGradBase):
 class ClipGradByNorm(ClipGradBase):
     r"""
     Limit the l2 norm of multi-dimensional Tensor :math:`X` to ``clip_norm`` .
-    
+
     - If the l2 norm of :math:`X` is greater than ``clip_norm`` , :math:`X` will be compressed by a ratio.
-    
+
     - If the l2 norm of :math:`X` is less than or equal to ``clip_norm`` , nothing will be done.
-    
+
     The multidimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters set in ``optimizer``.
     If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
-    
-    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
+
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer``
     (for example: :ref:`api_paddle_optimizer_SGD`).
-    
+
     The clipping formula is:
 
     .. math::
@@ -331,7 +329,7 @@ class ClipGradByNorm(ClipGradBase):
         norm(X) = ( \sum_{i=1}^{n}|x\_i|^2)^{ \frac{1}{2}}
 
     Note:
-        ``need_clip`` of ``ClipGradByNorm`` HAS BEEN DEPRECATED since 2.0. 
+        ``need_clip`` of ``ClipGradByNorm`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
 
     Args:
@@ -339,12 +337,12 @@ class ClipGradByNorm(ClipGradBase):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10, 
-                                      weight_attr=paddle.ParamAttr(need_clip=True), 
+            linear = paddle.nn.Linear(in_features=10, out_features=10,
+                                      weight_attr=paddle.ParamAttr(need_clip=True),
                                       bias_attr=paddle.ParamAttr(need_clip=False))
             out = linear(x)
             loss = paddle.mean(out)
@@ -417,17 +415,17 @@ def _allow_pure_fp16_global_norm_clip(*args):
 
 class ClipGradByGlobalNorm(ClipGradBase):
     r"""
-    Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in 
+    Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in
     :math:`t\_list` , and limit it to ``clip_norm`` .
-    
+
     - If the global norm is greater than ``clip_norm`` , all elements of :math:`t\_list` will be compressed by a ratio.
-    
+
     - If the global norm is less than or equal to ``clip_norm`` , nothing will be done.
-    
+
     The list of Tensor :math:`t\_list` is not passed from this class, but the gradients of all parameters set in ``optimizer``.
     If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
-    
-    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
+
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer``
     (for example: :ref:`api_paddle_optimizer_SGD`).
 
     The clipping formula is:
@@ -443,7 +441,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global\_norm = \sqrt{\sum_{i=0}^{N-1}(l2norm(t\_list[i]))^2}
 
     Note:
-        ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0. 
+        ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
 
     Args:
@@ -452,12 +450,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10, 
-                                      weight_attr=paddle.ParamAttr(need_clip=True), 
+            linear = paddle.nn.Linear(in_features=10, out_features=10,
+                                      weight_attr=paddle.ParamAttr(need_clip=True),
                                       bias_attr=paddle.ParamAttr(need_clip=False))
             out = linear(x)
             loss = paddle.mean(out)
@@ -493,7 +491,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if getattr(p, 'need_clip', True) is False:
                 continue
             merge_grad = g
-            if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+
+            if in_dygraph_mode() and g.is_selected_rows():
+                merge_grad = layers.merge_selected_rows(g)
+                merge_grad = merge_grad._get_tensor_from_selected_rows()
+
+            elif g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
@@ -526,21 +529,22 @@ class ClipGradByGlobalNorm(ClipGradBase):
             global_norm_var.append(global_norm_var_fp64)
         global_norm_var = paddle.add_n(global_norm_var)
         global_norm_var = layers.sqrt(global_norm_var)
-        max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
+        max_global_norm = layers.fill_constant(shape=[1],
+                                               dtype=global_norm_var.dtype,
+                                               value=self.clip_norm)
 
         need_clip = False
         if not self.auto_skip_clip:  # always apply clip
             need_clip = True
-            clip_var = layers.elementwise_div(
-                x=max_global_norm,
-                y=layers.elementwise_max(
-                    x=global_norm_var, y=max_global_norm))
+            clip_var = layers.elementwise_div(x=max_global_norm,
+                                              y=layers.elementwise_max(
+                                                  x=global_norm_var,
+                                                  y=max_global_norm))
         elif global_norm_var > max_global_norm:
             # only when global_norm_var > max_global_norm, grad need clip
             need_clip = True
-            clip_var = layers.elementwise_div(
-                x=max_global_norm, y=global_norm_var)
+            clip_var = layers.elementwise_div(x=max_global_norm,
+                                              y=global_norm_var)
 
         for p, g in params_grads:
             if g is None:
@@ -550,10 +554,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 continue
             # TODO(wangxi): use inplace elementwise_mul
             if need_clip:
-                clip_input = (clip_var.astype('float16')
-                              if g.dtype == core.VarDesc.VarType.FP16 else
-                              clip_var)
-                new_grad = _C_ops.elementwise_mul(g, clip_input)
+                clip_input = (clip_var.astype('float16') if g.dtype
+                              == core.VarDesc.VarType.FP16 else clip_var)
+                new_grad = layers.elementwise_mul(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
                 params_and_grads.append((p, g))
@@ -621,10 +624,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     shape=[1],
                     dtype=global_norm_var.dtype,
                     value=self.clip_norm)
-                scale_var = layers.elementwise_div(
-                    x=max_global_norm,
-                    y=layers.elementwise_max(
-                        x=max_global_norm, y=global_norm_var))
+                scale_var = layers.elementwise_div(x=max_global_norm,
+                                                   y=layers.elementwise_max(
+                                                       x=max_global_norm,
+                                                       y=global_norm_var))
             param_new_grad_name_dict = dict()
             for p, g in params_grads:
                 if g is None:
@@ -645,20 +648,20 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     # We need to handle the correct block, otherwise will encounter
                     # a 'NotFoundError' during compile time.
                     block = default_main_program().current_block()
-                    block.append_op(
-                        type='elementwise_mul',
-                        inputs={'X': new_g,
-                                'Y': scale_input},
-                        outputs={'Out': new_g})
+                    block.append_op(type='elementwise_mul',
+                                    inputs={
+                                        'X': new_g,
+                                        'Y': scale_input
+                                    },
+                                    outputs={'Out': new_g})
                     if new_g is not g:
-                        block.append_op(
-                            type='cast',
-                            inputs={'X': new_g},
-                            outputs={'Out': g},
-                            attrs={
-                                'in_dtype': new_g.dtype,
-                                'out_dtype': g.dtype
-                            })
+                        block.append_op(type='cast',
+                                        inputs={'X': new_g},
+                                        outputs={'Out': g},
+                                        attrs={
+                                            'in_dtype': new_g.dtype,
+                                            'out_dtype': g.dtype
+                                        })
 
                 param_new_grad_name_dict[p.name] = g.name
                 params_and_grads.append((p, g))
@@ -694,19 +697,20 @@ class ClipGradByGlobalNorm(ClipGradBase):
             group_norm_var = layers.sums(input=self.context[self.group_name])
             group_norm_var = layers.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
-            group_scale_var = layers.elementwise_div(
-                x=clip_var,
-                y=layers.elementwise_max(
-                    x=clip_var, y=group_norm_var))
+            group_scale_var = layers.elementwise_div(x=clip_var,
+                                                     y=layers.elementwise_max(
+                                                         x=clip_var,
+                                                         y=group_norm_var))
             assert group_scale_var.shape == (1, )
             self.context[group_scale_name] = group_scale_var
 
         # inplace
-        param.block.append_op(
-            type='elementwise_mul',
-            inputs={'X': grad,
-                    'Y': self.context[group_scale_name]},
-            outputs={'Out': grad})
+        param.block.append_op(type='elementwise_mul',
+                              inputs={
+                                  'X': grad,
+                                  'Y': self.context[group_scale_name]
+                              },
+                              outputs={'Out': grad})
 
         return param, grad
 
@@ -715,23 +719,23 @@ class ClipGradByGlobalNorm(ClipGradBase):
 def set_gradient_clip(clip, param_list=None, program=None):
     """
     :api_attr: Static Graph
-    
+
     Warning:
-    
-        This API must be used after building network, and before ``minimize`` , 
-        and it may be removed in future releases, so it is not recommended. 
+
+        This API must be used after building network, and before ``minimize`` ,
+        and it may be removed in future releases, so it is not recommended.
         It is recommended to set ``grad_clip`` when initializing the ``optimizer`` ,
         this is a better method to clip gradient. There are three clipping strategies:
-         :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+         :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
          :ref:`api_fluid_clip_GradientClipByValue` .
-        
+
     To specify parameters that require gradient clip.
 
     Args:
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no
             gradient clipping.
         param_list (list(Variable), optional): Parameters that require gradient clip.
                 It can be a list of parameter or a list of parameter's name.
@@ -785,7 +789,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
                     param_list=[param_var1, param_var2])
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
-            
+
             # network 4: use 'set_gradient_clip' and 'optimize(grad_clip=clip)' together
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 loss = network()
@@ -796,10 +800,10 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 # Set the gradient clipping strategy: clip2
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3, grad_clip=clip2)
                 sgd.minimize(loss)
-                # 'set_gradient_clip' will not take effect when setting has a conflict, 
+                # 'set_gradient_clip' will not take effect when setting has a conflict,
                 # and the gradient clipping strategy will be 'clip2'
-            
-            
+
+
     """
     warnings.warn("Caution! 'set_gradient_clip' is not recommended "
                   "and may be deprecated in future! "
@@ -868,7 +872,7 @@ def append_gradient_clip_ops(param_grads):
 
 
 # change wrong mapping relation between param & grad in clip op
-# Note: This function is sensitive to the time cost of the network with gradient clipping 
+# Note: This function is sensitive to the time cost of the network with gradient clipping
 # and should not be changed easily. If you must change, please test the time cost.
 def _correct_clip_op_role_var(params_grads, param_new_grad_name_dict):
     block_id_list = []

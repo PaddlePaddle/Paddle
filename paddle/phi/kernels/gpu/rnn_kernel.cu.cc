@@ -14,14 +14,12 @@
 
 #include "paddle/phi/kernels/rnn_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/gpu/rnn_functor.h"
-
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/gpu/rnn_functor.h"
 
 namespace phi {
 

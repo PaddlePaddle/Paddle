@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gumbel_softmax_kernel.h"
-#include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -105,14 +105,14 @@ struct OneHotGenerator<GPUContext, T> {
     ctx.template Alloc<T>(&input_tensor);
     paddle::framework::TensorCopy(*out, ctx.GetPlace(), &input_tensor);
     funcs::set_constant(ctx, out, 0.0);
-    OneHotCUDAKernel<T,
-                     thread_size><<<block_size, thread_size, 0, ctx.stream()>>>(
-        height,
-        size_from_axis / size_out_axis,
-        size_out_axis,
-        std::numeric_limits<T>::lowest(),
-        input_tensor.data<T>(),
-        out->data<T>());
+    OneHotCUDAKernel<T, thread_size>
+        <<<block_size, thread_size, 0, ctx.stream()>>>(
+            height,
+            size_from_axis / size_out_axis,
+            size_out_axis,
+            std::numeric_limits<T>::lowest(),
+            input_tensor.data<T>(),
+            out->data<T>());
   }
 };
 

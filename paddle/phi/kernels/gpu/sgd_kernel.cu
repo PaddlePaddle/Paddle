@@ -17,9 +17,8 @@
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/phi/backends/gpu/gpu_helper.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

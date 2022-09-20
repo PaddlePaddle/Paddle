@@ -14,14 +14,15 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
 namespace inference {
 
-void TestDynamic(bool with_dynamic = true, bool delete_cache = true,
+void TestDynamic(bool with_dynamic = true,
+                 bool delete_cache = true,
                  bool delete_conv_bn = false) {
   std::string model_dir =
       FLAGS_infer_model + "/conv_bn_swish_split_gelu/conv_bn_swish_split_gelu";
@@ -36,14 +37,16 @@ void TestDynamic(bool with_dynamic = true, bool delete_cache = true,
   std::string buffer_prog, buffer_param;
   ReadBinaryFile(model_dir + "/model", &buffer_prog);
   ReadBinaryFile(model_dir + "/params", &buffer_param);
-  config.SetModelBuffer(&buffer_prog[0], buffer_prog.size(), &buffer_param[0],
+  config.SetModelBuffer(&buffer_prog[0],
+                        buffer_prog.size(),
+                        &buffer_param[0],
                         buffer_param.size());
   config.SetOptimCacheDir(opt_cache_dir);
 
   config.SwitchUseFeedFetchOps(false);
   // Set the input's min, max, opt shape
-  config.EnableTensorRtEngine(1 << 30, 1, 1,
-                              AnalysisConfig::Precision::kFloat32, true, true);
+  config.EnableTensorRtEngine(
+      1 << 30, 1, 1, AnalysisConfig::Precision::kFloat32, true, true);
   if (delete_conv_bn) {
     config.pass_builder()->DeletePass("conv_bn_fuse_pass");
   }
@@ -55,8 +58,8 @@ void TestDynamic(bool with_dynamic = true, bool delete_cache = true,
     std::map<std::string, std::vector<int>> opt_input_shape = {
         {"image", {1, 1, 3, 3}}};
 
-    config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
-                                  opt_input_shape);
+    config.SetTRTDynamicShapeInfo(
+        min_input_shape, max_input_shape, opt_input_shape);
   }
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
@@ -77,8 +80,8 @@ void TestDynamic(bool with_dynamic = true, bool delete_cache = true,
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data.resize(out_num);
   output_t->copy_to_cpu(out_data.data());
 }
@@ -98,11 +101,11 @@ void TestDynamic2() {
       {"image", {1, 3, 10, 10}}, {"in1", {1, 2, 1, 1}}, {"in2", {1, 2, 1, 1}}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
       {"image", {1, 3, 5, 5}}, {"in1", {1, 2, 1, 1}}, {"in2", {1, 2, 1, 1}}};
-  config.EnableTensorRtEngine(1 << 30, batch_size, 0,
-                              AnalysisConfig::Precision::kFloat32, false, true);
+  config.EnableTensorRtEngine(
+      1 << 30, batch_size, 0, AnalysisConfig::Precision::kFloat32, false, true);
 
-  config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
-                                opt_input_shape);
+  config.SetTRTDynamicShapeInfo(
+      min_input_shape, max_input_shape, opt_input_shape);
 
   auto predictor = CreatePaddlePredictor(config);
   int channels = 3;
@@ -133,8 +136,8 @@ void TestDynamic2() {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data.resize(out_num);
   output_t->copy_to_cpu(out_data.data());
   std::vector<float> result = {0.617728, 1.63504, 2.15771, 0.535556};
@@ -185,8 +188,8 @@ void TestTunedDynamic() {
     auto output_names = predictor->GetOutputNames();
     auto output_t = predictor->GetOutputTensor(output_names[0]);
     std::vector<int> output_shape = output_t->shape();
-    int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                  std::multiplies<int>());
+    int out_num = std::accumulate(
+        output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
     out_data.resize(out_num);
     output_t->copy_to_cpu(out_data.data());
   };
@@ -201,13 +204,14 @@ void TestTunedDynamic() {
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.SwitchUseFeedFetchOps(false);
   config.EnableTunedTensorRtDynamicShape(shape_range, true);
-  config.EnableTensorRtEngine(1 << 30, batch_size, 0,
-                              AnalysisConfig::Precision::kFloat32, true, false);
+  config.EnableTensorRtEngine(
+      1 << 30, batch_size, 0, AnalysisConfig::Precision::kFloat32, true, false);
   auto test_predictor = CreatePaddlePredictor(config);
   check_func(test_predictor.get());
 }
 
-void TestDynamicClone(bool with_dynamic = true, bool delete_cache = true,
+void TestDynamicClone(bool with_dynamic = true,
+                      bool delete_cache = true,
                       bool delete_conv_bn = false) {
   std::string model_dir =
       FLAGS_infer_model + "/conv_bn_swish_split_gelu/conv_bn_swish_split_gelu";
@@ -222,7 +226,9 @@ void TestDynamicClone(bool with_dynamic = true, bool delete_cache = true,
   std::string buffer_prog, buffer_param;
   ReadBinaryFile(model_dir + "/model", &buffer_prog);
   ReadBinaryFile(model_dir + "/params", &buffer_param);
-  config.SetModelBuffer(&buffer_prog[0], buffer_prog.size(), &buffer_param[0],
+  config.SetModelBuffer(&buffer_prog[0],
+                        buffer_prog.size(),
+                        &buffer_param[0],
                         buffer_param.size());
   config.SetOptimCacheDir(opt_cache_dir);
 
@@ -241,8 +247,8 @@ void TestDynamicClone(bool with_dynamic = true, bool delete_cache = true,
     std::map<std::string, std::vector<int>> opt_input_shape = {
         {"image", {1, 1, 3, 3}}};
 
-    config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
-                                  opt_input_shape);
+    config.SetTRTDynamicShapeInfo(
+        min_input_shape, max_input_shape, opt_input_shape);
   }
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
@@ -263,8 +269,8 @@ void TestDynamicClone(bool with_dynamic = true, bool delete_cache = true,
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data.resize(out_num);
   output_t->copy_to_cpu(out_data.data());
 
@@ -278,8 +284,8 @@ void TestDynamicClone(bool with_dynamic = true, bool delete_cache = true,
   std::vector<float> out_data2;
   auto output_t2 = predictor2->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape2 = output_t2->shape();
-  int out_num2 = std::accumulate(output_shape2.begin(), output_shape2.end(), 1,
-                                 std::multiplies<int>());
+  int out_num2 = std::accumulate(
+      output_shape2.begin(), output_shape2.end(), 1, std::multiplies<int>());
   out_data2.resize(out_num2);
   output_t2->copy_to_cpu(out_data2.data());
   ASSERT_TRUE(out_data2.size() == out_data.size());

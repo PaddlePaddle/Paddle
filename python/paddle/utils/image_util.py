@@ -56,8 +56,8 @@ def crop_img(im, inner_size, color=True, test=True):
       If True, crop the center of images.
     """
     if color:
-        height, width = max(inner_size, im.shape[1]), max(inner_size,
-                                                          im.shape[2])
+        height, width = max(inner_size,
+                            im.shape[1]), max(inner_size, im.shape[2])
         padded_im = np.zeros((3, height, width))
         startY = (height - im.shape[1]) / 2
         startX = (width - im.shape[2]) / 2
@@ -65,8 +65,8 @@ def crop_img(im, inner_size, color=True, test=True):
         padded_im[:, startY:endY, startX:endX] = im
     else:
         im = im.astype('float32')
-        height, width = max(inner_size, im.shape[0]), max(inner_size,
-                                                          im.shape[1])
+        height, width = max(inner_size,
+                            im.shape[0]), max(inner_size, im.shape[1])
         padded_im = np.zeros((height, width))
         startY = (height - im.shape[0]) / 2
         startX = (width - im.shape[1]) / 2
@@ -122,13 +122,13 @@ def load_meta(meta_path, mean_img_size, crop_size, color=True):
     if color:
         assert (mean_img_size * mean_img_size * 3 == mean.shape[0])
         mean = mean.reshape(3, mean_img_size, mean_img_size)
-        mean = mean[:, border:border + crop_size, border:border +
-                    crop_size].astype('float32')
+        mean = mean[:, border:border + crop_size,
+                    border:border + crop_size].astype('float32')
     else:
         assert (mean_img_size * mean_img_size == mean.shape[0])
         mean = mean.reshape(mean_img_size, mean_img_size)
-        mean = mean[border:border + crop_size, border:border +
-                    crop_size].astype('float32')
+        mean = mean[border:border + crop_size,
+                    border:border + crop_size].astype('float32')
     return mean
 
 
@@ -170,9 +170,8 @@ def oversample(img, crop_dims):
     crops_ix = np.tile(crops_ix, (2, 1))
 
     # Extract crops
-    crops = np.empty(
-        (10 * len(img), crop_dims[0], crop_dims[1], im_shape[-1]),
-        dtype=np.float32)
+    crops = np.empty((10 * len(img), crop_dims[0], crop_dims[1], im_shape[-1]),
+                     dtype=np.float32)
     ix = 0
     for im in img:
         for crop in crops_ix:
@@ -183,6 +182,7 @@ def oversample(img, crop_dims):
 
 
 class ImageTransformer:
+
     def __init__(self,
                  transpose=None,
                  channel_swap=None,

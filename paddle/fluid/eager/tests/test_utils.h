@@ -18,14 +18,12 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/utils.h"
-
-#include "paddle/phi/api/all.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_meta.h"
-
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 namespace eager_test {
 
@@ -42,13 +40,16 @@ bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
 #ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(paddle::platform::CUDAPlace()));
+    auto* dev_ctx =
+        dynamic_cast<phi::GPUContext*>(pool.Get(paddle::platform::CUDAPlace()));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
-                         paddle::platform::CUDAPlace(), ptr,
-                         sizeof(T) * grad_dense->numel(), stream);
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         host_data.data(),
+                         paddle::platform::CUDAPlace(),
+                         ptr,
+                         sizeof(T) * grad_dense->numel(),
+                         stream);
     ptr = host_data.data();
 #endif
   }
@@ -59,7 +60,9 @@ bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
                        "Numerical Error in Compare Grad Variable With Value of "
                        "%d, we expected got value: %f, but got: %f instead. "
                        "Please check it later.",
-                       i, value, ptr[i]));
+                       i,
+                       value,
+                       ptr[i]));
   }
   return true;
 }
@@ -76,13 +79,16 @@ bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
 #ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(paddle::platform::CUDAPlace()));
+    auto* dev_ctx =
+        dynamic_cast<phi::GPUContext*>(pool.Get(paddle::platform::CUDAPlace()));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
-                         paddle::platform::CUDAPlace(), ptr,
-                         sizeof(T) * dense_t->numel(), stream);
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         host_data.data(),
+                         paddle::platform::CUDAPlace(),
+                         ptr,
+                         sizeof(T) * dense_t->numel(),
+                         stream);
     ptr = host_data.data();
 #endif
   }
@@ -94,7 +100,9 @@ bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
                        "Numerical Error in Compare Grad Variable With Value of "
                        "%d, we expected got value: %f, but got: %f instead. "
                        "Please check it later.",
-                       i, value, ptr[i]));
+                       i,
+                       value,
+                       ptr[i]));
   }
   return true;
 }

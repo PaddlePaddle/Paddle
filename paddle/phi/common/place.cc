@@ -19,8 +19,8 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "glog/logging.h"
-
 #include "paddle/phi/api/ext/exception.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 namespace phi {
 
@@ -73,6 +73,18 @@ std::ostream &operator<<(std::ostream &os, const Place &p) {
   return os;
 }
 
+Place GetPinnedPlace(const Place &place) {
+  switch (place.GetType()) {
+    case AllocationType::GPU:
+      return phi::GPUPinnedPlace();
+      break;
+    case AllocationType::NPU:
+      return phi::NPUPinnedPlace();
+    default:
+      return place;
+  }
+}
+
 static std::unordered_map<std::string, size_t> global_registered_device_type_id;
 static std::unordered_map<size_t, std::string> global_registered_device_type;
 
@@ -110,14 +122,32 @@ uint32_t Place::Hash::operator()(const Place &place) const {
   return hash_value;
 }
 
+namespace detail {
+static int8_t GetCorrectDeviceIdByPlaceType(
+    const paddle::PlaceType &place_type) {
+  switch (place_type) {
+    case paddle::PlaceType::kCPU:
+      return 0;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    case paddle::PlaceType::kGPU:
+      return phi::backends::gpu::GetCurrentDeviceId();
+#endif
+    default:
+      PD_THROW(
+          "The PlaceType is a legacy design, only supports CPU and GPU, "
+          "and will not support other place types in the future.");
+  }
+}
+}  // namespace detail
+
 Place::Place(paddle::PlaceType type)
-    : device(0),
+    : device(detail::GetCorrectDeviceIdByPlaceType(type)),
       alloc_type_(static_cast<AllocationType>(type)),
       device_type_id_(GetOrRegisterGlobalDeviceTypeId("")) {
   LOG_FIRST_N(WARNING, 1)
       << "The `paddle::PlaceType::kCPU/kGPU` is deprecated since version "
          "2.3, and will be removed in version 2.4! Please use "
-         "`paddle::CPUPlace()/GPUPlace()` to represent the place type.";
+         "`paddle::CPUPlace()/DefaultGPUPlace()` to represent the place type.";
 }
 
 }  // namespace phi
@@ -138,6 +168,15 @@ bool operator==(PlaceType place_type, const Place &place) {
          "2.3, and will be removed in version 2.4! Please use "
          "`Tensor::is_cpu()/is_gpu()` method to determine the type of place.";
   return static_cast<AllocationType>(place_type) == place.GetType();
+}
+
+GPUPlace DefaultGPUPlace() {
+  return GPUPlace(
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      phi::backends::gpu::GetCurrentDeviceId());
+#else
+      0);
+#endif
 }
 
 }  // namespace paddle

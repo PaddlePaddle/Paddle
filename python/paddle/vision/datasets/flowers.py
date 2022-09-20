@@ -42,36 +42,71 @@ MODE_FLAG_MAP = {'train': 'tstid', 'test': 'trnid', 'valid': 'valid'}
 
 class Flowers(Dataset):
     """
-    Implementation of `Flowers <https://www.robots.ox.ac.uk/~vgg/data/flowers/>`_
-    dataset
+    Implementation of `Flowers102 <https://www.robots.ox.ac.uk/~vgg/data/flowers/>`_
+    dataset.
 
     Args:
-        data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/flowers/
-        label_file(str): path to label file, can be set None if
-            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/flowers/
-        setid_file(str): path to subset index file, can be set
-            None if :attr:`download` is True. Default None
-        mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
-        transform(callable): transform to perform on image, None for no transform.
-        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
-            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+        data_file (str, optional): Path to data file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/flowers/.
+        label_file (str, optional): Path to label file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/flowers/.
+        setid_file (str, optional): Path to subset index file, can be set
+            None if :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/flowers/.
+        mode (str, optional): Either train or test mode. Default 'train'.
+        transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
+        download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default: True.
+        backend (str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
 
+    Returns:
+        :ref:`api_paddle_io_Dataset`. An instance of Flowers dataset.
+
     Examples:
-        
+
         .. code-block:: python
 
+            import itertools
+            import paddle.vision.transforms as T
             from paddle.vision.datasets import Flowers
 
-            flowers = Flowers(mode='test')
 
-            for i in range(len(flowers)):
-                sample = flowers[i]
-                print(sample[0].size, sample[1])
+            flowers = Flowers()
+            print(len(flowers))
+            # 6149
 
+            for i in range(5):  # only show first 5 images
+                img, label = flowers[i]
+                # do something with img and label
+                print(type(img), img.size, label)
+                # <class 'PIL.JpegImagePlugin.JpegImageFile'> (523, 500) [1]
+
+
+            transform = T.Compose(
+                [
+                    T.Resize(64),
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[0.5, 0.5, 0.5],
+                        std=[0.5, 0.5, 0.5],
+                        to_rgb=True,
+                    ),
+                ]
+            )
+
+            flowers_test = Flowers(
+                mode="test",
+                transform=transform,  # apply transform to every image
+                backend="cv2",  # use OpenCV as image transform backend
+            )
+            print(len(flowers_test))
+            # 1020
+
+            for img, label in itertools.islice(iter(flowers_test), 5):  # only show first 5 images
+                # do something with img and label
+                print(type(img), img.shape, label)
+                # <class 'paddle.Tensor'> [3, 64, 96] [1]
     """
 
     def __init__(self,
@@ -89,26 +124,29 @@ class Flowers(Dataset):
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
-                "Expected backend are one of ['pil', 'cv2'], but got {}"
-                .format(backend))
+                "Expected backend are one of ['pil', 'cv2'], but got {}".format(
+                    backend))
         self.backend = backend
 
         flag = MODE_FLAG_MAP[mode.lower()]
 
         if not data_file:
             assert download, "data_file is not set and downloading automatically is disabled"
-            data_file = _check_exists_and_download(
-                data_file, DATA_URL, DATA_MD5, 'flowers', download)
+            data_file = _check_exists_and_download(data_file, DATA_URL,
+                                                   DATA_MD5, 'flowers',
+                                                   download)
 
         if not label_file:
             assert download, "label_file is not set and downloading automatically is disabled"
-            label_file = _check_exists_and_download(
-                label_file, LABEL_URL, LABEL_MD5, 'flowers', download)
+            label_file = _check_exists_and_download(label_file, LABEL_URL,
+                                                    LABEL_MD5, 'flowers',
+                                                    download)
 
         if not setid_file:
             assert download, "setid_file is not set and downloading automatically is disabled"
-            setid_file = _check_exists_and_download(
-                setid_file, SETID_URL, SETID_MD5, 'flowers', download)
+            setid_file = _check_exists_and_download(setid_file, SETID_URL,
+                                                    SETID_MD5, 'flowers',
+                                                    download)
 
         self.transform = transform
 

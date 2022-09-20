@@ -41,6 +41,7 @@ class MemcpyFunctor {
     XPU = 3,
     NPU = 4,
     NPU_PINNED = 5,
+    CUSTOM_DEVICE = 6,
   };
 
  public:
@@ -53,20 +54,25 @@ class MemcpyFunctor {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
 
     if (dst_place_type_ == DeviceType::CUDA_PINNED) {
-      framework::TensorCopy(lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_,
-                            &out_tensor);
+      framework::TensorCopy(
+          lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::CUDA) {
-      framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
-                            &out_tensor);
+      framework::TensorCopy(
+          lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::CPU) {
       framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);
 #ifdef PADDLE_WITH_ASCEND_CL
     } else if (dst_place_type_ == DeviceType::NPU) { /* npu_pin->npu */
-      framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
-                            &out_tensor);
+      framework::TensorCopy(
+          lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::NPU_PINNED) { /* npu->npu_pin */
-      framework::TensorCopy(lod_tensor, platform::NPUPinnedPlace(), dev_ctx_,
-                            &out_tensor);
+      framework::TensorCopy(
+          lod_tensor, platform::NPUPinnedPlace(), dev_ctx_, &out_tensor);
+#endif
+#ifdef PADDLE_WTIH_CUSTOM_DEVICE
+    } else if (dst_place_type_ == DeviceType::CUSTOM_DEVICE) {
+      framework::TensorCopy(
+          lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -84,9 +90,10 @@ class MemcpyFunctor {
   template <typename T>
   void operator()(const T &v) const {
     PADDLE_ENFORCE_EQ(
-        true, false,
+        true,
+        false,
         platform::errors::PermissionDenied(
-            "Not support type for Memcpy  op with type %s", typeid(T).name()));
+            "Not support type for Memcpy op with type %s", typeid(T).name()));
   }
 
  private:

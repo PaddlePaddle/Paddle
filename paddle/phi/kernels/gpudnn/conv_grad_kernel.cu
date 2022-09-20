@@ -14,12 +14,10 @@
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/operators/conv_miopen_helper.h"
 #else
@@ -29,15 +27,12 @@
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/kernels/funcs/padding.h"
-
-#include "paddle/phi/kernels/cpu/conv_util.h"
-#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
-
-#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
-
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/padding.h"
+#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
 namespace phi {
 
@@ -256,27 +251,33 @@ void ConvCudnnGradKernel(const Context& ctx,
   T* input_grad_data = nullptr;
   T* transformed_input_grad_data = nullptr;
 
+  paddle::platform::DataLayout layout =
+      compute_format == paddle::platform::DataLayout::kNHWC
+          ? paddle::platform::DataLayout::kNHWC
+          : paddle::platform::DataLayout::kNCHW;
+
   paddle::operators::ConvArgs args1{&transformed_input_grad,
                                     &transformed_filter_channel,
                                     &transformed_output_grad_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    layout};
   paddle::operators::ConvArgs args2{&transformed_input,
                                     &transformed_filter_grad_channel,
                                     &transformed_output_grad_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    layout};
 
   auto handle = ctx.cudnn_handle();
   // TODO(phlrain): replace paddle::platform::DataLaytout to phi::DataLayout
-  paddle::platform::DataLayout layout =
-      compute_format == paddle::platform::DataLayout::kNHWC
-          ? paddle::platform::DataLayout::kNHWC
-          : paddle::platform::DataLayout::kNCHW;
+
   if (transformed_input.dims().size() == 5) {
     layout = compute_format == paddle::platform::DataLayout::kNHWC
                  ? paddle::platform::DataLayout::kNDHWC
@@ -373,8 +374,7 @@ void ConvCudnnGradKernel(const Context& ctx,
     using search1 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     bwd_result = search1::Find<T>(args1, exhaustive_search, deterministic, ctx);
-    workspace_size_d = std::max(
-        workspace_size_d, search1::GetWorkspaceSize(args1, bwd_result.algo));
+    workspace_size_d = std::max(workspace_size_d, bwd_result.workspace_size);
 #endif
   }
 
@@ -405,8 +405,7 @@ void ConvCudnnGradKernel(const Context& ctx,
         search2::Find<T>(args2, exhaustive_search, deterministic, ctx);
     VLOG(3) << "filter algo: " << filter_result.algo << ", time "
             << filter_result.time;
-    workspace_size_w = std::max(
-        workspace_size_w, search2::GetWorkspaceSize(args2, filter_result.algo));
+    workspace_size_w = std::max(workspace_size_w, filter_result.workspace_size);
 #endif
   }
 

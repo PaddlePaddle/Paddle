@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
+
 #include "cinn/common/type.h"
 #include "cinn/runtime/cinn_runtime.h"
 #include "gtest/gtest.h"

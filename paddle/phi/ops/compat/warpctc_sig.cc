@@ -20,13 +20,13 @@ KernelSignature WarpctcOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("warpctc",
                          {"Logits", "Label", "LogitsLength", "LabelLength"},
                          {"blank", "norm_by_times"},
-                         {"WarpCTCGrad", "Loss"});
+                         {"Loss", "WarpCTCGrad"});
 }
 
 KernelSignature WarpctcGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("warpctc_grad",
-                         {"WarpCTCGrad", "Logits", "Loss@GRAD", "LogitsLength"},
+                         {"Logits", "LogitsLength", "WarpCTCGrad", "Loss@GRAD"},
                          {"blank", "norm_by_times"},
                          {"Logits@GRAD"});
 }

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -29,13 +30,6 @@ class DenseTensor;
 }  // namespace phi
 
 namespace paddle {
-namespace framework {}  // namespace framework
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 namespace math {
 
@@ -44,10 +38,11 @@ namespace math {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class ConcatFunctor<platform::CPUDeviceContext, T> {
+class ConcatFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input, int axis,
+  void operator()(const phi::CPUContext& context,
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
                   framework::Tensor* output) {
     phi::funcs::ConcatFunctor<phi::CPUContext, T> functor;
     functor(context, input, axis, output);
@@ -59,12 +54,13 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class SplitFunctor<platform::CPUDeviceContext, T> {
+class SplitFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
-                  const int axis, std::vector<framework::Tensor*>* outputs) {
+                  const int axis,
+                  std::vector<framework::Tensor*>* outputs) {
     phi::funcs::SplitFunctor<phi::CPUContext, T> functor;
     functor(context, input, ref_inputs, axis, outputs);
   }
@@ -79,7 +75,8 @@ template <typename T>
 class ConcatFunctor<platform::XPUDeviceContext, T> {
  public:
   void operator()(const platform::XPUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input, int axis,
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
                   framework::Tensor* output) {
     int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
@@ -101,14 +98,16 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
       ptrs.push_back(input[i].data<T>());
     }
 
-    auto r = xpu::concat<T>(context.x_context(), ptrs, output->data<T>(),
-                            xdims_list, axis);
+    auto r = xpu::concat<T>(
+        context.x_context(), ptrs, output->data<T>(), xdims_list, axis);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External(
             "XPU API return wrong value[%d %s], please check whether "
             "Baidu Kunlun Card is properly installed.",
-            r, XPUAPIErrorMsg[r]));
+            r,
+            XPUAPIErrorMsg[r]));
   }
 };
 
@@ -118,7 +117,8 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
   void operator()(const platform::XPUDeviceContext& context,
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
-                  const int axis, std::vector<framework::Tensor*>* outputs) {
+                  const int axis,
+                  std::vector<framework::Tensor*>* outputs) {
     int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
@@ -145,14 +145,20 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
       ptrs[i] = outputs->at(i)->data<T>();
     }
 
-    auto r = xpu::split<T>(context.x_context(), input.data<T>(), ptrs,
-                           xdims_list, split_list, axis);
+    auto r = xpu::split<T>(context.x_context(),
+                           input.data<T>(),
+                           ptrs,
+                           xdims_list,
+                           split_list,
+                           axis);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External(
             "XPU API return wrong value[%d %s], please check whether "
             "Baidu Kunlun Card is properly installed.",
-            r, XPUAPIErrorMsg[r]));
+            r,
+            XPUAPIErrorMsg[r]));
   }
 };
 #endif
@@ -162,7 +168,8 @@ template <typename T>
 class ConcatFunctor<platform::NPUDeviceContext, T> {
  public:
   void operator()(const platform::NPUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input, int axis,
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
                   framework::Tensor* output) {
     int dev_id = context.GetPlace().GetDeviceId();
     platform::NPUDeviceGuard guard(dev_id);
@@ -187,7 +194,8 @@ class SplitFunctor<platform::NPUDeviceContext, T> {
   void operator()(const platform::NPUDeviceContext& context,
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
-                  const int axis, std::vector<framework::Tensor*>* outputs) {
+                  const int axis,
+                  std::vector<framework::Tensor*>* outputs) {
     if (input.numel() == 0) {
       return;
     }
@@ -219,8 +227,12 @@ class SplitFunctor<platform::NPUDeviceContext, T> {
         auto* out_tensor = outputs->at(j);
         if (out_tensor != nullptr) {
           T* dst_ptr = out_tensor->data<T>() + k * col_len;
-          memory::Copy(npu_place, dst_ptr, npu_place, src_ptr + col_idx,
-                       sizeof(T) * col_len, context.stream());
+          memory::Copy(npu_place,
+                       dst_ptr,
+                       npu_place,
+                       src_ptr + col_idx,
+                       sizeof(T) * col_len,
+                       context.stream());
         }
         col_idx += col_len;
       }
@@ -234,7 +246,8 @@ template <typename T>
 class ConcatFunctor<platform::MLUDeviceContext, T> {
  public:
   void operator()(const platform::MLUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input, int axis,
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
                   framework::Tensor* output) {
     int dev_id = context.GetPlace().GetDeviceId();
     platform::MLUDeviceGuard guard(dev_id);
@@ -256,12 +269,17 @@ class ConcatFunctor<platform::MLUDeviceContext, T> {
       inputs.push_back(input[i].data());
     }
     // init out tensors
-    MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(output->dtype()));
+    MLUCnnlTensorDesc output_desc(
+        *output, CNNL_LAYOUT_ARRAY, ToCnnlDataType(output->dtype()));
 
     // MLU should do sth
-    MLUCnnl::Concat(context, ins_size_t, axis_t, desc_vector.data(),
-                    inputs.data(), output_desc.get(), GetBasePtr(output));
+    MLUCnnl::Concat(context,
+                    ins_size_t,
+                    axis_t,
+                    desc_vector.data(),
+                    inputs.data(),
+                    output_desc.get(),
+                    GetBasePtr(output));
   }
 };
 
@@ -271,7 +289,8 @@ class SplitFunctor<platform::MLUDeviceContext, T> {
   void operator()(const platform::MLUDeviceContext& context,
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
-                  const int axis, std::vector<framework::Tensor*>* outputs) {
+                  const int axis,
+                  std::vector<framework::Tensor*>* outputs) {
     if (input.numel() == 0) {
       return;
     }
@@ -294,25 +313,31 @@ class SplitFunctor<platform::MLUDeviceContext, T> {
     for (size_t i = 0; i < out_size; i++) {
       (*outputs)[i]->Resize(outs_dims[i]);
       output_descs.emplace_back(
-          MLUCnnlTensorDesc(*(*outputs)[i], CNNL_LAYOUT_ARRAY,
+          MLUCnnlTensorDesc(*(*outputs)[i],
+                            CNNL_LAYOUT_ARRAY,
                             ToCnnlDataType((*outputs)[i]->dtype())));
       desc_vector.push_back(output_descs.back().get());
       vct_tensor.push_back(GetBasePtr((*outputs)[i]));
     }
     // init in tensors
-    MLUCnnlTensorDesc input_desc(input, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(input.dtype()));
+    MLUCnnlTensorDesc input_desc(
+        input, CNNL_LAYOUT_ARRAY, ToCnnlDataType(input.dtype()));
 
     // MLU should do sth
-    MLUCnnl::Split(context, out_size, axis, input_desc.get(), input.data(),
-                   desc_vector.data(), vct_tensor.data());
+    MLUCnnl::Split(context,
+                   out_size,
+                   axis,
+                   input_desc.get(),
+                   input.data(),
+                   desc_vector.data(),
+                   vct_tensor.data());
   }
 };
 #endif
 
-#define DEFINE_FUNCTOR(type)                                      \
-  template class ConcatFunctor<platform::CPUDeviceContext, type>; \
-  template class SplitFunctor<platform::CPUDeviceContext, type>;
+#define DEFINE_FUNCTOR(type)                           \
+  template class ConcatFunctor<phi::CPUContext, type>; \
+  template class SplitFunctor<phi::CPUContext, type>;
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 

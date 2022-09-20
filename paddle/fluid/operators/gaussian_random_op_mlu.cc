@@ -45,6 +45,7 @@ class MLUGaussianRandomKernel : public framework::OpKernel<T> {
     auto& dev_ctx =
         context.template device_context<paddle::platform::MLUDeviceContext>();
     framework::TensorCopy(cpu_tensor, context.GetPlace(), dev_ctx, tensor);
+    dev_ctx.Wait();
   }
 };
 

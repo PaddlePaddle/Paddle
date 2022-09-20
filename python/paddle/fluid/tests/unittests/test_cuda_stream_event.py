@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ import numpy as np
 
 
 class TestCurrentStream(unittest.TestCase):
+
     def test_current_stream(self):
         if paddle.is_compiled_with_cuda():
             s = cuda.current_stream()
@@ -38,6 +39,7 @@ class TestCurrentStream(unittest.TestCase):
 
 
 class TestSynchronize(unittest.TestCase):
+
     def test_synchronize(self):
         if paddle.is_compiled_with_cuda():
             self.assertIsNone(cuda.synchronize())
@@ -48,6 +50,7 @@ class TestSynchronize(unittest.TestCase):
 
 
 class TestCUDAStream(unittest.TestCase):
+
     def test_cuda_stream(self):
         if paddle.is_compiled_with_cuda():
             s = paddle.device.cuda.Stream()
@@ -85,6 +88,7 @@ class TestCUDAStream(unittest.TestCase):
 
 
 class TestCUDAEvent(unittest.TestCase):
+
     def test_cuda_event(self):
         if paddle.is_compiled_with_cuda():
             e = paddle.device.cuda.Event(True, False, False)
@@ -108,8 +112,8 @@ class TestCUDAEvent(unittest.TestCase):
 
 class TestStreamGuard(unittest.TestCase):
     '''
-    Note: 
-        The asynchronous execution property of CUDA Stream can only be tested offline. 
+    Note:
+        The asynchronous execution property of CUDA Stream can only be tested offline.
     '''
 
     def test_stream_guard_normal(self):
@@ -120,8 +124,11 @@ class TestStreamGuard(unittest.TestCase):
             c = a + b
             with paddle.device.cuda.stream_guard(s):
                 d = a + b
+                # NOTE(zhiqiu): it is strange that cudaMemcpy d2h not waits all
+                # kernels to be completed on windows.
+                s.synchronize()
 
-            self.assertTrue(np.array_equal(np.array(c), np.array(d)))
+            np.testing.assert_array_equal(np.array(c), np.array(d))
 
     def test_stream_guard_default_stream(self):
         if paddle.is_compiled_with_cuda():
@@ -158,6 +165,7 @@ class TestStreamGuard(unittest.TestCase):
 
 
 class TestRawStream(unittest.TestCase):
+
     def test_cuda_stream(self):
         if paddle.is_compiled_with_cuda():
             cuda_stream = paddle.device.cuda.current_stream().cuda_stream

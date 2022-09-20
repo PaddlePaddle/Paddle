@@ -24,12 +24,14 @@ from paddle.fluid import Program, program_guard
 
 
 class TestIndexSelectOp(OpTest):
+
     def setUp(self):
         self.python_api = paddle.index_select
         self.op_type = "index_select"
         self.init_dtype_type()
-        index_np = np.random.randint(
-            low=0, high=self.x_shape[self.dim], size=self.index_size)
+        index_np = np.random.randint(low=0,
+                                     high=self.x_shape[self.dim],
+                                     size=self.index_size)
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {'X': x_np, 'Index': index_np}
         self.attrs = {'dim': self.dim}
@@ -62,6 +64,7 @@ class TestIndexSelectOp(OpTest):
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):
+
     def init_dtype_type(self):
         self.x_type = np.float32
         self.index_type = np.int32
@@ -71,6 +74,7 @@ class TestIndexSelectOpCase2(TestIndexSelectOp):
 
 
 class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
+
     def init_dtype_type(self):
         if fluid.is_compiled_with_cuda():
             fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -82,6 +86,7 @@ class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
 
 
 class TestIndexSelectAPI(unittest.TestCase):
+
     def input_data(self):
         self.data_x = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
                                 [9.0, 10.0, 11.0, 12.0]])
@@ -93,32 +98,40 @@ class TestIndexSelectAPI(unittest.TestCase):
         # case 1:
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
-                name='index', shape=[3], dtype='int32', append_batch_size=False)
+            index = fluid.layers.data(name='index',
+                                      shape=[3],
+                                      dtype='int32',
+                                      append_batch_size=False)
             z = paddle.index_select(x, index, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': self.data_x,
-                                 'index': self.data_index},
+            res, = exe.run(feed={
+                'x': self.data_x,
+                'index': self.data_index
+            },
                            fetch_list=[z.name],
                            return_numpy=False)
         expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
                                [9.0, 10.0, 10.0]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
-                name='index', shape=[3], dtype='int32', append_batch_size=False)
+            index = fluid.layers.data(name='index',
+                                      shape=[3],
+                                      dtype='int32',
+                                      append_batch_size=False)
             z = paddle.index_select(x, index)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': self.data_x,
-                                 'index': self.data_index},
+            res, = exe.run(feed={
+                'x': self.data_x,
+                'index': self.data_index
+            },
                            fetch_list=[z.name],
                            return_numpy=False)
-        expect_out = np.array(
-            [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [5.0, 6.0, 7.0, 8.0]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        expect_out = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
+                               [5.0, 6.0, 7.0, 8.0]])
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
         self.input_data()
@@ -128,9 +141,9 @@ class TestIndexSelectAPI(unittest.TestCase):
             index = fluid.dygraph.to_variable(self.data_index)
             z = paddle.index_select(x, index)
             np_z = z.numpy()
-        expect_out = np.array(
-            [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [5.0, 6.0, 7.0, 8.0]])
-        self.assertTrue(np.allclose(expect_out, np_z))
+        expect_out = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
+                               [5.0, 6.0, 7.0, 8.0]])
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
         with fluid.dygraph.guard():
@@ -140,7 +153,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             np_z = z.numpy()
         expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
                                [9.0, 10.0, 10.0]])
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 
 if __name__ == '__main__':

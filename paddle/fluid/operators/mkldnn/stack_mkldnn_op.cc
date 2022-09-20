@@ -17,13 +17,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
-using framework::Tensor;
-using framework::LoDTensor;
+using dnnl::concat;
 using dnnl::memory;
 using dnnl::primitive;
-using dnnl::concat;
 using dnnl::stream;
+using framework::DataLayout;
+using framework::LoDTensor;
+using framework::Tensor;
 using platform::to_void_cast;
 
 template <typename T>
@@ -32,7 +32,8 @@ class StackMKLDNNHandler
  public:
   StackMKLDNNHandler(const framework::ExecutionContext& ctx,
                      const dnnl::engine mkldnn_engine,
-                     const std::vector<const Tensor*>& inputs, Tensor* output)
+                     const std::vector<const Tensor*>& inputs,
+                     Tensor* output)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::concat>(mkldnn_engine,
                                                            ctx.GetPlace()) {
     int stack_axis = ctx.Attr<int>("axis");
@@ -85,7 +86,8 @@ class StackMKLDNNHandler
   // concat oneDNN prim is not having .desc attribute so we cannot use default
   // AcquireForwardPrimitiveDescriptor
   void AcquireForwardPrimitiveDescriptor(
-      const memory::desc& dst_md, const int stack_axis,
+      const memory::desc& dst_md,
+      const int stack_axis,
       const std::vector<memory::desc>& srcs_md) {
     this->fwd_pd_.reset(new dnnl::concat::primitive_desc(
         dst_md, stack_axis, srcs_md, this->engine_));
@@ -138,5 +140,7 @@ class StackMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(stack, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(stack,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::StackMKLDNNOpKernel<float>);

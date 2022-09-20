@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 
 import paddle
@@ -28,10 +29,12 @@ paddle.enable_static()
 
 
 class XPUTestReduceAllOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'reduce_all'
 
     class XPUTestReduceAllBase(XPUOpTest):
+
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.set_case()
@@ -45,8 +48,8 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
                 'dim': (3, 5, 4)
             }
             self.inputs = {
-                'X': np.random.randint(0, 2,
-                                       (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+                'X':
+                np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
             }
             self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
@@ -57,6 +60,7 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
             pass
 
     class XPUTestReduceAllCase1(XPUTestReduceAllBase):
+
         def set_case(self):
             self.op_type = 'reduce_all'
             self.attrs = {
@@ -71,6 +75,7 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'].all()}
 
     class XPUTestReduceAllCase2(XPUTestReduceAllBase):
+
         def set_case(self):
             self.op_type = 'reduce_all'
             self.attrs = {
@@ -80,12 +85,13 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
                 'dim': (3, 6)
             }
             self.inputs = {
-                'X': np.random.randint(0, 2,
-                                       (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+                'X':
+                np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
             }
             self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     class XPUTestReduceAllCase3(XPUTestReduceAllBase):
+
         def set_case(self):
             self.op_type = 'reduce_all'
             self.attrs = {
@@ -98,8 +104,7 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
                 'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")
             }
             self.outputs = {
-                'Out': np.expand_dims(
-                    self.inputs['X'].all(axis=1), axis=1)
+                'Out': np.expand_dims(self.inputs['X'].all(axis=1), axis=1)
             }
 
 

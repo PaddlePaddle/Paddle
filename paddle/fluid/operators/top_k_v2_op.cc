@@ -31,8 +31,10 @@ class TopkV2Op : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context(),
-        layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context(),
+        layout_,
+        library_);
   }
 };
 
@@ -49,8 +51,8 @@ class TopkV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Top K operator
 
-If the input is a vector (1d tensor), this operator finds the k largest 
-entries in the vector and outputs their values and indices as vectors. 
+If the input is a vector (1d tensor), this operator finds the k largest
+entries in the vector and outputs their values and indices as vectors.
 Thus values[j] is the j-th largest entry in input, and its index is indices[j].
 
 For matrices, this operator computes the top k entries in each row. )DOC");
@@ -76,16 +78,20 @@ class TopkV2OpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::InvalidArgument("Input(X) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Indices"), true,
+        ctx->HasInput("Indices"),
+        true,
         platform::errors::InvalidArgument("Input(Indices) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Grad Input(Out) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::InvalidArgument("Grad Output(X) should be not null"));
 
     auto x_dims = ctx->GetInputDim("X");
@@ -121,9 +127,12 @@ class TopkV2GradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(top_k_v2, TopKInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(top_k_v2,
+                            TopKInferShapeFunctor,
                             PD_INFER_META(phi::TopKInferMeta));
-REGISTER_OPERATOR(top_k_v2, ops::TopkV2Op, ops::TopkV2OpMaker,
+REGISTER_OPERATOR(top_k_v2,
+                  ops::TopkV2Op,
+                  ops::TopkV2OpMaker,
                   ops::TopkV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::TopkV2GradOpMaker<paddle::imperative::OpBase>,
                   TopKInferShapeFunctor);

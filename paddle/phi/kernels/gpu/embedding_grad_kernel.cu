@@ -13,16 +13,17 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
-#include "paddle/phi/kernels/funcs/embedding_util.h"
 
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/embedding_util.h"
 
-#include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -102,6 +103,11 @@ struct EmbeddingGradCUDAFunctor {
       const int gridx = 2 * dev_ctx_.GetSMCount();
       dim3 threads(128, 8);
       dim3 grids(gridx, 1);
+
+      if (FLAGS_cudnn_deterministic) {
+        VLOG(2) << "Run grad kernel of embedding with single thread.";
+        grids.x = 1;
+      }
       EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
           d_table, d_output, ids, N, K, D);
     }

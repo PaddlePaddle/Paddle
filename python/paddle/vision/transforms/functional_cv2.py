@@ -43,7 +43,7 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (np.ndarray): Image to be converted to tensor.
-        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -52,8 +52,8 @@ def to_tensor(pic, data_format='CHW'):
     """
 
     if data_format not in ['CHW', 'HWC']:
-        raise ValueError('data_format should be CHW or HWC. Got {}'.format(
-            data_format))
+        raise ValueError(
+            'data_format should be CHW or HWC. Got {}'.format(data_format))
 
     if pic.ndim == 2:
         pic = pic[:, :, None]
@@ -76,12 +76,12 @@ def resize(img, size, interpolation='bilinear'):
     Args:
         input (np.ndarray): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
-        interpolation (int|str, optional): Interpolation method. when use cv2 backend, 
-            support method are as following: 
-            - "nearest": cv2.INTER_NEAREST, 
-            - "bilinear": cv2.INTER_LINEAR, 
-            - "area": cv2.INTER_AREA, 
-            - "bicubic": cv2.INTER_CUBIC, 
+        interpolation (int|str, optional): Interpolation method. when use cv2 backend,
+            support method are as following:
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
+            - "area": cv2.INTER_AREA,
+            - "bicubic": cv2.INTER_CUBIC,
             - "lanczos": cv2.INTER_LANCZOS4
 
     Returns:
@@ -121,10 +121,9 @@ def resize(img, size, interpolation='bilinear'):
                 dsize=(ow, oh),
                 interpolation=_cv2_interp_from_str[interpolation])
     else:
-        output = cv2.resize(
-            img,
-            dsize=(size[1], size[0]),
-            interpolation=_cv2_interp_from_str[interpolation])
+        output = cv2.resize(img,
+                            dsize=(size[1], size[0]),
+                            interpolation=_cv2_interp_from_str[interpolation])
     if len(img.shape) == 3 and img.shape[2] == 1:
         return output[:, :, np.newaxis]
     else:
@@ -144,7 +143,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
-            This value is only used when the padding_mode is constant. Default: 0. 
+            This value is only used when the padding_mode is constant. Default: 0.
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
 
             - constant: pads with a constant value, this value is specified with fill
@@ -202,30 +201,28 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         pad_bottom = padding[3]
 
     if len(img.shape) == 3 and img.shape[2] == 1:
-        return cv2.copyMakeBorder(
-            img,
-            top=pad_top,
-            bottom=pad_bottom,
-            left=pad_left,
-            right=pad_right,
-            borderType=_cv2_pad_from_str[padding_mode],
-            value=fill)[:, :, np.newaxis]
+        return cv2.copyMakeBorder(img,
+                                  top=pad_top,
+                                  bottom=pad_bottom,
+                                  left=pad_left,
+                                  right=pad_right,
+                                  borderType=_cv2_pad_from_str[padding_mode],
+                                  value=fill)[:, :, np.newaxis]
     else:
-        return cv2.copyMakeBorder(
-            img,
-            top=pad_top,
-            bottom=pad_bottom,
-            left=pad_left,
-            right=pad_right,
-            borderType=_cv2_pad_from_str[padding_mode],
-            value=fill)
+        return cv2.copyMakeBorder(img,
+                                  top=pad_top,
+                                  bottom=pad_bottom,
+                                  left=pad_left,
+                                  right=pad_right,
+                                  borderType=_cv2_pad_from_str[padding_mode],
+                                  value=fill)
 
 
 def crop(img, top, left, height, width):
     """Crops the given image.
 
     Args:
-        img (np.array): Image to be cropped. (0,0) denotes the top left 
+        img (np.array): Image to be cropped. (0,0) denotes the top left
             corner of the image.
         top (int): Vertical component of the top left corner of the crop box.
         left (int): Horizontal component of the top left corner of the crop box.
@@ -247,8 +244,8 @@ def center_crop(img, output_size):
             img (np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
             output_size (sequence or int): (height, width) of the crop box. If int,
                 it is used for both directions
-            backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'. 
-        
+            backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'.
+
         Returns:
             np.array: Cropped image.
 
@@ -361,8 +358,8 @@ def adjust_saturation(img, saturation_factor):
 
     dtype = img.dtype
     img = img.astype(np.float32)
-    alpha = np.random.uniform(
-        max(0, 1 - saturation_factor), 1 + saturation_factor)
+    alpha = np.random.uniform(max(0, 1 - saturation_factor),
+                              1 + saturation_factor)
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray_img = gray_img[..., np.newaxis]
     img = img * alpha + gray_img * (1 - alpha)
@@ -394,8 +391,8 @@ def adjust_hue(img, hue_factor):
     cv2 = try_import('cv2')
 
     if not (-0.5 <= hue_factor <= 0.5):
-        raise ValueError('hue_factor:{} is not in [-0.5, 0.5].'.format(
-            hue_factor))
+        raise ValueError(
+            'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor))
 
     dtype = img.dtype
     img = img.astype(np.uint8)
@@ -428,11 +425,11 @@ def affine(img,
         shear (sequence or float): shear angle value in degrees between -180 to 180, clockwise direction.
             If a sequence is specified, the first value corresponds to a shear parallel to the x axis, while
             the second value corresponds to a shear parallel to the y axis.
-        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to cv2.INTER_NEAREST.
-            when use cv2 backend, support method are as following: 
-            - "nearest": cv2.INTER_NEAREST, 
-            - "bilinear": cv2.INTER_LINEAR, 
+            when use cv2 backend, support method are as following:
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
             - "bicubic": cv2.INTER_CUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
             If int, it is used for all channels respectively.
@@ -476,19 +473,17 @@ def affine(img,
     M[1, 2] = ty
 
     if len(img.shape) == 3 and img.shape[2] == 1:
-        return cv2.warpAffine(
-            img,
-            M,
-            dsize=(w, h),
-            flags=_cv2_interp_from_str[interpolation],
-            borderValue=fill)[:, :, np.newaxis]
+        return cv2.warpAffine(img,
+                              M,
+                              dsize=(w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)[:, :, np.newaxis]
     else:
-        return cv2.warpAffine(
-            img,
-            M,
-            dsize=(w, h),
-            flags=_cv2_interp_from_str[interpolation],
-            borderValue=fill)
+        return cv2.warpAffine(img,
+                              M,
+                              dsize=(w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)
 
 
 def rotate(img,
@@ -502,11 +497,11 @@ def rotate(img,
     Args:
         img (np.array): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
-        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to cv2.INTER_NEAREST.
-            when use cv2 backend, support method are as following: 
-            - "nearest": cv2.INTER_NEAREST, 
-            - "bilinear": cv2.INTER_LINEAR, 
+            when use cv2 backend, support method are as following:
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
             - "bicubic": cv2.INTER_CUBIC
         expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
@@ -576,17 +571,15 @@ def rotate(img,
         w, h = int(nw), int(nh)
 
     if len(img.shape) == 3 and img.shape[2] == 1:
-        return cv2.warpAffine(
-            img,
-            M, (w, h),
-            flags=_cv2_interp_from_str[interpolation],
-            borderValue=fill)[:, :, np.newaxis]
+        return cv2.warpAffine(img,
+                              M, (w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)[:, :, np.newaxis]
     else:
-        return cv2.warpAffine(
-            img,
-            M, (w, h),
-            flags=_cv2_interp_from_str[interpolation],
-            borderValue=fill)
+        return cv2.warpAffine(img,
+                              M, (w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)
 
 
 def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
@@ -596,11 +589,11 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
         img (np.array): Image to be perspectived.
         startpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the original image,
         endpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the transformed image.
-        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to cv2.INTER_NEAREST.
-            when use cv2 backend, support method are as following: 
-            - "nearest": cv2.INTER_NEAREST, 
-            - "bilinear": cv2.INTER_LINEAR, 
+            when use cv2 backend, support method are as following:
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
             - "bicubic": cv2.INTER_CUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively.
@@ -624,19 +617,17 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
     matrix = cv2.getPerspectiveTransform(startpoints, endpoints)
 
     if len(img.shape) == 3 and img.shape[2] == 1:
-        return cv2.warpPerspective(
-            img,
-            matrix,
-            dsize=(w, h),
-            flags=_cv2_interp_from_str[interpolation],
-            borderValue=fill)[:, :, np.newaxis]
+        return cv2.warpPerspective(img,
+                                   matrix,
+                                   dsize=(w, h),
+                                   flags=_cv2_interp_from_str[interpolation],
+                                   borderValue=fill)[:, :, np.newaxis]
     else:
-        return cv2.warpPerspective(
-            img,
-            matrix,
-            dsize=(w, h),
-            flags=_cv2_interp_from_str[interpolation],
-            borderValue=fill)
+        return cv2.warpPerspective(img,
+                                   matrix,
+                                   dsize=(w, h),
+                                   flags=_cv2_interp_from_str[interpolation],
+                                   borderValue=fill)
 
 
 def to_grayscale(img, num_output_channels=1):
@@ -673,7 +664,7 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
         img (np.array): input data to be normalized.
         mean (list|tuple): Sequence of means for each channel.
         std (list|tuple): Sequence of standard deviations for each channel.
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+        data_format (str, optional): Data format of img, should be 'HWC' or
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
 
@@ -710,7 +701,7 @@ def erase(img, i, j, h, w, v, inplace=False):
 
         Returns:
             np.array: Erased image.
-        
+
     """
     if not inplace:
         img = img.copy()

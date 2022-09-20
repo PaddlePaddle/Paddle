@@ -55,9 +55,9 @@ class PixelUnshuffleOpMaker : public framework::OpProtoAndCheckerMaker {
 		This operation is the reversion of PixelShuffle operation.
 
 		Please refer to the paper:
-		 `Real-Time Single Image and Video Super-Resolution Using an Efficient 
+		 `Real-Time Single Image and Video Super-Resolution Using an Efficient
 		 Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_
-    		by Shi et. al (2016) for more details. 
+    		by Shi et. al (2016) for more details.
 
         )DOC");
   }
@@ -86,10 +86,12 @@ class PixelUnshuffleGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(pixel_unshuffle, PixelUnshuffleInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pixel_unshuffle,
+                            PixelUnshuffleInferShapeFunctor,
                             PD_INFER_META(phi::PixelUnshuffleInferMeta));
 
-REGISTER_OPERATOR(pixel_unshuffle, ops::PixelUnshuffleOp,
+REGISTER_OPERATOR(pixel_unshuffle,
+                  ops::PixelUnshuffleOp,
                   ops::PixelUnshuffleOpMaker,
                   ops::PixelUnshuffleGradOpMaker<paddle::framework::OpDesc>,
                   ops::PixelUnshuffleGradOpMaker<paddle::imperative::OpBase>,
@@ -99,5 +101,6 @@ DECLARE_INFER_SHAPE_FUNCTOR(pixel_unshuffle_grad,
                             PixelUnshuffleGradInferShapeFunctor,
                             PD_INFER_META(phi::PixelUnshuffleGradInferMeta));
 
-REGISTER_OPERATOR(pixel_unshuffle_grad, ops::PixelUnshuffleGradOp,
+REGISTER_OPERATOR(pixel_unshuffle_grad,
+                  ops::PixelUnshuffleGradOp,
                   PixelUnshuffleGradInferShapeFunctor);

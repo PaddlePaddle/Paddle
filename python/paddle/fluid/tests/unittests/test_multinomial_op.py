@@ -21,6 +21,8 @@ from paddle.fluid import core
 from op_test import OpTest
 import numpy as np
 import os
+from paddle.fluid import Program, program_guard
+from test_attribute_var import UnittestBase
 
 
 def sample_output_one_dimension(out, dim):
@@ -44,6 +46,7 @@ def sample_output_two_dimension(out, shape):
 
 
 class TestMultinomialOp(OpTest):
+
     def setUp(self):
         paddle.enable_static()
         self.op_type = "multinomial"
@@ -66,13 +69,16 @@ class TestMultinomialOp(OpTest):
         # normalize the input to get the probability
         prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
         sample_prob = self.sample_output(np.array(outs[0]))
-        self.assertTrue(
-            np.allclose(
-                sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
 
 
 class TestMultinomialOp2(TestMultinomialOp):
+
     def init_data(self):
         # input probability is a matrix
         self.input_np = np.random.rand(3, 4)
@@ -84,6 +90,7 @@ class TestMultinomialOp2(TestMultinomialOp):
 
 
 class TestMultinomialOp3(TestMultinomialOp):
+
     def init_data(self):
         # replacement is False. number of samples must be less than number of categories.
         self.input_np = np.random.rand(1000)
@@ -99,6 +106,7 @@ class TestMultinomialOp3(TestMultinomialOp):
 
 
 class TestMultinomialApi(unittest.TestCase):
+
     def test_dygraph(self):
         # input probability is a vector, and replacement is True
         paddle.disable_static()
@@ -109,10 +117,12 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_one_dimension(out.numpy(), 4)
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(
-                sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
 
     def test_dygraph2(self):
         # input probability is a matrix, and replacement is True
@@ -123,10 +133,12 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_two_dimension(out.numpy(), [3, 4])
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(
-                sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
         paddle.enable_static()
 
     def test_dygraph3(self):
@@ -169,13 +181,16 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_one_dimension(out, 4)
         prob = x_np / x_np.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(
-                sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
 
 
 class TestMultinomialAlias(unittest.TestCase):
+
     def test_alias(self):
         paddle.disable_static()
         x = paddle.rand([4])
@@ -185,10 +200,12 @@ class TestMultinomialAlias(unittest.TestCase):
 
 
 class TestMultinomialError(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
 
     def test_num_sample(self):
+
         def test_num_sample_less_than_0():
             x = paddle.rand([4])
             paddle.multinomial(x, num_samples=-2)
@@ -196,6 +213,7 @@ class TestMultinomialError(unittest.TestCase):
         self.assertRaises(ValueError, test_num_sample_less_than_0)
 
     def test_replacement_False(self):
+
         def test_samples_larger_than_categories():
             x = paddle.rand([4])
             paddle.multinomial(x, num_samples=5, replacement=False)
@@ -203,6 +221,7 @@ class TestMultinomialError(unittest.TestCase):
         self.assertRaises(ValueError, test_samples_larger_than_categories)
 
     def test_input_probs_dim(self):
+
         def test_dim_larger_than_2():
             x = paddle.rand([2, 3, 3])
             paddle.multinomial(x)
@@ -226,6 +245,7 @@ class TestMultinomialError(unittest.TestCase):
 
 
 class TestRandomValue(unittest.TestCase):
+
     def test_fixed_random_number(self):
         # Test GPU Fixed random number, which is generated by 'curandStatePhilox4_32_10_t'
         if not paddle.is_compiled_with_cuda():
@@ -245,35 +265,77 @@ class TestRandomValue(unittest.TestCase):
         self.assertEqual(np.sum(y), 5187793)
         self.assertEqual(np.mean(y), 5066.2041015625)
         expect = [9982, 1655, 4741, 1323, 9319, 3298, 6473, 7477, 2507, 2628]
-        self.assertTrue(np.array_equal(y[100:110, :].flatten(), expect))
+        np.testing.assert_array_equal(y[100:110, :].flatten(), expect)
 
         y = paddle.multinomial(x, 5000, replacement=False).numpy()
         self.assertEqual(np.sum(y), 25603962316)
         self.assertEqual(np.mean(y), 5000.77388984375)
         expect = [7300, 6055, 8714, 5401, 7360, 161, 5035, 7002, 6788, 2916]
-        self.assertTrue(np.array_equal(y[100, 1000:1010], expect))
+        np.testing.assert_array_equal(y[100, 1000:1010], expect)
 
         y = paddle.multinomial(x, 5000, replacement=False).numpy()
         self.assertEqual(np.sum(y), 25592855710)
         self.assertEqual(np.mean(y), 4998.604630859375)
         expect = [5700, 6567, 4399, 5688, 7472, 545, 6894, 526, 2124, 385]
-        self.assertTrue(np.array_equal(y[300, 3000:3010], expect))
+        np.testing.assert_array_equal(y[300, 3000:3010], expect)
 
         y = paddle.multinomial(x, 20000, replacement=True).numpy()
         self.assertEqual(np.sum(y), 102371362581)
         self.assertEqual(np.mean(y), 4998.60168852539)
         self.assertEqual(np.std(y), 2886.316308500771)
         expect = [7630, 8235, 8445, 3275, 5580, 4591, 1331, 342, 1662, 7156]
-        self.assertTrue(np.array_equal(y[100, 0:10], expect))
+        np.testing.assert_array_equal(y[100, 0:10], expect)
 
         y = paddle.multinomial(x, 20000, replacement=True).numpy()
         self.assertEqual(np.sum(y), 102400672117)
         self.assertEqual(np.mean(y), 5000.032818212891)
         self.assertEqual(np.std(y), 2886.913426124017)
         expect = [4159, 7849, 9305, 5759, 4422, 122, 345, 2897, 5200, 5911]
-        self.assertTrue(np.array_equal(y[100, 0:10], expect))
+        np.testing.assert_array_equal(y[100, 0:10], expect)
 
         paddle.enable_static()
+
+
+class TestMultinomialTensorNumSamples(UnittestBase):
+
+    def init_info(self):
+        self.shapes = [[3, 4]]
+        self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
+
+    def path_prefix(self):
+        return 'multinomial_tensor_num'
+
+    def var_prefix(self):
+        return "Var["
+
+    def call_func(self, x):
+        num_samples = paddle.assign(3)
+        out = paddle.multinomial(x, num_samples)
+        return out
+
+    def test_static(self):
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            fc = paddle.nn.Linear(4, 10)
+            x = paddle.randn([3, 4])
+            x.stop_gradient = False
+            feat = fc(x)
+            out = self.call_func(paddle.abs(feat))
+            sgd = paddle.optimizer.SGD()
+            sgd.minimize(paddle.mean(paddle.cast(out, 'float32')))
+            self.assertTrue(self.var_prefix() in str(main_prog))
+
+            exe = paddle.static.Executor()
+            exe.run(starup_prog)
+            res = exe.run(fetch_list=[feat, out])
+            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
+                                               exe)
+            np.testing.assert_equal(res[1].shape, (3, 3))
+
+            # Test for Inference Predictor
+            infer_outs = self.infer_prog()
+            np.testing.assert_equal(infer_outs[1].shape, (3, 3))
 
 
 if __name__ == "__main__":

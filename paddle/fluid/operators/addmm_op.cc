@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -38,26 +39,23 @@ class AddMMOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    int customized_type_value =
-        framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      int customized_type_value =
+          framework::OpKernelType::kDefaultCustomizedTypeValue;
       if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
           input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
         customized_type_value = kMULMKLDNNINT8;
       }
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN,
+                                     customized_type_value);
     }
 #endif
-
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -68,16 +66,12 @@ class AddMMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The first input tensor for mul.");
     AddInput("Y", "(Tensor), The second input tensor for mul.");
     AddOutput("Out", "(Tensor), The output tensor of addmm op.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<float>("Alpha", "coefficient of x*y.").SetDefault(1.0f);
     AddAttr<float>("Beta", "coefficient of input.").SetDefault(1.0f);
     AddComment(R"DOC(
 AddMM Operator.
 This operator is used to perform matrix multiplication for input $x$ and $y$ with coefficient $alpha$.
-$input$ with coefficient $beta$ is added to the final result. 
+$input$ with coefficient $beta$ is added to the final result.
 The equation is:
 
 $$Out = alpha * x * y + beta * input$$
@@ -93,16 +87,20 @@ class AddMMGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Input"), true,
+        ctx->HasInput("Input"),
+        true,
         platform::errors::NotFound("Input(Input) should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound("Input(X) should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
+        ctx->HasInput("Y"),
+        true,
         platform::errors::NotFound("Input(Y) should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::NotFound("Input(Out@GRAD) should not be null"));
     const auto& input_dims = ctx->GetInputDim("Input");
     const auto& x_dims = ctx->GetInputDim("X");
@@ -147,9 +145,12 @@ class AddMMOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(addmm, AddmmInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(addmm,
+                            AddmmInferShapeFunctor,
                             PD_INFER_META(phi::AddmmInferMeta));
-REGISTER_OPERATOR(addmm, ops::AddMMOp, ops::AddMMOpMaker,
+REGISTER_OPERATOR(addmm,
+                  ops::AddMMOp,
+                  ops::AddMMOpMaker,
                   ops::AddMMOpGradMaker<paddle::framework::OpDesc>,
                   ops::AddMMOpGradMaker<paddle::imperative::OpBase>,
                   AddmmInferShapeFunctor);

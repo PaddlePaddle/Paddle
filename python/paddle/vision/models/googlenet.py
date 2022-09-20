@@ -41,6 +41,7 @@ def xavier(channels, filter_size):
 
 
 class ConvLayer(nn.Layer):
+
     def __init__(self,
                  num_channels,
                  num_filters,
@@ -49,14 +50,13 @@ class ConvLayer(nn.Layer):
                  groups=1):
         super(ConvLayer, self).__init__()
 
-        self._conv = Conv2D(
-            in_channels=num_channels,
-            out_channels=num_filters,
-            kernel_size=filter_size,
-            stride=stride,
-            padding=(filter_size - 1) // 2,
-            groups=groups,
-            bias_attr=False)
+        self._conv = Conv2D(in_channels=num_channels,
+                            out_channels=num_filters,
+                            kernel_size=filter_size,
+                            stride=stride,
+                            padding=(filter_size - 1) // 2,
+                            groups=groups,
+                            bias_attr=False)
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -64,6 +64,7 @@ class ConvLayer(nn.Layer):
 
 
 class Inception(nn.Layer):
+
     def __init__(self, input_channels, output_channels, filter1, filter3R,
                  filter3, filter5R, filter5, proj):
         super(Inception, self).__init__()
@@ -96,12 +97,15 @@ class Inception(nn.Layer):
 
 class GoogLeNet(nn.Layer):
     """GoogLeNet (Inception v1) model architecture from
-    `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_
-    
+    `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_.
+
     Args:
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
-        with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
+        with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of GoogLeNet (Inception v1) model.
 
     Examples:
         .. code-block:: python
@@ -115,7 +119,8 @@ class GoogLeNet(nn.Layer):
             x = paddle.rand([1, 3, 224, 224])
             out, out1, out2 = model(x)
 
-            print(out.shape)
+            print(out.shape, out1.shape, out2.shape)
+            # [1, 1000] [1, 1000] [1, 1000]
     """
 
     def __init__(self, num_classes=1000, with_pool=True):
@@ -151,8 +156,9 @@ class GoogLeNet(nn.Layer):
         if num_classes > 0:
             # out
             self._drop = Dropout(p=0.4, mode="downscale_in_infer")
-            self._fc_out = Linear(
-                1024, num_classes, weight_attr=xavier(1024, 1))
+            self._fc_out = Linear(1024,
+                                  num_classes,
+                                  weight_attr=xavier(1024, 1))
 
             # out1
             self._conv_o1 = ConvLayer(512, 128, 1)
@@ -217,10 +223,15 @@ class GoogLeNet(nn.Layer):
 
 def googlenet(pretrained=False, **kwargs):
     """GoogLeNet (Inception v1) model architecture from
-    `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_
-    
+    `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_.
+
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`GoogLeNet <api_paddle_vision_GoogLeNet>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of GoogLeNet (Inception v1) model.
 
     Examples:
         .. code-block:: python
@@ -237,7 +248,8 @@ def googlenet(pretrained=False, **kwargs):
             x = paddle.rand([1, 3, 224, 224])
             out, out1, out2 = model(x)
 
-            print(out.shape)
+            print(out.shape, out1.shape, out2.shape)
+            # [1, 1000] [1, 1000] [1, 1000]
     """
     model = GoogLeNet(**kwargs)
     arch = "googlenet"

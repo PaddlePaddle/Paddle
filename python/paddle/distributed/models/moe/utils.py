@@ -16,7 +16,7 @@ from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 def _number_count(numbers, upper_range):
@@ -42,7 +42,7 @@ def _number_count(numbers, upper_range):
             print(number_count) # the result: [2, 0, 2, 0, 0, 0]
     """
     if in_dygraph_mode():
-        return _C_ops.number_count(numbers, 'upper_range', upper_range)
+        return _legacy_C_ops.number_count(numbers, 'upper_range', upper_range)
     elif _in_legacy_dygraph():
         return core.ops.number_count(numbers, 'upper_range', upper_range)
     else:
@@ -51,28 +51,27 @@ def _number_count(numbers, upper_range):
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=numbers.dtype)
 
-        helper.append_op(
-            type=op_type,
-            inputs={'numbers': numbers},
-            outputs={'Out': out},
-            attrs={'upper_range': upper_range})
+        helper.append_op(type=op_type,
+                         inputs={'numbers': numbers},
+                         outputs={'Out': out},
+                         attrs={'upper_range': upper_range})
         return out
 
 
 def _assign_pos(x, cum_count):
     """
-    Assign pos decides which tokens should be fetched belong to 
+    Assign pos decides which tokens should be fetched belong to
     specially expert orderingly.
-    
+
     Args:
         x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
-        cum_count (Tensor): The cumulative sum tokens of counters. Every element in the list must be a Tensor whose 
+        cum_count (Tensor): The cumulative sum tokens of counters. Every element in the list must be a Tensor whose
             data type should be int64.
-  
+
     Returns:
-        out (Tensor): Assemble numbers in the order of counters. 
-    
+        out (Tensor): Assemble numbers in the order of counters.
+
     Examples:
         .. code-block:: python
 
@@ -90,7 +89,7 @@ def _assign_pos(x, cum_count):
             print(pos) # the result: (2, 0, 3, 1)
     """
     if in_dygraph_mode():
-        return _C_ops.assign_pos(x, cum_count, cum_count[-1])
+        return _legacy_C_ops.assign_pos(x, cum_count, cum_count[-1])
     elif _in_legacy_dygraph():
         return core.ops.assign_pos(x, cum_count, cum_count[-1])
     else:
@@ -99,14 +98,13 @@ def _assign_pos(x, cum_count):
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=cum_count.dtype)
 
-        helper.append_op(
-            type=op_type,
-            inputs={
-                'X': [x],
-                'cum_count': [cum_count],
-                "eff_num_len": [cum_count[-1]]
-            },
-            outputs={'Out': [out]})
+        helper.append_op(type=op_type,
+                         inputs={
+                             'X': [x],
+                             'cum_count': [cum_count],
+                             "eff_num_len": [cum_count[-1]]
+                         },
+                         outputs={'Out': [out]})
         return out
 
 
@@ -126,7 +124,7 @@ def _random_routing(topk_idx, topk_value, prob, topk=2):
     """
     if topk == 2:
         if in_dygraph_mode():
-            return _C_ops.random_routing(prob, topk_value, topk_idx)
+            return _legacy_C_ops.random_routing(prob, topk_value, topk_idx)
         elif _in_legacy_dygraph():
             return core.ops.random_routing(prob, topk_value, topk_idx)
         else:
@@ -157,8 +155,8 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
             print(out) # the result: [1, 2, 2, 4, 3, 3]
     """
     if in_dygraph_mode():
-        return _C_ops.limit_by_capacity(expert_count, capacity, 'n_worker',
-                                        n_worker)
+        return _legacy_C_ops.limit_by_capacity(expert_count, capacity,
+                                               'n_worker', n_worker)
     elif _in_legacy_dygraph():
         return core.ops.limit_by_capacity(expert_count, capacity, 'n_worker',
                                           n_worker)
@@ -169,12 +167,13 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
         out = helper.create_variable_for_type_inference(
             dtype=expert_count.dtype)
 
-        helper.append_op(
-            type=op_type,
-            inputs={'expert_count': expert_count,
-                    'capacity': capacity},
-            outputs={'Out': out},
-            attrs={'n_worker': n_worker})
+        helper.append_op(type=op_type,
+                         inputs={
+                             'expert_count': expert_count,
+                             'capacity': capacity
+                         },
+                         outputs={'Out': out},
+                         attrs={'n_worker': n_worker})
         return out
 
 
@@ -186,10 +185,10 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
         gate_idx (Tensor): Represents the gate_id sequence corresponding to the input data with type int32, int64.
         expert_count (Tensor): The quantity value counted on the gate_id sequence of the input data with type int32, int64.
         n_worker(int，optional): The number of workers on the trainer with type int64.
-  
+
     Returns:
         new_gate_idx (Tensor): The gate_id sequence corresponding to the new input data after passing through prune.
-    
+
     Examples:
         .. code-block:: python
 
@@ -203,11 +202,13 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
               [1, 3, 3, 3, -1, 2, 1, 1])
     """
     if in_dygraph_mode():
-        return _C_ops.prune_gate_by_capacity(gate_idx, expert_count, "n_expert",
-                                             n_expert, "n_worker", n_worker)
+        return _legacy_C_ops.prune_gate_by_capacity(gate_idx, expert_count,
+                                                    "n_expert", n_expert,
+                                                    "n_worker", n_worker)
     elif _in_legacy_dygraph():
-        return core.ops.prune_gate_by_capacity(
-            gate_idx, expert_count, "n_expert", n_expert, "n_worker", n_worker)
+        return core.ops.prune_gate_by_capacity(gate_idx, expert_count,
+                                               "n_expert", n_expert, "n_worker",
+                                               n_worker)
     check_variable_and_dtype(gate_idx, 'GateIdx', ['int32', 'int64'],
                              'paddle.distributed.utils.prune_gate_by_capacity')
     check_variable_and_dtype(expert_count, 'ExpertCount', ['int32', 'int64'],
@@ -216,12 +217,15 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
     helper = LayerHelper('prune_gate_by_capacity', **locals())
     new_gate_idx = helper.create_variable_for_type_inference(
         dtype=gate_idx.dtype)
-    helper.append_op(
-        type='prune_gate_by_capacity',
-        inputs={'GateIdx': gate_idx,
-                "ExpertCount": expert_count},
-        outputs={'NewGateIdx': new_gate_idx},
-        attrs={"n_expert": n_expert,
-               "n_worker": n_worker})
+    helper.append_op(type='prune_gate_by_capacity',
+                     inputs={
+                         'GateIdx': gate_idx,
+                         "ExpertCount": expert_count
+                     },
+                     outputs={'NewGateIdx': new_gate_idx},
+                     attrs={
+                         "n_expert": n_expert,
+                         "n_worker": n_worker
+                     })
 
     return new_gate_idx

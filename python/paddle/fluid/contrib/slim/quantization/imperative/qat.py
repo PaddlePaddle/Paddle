@@ -37,8 +37,20 @@ from . import fuse_utils
 
 __all__ = ['ImperativeQuantAware']
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+
+def lazy_import_fleet(layer_name_map, fake_quant_input_layers):
+    from paddle.distributed import fleet
+    layer_name_map[
+        'ColumnParallelLinear'] = fleet.meta_parallel.parallel_layers.mp_layers.ColumnParallelLinear
+    layer_name_map[
+        'RowParallelLinear'] = fleet.meta_parallel.parallel_layers.mp_layers.RowParallelLinear
+    fake_quant_input_layers.append(fleet.meta_parallel.RowParallelLinear)
+    fake_quant_input_layers.append(fleet.meta_parallel.ColumnParallelLinear)
+    return layer_name_map, fake_quant_input_layers
 
 
 class ImperativeQuantAware(object):
@@ -46,19 +58,21 @@ class ImperativeQuantAware(object):
     Applying quantization aware training (QAT) to the dgraph model.
     """
 
-    def __init__(
-            self,
-            quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
-            weight_quantize_type='abs_max',
-            activation_quantize_type='moving_average_abs_max',
-            weight_bits=8,
-            activation_bits=8,
-            moving_rate=0.9,
-            fuse_conv_bn=False,
-            weight_preprocess_layer=None,
-            act_preprocess_layer=None,
-            weight_quantize_layer=None,
-            act_quantize_layer=None):
+    def __init__(self,
+                 quantizable_layer_type=[
+                     'Conv2D', 'Linear', 'Conv2DTranspose',
+                     'ColumnParallelLinear', 'RowParallelLinear'
+                 ],
+                 weight_quantize_type='abs_max',
+                 activation_quantize_type='moving_average_abs_max',
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 fuse_conv_bn=False,
+                 weight_preprocess_layer=None,
+                 act_preprocess_layer=None,
+                 weight_quantize_layer=None,
+                 act_quantize_layer=None):
         """
         The constructor for ImperativeQuantAware.
 
@@ -107,7 +121,7 @@ class ImperativeQuantAware(object):
                 Using this can quickly test if user's quantization method works or not.
                 In this layer, user should both define quantization method and
                 dequantization method, that is, the function's input is non-quantized
-                activation and returns dequantized activation. 
+                activation and returns dequantized activation.
                 If None, will use quantization op defined by 'activation_quantize_type'.
                 Default is None.
 
@@ -125,13 +139,13 @@ class ImperativeQuantAware(object):
                 import ImperativeQuantAware
             from paddle.vision.models \
                 import resnet
-            
+
             model = resnet.resnet50(pretrained=True)
 
             imperative_qat = ImperativeQuantAware(
                 weight_quantize_type='abs_max',
                 activation_quantize_type='moving_average_abs_max')
-            
+
             # Add the fake quant logical.
             # The original model will be rewrite.
             # The outscale of outputs in supportted layers would be calculated.
@@ -139,7 +153,7 @@ class ImperativeQuantAware(object):
 
             # Fine-tune the quantized model
             # ...
-            
+
             # Save quant model for the inference.
             imperative_qat.save_quantized_model(
                 layer=model,
@@ -280,32 +294,32 @@ class ImperativeQuantizeInputs(object):
     logic both for activation inputs and weight inputs.
     """
 
-    def __init__(
-            self,
-            quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
-            weight_quantize_type='abs_max',
-            activation_quantize_type='moving_average_abs_max',
-            weight_bits=8,
-            activation_bits=8,
-            moving_rate=0.9,
-            weight_preprocess_layer=None,
-            act_preprocess_layer=None,
-            weight_quantize_layer=None,
-            act_quantize_layer=None):
+    def __init__(self,
+                 quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+                 weight_quantize_type='abs_max',
+                 activation_quantize_type='moving_average_abs_max',
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 weight_preprocess_layer=None,
+                 act_preprocess_layer=None,
+                 weight_quantize_layer=None,
+                 act_quantize_layer=None):
         """
-        The constructor for ImperativeQuantizeInputs. 
+        The constructor for ImperativeQuantizeInputs.
 
         Please refer to the args of ImperativeQuantAware.
         """
         super(ImperativeQuantizeInputs, self).__init__()
+        self.layer_name_map, self.fake_quant_input_layers = lazy_import_fleet(
+            utils.layer_name_map, utils.fake_quant_input_layers)
 
         self._quantizable_layer_type = tuple(
-            utils.layer_name_map[layer]
-            if layer in utils.layer_name_map else layer
-            for layer in quantizable_layer_type)
+            self.layer_name_map[layer] if layer in
+            self.layer_name_map else layer for layer in quantizable_layer_type)
         for layer in self._quantizable_layer_type:
             assert not isinstance(layer, str) \
-                and layer in utils.fake_quant_input_layers, \
+                and layer in self.fake_quant_input_layers, \
                 "%s is unspported to be quantized." % layer
 
         quantize_type = {
@@ -353,7 +367,7 @@ class ImperativeQuantizeInputs(object):
 
     def apply(self, model):
         """
-        Quantize the weights and activations to calculate for specific 
+        Quantize the weights and activations to calculate for specific
         layers.
 
         Args:
@@ -382,7 +396,7 @@ class ImperativeQuantizeInputs(object):
     def _get_input_quantized_layer(self, layer):
         quant_layer_name = None
 
-        for key, value in utils.layer_name_map.items():
+        for key, value in self.layer_name_map.items():
             if isinstance(layer, value):
                 quant_layer_name = 'Quantized' + key
                 break
@@ -433,12 +447,14 @@ class ImperativeQuantizeOutputs(object):
             parent_layer, sub_name = \
                 utils.find_parent_layer_and_sub_name(model, cur_name)
 
+            reduce_type = None
+
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
                 cur_quant_layer = quant_layers.FakeQuantMAOutputScaleLayer(
-                    cur_layer, self._moving_rate)
+                    cur_layer, self._moving_rate, reduce_type=reduce_type)
             else:
                 cur_quant_layer = quant_layers.MAOutputScaleLayer(
-                    cur_layer, self._moving_rate)
+                    cur_layer, self._moving_rate, reduce_type=reduce_type)
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
@@ -453,14 +469,14 @@ class ImperativeQuantizeOutputs(object):
 
         Args:
             model (Layer): The model to be saved.
-            path (str): The path prefix to save model. The format is 
+            path (str): The path prefix to save model. The format is
                 ``dirname/file_prefix`` or ``file_prefix``.
             input_spec (list[InputSpec|Tensor], optional): Describes the input
                 of the saved model's forward method, which can be described by
-                InputSpec or example Tensor. If None, all input variables of 
+                InputSpec or example Tensor. If None, all input variables of
                 the original Layer's forward method would be the inputs of
                 the saved model. Default None.
-            onnx_format (bool, optional): Whether to export the quantized model 
+            onnx_format (bool, optional): Whether to export the quantized model
                 with format of ONNX. Default is False.
             **configs (dict, optional): Other save configuration options for
                 compatibility. We do not recommend using these configurations,
@@ -470,9 +486,9 @@ class ImperativeQuantizeOutputs(object):
                 (1) output_spec (list[Tensor]): Selects the output targets of
                 the saved model. By default, all return variables of original
                 Layer's forward method are kept as the output of the saved model.
-                If the provided ``output_spec`` list is not all output variables, 
+                If the provided ``output_spec`` list is not all output variables,
                 the saved model will be pruned according to the given
-                ``output_spec`` list. 
+                ``output_spec`` list.
 
         Returns:
             None
@@ -496,12 +512,11 @@ class ImperativeQuantizeOutputs(object):
         model_filename = basename + INFER_MODEL_SUFFIX
         params_filename = basename + INFER_PARAMS_SUFFIX
 
-        [infer_program, feed_target_names, fetch_targets] = (
-            load_inference_model(
-                dirname=dirname,
-                executor=exe,
-                model_filename=model_filename,
-                params_filename=params_filename))
+        [infer_program, feed_target_names, fetch_targets
+         ] = (load_inference_model(dirname=dirname,
+                                   executor=exe,
+                                   model_filename=model_filename,
+                                   params_filename=params_filename))
 
         self._gather_scales(infer_program, scope, fetch_targets)
 
@@ -528,15 +543,14 @@ class ImperativeQuantizeOutputs(object):
 
             clip_extra = True
 
-        save_inference_model(
-            dirname=dirname,
-            feeded_var_names=feed_target_names,
-            target_vars=fetch_targets,
-            executor=exe,
-            main_program=infer_program.clone(),
-            model_filename=model_filename,
-            params_filename=params_filename,
-            clip_extra=clip_extra)
+        save_inference_model(dirname=dirname,
+                             feeded_var_names=feed_target_names,
+                             target_vars=fetch_targets,
+                             executor=exe,
+                             main_program=infer_program.clone(),
+                             model_filename=model_filename,
+                             params_filename=params_filename,
+                             clip_extra=clip_extra)
 
         if is_dynamic_mode:
             paddle.disable_static()

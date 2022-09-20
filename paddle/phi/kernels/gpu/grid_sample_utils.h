@@ -27,4 +27,9 @@ static __forceinline__ __device__ bool InBounds(int h, int w, int H, int W) {
   return h >= 0 && h < H && w >= 0 && w < W;
 }
 
+static __forceinline__ __device__ bool InBounds3D(
+    int d, int h, int w, int D, int H, int W) {
+  return d >= 0 && d < D && h >= 0 && h < H && w >= 0 && w < W;
+}
+
 }  // namespace phi

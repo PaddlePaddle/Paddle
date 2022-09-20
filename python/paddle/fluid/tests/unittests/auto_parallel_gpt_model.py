@@ -22,7 +22,7 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.tensor as tensor
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle import fluid
 from paddle.fluid import layers
 from paddle.distributed import fleet
@@ -76,26 +76,27 @@ class MultiHeadAttention(nn.Layer):
         if self.fuse:
             assert self.kdim == embed_dim
             assert self.vdim == embed_dim
-            self.qkv_proj = nn.Linear(
-                embed_dim, 3 * embed_dim, weight_attr, bias_attr=bias_attr)
+            self.qkv_proj = nn.Linear(embed_dim,
+                                      3 * embed_dim,
+                                      weight_attr,
+                                      bias_attr=bias_attr)
         else:
-            self.q_proj = nn.Linear(
-                embed_dim,
-                embed_dim,
-                weight_attr=weight_attr,
-                bias_attr=bias_attr)
-            self.k_proj = nn.Linear(
-                self.kdim,
-                embed_dim,
-                weight_attr=weight_attr,
-                bias_attr=bias_attr)
-            self.v_proj = nn.Linear(
-                self.vdim,
-                embed_dim,
-                weight_attr=weight_attr,
-                bias_attr=bias_attr)
-        self.out_proj = nn.Linear(
-            embed_dim, embed_dim, weight_attr=weight_attr, bias_attr=bias_attr)
+            self.q_proj = nn.Linear(embed_dim,
+                                    embed_dim,
+                                    weight_attr=weight_attr,
+                                    bias_attr=bias_attr)
+            self.k_proj = nn.Linear(self.kdim,
+                                    embed_dim,
+                                    weight_attr=weight_attr,
+                                    bias_attr=bias_attr)
+            self.v_proj = nn.Linear(self.vdim,
+                                    embed_dim,
+                                    weight_attr=weight_attr,
+                                    bias_attr=bias_attr)
+        self.out_proj = nn.Linear(embed_dim,
+                                  embed_dim,
+                                  weight_attr=weight_attr,
+                                  bias_attr=bias_attr)
 
     def _fuse_prepare_qkv(self, query):
         mix_layer = self.qkv_proj(query)
@@ -113,33 +114,18 @@ class MultiHeadAttention(nn.Layer):
         """
         q = self.q_proj(query)
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.q_proj.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [-1, 0]
-                })
+            auto.shard_tensor(self.q_proj.weight, _global_process_mesh,
+                              [None, "x"])
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.q_proj.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [-1, 1]
-                })
+            auto.shard_tensor(self.q_proj.weight, _global_process_mesh,
+                              [None, "y"])
         elif _global_parallel_strategy == "mp_pp":
-            auto.shard_tensor(
-                self.q_proj.weight,
-                dist_attr={
-                    "process_mesh": MPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [-1, 0]
-                })
+            auto.shard_tensor(self.q_proj.weight, MPPP_MESH_LIST[self.mesh_idx],
+                              [None, "x"])
         elif _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                self.q_proj.weight,
-                dist_attr={
-                    "process_mesh": DPMPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [-1, 1]
-                })
+            auto.shard_tensor(self.q_proj.weight,
+                              DPMPPP_MESH_LIST[self.mesh_idx], [None, "y"])
+
         q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
         q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
         if isinstance(cache, self.StaticCache):
@@ -167,62 +153,30 @@ class MultiHeadAttention(nn.Layer):
         """
         k = self.k_proj(key)
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.k_proj.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [-1, 0]
-                })
+            auto.shard_tensor(self.k_proj.weight, _global_process_mesh,
+                              [None, "x"])
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.k_proj.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [-1, 1]
-                })
+            auto.shard_tensor(self.k_proj.weight, _global_process_mesh,
+                              [None, "y"])
         elif _global_parallel_strategy == "mp_pp":
-            auto.shard_tensor(
-                self.k_proj.weight,
-                dist_attr={
-                    "process_mesh": MPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [-1, 0]
-                })
+            auto.shard_tensor(self.k_proj.weight, MPPP_MESH_LIST[self.mesh_idx],
+                              [None, "x"])
         elif _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                self.k_proj.weight,
-                dist_attr={
-                    "process_mesh": DPMPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [-1, 1]
-                })
+            auto.shard_tensor(self.k_proj.weight,
+                              DPMPPP_MESH_LIST[self.mesh_idx], [None, "y"])
         v = self.v_proj(value)
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.v_proj.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [-1, 0]
-                })
+            auto.shard_tensor(self.v_proj.weight, _global_process_mesh,
+                              [None, "x"])
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.v_proj.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [-1, 1]
-                })
+            auto.shard_tensor(self.v_proj.weight, _global_process_mesh,
+                              [None, "y"])
         elif _global_parallel_strategy == "mp_pp":
-            auto.shard_tensor(
-                self.v_proj.weight,
-                dist_attr={
-                    "process_mesh": MPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [-1, 0]
-                })
+            auto.shard_tensor(self.v_proj.weight, MPPP_MESH_LIST[self.mesh_idx],
+                              [None, "x"])
         elif _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                self.v_proj.weight,
-                dist_attr={
-                    "process_mesh": DPMPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [-1, 1]
-                })
+            auto.shard_tensor(self.v_proj.weight,
+                              DPMPPP_MESH_LIST[self.mesh_idx], [None, "y"])
         k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
         k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
         v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
@@ -276,17 +230,18 @@ class MultiHeadAttention(nn.Layer):
         else:
             q, k, v, cache = self._prepare_qkv(query, key, value, use_cache,
                                                cache)
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
+        product = layers.matmul(x=q,
+                                y=k,
+                                transpose_y=True,
+                                alpha=self.head_dim**-0.5)
         if attn_mask is not None:
             product = product + attn_mask
         weights = F.softmax(product)
         if self.dropout:
-            weights = F.dropout(
-                weights,
-                self.dropout,
-                training=self.training,
-                mode="upscale_in_train")
+            weights = F.dropout(weights,
+                                self.dropout,
+                                training=self.training,
+                                mode="upscale_in_train")
         out = tensor.matmul(weights, v)
         # combine heads
         out = tensor.transpose(out, perm=[0, 2, 1, 3])
@@ -294,33 +249,18 @@ class MultiHeadAttention(nn.Layer):
         # project to output
         out = self.out_proj(out)
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.out_proj.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [0, -1]
-                })
+            auto.shard_tensor(self.out_proj.weight, _global_process_mesh,
+                              ["x", None])
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.out_proj.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [1, -1]
-                })
+            auto.shard_tensor(self.out_proj.weight, _global_process_mesh,
+                              ["y", None])
         elif _global_parallel_strategy == "mp_pp":
-            auto.shard_tensor(
-                self.out_proj.weight,
-                dist_attr={
-                    "process_mesh": MPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [0, -1]
-                })
+            auto.shard_tensor(self.out_proj.weight,
+                              MPPP_MESH_LIST[self.mesh_idx], ["x", None])
         elif _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                self.out_proj.weight,
-                dist_attr={
-                    "process_mesh": DPMPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [1, -1]
-                })
+            auto.shard_tensor(self.out_proj.weight,
+                              DPMPPP_MESH_LIST[self.mesh_idx], ["y", None])
+
         outs = [out]
         if self.need_weights:
             outs.append(weights)
@@ -362,91 +302,53 @@ class TransformerDecoder(nn.Layer):
         new_caches = []
         self.checkpoints = []
         if _global_parallel_strategy == "pp":
-            auto.shard_tensor(
-                output,
-                dist_attr={
-                    "process_mesh": PP_MESH_LIST[0],
-                    "dims_mapping": [-1 for i in range(len(output.shape))]
-                })
+            auto.shard_tensor(output, PP_MESH_LIST[0],
+                              [None for i in range(len(output.shape))])
         if _global_parallel_strategy == "dp_pp":
-            auto.shard_tensor(
-                output,
-                dist_attr={
-                    "process_mesh": DPPP_MESH_LIST[0],
-                    "dims_mapping":
-                    [0] + [-1 for i in range(len(output.shape) - 1)]
-                })
+            auto.shard_tensor(output, DPPP_MESH_LIST[0], ["x"].extends(
+                [None for i in range(len(output.shape) - 1)]))
         if _global_parallel_strategy == "mp_pp":
-            auto.shard_tensor(
-                output,
-                dist_attr={
-                    "process_mesh": MPPP_MESH_LIST[0],
-                    "dims_mapping":
-                    [-1] + [-1 for i in range(len(output.shape) - 1)]
-                })
+            auto.shard_tensor(output, MPPP_MESH_LIST[0],
+                              [None for i in range(len(output.shape))])
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                output,
-                dist_attr={
-                    "process_mesh": DPMPPP_MESH_LIST[0],
-                    "dims_mapping":
-                    [0] + [-1 for i in range(len(output.shape) - 1)]
-                })
+            auto.shard_tensor(output, DPMPPP_MESH_LIST[0], ["x"].extends(
+                [None for i in range(len(output.shape) - 1)]))
         for i, mod in enumerate(self.layers):
             if cache is None:
                 if use_cache:
                     if _global_parallel_strategy == "pp":
                         output, new_cache = auto.shard_op(
-                            mod,
-                            dist_attr={
-                                "process_mesh": PP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            mod, PP_MESH_LIST[mod.mesh_idx])(output, memory,
+                                                             tgt_mask,
+                                                             use_cache, cache)
                         auto.shard_tensor(
-                            output,
-                            dist_attr={
-                                "process_mesh": PP_MESH_LIST[mod.mesh_idx],
-                                "dims_mapping":
-                                [-1 for i in range(len(output.shape))]
-                            })
+                            output, PP_MESH_LIST[mod.mesh_idx],
+                            [None for i in range(len(output.shape))])
                     elif _global_parallel_strategy == "dp_pp":
                         output, new_cache = auto.shard_op(
-                            mod,
-                            dist_attr={
-                                "process_mesh": DPPP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            mod, DPPP_MESH_LIST[mod.mesh_idx])(output, memory,
+                                                               tgt_mask,
+                                                               use_cache, cache)
                         auto.shard_tensor(
-                            output,
-                            dist_attr={
-                                "process_mesh": DPPP_MESH_LIST[mod.mesh_idx],
-                                "dims_mapping": [0] +
-                                [-1 for i in range(len(output.shape) - 1)]
-                            })
+                            output, DPPP_MESH_LIST[mod.mesh_idx], ["x"].extends(
+                                [None for i in range(len(output.shape) - 1)]))
                     elif _global_parallel_strategy == "mp_pp":
                         output, new_cache = auto.shard_op(
-                            mod,
-                            dist_attr={
-                                "process_mesh": MPPP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            mod, MPPP_MESH_LIST[mod.mesh_idx])(output, memory,
+                                                               tgt_mask,
+                                                               use_cache, cache)
                         auto.shard_tensor(
-                            output,
-                            dist_attr={
-                                "process_mesh": MPPP_MESH_LIST[mod.mesh_idx],
-                                "dims_mapping": [-1] +
-                                [-1 for i in range(len(output.shape) - 1)]
-                            })
+                            output, MPPP_MESH_LIST[mod.mesh_idx],
+                            [None for i in range(len(output.shape))])
                     elif _global_parallel_strategy == "dp_mp_pp":
                         output, new_cache = auto.shard_op(
                             mod,
-                            dist_attr={
-                                "process_mesh": DPMPPP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            DPMPPP_MESH_LIST[mod.mesh_idx])(output, memory,
+                                                            tgt_mask, use_cache,
+                                                            cache)
                         auto.shard_tensor(
-                            output,
-                            dist_attr={
-                                "process_mesh": DPMPPP_MESH_LIST[mod.mesh_idx],
-                                "dims_mapping": [0] +
-                                [-1 for i in range(len(output.shape) - 1)]
-                            })
+                            output, DPMPPP_MESH_LIST[mod.mesh_idx],
+                            [None for i in range(len(output.shape))])
                     else:
                         output, new_cache = mod(output,
                                                 memory,
@@ -456,57 +358,36 @@ class TransformerDecoder(nn.Layer):
                     new_caches.append(new_cache)
                 else:
                     if _global_parallel_strategy == "pp":
-                        output = auto.shard_op(
-                            mod,
-                            dist_attr={
-                                "process_mesh": PP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                        output = auto.shard_op(mod, PP_MESH_LIST[mod.mesh_idx])(
+                            output, memory, tgt_mask, use_cache, cache)
                         auto.shard_tensor(
-                            output,
-                            dist_attr={
-                                "process_mesh": PP_MESH_LIST[mod.mesh_idx],
-                                "dims_mapping":
-                                [-1 for i in range(len(output.shape))]
-                            })
+                            output, PP_MESH_LIST[mod.mesh_idx],
+                            [None for i in range(len(output.shape))])
                     elif _global_parallel_strategy == "dp_pp":
                         output = auto.shard_op(
-                            mod,
-                            dist_attr={
-                                "process_mesh": DPPP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            mod, DPPP_MESH_LIST[mod.mesh_idx])(output, memory,
+                                                               tgt_mask,
+                                                               use_cache, cache)
                         auto.shard_tensor(
-                            output,
-                            dist_attr={
-                                "process_mesh": DPPP_MESH_LIST[mod.mesh_idx],
-                                "dims_mapping": [0] +
-                                [-1 for i in range(len(output.shape) - 1)]
-                            })
+                            output, DPPP_MESH_LIST[mod.mesh_idx], ["x"].extends(
+                                [None for i in range(len(output.shape) - 1)]))
                     elif _global_parallel_strategy == "mp_pp":
                         output = auto.shard_op(
-                            mod,
-                            dist_attr={
-                                "process_mesh": MPPP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            mod, MPPP_MESH_LIST[mod.mesh_idx])(output, memory,
+                                                               tgt_mask,
+                                                               use_cache, cache)
                         auto.shard_tensor(
-                            output,
-                            dist_attr={
-                                "process_mesh": MPPP_MESH_LIST[mod.mesh_idx],
-                                "dims_mapping": [-1] +
-                                [-1 for i in range(len(output.shape) - 1)]
-                            })
+                            output, MPPP_MESH_LIST[mod.mesh_idx],
+                            [None for i in range(len(output.shape))])
                     elif _global_parallel_strategy == "dp_mp_pp":
-                        output = auto.shard_op(
-                            mod,
-                            dist_attr={
-                                "process_mesh": DPMPPP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                        output = auto.shard_op(mod,
+                                               DPMPPP_MESH_LIST[mod.mesh_idx])(
+                                                   output, memory, tgt_mask,
+                                                   use_cache, cache)
                         auto.shard_tensor(
-                            output,
-                            dist_attr={
-                                "process_mesh": DPMPPP_MESH_LIST[mod.mesh_idx],
-                                "dims_mapping": [0] +
-                                [-1 for i in range(len(output.shape) - 1)]
-                            })
+                            output, DPMPPP_MESH_LIST[mod.mesh_idx],
+                            ["x"].extends(
+                                [None for i in range(len(output.shape) - 1)]))
                     else:
                         output = mod(output,
                                      memory,
@@ -517,54 +398,33 @@ class TransformerDecoder(nn.Layer):
                 if _global_parallel_strategy == "pp":
                     output, new_cache = auto.shard_op(
                         mod,
-                        dist_attr={"process_mesh": PP_MESH_LIST[mod.mesh_idx]})(
-                            output, memory, tgt_mask, use_cache, cache)
-                    auto.shard_tensor(
-                        output,
-                        dist_attr={
-                            "process_mesh": PP_MESH_LIST[mod.mesh_idx],
-                            "dims_mapping":
-                            [-1 for i in range(len(output.shape))]
-                        })
+                        PP_MESH_LIST[mod.mesh_idx])(output, memory, tgt_mask,
+                                                    use_cache, cache)
+                    auto.shard_tensor(output, PP_MESH_LIST[mod.mesh_idx],
+                                      [None for i in range(len(output.shape))])
                 elif _global_parallel_strategy == "dp_pp":
                     output, new_cache = auto.shard_op(
                         mod,
-                        dist_attr={
-                            "process_mesh": DPPP_MESH_LIST[mod.mesh_idx]
-                        })(output, memory, tgt_mask, use_cache, cache)
-                    auto.shard_tensor(
-                        output,
-                        dist_attr={
-                            "process_mesh": DPPP_MESH_LIST[mod.mesh_idx],
-                            "dims_mapping":
-                            [0] + [-1 for i in range(len(output.shape) - 1)]
-                        })
+                        DPPP_MESH_LIST[mod.mesh_idx])(output, memory, tgt_mask,
+                                                      use_cache, cache)
+                    auto.shard_tensor(output, DPPP_MESH_LIST[mod.mesh_idx], [
+                        "x"
+                    ].extends([None for i in range(len(output.shape) - 1)]))
                 elif _global_parallel_strategy == "mp_pp":
                     output, new_cache = auto.shard_op(
                         mod,
-                        dist_attr={
-                            "process_mesh": MPPP_MESH_LIST[mod.mesh_idx]
-                        })(output, memory, tgt_mask, use_cache, cache)
-                    auto.shard_tensor(
-                        output,
-                        dist_attr={
-                            "process_mesh": MPPP_MESH_LIST[mod.mesh_idx],
-                            "dims_mapping":
-                            [-1] + [-1 for i in range(len(output.shape) - 1)]
-                        })
+                        MPPP_MESH_LIST[mod.mesh_idx])(output, memory, tgt_mask,
+                                                      use_cache, cache)
+                    auto.shard_tensor(output, MPPP_MESH_LIST[mod.mesh_idx],
+                                      [None for i in range(len(output.shape))])
                 elif _global_parallel_strategy == "dp_mp_pp":
                     output, new_cache = auto.shard_op(
-                        mod,
-                        dist_attr={
-                            "process_mesh": DPMPPP_MESH_LIST[mod.mesh_idx]
-                        })(output, memory, tgt_mask, use_cache, cache)
-                    auto.shard_tensor(
-                        output,
-                        dist_attr={
-                            "process_mesh": DPMPPP_MESH_LIST[mod.mesh_idx],
-                            "dims_mapping":
-                            [0] + [-1 for i in range(len(output.shape) - 1)]
-                        })
+                        mod, DPMPPP_MESH_LIST[mod.mesh_idx])(output, memory,
+                                                             tgt_mask,
+                                                             use_cache, cache)
+                    auto.shard_tensor(output, DPMPPP_MESH_LIST[mod.mesh_idx], [
+                        "x"
+                    ].extends([None for i in range(len(output.shape) - 1)]))
                 else:
                     output, new_cache = mod(output,
                                             memory,
@@ -619,17 +479,20 @@ class TransformerDecoderLayer(nn.Layer):
         self.normalize_before = normalize_before
         weight_attrs = _convert_param_attr_to_list(weight_attr, 3)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 3)
-        self.self_attn = MultiHeadAttention(
-            d_model,
-            nhead,
-            dropout=attn_dropout,
-            weight_attr=weight_attrs[0],
-            bias_attr=bias_attrs[0],
-            mesh_idx=self.mesh_idx)
-        self.linear1 = nn.Linear(
-            d_model, dim_feedforward, weight_attrs[2], bias_attr=bias_attrs[2])
-        self.linear2 = nn.Linear(
-            dim_feedforward, d_model, weight_attrs[2], bias_attr=bias_attrs[2])
+        self.self_attn = MultiHeadAttention(d_model,
+                                            nhead,
+                                            dropout=attn_dropout,
+                                            weight_attr=weight_attrs[0],
+                                            bias_attr=bias_attrs[0],
+                                            mesh_idx=self.mesh_idx)
+        self.linear1 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attrs[2],
+                                 bias_attr=bias_attrs[2])
+        self.linear2 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attrs[2],
+                                 bias_attr=bias_attrs[2])
         self.norm1 = nn.LayerNorm(d_model, epsilon=1e-5)
         self.norm2 = nn.LayerNorm(d_model, epsilon=1e-5)
         self.dropout1 = nn.Dropout(dropout, mode="upscale_in_train")
@@ -652,72 +515,40 @@ class TransformerDecoderLayer(nn.Layer):
         if self.normalize_before:
             tgt = self.norm2(tgt)
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.linear1.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [-1, 0]
-                })
+            auto.shard_tensor(self.linear1.weight, _global_process_mesh,
+                              [None, "x"])
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.linear1.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [-1, 1]
-                })
+            auto.shard_tensor(self.linear1.weight, _global_process_mesh,
+                              [None, "y"])
         elif _global_parallel_strategy == "mp_pp":
-            auto.shard_tensor(
-                self.linear1.weight,
-                dist_attr={
-                    "process_mesh": MPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [-1, 0]
-                })
+            auto.shard_tensor(self.linear1.weight,
+                              MPPP_MESH_LIST[self.mesh_idx], [None, "x"])
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                self.linear1.weight,
-                dist_attr={
-                    "process_mesh": DPMPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [-1, 1]
-                })
+            auto.shard_tensor(self.linear1.weight,
+                              DPMPPP_MESH_LIST[self.mesh_idx], [None, "y"])
+
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.linear2.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [0, -1]
-                })
+            auto.shard_tensor(self.linear2.weight, _global_process_mesh,
+                              ["x", None])
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.linear2.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [1, -1]
-                })
+            auto.shard_tensor(self.linear2.weight, _global_process_mesh,
+                              ["y", None])
         elif _global_parallel_strategy == "mp_pp":
-            auto.shard_tensor(
-                self.linear2.weight,
-                dist_attr={
-                    "process_mesh": MPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [0, -1]
-                })
+            auto.shard_tensor(self.linear2.weight,
+                              MPPP_MESH_LIST[self.mesh_idx], ["x", None])
         elif _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                self.linear2.weight,
-                dist_attr={
-                    "process_mesh": DPMPPP_MESH_LIST[self.mesh_idx],
-                    "dims_mapping": [1, -1]
-                })
+            auto.shard_tensor(self.linear2.weight,
+                              DPMPPP_MESH_LIST[self.mesh_idx], ["y", None])
         tgt = self.dropout2(
-            self.linear2(F.gelu(
-                self.linear1(tgt), approximate=True)))
+            self.linear2(F.gelu(self.linear1(tgt), approximate=True)))
         tgt = residual + tgt
         if not self.normalize_before:
             tgt = self.norm2(tgt)
         return tgt if use_cache is False else (tgt, incremental_cache)
 
     def gen_cache(self, memory):
-        incremental_cache = self.self_attn.gen_cache(
-            memory, type=self.self_attn.Cache)
+        incremental_cache = self.self_attn.gen_cache(memory,
+                                                     type=self.self_attn.Cache)
         return incremental_cache
 
 
@@ -737,17 +568,15 @@ class GPTEmbeddings(nn.Layer):
         self.word_embeddings = nn.Embedding(
             vocab_size,
             hidden_size,
-            weight_attr=paddle.ParamAttr(
-                name="word_embeddings",
-                initializer=nn.initializer.Normal(
-                    mean=0.0, std=initializer_range)))
+            weight_attr=paddle.ParamAttr(name="word_embeddings",
+                                         initializer=nn.initializer.Normal(
+                                             mean=0.0, std=initializer_range)))
         self.position_embeddings = nn.Embedding(
             max_position_embeddings,
             hidden_size,
-            weight_attr=paddle.ParamAttr(
-                name="pos_embeddings",
-                initializer=nn.initializer.Normal(
-                    mean=0.0, std=initializer_range)))
+            weight_attr=paddle.ParamAttr(name="pos_embeddings",
+                                         initializer=nn.initializer.Normal(
+                                             mean=0.0, std=initializer_range)))
         self.dropout = nn.Dropout(hidden_dropout_prob)
 
     def forward(self, input_ids, position_ids=None):
@@ -757,33 +586,18 @@ class GPTEmbeddings(nn.Layer):
             position_ids = seq_length - ones
         input_embedings = self.word_embeddings(input_ids)
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.word_embeddings.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [0, -1]
-                })
+            auto.shard_tensor(self.word_embeddings.weight, _global_process_mesh,
+                              ["x", None])
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.word_embeddings.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh,
-                    "dims_mapping": [1, -1]
-                })
+            auto.shard_tensor(self.word_embeddings.weight, _global_process_mesh,
+                              ["y", None])
         elif _global_parallel_strategy == "mp_pp":
-            auto.shard_tensor(
-                self.word_embeddings.weight,
-                dist_attr={
-                    "process_mesh": MPPP_MESH_LIST[0],
-                    "dims_mapping": [0, -1]
-                })
+            auto.shard_tensor(self.word_embeddings.weight, MPPP_MESH_LIST[0],
+                              ["x", None])
         elif _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                self.word_embeddings.weight,
-                dist_attr={
-                    "process_mesh": DPMPPP_MESH_LIST[0],
-                    "dims_mapping": [1, -1]
-                })
+            auto.shard_tensor(self.word_embeddings.weight, DPMPPP_MESH_LIST[0],
+                              ["y", None])
+
         position_embeddings = self.position_embeddings(position_ids)
         embeddings = input_embedings + position_embeddings
         embeddings = self.dropout(embeddings)
@@ -821,9 +635,10 @@ class GPTModel(nn.Layer):
         self.pipline_mode = (pp_degree is not None and pp_degree > 1)
         if self.pipline_mode:
             self.layer_per_stage = num_hidden_layers // pp_degree
-        self.embeddings = GPTEmbeddings(
-            vocab_size, hidden_size, hidden_dropout_prob,
-            max_position_embeddings, type_vocab_size, self.initializer_range)
+        self.embeddings = GPTEmbeddings(vocab_size, hidden_size,
+                                        hidden_dropout_prob,
+                                        max_position_embeddings,
+                                        type_vocab_size, self.initializer_range)
         decoder_layers = nn.LayerList()
         for i in range(num_hidden_layers):
             mesh_index = None
@@ -831,25 +646,23 @@ class GPTModel(nn.Layer):
             if self.layer_per_stage is not None:
                 mesh_index = i // self.layer_per_stage
             decoder_layers.append(
-                DecoderLayer(
-                    d_model=hidden_size,
-                    nhead=num_attention_heads,
-                    dim_feedforward=intermediate_size,
-                    dropout=hidden_dropout_prob,
-                    activation=hidden_act,
-                    attn_dropout=attention_probs_dropout_prob,
-                    act_dropout=hidden_dropout_prob,
-                    weight_attr=paddle.ParamAttr(
-                        initializer=nn.initializer.Normal(
-                            mean=0.0, std=self.initializer_range)),
-                    bias_attr=None,
-                    mesh_idx=mesh_index))
+                DecoderLayer(d_model=hidden_size,
+                             nhead=num_attention_heads,
+                             dim_feedforward=intermediate_size,
+                             dropout=hidden_dropout_prob,
+                             activation=hidden_act,
+                             attn_dropout=attention_probs_dropout_prob,
+                             act_dropout=hidden_dropout_prob,
+                             weight_attr=paddle.ParamAttr(
+                                 initializer=nn.initializer.Normal(
+                                     mean=0.0, std=self.initializer_range)),
+                             bias_attr=None,
+                             mesh_idx=mesh_index))
         Decoder = TransformerDecoder
-        self.decoder = Decoder(
-            decoder_layers,
-            num_hidden_layers,
-            norm="LayerNorm",
-            hidden_size=hidden_size)
+        self.decoder = Decoder(decoder_layers,
+                               num_hidden_layers,
+                               norm="LayerNorm",
+                               hidden_size=hidden_size)
         self.checkpoints = []
 
     def forward(self,
@@ -863,44 +676,29 @@ class GPTModel(nn.Layer):
             past_length = 0
             if cache is not None:
                 past_length = paddle.shape(cache[0].k)[-2]
-            position_ids = paddle.arange(
-                past_length,
-                paddle.shape(input_ids)[-1] + past_length,
-                dtype='int64')
+            position_ids = paddle.arange(past_length,
+                                         paddle.shape(input_ids)[-1] +
+                                         past_length,
+                                         dtype='int64')
             position_ids = position_ids.unsqueeze(0)
-            position_ids = paddle.fluid.layers.expand_as(position_ids,
-                                                         input_ids)
-        embedding_output = self.embeddings(
-            input_ids=input_ids, position_ids=position_ids)
+            position_ids = paddle.fluid.layers.expand_as(
+                position_ids, input_ids)
+        embedding_output = self.embeddings(input_ids=input_ids,
+                                           position_ids=position_ids)
         if _global_parallel_strategy == "pp":
-            auto.shard_tensor(
-                input_ids,
-                dist_attr={
-                    "process_mesh": PP_MESH_LIST[0],
-                    "dims_mapping": [-1 for i in range(len(input_ids.shape))]
-                })
+            auto.shard_tensor(input_ids, PP_MESH_LIST[0],
+                              [None for i in range(len(input_ids.shape))])
         if _global_parallel_strategy == "dp_pp":
-            auto.shard_tensor(
-                input_ids,
-                dist_attr={
-                    "process_mesh": DPPP_MESH_LIST[0],
-                    "dims_mapping":
-                    [0] + [-1 for i in range(len(input_ids.shape) - 1)]
-                })
+            auto.shard_tensor(input_ids, DPPP_MESH_LIST[0], ["x"].extends(
+                [None for i in range(len(input_ids.shape) - 1)]))
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                input_ids,
-                dist_attr={
-                    "process_mesh": DPMPPP_MESH_LIST[0],
-                    "dims_mapping":
-                    [0] + [-1 for i in range(len(input_ids.shape) - 1)]
-                })
-        encoder_outputs = self.decoder(
-            embedding_output,
-            memory=None,
-            tgt_mask=attention_mask,
-            use_cache=use_cache,
-            cache=cache)
+            auto.shard_tensor(input_ids, DPMPPP_MESH_LIST[0], ["x"].extends(
+                [None for i in range(len(input_ids.shape) - 1)]))
+        encoder_outputs = self.decoder(embedding_output,
+                                       memory=None,
+                                       tgt_mask=attention_mask,
+                                       use_cache=use_cache,
+                                       cache=cache)
         self.checkpoints.extend(self.decoder.checkpoints)
         return encoder_outputs
 
@@ -912,19 +710,13 @@ class GPTForPretraining(nn.Layer):
     """
 
     def __init__(
-            self,
-            gpt,
-            vocab_size=50304,
-            hidden_size=768,
-            initializer_range=0.02, ):
+        self,
+        gpt,
+        vocab_size=50304,
+        hidden_size=768,
+        initializer_range=0.02,
+    ):
         super(GPTForPretraining, self).__init__()
-        self.output_embeddings = nn.Embedding(
-            vocab_size,
-            hidden_size,
-            weight_attr=paddle.ParamAttr(
-                name="output_embeddings",
-                initializer=nn.initializer.Normal(
-                    mean=0.0, std=initializer_range)))
         self.gpt = gpt
 
     def forward(self,
@@ -934,6 +726,10 @@ class GPTForPretraining(nn.Layer):
                 masked_positions=None,
                 use_cache=False,
                 cache=None):
+        input_ids.stop_gradient = True
+        position_ids.stop_gradient = True
+        attention_mask.stop_gradient = True
+
         outputs = self.gpt(input_ids,
                            position_ids=position_ids,
                            attention_mask=attention_mask,
@@ -943,8 +739,47 @@ class GPTForPretraining(nn.Layer):
             encoder_outputs, cached_kvs = outputs[:2]
         else:
             encoder_outputs = outputs
-        logits = paddle.matmul(
-            encoder_outputs, self.output_embeddings.weight, transpose_y=True)
+
+        x = encoder_outputs
+        w = self.gpt.embeddings.word_embeddings.weight
+
+        mesh = None
+        if _global_parallel_strategy == "pp":
+            mesh = PP_MESH_LIST[-1]
+            x_dims_mapping = [None for i in range(len(x.shape))]
+            w_dims_mapping = [None for i in range(len(w.shape))]
+        elif _global_parallel_strategy == "dp":
+            mesh = _global_process_mesh
+            x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
+            w_dims_mapping = [None for i in range(len(w.shape))]
+        elif _global_parallel_strategy == "mp":
+            mesh = _global_process_mesh
+            x_dims_mapping = [None for i in range(len(x.shape))]
+            w_dims_mapping = ["x"] + [None for i in range(len(w.shape) - 1)]
+        elif _global_parallel_strategy == "dp_mp":
+            mesh = _global_process_mesh
+            x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
+            w_dims_mapping = ["y"] + [None for i in range(len(w.shape) - 1)]
+        elif _global_parallel_strategy == "dp_pp":
+            mesh = DPPP_MESH_LIST[-1]
+            x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
+            w_dims_mapping = [None for i in range(len(w.shape))]
+        elif _global_parallel_strategy == "mp_pp":
+            mesh = MPPP_MESH_LIST[-1]
+            x_dims_mapping = [None for i in range(len(x.shape))]
+            w_dims_mapping = ["x"] + [-1 for i in range(len(w.shape) - 1)]
+        elif _global_parallel_strategy == "dp_mp_pp":
+            mesh = DPMPPP_MESH_LIST[-1]
+            x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
+            w_dims_mapping = ["y"] + [None for i in range(len(w.shape) - 1)]
+
+        if mesh:
+            matmul = auto.shard_op(paddle.matmul, mesh,
+                                   [x_dims_mapping, w_dims_mapping, None])
+            logits = matmul(x, w, transpose_y=True)
+        else:
+            logits = paddle.matmul(x, w, transpose_y=True)
+
         if use_cache:
             return logits, cached_kvs
         else:
@@ -962,6 +797,30 @@ class GPTPretrainingCriterion(nn.Layer):
         self.loss_func = paddle.nn.CrossEntropyLoss(reduction="none")
 
     def forward(self, prediction_scores, masked_lm_labels, loss_mask):
+        masked_lm_labels.stop_gradient = True
+        loss_mask.stop_gradient = True
+
+        mesh = None
+        if _global_parallel_strategy == "dp":
+            mesh = _global_process_mesh
+            dims_mapping = ["x"
+                            ] + [None for i in range(len(loss_mask.shape) - 1)]
+        elif _global_parallel_strategy == "dp_mp":
+            mesh = _global_process_mesh
+            dims_mapping = ["x"
+                            ] + [None for i in range(len(loss_mask.shape) - 1)]
+        elif _global_parallel_strategy == "dp_pp":
+            mesh = DPPP_MESH_LIST[-1]
+            dims_mapping = ["x"
+                            ] + [None for i in range(len(loss_mask.shape) - 1)]
+        elif _global_parallel_strategy == "dp_mp_pp":
+            mesh = DPMPPP_MESH_LIST[-1]
+            dims_mapping = ["x"
+                            ] + [None for i in range(len(loss_mask.shape) - 1)]
+
+        if mesh:
+            auto.shard_tensor(loss_mask, mesh, dims_mapping)
+
         masked_lm_loss = self.loss_func(prediction_scores,
                                         masked_lm_labels.unsqueeze(2))
         loss_mask = loss_mask.reshape([-1])

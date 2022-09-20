@@ -26,6 +26,7 @@ from paddle.fluid.framework import Program, program_guard
 
 
 class TestOneHotOp(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot'
         depth = 10
@@ -50,6 +51,7 @@ class TestOneHotOp(OpTest):
 
 
 class TestOneHotOp_attr(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot'
         depth = 10
@@ -73,6 +75,7 @@ class TestOneHotOp_attr(OpTest):
 
 
 class TestOneHotOp_default_dtype(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot'
         depth = 10
@@ -97,6 +100,7 @@ class TestOneHotOp_default_dtype(OpTest):
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot'
         depth = 10
@@ -120,6 +124,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOp_out_of_range(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot'
         depth = 10
@@ -139,6 +144,7 @@ class TestOneHotOp_out_of_range(OpTest):
 
 
 class TestOneHotOp_exception(unittest.TestCase):
+
     def setUp(self):
         self.op_type = 'one_hot'
         self.depth = 10
@@ -154,18 +160,18 @@ class TestOneHotOp_exception(unittest.TestCase):
     def test_check_output(self):
         program = Program()
         with program_guard(program):
-            x = fluid.layers.data(
-                name='x', shape=[self.dimension], dtype='float32', lod_level=1)
+            x = fluid.layers.data(name='x',
+                                  shape=[self.dimension],
+                                  dtype='float32',
+                                  lod_level=1)
             block = program.current_block()
-            one_hot_out = block.create_var(
-                name="one_hot_out",
-                type=core.VarDesc.VarType.LOD_TENSOR,
-                dtype='float32')
-            block.append_op(
-                type='one_hot',
-                inputs={'X': x},
-                attrs={'depth': self.depth},
-                outputs={'Out': one_hot_out})
+            one_hot_out = block.create_var(name="one_hot_out",
+                                           type=core.VarDesc.VarType.LOD_TENSOR,
+                                           dtype='float32')
+            block.append_op(type='one_hot',
+                            inputs={'X': x},
+                            attrs={'depth': self.depth},
+                            outputs={'Out': one_hot_out})
             exe = fluid.Executor(self.place)
 
             def run():
@@ -177,24 +183,23 @@ class TestOneHotOp_exception(unittest.TestCase):
 
 
 class TestOneHotOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input must be Variable
             in_w = np.random.random((4, 1)).astype("int32")
             self.assertRaises(TypeError, fluid.layers.one_hot, in_w)
             # the input must be int32 or int 64
-            in_w2 = fluid.layers.data(
-                name="in_w2",
-                shape=[4, 1],
-                append_batch_size=False,
-                dtype="float32")
+            in_w2 = fluid.layers.data(name="in_w2",
+                                      shape=[4, 1],
+                                      append_batch_size=False,
+                                      dtype="float32")
             self.assertRaises(TypeError, fluid.layers.one_hot, in_w2)
             # the depth must be int, long or Variable
-            in_r = fluid.layers.data(
-                name="in_r",
-                shape=[4, 1],
-                append_batch_size=False,
-                dtype="int32")
+            in_r = fluid.layers.data(name="in_r",
+                                     shape=[4, 1],
+                                     append_batch_size=False,
+                                     dtype="int32")
             depth_w = np.array([4])
             self.assertRaises(TypeError, fluid.layers.one_hot, in_r, 4.1)
             self.assertRaises(TypeError, fluid.layers.one_hot, in_r, depth_w)

@@ -20,6 +20,7 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 #include <stdio.h>
+
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
@@ -65,7 +66,8 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
 
   do {
     assumed = old;
-    old = atomicCAS(address_as_ull, assumed,
+    old = atomicCAS(address_as_ull,
+                    assumed,
                     __double_as_longlong(val + __longlong_as_double(assumed)));
 
     // Note: uses integer comparison to avoid hang in case of NaN
@@ -151,10 +153,13 @@ CUDA_ATOMIC_WRAPPER(Add, float16) {
 
 // The performance of "atomicAdd(half* )" is bad, but for "atomicAdd(half2* )"
 // is good. So for fp16 type, we can use "atomicAdd(half2* )" to speed up.
-template <typename T, typename std::enable_if<std::is_same<
-                          platform::float16, T>::value>::type * = nullptr>
-__device__ __forceinline__ void fastAtomicAdd(T *tensor, size_t index,
-                                              const size_t numel, T value) {
+template <typename T,
+          typename std::enable_if<
+              std::is_same<platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastAtomicAdd(T *tensor,
+                                              size_t index,
+                                              const size_t numel,
+                                              T value) {
 #if ((CUDA_VERSION < 10000) || \
      (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
   CudaAtomicAdd(reinterpret_cast<platform::float16 *>(tensor) + index,
@@ -184,10 +189,13 @@ __device__ __forceinline__ void fastAtomicAdd(T *tensor, size_t index,
 #endif
 }
 
-template <typename T, typename std::enable_if<!std::is_same<
-                          platform::float16, T>::value>::type * = nullptr>
-__device__ __forceinline__ void fastAtomicAdd(T *arr, size_t index,
-                                              const size_t numel, T value) {
+template <typename T,
+          typename std::enable_if<
+              !std::is_same<platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastAtomicAdd(T *arr,
+                                              size_t index,
+                                              const size_t numel,
+                                              T value) {
   CudaAtomicAdd(arr + index, value);
 }
 
@@ -197,8 +205,9 @@ __device__ __forceinline__ void fastAtomicAdd(T *arr, size_t index,
  * @in: [x1, x2, x3, ...]
  * @out:[y1+x1, y2+x2, y3+x3, ...]
  * */
-template <typename T, typename std::enable_if<!std::is_same<
-                          platform::float16, T>::value>::type * = nullptr>
+template <typename T,
+          typename std::enable_if<
+              !std::is_same<platform::float16, T>::value>::type * = nullptr>
 __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
     const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
   for (int i = tid; i < len; i += threads_per_block) {
@@ -207,8 +216,9 @@ __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
 }
 
 // Note: assume that len is even. If len is odd, call fastAtomicAdd directly.
-template <typename T, typename std::enable_if<std::is_same<
-                          platform::float16, T>::value>::type * = nullptr>
+template <typename T,
+          typename std::enable_if<
+              std::is_same<platform::float16, T>::value>::type * = nullptr>
 __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
     const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
 #if ((CUDA_VERSION < 10000) || \
@@ -291,8 +301,8 @@ CUDA_ATOMIC_WRAPPER(Add, bfloat16) {
     // the bfloat16 value stay at lower 16 bits of the address.
     do {
       assumed = old;
-      old = atomicCAS(address_as_ui, assumed,
-                      bf16_add_to_low_half(assumed, val_f));
+      old = atomicCAS(
+          address_as_ui, assumed, bf16_add_to_low_half(assumed, val_f));
     } while (old != assumed);
     bfloat16 ret;
     ret.x = old & 0xFFFFu;
@@ -301,8 +311,8 @@ CUDA_ATOMIC_WRAPPER(Add, bfloat16) {
     // the bfloat16 value stay at higher 16 bits of the address.
     do {
       assumed = old;
-      old = atomicCAS(address_as_ui, assumed,
-                      bf16_add_to_high_half(assumed, val_f));
+      old = atomicCAS(
+          address_as_ui, assumed, bf16_add_to_high_half(assumed, val_f));
     } while (old != assumed);
     bfloat16 ret;
     ret.x = old >> 16;
@@ -409,6 +419,55 @@ CUDA_ATOMIC_WRAPPER(Max, double) {
   return __longlong_as_double(old);
 }
 
+#ifdef PADDLE_CUDA_FP16
+inline static __device__ uint32_t max_to_low_half(uint32_t val, float x) {
+  float16 low_half;
+  // The float16 in lower 16bits
+  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  low_half = static_cast<float16>(max(static_cast<float>(low_half), x));
+  return (val & 0xFFFF0000u) | low_half.x;
+}
+
+inline static __device__ uint32_t max_to_high_half(uint32_t val, float x) {
+  float16 high_half;
+  // The float16 in higher 16bits
+  high_half.x = static_cast<uint16_t>(val >> 16);
+  high_half = static_cast<float16>(max(static_cast<float>(high_half), x));
+  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+}
+
+CUDA_ATOMIC_WRAPPER(Max, float16) {
+  if (*address >= val) {
+    return *address;
+  }
+  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
+      reinterpret_cast<char *>(address) -
+      (reinterpret_cast<uintptr_t>(address) & 0x02));
+  float val_f = static_cast<float>(val);
+  uint32_t old = *address_as_ui;
+  uint32_t assumed;
+  if (((uintptr_t)address & 0x02) == 0) {
+    // The float16 value stay at lower 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ui, assumed, max_to_low_half(assumed, val_f));
+    } while (old != assumed);
+    float16 ret;
+    ret.x = old & 0xFFFFu;
+    return ret;
+  } else {
+    // The float16 value stay at higher 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ui, assumed, max_to_high_half(assumed, val_f));
+    } while (old != assumed);
+    float16 ret;
+    ret.x = old >> 16;
+    return ret;
+  }
+}
+#endif
+
 // For atomicMin
 USE_CUDA_ATOMIC(Min, int);
 USE_CUDA_ATOMIC(Min, unsigned int);
@@ -492,6 +551,55 @@ CUDA_ATOMIC_WRAPPER(Min, double) {
 
   return __longlong_as_double(old);
 }
+
+#ifdef PADDLE_CUDA_FP16
+inline static __device__ uint32_t min_to_low_half(uint32_t val, float x) {
+  float16 low_half;
+  // The float16 in lower 16bits
+  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  low_half = static_cast<float16>(min(static_cast<float>(low_half), x));
+  return (val & 0xFFFF0000u) | low_half.x;
+}
+
+inline static __device__ uint32_t min_to_high_half(uint32_t val, float x) {
+  float16 high_half;
+  // The float16 in higher 16bits
+  high_half.x = static_cast<uint16_t>(val >> 16);
+  high_half = static_cast<float16>(min(static_cast<float>(high_half), x));
+  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+}
+
+CUDA_ATOMIC_WRAPPER(Min, float16) {
+  if (*address <= val) {
+    return *address;
+  }
+  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
+      reinterpret_cast<char *>(address) -
+      (reinterpret_cast<uintptr_t>(address) & 0x02));
+  float val_f = static_cast<float>(val);
+  uint32_t old = *address_as_ui;
+  uint32_t assumed;
+  if (((uintptr_t)address & 0x02) == 0) {
+    // The float16 value stay at lower 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ui, assumed, min_to_low_half(assumed, val_f));
+    } while (old != assumed);
+    float16 ret;
+    ret.x = old & 0xFFFFu;
+    return ret;
+  } else {
+    // The float16 value stay at higher 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ui, assumed, min_to_high_half(assumed, val_f));
+    } while (old != assumed);
+    float16 ret;
+    ret.x = old >> 16;
+    return ret;
+  }
+}
+#endif
 
 }  // namespace platform
 }  // namespace paddle

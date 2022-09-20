@@ -29,6 +29,7 @@ from paddle_bfloat import bfloat16
 
 
 class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
+
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.ids_shape = (4)
@@ -36,6 +37,7 @@ class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
 
 
 class TestLookupTableV2BF16OpIds4D(TestLookupTableBF16OpIds4D):
+
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.ids_shape = (2, 4, 5)
@@ -44,6 +46,7 @@ class TestLookupTableV2BF16OpIds4D(TestLookupTableBF16OpIds4D):
 
 class TestLookupTableV2BF16OpWIsSelectedRows(
         TestLookupTableBF16OpWIsSelectedRows):
+
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.ids_shape = (10)
@@ -51,12 +54,14 @@ class TestLookupTableV2BF16OpWIsSelectedRows(
 
 class TestLookupTableV2BF16OpWIsSelectedRows4DIds(
         TestLookupTableBF16OpWIsSelectedRows4DIds):
+
     def init_test(self):
         self.op_type = "lookup_table_v2"
         self.ids_shape = (3, 4, 5)
 
 
 class TestLookupTableBF16OpWithPadding(TestLookupTableV2BF16Op):
+
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
@@ -66,6 +71,7 @@ class TestLookupTableBF16OpWithPadding(TestLookupTableV2BF16Op):
 
 
 class TestLookupTableBF16OpIds4DPadding(TestLookupTableV2BF16OpIds4D):
+
     def test_check_output(self):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
@@ -88,8 +94,8 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.op_type = "lookup_table_v2"
         self.ids_shape = [4]
         self.w_shape = [10, 64]
-        self.ids = np.random.randint(
-            low=0, high=9, size=self.ids_shape).astype("int64")
+        self.ids = np.random.randint(low=0, high=9,
+                                     size=self.ids_shape).astype("int64")
         self.flat_ids = self.ids.flatten()
         self.value = 3.0
         self.w_fp32 = np.full(self.w_shape, self.value)
@@ -115,12 +121,12 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
 
     def test_embedding_weights(self):
         result = convert_uint16_to_float(self.result[0])
-        self.assertTrue(np.array_equal(self.w_fp32, result))
+        np.testing.assert_array_equal(self.w_fp32, result)
 
     def test_lookup_results(self):
         lookup_result = convert_uint16_to_float(self.result[1])
         lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids, self.op_type)
-        self.assertTrue(np.array_equal(lookup_result, lookup_ref))
+        np.testing.assert_array_equal(lookup_result, lookup_ref)
 
 
 if __name__ == "__main__":

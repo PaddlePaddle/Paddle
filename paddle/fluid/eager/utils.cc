@@ -27,13 +27,14 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
-PADDLE_DEFINE_EXPORTED_bool(retain_grad_for_all_tensor, true,
+PADDLE_DEFINE_EXPORTED_bool(retain_grad_for_all_tensor,
+                            false,
                             "retain grad for all tensor");
 
 namespace egr {
 /**
  * Implementation of Eager Utils.
-**/
+ **/
 
 AutogradMeta* EagerUtils::autograd_meta(paddle::experimental::Tensor* target) {
   auto* p_autograd_meta = target->get_autograd_meta();
@@ -212,11 +213,12 @@ std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
   for (size_t i = 0; i < num; i++) {
     auto* tensor = tensors[i];
     PADDLE_ENFORCE_NOT_NULL(
-        tensor, paddle::platform::errors::Fatal(
-                    "Tensor is null and cannot be copied. "
-                    "We are tring to TrySyncToVars tensor from its "
-                    "shared_ptr, this error may indicate some outputs "
-                    "are nullptr"));
+        tensor,
+        paddle::platform::errors::Fatal(
+            "Tensor is null and cannot be copied. "
+            "We are tring to TrySyncToVars tensor from its "
+            "shared_ptr, this error may indicate some outputs "
+            "are nullptr"));
     res.emplace_back(TrySyncToVar(*tensor));
   }
   return res;
@@ -248,7 +250,8 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     const std::shared_ptr<EagerVariable>& input_var,
     const std::shared_ptr<EagerVariable>& view_output_var) {
   PADDLE_ENFORCE_EQ(
-      input_var->Var().IsInitialized(), true,
+      input_var->Var().IsInitialized(),
+      true,
       paddle::platform::errors::InvalidArgument(
           "Tensor %s has not been initialized!", input_var->name()));
 
@@ -256,7 +259,8 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     auto input_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(input_var->GetTensorBase());
     PADDLE_ENFORCE_EQ(
-        input_dense_tensor->IsInitialized(), true,
+        input_dense_tensor->IsInitialized(),
+        true,
         paddle::platform::errors::InvalidArgument(
             "DenseTensor %s has not been initialized!", input_var->name()));
 
@@ -275,7 +279,8 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     const paddle::experimental::Tensor& input_tensor,
     paddle::experimental::Tensor* view_output_tensor) {
   PADDLE_ENFORCE_EQ(
-      input_tensor.initialized(), true,
+      input_tensor.initialized(),
+      true,
       paddle::platform::errors::InvalidArgument(
           "Tensor %s has not been initialized!", input_tensor.name()));
 
@@ -291,7 +296,7 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     view_output_dense_tensor->ShareInplaceVersionCounterWith(
         *input_dense_tensor);
 
-    VLOG(3) << "Perform View between Output Tensor("
+    VLOG(4) << "Perform View between Output Tensor("
             << view_output_tensor->name() << ") and Input Tensor("
             << input_tensor.name()
             << "), share allocation and inplace version.";
@@ -304,12 +309,13 @@ std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
   res.reserve(outs.size());
   for (const auto& out : outs) {
     PADDLE_ENFORCE_NOT_NULL(
-        out.get(), paddle::platform::errors::Fatal(
-                       "Eager Tensor %s is null and cannot be copied. "
-                       "We are tring to Get Output tensor from its "
-                       "shared_ptr, this error may indicate some outputs "
-                       "are nullptr",
-                       out->name()));
+        out.get(),
+        paddle::platform::errors::Fatal(
+            "Eager Tensor %s is null and cannot be copied. "
+            "We are tring to Get Output tensor from its "
+            "shared_ptr, this error may indicate some outputs "
+            "are nullptr",
+            out->name()));
     res.emplace_back(out->GetTensorBase(), out->name());
   }
   return res;
@@ -318,22 +324,24 @@ std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
 paddle::experimental::Tensor EagerUtils::GetOutput(
     const std::shared_ptr<EagerVariable>& out) {
   PADDLE_ENFORCE_NOT_NULL(
-      out.get(), paddle::platform::errors::Fatal(
-                     "Eager Tensor %s is null and cannot be copied. We "
-                     "are tring to Get Output tensor from its shared_ptr, "
-                     "this error may indicate output is nullptr",
-                     out->name()));
+      out.get(),
+      paddle::platform::errors::Fatal(
+          "Eager Tensor %s is null and cannot be copied. We "
+          "are tring to Get Output tensor from its shared_ptr, "
+          "this error may indicate output is nullptr",
+          out->name()));
   return paddle::experimental::Tensor(out->GetTensorBase(), out->name());
 }
 
 void EagerUtils::GetOutput(const std::shared_ptr<EagerVariable>& out,
                            paddle::experimental::Tensor* out_var) {
   PADDLE_ENFORCE_NOT_NULL(
-      out_var, paddle::platform::errors::Fatal(
-                   "Tensor is null and cannot be copied. "
-                   "We are tring to OverwriteOutput from its "
-                   "shared_ptr, this error may indicate some outputs "
-                   "are nullptr"));
+      out_var,
+      paddle::platform::errors::Fatal(
+          "Tensor is null and cannot be copied. "
+          "We are tring to OverwriteOutput from its "
+          "shared_ptr, this error may indicate some outputs "
+          "are nullptr"));
   out_var->set_impl(out->GetTensorBase());
   out_var->set_name(out->name());
 }
@@ -351,11 +359,12 @@ void EagerUtils::GetOutputs(
     const std::vector<paddle::experimental::Tensor*>& out_var) {
   for (size_t i = 0; i < outs.size(); i++) {
     PADDLE_ENFORCE_NOT_NULL(
-        out_var[i], paddle::platform::errors::Fatal(
-                        "Tensor is null and cannot be copied. "
-                        "We are tring to OverwriteOutput from its "
-                        "shared_ptr, this error may indicate some outputs "
-                        "are nullptr"));
+        out_var[i],
+        paddle::platform::errors::Fatal(
+            "Tensor is null and cannot be copied. "
+            "We are tring to OverwriteOutput from its "
+            "shared_ptr, this error may indicate some outputs "
+            "are nullptr"));
     out_var[i]->set_impl(outs[i]->GetTensorBase());
   }
 }
@@ -369,11 +378,12 @@ void EagerUtils::GetOutputs(
     const std::shared_ptr<EagerVariable>& out,
     const std::vector<paddle::experimental::Tensor*>& out_var) {
   PADDLE_ENFORCE_NOT_NULL(
-      out_var[0], paddle::platform::errors::Fatal(
-                      "Tensor is null and cannot be copied. "
-                      "We are tring to OverwriteOutput from its "
-                      "shared_ptr, this error may indicate some outputs "
-                      "are nullptr"));
+      out_var[0],
+      paddle::platform::errors::Fatal(
+          "Tensor is null and cannot be copied. "
+          "We are tring to OverwriteOutput from its "
+          "shared_ptr, this error may indicate some outputs "
+          "are nullptr"));
   out_var[0]->set_impl(out->GetTensorBase());
 }
 
@@ -399,7 +409,7 @@ std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
   }
   return ret;
 }
-
+// TODO(jiabin): remove all this when we fix all test using tmp grad
 void EagerUtils::CheckAndRetainGrad(
     const paddle::experimental::Tensor& tensor) {
   VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
@@ -467,26 +477,18 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
   }
 }
 
-void EagerUtils::FillZeroForEmptyGradInputs(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         kSlotSmallVectorSize>* in_grads,
-    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-        grad_in_metas) {
+void EagerUtils::FillZeroForEmptyOptionalGradInput(
+    std::vector<paddle::experimental::Tensor>* in_grads,
+    const std::vector<GradSlotMeta>& grad_in_metas) {
   for (size_t i = 0; i < in_grads->size(); i++) {
-    for (size_t j = 0; j < (*in_grads)[i].size(); j++) {
-      paddle::experimental::Tensor& grad = (*in_grads)[i][j];
-      if (!grad.initialized()) {
-        const GradSlotMeta& grad_in_meta = grad_in_metas[i][j];
-        PADDLE_ENFORCE(
-            grad_in_meta.HasTensorMeta(),
-            paddle::platform::errors::Fatal(
-                "Unable to fill empty grad inputs due to empty GradSlotMeta"));
-        const auto& tensor_meta = grad_in_meta.GetTensorMeta();
-        auto tensor_with_zero = paddle::experimental::full(
-            phi::vectorize(tensor_meta.dims), 0.0, tensor_meta.dtype,
-            grad_in_meta.GetPlace());
-        grad.set_impl(tensor_with_zero.impl());
-      }
+    paddle::experimental::Tensor& grad = (*in_grads)[i];
+    if (!grad.initialized() && grad_in_metas[i].HasTensorMeta()) {
+      auto tensor_with_zero = paddle::experimental::full(
+          phi::vectorize(grad_in_metas[i].GetTensorMeta().dims),
+          0.0,
+          grad_in_metas[i].GetTensorMeta().dtype,
+          grad_in_metas[i].GetPlace());
+      grad.set_impl(tensor_with_zero.impl());
     }
   }
 }
@@ -500,8 +502,10 @@ void EagerUtils::FillZeroForEmptyGradInput(
             "Unable to fill empty grad inputs due to empty GradSlotMeta"));
     const auto& tensor_meta = grad_in_meta.GetTensorMeta();
     auto tensor_with_zero =
-        paddle::experimental::full(phi::vectorize(tensor_meta.dims), 0.0,
-                                   tensor_meta.dtype, grad_in_meta.GetPlace());
+        paddle::experimental::full(phi::vectorize(tensor_meta.dims),
+                                   0.0,
+                                   tensor_meta.dtype,
+                                   grad_in_meta.GetPlace());
     in_grad->set_impl(tensor_with_zero.impl());
   }
 }
@@ -511,8 +515,10 @@ void EagerUtils::FillZeroForEmptyOptionalGradInput(
   if (!in_grad->initialized() && grad_in_meta.HasTensorMeta()) {
     const auto& tensor_meta = grad_in_meta.GetTensorMeta();
     auto tensor_with_zero =
-        paddle::experimental::full(phi::vectorize(tensor_meta.dims), 0.0,
-                                   tensor_meta.dtype, grad_in_meta.GetPlace());
+        paddle::experimental::full(phi::vectorize(tensor_meta.dims),
+                                   0.0,
+                                   tensor_meta.dtype,
+                                   grad_in_meta.GetPlace());
     in_grad->set_impl(tensor_with_zero.impl());
   }
 }

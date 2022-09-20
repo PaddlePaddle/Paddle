@@ -29,17 +29,21 @@ model_urls = {
 
 class VGG(nn.Layer):
     """VGG model from
-    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_.
 
     Args:
         features (nn.Layer): Vgg features create by function make_layers.
-        num_classes (int): Output dim of last fc layer. If num_classes <=0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
-        with_pool (bool): Use pool before the last three fc layer or not. Default: True.
+        with_pool (bool, optional): Use pool before the last three fc layer or not. Default: True.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of VGG model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import VGG
             from paddle.vision.models.vgg import make_layers
 
@@ -49,6 +53,11 @@ class VGG(nn.Layer):
 
             vgg11 = VGG(features)
 
+            x = paddle.rand([1, 3, 224, 224])
+            out = vgg11(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, features, num_classes=1000, with_pool=True):
@@ -68,7 +77,8 @@ class VGG(nn.Layer):
                 nn.Linear(4096, 4096),
                 nn.ReLU(),
                 nn.Dropout(),
-                nn.Linear(4096, num_classes), )
+                nn.Linear(4096, num_classes),
+            )
 
     def forward(self, x):
         x = self.features(x)
@@ -130,15 +140,22 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
 
 
 def vgg11(pretrained=False, batch_norm=False, **kwargs):
-    """VGG 11-layer model
-    
+    """VGG 11-layer model from
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_.
+
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-        batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of VGG 11-layer model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import vgg11
 
             # build model
@@ -146,6 +163,12 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
 
             # build vgg11 model with batch_norm
             model = vgg11(batch_norm=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     model_name = 'vgg11'
     if batch_norm:
@@ -154,15 +177,22 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
 
 
 def vgg13(pretrained=False, batch_norm=False, **kwargs):
-    """VGG 13-layer model
-    
+    """VGG 13-layer model from
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_.
+
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of VGG 13-layer model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import vgg13
 
             # build model
@@ -170,6 +200,12 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
 
             # build vgg13 model with batch_norm
             model = vgg13(batch_norm=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     model_name = 'vgg13'
     if batch_norm:
@@ -178,15 +214,22 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
 
 
 def vgg16(pretrained=False, batch_norm=False, **kwargs):
-    """VGG 16-layer model 
-    
+    """VGG 16-layer model from
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_.
+
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-        batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of VGG 16-layer model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import vgg16
 
             # build model
@@ -194,6 +237,12 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
 
             # build vgg16 model with batch_norm
             model = vgg16(batch_norm=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     model_name = 'vgg16'
     if batch_norm:
@@ -202,15 +251,22 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
 
 
 def vgg19(pretrained=False, batch_norm=False, **kwargs):
-    """VGG 19-layer model 
-    
+    """VGG 19-layer model from
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_.
+
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-        batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of VGG 19-layer model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import vgg19
 
             # build model
@@ -218,6 +274,12 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
 
             # build vgg19 model with batch_norm
             model = vgg19(batch_norm=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     model_name = 'vgg19'
     if batch_norm:

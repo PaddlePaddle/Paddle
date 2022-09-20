@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/stats.h"
+#include "paddle/fluid/platform/profiler/mem_tracing.h"
 
 namespace paddle {
 namespace memory {
@@ -30,14 +31,18 @@ class StatAllocator : public Allocator {
 
  protected:
   void FreeImpl(phi::Allocation* allocation) override {
-    if (platform::is_cpu_place(allocation->place())) {
-      HOST_MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
-                              -allocation->size());
+    if (platform::is_cpu_place(allocation->place()) ||
+        platform::is_cuda_pinned_place(allocation->place())) {
+      HOST_MEMORY_STAT_UPDATE(
+          Allocated, allocation->place().GetDeviceId(), -allocation->size());
     } else {
-      DEVICE_MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
-                                -allocation->size());
+      DEVICE_MEMORY_STAT_UPDATE(
+          Allocated, allocation->place().GetDeviceId(), -allocation->size());
     }
-
+    platform::RecordMemEvent(allocation->ptr(),
+                             allocation->place(),
+                             allocation->size(),
+                             platform::TracerMemEventType::Free);
     underlying_allocator_->Free(allocation);
   }
 
@@ -45,13 +50,19 @@ class StatAllocator : public Allocator {
     phi::Allocator::AllocationPtr allocation =
         underlying_allocator_->Allocate(size);
 
-    if (platform::is_cpu_place(allocation->place())) {
-      HOST_MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
-                              allocation->size());
+    const platform::Place& place = allocation->place();
+    if (platform::is_cpu_place(place) ||
+        platform::is_cuda_pinned_place(place)) {
+      HOST_MEMORY_STAT_UPDATE(
+          Allocated, place.GetDeviceId(), allocation->size());
     } else {
-      DEVICE_MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
-                                allocation->size());
+      DEVICE_MEMORY_STAT_UPDATE(
+          Allocated, place.GetDeviceId(), allocation->size());
     }
+    platform::RecordMemEvent(allocation->ptr(),
+                             allocation->place(),
+                             allocation->size(),
+                             platform::TracerMemEventType::Allocate);
     return allocation.release();
   }
 

@@ -23,21 +23,25 @@ class GlobalScatterOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GlobalScatter");
-    OP_INOUT_CHECK(ctx->HasInput("local_count"), "Input", "local_count",
-                   "GlobalScatter");
-    OP_INOUT_CHECK(ctx->HasInput("global_count"), "Input", "global_count",
+    OP_INOUT_CHECK(
+        ctx->HasInput("local_count"), "Input", "local_count", "GlobalScatter");
+    OP_INOUT_CHECK(ctx->HasInput("global_count"),
+                   "Input",
+                   "global_count",
                    "GlobalScatter");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GlobalScatter");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for global scatter op must be non-negative.",
             ring_id));
     auto input_dims = ctx->GetInputDim("X");
     auto ndim_input = input_dims.size();
     // dim check
-    PADDLE_ENFORCE_EQ(ndim_input, 2,
+    PADDLE_ENFORCE_EQ(ndim_input,
+                      2,
                       platform::errors::InvalidArgument(
                           "The input tensor's dimension must be 2. "
                           "But received input's dimension = %d.",
@@ -76,8 +80,8 @@ class GlobalScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the result of global_scatter.");
     AddComment(R"DOC(
 Global Scatter Operator
-Scatter data in X which has been put together belong to one expert 
-to n_expert * world_size exeperts according to local_count 
+Scatter data in X which has been put together belong to one expert
+to n_expert * world_size exeperts according to local_count
 and receive tensors from n_expert * world_size experts according
 to global_count.
 )DOC");
@@ -105,12 +109,14 @@ class GlobalScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(global_scatter, ops::GlobalScatterOp,
+REGISTER_OPERATOR(global_scatter,
+                  ops::GlobalScatterOp,
                   ops::GlobalScatterOpMaker,
                   ops::GlobalScatterOpGradMaker<paddle::framework::OpDesc>,
                   ops::GlobalScatterOpGradMaker<paddle::imperative::OpBase>)
 
-REGISTER_OP_CPU_KERNEL(global_scatter, ops::GlobalScatterOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(global_scatter,
+                       ops::GlobalScatterOpCPUKernel<float>,
                        ops::GlobalScatterOpCPUKernel<double>,
                        ops::GlobalScatterOpCPUKernel<int>,
                        ops::GlobalScatterOpCPUKernel<int64_t>,

@@ -22,6 +22,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 class TestSplitSectionsOneDNNOp(OpTest):
+
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("float32")
         self.axis = 1
@@ -60,6 +61,7 @@ class TestSplitSectionsOneDNNOp(OpTest):
 
 # test with attr(num)
 class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
+
     def init_data(self):
         self.x = np.random.random((4, 8, 5, 3)).astype("float32")
         self.axis = 1
@@ -73,6 +75,7 @@ class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
 
 
 class TestSplitNumAxisTensorOneDNNOp(TestSplitSectionsOneDNNOp):
+
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("float32")
         self.axis = None
@@ -85,6 +88,7 @@ class TestSplitNumAxisTensorOneDNNOp(TestSplitSectionsOneDNNOp):
 
 # attr(sections) is list containing Tensor
 class TestSplitSectionsTensorOneDNNOp(TestSplitSectionsOneDNNOp):
+
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("float32")
         self.axis = 1
@@ -99,6 +103,7 @@ class TestSplitSectionsTensorOneDNNOp(TestSplitSectionsOneDNNOp):
 
 
 class TestSplitOpUnknownSectionOneDNNOp(TestSplitSectionsOneDNNOp):
+
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("float32")
         self.axis = 2

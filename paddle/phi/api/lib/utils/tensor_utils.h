@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/variable.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"

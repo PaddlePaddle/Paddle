@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/conv_grad_grad_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/operators/conv_miopen_helper.h"
 #else
@@ -28,16 +27,13 @@
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/kernels/funcs/padding.h"
-
-#include "paddle/phi/kernels/cpu/conv_util.h"
-#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
-
-#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
-
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/padding.h"
+#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
 namespace phi {
 
@@ -258,6 +254,8 @@ void ConvCudnnGradGradKernel(
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
   auto handle = ctx.cudnn_handle();
+  auto layout = paddle::platform::GetCudnnTensorFormat(
+      paddle::platform::DataLayout::kNCHW);
 
   paddle::operators::ConvArgs args1{&transformed_ddX,
                                     W,
@@ -265,28 +263,36 @@ void ConvCudnnGradGradKernel(
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
   paddle::operators::ConvArgs args2{&transformed_X,
                                     ddW,
                                     &transformed_ddO_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
   paddle::operators::ConvArgs args3{&transformed_ddX,
                                     dW,
                                     &transformed_dO_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
   paddle::operators::ConvArgs args4{&transformed_dX,
                                     ddW,
                                     &transformed_dO_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
 
 #ifdef PADDLE_WITH_HIP
   paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result1;
@@ -301,9 +307,6 @@ void ConvCudnnGradGradKernel(
   paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
       filter_result;
 #endif
-
-  auto layout = paddle::platform::GetCudnnTensorFormat(
-      paddle::platform::DataLayout::kNCHW);
 
   // ddo = conv(ddI, W) + conv(I, ddW)
   size_t workspace_size = 0;
@@ -668,13 +671,13 @@ void ConvCudnnGradGradKernel(
 }
 
 template <typename T, typename Context>
-void DepthwiseConvCudnnGradGradKernel(
+void DepthwiseConvDoubleGradGPUDNNKernel(
     const Context& ctx,
-    const paddle::optional<DenseTensor>& input_grad_grad,
-    const paddle::optional<DenseTensor>& filter_grad_grad,
-    const DenseTensor& out_grad,
     const DenseTensor& input,
     const DenseTensor& filter,
+    const DenseTensor& out_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
     const std::vector<int>& strides,
     const std::vector<int>& paddings_t,
     const std::string& padding_algorithm,
@@ -685,9 +688,9 @@ void DepthwiseConvCudnnGradGradKernel(
     int workspace_size_MB,
     bool exhaustive_search_t,
     bool fuse_relu,
-    DenseTensor* out_grad_grad,
     DenseTensor* input_grad,
-    DenseTensor* filter_grad) {
+    DenseTensor* filter_grad,
+    DenseTensor* out_grad_grad) {
   ConvCudnnGradGradKernel<T>(ctx,
                              input,
                              filter,
@@ -711,11 +714,11 @@ void DepthwiseConvCudnnGradGradKernel(
 template <typename T, typename Context>
 void Conv3DCudnnGradGradKernel(
     const Context& ctx,
-    const paddle::optional<DenseTensor>& input_grad_grad,
-    const paddle::optional<DenseTensor>& filter_grad_grad,
-    const DenseTensor& out_grad,
     const DenseTensor& input,
     const DenseTensor& filter,
+    const DenseTensor& out_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
     const std::vector<int>& strides,
     const std::vector<int>& paddings_t,
     const std::string& padding_algorithm,
@@ -725,9 +728,9 @@ void Conv3DCudnnGradGradKernel(
     bool use_addto,
     int workspace_size_MB,
     bool exhaustive_search_t,
-    DenseTensor* out_grad_grad,
     DenseTensor* input_grad,
-    DenseTensor* filter_grad) {
+    DenseTensor* filter_grad,
+    DenseTensor* out_grad_grad) {
   ConvCudnnGradGradKernel<T>(ctx,
                              input,
                              filter,
@@ -768,7 +771,7 @@ PD_REGISTER_KERNEL(conv3d_grad_grad,
 PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::DepthwiseConvCudnnGradGradKernel,
+                   phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
                    phi::dtype::float16) {}
 #else
@@ -794,7 +797,7 @@ PD_REGISTER_KERNEL(conv3d_grad_grad,
 PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::DepthwiseConvCudnnGradGradKernel,
+                   phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -821,7 +824,7 @@ PD_REGISTER_KERNEL(conv3d_grad_grad,
 PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::DepthwiseConvCudnnGradGradKernel,
+                   phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
                    double,
                    phi::dtype::float16) {}

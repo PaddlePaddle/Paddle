@@ -34,7 +34,8 @@ __all__ = [  # noqa
     'ReduceOnPlateau',
     'CosineAnnealingDecay',
     'MultiplicativeDecay',
-    'OneCycleLR'
+    'OneCycleLR',
+    'CyclicLR',
 ]
 
 
@@ -58,7 +59,7 @@ class LRScheduler(object):
         instance to schedule learning rate.
 
     Examples:
-        Here is an example of a simple ``StepDecay`` implementation. 
+        Here is an example of a simple ``StepDecay`` implementation.
 
         .. code-block:: python
 
@@ -183,8 +184,8 @@ class LRScheduler(object):
                 self.__dict__[key] = state_dict[key]
             else:
                 raise RuntimeError(
-                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict".
-                    format(key))
+                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict"
+                    .format(key))
         if len(state_dict) > len(self.keys):
             warnings.warn(
                 "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
@@ -378,8 +379,8 @@ class PiecewiseDecay(LRScheduler):
     def __init__(self, boundaries, values, last_epoch=-1, verbose=False):
         self.boundaries = boundaries
         self.values = values
-        super(PiecewiseDecay, self).__init__(
-            last_epoch=last_epoch, verbose=verbose)
+        super(PiecewiseDecay, self).__init__(last_epoch=last_epoch,
+                                             verbose=verbose)
 
     def get_lr(self):
         for i in range(len(self.boundaries)):
@@ -668,8 +669,8 @@ class PolynomialDecay(LRScheduler):
             tmp_epoch_num = min(self.last_epoch, self.decay_steps)
 
         return (self.base_lr - self.end_lr) * (
-            (1 - float(tmp_epoch_num) / float(tmp_decay_steps)
-             )**self.power) + self.end_lr
+            (1 - float(tmp_epoch_num) / float(tmp_decay_steps))**
+            self.power) + self.end_lr
 
 
 class LinearWarmup(LRScheduler):
@@ -768,8 +769,8 @@ class LinearWarmup(LRScheduler):
             learning_rate, int) or isinstance(learning_rate, LRScheduler)
         if not type_check:
             raise TypeError(
-                "the type of learning_rate should be [int, float or LRScheduler], the current type is {}".
-                format(learning_rate))
+                "the type of learning_rate should be [int, float or LRScheduler], the current type is {}"
+                .format(learning_rate))
         self.learning_rate = learning_rate
         assert warmup_steps > 0 and isinstance(
             warmup_steps, int), " 'warmup_steps' must be a positive integer."
@@ -1373,8 +1374,8 @@ class ReduceOnPlateau(LRScheduler):
         elif not isinstance(metrics,
                             (int, float, numpy.float32, numpy.float64)):
             raise TypeError(
-                "metrics must be 'int', 'float', 'np.float', 'numpy.ndarray' or 'paddle.Tensor', but receive {}".
-                format(type(metrics)))
+                "metrics must be 'int', 'float', 'np.float', 'numpy.ndarray' or 'paddle.Tensor', but receive {}"
+                .format(type(metrics)))
 
         if self.cooldown_counter > 0:
             self.cooldown_counter -= 1
@@ -1517,16 +1518,16 @@ class CosineAnnealingDecay(LRScheduler):
         if self.last_epoch == 0:
             return self.base_lr
         elif (self.last_epoch - 1 - self.T_max) % (2 * self.T_max) == 0:
-            return self.last_lr + (self.base_lr - self.eta_min) * (1 - math.cos(
-                math.pi / self.T_max)) / 2
+            return self.last_lr + (self.base_lr - self.eta_min) * (
+                1 - math.cos(math.pi / self.T_max)) / 2
 
         return (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / (
             1 + math.cos(math.pi * (self.last_epoch - 1) / self.T_max)) * (
                 self.last_lr - self.eta_min) + self.eta_min
 
     def _get_closed_form_lr(self):
-        return self.eta_min + (self.base_lr - self.eta_min) * (1 + math.cos(
-            math.pi * self.last_epoch / self.T_max)) / 2
+        return self.eta_min + (self.base_lr - self.eta_min) * (
+            1 + math.cos(math.pi * self.last_epoch / self.T_max)) / 2
 
 
 class MultiplicativeDecay(LRScheduler):
@@ -1692,7 +1693,7 @@ class OneCycleLR(LRScheduler):
         if not isinstance(max_learning_rate, (float, int)):
             raise TypeError(
                 "'max_learning_rate' must be 'float' or 'int', but received {}".
-                format(type(total_steps)))
+                format(type(max_learning_rate)))
         if max_learning_rate < 0:
             raise ValueError("'max_learning_rate' must be a positive integer.")
 
@@ -1700,22 +1701,24 @@ class OneCycleLR(LRScheduler):
         if not isinstance(end_learning_rate, (float, int)):
             raise TypeError(
                 "'end_learning_rate' must be 'float' or 'int', but received {}".
-                format(type(total_steps)))
+                format(type(end_learning_rate)))
         if end_learning_rate < 0:
             raise ValueError("'end_learning_rate' must be a positive integer.")
 
         # Check type and value of total_steps
         if not isinstance(total_steps, int):
-            raise TypeError("'total_step' must be 'int', but received {}".
-                            format(type(total_steps)))
+            raise TypeError(
+                "'total_step' must be 'int', but received {}".format(
+                    type(total_steps)))
         if total_steps <= 0:
             raise ValueError("'total_step' must be a positive integer.")
         self.total_steps = total_steps
 
         # Check type and value of pac_start
         if not isinstance(phase_pct, float):
-            raise TypeError("'phase_pct' must be 'float', but received {}".
-                            format(type(phase_pct)))
+            raise TypeError(
+                "'phase_pct' must be 'float', but received {}".format(
+                    type(phase_pct)))
         if phase_pct < 0 or phase_pct > 1:
             raise ValueError(
                 "'phase_pct' must be between 0 and 1, but received {}".format(
@@ -1774,8 +1777,8 @@ class OneCycleLR(LRScheduler):
             self.anneal_func = self._linear_annealing
         else:
             raise ValueError(
-                "'anneal_strategy' must by one of 'cos' or 'linear', but received {}".
-                format(anneal_strategy))
+                "'anneal_strategy' must by one of 'cos' or 'linear', but received {}"
+                .format(anneal_strategy))
         super(OneCycleLR, self).__init__(initial_lr, last_epoch, verbose)
 
     def _cos_annealing(self, start_lr, end_lr, pct):
@@ -1793,11 +1796,213 @@ class OneCycleLR(LRScheduler):
                 "Tried to step {} times. However the number of total steps is {}"
                 .format(current_step, self.total_steps))
 
-        for (i, (end_step, step_size)
-             ) in enumerate(zip(self._step_config[1:], self._steps_size)):
+        for (i, (end_step, step_size)) in enumerate(
+                zip(self._step_config[1:], self._steps_size)):
             # i == len(self._lr_config) - 2 catch the last step, otherwise it will return None.
             if current_step <= end_step or i == len(self._lr_config) - 2:
                 # self._step_config[i] means start step of a phase.
                 percentage = (current_step - self._step_config[i]) / step_size
                 return self.anneal_func(self._lr_config[i],
                                         self._lr_config[i + 1], percentage)
+
+
+class CyclicLR(LRScheduler):
+    r"""
+    Set the learning rate according to the cyclic learning rate (CLR) scheduler.
+    The scheduler regards the process of learning rate adjustment as one cycle after another.
+    It cycles the learning rate between two boundaries with a constant frequency.
+    The distance between the two boundaries can be scaled on a per-iteration or per-cycle basis.
+
+    It has been proposed in `Cyclic Learning Rates for Training Neural Networks <https://arxiv.org/abs/1506.01186>`_.
+
+    According to the paper, the cyclic learning rate schedule has three build-in scale methods:
+
+    * "triangular": A basic triangular cycle without any amplitude scaling.
+    * "triangular2": A basic triangular cycle that reduce initial amplitude by half each cycle.
+    * "exp_range": A cycle that scales initial amplitude by scale function which is defined as :math:`gamma^{iterations}` .
+
+    The initial amplitude is defined as max_learning_rate - base_learning_rate.
+    Also note that you should update learning rate each step.
+
+    Args:
+        base_learning_rate (float): Initial learning rate, which is the lower boundary in the cycle. The paper recommends
+            that set the base_learning_rate to 1/3 or 1/4 of max_learning_rate.
+        max_learning_rate (float): Maximum learning rate in the cycle. It defines the cycle amplitude as above.
+            Since there is some scaling operation during process of learning rate adjustment,
+            max_learning_rate may not actually be reached.
+        step_size_up (int): Number of training steps, which is used to increase learning rate in a cycle.
+            The step size of one cycle will be defined by step_size_up + step_size_down. According to the paper, step
+            size should be set as at least 3 or 4 times steps in one epoch.
+        step_size_down (int, optional): Number of training steps, which is used to decrease learning rate in a cycle.
+            If not specified, it's value will initialize to `` step_size_up `` . Default: None
+        mode (str, optional): one of 'triangular', 'triangular2' or 'exp_range'.
+            If scale_fn is specified, this argument will be ignored. Default: 'triangular'
+        exp_gamma (float): Constant in 'exp_range' scaling function: exp_gamma**iterations. Used only when mode = 'exp_range'. Default: 1.0
+        scale_fn (function, optional): A custom scaling function, which is used to replace three build-in methods.
+            It should only have one argument. For all x >= 0, 0 <= scale_fn(x) <= 1.
+            If specified, then 'mode' will be ignored. Default: None
+        scale_mode (str, optional): One of 'cycle' or 'iterations'. Defines whether scale_fn is evaluated on cycle
+            number or cycle iterations (total iterations since start of training). Default: 'cycle'
+        last_epoch (int, optional): The index of last epoch. Can be set to restart training.Default: -1, means initial learning rate.
+        verbose: (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+
+    Returns:
+    ``CyclicLR`` instance to schedule learning rate.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            # train on default dynamic graph mode
+            linear = paddle.nn.Linear(10, 10)
+            scheduler = paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=15, step_size_down=5, verbose=True)
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
+            for epoch in range(5):
+                for batch_id in range(20):
+                    x = paddle.uniform([10, 10])
+                    out = linear(x)
+                    loss = paddle.mean(out)
+                    loss.backward()
+                    sgd.step()
+                    sgd.clear_gradients()
+                    scheduler.step()        # You should update learning rate each step
+
+            # train on static graph mode
+            paddle.enable_static()
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[None, 4, 5])
+                y = paddle.static.data(name='y', shape=[None, 4, 5])
+                z = paddle.static.nn.fc(x, 100)
+                loss = paddle.mean(z)
+                scheduler = paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                    max_learning_rate=1.0, step_size_up=15, step_size_down=5, verbose=True)
+                sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+                sgd.minimize(loss)
+
+            exe = paddle.static.Executor()
+            exe.run(start_prog)
+            for epoch in range(5):
+                for batch_id in range(20):
+                    out = exe.run(
+                        main_prog,
+                        feed={
+                            'x': np.random.randn(3, 4, 5).astype('float32'),
+                            'y': np.random.randn(3, 4, 5).astype('float32')
+                        },
+                        fetch_list=loss.name)
+                    scheduler.step()    # You should update learning rate each step
+    """
+
+    def __init__(self,
+                 base_learning_rate,
+                 max_learning_rate,
+                 step_size_up,
+                 step_size_down=None,
+                 mode='triangular',
+                 exp_gamma=1.,
+                 scale_fn=None,
+                 scale_mode='cycle',
+                 last_epoch=-1,
+                 verbose=False):
+        # check type and value of max_learning_rate
+        if not isinstance(max_learning_rate, (float, int)):
+            raise TypeError(
+                "'max_learning_rate' must be 'float' or 'int', but received {}".
+                format(type(max_learning_rate)))
+        if max_learning_rate < 0:
+            raise ValueError(
+                "'max_learning_rate' must be a positive integer, but received {}"
+                .format(max_learning_rate))
+
+        # check type and value of step_size_up
+        if not isinstance(step_size_up, int):
+            raise TypeError(
+                "The type of 'step_size_up' must be int, but received {}".
+                format(type(step_size_up)))
+        if step_size_up <= 0:
+            raise ValueError(
+                "'step_size_up' must be a positive integer, but received {}".
+                format(step_size_up))
+
+        # check type and value of step_size_down
+        if step_size_down is not None:
+            if not isinstance(step_size_down, int):
+                raise TypeError(
+                    "The type of 'step_size_down' must be int, but received {}".
+                    format(type(step_size_down)))
+            if step_size_down <= 0:
+                raise ValueError(
+                    "'step_size_down' must be a positive integer, but received {}"
+                    .format(step_size_down))
+
+        # check type of exp_gamma
+        if not isinstance(exp_gamma, float):
+            raise TypeError(
+                "The type of 'exp_gamma' must be float, but received {}".format(
+                    type(exp_gamma)))
+
+        step_size_up = float(step_size_up)
+        step_size_down = float(
+            step_size_down) if step_size_down is not None else step_size_up
+
+        self.cycle_size = step_size_up + step_size_down
+        self.step_up_pct = step_size_up / self.cycle_size
+        self.max_lr = float(max_learning_rate)
+        self.amplitude = self.max_lr - base_learning_rate
+
+        if mode not in ['triangular', 'triangular2', 'exp_range'
+                        ] and scale_fn is None:
+            raise ValueError(
+                "'mode' is invalid and 'scale_fn' is not specified, make sure one of 'mode' or 'scale_fn' is valid"
+            )
+        if scale_mode not in ['cycle', 'iterations']:
+            raise ValueError(
+                "'scale_mode' must be one of 'cycle' or 'iterations")
+
+        self.mode = mode
+        self.gamma = exp_gamma  # only for exp_range mode
+
+        if scale_fn is None:
+            if self.mode == 'triangular':
+                self.scale_fn = self._triangular_scale_fn
+                self.scale_mode = 'cycle'
+            elif self.mode == 'triangular2':
+                self.scale_fn = self._triangular2_scale_fn
+                self.scale_mode = 'cycle'
+            elif self.mode == 'exp_range':
+                self.scale_fn = self._exp_range_scale_fn
+                self.scale_mode = 'iterations'
+        else:
+            self.scale_fn = scale_fn
+            self.scale_mode = scale_mode
+        super().__init__(base_learning_rate, last_epoch, verbose)
+
+    def _triangular_scale_fn(self, x):
+        return 1.
+
+    def _triangular2_scale_fn(self, x):
+        return 1 / (2.**(x - 1))
+
+    def _exp_range_scale_fn(self, x):
+        return self.gamma**x
+
+    def get_lr(self):
+        iterations = self.last_epoch
+
+        cycle = 1 + iterations // self.cycle_size
+        pct_per_cycle = 1. + iterations / self.cycle_size - cycle
+
+        if pct_per_cycle <= self.step_up_pct:
+            scale_factor = pct_per_cycle / self.step_up_pct
+        else:
+            scale_factor = (1 - pct_per_cycle) / (1 - self.step_up_pct)
+
+        base_height = self.amplitude * scale_factor
+
+        lr = self.base_lr + base_height * self.scale_fn(eval(self.scale_mode))
+
+        return lr

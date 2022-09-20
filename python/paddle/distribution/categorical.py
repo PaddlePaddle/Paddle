@@ -17,7 +17,7 @@ import warnings
 
 import numpy as np
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
@@ -31,9 +31,9 @@ from paddle.tensor import arange, concat, gather_nd, multinomial
 
 class Categorical(distribution.Distribution):
     r"""
-    Categorical distribution is a discrete probability distribution that 
-    describes the possible results of a random variable that can take on 
-    one of K possible categories, with the probability of each category 
+    Categorical distribution is a discrete probability distribution that
+    describes the possible results of a random variable that can take on
+    one of K possible categories, with the probability of each category
     separately specified.
 
     The probability mass function (pmf) is:
@@ -162,8 +162,8 @@ class Categorical(distribution.Distribution):
             sample_shape = shape
             logits = self.logits
 
-        sample_index = multinomial(
-            self._logits_to_probs(logits), num_samples, True)
+        sample_index = multinomial(self._logits_to_probs(logits), num_samples,
+                                   True)
 
         # multinomial sample shape is (logits.shape[:-1], num_samples), need to
         # tanspose to (num_samples, logits.shape[:-1])
@@ -220,11 +220,12 @@ class Categorical(distribution.Distribution):
         z = paddle.sum(e_logits, axis=-1, keepdim=True)
         other_z = paddle.sum(other_e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
-        kl = paddle.sum(prob * (
-            logits - paddle.log(z) - other_logits + paddle.log(other_z)),
-                        axis=-1,
-                        keepdim=True,
-                        name=name)
+        kl = paddle.sum(
+            prob *
+            (logits - paddle.log(z) - other_logits + paddle.log(other_z)),
+            axis=-1,
+            keepdim=True,
+            name=name)
 
         return kl
 
@@ -266,9 +267,9 @@ class Categorical(distribution.Distribution):
     def probs(self, value):
         """Probabilities of the given category (``value``).
 
-        If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as 
+        If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as
         category, and the others represents the different distributions.
-        At the same time, if ``vlaue`` is 1-D Tensor, ``value`` will be broadcast to the 
+        At the same time, if ``vlaue`` is 1-D Tensor, ``value`` will be broadcast to the
         same number of distributions as ``logits``.
         If ``value`` is not 1-D Tensor, ``value`` should have the same number distributions
         with ``logits. That is, ``value[:-1] = logits[:-1]``.
@@ -300,17 +301,16 @@ class Categorical(distribution.Distribution):
         """
         name = self.name + '_probs'
         if len(self._prob.shape) == 1:  # batch_shape is empty
-            return paddle.gather(
-                self._prob, value.reshape(
-                    [-1], name=name), name=name).reshape(
-                        value.shape, name=name)
+            return paddle.gather(self._prob,
+                                 value.reshape([-1], name=name),
+                                 name=name).reshape(value.shape, name=name)
         else:
             if len(value.shape) == 1:
                 return paddle.take_along_axis(
                     self._prob,
-                    paddle.reshape(
-                        value, (len(self._prob.shape) - 1) * [1] + [-1],
-                        name=name),
+                    paddle.reshape(value,
+                                   (len(self._prob.shape) - 1) * [1] + [-1],
+                                   name=name),
                     axis=-1)
             else:
                 return paddle.take_along_axis(self._prob, value, axis=-1)

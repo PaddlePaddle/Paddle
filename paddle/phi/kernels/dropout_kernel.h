@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -23,12 +24,25 @@ template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const paddle::optional<DenseTensor>& seed_tensor,
-                      float p,
+                      const Scalar& p,
                       bool is_test,
                       const std::string& mode,
                       int seed,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask);
+
+template <typename T, typename Context>
+void DropoutNdKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const paddle::optional<DenseTensor>& seed_tensor,
+                     const Scalar& p,
+                     bool is_test,
+                     const std::string& mode,
+                     int seed,
+                     bool fix_seed,
+                     const std::vector<int>& axis,
+                     DenseTensor* out,
+                     DenseTensor* mask);
 
 }  // namespace phi

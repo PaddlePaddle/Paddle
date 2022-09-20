@@ -87,10 +87,9 @@ def im2col(attrs, im, col):
                         im_col_offset = col_col_idx * stride_width \
                             + filter_col_idx - padding_width
 
-                        if (im_row_offset < 0 or
-                                im_row_offset >= input_height or
-                                im_col_offset < 0 or
-                                im_col_offset >= input_width):
+                        if (im_row_offset < 0 or im_row_offset >= input_height
+                                or im_col_offset < 0
+                                or im_col_offset >= input_width):
                             col[col_row_idx][col_col_idx][channel][\
                                 filter_row_idx][filter_col_idx] = 0.0
                         else:
@@ -125,6 +124,7 @@ def Im2Sequence(inputs, img_real_size, attrs):
 
 
 class TestBlockExpandOp(OpTest):
+
     def config(self):
         self.batch_size = 1
         self.img_channels = 3
@@ -155,6 +155,7 @@ class TestBlockExpandOp(OpTest):
 
 
 class TestBlockExpandOpCase2(TestBlockExpandOp):
+
     def config(self):
         self.batch_size = 2
         self.img_channels = 3
@@ -168,6 +169,7 @@ class TestBlockExpandOpCase2(TestBlockExpandOp):
 
 
 class TestBlockExpandOpCase3(TestBlockExpandOp):
+
     def config(self):
         self.batch_size = 6
         self.img_channels = 1
@@ -181,6 +183,7 @@ class TestBlockExpandOpCase3(TestBlockExpandOp):
 
 
 class TestBlockExpandOpCase4(TestBlockExpandOp):
+
     def config(self):
         self.batch_size = 6
         self.img_channels = 2
@@ -194,9 +197,11 @@ class TestBlockExpandOpCase4(TestBlockExpandOp):
 
 
 @skip_check_grad_ci(
-    reason="Since 'real_size' is used just in forward computation, we don't test the gradient here."
+    reason=
+    "Since 'real_size' is used just in forward computation, we don't test the gradient here."
 )
 class TestBlockExpandOpCase5(OpTest):
+
     def config(self):
         self.batch_size = 1
         self.img_channels = 3
@@ -225,6 +230,7 @@ class TestBlockExpandOpCase5(OpTest):
 
 
 class TestBlockExpandOpCase6(TestBlockExpandOpCase5):
+
     def config(self):
         self.batch_size = 3
         self.img_channels = 1
@@ -240,6 +246,7 @@ class TestBlockExpandOpCase6(TestBlockExpandOpCase5):
 
 
 class TestBlockExpandOpCase7(TestBlockExpandOpCase6):
+
     def config(self):
         self.batch_size = 2
         self.img_channels = 2

@@ -25,6 +25,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestUniqueOp(OpTest):
+
     def setUp(self):
         self.op_type = "unique"
         self.init_config()
@@ -33,29 +34,31 @@ class TestUniqueOp(OpTest):
         self.check_output()
 
     def init_config(self):
-        self.inputs = {'X': np.array([2, 3, 3, 1, 5, 3], dtype='int64'), }
+        self.inputs = {
+            'X': np.array([2, 3, 3, 1, 5, 3], dtype='int64'),
+        }
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': np.array(
-                [2, 3, 1, 5], dtype='int64'),
-            'Index': np.array(
-                [0, 1, 1, 2, 3, 1], dtype='int32')
+            'Out': np.array([2, 3, 1, 5], dtype='int64'),
+            'Index': np.array([0, 1, 1, 2, 3, 1], dtype='int32')
         }
 
 
 class TestOne(TestUniqueOp):
+
     def init_config(self):
-        self.inputs = {'X': np.array([2], dtype='int64'), }
+        self.inputs = {
+            'X': np.array([2], dtype='int64'),
+        }
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': np.array(
-                [2], dtype='int64'),
-            'Index': np.array(
-                [0], dtype='int32')
+            'Out': np.array([2], dtype='int64'),
+            'Index': np.array([0], dtype='int32')
         }
 
 
 class TestRandom(TestUniqueOp):
+
     def init_config(self):
         self.inputs = {'X': np.random.randint(0, 100, (150, ), dtype='int64')}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
@@ -72,7 +75,9 @@ class TestRandom(TestUniqueOp):
 
 
 class TestUniqueRaiseError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.unique([10])
 
@@ -88,14 +93,15 @@ class TestUniqueRaiseError(unittest.TestCase):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestOneGPU(TestUniqueOp):
+
     def init_config(self):
-        self.inputs = {'X': np.array([2], dtype='int64'), }
+        self.inputs = {
+            'X': np.array([2], dtype='int64'),
+        }
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': np.array(
-                [2], dtype='int64'),
-            'Index': np.array(
-                [0], dtype='int32')
+            'Out': np.array([2], dtype='int64'),
+            'Index': np.array([0], dtype='int32')
         }
 
     def test_check_output(self):
@@ -107,6 +113,7 @@ class TestOneGPU(TestUniqueOp):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestRandomGPU(TestUniqueOp):
+
     def init_config(self):
         self.inputs = {'X': np.random.randint(0, 100, (150, ), dtype='int64')}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
@@ -128,14 +135,14 @@ class TestRandomGPU(TestUniqueOp):
 
 
 class TestSortedUniqueOp(TestUniqueOp):
+
     def init_config(self):
         self.inputs = {'X': np.array([2, 3, 3, 1, 5, 3], dtype='int64')}
-        unique, indices, inverse, count = np.unique(
-            self.inputs['X'],
-            return_index=True,
-            return_inverse=True,
-            return_counts=True,
-            axis=None)
+        unique, indices, inverse, count = np.unique(self.inputs['X'],
+                                                    return_index=True,
+                                                    return_inverse=True,
+                                                    return_counts=True,
+                                                    axis=None)
         self.attrs = {
             'dtype': int(core.VarDesc.VarType.INT32),
             "return_index": True,
@@ -153,14 +160,14 @@ class TestSortedUniqueOp(TestUniqueOp):
 
 
 class TestUniqueOpAxisNone(TestUniqueOp):
+
     def init_config(self):
         self.inputs = {'X': np.random.random((4, 7, 10)).astype('float64')}
-        unique, indices, inverse, counts = np.unique(
-            self.inputs['X'],
-            return_index=True,
-            return_inverse=True,
-            return_counts=True,
-            axis=None)
+        unique, indices, inverse, counts = np.unique(self.inputs['X'],
+                                                     return_index=True,
+                                                     return_inverse=True,
+                                                     return_counts=True,
+                                                     axis=None)
         self.attrs = {
             'dtype': int(core.VarDesc.VarType.INT32),
             "return_index": True,
@@ -178,14 +185,14 @@ class TestUniqueOpAxisNone(TestUniqueOp):
 
 
 class TestUniqueOpAxis1(TestUniqueOp):
+
     def init_config(self):
         self.inputs = {'X': np.random.random((3, 8, 8)).astype('float64')}
-        unique, indices, inverse, counts = np.unique(
-            self.inputs['X'],
-            return_index=True,
-            return_inverse=True,
-            return_counts=True,
-            axis=1)
+        unique, indices, inverse, counts = np.unique(self.inputs['X'],
+                                                     return_index=True,
+                                                     return_inverse=True,
+                                                     return_counts=True,
+                                                     axis=1)
         self.attrs = {
             'dtype': int(core.VarDesc.VarType.INT32),
             "return_index": True,
@@ -203,6 +210,7 @@ class TestUniqueOpAxis1(TestUniqueOp):
 
 
 class TestUniqueAPI(unittest.TestCase):
+
     def test_dygraph_api_out(self):
         paddle.disable_static()
         x_data = x_data = np.random.randint(0, 10, (120))
@@ -216,18 +224,16 @@ class TestUniqueAPI(unittest.TestCase):
         paddle.disable_static()
         x_data = np.random.random((3, 5, 5)).astype("float32")
         x = paddle.to_tensor(x_data)
-        out, index, inverse, counts = paddle.unique(
-            x,
-            return_index=True,
-            return_inverse=True,
-            return_counts=True,
-            axis=0)
-        np_out, np_index, np_inverse, np_counts = np.unique(
-            x_data,
-            return_index=True,
-            return_inverse=True,
-            return_counts=True,
-            axis=0)
+        out, index, inverse, counts = paddle.unique(x,
+                                                    return_index=True,
+                                                    return_inverse=True,
+                                                    return_counts=True,
+                                                    axis=0)
+        np_out, np_index, np_inverse, np_counts = np.unique(x_data,
+                                                            return_index=True,
+                                                            return_inverse=True,
+                                                            return_counts=True,
+                                                            axis=0)
         self.assertTrue((out.numpy() == np_out).all(), True)
         self.assertTrue((index.numpy() == np_index).all(), True)
         self.assertTrue((inverse.numpy() == np_inverse).all(), True)
@@ -238,12 +244,11 @@ class TestUniqueAPI(unittest.TestCase):
         paddle.disable_static()
         x_data = x_data = np.random.randint(0, 10, (120))
         x = paddle.to_tensor(x_data)
-        out, indices, inverse, counts = paddle.unique(
-            x,
-            return_index=True,
-            return_inverse=True,
-            return_counts=True,
-            dtype="int32")
+        out, indices, inverse, counts = paddle.unique(x,
+                                                      return_index=True,
+                                                      return_inverse=True,
+                                                      return_counts=True,
+                                                      dtype="int32")
         expected_out, np_indices, np_inverse, np_counts = np.unique(
             x_data, return_index=True, return_inverse=True, return_counts=True)
         self.assertTrue((out.numpy() == expected_out).all(), True)
@@ -252,7 +257,7 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((counts.numpy() == np_counts).all(), True)
         paddle.enable_static()
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_dygraph_api_out()
             self.test_dygraph_api_attr()
@@ -262,22 +267,28 @@ class TestUniqueAPI(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
             x = paddle.fluid.data(name='x', shape=[3, 2], dtype='float64')
-            unique, inverse, counts = paddle.unique(
-                x, return_inverse=True, return_counts=True, axis=0)
+            unique, inverse, counts = paddle.unique(x,
+                                                    return_inverse=True,
+                                                    return_counts=True,
+                                                    axis=0)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             x_np = np.array([[1, 2], [3, 4], [1, 2]]).astype('float64')
             result = exe.run(feed={"x": x_np},
                              fetch_list=[unique, inverse, counts])
-        np_unique, np_inverse, np_counts = np.unique(
-            x_np, return_inverse=True, return_counts=True, axis=0)
-        self.assertTrue(np.allclose(result[0], np_unique))
-        self.assertTrue(np.allclose(result[1], np_inverse))
-        self.assertTrue(np.allclose(result[2], np_counts))
+        np_unique, np_inverse, np_counts = np.unique(x_np,
+                                                     return_inverse=True,
+                                                     return_counts=True,
+                                                     axis=0)
+        np.testing.assert_allclose(result[0], np_unique, rtol=1e-05)
+        np.testing.assert_allclose(result[1], np_inverse, rtol=1e-05)
+        np.testing.assert_allclose(result[2], np_counts, rtol=1e-05)
 
 
 class TestUniqueError(unittest.TestCase):
+
     def test_input_dtype(self):
+
         def test_x_dtype():
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):

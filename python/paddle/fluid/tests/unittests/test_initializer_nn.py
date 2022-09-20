@@ -40,6 +40,7 @@ def check_cast_op(op):
 
 
 class TestConstantInitializer(unittest.TestCase):
+
     def static_test_constant_initializer_common(self,
                                                 init_inst,
                                                 dtype="float32",
@@ -48,12 +49,11 @@ class TestConstantInitializer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=init_inst)
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=init_inst)
         num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -91,8 +91,9 @@ class TestConstantInitializer(unittest.TestCase):
         """Test constant initializer with supplied value in dygraph
         """
         with fluid.dygraph.guard():
-            linear = nn.Linear(
-                2, 4, weight_attr=nn.initializer.Constant(value=2.0))
+            linear = nn.Linear(2,
+                               4,
+                               weight_attr=nn.initializer.Constant(value=2.0))
             mat_target = np.ones((2, 4), dtype=dtype) * 2.0
             mat_linear = linear.weight.numpy()
             mismatch = np.sum(
@@ -116,6 +117,7 @@ class TestConstantInitializer(unittest.TestCase):
 
 
 class TestKaimingInitializer(unittest.TestCase):
+
     def static_test_kaiming_initializer_common(self,
                                                init_inst,
                                                dtype="float32",
@@ -126,12 +128,11 @@ class TestKaimingInitializer(unittest.TestCase):
         block = program.global_block()
         shape_mat = [5, 10, 15, 20] if is_conv else [5, 10]
         for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=shape_mat,
-                lod_level=0,
-                name="param",
-                initializer=init_inst)
+            param = block.create_parameter(dtype="float32",
+                                           shape=shape_mat,
+                                           lod_level=0,
+                                           name="param",
+                                           initializer=init_inst)
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         if uniform:
@@ -208,6 +209,7 @@ class TestKaimingInitializer(unittest.TestCase):
 
 
 class TestUniform(unittest.TestCase):
+
     def test_uniform_common(self, dtype="float32", seed=0):
         """Test the uniform initializer with default value
         """
@@ -217,12 +219,11 @@ class TestUniform(unittest.TestCase):
         program.random_seed = seed
         block = program.global_block()
         for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Uniform())
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.Uniform())
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -248,12 +249,11 @@ class TestUniform(unittest.TestCase):
         program.random_seed = seed
         block = program.global_block()
         for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Uniform())
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.Uniform())
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -279,12 +279,12 @@ class TestUniform(unittest.TestCase):
         program.random_seed = seed
         block = program.global_block()
         for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Uniform(min_value, max_vlaue))
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.Uniform(
+                                       min_value, max_vlaue))
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -309,12 +309,12 @@ class TestUniform(unittest.TestCase):
         program.random_seed = seed
         block = program.global_block()
         for i in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Uniform(min_value, float(i)))
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.Uniform(
+                                       min_value, float(i)))
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op0 = block.ops[0]
@@ -351,8 +351,7 @@ class TestUniform(unittest.TestCase):
 
         weight_attr = paddle.framework.ParamAttr(
             name="linear_weight",
-            initializer=paddle.nn.initializer.Uniform(
-                low=-0.5, high=0.5))
+            initializer=paddle.nn.initializer.Uniform(low=-0.5, high=0.5))
         linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr)
 
         min_value, max_value = get_uniform_min_and_max(linear.weight.numpy())
@@ -363,6 +362,7 @@ class TestUniform(unittest.TestCase):
 
 
 class TestNormal(unittest.TestCase):
+
     def test_normal_initializer_default_value(self):
         """Test the normal initializer with default value
         """
@@ -371,12 +371,11 @@ class TestNormal(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Normal())
+            block.create_parameter(dtype="float32",
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.Normal())
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -394,13 +393,12 @@ class TestNormal(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Normal(2.3, 1.9))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.Normal(2.3, 1.9))
+        num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -428,12 +426,12 @@ class TestNormal(unittest.TestCase):
 
         weight_attr = paddle.framework.ParamAttr(
             name="linear_weight",
-            initializer=paddle.nn.initializer.Normal(
-                mean=0.0, std=2.0))
+            initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
         linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr)
 
 
 class TestTruncatedNormal(unittest.TestCase):
+
     def test_truncated_normal_initializer_default_value(self):
         """Test the truncated normal initializer with default value
         """
@@ -442,12 +440,11 @@ class TestTruncatedNormal(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.TruncatedNormal())
+            block.create_parameter(dtype="float32",
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.TruncatedNormal())
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'truncated_gaussian_random')
@@ -465,12 +462,12 @@ class TestTruncatedNormal(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.TruncatedNormal(2.3, 1.9))
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.TruncatedNormal(
+                                       2.3, 1.9))
         num_ops = 2 if dtype in ["float16", "uint16"] else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -505,12 +502,13 @@ class TestTruncatedNormal(unittest.TestCase):
 
         weight_attr = paddle.framework.ParamAttr(
             name="linear_weight",
-            initializer=paddle.nn.initializer.TruncatedNormal(
-                mean=0.0, std=2.0))
+            initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0,
+                                                              std=2.0))
         linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr)
 
 
 class TestXavierUniform(unittest.TestCase):
+
     def test_xavier_uniform_initializer(self):
         """Test Xavier initializer with uniform distribution on
            for matrix multiply.
@@ -555,8 +553,8 @@ class TestXavierUniform(unittest.TestCase):
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
         receptive_field_size = float(15 * 20)
-        limit = np.sqrt(6.0 / (
-            (param.shape[0] + param.shape[1]) * receptive_field_size))
+        limit = np.sqrt(
+            6.0 / ((param.shape[0] + param.shape[1]) * receptive_field_size))
         self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
@@ -573,6 +571,7 @@ class TestXavierUniform(unittest.TestCase):
 
 
 class TestXavierNormal(unittest.TestCase):
+
     def test_xavier_normal_initializer(self):
         """Test Xavier initializer with normal distribution on
            for matrix multiply.
@@ -617,8 +616,8 @@ class TestXavierNormal(unittest.TestCase):
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
         receptive_field_size = float(15 * 20)
-        std = np.sqrt(2.0 / (
-            (param.shape[0] + param.shape[1]) * receptive_field_size))
+        std = np.sqrt(
+            2.0 / ((param.shape[0] + param.shape[1]) * receptive_field_size))
         self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
@@ -637,6 +636,7 @@ class TestXavierNormal(unittest.TestCase):
 
 
 class TestAssign(unittest.TestCase):
+
     def test_assign_initializer(self, dtype="float32"):
         """Test the numpy array initializer with supplied arguments
         """
@@ -647,12 +647,11 @@ class TestAssign(unittest.TestCase):
         block = program.global_block()
         np_array = numpy.random.random((10000)).astype(dtype)
         for _ in range(2):
-            block.create_parameter(
-                dtype=np_array.dtype,
-                shape=np_array.shape,
-                lod_level=0,
-                name="param",
-                initializer=initializer.Assign(np_array))
+            block.create_parameter(dtype=np_array.dtype,
+                                   shape=np_array.shape,
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.Assign(np_array))
         num_ops = 2 if dtype in ["float16", "uint16"] else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]

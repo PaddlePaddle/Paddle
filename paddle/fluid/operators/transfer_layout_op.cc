@@ -16,7 +16,11 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace framework {
@@ -37,30 +41,6 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "TransferLayout");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "TransferLayout");
-
-    auto dst_layout = ctx->Attrs().Get<int>("dst_layout");
-    auto low_bound = static_cast<int>(framework::DataLayout::kAnyLayout);
-    auto upper_bound = static_cast<int>(framework::DataLayout::kMKLDNN);
-    PADDLE_ENFORCE_GE(
-        dst_layout, low_bound,
-        platform::errors::PreconditionNotMet(
-            "Required dst_layout >= %d, but received dst_layout = %d",
-            low_bound, dst_layout));
-    PADDLE_ENFORCE_LE(
-        dst_layout, upper_bound,
-        platform::errors::PreconditionNotMet(
-            "Required dst_layout <= %d, but received dst_layout = %d",
-            upper_bound, dst_layout));
-
-    // TODO(Aurelius84): Out's ddim is different with X because they have
-    // different layout
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -70,7 +50,8 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
     // op
     if (in_tensor->layout() != DataLayout::kMKLDNN) {
-      PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(), true,
+      PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(),
+                        true,
                         platform::errors::PreconditionNotMet(
                             "The tensor of Input(X) is not initialized."));
     }
@@ -82,7 +63,8 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -106,8 +88,8 @@ class TransferLayoutKernel {
     auto src_layout = ctx.Attr<int>("src_layout");
     auto dst_layout = ctx.Attr<int>("dst_layout");
     auto input_name = ctx.InputName("X");
-    TransferLayoutFunctor(x, out, dev_ctx, src_layout, dst_layout,
-                          input_name)();
+    TransferLayoutFunctor(
+        x, out, dev_ctx, src_layout, dst_layout, input_name)();
   }
 };
 
@@ -136,17 +118,21 @@ class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+DECLARE_INFER_SHAPE_FUNCTOR(transfer_layout,
+                            TransferLayoutInferShapeFunctor,
+                            PD_INFER_META(phi::TransferLayoutInferMeta));
 REGISTER_OPERATOR(
-    transfer_layout, ops::TransferLayoutOp, ops::TransferLayoutOpProtoMaker,
+    transfer_layout,
+    ops::TransferLayoutOp,
+    ops::TransferLayoutOpProtoMaker,
     ops::TransferLayoutInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    TransferLayoutInferShapeFunctor);
 
-// dtype is not important
-REGISTER_OP_CPU_KERNEL_FUNCTOR(transfer_layout, float,
-                               ops::TransferLayoutKernel);
 REGISTER_OP_VERSION(transfer_layout)
-    .AddCheckpoint(
-        R"ROC(refine transfer_layout, add src_layout attribute)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "src_layout", "(int, the layout of the input tensor", -1));
+    .AddCheckpoint(R"ROC(refine transfer_layout, add src_layout attribute)ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewAttr(
+                       "src_layout",
+                       "(int, the layout of the input tensor",
+                       -1));

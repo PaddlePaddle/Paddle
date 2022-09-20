@@ -19,6 +19,7 @@ import sys
 
 import numpy as np
 import paddle
+import paddle.fluid.core as core
 
 from op_test import OpTest
 
@@ -75,16 +76,17 @@ def compute_segment_min_max(x, segment_ids, pooltype="MAX"):
 
 def segment_pool_split(X, SegmentIds, pooltype):
     if pooltype == "SUM":
-        return paddle.incubate.tensor.segment_sum(X, SegmentIds)
+        return paddle.geometric.segment_sum(X, SegmentIds)
     elif pooltype == "MEAN":
-        return paddle.incubate.tensor.segment_mean(X, SegmentIds)
+        return paddle.geometric.segment_mean(X, SegmentIds)
     elif pooltype == "MIN":
-        return paddle.incubate.tensor.segment_min(X, SegmentIds)
+        return paddle.geometric.segment_min(X, SegmentIds)
     elif pooltype == "MAX":
-        return paddle.incubate.tensor.segment_max(X, SegmentIds)
+        return paddle.geometric.segment_max(X, SegmentIds)
 
 
 class TestSegmentOps(OpTest):
+
     def set_data(self):
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
@@ -125,6 +127,7 @@ class TestSegmentOps(OpTest):
 
 
 class TestSegmentSum2(TestSegmentOps):
+
     def prepare(self):
         super(TestSegmentSum2, self).prepare()
         self.shape = [40, 20]
@@ -142,6 +145,7 @@ class TestSegmentSum2(TestSegmentOps):
 
 
 class TestSegmentMax(TestSegmentOps):
+
     def compute(self, x, segment_ids):
         return compute_segment_min_max(x, segment_ids, pooltype="MAX")
 
@@ -165,12 +169,14 @@ class TestSegmentMax(TestSegmentOps):
 
 
 class TestSegmentMax2(TestSegmentMax):
+
     def prepare(self):
         super(TestSegmentMax2, self).prepare()
         self.dtype = np.float32
 
 
 class TestSegmentMin(TestSegmentMax):
+
     def compute(self, x, segment_ids):
         return compute_segment_min_max(x, segment_ids, pooltype="MIN")
 
@@ -180,12 +186,14 @@ class TestSegmentMin(TestSegmentMax):
 
 
 class TestSegmentMin2(TestSegmentMin):
+
     def prepare(self):
         super(TestSegmentMin2, self).prepare()
         self.dtype = np.float32
 
 
 class TestSegmentMean(TestSegmentOps):
+
     def compute(self, x, segment_ids):
         return compute_segment_mean(x, segment_ids)
 
@@ -200,13 +208,16 @@ class TestSegmentMean(TestSegmentOps):
         result = self.compute(x, segment_ids)
         self.inputs = {'X': x, 'SegmentIds': segment_ids}
         self.outputs = {
-            'Out': result,
-            'SummedIds': compute_segment_sum(
+            'Out':
+            result,
+            'SummedIds':
+            compute_segment_sum(
                 np.ones([len(x), 1]).astype(self.dtype), segment_ids)
         }
 
 
 class TestSegmentMean2(TestSegmentMean):
+
     def prepare(self):
         super(TestSegmentMean2, self).prepare()
         self.dtype = np.float32
@@ -215,6 +226,7 @@ class TestSegmentMean2(TestSegmentMean):
 
 
 class API_SegmentOpsTest(unittest.TestCase):
+
     def test_static(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
@@ -234,22 +246,20 @@ class API_SegmentOpsTest(unittest.TestCase):
             np_max = np.array([[3, 2, 3], [4, 5, 6]], dtype="float32")
             np_min = np.array([[1, 2, 1], [4, 5, 6]], dtype="float32")
 
-            ret = exe.run(feed={'x': data1,
-                                'y': data2},
+            ret = exe.run(feed={
+                'x': data1,
+                'y': data2
+            },
                           fetch_list=[res_sum, res_mean, res_max, res_min])
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(
-                    np_res, ret_res, atol=1e-6),
-                "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
 
     def test_dygraph(self):
         device = paddle.CPUPlace()
         with paddle.fluid.dygraph.guard(device):
-            x = paddle.to_tensor(
-                [[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            x = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]],
+                                 dtype='float32')
             y = paddle.to_tensor([0, 0, 1], dtype="int32")
             res_sum = paddle.incubate.segment_sum(x, y)
             res_mean = paddle.incubate.segment_mean(x, y)
@@ -264,11 +274,113 @@ class API_SegmentOpsTest(unittest.TestCase):
             ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(
-                    np_res, ret_res.numpy(), atol=1e-6),
-                "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(np_res,
+                                       ret_res.numpy(),
+                                       rtol=1e-05,
+                                       atol=1e-06)
+
+
+class API_GeometricSegmentOpsTest(unittest.TestCase):
+
+    def test_static(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[3], dtype='int32')
+
+            res_sum = paddle.geometric.segment_sum(x, y)
+            res_mean = paddle.geometric.segment_mean(x, y)
+            res_max = paddle.geometric.segment_max(x, y)
+            res_min = paddle.geometric.segment_min(x, y)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            data1 = np.array([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            data2 = np.array([0, 0, 1], dtype="int32")
+
+            np_sum = np.array([[4, 4, 4], [4, 5, 6]], dtype="float32")
+            np_mean = np.array([[2, 2, 2], [4, 5, 6]], dtype="float32")
+            np_max = np.array([[3, 2, 3], [4, 5, 6]], dtype="float32")
+            np_min = np.array([[1, 2, 1], [4, 5, 6]], dtype="float32")
+
+            ret = exe.run(feed={
+                'x': data1,
+                'y': data2
+            },
+                          fetch_list=[res_sum, res_mean, res_max, res_min])
+
+        for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
+            np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
+
+    def test_dygraph(self):
+        device = paddle.CPUPlace()
+        with paddle.fluid.dygraph.guard(device):
+            x = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]],
+                                 dtype='float32')
+            y = paddle.to_tensor([0, 0, 1], dtype="int32")
+            res_sum = paddle.geometric.segment_sum(x, y)
+            res_mean = paddle.geometric.segment_mean(x, y)
+            res_max = paddle.geometric.segment_max(x, y)
+            res_min = paddle.geometric.segment_min(x, y)
+
+            np_sum = np.array([[4, 4, 4], [4, 5, 6]], dtype="float32")
+            np_mean = np.array([[2, 2, 2], [4, 5, 6]], dtype="float32")
+            np_max = np.array([[3, 2, 3], [4, 5, 6]], dtype="float32")
+            np_min = np.array([[1, 2, 1], [4, 5, 6]], dtype="float32")
+
+            ret = [res_sum, res_mean, res_max, res_min]
+
+        for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
+            np.testing.assert_allclose(np_res,
+                                       ret_res.numpy(),
+                                       rtol=1e-05,
+                                       atol=1e-06)
+
+    def test_dygraph_cpu_float16(self):
+        device = paddle.CPUPlace()
+        with paddle.fluid.dygraph.guard(device):
+            x = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]],
+                                 dtype='float16')
+            y = paddle.to_tensor([0, 0, 1], dtype="int32")
+            res_sum = paddle.geometric.segment_sum(x, y)
+            res_mean = paddle.geometric.segment_mean(x, y)
+            res_max = paddle.geometric.segment_max(x, y)
+            res_min = paddle.geometric.segment_min(x, y)
+
+            np_sum = np.array([[4, 4, 4], [4, 5, 6]], dtype="float16")
+            np_mean = np.array([[2, 2, 2], [4, 5, 6]], dtype="float16")
+            np_max = np.array([[3, 2, 3], [4, 5, 6]], dtype="float16")
+            np_min = np.array([[1, 2, 1], [4, 5, 6]], dtype="float16")
+
+            ret = [res_sum, res_mean, res_max, res_min]
+        for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
+            np.testing.assert_allclose(np_res,
+                                       ret_res.numpy(),
+                                       rtol=1e-05,
+                                       atol=1e-06)
+
+    def test_dygraph_cuda_float16(self):
+        if core.is_compiled_with_cuda():
+            device = paddle.CUDAPlace(0)
+            with paddle.fluid.dygraph.guard(device):
+                x = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]],
+                                     dtype='float16')
+                y = paddle.to_tensor([0, 0, 1], dtype="int32")
+                res_sum = paddle.geometric.segment_sum(x, y)
+                res_mean = paddle.geometric.segment_mean(x, y)
+                res_max = paddle.geometric.segment_max(x, y)
+                res_min = paddle.geometric.segment_min(x, y)
+
+                np_sum = np.array([[4, 4, 4], [4, 5, 6]], dtype="float16")
+                np_mean = np.array([[2, 2, 2], [4, 5, 6]], dtype="float16")
+                np_max = np.array([[3, 2, 3], [4, 5, 6]], dtype="float16")
+                np_min = np.array([[1, 2, 1], [4, 5, 6]], dtype="float16")
+
+                ret = [res_sum, res_mean, res_max, res_min]
+
+            for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
+                np.testing.assert_allclose(np_res,
+                                           ret_res.numpy(),
+                                           rtol=1e-05,
+                                           atol=1e-06)
 
 
 if __name__ == '__main__':

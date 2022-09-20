@@ -22,6 +22,7 @@ paddle.seed(10)
 
 
 class TestNormalAPI(unittest.TestCase):
+
     def setUp(self):
         self.mean = 1.0
         self.std = 0.0
@@ -133,37 +134,42 @@ class TestNormalAPI(unittest.TestCase):
             ret = ret.flatten().reshape([self.repeat_num, -1])
             mean = np.mean(ret, axis=0)
             std = np.std(ret, axis=0)
-            mean_ref=self.mean.reshape([1, -1]) \
+            mean_ref=self.mean.flatten() \
                 if isinstance(self.mean, np.ndarray) else self.mean
-            std_ref=self.std.reshape([1, -1]) \
+            std_ref=self.std.flatten() \
                 if isinstance(self.std, np.ndarray) else self.std
-            self.assertTrue(np.allclose(mean_ref, mean, 0.2, 0.2))
-            self.assertTrue(np.allclose(std_ref, std, 0.2, 0.2))
+            np.testing.assert_allclose(mean_ref, mean, rtol=0.2, atol=0.2)
+            np.testing.assert_allclose(std_ref, std, rtol=0.2, atol=0.2)
 
 
 class TestNormalAPI_mean_is_tensor(TestNormalAPI):
+
     def set_attrs(self):
         self.mean = np.random.uniform(-2, -1, [2, 3, 4, 5]).astype('float64')
 
 
 class TestNormalAPI_std_is_tensor(TestNormalAPI):
+
     def set_attrs(self):
         self.std = np.random.uniform(0.7, 1, [2, 3, 17]).astype('float64')
 
 
 class TestNormalAPI_mean_std_are_tensor(TestNormalAPI):
+
     def set_attrs(self):
         self.mean = np.random.uniform(1, 2, [1, 100]).astype('float64')
         self.std = np.random.uniform(0.5, 1, [1, 100]).astype('float64')
 
 
 class TestNormalAPI_mean_std_are_tensor_with_different_dtype(TestNormalAPI):
+
     def set_attrs(self):
         self.mean = np.random.uniform(1, 2, [100]).astype('float64')
         self.std = np.random.uniform(1, 2, [100]).astype('float32')
 
 
 class TestNormalAlias(unittest.TestCase):
+
     def test_alias(self):
         paddle.disable_static()
         shape = [1, 2, 3]
@@ -174,6 +180,7 @@ class TestNormalAlias(unittest.TestCase):
 
 
 class TestNormalErrors(unittest.TestCase):
+
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             mean = [1, 2, 3]

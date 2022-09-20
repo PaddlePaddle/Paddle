@@ -37,7 +37,9 @@ from ..pp_utils.utils import _all_gather
 from ...utils.internal_storage import GradStorage
 
 # CUDA alignment 256 bytes
-alignment = {"gpu": 256, }
+alignment = {
+    "gpu": 256,
+}
 align = {
     Type.fp16.value: 2,
     Type.fp32.value: 4,
@@ -48,15 +50,15 @@ CHECK_LAYER = dict()  # Help to check layer's id -> layer's name
 
 
 class ShardingStage3(nn.Layer):
-    """ 
-    A wrapper for Sharding Stage3 Layer in Dygraph. 
+    """
+    A wrapper for Sharding Stage3 Layer in Dygraph.
 
     .. warning: ShardingStage3 encapsulates the layer strategy and integrates it into the nn.Layer.
 
     .. ZeRO: https://arxiv.org/pdf/1910.02054.pdf.
     """
 
-    # TODO (Baibaifan) 
+    # TODO (Baibaifan)
     # Feature Notes::
     # 1. The model supports the segmentation of parameters by global ranks in layers.
     # 2. Support communication flow and computing flow.
@@ -90,14 +92,14 @@ class ShardingStage3(nn.Layer):
         DEV = "cpu" if paddle.get_device() == "cpu" else paddle.get_device(
         ).split(":")[0]
         global DEV_ID
-        DEV_ID = 0 if paddle.get_device() == "cpu" else int(paddle.get_device()
-                                                            .split(":")[1])
+        DEV_ID = 0 if paddle.get_device() == "cpu" else int(
+            paddle.get_device().split(":")[1])
         global param2dtype
         param2dtype = dict()
 
         # Communication group establishment
-        self._group = dist.new_group(_get_global_group()
-                                     .ranks) if group is None else group
+        self._group = dist.new_group(
+            _get_global_group().ranks) if group is None else group
         self._world_size_scaling = 1.0 / self._group.nranks
         assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1."
         self._rank = self._group.rank
@@ -165,11 +167,10 @@ class ShardingStage3(nn.Layer):
         """
 
         for p in self._layer.parameters():
-            dist.broadcast(
-                p,
-                src=self._global_root_rank,
-                group=self._group,
-                use_calc_stream=True)
+            dist.broadcast(p,
+                           src=self._global_root_rank,
+                           group=self._group,
+                           use_calc_stream=True)
 
         # Multi stream operation will be supported later
         dist.wait(tensor=p, group=self._group, use_calc_stream=True)
@@ -182,9 +183,9 @@ class ShardingStage3(nn.Layer):
             filter(lambda p: p.trainable and p not in self._unslice_params,
                    current_layer_params))
         for param in trainable_params:
-            assert hasattr(
-                param, "fw_storage"
-            ), "Find {} don't have fw_storage attribute.".format(param.name)
+            assert hasattr(param, "fw_storage"
+                           ), "Find {} don't have fw_storage attribute.".format(
+                               param.name)
 
             param.fw_storage.clear_gradient(False)
             param.fw_storage._gradient_set_empty(False)
@@ -244,15 +245,16 @@ class ShardingStage3(nn.Layer):
         return fw
 
     def set_state_dict(self, state_dict, use_structured_name=True):
-        self._layer.set_state_dict(
-            state_dict, use_structured_name=use_structured_name)
+        self._layer.set_state_dict(state_dict,
+                                   use_structured_name=use_structured_name)
 
     def state_dict(self,
                    destination=None,
                    include_sublayers=True,
                    structured_name_prefix=""):
-        return self._layer.state_dict(
-            destination=None, include_sublayers=True, structured_name_prefix="")
+        return self._layer.state_dict(destination=None,
+                                      include_sublayers=True,
+                                      structured_name_prefix="")
 
     def _handle_unslice_params(self):
         buffer_size = dict()
@@ -357,8 +359,8 @@ class ShardingStage3(nn.Layer):
         start, end = self._param2buffer[param.name][self._rank]
 
         # Copy the current param value
-        tmp_var = core.VarBase(
-            tensor=buffer._slice(0, param._numel()), place=core.CPUPlace())
+        tmp_var = core.VarBase(tensor=buffer._slice(0, param._numel()),
+                               place=core.CPUPlace())
         param_cpu = param.cpu()
         tmp_var.value().get_tensor().set(param_cpu.value().get_tensor(),
                                          core.CPUPlace())
@@ -366,15 +368,15 @@ class ShardingStage3(nn.Layer):
 
         # Current rank param_storage
         if self._offload:
-            param.fw_storage = core.VarBase(
-                buffer._slice(start, end),
-                core.CPUPlace(), "slice@" + param.name)
+            param.fw_storage = core.VarBase(buffer._slice(start, end),
+                                            core.CPUPlace(),
+                                            "slice@" + param.name)
             with device_guard(device="cpu"):
                 param.master_weight = paddle.cast(param.fw_storage,
                                                   Type.fp32.value)
         else:
-            param.fw_storage = core.VarBase(
-                buffer._slice(start, end), "slice@" + param.name)
+            param.fw_storage = core.VarBase(buffer._slice(start, end),
+                                            "slice@" + param.name)
         param.status = "part"
 
         # Updata optimizer master weights
@@ -402,6 +404,7 @@ class ShardingStage3(nn.Layer):
             self._register_forward_hooks(sub_layer)
 
     def _register_forward_all_hooks(self, sub_layer, task_flow):
+
         def _forward_pre_hook(layer, inputs):
             return ForwardPreHooks(layer, self._order_tracer,
                                    self._trainable_params, self._param2buffer,
@@ -409,10 +412,12 @@ class ShardingStage3(nn.Layer):
                                    self._offload, task_flow)
 
         def _forward_post_hook(layer, inputs, outputs):
-            return ForwardPostHooks.apply(
-                outputs, layer, self._order_tracer, self._trainable_params,
-                self._param2buffer, self._param2buffer_size, self._rank,
-                self._group, self._sync_comm, self._offload, task_flow)
+            return ForwardPostHooks.apply(outputs, layer, self._order_tracer,
+                                          self._trainable_params,
+                                          self._param2buffer,
+                                          self._param2buffer_size, self._rank,
+                                          self._group, self._sync_comm,
+                                          self._offload, task_flow)
 
         # register previous forward hooks
         sub_layer.register_forward_pre_hook(_forward_pre_hook)
@@ -427,11 +432,10 @@ class ShardingStage3(nn.Layer):
         """
 
         for buffer in self._layer.buffers(include_sublayers=True):
-            dist.broadcast(
-                buffer,
-                self._global_root_rank,
-                self._group,
-                use_calc_stream=True)
+            dist.broadcast(buffer,
+                           self._global_root_rank,
+                           self._group,
+                           use_calc_stream=True)
         # Multi stream operation will be supported later
         dist.wait(tensor=buffer, group=self._group, use_calc_stream=True)
 
@@ -472,14 +476,12 @@ class ShardingStage3(nn.Layer):
         # 2.Handle unslice param
         for grad_storage in self._grad_storages.values():
             grad_storage.buffer.scale_(scale=self._world_size_scaling)
-            dist.all_reduce(
-                tensor=grad_storage.buffer,
-                group=self._group,
-                use_calc_stream=True)
-            dist.wait(
-                tensor=grad_storage.buffer,
-                group=self._group,
-                use_calc_stream=True)
+            dist.all_reduce(tensor=grad_storage.buffer,
+                            group=self._group,
+                            use_calc_stream=True)
+            dist.wait(tensor=grad_storage.buffer,
+                      group=self._group,
+                      use_calc_stream=True)
 
         if self._offload:
             for param in list(self._unslice_params):
@@ -506,14 +508,13 @@ class ShardingStage3(nn.Layer):
         trainable_params = list(
             filter(lambda p: p.trainable and p not in self._unslice_params,
                    current_layer_params))
-        t_flow = _allgather_buffer(
-            trainable_params,
-            self._group,
-            use_calc_stream=True,
-            task_flow=TaskFlow(),
-            sync_wait=True,
-            offload=self._offload,
-            convert2cpu=convert2cpu)
+        t_flow = _allgather_buffer(trainable_params,
+                                   self._group,
+                                   use_calc_stream=True,
+                                   task_flow=TaskFlow(),
+                                   sync_wait=True,
+                                   offload=self._offload,
+                                   convert2cpu=convert2cpu)
         if convert2cpu:
             for param in trainable_params:
                 t_flow.full_param[param.name]._share_buffer_to(param)
@@ -532,38 +533,41 @@ class ShardingStage3(nn.Layer):
             param._register_backward_hook(allreduce_function)
 
     def _get_allreduce_fn(self, param):
+
         @paddle.autograd.no_grad()
         def allreduce_(*_):
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
                 # Only support sync allreduce current rank's layer now
-                dist.all_reduce(
-                    tensor=full_grad, group=self._group, use_calc_stream=True)
-                dist.wait(
-                    tensor=full_grad, group=self._group, use_calc_stream=True)
+                dist.all_reduce(tensor=full_grad,
+                                group=self._group,
+                                use_calc_stream=True)
+                dist.wait(tensor=full_grad,
+                          group=self._group,
+                          use_calc_stream=True)
 
                 start, end = self._param2buffer[param.name][self._rank]
                 if param.bw_storage is None:
-                    param.bw_storage = core.VarBase(
-                        full_grad._slice(start, end)).detach().clone()
+                    param.bw_storage = core.VarBase(full_grad._slice(
+                        start, end)).detach().clone()
                     if self._offload:
                         param.bw_storage = _device2cpu(param.bw_storage, True)
                 else:
                     if self._offload:
                         cpu_grad = _device2cpu(
-                            core.VarBase(full_grad._slice(start, end))
-                            .detach().clone(), True)
+                            core.VarBase(full_grad._slice(
+                                start, end)).detach().clone(), True)
                         with device_guard(device="cpu"):
-                            param.bw_storage = paddle.add(param.bw_storage,
-                                                          cpu_grad)
+                            param.bw_storage = paddle.add(
+                                param.bw_storage, cpu_grad)
                     else:
                         # param.bw_storage.add_(
                         #     core.VarBase(full_grad._slice(start, end))
                         #     .detach().clone())
                         param.bw_storage = paddle.add(
                             param.bw_storage,
-                            core.VarBase(full_grad._slice(start, end)).detach(
-                            ).clone())
+                            core.VarBase(full_grad._slice(
+                                start, end)).detach().clone())
                 param.clear_gradient(False)
                 param._gradient_set_empty(False)
                 tmp_var = self._task_flow.full_grad.pop(param.name)
@@ -576,7 +580,8 @@ class ShardingStage3(nn.Layer):
                     start, end = self._param2buffer[param.name][self._rank]
                     param.fw_storage = core.VarBase(
                         self._task_flow.full_param[param.name]._slice(
-                            start, end), param.name + "@slice").detach().clone()
+                            start, end),
+                        param.name + "@slice").detach().clone()
                     param.status = "part"
                     tmp_var = self._task_flow.full_param.pop(param.name)
                     tmp_var._clear()
@@ -649,18 +654,18 @@ def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer, rank,
         order_ = order_tracer[layer_id]
         layer_id = order_tracer["layer"][order_ + 1]
 
-    _allgather_buffer(
-        trainable_params[layer_id],
-        group,
-        use_calc_stream=use_calc,
-        task_flow=task_flow,
-        sync_wait=sync_wait,
-        offload=offload)
+    _allgather_buffer(trainable_params[layer_id],
+                      group,
+                      use_calc_stream=use_calc,
+                      task_flow=task_flow,
+                      sync_wait=sync_wait,
+                      offload=offload)
 
     return
 
 
 class ForwardPostHooks(PyLayer):
+
     @staticmethod
     def forward(ctx, inputs, layer, order_tracer, trainable_params,
                 param2buffer, param2buffer_size, rank, group, sync_comm,
@@ -677,7 +682,7 @@ class ForwardPostHooks(PyLayer):
             order_tracer["order"] += 1
             order_tracer["layer"].append(layer_id)
 
-        #Record bw info 
+        #Record bw info
         ctx.order_tracer = order_tracer
         ctx.task_flow = task_flow
         ctx.group = group
@@ -706,13 +711,12 @@ class ForwardPostHooks(PyLayer):
         # Allgather params synchronization
         if sync_comm:
             use_calc, sync_wait = True, True
-            _allgather_buffer(
-                trainable_params[layer_id],
-                group,
-                use_calc_stream=use_calc,
-                task_flow=task_flow,
-                sync_wait=sync_wait,
-                offload=offload)
+            _allgather_buffer(trainable_params[layer_id],
+                              group,
+                              use_calc_stream=use_calc,
+                              task_flow=task_flow,
+                              sync_wait=sync_wait,
+                              offload=offload)
         else:
             _wait_layer(trainable_params[layer_id], task_flow, group, use_calc,
                         offload)
@@ -725,13 +729,12 @@ class ForwardPostHooks(PyLayer):
         task_flow.use_calc[layer_id] = use_calc
         if layer_id != order_tracer["layer"][0] and not sync_comm:
             layer_next_id = order_tracer["layer"][order_tracer[layer_id] - 1]
-            _allgather_buffer(
-                trainable_params[layer_next_id],
-                group,
-                use_calc_stream=use_calc,
-                task_flow=task_flow,
-                sync_wait=sync_wait,
-                offload=offload)
+            _allgather_buffer(trainable_params[layer_next_id],
+                              group,
+                              use_calc_stream=use_calc,
+                              task_flow=task_flow,
+                              sync_wait=sync_wait,
+                              offload=offload)
 
         return args
 
@@ -789,20 +792,19 @@ def _wait_layer(trainable_params,
             continue
         if param.name in task_flow.full_param.keys():
             full_param = task_flow.full_param[param.name]
-            core.VarBase(full_param._slice(0, param._numel()))._share_buffer_to(
-                param)
+            core.VarBase(full_param._slice(
+                0, param._numel()))._share_buffer_to(param)
             param.fw_storage._clear()
             param.fw_storage = None
             param.status = "all"
             param.use_count += 1
         else:
-            _allgather_buffer(
-                trainable_params,
-                group,
-                use_calc_stream=True,
-                task_flow=task_flow,
-                sync_wait=True,
-                offload=offload)
+            _allgather_buffer(trainable_params,
+                              group,
+                              use_calc_stream=True,
+                              task_flow=task_flow,
+                              sync_wait=True,
+                              offload=offload)
             break
     return task_flow
 
@@ -824,25 +826,25 @@ def _allgather_buffer(trainable_params,
             param.fw_storage = _cpu2device(param)
 
         with paddle.amp.auto_cast(enable=False):
-            full_param = _all_gather(
-                param.fw_storage, group, use_calc_stream=use_calc_stream)
+            full_param = _all_gather(param.fw_storage,
+                                     group,
+                                     use_calc_stream=use_calc_stream)
 
         # Allgather current layer in the 1st step synchronously
         if sync_wait:
             with paddle.amp.auto_cast(enable=False):
-                dist.wait(
-                    tensor=full_param,
-                    group=group,
-                    use_calc_stream=use_calc_stream)
-            core.VarBase(full_param._slice(0, param._numel()))._share_buffer_to(
-                param)
+                dist.wait(tensor=full_param,
+                          group=group,
+                          use_calc_stream=use_calc_stream)
+            core.VarBase(full_param._slice(
+                0, param._numel()))._share_buffer_to(param)
             param.fw_storage._clear()
             param.fw_storage = None
             param.status = "all"
             param.use_count += 1
         task_flow.full_param[param.name] = full_param
 
-        # parameter converts to cpu 
+        # parameter converts to cpu
         if convert2cpu:
             p_name = param.name
             param = _device2cpu(param)
@@ -859,8 +861,8 @@ def _create_params_grad(trainable_params, param2buffer_size, task_flow):
         if param.name in task_flow.full_grad.keys():
             continue
         assert isinstance(param2buffer_size[param.name], int)
-        temp_grad = paddle.zeros(
-            [param2buffer_size[param.name]], dtype=param.dtype)
+        temp_grad = paddle.zeros([param2buffer_size[param.name]],
+                                 dtype=param.dtype)
         param._copy_gradient_from(
             core.VarBase(temp_grad._slice(0, param._numel())))
         task_flow.full_grad[param.name] = temp_grad
@@ -886,8 +888,9 @@ def _UnsliceParam(param):
 
 def _VarBaseWrapper(param):
     varbase = param.fw_storage
-    tmp_param = ParamBase(
-        shape=varbase.shape, dtype=varbase.dtype, name="slice@" + param.name)
+    tmp_param = ParamBase(shape=varbase.shape,
+                          dtype=varbase.dtype,
+                          name="slice@" + param.name)
     varbase._share_buffer_to(tmp_param)
     tmp_param.regularizer = param.regularizer
     tmp_param.optimize_attr['learning_rate'] = param.optimize_attr[

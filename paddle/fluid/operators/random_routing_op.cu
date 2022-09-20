@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/random_routing_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -33,9 +33,12 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <typename T>
-__global__ void random_routing_kernel(int64_t* data, const int64_t length,
-                                      const size_t N, const size_t D,
-                                      const T* prob, const int64_t* topk_idx,
+__global__ void random_routing_kernel(int64_t* data,
+                                      const int64_t length,
+                                      const size_t N,
+                                      const size_t D,
+                                      const T* prob,
+                                      const int64_t* topk_idx,
                                       const T* topk_value) {
   CUDA_KERNEL_LOOP(idx, length) {
     size_t row = idx / D;
@@ -57,8 +60,7 @@ class RandomRoutingOpCUDAKernel : public framework::OpKernel<T> {
     auto out = context.Output<LoDTensor>("Out");
 
     auto place = context.GetPlace();
-    const auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    const auto& dev_ctx = context.template device_context<phi::GPUContext>();
     framework::TensorCopy(*topk_idx, place, out);
 
     size_t N = topk_idx->dims()[0];
@@ -71,9 +73,9 @@ class RandomRoutingOpCUDAKernel : public framework::OpKernel<T> {
     auto topk_idx_data = topk_idx->data<int64_t>();
     auto out_data = out->data<int64_t>();
 
-    random_routing_kernel<
-        T><<<GET_BLOCKS(num_idx), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
-        out_data, num_idx, N, D, prob_data, topk_idx_data, topk_value_data);
+    random_routing_kernel<T>
+        <<<GET_BLOCKS(num_idx), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
+            out_data, num_idx, N, D, prob_data, topk_idx_data, topk_value_data);
   }
 };
 
@@ -83,6 +85,7 @@ class RandomRoutingOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(random_routing, ops::RandomRoutingOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(random_routing,
+                        ops::RandomRoutingOpCUDAKernel<float>,
                         ops::RandomRoutingOpCUDAKernel<double>,
                         ops::RandomRoutingOpCUDAKernel<plat::float16>);

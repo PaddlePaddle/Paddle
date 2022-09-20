@@ -19,7 +19,7 @@ import numpy as np
 from types import MethodType
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid import layers
 from paddle.fluid.dygraph import to_variable
@@ -45,6 +45,7 @@ class Type(Enum):
 
 
 class GroupShardedClipGrad:
+
     def __init__(self, clip, device, group):
         self._clip = clip
         self._device = device
@@ -82,8 +83,8 @@ class GroupShardedClipGrad:
         else:
             global_norm_fp16 = layers.concat(sum_square_fp16)
             global_norm_fp16 = layers.reduce_sum(global_norm_fp16)
-            global_norm_fp16 = paddle.cast(
-                global_norm_fp16, dtype=paddle.float32)
+            global_norm_fp16 = paddle.cast(global_norm_fp16,
+                                           dtype=paddle.float32)
 
         # global norm of non-distributed FP16 params_and_grads for unslice parameters
         if len(unslice_params_fp16) == 0:
@@ -91,12 +92,12 @@ class GroupShardedClipGrad:
         else:
             global_unslice_fp16 = layers.concat(unslice_params_fp16)
             global_unslice_fp16 = layers.reduce_sum(global_unslice_fp16)
-            global_unslice_fp16 = paddle.cast(
-                global_unslice_fp16, dtype=paddle.float32)
+            global_unslice_fp16 = paddle.cast(global_unslice_fp16,
+                                              dtype=paddle.float32)
 
         # global norm of non-distributed FP32 params_and_grads
-        global_norm_fp32 = layers.concat(sum_square_fp32) if len(
-            sum_square_fp32) != 0 else paddle.to_tensor(
+        global_norm_fp32 = layers.concat(
+            sum_square_fp32) if len(sum_square_fp32) != 0 else paddle.to_tensor(
                 [0.], dtype=paddle.float32)
         global_norm_fp32 = layers.reduce_sum(global_norm_fp32)
 
@@ -118,13 +119,14 @@ class GroupShardedClipGrad:
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
         global_norm_var = layers.sqrt(global_norm_var)
-        max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
+        max_global_norm = layers.fill_constant(shape=[1],
+                                               dtype=global_norm_var.dtype,
+                                               value=self.clip_norm)
 
-        clip_var = layers.elementwise_div(
-            x=max_global_norm,
-            y=layers.elementwise_max(
-                x=global_norm_var, y=max_global_norm))
+        clip_var = layers.elementwise_div(x=max_global_norm,
+                                          y=layers.elementwise_max(
+                                              x=global_norm_var,
+                                              y=max_global_norm))
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
         for p, g in params_grads:
@@ -163,6 +165,7 @@ def device_guard(dev_id=0, device="cpu"):
 
 @dygraph_only
 def GroupShardedScaler(scaler):
+
     def unscale_method(self, optimizer):
         if not self._enable:
             return
@@ -197,30 +200,31 @@ def GroupShardedScaler(scaler):
                     else:
                         param_grads_fp32.append(param.grad)
 
-        temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
-        temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
+        temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+        temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
 
         device = "cpu" if optimizer.offload else "gpu"
-        dev_id = 0 if device == "cpu" else int(paddle.get_device().split(":")[
-            1])
+        dev_id = 0 if device == "cpu" else int(
+            paddle.get_device().split(":")[1])
 
         with device_guard(dev_id, device):
             if len(param_grads_fp16):
-                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                                param_grads_fp16,
-                                                temp_found_inf_fp16)
+                _legacy_C_ops.check_finite_and_unscale(param_grads_fp16,
+                                                       self._scale,
+                                                       param_grads_fp16,
+                                                       temp_found_inf_fp16)
             if len(param_grads_fp32):
-                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                                param_grads_fp32,
-                                                temp_found_inf_fp32)
+                _legacy_C_ops.check_finite_and_unscale(param_grads_fp32,
+                                                       self._scale,
+                                                       param_grads_fp32,
+                                                       temp_found_inf_fp32)
 
         self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
         is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
-        paddle.distributed.all_reduce(
-            is_found_inf,
-            op=paddle.distributed.ReduceOp.MAX,
-            group=optimizer._group)
+        paddle.distributed.all_reduce(is_found_inf,
+                                      op=paddle.distributed.ReduceOp.MAX,
+                                      group=optimizer._group)
         self._found_inf = is_found_inf.numpy()[0]
 
     scaler._unscale = MethodType(unscale_method, scaler)

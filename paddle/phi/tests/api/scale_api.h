@@ -15,7 +15,6 @@
 #pragma once
 
 #include "glog/logging.h"
-
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -52,8 +51,9 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
       kernel_data_type = kernel_key.dtype();
     }
   }
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "scale", {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "scale API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "scale API kernel: " << kernel;
@@ -222,8 +222,9 @@ Tensor scale_switch_case(const Tensor& x,
       kernel_data_type = kernel_key.dtype();
     }
   }
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "scale", {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "scale API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "scale API kernel: " << kernel;

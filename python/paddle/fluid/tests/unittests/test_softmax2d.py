@@ -21,6 +21,7 @@ from test_softmax_op import ref_softmax
 
 
 class TestSoftmax2DAPI(unittest.TestCase):
+
     def setUp(self):
         self.shape = [2, 6, 5, 4]
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')
@@ -35,9 +36,9 @@ class TestSoftmax2DAPI(unittest.TestCase):
             m = paddle.nn.Softmax2D()
             out = m(x)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+            res, = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_softmax(self.x_np, self.axis)
-        self.assertTrue(np.allclose(out_ref, res))
+        np.testing.assert_allclose(out_ref, res, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -45,11 +46,12 @@ class TestSoftmax2DAPI(unittest.TestCase):
         m = paddle.nn.Softmax2D()
         out = m(x)
         out_ref = ref_softmax(self.x_np, self.axis)
-        self.assertTrue(np.allclose(out_ref, out.numpy()))
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
 
 class TestSoftmax2DShape(TestSoftmax2DAPI):
+
     def setUp(self):
         self.shape = [2, 6, 4]
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')
@@ -59,6 +61,7 @@ class TestSoftmax2DShape(TestSoftmax2DAPI):
 
 
 class TestSoftmax2DFloat32(TestSoftmax2DAPI):
+
     def setUp(self):
         self.shape = [2, 3, 4]
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float32')
@@ -68,6 +71,7 @@ class TestSoftmax2DFloat32(TestSoftmax2DAPI):
 
 
 class TestSoftmax2DCPU(TestSoftmax2DAPI):
+
     def setUp(self):
         self.shape = [2, 6, 4]
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')
@@ -76,6 +80,7 @@ class TestSoftmax2DCPU(TestSoftmax2DAPI):
 
 
 class TestSoftmax2DRepr(unittest.TestCase):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -88,6 +93,7 @@ class TestSoftmax2DRepr(unittest.TestCase):
 
 
 class TestSoftmax2DError(unittest.TestCase):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()

@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import sys
+
 sys.path.append("..")
 import paddle
 from op_test import OpTest
@@ -42,8 +43,8 @@ class TestTriangularSolveOp(OpTest):
         self.dtype = "float64"
 
     def set_output(self):
-        self.output = np.linalg.solve(
-            np.triu(self.inputs['X']), self.inputs['Y'])
+        self.output = np.linalg.solve(np.triu(self.inputs['X']),
+                                      self.inputs['Y'])
 
     def setUp(self):
         self.op_type = "triangular_solve"
@@ -159,11 +160,10 @@ class TestTriangularSolveOp5(TestTriangularSolveOp):
         grad_x = np.triu(grad_x)
         np.fill_diagonal(grad_x, 0.)
 
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            user_defined_grads=[grad_x, grad_y],
-            user_defined_grad_outputs=[grad_out])
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[grad_x, grad_y],
+                        user_defined_grad_outputs=[grad_out])
 
 
 # 4D(broadcast) + 4D(broadcast)
@@ -247,6 +247,7 @@ class TestTriangularSolveOp9(TestTriangularSolveOp):
 
 
 class TestTriangularSolveAPI(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(2021)
         self.place = [paddle.CPUPlace()]
@@ -266,16 +267,19 @@ class TestTriangularSolveAPI(unittest.TestCase):
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
-                              feed={"x": x_np,
-                                    "y": y_np},
+                              feed={
+                                  "x": x_np,
+                                  "y": y_np
+                              },
                               fetch_list=[z])
-            self.assertTrue(np.allclose(fetches[0], z_np))
+            np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
     def test_static(self):
         for place in self.place:
             self.check_static_result(place=place)
 
     def test_dygraph(self):
+
         def run(place):
             paddle.disable_static(place)
             x_np = np.random.random([3, 3]).astype(self.dtype)
@@ -286,7 +290,7 @@ class TestTriangularSolveAPI(unittest.TestCase):
             y = paddle.to_tensor(y_np)
             z = paddle.linalg.triangular_solve(x, y, upper=False)
 
-            self.assertTrue(np.allclose(z_np, z.numpy()))
+            np.testing.assert_allclose(z_np, z.numpy(), rtol=1e-05)
             self.assertEqual(z_np.shape, z.numpy().shape)
             paddle.enable_static()
 
@@ -295,16 +299,17 @@ class TestTriangularSolveAPI(unittest.TestCase):
 
 
 class TestTriangularSolveOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of solve_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            y1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
             self.assertRaises(TypeError, paddle.linalg.triangular_solve, x1, y1)
 
-            # The data type of input must be float32 or float64.        
+            # The data type of input must be float32 or float64.
             x2 = fluid.data(name="x2", shape=[30, 30], dtype="bool")
             y2 = fluid.data(name="y2", shape=[30, 10], dtype="bool")
             self.assertRaises(TypeError, paddle.linalg.triangular_solve, x2, y2)

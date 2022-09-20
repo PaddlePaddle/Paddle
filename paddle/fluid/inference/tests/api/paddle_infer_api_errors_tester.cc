@@ -15,7 +15,6 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -26,11 +25,13 @@ TEST(Status, ctor) { CHECK(Status::OK().ok()); }
 
 struct FakeException {
   void pd_exception(int a) const {
-    PADDLE_ENFORCE_NE(a, a,
+    PADDLE_ENFORCE_NE(a,
+                      a,
                       paddle::platform::errors::InvalidArgument(
                           "This is a preset error message used to verify "
                           "whether the exception meets expectations: %d, %d.",
-                          a, a));
+                          a,
+                          a));
   }
   [[noreturn]] void base_exception() const { throw std::exception(); }
   void no_exception() const noexcept {}

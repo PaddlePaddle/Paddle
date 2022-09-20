@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
@@ -60,8 +61,12 @@ class LayerNormPlugin : public PluginTensorRT {
     SerializeValue(&buffer, variance_shape_);
   }
 
-  LayerNormPlugin(const float* bias, const int bias_num, const float* scale,
-                  const int scale_num, int begin_norm_axis, float eps,
+  LayerNormPlugin(const float* bias,
+                  const int bias_num,
+                  const float* scale,
+                  const int scale_num,
+                  int begin_norm_axis,
+                  float eps,
                   std::vector<int64_t> mean_shape,
                   std::vector<int64_t> variance_shape)
       : begin_norm_axis_(begin_norm_axis),
@@ -89,23 +94,34 @@ class LayerNormPlugin : public PluginTensorRT {
   int initialize() TRT_NOEXCEPT override;
 
   LayerNormPlugin* clone() const TRT_NOEXCEPT override {
-    return new LayerNormPlugin(bias_.data(), bias_.size(), scale_.data(),
-                               scale_.size(), begin_norm_axis_, eps_,
-                               mean_shape_, variance_shape_);
+    return new LayerNormPlugin(bias_.data(),
+                               bias_.size(),
+                               scale_.data(),
+                               scale_.size(),
+                               begin_norm_axis_,
+                               eps_,
+                               mean_shape_,
+                               variance_shape_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "layernorm_plugin";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
+  nvinfer1::Dims getOutputDimensions(int index,
+                                     const nvinfer1::Dims* inputs,
                                      int nbInputDims) TRT_NOEXCEPT override;
 #if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batchSize, const void* const* inputs, void** outputs,
+  int enqueue(int batchSize,
+              const void* const* inputs,
+              void** outputs,
 #else
-  int enqueue(int batchSize, const void* const* inputs, void* const* outputs,
+  int enqueue(int batchSize,
+              const void* const* inputs,
+              void* const* outputs,
 #endif
-              void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
 };
 
 class LayerNormPluginCreator : public TensorRTPluginCreator {
@@ -116,9 +132,10 @@ class LayerNormPluginCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new LayerNormPlugin(serial_data, serial_length);
   }
 };
@@ -126,9 +143,12 @@ REGISTER_TRT_PLUGIN_V2(LayerNormPluginCreator);
 
 class LayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
-  LayerNormPluginDynamic(const float* bias, const int bias_num,
-                         const float* scale, const int scale_num,
-                         int begin_norm_axis, float eps,
+  LayerNormPluginDynamic(const float* bias,
+                         const int bias_num,
+                         const float* scale,
+                         const int scale_num,
+                         int begin_norm_axis,
+                         float eps,
                          std::vector<int64_t> mean_shape,
                          std::vector<int64_t> variance_shape)
       : begin_norm_axis_(begin_norm_axis),
@@ -150,9 +170,14 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &variance_shape_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new LayerNormPluginDynamic(bias_.data(), bias_.size(), scale_.data(),
-                                      scale_.size(), begin_norm_axis_, eps_,
-                                      mean_shape_, variance_shape_);
+    return new LayerNormPluginDynamic(bias_.data(),
+                                      bias_.size(),
+                                      scale_.data(),
+                                      scale_.size(),
+                                      begin_norm_axis_,
+                                      eps_,
+                                      mean_shape_,
+                                      variance_shape_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -176,9 +201,11 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, variance_shape_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
@@ -188,7 +215,7 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nbInputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nbOutputs) TRT_NOEXCEPT override {}
+                       int nbOutputs) TRT_NOEXCEPT override;
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nbInputs,
@@ -199,11 +226,14 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* inputTypes,
-      int nbInputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
 
@@ -228,9 +258,10 @@ class LayerNormPluginDynamicCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new LayerNormPluginDynamic(serial_data, serial_length);
   }
 };

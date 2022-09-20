@@ -28,6 +28,7 @@ program_trans = ProgramTranslator()
 
 
 class SimpleNet(Layer):
+
     def __init__(self):
         super(SimpleNet, self).__init__()
         self.linear = fluid.dygraph.Linear(10, 3)
@@ -83,6 +84,7 @@ class SimpleNet(Layer):
 
 
 class TestStaticFunctionInstance(unittest.TestCase):
+
     def test_instance_same_class(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             net_1 = SimpleNet()
@@ -100,6 +102,7 @@ class TestStaticFunctionInstance(unittest.TestCase):
 
 
 class TestInputSpec(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_path = os.path.join(self.temp_dir.name, 'simple_net')
@@ -124,7 +127,7 @@ class TestInputSpec(unittest.TestCase):
             jit.save(net, self.model_path)
             infer_net = fluid.dygraph.jit.load(self.model_path)
             pred = infer_net(x)
-            self.assertTrue(np.allclose(out.numpy(), pred.numpy()))
+            np.testing.assert_allclose(out.numpy(), pred.numpy(), rtol=1e-05)
 
             # 3. we can decorate any method
             x_2 = to_variable(np.ones([4, 20]).astype('float32'))
@@ -157,12 +160,12 @@ class TestInputSpec(unittest.TestCase):
 
             # 2. requires len(input_spec) <= len(args)
             with self.assertRaises(ValueError):
-                net.add_func = declarative(
-                    net.add_func,
-                    input_spec=[
-                        InputSpec([-1, 10]), InputSpec([-1, 10]),
-                        InputSpec([10])
-                    ])
+                net.add_func = declarative(net.add_func,
+                                           input_spec=[
+                                               InputSpec([-1, 10]),
+                                               InputSpec([-1, 10]),
+                                               InputSpec([10])
+                                           ])
                 net.add_func(x, y)
 
     def test_concrete_program(self):
@@ -175,10 +178,8 @@ class TestInputSpec(unittest.TestCase):
             # We can get concrete_program by specificing InputSpec information. Faking input is no need.
             net.add_func = declarative(
                 net.add_func,
-                input_spec=[
-                    InputSpec([-1, 10]), InputSpec(
-                        [-1, 10], name='y')
-                ])
+                input_spec=[InputSpec([-1, 10]),
+                            InputSpec([-1, 10], name='y')])
             cp1 = net.add_func.concrete_program
             self.assertTrue(cp1.inputs[-1].shape == (-1, 10))
             self.assertTrue(cp1.inputs[-1].name == 'y')
@@ -186,8 +187,8 @@ class TestInputSpec(unittest.TestCase):
             # generate another program
             net.add_func = declarative(
                 net.add_func,
-                input_spec=[InputSpec([10]), InputSpec(
-                    [10], name='label')])
+                input_spec=[InputSpec([10]),
+                            InputSpec([10], name='label')])
             cp2 = net.add_func.concrete_program
             self.assertTrue(cp2.inputs[-1].shape == (10, ))
             self.assertTrue(cp2.inputs[-1].name == 'label')
@@ -203,6 +204,7 @@ def foo_func(a, b, c=1, d=2):
 
 
 class TestDifferentInputSpecCacheProgram(unittest.TestCase):
+
     def setUp(self):
         program_trans.enable(True)
 
@@ -216,25 +218,33 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
 
             # [16, 10] + [10] (varbase)
             out_1 = foo(to_variable(x_data), to_variable(y_data))
-            self.assertTrue(np.allclose(x_data + y_data, out_1.numpy()))
+            np.testing.assert_allclose(x_data + y_data,
+                                       out_1.numpy(),
+                                       rtol=1e-05)
             self.assertTrue(len(foo.program_cache) == 1)
             self.assertTrue(len(foo.program_cache.concrete_programs()) == 1)
             first_program = foo.program_cache.last()
 
             # [16, 10] + [10] (numpy)
             out_2 = foo(to_variable(x_data), y_data)
-            self.assertTrue(np.allclose(x_data + y_data, out_2.numpy()))
+            np.testing.assert_allclose(x_data + y_data,
+                                       out_2.numpy(),
+                                       rtol=1e-05)
             self.assertTrue(len(foo.program_cache) == 1)
 
             # [16, 10] + [10] (numpy)
             out_3 = foo(to_variable(x_data), z_data)
-            self.assertTrue(np.allclose(x_data + z_data, out_3.numpy()))
+            np.testing.assert_allclose(x_data + z_data,
+                                       out_3.numpy(),
+                                       rtol=1e-05)
             # hit cache program
             self.assertTrue(len(foo.program_cache) == 1)
 
             # [16, 10] + [10] (numpy) with other different arguments (c=3)
             out_4 = foo(to_variable(x_data), z_data, 3)
-            self.assertTrue(np.allclose(x_data + z_data, out_4.numpy()))
+            np.testing.assert_allclose(x_data + z_data,
+                                       out_4.numpy(),
+                                       rtol=1e-05)
             # create a new program
             self.assertTrue(len(foo.program_cache) == 2)
 
@@ -248,25 +258,26 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
         foo = declarative(foo_func)
 
         # 1. specific InputSpec for `x`/`y`
-        concrete_program_1 = foo.get_concrete_program(
-            InputSpec([None, 10]), InputSpec([10]))
+        concrete_program_1 = foo.get_concrete_program(InputSpec([None, 10]),
+                                                      InputSpec([10]))
         self.assertTrue(len(foo.program_cache) == 1)
 
         # 2. specific `c`/`d` explicitly with same default value
-        concrete_program_2 = foo.get_concrete_program(
-            InputSpec([None, 10]), InputSpec([10]), 1, 2)
+        concrete_program_2 = foo.get_concrete_program(InputSpec([None, 10]),
+                                                      InputSpec([10]), 1, 2)
         self.assertTrue(concrete_program_2 == concrete_program_1)
         self.assertTrue(len(foo.program_cache) == 1)
 
         # 3. specific `c` = 2
-        concrete_program_3 = foo.get_concrete_program(
-            InputSpec([None, 10]), InputSpec([10]), c=2)
+        concrete_program_3 = foo.get_concrete_program(InputSpec([None, 10]),
+                                                      InputSpec([10]),
+                                                      c=2)
         self.assertTrue(concrete_program_3 != concrete_program_1)
         self.assertTrue(len(foo.program_cache) == 2)
 
         # 4. specific x.shape = [10]
-        concrete_program_4 = foo.get_concrete_program(
-            InputSpec([10]), InputSpec([10]))
+        concrete_program_4 = foo.get_concrete_program(InputSpec([10]),
+                                                      InputSpec([10]))
         self.assertTrue(concrete_program_4 != concrete_program_1)
         self.assertTrue(len(foo.program_cache) == 3)
 
@@ -276,20 +287,19 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
 
         # 6. specific unknown kwargs `e`=4
         with self.assertRaises(TypeError):
-            concrete_program_5 = foo.get_concrete_program(
-                InputSpec([10]), InputSpec([10]), e=4)
+            concrete_program_5 = foo.get_concrete_program(InputSpec([10]),
+                                                          InputSpec([10]),
+                                                          e=4)
 
     def test_concrete_program(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
 
             # usage 1
-            foo_1 = paddle.jit.to_static(
-                foo_func,
-                input_spec=[
-                    InputSpec(
-                        [10], name='x'), InputSpec(
-                            [10], name='y')
-                ])
+            foo_1 = paddle.jit.to_static(foo_func,
+                                         input_spec=[
+                                             InputSpec([10], name='x'),
+                                             InputSpec([10], name='y')
+                                         ])
             self.assertTrue(isinstance(foo_1.concrete_program, ConcreteProgram))
 
             # usage 2
@@ -304,6 +314,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
 
 
 class TestInputDefaultName(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
         self.net = SimpleNet()
@@ -328,6 +339,7 @@ class TestInputDefaultName(unittest.TestCase):
 
 
 class TestDeclarativeAPI(unittest.TestCase):
+
     def test_error(self):
         func = declarative(dyfunc_to_variable)
 
@@ -346,6 +358,7 @@ class TestDeclarativeAPI(unittest.TestCase):
 
 
 class TestDecorateModelDirectly(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
         program_trans.enable(True)
@@ -372,6 +385,7 @@ class TestDecorateModelDirectly(unittest.TestCase):
 
 
 class TestErrorWithInitFromStaticMode(unittest.TestCase):
+
     def test_raise_error(self):
         # disable imperative
         paddle.enable_static()
@@ -391,6 +405,7 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
 
 
 class CallNonForwardFuncNet(paddle.nn.Layer):
+
     def __init__(self):
         super(CallNonForwardFuncNet, self).__init__()
         self.sub = CallNonForwardFuncSubNet()
@@ -401,6 +416,7 @@ class CallNonForwardFuncNet(paddle.nn.Layer):
 
 
 class CallNonForwardFuncSubNet(paddle.nn.Layer):
+
     def __init__(self):
         super(CallNonForwardFuncSubNet, self).__init__()
         self.a = paddle.to_tensor([1, 2])
@@ -411,6 +427,7 @@ class CallNonForwardFuncSubNet(paddle.nn.Layer):
 
 
 class TestCallNonForwardFunc(unittest.TestCase):
+
     def test_call_non_forward(self):
         paddle.disable_static()
         net = CallNonForwardFuncNet()
@@ -420,6 +437,7 @@ class TestCallNonForwardFunc(unittest.TestCase):
 
 
 class SetBuffersNet1(paddle.nn.Layer):
+
     def __init__(self):
         super(SetBuffersNet1, self).__init__()
         self.a = paddle.to_tensor([1])
@@ -431,6 +449,7 @@ class SetBuffersNet1(paddle.nn.Layer):
 
 
 class SetBuffersNet2(paddle.nn.Layer):
+
     def __init__(self):
         super(SetBuffersNet2, self).__init__()
         self.b = paddle.to_tensor([2])
@@ -443,6 +462,7 @@ class SetBuffersNet2(paddle.nn.Layer):
 
 
 class TestSetBuffers(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_path = os.path.join(self.temp_dir.name, 'SetBuffersNet1')
@@ -464,6 +484,22 @@ class TestSetBuffers(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             out = net()
         paddle.enable_static()
+
+
+class ClassNoInheritLayer:
+
+    def func(self, x):
+        return x + 1
+
+
+class TestClassNoInheritLayer(unittest.TestCase):
+
+    def test_to_static(self):
+        paddle.disable_static()
+        net = ClassNoInheritLayer()
+        input_spec = [paddle.static.InputSpec(name='x', shape=[1])]
+        with self.assertRaises(TypeError):
+            static_func = paddle.jit.to_static(net.func, input_spec=input_spec)
 
 
 if __name__ == '__main__':

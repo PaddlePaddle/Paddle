@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -127,24 +127,20 @@ class Event(object):
         else:
             speed_avg = float(self.total_iters) / self.batch_records['total']
 
-        reader_summary = dict(
-            max=self.reader_records['max'],
-            min=self.reader_records['min'],
-            avg=reader_avg)
-        batch_summary = dict(
-            max=self.batch_records['max'],
-            min=self.batch_records['min'],
-            avg=batch_avg)
-        ips_summary = dict(
-            max=self.speed_records['max'],
-            min=self.speed_records['min'],
-            avg=speed_avg)
+        reader_summary = dict(max=self.reader_records['max'],
+                              min=self.reader_records['min'],
+                              avg=reader_avg)
+        batch_summary = dict(max=self.batch_records['max'],
+                             min=self.batch_records['min'],
+                             avg=batch_avg)
+        ips_summary = dict(max=self.speed_records['max'],
+                           min=self.speed_records['min'],
+                           avg=speed_avg)
         reader_ratio = (reader_avg / batch_avg) * 100
-        summary = dict(
-            reader_summary=reader_summary,
-            batch_summary=batch_summary,
-            ips_summary=ips_summary,
-            reader_ratio=reader_ratio)
+        summary = dict(reader_summary=reader_summary,
+                       batch_summary=batch_summary,
+                       ips_summary=ips_summary,
+                       reader_ratio=reader_ratio)
 
         return summary
 
@@ -173,7 +169,7 @@ class Hook(object):
 class TimerHook(Hook):
     """
     A hook for recording real-time performance and the summary
-    performance of total steps. 
+    performance of total steps.
     """
 
     def __init__(self):
@@ -225,8 +221,8 @@ class TimerHook(Hook):
 
         """
 
-        if (benchmark.current_event is None) or (
-                not benchmark.current_event.need_record):
+        if (benchmark.current_event is
+                None) or (not benchmark.current_event.need_record):
             return
         batch_cost = timeit.default_timer() - self.start_time
         benchmark.current_event.record_batch(batch_cost, benchmark.num_samples)
@@ -269,9 +265,7 @@ class TimerHook(Hook):
         avg_str = '%.5f' % (message_dict['avg'])
         max_str = '%.5f' % (message_dict['max'])
         min_str = '%.5f' % (message_dict['min'])
-        print('|',
-              item.center(15), '|',
-              avg_str.center(15), '|',
+        print('|', item.center(15), '|', avg_str.center(15), '|',
               max_str.center(15), '|', min_str.center(15), '|')
 
 
@@ -399,7 +393,7 @@ class Benchmark(object):
             elif self.current_event.reader.__dict__[
                     '_dataset'] != reader.__dict__['_dataset']:
                 # enter a new task but not calling beign() to record it.
-                # we pause the timer until the end of new task, so that 
+                # we pause the timer until the end of new task, so that
                 # the cost of new task is not added to the current event.
                 # eg. start evaluation in the training task
                 self.current_event.need_record = False

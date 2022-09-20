@@ -21,8 +21,8 @@ We retain the following license from the original files:
    Licensed under the Apache License, Version 2.0 (the "License").
 */
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/assign_pos_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -40,7 +40,9 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void AssignPos(T* cum_count, const T* numbers, T* out,
+__global__ void AssignPos(T* cum_count,
+                          const T* numbers,
+                          T* out,
                           int64_t limit) {
   CUDA_KERNEL_LOOP(i, limit) {
     int number_idx = numbers[i];
@@ -76,12 +78,11 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
     if (platform::is_cpu_place(eff_num_len->place())) {
       cpu_eff_num_len_data = eff_num_len->data<T>()[0];
     } else {
-      framework::TensorCopySync(*eff_num_len, platform::CPUPlace(),
-                                &cpu_eff_num_len);
+      framework::TensorCopySync(
+          *eff_num_len, platform::CPUPlace(), &cpu_eff_num_len);
       cpu_eff_num_len_data = cpu_eff_num_len.data<T>()[0];
     }
-    const auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    const auto& dev_ctx = context.template device_context<phi::GPUContext>();
     framework::DDim out_dims = phi::make_ddim({cpu_eff_num_len_data});
     auto out_data = out->mutable_data<T>(out_dims, place);
 
@@ -90,8 +91,8 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
     int blocks = NumBlocks(numel);
     int threads = kNumCUDAThreads;
 
-    AssignPos<T><<<blocks, threads, 0, dev_ctx.stream()>>>(cum_data, num_data,
-                                                           out_data, numel);
+    AssignPos<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+        cum_data, num_data, out_data, numel);
   }
 };
 

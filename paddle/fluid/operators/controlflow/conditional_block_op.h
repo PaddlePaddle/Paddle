@@ -47,12 +47,14 @@ class ConditionalOp : public framework::OperatorBase {
     auto xs = Inputs(in_name);
     retv.resize(xs.size(), nullptr);
     std::transform(
-        xs.begin(), xs.end(), retv.begin(),
+        xs.begin(),
+        xs.end(),
+        retv.begin(),
         [&scope](const std::string &var_name) -> const framework::LoDTensor * {
           auto *var = scope.FindVar(var_name);
-          PADDLE_ENFORCE_NOT_NULL(
-              var, platform::errors::InvalidArgument("Cannot find variable %s",
-                                                     var_name));
+          PADDLE_ENFORCE_NOT_NULL(var,
+                                  platform::errors::InvalidArgument(
+                                      "Cannot find variable %s", var_name));
           return &var->Get<framework::LoDTensor>();
         });
     return retv;
@@ -61,17 +63,19 @@ class ConditionalOp : public framework::OperatorBase {
   bool ScalarCondition(
       const std::vector<const framework::LoDTensor *> &ips) const {
     PADDLE_ENFORCE_EQ(
-        ips.size() == 1UL && ips[0]->IsInitialized(), true,
+        ips.size() == 1UL && ips[0]->IsInitialized(),
+        true,
         platform::errors::InvalidArgument(
             "condition should have one initialized input as condition"));
 
     PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(ips[0]->dtype()) ==
                               framework::proto::VarType::BOOL &&
                           ips[0]->numel() == 1,
-                      true, platform::errors::InvalidArgument(
-                                "condition input's data type should be bool, "
-                                "numel should be 1, actual numel is %d",
-                                ips[0]->numel()));
+                      true,
+                      platform::errors::InvalidArgument(
+                          "condition input's data type should be bool, "
+                          "numel should be 1, actual numel is %d",
+                          ips[0]->numel()));
     bool res = false;
     if (platform::is_gpu_place(ips[0]->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -115,11 +119,6 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                   "The conditional variable (Cond) is used as scalar "
                   "condition.")
         .SetDefault(false);
-    AddAttr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars,
-                                      "Vars that would not be deleted when "
-                                      "garbage collection strategy enables")
-        .SetDefault(std::vector<std::string>())
-        .AsExtra();
     AddComment(R"DOC(Conditional block operator
 
 If `is_scalar_condition` is True, the conditional variable (Cond) is a scalar,

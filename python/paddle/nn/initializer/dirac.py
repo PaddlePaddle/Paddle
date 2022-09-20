@@ -16,16 +16,18 @@ from ...fluid.initializer import Initializer
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.core import VarDesc
 from ...fluid import framework
+from ...fluid.framework import _current_expected_place
 from paddle import in_dynamic_mode
 from paddle.utils import unique_name
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from ... import fluid
+
 __all__ = []
 
 
 class Dirac(Initializer):
     r"""Initialize the 3D/4D/5D Tensor with Dirac delta function.
-    
+
     It can reserve the feature of convolution layer input, which means that
     as many channels are reserved as possible.
 
@@ -35,11 +37,11 @@ class Dirac(Initializer):
     .. math::
 
         X[d, d, shape[2]//2, shape[3]//2, ...]=1,  \   d=0,1...N
-    
+
     where, ``N`` is the minimum value of ``in_channels`` and ``out_channels``
 
     Args:
-        groups(int, optional): 0-dimension of the Tensor will be divided by groups, 
+        groups(int, optional): 0-dimension of the Tensor will be divided by groups,
             each group has the same value. Default: 1.
         name(str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
@@ -51,9 +53,9 @@ class Dirac(Initializer):
         .. code-block:: python
 
             import paddle
-            
+
             #1. For kernel_size is uneven number:
-            
+
             attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
             conv = paddle.nn.Conv1D(3, 2, 3, weight_attr=attr)
             conv.weight
@@ -61,14 +63,14 @@ class Dirac(Initializer):
             #       [[[0., 1., 0.],
             #         [0., 0., 0.],
             #         [0., 0., 0.]],
-            # 
+            #
             #        [[0., 0., 0.],
             #         [0., 1., 0.],
             #         [0., 0., 0.]]])
 
             input = paddle.rand([8, 3, 10])
             output = conv(input)
-            output == input[:, 0:2, 1:9]  
+            output == input[:, 0:2, 1:9]
             # output.shape is [8, 2, 8], It means output is almost the same with input, 2 channels are reserved
 
 
@@ -80,7 +82,7 @@ class Dirac(Initializer):
             #       [[[0., 0., 1., 0.],
             #         [0., 0., 0., 0.],
             #         [0., 0., 0., 0.]],
-            # 
+            #
             #        [[0., 0., 0., 0.],
             #         [0., 0., 1., 0.],
             #         [0., 0., 0., 0.]]])
@@ -106,42 +108,43 @@ class Dirac(Initializer):
         block = self._check_block(block)
         assert isinstance(var, framework.Parameter)
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(
-            var, "Out", ['float16', 'bfloat16', 'float32', 'float64'], 'Dirac')
+        check_variable_and_dtype(var, "Out",
+                                 ['float16', 'bfloat16', 'float32', 'float64'],
+                                 'Dirac')
 
         assert len(var.shape) in [
             3, 4, 5
         ], "Only Tensor with 3/4/5 dimensions can be initialized by Dirac"
-        assert (var.shape[0] % self._groups
-                ) == 0, "Tensor 0-dimension must be divisible by groups"
+        assert (
+            var.shape[0] %
+            self._groups) == 0, "Tensor 0-dimension must be divisible by groups"
 
         if var.dtype != VarDesc.VarType.FP32:
-            out_var = block.create_var(
-                name=unique_name.generate(".".join(['dirac', var.name, 'tmp'])),
-                shape=var.shape,
-                dtype=VarDesc.VarType.FP32,
-                type=VarDesc.VarType.LOD_TENSOR,
-                persistable=False)
+            out_var = block.create_var(name=unique_name.generate(".".join(
+                ['dirac', var.name, 'tmp'])),
+                                       shape=var.shape,
+                                       dtype=VarDesc.VarType.FP32,
+                                       type=VarDesc.VarType.LOD_TENSOR,
+                                       persistable=False)
         else:
             out_var = var
         op = None
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                _C_ops.fill_constant(out_var, 'value',
-                                     float(0), 'force_cpu', False, 'dtype',
-                                     out_var.dtype, 'str_value',
-                                     str(float(0)), 'shape', out_var.shape)
+                place = _current_expected_place()
+                _C_ops.full_(out_var, out_var.shape, str(float(0)),
+                             out_var.dtype, place)
+
         else:
-            block.append_op(
-                type='fill_constant',
-                inputs={},
-                outputs={'Out': out_var},
-                attrs={
-                    'value': float(0),
-                    'dtype': out_var.dtype,
-                    'shape': out_var.shape,
-                },
-                stop_gradient=True)
+            block.append_op(type='fill_constant',
+                            inputs={},
+                            outputs={'Out': out_var},
+                            attrs={
+                                'value': float(0),
+                                'dtype': out_var.dtype,
+                                'shape': out_var.shape,
+                            },
+                            stop_gradient=True)
 
         origin_shape = var.shape
         num_per_group = origin_shape[0] // self._groups
@@ -168,23 +171,24 @@ class Dirac(Initializer):
                 idx_list.append(offset)
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_out, _ = _C_ops.reshape2(out_var, None, 'shape', [-1])
+                tmp_out = _C_ops.reshape(out_var, [-1])
                 tmp_out._share_underline_tensor_to(out_var)
         else:
-            x_shape = block.create_var(
-                name=unique_name.generate(".".join([out_var.name, "XShape"])),
-                dtype=out_var.dtype,
-                shape=out_var.shape,
-                type=VarDesc.VarType.LOD_TENSOR,
-                persistable=False,
-                stop_gradient=True)
-            block.append_op(
-                type="reshape2",
-                inputs={"X": out_var},
-                attrs={'shape': [-1]},
-                outputs={"Out": out_var,
-                         "XShape": x_shape},
-                stop_gradient=True)
+            x_shape = block.create_var(name=unique_name.generate(".".join(
+                [out_var.name, "XShape"])),
+                                       dtype=out_var.dtype,
+                                       shape=out_var.shape,
+                                       type=VarDesc.VarType.LOD_TENSOR,
+                                       persistable=False,
+                                       stop_gradient=True)
+            block.append_op(type="reshape2",
+                            inputs={"X": out_var},
+                            attrs={'shape': [-1]},
+                            outputs={
+                                "Out": out_var,
+                                "XShape": x_shape
+                            },
+                            stop_gradient=True)
 
         index_tensor = block.create_var(
             name=unique_name.generate('scatter_index'),
@@ -194,20 +198,19 @@ class Dirac(Initializer):
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
                 tmp_tensor = framework._varbase_creator()
-                _C_ops.assign_value(tmp_tensor, 'shape', [len(idx_list)],
-                                    'dtype', VarDesc.VarType.INT64,
-                                    'int64_values', idx_list)
+                _C_ops.assign_value_(tmp_tensor, [len(idx_list)],
+                                     VarDesc.VarType.INT64, idx_list,
+                                     _current_expected_place())
                 tmp_tensor._share_underline_tensor_to(index_tensor)
         else:
-            block.append_op(
-                type='assign_value',
-                outputs={'Out': index_tensor},
-                attrs={
-                    'dtype': VarDesc.VarType.INT64,
-                    'shape': [len(idx_list)],
-                    'int64_values': idx_list
-                },
-                stop_gradient=True)
+            block.append_op(type='assign_value',
+                            outputs={'Out': index_tensor},
+                            attrs={
+                                'dtype': VarDesc.VarType.INT64,
+                                'shape': [len(idx_list)],
+                                'int64_values': idx_list
+                            },
+                            stop_gradient=True)
 
         value_tensor = block.create_var(
             name=unique_name.generate('scatter_value'),
@@ -217,68 +220,65 @@ class Dirac(Initializer):
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
                 tmp_tensor = framework._varbase_creator()
-                _C_ops.assign_value(tmp_tensor, 'shape', [len(value_list)],
-                                    'dtype', VarDesc.VarType.FP32,
-                                    'fp32_values', value_list)
+                _C_ops.assign_value_(tmp_tensor, [len(value_list)],
+                                     VarDesc.VarType.FP32, value_list,
+                                     _current_expected_place())
+
                 tmp_tensor._share_underline_tensor_to(value_tensor)
         else:
-            block.append_op(
-                type='assign_value',
-                outputs={'Out': value_tensor},
-                attrs={
-                    'dtype': VarDesc.VarType.FP32,
-                    'shape': [len(value_list)],
-                    'fp32_values': value_list
-                },
-                stop_gradient=True)
+            block.append_op(type='assign_value',
+                            outputs={'Out': value_tensor},
+                            attrs={
+                                'dtype': VarDesc.VarType.FP32,
+                                'shape': [len(value_list)],
+                                'fp32_values': value_list
+                            },
+                            stop_gradient=True)
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_out = _C_ops.final_state_scatter(out_var, index_tensor,
-                                                     value_tensor, True)
+                tmp_out = _C_ops.scatter(out_var, index_tensor, value_tensor,
+                                         True)
                 tmp_out._share_underline_tensor_to(out_var)
-                tmp_reshape_out, _ = _C_ops.reshape2(out_var, None, 'shape',
-                                                     origin_shape)
+                tmp_reshape_out = _C_ops.reshape(out_var, origin_shape)
                 tmp_reshape_out._share_underline_tensor_to(out_var)
                 if var.dtype != VarDesc.VarType.FP32:
-                    tmp_cast_out = _C_ops.cast(out_var, 'in_dtype',
-                                               out_var.dtype, 'out_dtype',
-                                               var.dtype)
+                    tmp_cast_out = _C_ops.cast(out_var, var.dtype)
                     tmp_cast_out._share_underline_tensor_to(var)
-
         else:
-            op = block.append_op(
-                type="scatter",
-                inputs={
-                    "X": out_var,
-                    "Ids": index_tensor,
-                    "Updates": value_tensor
-                },
-                attrs={'overwrite': True},
-                outputs={"Out": out_var},
-                stop_gradient=True)
-            x_shape = block.create_var(
-                name=unique_name.generate(".".join([out_var.name, "XShape"])),
-                dtype=out_var.dtype,
-                shape=out_var.shape,
-                type=VarDesc.VarType.LOD_TENSOR,
-                persistable=False,
-                stop_gradient=True)
-            block.append_op(
-                type="reshape2",
-                inputs={"X": out_var},
-                attrs={'shape': origin_shape},
-                outputs={"Out": out_var,
-                         "XShape": x_shape},
-                stop_gradient=True)
+            op = block.append_op(type="scatter",
+                                 inputs={
+                                     "X": out_var,
+                                     "Ids": index_tensor,
+                                     "Updates": value_tensor
+                                 },
+                                 attrs={'overwrite': True},
+                                 outputs={"Out": out_var},
+                                 stop_gradient=True)
+            x_shape = block.create_var(name=unique_name.generate(".".join(
+                [out_var.name, "XShape"])),
+                                       dtype=out_var.dtype,
+                                       shape=out_var.shape,
+                                       type=VarDesc.VarType.LOD_TENSOR,
+                                       persistable=False,
+                                       stop_gradient=True)
+            block.append_op(type="reshape2",
+                            inputs={"X": out_var},
+                            attrs={'shape': origin_shape},
+                            outputs={
+                                "Out": out_var,
+                                "XShape": x_shape
+                            },
+                            stop_gradient=True)
             if var.dtype != VarDesc.VarType.FP32:
-                block.append_op(
-                    type="cast",
-                    inputs={"X": out_var},
-                    outputs={"Out": var},
-                    attrs={"in_dtype": out_var.dtype,
-                           "out_dtype": var.dtype},
-                    stop_gradient=True)
+                block.append_op(type="cast",
+                                inputs={"X": out_var},
+                                outputs={"Out": var},
+                                attrs={
+                                    "in_dtype": out_var.dtype,
+                                    "out_dtype": var.dtype
+                                },
+                                stop_gradient=True)
         if not in_dynamic_mode():
             var.op = op
         return op

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+
 #include "gtest/gtest.h"
 
 template <typename T>
@@ -123,6 +124,7 @@ TEST(enforce, xpu_status) {
                                     "Execution interrupted by user"));
 }
 
+#ifdef PADDLE_WITH_XPU_BKCL
 TEST(enforce, bkcl_status) {
   EXPECT_TRUE(CheckXPUStatusSuccess(BKCL_SUCCESS));
   EXPECT_TRUE(
@@ -132,6 +134,7 @@ TEST(enforce, bkcl_status) {
   EXPECT_TRUE(
       CheckXPUStatusFailure(BKCL_INTERNAL_ERROR, "BKCL_INTERNAL_ERROR"));
 }
+#endif
 
 TEST(enforce, xdnn_status) {
   EXPECT_TRUE(CheckXDNNStatusSuccess(xpu::Error_t::SUCCESS));

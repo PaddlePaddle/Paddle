@@ -36,8 +36,8 @@ def split_heter_worker_ops_pass(program, config, stage_id, device):
     3. create heter worker program, add listen&serv op
     """
     default_deveice = "cpu"
-    program, heter_ops, _, program_block_ops = find_heter_ops(program,
-                                                              default_deveice)
+    program, heter_ops, _, program_block_ops = find_heter_ops(
+        program, default_deveice)
     if len(heter_ops) == 0:
         warnings.warn(
             "Currently running in Heter Parameter Server mode, but no OP running on heterogeneous devices, Please check your code."
@@ -57,7 +57,7 @@ def split_trainer_ops_pass(program, config, default_device="cpu"):
     split cpu-trainer program from origin-program
     1. find heter op (located on different device)
     2. find input&output of every heter-block
-    3. create cpu-trainer program, add send&recv op 
+    3. create cpu-trainer program, add send&recv op
     """
     # Todo: support user define default_device (MrChengmo)
     default_device_ = default_device

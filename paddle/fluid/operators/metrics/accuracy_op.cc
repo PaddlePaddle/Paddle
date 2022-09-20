@@ -44,7 +44,7 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Total", "The samples count of current batch");
 
     AddComment(R"DOC(
-Accuracy Operator. 
+Accuracy Operator.
 
 It will print accuracy rate for classification.
 The accuracy is calculated as follows:
@@ -52,7 +52,7 @@ The accuracy is calculated as follows:
 $$accuracy = \frac{NumOfCorrectPredicts}{NumOfAllSamples}$$
 
 Both the input Out and Label can carry the LoD (Level of Details)
-information, or not. But the output only shares the LoD information 
+information, or not. But the output only shares the LoD information
 with the input Out(Inference).
 
 )DOC");
@@ -64,11 +64,14 @@ with the input Out(Inference).
 
 // FIXME(typhoonzero): types of T is for infernece data.
 // label data is always int.
-DECLARE_INFER_SHAPE_FUNCTOR(accuracy, AccuracyInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(accuracy,
+                            AccuracyInferShapeFunctor,
                             PD_INFER_META(phi::AccuracyInferMeta));
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
+    accuracy,
+    ops::AccuracyOp,
+    ops::AccuracyOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AccuracyInferShapeFunctor);

@@ -17,11 +17,13 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("../")
 from op_test import OpTest
 
 
 class TestSequenceSliceOp(OpTest):
+
     def set_data(self):
         self.init_test_case()
         # only supprot one level LoD
@@ -61,6 +63,7 @@ class TestSequenceSliceOp(OpTest):
 
 
 class TestSequenceSliceOpSeqlen0Case0(TestSequenceSliceOp):
+
     def init_test_case(self):
         self.x_dim = (100, 3, 2)
         self.x_lod = [[20, 30, 0, 30, 20]]
@@ -69,6 +72,7 @@ class TestSequenceSliceOpSeqlen0Case0(TestSequenceSliceOp):
 
 
 class TestSequenceSliceOpSeqlen0Case1(TestSequenceSliceOp):
+
     def init_test_case(self):
         self.x_dim = (100, 3, 2)
         self.x_lod = [[0, 70, 0, 30, 0]]
@@ -77,6 +81,7 @@ class TestSequenceSliceOpSeqlen0Case1(TestSequenceSliceOp):
 
 
 class TestSequenceSliceOpSeqlen0Case2(TestSequenceSliceOp):
+
     def init_test_case(self):
         self.x_dim = (100, 3, 2)
         self.x_lod = [[0, 100, 0, 0, 0]]

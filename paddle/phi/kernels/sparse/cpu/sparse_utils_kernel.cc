@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
+
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/sparse/common_shape.h"
 
 namespace phi {
@@ -61,26 +63,29 @@ inline int64_t GetNonZeroNum(const DenseTensor& dense,
 }
 
 template <typename T, typename Context>
-void DenseToSparseCooKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const int64_t sparse_dim,
-                            SparseCooTensor* out) {
+void DenseToCooKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const int64_t sparse_dim,
+                      SparseCooTensor* out) {
   const T* x_data = x.data<T>();
   const auto& x_dims = x.dims();
+  PADDLE_ENFORCE_LE(sparse_dim,
+                    x_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "sparse_dim must be less than the size of x.dims()"));
+  PADDLE_ENFORCE_GT(
+      sparse_dim, 0, phi::errors::InvalidArgument("sparse_dim must be >0"));
 
   int64_t non_zero_num = GetNonZeroNum<T>(x, sparse_dim);
 
-  const auto place = dev_ctx.GetPlace();
   const auto values_dims =
       phi::funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
-  DenseTensorMeta indices_meta(DataType::INT64,
-                               {sparse_dim, static_cast<int64_t>(non_zero_num)},
-                               DataLayout::NCHW);
   DenseTensorMeta values_meta(x.meta().dtype, values_dims, x.meta().layout);
-  phi::DenseTensor indices = phi::Empty(dev_ctx, std::move(indices_meta));
+  phi::DenseTensor indices =
+      phi::Empty<int64_t>(dev_ctx, {sparse_dim, non_zero_num});
   phi::DenseTensor values = phi::Empty(dev_ctx, std::move(values_meta));
-  int64_t* indices_data = indices.mutable_data<int64_t>(place);
-  T* values_data = values.mutable_data<T>(place);
+  int64_t* indices_data = indices.data<int64_t>();
+  T* values_data = values.data<T>();
 
   auto dims_2d = flatten_to_2d(x_dims, sparse_dim);
   const int rows = dims_2d[0];
@@ -98,39 +103,36 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
       ++index;
     }
   }
+
   out->SetMember(indices, values, x_dims, true);
 }
 
-template <typename T, typename Context>
-void SparseCsrToCooKernel(const Context& dev_ctx,
-                          const SparseCsrTensor& x,
-                          SparseCooTensor* out) {
+template <typename T, typename IntT>
+void CsrToCooCPUKernel(const CPUContext& dev_ctx,
+                       const SparseCsrTensor& x,
+                       SparseCooTensor* out) {
   const DDim& x_dims = x.dims();
-  const int64_t non_zero_num = x.non_zero_cols().numel();
-  const auto& csr_crows = x.non_zero_crows();
-  const auto& csr_cols = x.non_zero_cols();
-  const auto& csr_values = x.non_zero_elements();
-  const int64_t* csr_crows_data = csr_crows.data<int64_t>();
-  const int64_t* csr_cols_data = csr_cols.data<int64_t>();
+  const int64_t non_zero_num = x.cols().numel();
+  const auto& csr_crows = x.crows();
+  const auto& csr_cols = x.cols();
+  const auto& csr_values = x.values();
+  const IntT* csr_crows_data = csr_crows.data<IntT>();
+  const IntT* csr_cols_data = csr_cols.data<IntT>();
   const T* csr_values_data = csr_values.data<T>();
 
   int64_t sparse_dim = 2;
   if (x_dims.size() == 3) {
     sparse_dim = 3;
   }
-  const auto place = dev_ctx.GetPlace();
-  DenseTensorMeta indices_meta(
-      DataType::INT64, {sparse_dim, non_zero_num}, DataLayout::NCHW);
-  DenseTensorMeta values_meta(
-      x.dtype(), {non_zero_num}, x.non_zero_elements().layout());
-  phi::DenseTensor indices = phi::Empty(dev_ctx, std::move(indices_meta));
-  phi::DenseTensor values = phi::Empty(dev_ctx, std::move(values_meta));
-  int64_t* coo_indices = indices.mutable_data<int64_t>(place);
-  int64_t* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
-  int64_t* coo_rows_data =
+  phi::DenseTensor indices =
+      phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
+  phi::DenseTensor values = phi::Empty<T>(dev_ctx, {non_zero_num});
+  IntT* coo_indices = indices.data<IntT>();
+  IntT* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
+  IntT* coo_rows_data =
       x_dims.size() == 2 ? coo_indices : batch_ptr + non_zero_num;
-  int64_t* coo_cols_data = coo_rows_data + non_zero_num;
-  T* coo_values_data = values.mutable_data<T>(place);
+  IntT* coo_cols_data = coo_rows_data + non_zero_num;
+  T* coo_values_data = values.data<T>();
 
   int batch = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
@@ -138,7 +140,7 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
   int index = 0;
   for (int b = 0; b < batch; b++) {
     for (int i = 0; i < rows; i++) {
-      for (int j = csr_crows_data[b * (rows + 1) + i];
+      for (IntT j = csr_crows_data[b * (rows + 1) + i];
            j < csr_crows_data[b * (rows + 1) + i + 1];
            j++) {
         coo_rows_data[index] = i;
@@ -150,15 +152,24 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
     }
   }
 
-  memcpy(coo_cols_data, csr_cols_data, sizeof(int64_t) * non_zero_num);
+  memcpy(coo_cols_data, csr_cols_data, sizeof(IntT) * non_zero_num);
   memcpy(coo_values_data, csr_values_data, sizeof(T) * non_zero_num);
   out->SetMember(indices, values, x_dims, true);
 }
 
 template <typename T, typename Context>
-void SparseCooToCsrKernel(const Context& dev_ctx,
-                          const SparseCooTensor& x,
-                          SparseCsrTensor* out) {
+void CsrToCooKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.crows().dtype(), "CsrToCooCPUKernel", ([&] {
+                                 CsrToCooCPUKernel<T, data_t>(dev_ctx, x, out);
+                               }));
+}
+
+template <typename T, typename IntT>
+void CooToCsrCPUKernel(const CPUContext& dev_ctx,
+                       const SparseCooTensor& x,
+                       SparseCsrTensor* out) {
   const auto& x_dims = x.dims();
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
@@ -171,35 +182,30 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
 
-  phi::DenseTensor non_zero_crows;
-  non_zero_crows.Resize({batchs * (rows + 1)});
-  int64_t* csr_crows_data = dev_ctx.template Alloc<int64_t>(&non_zero_crows);
+  phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batchs * (rows + 1)});
+  phi::DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
+  phi::DenseTensor values = phi::EmptyLike<T, CPUContext>(dev_ctx, x.values());
+  IntT* csr_crows_data = crows.data<IntT>();
+  IntT* csr_cols_data = cols.data<IntT>();
+  T* csr_values_data = values.data<T>();
 
-  phi::DenseTensor non_zero_cols;
-  non_zero_cols.Resize({non_zero_num});
-  int64_t* csr_cols_data = dev_ctx.template Alloc<int64_t>(&non_zero_cols);
-
-  phi::DenseTensor non_zero_elements;
-  non_zero_elements.Resize({non_zero_num});
-  T* csr_values_data = dev_ctx.template Alloc<T>(&non_zero_elements);
-
-  const auto& coo_indices = x.non_zero_indices();
-  const auto& coo_values = x.non_zero_elements();
-  const int64_t* batchs_ptr = coo_indices.data<int64_t>();
-  const int64_t* coo_rows_data =
-      batchs == 1 ? batchs_ptr : batchs_ptr + non_zero_num;
-  const int64_t* coo_cols_data = coo_rows_data + non_zero_num;
+  const auto& coo_indices = x.indices();
+  const auto& coo_values = x.values();
+  const IntT* batchs_ptr = coo_indices.data<IntT>();
+  const IntT* coo_rows_data =
+      x_dims.size() == 2 ? batchs_ptr : batchs_ptr + non_zero_num;
+  const IntT* coo_cols_data = coo_rows_data + non_zero_num;
   const T* coo_values_data = coo_values.data<T>();
-
-  if (!x.coalesced()) {
-    // TODO(zhangkahuo): call coalesced() to distinct and sort the indices
-  }
 
   std::vector<int64_t> offsets(batchs, 0);
   if (batchs > 1) {
     for (int i = 0; i < non_zero_num; i++) {
       if (i == non_zero_num - 1 || batchs_ptr[i] != batchs_ptr[i + 1]) {
-        offsets[batchs_ptr[i]] = i + 1;
+        const int start = batchs_ptr[i];
+        const int end = i == non_zero_num - 1 ? batchs : batchs_ptr[i + 1];
+        for (int j = start; j < end; j++) {
+          offsets[j] = i + 1;
+        }
       }
     }
   } else {
@@ -207,7 +213,6 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   }
 
   for (int b = 0; b < batchs; b++) {
-    if (offsets[b] == 0) continue;
     int batch_start = 0;
     int batch_non_zero_num = offsets[b];
     if (b > 0) {
@@ -219,29 +224,40 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
       csr_crows_data[b * (rows + 1) + i] = 0;
     }
     for (int64_t i = 1; i < batch_non_zero_num; i++) {
-      for (int j = coo_rows_ptr[i - 1]; j < coo_rows_ptr[i]; j++) {
+      for (IntT j = coo_rows_ptr[i - 1]; j < coo_rows_ptr[i]; j++) {
         csr_crows_data[b * (rows + 1) + j + 1] = i;
       }
     }
-    for (int64_t i = coo_rows_ptr[batch_non_zero_num - 1] + 1; i < rows + 1;
-         i++) {
+    for (IntT i = coo_rows_ptr[batch_non_zero_num - 1] + 1; i < rows + 1; i++) {
       csr_crows_data[b * (rows + 1) + i] = batch_non_zero_num;
+    }
+    if (batch_non_zero_num == 0) {
+      memset(csr_crows_data + b * (rows + 1), 0, sizeof(IntT) * (rows + 1));
     }
   }
 
-  memcpy(csr_cols_data, coo_cols_data, sizeof(int64_t) * non_zero_num);
+  memcpy(csr_cols_data, coo_cols_data, sizeof(IntT) * non_zero_num);
   memcpy(csr_values_data, coo_values_data, sizeof(T) * non_zero_num);
-  out->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, x_dims);
+  out->SetMember(crows, cols, values, x_dims);
 }
 
 template <typename T, typename Context>
-void SparseCooToDenseKernel(const Context& dev_ctx,
-                            const SparseCooTensor& x,
-                            DenseTensor* out) {
+void CooToCsrKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCsrTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "CooToCsrCPUKernel", ([&] {
+                                 CooToCsrCPUKernel<T, data_t>(dev_ctx, x, out);
+                               }));
+}
+
+template <typename T, typename IntT>
+void CooToDenseCPUKernel(const CPUContext& dev_ctx,
+                         const SparseCooTensor& x,
+                         DenseTensor* out) {
   const auto non_zero_num = x.nnz();
   const auto dense_dims = x.dims();
-  const auto indices = x.non_zero_indices();
-  const auto values = x.non_zero_elements();
+  const auto indices = x.indices();
+  const auto values = x.values();
   const auto indices_dims = indices.dims();
   int64_t sparse_dim = indices_dims[0];
   if (indices_dims.size() == 1) {
@@ -250,9 +266,7 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   const int64_t dense_dim = x.dense_dim();
 
   const T* x_data = values.data<T>();
-  *out = phi::Empty(
-      dev_ctx,
-      DenseTensorMeta(x.dtype(), x.dims(), x.non_zero_elements().layout()));
+  dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
@@ -269,8 +283,7 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   for (auto i = 0; i < non_zero_num; i++) {
     int64_t index = 0;
     for (int j = 0; j < sparse_dim; j++) {
-      index +=
-          indices.data<int64_t>()[j * non_zero_num + i] * sparse_offsets[j];
+      index += indices.data<IntT>()[j * non_zero_num + i] * sparse_offsets[j];
     }
 
     for (int j = 0; j < base_offset; j++) {
@@ -279,13 +292,23 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void CooToDenseKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      DenseTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "CooToDenseCPUKernel", ([&] {
+        CooToDenseCPUKernel<T, data_t>(dev_ctx, x, out);
+      }));
+}
+
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(dense_to_sparse_coo,
+PD_REGISTER_KERNEL(dense_to_coo,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::DenseToSparseCooKernel,
+                   phi::sparse::DenseToCooKernel,
                    float,
                    double,
                    paddle::float16,
@@ -295,10 +318,10 @@ PD_REGISTER_KERNEL(dense_to_sparse_coo,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(sparse_csr_to_coo,
+PD_REGISTER_KERNEL(csr_to_coo,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseCsrToCooKernel,
+                   phi::sparse::CsrToCooKernel,
                    float,
                    double,
                    paddle::float16,
@@ -308,10 +331,10 @@ PD_REGISTER_KERNEL(sparse_csr_to_coo,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(sparse_coo_to_csr,
+PD_REGISTER_KERNEL(coo_to_csr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseCooToCsrKernel,
+                   phi::sparse::CooToCsrKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -321,10 +344,10 @@ PD_REGISTER_KERNEL(sparse_coo_to_csr,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(dense_to_sparse_csr,
+PD_REGISTER_KERNEL(dense_to_csr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::DenseToSparseCsrKernel,
+                   phi::sparse::DenseToCsrKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -334,10 +357,10 @@ PD_REGISTER_KERNEL(dense_to_sparse_csr,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(sparse_coo_to_dense,
+PD_REGISTER_KERNEL(coo_to_dense,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseCooToDenseKernel,
+                   phi::sparse::CooToDenseKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -347,10 +370,10 @@ PD_REGISTER_KERNEL(sparse_coo_to_dense,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(sparse_csr_to_dense,
+PD_REGISTER_KERNEL(csr_to_dense,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseCsrToDenseKernel,
+                   phi::sparse::CsrToDenseKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -360,10 +383,10 @@ PD_REGISTER_KERNEL(sparse_csr_to_dense,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(coo_values,
+PD_REGISTER_KERNEL(values_coo,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::CooValuesKernel,
+                   phi::sparse::ValuesCooKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -375,10 +398,10 @@ PD_REGISTER_KERNEL(coo_values,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(csr_values,
+PD_REGISTER_KERNEL(indices_coo,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::CsrValuesKernel,
+                   phi::sparse::IndicesCooKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -388,6 +411,21 @@ PD_REGISTER_KERNEL(csr_values,
                    int,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(values_csr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ValuesCsrKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
 PD_REGISTER_KERNEL(sparse_coo_tensor,

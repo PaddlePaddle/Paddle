@@ -22,6 +22,7 @@ from test_pool2d_op import avg_pool2D_forward_naive
 
 
 class TestSppOp(OpTest):
+
     def setUp(self):
         self.op_type = "spp"
         self.init_test_case()
@@ -37,13 +38,13 @@ class TestSppOp(OpTest):
             padding = [0, 0]
             kernel_size[0] = np.ceil(hsize /
                                      bins.astype("double")).astype("int32")
-            padding[0] = (
-                (kernel_size[0] * bins - hsize + 1) / 2).astype("int32")
+            padding[0] = ((kernel_size[0] * bins - hsize + 1) /
+                          2).astype("int32")
 
             kernel_size[1] = np.ceil(wsize /
                                      bins.astype("double")).astype("int32")
-            padding[1] = (
-                (kernel_size[1] * bins - wsize + 1) / 2).astype("int32")
+            padding[1] = ((kernel_size[1] * bins - wsize + 1) /
+                          2).astype("int32")
             out_level = self.pool2D_forward_naive(input, kernel_size,
                                                   kernel_size, padding)
             out_level_flatten.append(
@@ -53,7 +54,9 @@ class TestSppOp(OpTest):
             else:
                 output = np.concatenate((output, out_level_flatten[i]), 1)
         # output = np.concatenate(out_level_flatten.tolist(), 0);
-        self.inputs = {'X': input.astype('float64'), }
+        self.inputs = {
+            'X': input.astype('float64'),
+        }
         self.attrs = {
             'pyramid_height': self.pyramid_height,
             'pooling_type': self.pool_type
@@ -74,6 +77,7 @@ class TestSppOp(OpTest):
 
 
 class TestCase2(TestSppOp):
+
     def init_test_case(self):
         self.shape = [3, 2, 16, 16]
         self.pyramid_height = 3

@@ -12,9 +12,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/row_conv_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -24,7 +26,8 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -39,7 +42,8 @@ class RowConvOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
-    PADDLE_ENFORCE_EQ(filter_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(filter_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Input(Filter)'s dimensions should be 2. Received: "
                           "Input(Filter)'s shape: [%s].",
@@ -56,8 +60,10 @@ class RowConvGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "row_conv_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "row_conv_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "row_conv_grad");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -94,20 +100,20 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 :strong:`Row-convolution operator`
 
-The row convolution is called lookahead convolution.  This operator was 
+The row convolution is called lookahead convolution.  This operator was
 introduced in the following paper for DeepSpeech2:
-http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf 
+http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
 
-The main motivation is that a bidirectional RNN, useful in DeepSpeech 
-like speech models, learns representation for a sequence by performing a 
-forward and a backward pass through the entire sequence. However, unlike 
+The main motivation is that a bidirectional RNN, useful in DeepSpeech
+like speech models, learns representation for a sequence by performing a
+forward and a backward pass through the entire sequence. However, unlike
 unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
-and low-latency setting. The lookahead convolution incorporates information 
-from future subsequences in a computationally efficient manner to improve 
-unidirectional recurrent neural networks. The row convolution operator is 
+and low-latency setting. The lookahead convolution incorporates information
+from future subsequences in a computationally efficient manner to improve
+unidirectional recurrent neural networks. The row convolution operator is
 different from the 1D sequence convolution, and is computed as follows:
 
-Given an input sequence $X$ of length $t$ and input dimension $D$, 
+Given an input sequence $X$ of length $t$ and input dimension $D$,
 and a filter ($W$) of size $context \times D$,
 the output sequence is convolved as:
 
@@ -134,8 +140,7 @@ https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
 };
 
 template <typename T>
-class RowConvKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *x = context.Input<LoDTensor>("X");
@@ -210,8 +215,7 @@ class RowConvKernel<platform::CPUDeviceContext, T>
 };
 
 template <typename T>
-class RowConvGradKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *x = context.Input<LoDTensor>("X");
@@ -341,12 +345,12 @@ class RowConvGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
+REGISTER_OPERATOR(row_conv,
+                  ops::RowConvOp,
+                  ops::RowConvOpMaker,
                   ops::RowConvGradOpMaker<paddle::framework::OpDesc>,
                   ops::RowConvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
-REGISTER_OP_CPU_KERNEL(
-    row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    row_conv_grad,
-    ops::RowConvGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(row_conv, ops::RowConvKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(row_conv_grad,
+                       ops::RowConvGradKernel<phi::CPUContext, float>);

@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -33,8 +34,41 @@ class Pad3dOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+#ifdef PADDLE_WITH_MKLDNN
+    // only constant mode and non-blocked layouts are supported for oneDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+        ctx.Attr<std::string>("mode") == "constant" &&
+        ctx.Input<Tensor>("X")
+                ->mem_desc()
+                .data.format_desc.blocking.inner_nblks == 0) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_format");
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_,
+          tensor.place(),
+          framework::StringToDataLayout(data_format));
+    }
+#endif
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -79,7 +113,7 @@ class Pad3dOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("NCDHW");
     AddComment(R"DOC(
 Pad3d Operator.
-Pad 3-d images according to 'paddings' and 'mode'. 
+Pad 3-d images according to 'paddings' and 'mode'.
 If mode is 'reflect', paddings[0] and paddings[1] must be no greater
 than width-1. The height and depth dimension have the same condition.
 
@@ -139,8 +173,10 @@ class Pad3dOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad3d@Grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "Pad3d@Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "Pad3d@Grad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -199,14 +235,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(Pad3dOpGradNoNeedBufferVarsInferer, "X");
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(pad3d, Pad3dInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pad3d,
+                            Pad3dInferShapeFunctor,
                             PD_INFER_META(phi::Pad3dInferMeta));
 
-REGISTER_OPERATOR(pad3d, ops::Pad3dOp, ops::Pad3dOpMaker,
+REGISTER_OPERATOR(pad3d,
+                  ops::Pad3dOp,
+                  ops::Pad3dOpMaker,
                   ops::Pad3dOpGradMaker<paddle::framework::OpDesc>,
                   ops::Pad3dOpGradMaker<paddle::imperative::OpBase>,
                   Pad3dInferShapeFunctor);
-REGISTER_OPERATOR(pad3d_grad, ops::Pad3dOpGrad,
+REGISTER_OPERATOR(pad3d_grad,
+                  ops::Pad3dOpGrad,
                   ops::Pad3dOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Pad3dOpDoubleGradMaker<paddle::imperative::OpBase>,
                   ops::Pad3dOpGradNoNeedBufferVarsInferer);

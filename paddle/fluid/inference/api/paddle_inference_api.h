@@ -25,6 +25,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -46,6 +47,7 @@ namespace paddle_infer {
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
 using DistConfig = paddle::DistConfig;
+using BackendType = paddle::AnalysisConfig::Backend;
 
 ///
 /// \class Predictor
@@ -92,6 +94,13 @@ class PD_INFER_DECL Predictor {
   explicit Predictor(const Config& config);
 
   ///
+  /// \brief Get all input names and their corresponding type
+  ///
+  /// \return the map of input names and type
+  ///
+  std::map<std::string, DataType> GetInputTypes();
+
+  ///
   /// \brief Get the input names
   ///
   /// \return input names
@@ -133,7 +142,7 @@ class PD_INFER_DECL Predictor {
   ///
   /// \return get a new predictor
   ///
-  std::unique_ptr<Predictor> Clone();
+  std::unique_ptr<Predictor> Clone(void* stream = nullptr);
 
   /// \brief Clear the intermediate tensors of the predictor
   void ClearIntermediateTensor();
@@ -148,6 +157,14 @@ class PD_INFER_DECL Predictor {
   /// MemoryPool.
   ///
   uint64_t TryShrinkMemory();
+
+  ///
+  /// \brief Get the execution stream on devices with a concept of stream,
+  /// otherwise returns nullptr.
+  ///
+  /// \return The execution stream or nullptr (CPU).
+  ///
+  void* GetExecStream() const;
 
  private:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;
@@ -174,6 +191,16 @@ PD_INFER_DECL std::string GetVersion();
 PD_INFER_DECL std::tuple<int, int, int> GetTrtCompileVersion();
 PD_INFER_DECL std::tuple<int, int, int> GetTrtRuntimeVersion();
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
+
+PD_INFER_DECL void ConvertToMixedPrecision(
+    const std::string& model_file,
+    const std::string& params_file,
+    const std::string& mixed_model_file,
+    const std::string& mixed_params_file,
+    PrecisionType mixed_precision,
+    BackendType backend,
+    bool keep_io_types = true,
+    std::unordered_set<std::string> black_list = {});
 
 namespace services {
 ///

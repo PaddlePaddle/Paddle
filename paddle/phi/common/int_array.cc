@@ -14,9 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/common/int_array.h"
 
-#include "paddle/phi/common/place.h"
-
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace experimental {
@@ -38,7 +37,6 @@ template <>
 IntArrayBase<phi::DenseTensor>::IntArrayBase(
     const std::vector<phi::DenseTensor>& tensor_list) {
   is_from_tensor_ = true;
-
   for (size_t i = 0; i < tensor_list.size(); ++i) {
     DataType data_type = tensor_list[i].dtype();
     switch (data_type) {

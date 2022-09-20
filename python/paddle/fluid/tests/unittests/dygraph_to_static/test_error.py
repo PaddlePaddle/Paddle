@@ -33,7 +33,7 @@ def inner_func():
 def func_error_in_compile_time(x):
     x = fluid.dygraph.to_variable(x)
     inner_func()
-    if fluid.layers.mean(x) < 0:
+    if paddle.mean(x) < 0:
         x_v = x - 1
     else:
         x_v = x + 1
@@ -78,7 +78,7 @@ class LayerErrorInCompiletime(fluid.dygraph.Layer):
     def forward(self, x):
         y = self._linear(x)
         z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")
-        out = fluid.layers.mean(y[z])
+        out = paddle.mean(y[z])
         return out
 
 
@@ -386,7 +386,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
              'y = self._linear(x)',
              'z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
              '<--- HERE',
-             'out = fluid.layers.mean(y[z])',
+             'out = paddle.mean(y[z])',
              'return out'
              ]
 
@@ -399,16 +399,6 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
 
 # # Situation 4: NotImplementedError
-class TestErrorInOther(unittest.TestCase):
-    def test(self):
-        paddle.disable_static()
-        prog_trans = paddle.jit.ProgramTranslator()
-        with self.assertRaises(NotImplementedError):
-            prog_trans.get_output(func_decorated_by_other_1)
-
-        with self.assertRaises(NotImplementedError):
-            func_decorated_by_other_2()
-
 
 class TestSuggestionErrorInRuntime(TestErrorBase):
     def set_func(self):
@@ -443,6 +433,20 @@ class TestSuggestionErrorInRuntime(TestErrorBase):
         for disable_new_error in [0, 1]:
             self._test_raise_new_exception(disable_new_error)
 
+@paddle.jit.to_static
+def func_ker_error(x):
+    d = {
+        'x': x
+    }
+    y = d['y'] + x
+    return y
+
+class TestKeyError(unittest.TestCase):
+    def test_key_error(self):
+        paddle.disable_static()
+        with self.assertRaises(error.Dy2StKeyError):
+            x = paddle.to_tensor([1])
+            func_ker_error(x)
 
 if __name__ == '__main__':
     unittest.main()

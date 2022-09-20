@@ -83,16 +83,15 @@ class LayerHelperBase(object):
         """
         if isinstance(value, np.ndarray):
             if _in_eager_without_dygraph_check():
-                return core.eager.Tensor(value,
-                                         _current_expected_place(), False,
-                                         False, name if name else None, True)
+                return core.eager.Tensor(value, _current_expected_place(),
+                                         False, False, name if name else None,
+                                         True)
             else:
-                py_var = core.VarBase(
-                    value=value,
-                    name=name if name else '',
-                    persistable=False,
-                    place=_current_expected_place(),
-                    zero_copy=False)
+                py_var = core.VarBase(value=value,
+                                      name=name if name else '',
+                                      persistable=False,
+                                      place=_current_expected_place(),
+                                      zero_copy=False)
                 return py_var
         elif isinstance(value, (core.VarBase, Variable, core.eager.Tensor)):
             return value
@@ -123,37 +122,35 @@ class LayerHelperBase(object):
                     [self.name, 'weight_norm_abs'])),
                 dtype=dtype,
                 persistable=False)
-            block.append_op(
-                type='abs', inputs={'X': x}, outputs={'Out': abs_out})
+            block.append_op(type='abs',
+                            inputs={'X': x},
+                            outputs={'Out': abs_out})
             pow_out = block.create_var(
                 name=unique_name.generate_with_ignorable_key(".".join(
                     [self.name, 'weight_norm_pow'])),
                 dtype=dtype,
                 persistable=False)
-            block.append_op(
-                type='pow',
-                inputs={'X': abs_out},
-                outputs={'Out': pow_out},
-                attrs={'factor': float(p)})
+            block.append_op(type='pow',
+                            inputs={'X': abs_out},
+                            outputs={'Out': pow_out},
+                            attrs={'factor': float(p)})
             sum_out = block.create_var(
                 name=unique_name.generate_with_ignorable_key(".".join(
                     [self.name, 'weight_norm_sum'])),
                 dtype=dtype,
                 persistable=False)
-            block.append_op(
-                type='reduce_sum',
-                inputs={'X': pow_out},
-                outputs={'Out': sum_out},
-                attrs={
-                    'dim': dim,
-                    'keep_dim': keep_dim,
-                    'reduce_all': True if dim is None else False
-                })
-            block.append_op(
-                type='pow',
-                inputs={'X': sum_out},
-                outputs={'Out': out},
-                attrs={'factor': 1. / p})
+            block.append_op(type='reduce_sum',
+                            inputs={'X': pow_out},
+                            outputs={'Out': sum_out},
+                            attrs={
+                                'dim': dim,
+                                'keep_dim': keep_dim,
+                                'reduce_all': True if dim is None else False
+                            })
+            block.append_op(type='pow',
+                            inputs={'X': sum_out},
+                            outputs={'Out': out},
+                            attrs={'factor': 1. / p})
             return out
 
         def __reshape_op(x,
@@ -166,11 +163,14 @@ class LayerHelperBase(object):
                         [self.name, 'weight_norm_reshape'])),
                     dtype=dtype,
                     persistable=False)
-            block.append_op(
-                type='reshape',
-                inputs={'X': x},
-                outputs={'Out': out},
-                attrs={'shape': shape})
+            x_shape = block.create_var(name="Xshape", dtype=x.dtype)
+            block.append_op(type="reshape2",
+                            inputs={'X': x},
+                            attrs={'shape': shape},
+                            outputs={
+                                "Out": out,
+                                "XShape": x_shape
+                            })
             return out
 
         def __transpose_op(x,
@@ -183,11 +183,10 @@ class LayerHelperBase(object):
                         [self.name, 'weight_norm_transpose'])),
                     dtype=dtype,
                     persistable=False)
-            block.append_op(
-                type='transpose',
-                inputs={'X': x},
-                outputs={'Out': out},
-                attrs={'axis': axis})
+            block.append_op(type='transpose',
+                            inputs={'X': x},
+                            outputs={'Out': out},
+                            attrs={'axis': axis})
             return out
 
         def __norm_except_dim(x,
@@ -217,10 +216,11 @@ class LayerHelperBase(object):
                 perm = list(range(len(x.shape)))
                 perm[0], perm[dim] = dim, 0
                 transpose = __transpose_op(x, perm, block=block)
-                out_shape = [transpose.shape[0]] + [1] * (len(transpose.shape) -
-                                                          1)
-                reshape = __reshape_op(
-                    transpose, shape=[transpose.shape[0], -1], block=block)
+                out_shape = [transpose.shape[0]
+                             ] + [1] * (len(transpose.shape) - 1)
+                reshape = __reshape_op(transpose,
+                                       shape=[transpose.shape[0], -1],
+                                       block=block)
                 norm = __norm_op(reshape, dim=[1], block=block)
                 reshape2 = __reshape_op(norm, shape=out_shape, block=block)
                 __transpose_op(reshape2, perm, out=out, block=block)
@@ -228,18 +228,18 @@ class LayerHelperBase(object):
 
         def __weight_normalize(g, v, dim):
             """Calculations for weight normalization"""
-            norm = __norm_except_dim(
-                v, dim=dim, block=self.main_program.current_block())
+            norm = __norm_except_dim(v,
+                                     dim=dim,
+                                     block=self.main_program.current_block())
             scale = elementwise_div(
                 x=g, y=norm)  # The shapes of g and norm are the same.
             # Currently, elementwise_mul only support broadcast when the shape
             # of y is a subset of the shape of x. Thus, we reshape y to squeeze
             # to achieve the subset.
-            w = elementwise_mul(
-                x=v,
-                y=scale if dim is None else reshape(
-                    x=scale, shape=[v.shape[dim]]),
-                axis=-1 if dim is None else dim)
+            w = elementwise_mul(x=v,
+                                y=scale if dim is None else reshape(
+                                    x=scale, shape=[v.shape[dim]]),
+                                axis=-1 if dim is None else dim)
             # To serialize the original parameter for inference, maybe a
             # parameter rather than a variable should be returned.
             return w
@@ -268,18 +268,16 @@ class LayerHelperBase(object):
             dtype=dtype,
             shape=v_param_shape,
             **v_param_attr._to_kwargs(with_initializer=True))
-        __norm_except_dim(
-            x=v_param,
-            out=g_param,
-            dim=attr.dim,
-            block=self.startup_program.global_block())
+        __norm_except_dim(x=v_param,
+                          out=g_param,
+                          dim=attr.dim,
+                          block=self.startup_program.global_block())
 
         # keep g_param shape to be consistent with that in main_program
-        __reshape_op(
-            g_param,
-            g_param_shape,
-            out=g_param,
-            block=self.startup_program.global_block())
+        __reshape_op(g_param,
+                     g_param_shape,
+                     out=g_param,
+                     block=self.startup_program.global_block())
 
         # Add weight normalization to main_program
         g_param = self.main_program.global_block().create_parameter(
@@ -316,9 +314,9 @@ class LayerHelperBase(object):
             return None
         assert isinstance(attr, ParamAttr)
         for i, size in enumerate(shape):
-            assert size > 0, (
-                "Expected every dim's size to be larger than 0, "
-                "but the size of the {}-th dim is {}".format(i, size))
+            assert size > 0, ("Expected every dim's size to be larger than 0, "
+                              "but the size of the {}-th dim is {}".format(
+                                  i, size))
         # set global dtype
         if not dtype:
             dtype = self.__dtype
@@ -344,8 +342,8 @@ class LayerHelperBase(object):
                         "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
                     )
             else:
-                if not (dtype.startswith("float") or
-                        dtype in ["double", "uint16"]):
+                if not (dtype.startswith("float")
+                        or dtype in ["double", "uint16"]):
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
                     )

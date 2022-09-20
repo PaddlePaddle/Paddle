@@ -25,6 +25,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestUnbind(unittest.TestCase):
+
     def test_unbind(self):
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
@@ -34,8 +35,10 @@ class TestUnbind(unittest.TestCase):
         exe = fluid.Executor(place=fluid.CPUPlace())
 
         [res_1, res_2] = exe.run(fluid.default_main_program(),
-                                 feed={"x_1": input_1,
-                                       "axis": 0},
+                                 feed={
+                                     "x_1": input_1,
+                                     "axis": 0
+                                 },
                                  fetch_list=[out_0, out_1])
 
         assert np.array_equal(res_1, input_1[0, 0:100])
@@ -47,14 +50,14 @@ class TestUnbind(unittest.TestCase):
             x = paddle.to_tensor(np_x)
             x.stop_gradient = False
             [res_1, res_2] = paddle.unbind(x, 0)
-            self.assertTrue(np.array_equal(res_1, np_x[0, 0:100]))
-            self.assertTrue(np.array_equal(res_2, np_x[1, 0:100]))
+            np.testing.assert_array_equal(res_1, np_x[0, 0:100])
+            np.testing.assert_array_equal(res_2, np_x[1, 0:100])
 
             out = paddle.add_n([res_1, res_2])
 
             np_grad = np.ones(x.shape, np.float32)
             out.backward()
-            self.assertTrue(np.array_equal(x.grad.numpy(), np_grad))
+            np.testing.assert_array_equal(x.grad.numpy(), np_grad)
 
     def test_unbind_dygraph_final_state(self):
         with _test_eager_guard():
@@ -62,6 +65,7 @@ class TestUnbind(unittest.TestCase):
 
 
 class TestLayersUnbind(unittest.TestCase):
+
     def test_layers_unbind(self):
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
@@ -71,8 +75,10 @@ class TestLayersUnbind(unittest.TestCase):
         exe = fluid.Executor(place=fluid.CPUPlace())
 
         [res_1, res_2] = exe.run(fluid.default_main_program(),
-                                 feed={"x_1": input_1,
-                                       "axis": 0},
+                                 feed={
+                                     "x_1": input_1,
+                                     "axis": 0
+                                 },
                                  fetch_list=[out_0, out_1])
 
         assert np.array_equal(res_1, input_1[0, 0:100])
@@ -80,6 +86,7 @@ class TestLayersUnbind(unittest.TestCase):
 
 
 class TestUnbindOp(OpTest):
+
     def initParameters(self):
         pass
 
@@ -118,6 +125,7 @@ class TestUnbindOp(OpTest):
 
 
 class TestUnbindOp1(TestUnbindOp):
+
     def initParameters(self):
         self.axis = 1
         self.num = 2
@@ -131,6 +139,7 @@ class TestUnbindOp1(TestUnbindOp):
 
 
 class TestUnbindOp2(TestUnbindOp):
+
     def initParameters(self):
         self.axis = 2
         self.num = 2
@@ -144,6 +153,7 @@ class TestUnbindOp2(TestUnbindOp):
 
 
 class TestUnbindOp3(TestUnbindOp):
+
     def initParameters(self):
         self.axis = 2
         self.num = 2
@@ -160,6 +170,7 @@ class TestUnbindOp3(TestUnbindOp):
 
 
 class TestUnbindOp4(TestUnbindOp):
+
     def initParameters(self):
         self.axis = 1
         self.num = 2
@@ -176,6 +187,7 @@ class TestUnbindOp4(TestUnbindOp):
 
 
 class TestUnbindBF16Op(OpTest):
+
     def setUp(self):
         self._set_op_type()
         self.python_api = paddle.unbind
@@ -203,6 +215,7 @@ class TestUnbindBF16Op(OpTest):
 
 
 class TestUnbindAxisError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = fluid.data(shape=[2, 3], dtype='float32', name='x')

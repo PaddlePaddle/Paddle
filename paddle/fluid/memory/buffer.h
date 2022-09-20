@@ -15,6 +15,7 @@
 #pragma once
 
 #include <type_traits>
+
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -27,8 +28,8 @@ class Buffer {
 
   template <typename T>
   T *Alloc(size_t size) {
-    using AllocT = typename std::conditional<std::is_same<T, void>::value,
-                                             uint8_t, T>::type;
+    using AllocT = typename std::
+        conditional<std::is_same<T, void>::value, uint8_t, T>::type;
     if (UNLIKELY(size == 0)) return nullptr;
     size *= sizeof(AllocT);
     if (allocation_ == nullptr || allocation_->size() < size) {
@@ -49,7 +50,7 @@ class Buffer {
         allocation_ && allocation_->size() > 0 ? allocation_->ptr() : nullptr);
   }
 
-  size_t Size() const { return allocation_ ? 0 : allocation_->size(); }
+  size_t Size() const { return allocation_ ? allocation_->size() : 0; }
 
   platform::Place GetPlace() const { return place_; }
 

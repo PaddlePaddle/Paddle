@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/partial_sum_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -23,18 +24,21 @@ class PartialSumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Inputs(X) of PartialSumOp should not be empty."));
 
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of PartialSumOp should not be null."));
 
     auto inputs_dims = ctx->GetInputsDim("X");
 
     const size_t inputs_num = inputs_dims.size();
-    PADDLE_ENFORCE_GT(inputs_num, 0,
+    PADDLE_ENFORCE_GT(inputs_num,
+                      0,
                       platform::errors::InvalidArgument(
                           "ShapeError: Input tensors count should > 0. But "
                           "recevied inputs' length is 0."));
@@ -50,27 +54,32 @@ class PartialSumOp : public framework::OperatorWithKernel {
     int64_t batch_size = -1;
     int64_t input_len = -1;
     for (size_t i = 0; i < inputs_num; ++i) {
-      PADDLE_ENFORCE_EQ(inputs_dims[i].size(), 2,
+      PADDLE_ENFORCE_EQ(inputs_dims[i].size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "Only suppert two dimensions input now."));
       if (i == 0) {
         batch_size = inputs_dims[0][0];
         input_len = inputs_dims[0][1];
       } else {
-        PADDLE_ENFORCE_EQ(inputs_dims[i][0], batch_size,
+        PADDLE_ENFORCE_EQ(inputs_dims[i][0],
+                          batch_size,
                           platform::errors::InvalidArgument(
                               "The batch size of all inputs must be same"));
-        PADDLE_ENFORCE_EQ(inputs_dims[i][1], input_len,
+        PADDLE_ENFORCE_EQ(inputs_dims[i][1],
+                          input_len,
                           platform::errors::InvalidArgument(
                               "The input len of all inputs must be same"));
       }
     }
-    PADDLE_ENFORCE_GT(input_len, start_index,
+    PADDLE_ENFORCE_GT(input_len,
+                      start_index,
                       platform::errors::OutOfRange(
                           "start_index must be less than input len"));
     if (length > 0) {
       PADDLE_ENFORCE_GE(
-          input_len, start_index + length,
+          input_len,
+          start_index + length,
           platform::errors::OutOfRange(
               "start_index + length is larger than input length"));
     }
@@ -96,8 +105,10 @@ class PartialSumOp : public framework::OperatorWithKernel {
       }
     }
 
-    PADDLE_ENFORCE_EQ(flag, 1, platform::errors::InvalidArgument(
-                                   "All Inputs of PartialSum OP are Empty!"));
+    PADDLE_ENFORCE_EQ(flag,
+                      1,
+                      platform::errors::InvalidArgument(
+                          "All Inputs of PartialSum OP are Empty!"));
     return framework::OpKernelType(input_data_type, platform::CPUPlace());
   }
 };
@@ -115,10 +126,14 @@ class PartialSumGradOp : public framework::OperatorWithKernel {
     auto out_names = ctx->Outputs(out_x_g_n);
 
     PADDLE_ENFORCE_EQ(
-        in_names.size(), out_names.size(),
+        in_names.size(),
+        out_names.size(),
         platform::errors::InvalidArgument(
-            "The number of arguments in %s[%d] and %s[%d] is not equal.", in_x,
-            in_names.size(), out_x_g_n, out_names.size()));
+            "The number of arguments in %s[%d] and %s[%d] is not equal.",
+            in_x,
+            in_names.size(),
+            out_x_g_n,
+            out_names.size()));
     for (size_t i = 0; i < in_names.size(); ++i) {
       if (out_names[i] != framework::kEmptyVarName) {
         ctx->ShareLoD(in_x, out_x_g_n, i, i);
@@ -140,20 +155,15 @@ class PartialSumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input tensors of partial_sum operator.").AsDuplicable();
     AddOutput("Out", "Output tensor of partial_sum operator.");
-    AddAttr<bool>(
-        "use_mkldnn",
-        "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<int>("start_index", "The start index of tensor wanted to be added.")
         .SetDefault(0);
     AddAttr<int>("length", "The length of tensor wanted to be added.")
         .SetDefault(-1);
     AddComment(R"DOC(
 PartialSum Operator.
-This Op can sum the vars by specifying the initial position(start_index) and length(length). 
+This Op can sum the vars by specifying the initial position(start_index) and length(length).
 This OP exists in contrib, which means that it is not shown to the public.
-Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be
 performed along the second dimension.
 
 Examples:
@@ -187,20 +197,22 @@ class PartialSumGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(partial_sum, ops::PartialSumOp, ops::PartialSumOpMaker,
+REGISTER_OPERATOR(partial_sum,
+                  ops::PartialSumOp,
+                  ops::PartialSumOpMaker,
                   ops::PartialSumGradMaker<paddle::framework::OpDesc>,
                   ops::PartialSumGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(partial_sum_grad, ops::PartialSumGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    partial_sum,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(partial_sum,
+                       ops::PartialSumKernel<phi::CPUContext, float>,
+                       ops::PartialSumKernel<phi::CPUContext, int>,
+                       ops::PartialSumKernel<phi::CPUContext, double>,
+                       ops::PartialSumKernel<phi::CPUContext, int64_t>);
 
-REGISTER_OP_CPU_KERNEL(partial_sum_grad, ops::PartialSumGradientOpKernel<float>,
+REGISTER_OP_CPU_KERNEL(partial_sum_grad,
+                       ops::PartialSumGradientOpKernel<float>,
                        ops::PartialSumGradientOpKernel<int>,
                        ops::PartialSumGradientOpKernel<double>,
                        ops::PartialSumGradientOpKernel<int64_t>);

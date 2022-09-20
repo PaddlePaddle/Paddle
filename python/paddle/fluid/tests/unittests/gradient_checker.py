@@ -97,8 +97,8 @@ def make_jacobian(x, y_size, np_dtype):
         return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
     elif isinstance(x, Sequence):
         jacobians = list(
-            filter(lambda t: t is not None, (make_jacobian(
-                item, y_size, np_dtype) for item in x)))
+            filter(lambda t: t is not None,
+                   (make_jacobian(item, y_size, np_dtype) for item in x)))
         return jacobians
     else:
         None
@@ -186,8 +186,10 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
 
     np_type = dtype_to_np_dtype(y.dtype)
     # create dy Variable in Program
-    dy = program.global_block().create_var(
-        name=dy_name, shape=y.shape, dtype=np_type, persistable=True)
+    dy = program.global_block().create_var(name=dy_name,
+                                           shape=y.shape,
+                                           dtype=np_type,
+                                           persistable=True)
     # append backward
     dx = fluid.gradients(y, x, dy)
 
@@ -217,8 +219,8 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
             if dx_res[j] is not None:
                 jacobian[dx_idx][:, i] = dx_res[j].flatten()
             else:
-                jacobian[dx_idx][:, i] = np.zeros(
-                    dx[dx_idx].shape, dtype=np_type).flatten()
+                jacobian[dx_idx][:, i] = np.zeros(dx[dx_idx].shape,
+                                                  dtype=np_type).flatten()
 
         _set_item(dy_t, i, 0, np_type)
 
@@ -266,6 +268,9 @@ def grad_check(x,
     for v in x:
         v.stop_gradient = False
         v.persistable = True
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     if place is None:
         place = fluid.CPUPlace()
     if program is None:
@@ -313,8 +318,8 @@ def grad_check(x,
         analytical.append(
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
-    for i, (x_idx,
-            y_idx) in enumerate(product(*[range(len(x)), range(len(y))])):
+    for i, (x_idx, y_idx) in enumerate(
+            product(*[range(len(x)), range(len(y))])):
         a = analytical[y_idx][x_idx]
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
@@ -362,6 +367,9 @@ def double_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
 
     if program is None:
         program = fluid.default_main_program()
@@ -373,8 +381,10 @@ def double_grad_check(x,
         for yi in y:
             dyi_name = _append_grad_suffix_(yi.name)
             np_type = dtype_to_np_dtype(yi.dtype)
-            dy = program.global_block().create_var(
-                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+            dy = program.global_block().create_var(name=dyi_name,
+                                                   shape=yi.shape,
+                                                   dtype=np_type,
+                                                   persistable=True)
             dy.stop_gradient = False
             v = np.random.random(size=yi.shape).astype(np_type)
             set_var_in_scope(scope, place, dyi_name, v)
@@ -398,7 +408,7 @@ def double_grad_check(x,
     grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)
 
 
-# TODO(jiabin): We currently support only triple grad check here, extend this to support 
+# TODO(jiabin): We currently support only triple grad check here, extend this to support
 # higher order differenciation later.
 
 
@@ -441,6 +451,9 @@ def triple_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
 
     if program is None:
         program = fluid.default_main_program()
@@ -452,8 +465,10 @@ def triple_grad_check(x,
         for yi in y:
             dyi_name = _append_grad_suffix_(yi.name)
             np_type = dtype_to_np_dtype(yi.dtype)
-            dy = program.global_block().create_var(
-                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+            dy = program.global_block().create_var(name=dyi_name,
+                                                   shape=yi.shape,
+                                                   dtype=np_type,
+                                                   persistable=True)
             dy.stop_gradient = False
             v = np.random.random(size=yi.shape).astype(np_type)
             set_var_in_scope(scope, place, dyi_name, v)
@@ -475,11 +490,10 @@ def triple_grad_check(x,
         for dxi in target_grads:
             ddxi_name = _append_grad_suffix_(dxi.name)
             np_type = dtype_to_np_dtype(dxi.dtype)
-            ddx = program.global_block().create_var(
-                name=ddxi_name,
-                shape=dxi.shape,
-                dtype=np_type,
-                persistable=True)
+            ddx = program.global_block().create_var(name=ddxi_name,
+                                                    shape=dxi.shape,
+                                                    dtype=np_type,
+                                                    persistable=True)
             ddx.stop_gradient = False
             v = np.random.random(size=dxi.shape).astype(np_type)
             set_var_in_scope(scope, place, ddxi_name, v)
@@ -507,15 +521,14 @@ def triple_grad_check(x,
     x_init += x_grads_grads_init
 
     # x <=> [x, dout, ddx]
-    grad_check(
-        x=x,
-        y=filted_target_grads_grads,
-        x_init=x_init,
-        place=place,
-        program=program,
-        eps=eps,
-        atol=atol,
-        rtol=rtol)
+    grad_check(x=x,
+               y=filted_target_grads_grads,
+               x_init=x_init,
+               place=place,
+               program=program,
+               eps=eps,
+               atol=atol,
+               rtol=rtol)
 
 
 def get_static_double_grad(x,
@@ -547,8 +560,10 @@ def get_static_double_grad(x,
         yi = y[i]
         dyi_name = _append_grad_suffix_(yi.name)
         np_type = dtype_to_np_dtype(yi.dtype)
-        dy = program.global_block().create_var(
-            name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+        dy = program.global_block().create_var(name=dyi_name,
+                                               shape=yi.shape,
+                                               dtype=np_type,
+                                               persistable=True)
         dy.stop_gradient = False
         set_var_in_scope(scope, place, dyi_name, dy_init[i])
         y_grads.append(dy)
@@ -572,6 +587,9 @@ def get_static_double_grad(x,
     for v in x:
         v.stop_gradient = False
         v.persistable = True
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     if place is None:
         place = fluid.CPUPlace()
     if program is None:
@@ -599,8 +617,10 @@ def get_static_double_grad(x,
         np_type = dtype_to_np_dtype(yi.dtype)
         dy_name = _append_grad_suffix_(yi.name)
         # create dy Variable in Program
-        dy = program.global_block().create_var(
-            name=dy_name, shape=yi.shape, dtype=np_type, persistable=True)
+        dy = program.global_block().create_var(name=dy_name,
+                                               shape=yi.shape,
+                                               dtype=np_type,
+                                               persistable=True)
         # init dy tensor in scope
         value = np.ones(yi.shape, dtype=np_type)
         dy_t = set_var_in_scope(scope, place, dy_name, value)
@@ -634,10 +654,10 @@ def get_eager_double_grad(func,
         place (fluid.CPUPlace or fluid.CUDAPlace): the device.
         return_mid_result (bool): A flag that controls the return content.
     Returns:
-        If 'return_mid_result' set True. 
+        If 'return_mid_result' set True.
         the second order derivative and the inputs of second order derivative's calculation
         will be returned for higher order derivative's calculation.
-        If 'return_mid_result' set False. 
+        If 'return_mid_result' set False.
         A list of numpy array that stores second derivative result calulated by dygraph.
     """
     if isinstance(place, fluid.CPUPlace):
@@ -656,12 +676,11 @@ def get_eager_double_grad(func,
         dys.append(dy_tensor)
     # calculate first derivative
     outputs = func(inputs)
-    d_inputs = paddle.grad(
-        outputs=outputs,
-        inputs=inputs,
-        grad_outputs=dys,
-        create_graph=True,
-        allow_unused=True)
+    d_inputs = paddle.grad(outputs=outputs,
+                           inputs=inputs,
+                           grad_outputs=dys,
+                           create_graph=True,
+                           allow_unused=True)
     d_inputs = [d_input for d_input in d_inputs if d_input is not None]
 
     # calcluate second derivative
@@ -678,15 +697,15 @@ def get_eager_double_grad(func,
         ddy.stop_gradient = False
         ddys.append(ddy)
 
-    dd_inputs = paddle.grad(
-        outputs=d_inputs,
-        inputs=inputs,
-        grad_outputs=ddys,
-        create_graph=create_graph,
-        allow_unused=True)
+    dd_inputs = paddle.grad(outputs=d_inputs,
+                            inputs=inputs,
+                            grad_outputs=ddys,
+                            create_graph=create_graph,
+                            allow_unused=True)
 
     if return_mid_result:
-        return dd_inputs, inputs + ddys
+        return [dd_input for dd_input in dd_inputs
+                if dd_input is not None], inputs + ddys
     else:
         return [
             dd_input.numpy() for dd_input in dd_inputs if dd_input is not None
@@ -702,8 +721,8 @@ def double_grad_check_for_dygraph(func,
                                   rtol=1e-3,
                                   raise_exception=True):
     """
-    Check second order gradients of dygraph. This function will compare the 
-    second order gradients of dygraph and second order gradients of static graph 
+    Check second order gradients of dygraph. This function will compare the
+    second order gradients of dygraph and second order gradients of static graph
     to validate dygraph's correctness
 
     Args:
@@ -729,7 +748,9 @@ def double_grad_check_for_dygraph(func,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -790,8 +811,10 @@ def get_static_triple_grad(x,
         yi = y[i]
         dyi_name = _append_grad_suffix_(yi.name)
         np_type = dtype_to_np_dtype(yi.dtype)
-        dy = program.global_block().create_var(
-            name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+        dy = program.global_block().create_var(name=dyi_name,
+                                               shape=yi.shape,
+                                               dtype=np_type,
+                                               persistable=True)
         dy.stop_gradient = False
         set_var_in_scope(scope, place, dyi_name, dy_init[i])
         y_grads.append(dy)
@@ -811,8 +834,12 @@ def get_static_triple_grad(x,
         value = np.ones(dxi.shape, dtype=np_type)
         x_grads_grads_init.append(value)
 
-    return get_static_double_grad(
-        x, y, x_init, dy_init=x_grads_grads_init, place=place, program=program)
+    return get_static_double_grad(x,
+                                  y,
+                                  x_init,
+                                  dy_init=x_grads_grads_init,
+                                  place=place,
+                                  program=program)
 
 
 def get_eager_triple_grad(func,
@@ -828,12 +855,15 @@ def get_eager_triple_grad(func,
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         dy_init (numpy.array|list[numpy.array]|None): the init value for gradient of output.
         place (fluid.CPUPlace or fluid.CUDAPlace): the device.
-        return_mid_result (list[Tensor], list[Tensor]): If set True, the 
+        return_mid_result (list[Tensor], list[Tensor]): If set True, the
     Returns:
         A list of numpy array that stores second derivative result calulated by dygraph
     """
-    dd_y, dd_x = get_eager_double_grad(
-        func, x_init, dy_init, place, return_mid_result=True)
+    dd_y, dd_x = get_eager_double_grad(func,
+                                       x_init,
+                                       dy_init,
+                                       place,
+                                       return_mid_result=True)
 
     # calcluate third derivative
     dddys = []
@@ -842,8 +872,13 @@ def get_eager_triple_grad(func,
         dddy = paddle.ones(shape=dd_yi.shape, dtype=dd_yi.dtype)
         dddy.stop_gradient = False
         dddys.append(dddy)
-    ddd_inputs = paddle.grad(outputs=dd_y, inputs=dd_x, grad_outputs=dddys)
-    return [ddd_input.numpy() for ddd_input in ddd_inputs]
+    ddd_inputs = paddle.grad(outputs=dd_y,
+                             inputs=dd_x,
+                             grad_outputs=dddys,
+                             allow_unused=True)
+    return [
+        ddd_input.numpy() for ddd_input in ddd_inputs if ddd_input is not None
+    ]
 
 
 def triple_grad_check_for_dygraph(func,
@@ -855,8 +890,8 @@ def triple_grad_check_for_dygraph(func,
                                   rtol=1e-3,
                                   raise_exception=True):
     """
-    Check third order gradients of dygraph. This function will compare the 
-    third order gradients of dygraph and third order gradients of static graph 
+    Check third order gradients of dygraph. This function will compare the
+    third order gradients of dygraph and third order gradients of static graph
     to validate dygraph's correctness
 
     Args:
@@ -882,7 +917,9 @@ def triple_grad_check_for_dygraph(func,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)

@@ -28,15 +28,18 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("W"), true,
+        ctx->HasInput("W"),
+        true,
         platform::errors::InvalidArgument(
             "Input(W) of LookupTableDequantOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Ids"), true,
+        ctx->HasInput("Ids"),
+        true,
         platform::errors::InvalidArgument(
             "Input(Ids) of LookupTableDequantOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument(
             "Output(Out) of LookupTableDequantOp should not be null."));
 
@@ -45,22 +48,27 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
     int ids_rank = ids_dims.size();
     VLOG(5) << "ids rank is " << ids_rank << std::endl;
     PADDLE_ENFORCE_EQ(
-        table_dims.size(), 2,
+        table_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "ShapeError: The dimensions of the 'lookup table' must be 2. "
             "But received lookup table's dimensions = %d, "
             "lookup table's shape = [%s].",
-            table_dims.size(), table_dims));
+            table_dims.size(),
+            table_dims));
     PADDLE_ENFORCE_EQ(
-        ids_dims[ids_rank - 1], 1,
+        ids_dims[ids_rank - 1],
+        1,
         platform::errors::InvalidArgument(
             "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
             "But received Ids's last dimensions = %d, Ids's shape = [%s].",
-            ids_dims[ids_rank - 1], ids_dims));
+            ids_dims[ids_rank - 1],
+            ids_dims));
 
     auto output_dims =
         phi::vectorize(phi::slice_ddim(ids_dims, 0, ids_rank - 1));
-    PADDLE_ENFORCE_GE(table_dims[1], 2,
+    PADDLE_ENFORCE_GE(table_dims[1],
+                      2,
                       platform::errors::InvalidArgument(
                           "the second dim of table_dims should be "
                           "greater or equal to 2, but the actual shape "
@@ -106,7 +114,7 @@ Lookup Table Dequant Operator.
 
 The `W` input is a quantized parameter for the sake of saving memories.
 This operator first index embeddings with `Ids`,
-then dequantizes them and contact them as output (`Out`). 
+then dequantizes them and contact them as output (`Out`).
 
 The input Ids can carry the LoD (Level of Details) information,
 or not. And the output only shares the LoD information with input Ids.
@@ -120,7 +128,8 @@ or not. And the output only shares the LoD information with input Ids.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    lookup_table_dequant, ops::LookupTableDequantOp,
+    lookup_table_dequant,
+    ops::LookupTableDequantOp,
     ops::LookupTableDequantOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

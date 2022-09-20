@@ -40,17 +40,17 @@ def minimize_bfgs(objective_func,
         x_{k+1} = x_{k} + H_k \nabla{f_k}
 
     If :math:`H_k` is the inverse Hessian of :math:`f` at :math:`x_k`, then it's the Newton method.
-    If :math:`H_k` is symmetric and positive definite, used as an approximation of the inverse Hessian, then 
+    If :math:`H_k` is symmetric and positive definite, used as an approximation of the inverse Hessian, then
     it's a quasi-Newton. In practice, the approximated Hessians are obtained
-    by only using the gradients, over either whole or part of the search 
+    by only using the gradients, over either whole or part of the search
     history, the former is BFGS, the latter is L-BFGS.
 
-    Reference: 
+    Reference:
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006. pp140: Algorithm 6.1 (BFGS Method).
 
     Args:
         objective_func: the objective function to minimize. ``objective_func`` accepts a 1D Tensor and returns a scalar.
-        initial_position (Tensor): the starting point of the iterates, has the same shape with the input of ``objective_func`` . 
+        initial_position (Tensor): the starting point of the iterates, has the same shape with the input of ``objective_func`` .
         max_iters (int, optional): the maximum number of minimization iterations. Default value: 50.
         tolerance_grad (float, optional): terminates if the gradient norm is smaller than this. Currently gradient norm uses inf norm. Default value: 1e-7.
         tolerance_change (float, optional): terminates if the change of function value/position/parameter between two iterations is smaller than this value. Default value: 1e-9.
@@ -75,7 +75,7 @@ def minimize_bfgs(objective_func,
         .. code-block:: python
 
             import paddle
-            
+
             def func(x):
                 return paddle.dot(x, x)
 
@@ -91,8 +91,8 @@ def minimize_bfgs(objective_func,
 
     if dtype not in ['float32', 'float64']:
         raise ValueError(
-            "The dtype must be 'float32' or 'float64', but the specified is {}.".
-            format(dtype))
+            "The dtype must be 'float32' or 'float64', but the specified is {}."
+            .format(dtype))
 
     op_name = 'minimize_bfgs'
     check_input_type(initial_position, 'initial_position', op_name)
@@ -134,8 +134,8 @@ def minimize_bfgs(objective_func,
                 dtype=dtype)
         else:
             raise NotImplementedError(
-                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
-                format(line_search_fn))
+                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'"
+                .format(line_search_fn))
         num_func_calls += ls_func_calls
 
         #############    update Hk    #############
@@ -150,7 +150,9 @@ def minimize_bfgs(objective_func,
 
         rhok_inv = paddle.dot(yk, sk)
         rhok = paddle.static.nn.cond(
-            rhok_inv == 0., lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype), lambda: 1. / rhok_inv)
+            rhok_inv == 0.,
+            lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
+            lambda: 1. / rhok_inv)
 
         Vk_transpose = I - rhok * sk * yk.t()
         Vk = I - rhok * yk * sk.t()
@@ -162,8 +164,9 @@ def minimize_bfgs(objective_func,
         #############    check convergence    #############
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
-        paddle.assign(done | (gnorm < tolerance_grad) |
-                      (pk_norm < tolerance_change), done)
+        paddle.assign(
+            done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change),
+            done)
         paddle.assign(done, is_converge)
         # when alpha=0, there is no chance to get xk change.
         paddle.assign(done | (alpha == 0.), done)

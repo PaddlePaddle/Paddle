@@ -28,7 +28,7 @@ class CELU(Layer):
     CELU Activation.
 
     .. math::
-    
+
         CELU(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
 
     Parameters:
@@ -44,7 +44,7 @@ class CELU(Layer):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.to_tensor([[-1. ,6.], [1., 15.6]])
             m = paddle.nn.CELU(0.2)
             out = m(x)
@@ -142,9 +142,8 @@ class GELU(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
+            x = paddle.to_tensor([[-1, 0.5],[1, 1.5]])
 
             m = paddle.nn.GELU()
             out = m(x) # [-0.158655 0.345731 0.841345 1.39979]
@@ -232,7 +231,7 @@ class Hardswish(Layer):
                 \frac{x(x+3)}{6} &, & \text{otherwise}
                 \end{array}
             \right.
-            
+
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -385,19 +384,18 @@ class PReLU(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
             paddle.set_default_dtype("float64")
 
-            data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
-                            [ 3.0, -4.0,  5.0, -6.0],
-                            [-7.0, -8.0,  8.0,  9.0]],
-                            [[ 1.0, -2.0, -3.0,  4.0],
-                            [-5.0,  6.0,  7.0, -8.0],
-                            [ 6.0,  7.0,  8.0,  9.0]]]], 'float64')
-            x = paddle.to_tensor(data)
+            data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
+                                    [ 3.0, -4.0,  5.0, -6.0],
+                                    [-7.0, -8.0,  8.0,  9.0]],
+                                    [[ 1.0, -2.0, -3.0,  4.0],
+                                    [-5.0,  6.0,  7.0, -8.0],
+                                    [ 6.0,  7.0,  8.0,  9.0]]]])
+
             m = paddle.nn.PReLU(1, 0.25)
-            out = m(x)
+            out = m(data)
+            print(out)
             # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
             #    [ 3.  , -1.  ,  5.  , -1.5 ],
             #    [-1.75, -2.  ,  8.  ,  9.  ]],
@@ -419,12 +417,12 @@ class PReLU(Layer):
         self._name = name
         self._data_format = data_format
 
-        self._weight = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[self._num_parameters],
-            dtype=get_default_dtype(),
-            is_bias=False,
-            default_initializer=Constant(self._init))
+        self._weight = self.create_parameter(attr=self._weight_attr,
+                                             shape=[self._num_parameters],
+                                             dtype=get_default_dtype(),
+                                             is_bias=False,
+                                             default_initializer=Constant(
+                                                 self._init))
 
     def forward(self, x):
         return F.prelu(x, self._weight, data_format=self._data_format)
@@ -434,6 +432,95 @@ class PReLU(Layer):
         return 'num_parameters={}, data_format={}, init={}, dtype={}{}'.format(
             self._num_parameters, self._data_format, self._init, self._dtype,
             name_str)
+
+
+class RReLU(Layer):
+    r"""
+    RReLU activation layer.
+
+    Applies the randomized leaky rectified liner unit function to improve generalization performance,
+    as described in the paper:
+    `Empirical Evaluation of Rectified Activations in Convolutional Network <https://arxiv.org/abs/1505.00853>`_
+
+    During training, randomly samples the negative slope for activation values as described below:
+
+    .. math::
+
+        RReLU(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    a * x, & & otherwise \\
+                \end{array}
+            \right.
+
+    where :math:`x` is the input tensor,
+    :math:`a` is randomly sampled from uniform distribution in range (:math:`lower`, :math:`upper`),
+
+    In the test phase, the negative slope will take the average value of :math:`lower` and :math:`upper`:
+
+    .. math::
+
+        RReLU(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    (lower + upper) * 0.5 * x, & & otherwise \\
+                \end{array}
+            \right.
+
+    where :math:`x` is the input tensor,
+    :math:`lower` and :math:`upper` are the bounds of uniform distribution.
+
+    Parameters:
+        lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
+        upper (float, optional): The upper bound of uniform distribution. Default: 0.333.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape. Default dtype is float32.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
+                                            [ 3.0, -4.0,  5.0, -6.0],
+                                            [-7.0, -8.0,  8.0,  9.0]],
+                                            [[ 1.0, -2.0, -3.0,  4.0],
+                                            [-5.0,  6.0,  7.0, -8.0],
+                                            [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+
+            rrelu_layer = paddle.nn.RReLU(0.1, 0.3)
+            out = rrelu_layer(input_tensor)
+            print(out)
+            #[[[[-0.20000899  3.         -0.88108218  5.        ]
+            #   [ 3.         -0.55175185  5.         -1.07761011]
+            #   [-1.06806871 -1.98962009  8.          9.        ]]
+            #  [[ 1.         -0.52382672 -0.65515128  4.        ]
+            #   [-1.37663394  6.          7.         -2.34657836]
+            #   [ 6.          7.          8.          9.        ]]]]
+    """
+
+    def __init__(self, lower=1. / 8., upper=1. / 3., name=None):
+        super(RReLU, self).__init__()
+        self._lower = lower
+        self._upper = upper
+        self._name = name
+
+    def forward(self, x):
+        return F.rrelu(x,
+                       lower=self._lower,
+                       upper=self._upper,
+                       training=self.training)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'lower={}, upper={}, training={}, dtype={}{}'.format(
+            self._lower, self._upper, self.training, self._dtype, name_str)
 
 
 class ReLU(Layer):
@@ -459,7 +546,9 @@ class ReLU(Layer):
 
             x = paddle.to_tensor([-2., 0., 1.])
             m = paddle.nn.ReLU()
-            out = m(x) # [0., 0., 1.]
+            out = m(x)
+            print(out)
+            # [0., 0., 1.]
     """
 
     def __init__(self, name=None):
@@ -494,11 +583,12 @@ class ReLU6(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
+            x = paddle.to_tensor([-1., 0.3, 6.5])
             m = paddle.nn.ReLU6()
-            out = m(x) # [0, 0.3, 6]
+            out = m(x)
+            print(out)
+            # [0, 0.3, 6]
     """
 
     def __init__(self, name=None):
@@ -541,11 +631,12 @@ class SELU(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
+            x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]])
             m = paddle.nn.SELU()
-            out = m(x) # [[0, 1.050701],[2.101402, 3.152103]]
+            out = m(x)
+            print(out)
+            # [[0, 1.050701],[2.101402, 3.152103]]
     """
 
     def __init__(self,
@@ -891,7 +982,7 @@ class Mish(Layer):
             \end{cases}
 
         Mish(x) = x * \tanh(softplus(x))
-    
+
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -899,7 +990,7 @@ class Mish(Layer):
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
-    
+
     Examples:
 
         .. code-block:: python

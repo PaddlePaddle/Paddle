@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/yolov3_loss_grad_kernel.h"
+
 #include <algorithm>
 #include <vector>
-
-#include "paddle/phi/kernels/yolov3_loss_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -122,9 +122,9 @@ void Yolov3LossGradKernel(const Context& dev_ctx,
                           const DenseTensor& gt_box,
                           const DenseTensor& gt_label,
                           const paddle::optional<DenseTensor>& gt_score,
-                          const DenseTensor& loss_grad,
                           const DenseTensor& objectness_mask,
                           const DenseTensor& gt_match_mask,
+                          const DenseTensor& loss_grad,
                           const std::vector<int>& anchors,
                           const std::vector<int>& anchor_mask,
                           int class_num,

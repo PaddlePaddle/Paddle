@@ -15,6 +15,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/fleet/metrics.h"
+#include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
 namespace phi {
@@ -172,9 +173,11 @@ void DownpourLiteWorker::CopyDenseTable() {
     if (copy_table_config_.dense_pull_after_copy()) {
       VLOG(3) << "dense pull after copy, table=" << dest_table;
       pull_dense_status.resize(0);
-      fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
+      fleet_ptr_->PullDenseVarsAsync(*root_scope_,
+                                     dest_table,
                                      dense_value_names_[dest_table],
-                                     &pull_dense_status, true);
+                                     &pull_dense_status,
+                                     true);
       for (auto& t : pull_dense_status) {
         t.wait();
         auto status = t.get();
@@ -202,15 +205,15 @@ void DownpourLiteWorker::CopyDenseVars() {
     Variable* src_var = thread_scope_->FindVar(src_var_name);
     CHECK(src_var != nullptr) << src_var_name << " not found";  // NOLINT
     LoDTensor* src_tensor = src_var->GetMutable<LoDTensor>();
-    CHECK(src_tensor != nullptr) << src_var_name
-                                 << " tensor is null";  // NOLINT
+    CHECK(src_tensor != nullptr)
+        << src_var_name << " tensor is null";  // NOLINT
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
     CHECK(dest_var != nullptr) << dest_var_name << " not found";  // NOLINT
     LoDTensor* dest_tensor = dest_var->GetMutable<LoDTensor>();
-    CHECK(dest_tensor != nullptr) << dest_var_name
-                                  << " tensor is null";  // NOLINT
+    CHECK(dest_tensor != nullptr)
+        << dest_var_name << " tensor is null";  // NOLINT
     float* dest_data = dest_tensor->data<float>();
 
     CHECK(src_tensor->numel() == dest_tensor->numel())
@@ -308,10 +311,12 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
       if (tensor == nullptr) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
+                        false,
                         platform::errors::InvalidArgument(
                             "Tensor %s contains Inf.", var_name));
-      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
+                        false,
                         platform::errors::InvalidArgument(
                             "Tensor %s contains NAN.", var_name));
     }
@@ -348,8 +353,11 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
         double op_sum_time = 0;
         std::unordered_map<std::string, double> op_to_time;
         for (size_t i = 0; i < op_total_time.size(); ++i) {
-          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          fprintf(stderr,
+                  "op_name:[%zu][%s], op_mean_time:[%fs]\n",
+                  i,
+                  op_name[i].c_str(),
+                  op_total_time[i] / batch_cnt);
           if (op_to_time.find(op_name[i]) == op_to_time.end()) {
             op_to_time[op_name[i]] = 0.0;
           }
@@ -357,39 +365,50 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
           op_sum_time += op_total_time[i];
         }
         for (auto& i : op_to_time) {
-          fprintf(stderr, "op [%s] run total time: [%f]ms\n", i.first.c_str(),
+          fprintf(stderr,
+                  "op [%s] run total time: [%f]ms\n",
+                  i.first.c_str(),
                   i.second / batch_cnt);
         }
         fprintf(stderr, "op run total time: %fs\n", op_sum_time / batch_cnt);
         fprintf(stderr, "train total time: %fs\n", total_time / batch_cnt);
-        fprintf(stderr, "pull sparse time: %fs\n",
-                pull_sparse_time / batch_cnt);
-        fprintf(stderr, "fill sparse time: %fs\n",
-                fill_sparse_time / batch_cnt);
-        fprintf(stderr, "push sparse time: %fs\n",
-                push_sparse_time / batch_cnt);
+        fprintf(
+            stderr, "pull sparse time: %fs\n", pull_sparse_time / batch_cnt);
+        fprintf(
+            stderr, "fill sparse time: %fs\n", fill_sparse_time / batch_cnt);
+        fprintf(
+            stderr, "push sparse time: %fs\n", push_sparse_time / batch_cnt);
         fprintf(stderr, "push dense time: %fs\n", push_dense_time / batch_cnt);
-        fprintf(stderr, "collect label time: %fs\n",
+        fprintf(stderr,
+                "collect label time: %fs\n",
                 collect_label_time / batch_cnt);
-        fprintf(stderr, "adjust ins weight time: %fs\n",
+        fprintf(stderr,
+                "adjust ins weight time: %fs\n",
                 adjust_ins_weight_time / batch_cnt);
         fprintf(stderr, "copy table time: %fs\n", copy_table_time / batch_cnt);
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
         fprintf(stderr, "op run percent: %f\n", op_sum_time / total_time * 100);
-        fprintf(stderr, "pull sparse time percent: %f\n",
+        fprintf(stderr,
+                "pull sparse time percent: %f\n",
                 pull_sparse_time / total_time * 100);
-        fprintf(stderr, "adjust ins weight time percent: %f\n",
+        fprintf(stderr,
+                "adjust ins weight time percent: %f\n",
                 adjust_ins_weight_time / total_time * 100);
-        fprintf(stderr, "copy table time percent: %f\n",
+        fprintf(stderr,
+                "copy table time percent: %f\n",
                 copy_table_time / total_time * 100);
-        fprintf(stderr, "collect label time percent: %f\n",
+        fprintf(stderr,
+                "collect label time percent: %f\n",
                 collect_label_time / total_time * 100);
-        fprintf(stderr, "fill sparse time percent: %f\n",
+        fprintf(stderr,
+                "fill sparse time percent: %f\n",
                 fill_sparse_time / total_time * 100);
-        fprintf(stderr, "push sparse time percent: %f\n",
+        fprintf(stderr,
+                "push sparse time percent: %f\n",
                 push_sparse_time / total_time * 100);
-        fprintf(stderr, "push dense time percent: %f\n",
+        fprintf(stderr,
+                "push dense time percent: %f\n",
                 push_dense_time / total_time * 100);
         fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
       }
@@ -458,7 +477,9 @@ void DownpourLiteWorker::TrainFiles() {
             if (s != "") s += ",";
             s += ins_id;
           }
-          fprintf(stderr, "batch_size: %zu, ins_ids_vec: %s\n", batch_size,
+          fprintf(stderr,
+                  "batch_size: %zu, ins_ids_vec: %s\n",
+                  batch_size,
                   s.c_str());
           s = "";
           for (auto& param : all_param_) {
@@ -510,10 +531,12 @@ void DownpourLiteWorker::TrainFiles() {
       if (tensor == nullptr) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
+                        false,
                         platform::errors::InvalidArgument(
                             "Tensor %s contains Inf.", var_name));
-      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
+                        false,
                         platform::errors::InvalidArgument(
                             "Tensor %s contains NAN.", var_name));
     }

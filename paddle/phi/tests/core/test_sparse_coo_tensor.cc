@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "gtest/gtest.h"
-
 #include "glog/logging.h"
+#include "gtest/gtest.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/tests/core/allocator.h"
@@ -53,7 +52,6 @@ TEST(sparse_coo_tensor, construct) {
   CHECK_EQ(sparse.numel(), 9);
   CHECK(sparse.dims() == dense_dims);
   CHECK(sparse.dtype() == DataType::FLOAT32);
-  CHECK(sparse.layout() == DataLayout::SPARSE_COO);
   CHECK(sparse.place() == phi::CPUPlace());
 }
 

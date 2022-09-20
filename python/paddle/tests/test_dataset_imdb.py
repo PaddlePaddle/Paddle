@@ -19,6 +19,7 @@ from paddle.text.datasets import Imdb
 
 
 class TestImdbTrain(unittest.TestCase):
+
     def test_main(self):
         imdb = Imdb(mode='train')
         self.assertTrue(len(imdb) == 25000)
@@ -33,6 +34,7 @@ class TestImdbTrain(unittest.TestCase):
 
 
 class TestImdbTest(unittest.TestCase):
+
     def test_main(self):
         imdb = Imdb(mode='test')
         self.assertTrue(len(imdb) == 25000)

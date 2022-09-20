@@ -26,6 +26,9 @@ void AllKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   bool reduce_all = false;
+  if (dims.size() == 0 || static_cast<int>(dims.size()) == x.dims().size()) {
+    reduce_all = true;
+  }
   AllRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
@@ -35,4 +38,8 @@ PD_REGISTER_KERNEL(all, CPU, ALL_LAYOUT, phi::AllKernel, bool) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(all, GPU, ALL_LAYOUT, phi::AllKernel, bool) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU_KP)
+PD_REGISTER_KERNEL(all, KPS, ALL_LAYOUT, phi::AllKernel, bool) {}
 #endif

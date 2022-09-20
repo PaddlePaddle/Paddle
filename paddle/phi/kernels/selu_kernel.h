@@ -25,4 +25,4 @@ void SeluKernel(const Context& dev_ctx,
                 float scale,
                 float alpha,
                 DenseTensor* out);
-}  // phi
+}  // namespace phi

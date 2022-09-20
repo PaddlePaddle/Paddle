@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import sys
+
 sys.path.append("..")
 
 import paddle
@@ -32,11 +33,13 @@ paddle.enable_static()
 
 
 class XPUTestFillAnyLikeOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'fill_any_like'
         self.use_dynamic_create_class = False
 
     class TestFillAnyLikeOp(XPUOpTest):
+
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -64,18 +67,22 @@ class XPUTestFillAnyLikeOp(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
     class TestFillAnyLikeOp2(TestFillAnyLikeOp):
+
         def set_value(self):
             self.value = -0.0
 
     class TestFillAnyLikeOp3(TestFillAnyLikeOp):
+
         def set_value(self):
             self.value = 1.0
 
     class TestFillAnyLikeOp4(TestFillAnyLikeOp):
+
         def init(self):
             self.value = 1e-9
 
     class TestFillAnyLikeOp5(TestFillAnyLikeOp):
+
         def set_value(self):
             if self.dtype == "float16":
                 self.value = 0.05

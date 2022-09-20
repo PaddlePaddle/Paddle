@@ -22,10 +22,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
 template <typename T>
-class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+struct GlobalGatherFunctor<phi::GPUContext, T> {
+  void operator()(const framework::ExecutionContext& ctx) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<framework::LoDTensor>("X");
@@ -53,8 +53,8 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
       cpu_local_count_data = local_count->data<int64_t>();
       local_count_len = local_count->numel();
     } else {
-      framework::TensorCopySync(*local_count, platform::CPUPlace(),
-                                &cpu_local_count);
+      framework::TensorCopySync(
+          *local_count, platform::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
       local_count_len = cpu_local_count.numel();
     }
@@ -63,8 +63,8 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
     if (platform::is_cpu_place(global_count->place())) {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {
-      framework::TensorCopySync(*global_count, platform::CPUPlace(),
-                                &cpu_global_count);
+      framework::TensorCopySync(
+          *global_count, platform::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
@@ -73,7 +73,8 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for global gather op must be non-negative.",
             ring_id));
@@ -82,7 +83,7 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
@@ -114,14 +115,20 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::ncclSend(send_buf + send_ptr * in_feat,
                                           cpu_global_count_data[idx] * in_feat,
-                                          dtype, j, comm->comm(), stream));
+                                          dtype,
+                                          j,
+                                          comm->comm(),
+                                          stream));
           send_ptr += cpu_global_count_data[idx];
         }
         if (cpu_local_count_data[idx]) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::ncclRecv(recv_buf + expert_ptr[idx] * in_feat,
                                           cpu_local_count_data[idx] * in_feat,
-                                          dtype, j, comm->comm(), stream));
+                                          dtype,
+                                          j,
+                                          comm->comm(),
+                                          stream));
         }
       }
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
@@ -137,13 +144,143 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
+  void operator()(const framework::ExecutionContext& ctx) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if NCCL_VERSION_CODE >= 2703
+    auto x = ctx.Input<framework::LoDTensor>("X");
+    auto local_count = ctx.Input<framework::LoDTensor>("local_count");
+    auto global_count = ctx.Input<framework::LoDTensor>("global_count");
+    auto local_count_type =
+        framework::TransToProtoVarType(local_count->dtype());
+    auto global_count_type =
+        framework::TransToProtoVarType(global_count->dtype());
+    if (local_count_type != framework::proto::VarType::INT64) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Please use int64 type in local_count."));
+    }
+    if (global_count_type != framework::proto::VarType::INT64) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Please use int64 type in global_count."));
+    }
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+    const int64_t* cpu_local_count_data;
+    const int64_t* cpu_global_count_data;
+    auto local_count_len = 0;
+
+    framework::Tensor cpu_local_count;
+    if (platform::is_cpu_place(local_count->place())) {
+      cpu_local_count_data = local_count->data<int64_t>();
+      local_count_len = local_count->numel();
+    } else {
+      framework::TensorCopySync(
+          *local_count, platform::CPUPlace(), &cpu_local_count);
+      cpu_local_count_data = cpu_local_count.data<int64_t>();
+      local_count_len = cpu_local_count.numel();
+    }
+
+    framework::Tensor cpu_global_count;
+    if (platform::is_cpu_place(global_count->place())) {
+      cpu_global_count_data = global_count->data<int64_t>();
+    } else {
+      framework::TensorCopySync(
+          *global_count, platform::CPUPlace(), &cpu_global_count);
+      cpu_global_count_data = cpu_global_count.data<int64_t>();
+    }
+
+    int ring_id = ctx.Attr<int>("ring_id");
+    PADDLE_ENFORCE_GE(
+        ring_id,
+        0,
+        platform::errors::InvalidArgument(
+            "The ring_id (%d) for global gather op must be non-negative.",
+            ring_id));
+    auto place = ctx.GetPlace();
+
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    distributed::ProcessGroup* pg = map->get(ring_id);
+
+    int nranks = pg->GetSize();
+    auto in_feat = x->dims()[1];
+    auto n_expert = local_count->dims()[0] / nranks;
+
+    auto fwd_count = 0;
+
+    for (auto i = 0; i < local_count_len; ++i) {
+      fwd_count += cpu_local_count_data[i];
+    }
+    framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+    int64_t* expert_ptr = new int64_t[n_expert * nranks];
+    expert_ptr[0] = 0;
+    auto tot_experts = n_expert * nranks;
+    for (auto i = 1; i < tot_experts; ++i) {
+      expert_ptr[i] = expert_ptr[i - 1] + cpu_local_count_data[i - 1];
+    }
+    auto send_ptr = 0;
+    out->mutable_data<T>(out_dims, place);
+
+    for (auto i = 0; i < n_expert; ++i) {
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+      for (auto j = 0; j < nranks; ++j) {
+        int idx = i + j * n_expert;
+        if (cpu_global_count_data[idx]) {
+          phi::DenseTensor tmp = *x;
+          pg->Send_Partial(
+              tmp, j, send_ptr * in_feat, cpu_global_count_data[idx] * in_feat);
+          send_ptr += cpu_global_count_data[idx];
+        }
+        if (cpu_local_count_data[idx]) {
+          pg->Recv_Partial(*out,
+                           j,
+                           expert_ptr[idx] * in_feat,
+                           cpu_local_count_data[idx] * in_feat);
+        }
+      }
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+    }
+
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
+
+#else
+    PADDLE_THROW(
+        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+#endif
+#else
+    PADDLE_THROW(
+        platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
+#endif
+  }
+};
+
+template <typename T>
+class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const int rid = ctx.Attr<int>("ring_id");
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      GlobalGatherProcessGroupFunctor<phi::GPUContext, T> functor_;
+      functor_(ctx);
+    } else {
+      GlobalGatherFunctor<phi::GPUContext, T> functor_;
+      functor_(ctx);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(global_gather, ops::GlobalGatherOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(global_gather,
+                        ops::GlobalGatherOpCUDAKernel<float>,
                         ops::GlobalGatherOpCUDAKernel<double>,
                         ops::GlobalGatherOpCUDAKernel<int>,
                         ops::GlobalGatherOpCUDAKernel<int64_t>,

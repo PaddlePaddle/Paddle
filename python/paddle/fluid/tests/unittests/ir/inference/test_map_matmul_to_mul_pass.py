@@ -29,17 +29,21 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
     """
      x_var    y_var(persistable)
        \       /
-         matmul  
+         matmul
     """
 
     def sample_predictor_configs(self, program_config):
         # cpu
         config = self.create_inference_config(use_gpu=False)
-        yield config, ["mul", ], (1e-5, 1e-5)
+        yield config, [
+            "mul",
+        ], (1e-5, 1e-5)
 
         # for gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, ["mul", ], (1e-5, 1e-5)
+        yield config, [
+            "mul",
+        ], (1e-5, 1e-5)
 
         # TRT
         # config = self.create_trt_inference_config()
@@ -75,13 +79,13 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of matmul
         x_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=8), min_size=2, max_size=5))
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=2,
+                     max_size=5))
         y_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=8), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=2,
+                     max_size=2))
         y_shape[0] = x_shape[-1]
         alpha = 1.0
         transpose_X = False
@@ -89,8 +93,10 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
 
         matmul_op = OpConfig(
             "matmul",
-            inputs={"X": ["matmul_x"],
-                    "Y": ["matmul_y"]},
+            inputs={
+                "X": ["matmul_x"],
+                "Y": ["matmul_y"]
+            },
             outputs={"Out": ["matmul_out"]},
             alpha=alpha,
             transpose_X=transpose_X,
@@ -100,24 +106,31 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
             fused_transpose_X=[],
             fused_transpose_Y=[],
             fused_reshape_Out=[],
-            fused_transpose_Out=[], )
+            fused_transpose_Out=[],
+        )
 
-        ops = [matmul_op, ]
-        weights = {"matmul_y": TensorConfig(shape=y_shape), }
-        inputs = {"matmul_x": TensorConfig(shape=x_shape), }
+        ops = [
+            matmul_op,
+        ]
+        weights = {
+            "matmul_y": TensorConfig(shape=y_shape),
+        }
+        inputs = {
+            "matmul_x": TensorConfig(shape=x_shape),
+        }
         program_config = ProgramConfig(
             ops=ops,
             weights=weights,
             inputs=inputs,
-            outputs=ops[-1].outputs["Out"], )
+            outputs=ops[-1].outputs["Out"],
+        )
         return program_config
 
     def test(self):
-        self.run_and_statis(
-            quant=False,
-            max_examples=100,
-            passes=["gpu_cpu_map_matmul_to_mul_pass"],
-            max_duration=180)
+        self.run_and_statis(quant=False,
+                            max_examples=100,
+                            passes=["gpu_cpu_map_matmul_to_mul_pass"],
+                            max_duration=180)
 
 
 if __name__ == "__main__":

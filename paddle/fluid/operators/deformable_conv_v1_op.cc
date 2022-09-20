@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -72,13 +73,13 @@ class DeformableConvV1OpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 **Deformable Convolution v1 Operator**
 
-Deformable Convolution is a new method based Convolution which feature has offset 
+Deformable Convolution is a new method based Convolution which feature has offset
 in spatial location.
 
-1. Get offset of each pixel in feature map with convolution layers which number 
+1. Get offset of each pixel in feature map with convolution layers which number
    of channels should be double of weight size.
 
-2. Add offset to pixel to get new location and the new value which are computed 
+2. Add offset to pixel to get new location and the new value which are computed
    directly through bilinear interpolation with four nearest pixel.
 
 3. Get the product of pixel and weight as result
@@ -155,8 +156,10 @@ class DeformableConvV1GradOp : public framework::OperatorWithKernel {
     auto filter_dims = ctx->GetInputDim("Filter");
     auto offset_dims = ctx->GetInputDim("Offset");
 
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Output")), "Input",
-                   "Output@Grad", "deformable_conv_v1_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Output")),
+                   "Input",
+                   "Output@Grad",
+                   "deformable_conv_v1_grad");
     if (ctx->HasOutput(framework::GradVarName("Input"))) {
       ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
     }
@@ -180,10 +183,12 @@ class DeformableConvV1GradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(deformable_conv, DeformableConvV1InferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(deformable_conv,
+                            DeformableConvV1InferShapeFunctor,
                             PD_INFER_META(phi::DeformableConvInferMeta));
 
-REGISTER_OPERATOR(deformable_conv_v1, ops::DeformableConvV1Op,
+REGISTER_OPERATOR(deformable_conv_v1,
+                  ops::DeformableConvV1Op,
                   ops::DeformableConvV1OpMaker,
                   ops::DeformableConvV1GradOpMaker<paddle::framework::OpDesc>,
                   ops::DeformableConvV1GradOpMaker<paddle::imperative::OpBase>,

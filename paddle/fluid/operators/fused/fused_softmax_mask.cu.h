@@ -50,7 +50,9 @@ inline int ElementsCeil(int seq_len) {
 }
 
 template <typename T, int VEC_SIZE, int ELEMENTS_PER_THREADS>
-__global__ void FusedSoftmaxMaskVecKernel(T* dst, const T* src, const T* mask,
+__global__ void FusedSoftmaxMaskVecKernel(T* dst,
+                                          const T* src,
+                                          const T* mask,
                                           int seq_len) {
   constexpr int block_size = 128;
   constexpr int warp_size = 32;
@@ -114,10 +116,9 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst, const T* src, const T* mask,
   }
 }
 
-#define SOFTMAX_MASK_KERNEL(VEC_SIZE, ELEMENTS)                    \
-  FusedSoftmaxMaskVecKernel<T, VEC_SIZE,                           \
-                            ELEMENTS><<<grid, block, 0, stream>>>( \
-      dst, src, mask, seq_len)
+#define SOFTMAX_MASK_KERNEL(VEC_SIZE, ELEMENTS)    \
+  FusedSoftmaxMaskVecKernel<T, VEC_SIZE, ELEMENTS> \
+      <<<grid, block, 0, stream>>>(dst, src, mask, seq_len)
 
 // FIXME(wangxi): It is found that the performance of VEC_SIZE=2 is better
 //  than that of =4 and =8. Further analysis of the kernel is needed later.
@@ -150,11 +151,16 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst, const T* src, const T* mask,
 
 // template <typename T, typename MaskT = T>
 template <typename T>
-void LaunchFusedSoftmaxMaskKernel(const T* src, const T* mask, T* dst,
-                                  const int batch_size, const int head_num,
-                                  const int seq_len, cudaStream_t stream) {
+void LaunchFusedSoftmaxMaskKernel(const T* src,
+                                  const T* mask,
+                                  T* dst,
+                                  const int batch_size,
+                                  const int head_num,
+                                  const int seq_len,
+                                  cudaStream_t stream) {
   PADDLE_ENFORCE_EQ(
-      seq_len > 0 && seq_len <= 4096, true,
+      seq_len > 0 && seq_len <= 4096,
+      true,
       platform::errors::InvalidArgument("seq_len must be between (0, 4096] "
                                         "received the seq_len is %d",
                                         seq_len));
@@ -167,7 +173,6 @@ void LaunchFusedSoftmaxMaskKernel(const T* src, const T* mask, T* dst,
   dim3 block(warp_size, warps_per_block);
   dim3 grid(DIV_UP(seq_len, warps_per_block), batch_size, head_num);
 
-  // clang-format off
   int elements = ElementsCeil(seq_len);
   switch (elements) {
     case 1: {  // <=32
@@ -187,17 +192,16 @@ void LaunchFusedSoftmaxMaskKernel(const T* src, const T* mask, T* dst,
       SELECT_SOFTMAX_MASK_KERNEL(4);
       break;
     }
-    CASE_SOFTMAX_MASK_KERNEL(8);    // <=256
-    CASE_SOFTMAX_MASK_KERNEL(16);   // <=512
-    CASE_SOFTMAX_MASK_KERNEL(32);   // <=1024
-    CASE_SOFTMAX_MASK_KERNEL(64);   // <=2048
-    CASE_SOFTMAX_MASK_KERNEL(128);  // <=4096
+      CASE_SOFTMAX_MASK_KERNEL(8);    // <=256
+      CASE_SOFTMAX_MASK_KERNEL(16);   // <=512
+      CASE_SOFTMAX_MASK_KERNEL(32);   // <=1024
+      CASE_SOFTMAX_MASK_KERNEL(64);   // <=2048
+      CASE_SOFTMAX_MASK_KERNEL(128);  // <=4096
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "seq_len must be between (0, 4096], received the seq_len is %d",
           seq_len));
   }
-  // clang-format on
 }
 
 }  // namespace operators

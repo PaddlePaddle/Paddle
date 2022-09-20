@@ -21,7 +21,9 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void KeDequantize(const T* in, const float* dict, int num,
+__global__ void KeDequantize(const T* in,
+                             const float* dict,
+                             int num,
                              float* out) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num) {
@@ -34,9 +36,10 @@ __global__ void KeDequantize(const T* in, const float* dict, int num,
 }
 
 template <typename T>
-struct DequantizeFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* dict,
+struct DequantizeFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor* dict,
                   framework::Tensor* out) {
     const T* in_data = in->data<T>();
     const float* dict_data = dict->data<float>();
@@ -46,16 +49,16 @@ struct DequantizeFunctor<platform::CUDADeviceContext, T> {
     int block = 512;
     int grid = (num + block - 1) / block;
 
-    KeDequantize<T><<<grid, block, 0, dev_ctx.stream()>>>(in_data, dict_data,
-                                                          num, out_data);
+    KeDequantize<T><<<grid, block, 0, dev_ctx.stream()>>>(
+        in_data, dict_data, num, out_data);
   }
 };
 
-template struct DequantizeFunctor<platform::CUDADeviceContext, int8_t>;
+template struct DequantizeFunctor<phi::GPUContext, int8_t>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(dequantize_log, ops::DequantizeLogKernel<CUDA, int8_t>);

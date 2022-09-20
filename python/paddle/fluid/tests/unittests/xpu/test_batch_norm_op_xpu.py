@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import sys
+
 sys.path.append("..")
 import unittest
 import numpy as np
@@ -71,8 +72,8 @@ def ref_batch_norm_train(x, y_grad, scale, bias, mean, variance, momentum,
         saved_mean_tile = np.tile(saved_mean_tile, (n, 1, h, w))
         saved_variance_tile = np.reshape(saved_variance, (1, c, 1, 1))
         saved_variance_tile = np.tile(saved_variance_tile, (n, 1, h, w))
-        normalized_x = (
-            x - saved_mean_tile) / np.sqrt(saved_variance_tile + epsilon)
+        normalized_x = (x - saved_mean_tile) / np.sqrt(saved_variance_tile +
+                                                       epsilon)
         scale_tile = np.reshape(scale, (1, c, 1, 1))
         scale_tile = np.tile(scale_tile, (n, 1, h, w))
         bias_tile = np.reshape(bias, (1, c, 1, 1))
@@ -109,9 +110,8 @@ def ref_batch_norm_train(x, y_grad, scale, bias, mean, variance, momentum,
         x = np.transpose(x, (0, 2, 3, 1))
         y_grad = np.transpose(y_grad, (0, 2, 3, 1))
     x_grad = scale * (
-        y_grad - np.mean(
-            y_grad, axis=(0, 1, 2)) - (x - saved_mean) * np.mean(
-                y_grad * (x - saved_mean), axis=(0, 1, 2)) /
+        y_grad - np.mean(y_grad, axis=(0, 1, 2)) -
+        (x - saved_mean) * np.mean(y_grad * (x - saved_mean), axis=(0, 1, 2)) /
         (saved_variance + epsilon)) / np.sqrt(saved_variance + epsilon)
     scale_grad = np.sum(y_grad * (x - saved_mean) /
                         np.sqrt(saved_variance + epsilon),
@@ -126,6 +126,7 @@ def ref_batch_norm_train(x, y_grad, scale, bias, mean, variance, momentum,
 
 
 class XPUTestBatchNormOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'batch_norm'
         self.use_dynamic_create_class = False
@@ -133,6 +134,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
     @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                      "core is not compiled with XPU")
     class TestBatchNormOp(unittest.TestCase):
+
         def setUp(self):
             self.op_type = "batch_norm"
             self.dtype = np.float32
@@ -154,10 +156,10 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                     + self.data_layout)
             np.random.seed(1024)
             self.x_np = np.random.random_sample(self.shape).astype(self.dtype)
-            self.scale_np = np.random.random_sample(
-                [channel_size]).astype(self.dtype)
-            self.bias_np = np.random.random_sample(
-                [channel_size]).astype(self.dtype)
+            self.scale_np = np.random.random_sample([channel_size
+                                                     ]).astype(self.dtype)
+            self.bias_np = np.random.random_sample([channel_size
+                                                    ]).astype(self.dtype)
             self.mean_np = np.zeros([channel_size]).astype(self.dtype)
             self.variance_np = np.ones([channel_size]).astype(self.dtype)
             self.saved_mean_np = np.zeros([channel_size]).astype(self.dtype)
@@ -197,10 +199,11 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                     'Variance': self.variance_np
                 },
                                  fetch_list=[y])
-            y_np_ref = ref_batch_norm_infer(
-                self.x_np, self.scale_np, self.bias_np, self.mean_np,
-                self.variance_np, self.momentum, self.epsilon, self.data_layout)
-            self.assertEqual(np.allclose(y_np_ref, y_np), True)
+            y_np_ref = ref_batch_norm_infer(self.x_np, self.scale_np,
+                                            self.bias_np, self.mean_np,
+                                            self.variance_np, self.momentum,
+                                            self.epsilon, self.data_layout)
+            np.testing.assert_allclose(y_np_ref, y_np, rtol=1e-05)
 
         def test_train(self):
             y_grad_np = np.random.random_sample(self.shape).astype(self.dtype)
@@ -244,10 +247,9 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                     arg_name = var_name
                     np_value = inputs[var_name]
                     if not block.has_var(var_name):
-                        block.create_var(
-                            name=var_name,
-                            shape=np_value.shape,
-                            dtype=np_value.dtype)
+                        block.create_var(name=var_name,
+                                         shape=np_value.shape,
+                                         dtype=np_value.dtype)
                     input_vars[arg_name] = block.var(var_name)
                 fetch_list = []
                 output_vars = {}
@@ -255,21 +257,19 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                     arg_name = var_name
                     np_value = outputs[var_name]
                     if not block.has_var(var_name):
-                        block.create_var(
-                            name=var_name,
-                            shape=np_value.shape,
-                            dtype=np_value.dtype)
+                        block.create_var(name=var_name,
+                                         shape=np_value.shape,
+                                         dtype=np_value.dtype)
                     if var_name == 'Mean':
                         arg_name = 'MeanOut'  # Share memory
                     if var_name == 'Variance':
                         arg_name = 'VarianceOut'  # Share memory
                     output_vars[arg_name] = block.var(var_name)
                     fetch_list.append(var_name)
-                batch_norm_op = block.append_op(
-                    type="batch_norm",
-                    inputs=input_vars,
-                    outputs=output_vars,
-                    attrs=attrs)
+                batch_norm_op = block.append_op(type="batch_norm",
+                                                inputs=input_vars,
+                                                outputs=output_vars,
+                                                attrs=attrs)
                 # Generate the backward op_desc of batch_norm
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
                     batch_norm_op.desc, set(), [])
@@ -280,11 +280,13 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                 exe = paddle.static.Executor(self.place)
                 outs = exe.run(program, feed=inputs, fetch_list=fetch_list)
                 for id, name in enumerate(fetch_list):
-                    self.assertEqual(
-                        np.allclose(
-                            outputs[name], outs[id], atol=1e-4), True)
+                    np.testing.assert_allclose(outputs[name],
+                                               outs[id],
+                                               rtol=1e-05,
+                                               atol=1e-4)
 
     class TestBatchNormOpUseGlobalStats(unittest.TestCase):
+
         def setUp(self):
             self.places = [paddle.XPUPlace(0)]
             self.init_test()
@@ -313,7 +315,9 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                         net2.training = False
                     y1 = net1(x)
                     y2 = net2(x)
-                    self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                    np.testing.assert_allclose(y1.numpy(),
+                                               y2.numpy(),
+                                               rtol=1e-05)
 
     class TestBatchNormOpUseGlobalStats1(TestBatchNormOpUseGlobalStats):
         ### test mode

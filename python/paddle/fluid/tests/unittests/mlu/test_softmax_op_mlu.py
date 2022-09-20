@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append('..')
 from op_test import OpTest
 import paddle.fluid.core as core
@@ -48,6 +49,7 @@ def ref_softmax(x, axis=None, dtype=None):
 
 
 class TestSoftmaxOp(OpTest):
+
     def get_x_shape(self):
         return [10, 10]
 
@@ -68,7 +70,9 @@ class TestSoftmaxOp(OpTest):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {'axis': self.axis, }
+        self.attrs = {
+            'axis': self.axis,
+        }
 
     def init_kernel_type(self):
         pass
@@ -77,16 +81,19 @@ class TestSoftmaxOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ["X"], "Out", max_relative_error=0.01)
+        self.check_grad_with_place(self.place, ["X"],
+                                   "Out",
+                                   max_relative_error=0.01)
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):
+
     def get_x_shape(self):
         return [2, 3, 4, 5]
 
 
 class TestSoftmaxOp3(TestSoftmaxOp):
+
     def get_x_shape(self):
         return [2, 3, 4, 5]
 
@@ -95,6 +102,7 @@ class TestSoftmaxOp3(TestSoftmaxOp):
 
 
 class TestSoftmaxOp4(TestSoftmaxOp):
+
     def get_x_shape(self):
         return [2, 3, 4, 5]
 
@@ -103,6 +111,7 @@ class TestSoftmaxOp4(TestSoftmaxOp):
 
 
 class TestSoftmaxOp5(TestSoftmaxOp):
+
     def get_x_shape(self):
         return [2, 3, 4, 5]
 
@@ -111,6 +120,7 @@ class TestSoftmaxOp5(TestSoftmaxOp):
 
 
 class TestSoftmaxOp6(TestSoftmaxOp):
+
     def get_x_shape(self):
         return [2, 3, 4, 5]
 
@@ -119,6 +129,7 @@ class TestSoftmaxOp6(TestSoftmaxOp):
 
 
 class TestSoftmaxAPI(unittest.TestCase):
+
     def setUp(self):
         self.place = paddle.MLUPlace(0)
         self.x_np = np.random.uniform(-1., 1., [2, 3, 4, 5]).astype('float32')
@@ -138,7 +149,7 @@ class TestSoftmaxAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_check(self):
         paddle.disable_static(self.place)
@@ -150,7 +161,7 @@ class TestSoftmaxAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         out1 = self.softmax(x, axis=0)
         x = paddle.to_tensor(self.x_np)
@@ -158,11 +169,11 @@ class TestSoftmaxAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = ref_softmax(self.x_np, axis=0, dtype=None)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         out = self.softmax(x, dtype=np.float32)
         out_ref = ref_softmax(self.x_np, axis=-1, dtype=np.float32)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         paddle.enable_static()
 
@@ -171,16 +182,19 @@ class TestSoftmaxAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, self.softmax, 1)
             # The input dtype must be float16, float32
-            x_int32 = paddle.fluid.data(
-                name='x_int32', shape=[2, 3], dtype='int32')
+            x_int32 = paddle.fluid.data(name='x_int32',
+                                        shape=[2, 3],
+                                        dtype='int32')
             self.assertRaises(TypeError, self.softmax, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
-                name='x_fp16', shape=[2, 3], dtype='float16')
+            x_fp16 = paddle.fluid.data(name='x_fp16',
+                                       shape=[2, 3],
+                                       dtype='float16')
             self.softmax(x_fp16)
 
 
 class TestSoftmaxInplaceAPI(TestSoftmaxAPI):
+
     def executed_api(self):
         self.softmax = F.softmax_
 

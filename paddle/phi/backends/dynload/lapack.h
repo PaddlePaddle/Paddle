@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <complex>
 #include <mutex>
+
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
@@ -279,6 +280,34 @@ extern "C" void spotrs_(char *uplo,
                         float *b,
                         int *ldb,
                         int *info);
+extern "C" void dgesdd_(char *,
+                        int *,
+                        int *,
+                        double *,
+                        int *,
+                        double *,
+                        double *,
+                        int *,
+                        double *,
+                        int *,
+                        double *,
+                        int *,
+                        int *,
+                        int *);
+extern "C" void sgesdd_(char *,
+                        int *,
+                        int *,
+                        float *,
+                        int *,
+                        float *,
+                        float *,
+                        int *,
+                        float *,
+                        int *,
+                        float *,
+                        int *,
+                        int *,
+                        int *);
 
 namespace phi {
 namespace dynload {
@@ -327,6 +356,8 @@ extern void *lapack_dso_handle;
   __macro(sgelsy_);                  \
   __macro(dgelss_);                  \
   __macro(sgelss_);                  \
+  __macro(sgesdd_);                  \
+  __macro(dgesdd_);                  \
   __macro(zpotrs_);                  \
   __macro(cpotrs_);                  \
   __macro(dpotrs_);                  \

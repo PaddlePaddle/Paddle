@@ -35,7 +35,7 @@ def kl_divergence(p, q):
 
     .. math::
 
-        KL(p||q) = \int p(x)log\frac{p(x)}{q(x)} \mathrm{d}x 
+        KL(p||q) = \int p(x)log\frac{p(x)}{q(x)} \mathrm{d}x
 
     Args:
         p (Distribution): ``Distribution`` object.
@@ -64,11 +64,11 @@ def kl_divergence(p, q):
 def register_kl(cls_p, cls_q):
     """Decorator for register a KL divergence implemention function.
 
-    The ``kl_divergence(p, q)`` function will search concrete implemention 
-    functions registered by ``register_kl``, according to multi-dispatch pattern. 
-    If an implemention function is found, it will return the result, otherwise, 
-    it will raise ``NotImplementError`` exception. Users can register 
-    implemention funciton by the decorator. 
+    The ``kl_divergence(p, q)`` function will search concrete implemention
+    functions registered by ``register_kl``, according to multi-dispatch pattern.
+    If an implemention function is found, it will return the result, otherwise,
+    it will raise ``NotImplementError`` exception. Users can register
+    implemention funciton by the decorator.
 
     Args:
         cls_p(Distribution): Subclass derived from ``Distribution``.
@@ -83,8 +83,8 @@ def register_kl(cls_p, cls_q):
             def kl_beta_beta():
                 pass # insert implementation here
     """
-    if (not issubclass(cls_p, Distribution) or
-            not issubclass(cls_q, Distribution)):
+    if (not issubclass(cls_p, Distribution)
+            or not issubclass(cls_q, Distribution)):
         raise TypeError('cls_p and cls_q must be subclass of Distribution')
 
     def decorator(f):
@@ -117,6 +117,7 @@ def _dispatch(cls_p, cls_q):
 
 @functools.total_ordering
 class _Compare(object):
+
     def __init__(self, *classes):
         self.classes = classes
 
@@ -136,20 +137,20 @@ class _Compare(object):
 def _kl_beta_beta(p, q):
     return ((q.alpha.lgamma() + q.beta.lgamma() + (p.alpha + p.beta).lgamma()) -
             (p.alpha.lgamma() + p.beta.lgamma() + (q.alpha + q.beta).lgamma()) +
-            ((p.alpha - q.alpha) * p.alpha.digamma()) + (
-                (p.beta - q.beta) * p.beta.digamma()) + (
-                    ((q.alpha + q.beta) -
-                     (p.alpha + p.beta)) * (p.alpha + p.beta).digamma()))
+            ((p.alpha - q.alpha) * p.alpha.digamma()) +
+            ((p.beta - q.beta) * p.beta.digamma()) +
+            (((q.alpha + q.beta) - (p.alpha + p.beta)) *
+             (p.alpha + p.beta).digamma()))
 
 
 @register_kl(Dirichlet, Dirichlet)
 def _kl_dirichlet_dirichlet(p, q):
     return (
         (p.concentration.sum(-1).lgamma() - q.concentration.sum(-1).lgamma()) -
-        ((p.concentration.lgamma() - q.concentration.lgamma()).sum(-1)) + (
-            ((p.concentration - q.concentration) *
-             (p.concentration.digamma() -
-              p.concentration.sum(-1).digamma().unsqueeze(-1))).sum(-1)))
+        ((p.concentration.lgamma() - q.concentration.lgamma()).sum(-1)) +
+        (((p.concentration - q.concentration) *
+          (p.concentration.digamma() -
+           p.concentration.sum(-1).digamma().unsqueeze(-1))).sum(-1)))
 
 
 @register_kl(Categorical, Categorical)
@@ -186,15 +187,15 @@ def _kl_expfamily_expfamily(p, q):
 
     try:
         if _non_static_mode():
-            p_grads = paddle.grad(
-                p_log_norm, p_natural_params, create_graph=True)
+            p_grads = paddle.grad(p_log_norm,
+                                  p_natural_params,
+                                  create_graph=True)
         else:
             p_grads = paddle.static.gradients(p_log_norm, p_natural_params)
     except RuntimeError as e:
         raise TypeError(
-            "Cann't compute kl_divergence({cls_p}, {cls_q}) use bregman divergence. Please register_kl({cls_p}, {cls_q}).".
-            format(
-                cls_p=type(p).__name__, cls_q=type(q).__name__)) from e
+            "Cann't compute kl_divergence({cls_p}, {cls_q}) use bregman divergence. Please register_kl({cls_p}, {cls_q})."
+            .format(cls_p=type(p).__name__, cls_q=type(q).__name__)) from e
 
     kl = q._log_normalizer(*q_natural_params) - p_log_norm
     for p_param, q_param, p_grad in zip(p_natural_params, q_natural_params,

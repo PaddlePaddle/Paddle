@@ -27,12 +27,14 @@ from paddle.fluid import core
 from paddle.fluid.log_helper import get_logger
 from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient, AFSClient
 from . import utils
+
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 __all__ = ["FleetUtil", "GPUPSUtil"]
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s %(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s %(levelname)s: %(message)s')
 
 fleet = None
 
@@ -777,8 +779,10 @@ class FleetUtil(object):
         suffix_name = "/%s/delta-%s" % (day, pass_id)
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_print("going to save_cache_model %s" % model_path)
-        key_num = fleet.save_cache_model(
-            None, model_path, mode=mode, table_id=table_id)
+        key_num = fleet.save_cache_model(None,
+                                         model_path,
+                                         mode=mode,
+                                         table_id=table_id)
         self.rank0_print("save_cache_model done")
         return key_num
 
@@ -809,8 +813,10 @@ class FleetUtil(object):
         suffix_name = "/%s/base" % day
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_print("going to save_cache_base_model %s" % model_path)
-        key_num = fleet.save_cache_model(
-            None, model_path, mode=2, table_id=table_id)
+        key_num = fleet.save_cache_model(None,
+                                         model_path,
+                                         mode=2,
+                                         table_id=table_id)
         self.rank0_print("save_cache_base_model done")
         return key_num
 
@@ -853,8 +859,8 @@ class FleetUtil(object):
                                          " not found in scope " +
                                          "when pull dense")
                     var_name_list.append(var_name)
-                fleet._fleet_ptr.pull_dense(scope,
-                                            int(table.table_id), var_name_list)
+                fleet._fleet_ptr.pull_dense(scope, int(table.table_id),
+                                            var_name_list)
         fleet._role_maker._barrier_worker()
 
     def save_paddle_inference_model(self,
@@ -1022,8 +1028,11 @@ class FleetUtil(object):
             vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:
-                    fluid.io.save_vars(
-                        executor, "./", program, vars=vars, filename=model_name)
+                    fluid.io.save_vars(executor,
+                                       "./",
+                                       program,
+                                       vars=vars,
+                                       filename=model_name)
                 else:
                     fluid.io.save_vars(executor, model_name, program, vars=vars)
 
@@ -1431,7 +1440,8 @@ class FleetUtil(object):
 
         return [
             auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr,
-            copc, mean_predict_qvalue, int(total_ins_num)
+            copc, mean_predict_qvalue,
+            int(total_ins_num)
         ]
 
     def print_global_metrics(self,
@@ -1523,12 +1533,12 @@ class FleetUtil(object):
             mean_predict_qvalue, total_ins_num = self.get_global_metrics(\
             scope, stat_pos_name, stat_neg_name, sqrerr_name, abserr_name,\
             prob_name, q_name, pos_ins_num_name, total_ins_num_name)
-        self.rank0_print("%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
-                         "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
-                         "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
-                         (print_prefix, auc, bucket_error, mae, rmse,
-                          actual_ctr, predicted_ctr, copc, mean_predict_qvalue,
-                          total_ins_num))
+        self.rank0_print(
+            "%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
+            "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
+            "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
+            (print_prefix, auc, bucket_error, mae, rmse, actual_ctr,
+             predicted_ctr, copc, mean_predict_qvalue, total_ins_num))
 
     def program_type_trans(self, prog_dir, prog_fn, is_text):
         return utils.program_type_trans(prog_dir, prog_fn, is_text)
@@ -1572,8 +1582,8 @@ class FleetUtil(object):
 
     def parse_program_proto(self, prog_path, is_text, output_dir):
         """
-        Parse program.proto into a more readable format. 
-        This function will generate three files: 
+        Parse program.proto into a more readable format.
+        This function will generate three files:
         output_dir/vars_all.log,
         output_dir/vars_persistable.log,
         output_dir/ops.log.
@@ -1609,8 +1619,8 @@ class FleetUtil(object):
             if self._is_optimizer_op(op):
                 break
             if op.has_attr("op_device"):
-                cur_attr = op.attr("op_device") if op.attr(
-                    "op_device") != "" else type_cpu
+                cur_attr = op.attr(
+                    "op_device") if op.attr("op_device") != "" else type_cpu
                 if pre is None or pre != cur_attr:
                     ops_list.append([])
                     type_list.append(cur_attr)
@@ -1700,8 +1710,8 @@ class FleetUtil(object):
                 send_list[i].extend(list(in_from_pre[i + 1]))
             prog = program.clone()
             if merged_type_list[i] != type_cpu:
-                prog = prog._prune_with_input(
-                    list(in_from_pre[i]), list(send_list[i]))
+                prog = prog._prune_with_input(list(in_from_pre[i]),
+                                              list(send_list[i]))
                 program_list.append(prog)
             else:
                 program_list.append(prog)

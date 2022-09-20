@@ -19,9 +19,10 @@ import sys
 
 import numpy as np
 
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from auto_parallel_relaunch_model import mlp_pretrain_forward
 from auto_parallel_relaunch_model import batch_generator_creator
+
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
@@ -31,41 +32,44 @@ def get_gpt_model(train_program, start_program, place, batch_size, sequence_len,
                   vocab_size):
     modeling.init_global()
     with static.program_guard(train_program, start_program):
-        tokens = paddle.static.data(
-            name="tokens", shape=[batch_size, sequence_len], dtype='int64')
-        position_ids = paddle.static.data(
-            name="position_ids",
-            shape=[batch_size, sequence_len],
-            dtype='int64')
+        tokens = paddle.static.data(name="tokens",
+                                    shape=[batch_size, sequence_len],
+                                    dtype='int64')
+        position_ids = paddle.static.data(name="position_ids",
+                                          shape=[batch_size, sequence_len],
+                                          dtype='int64')
         attention_mask = paddle.static.data(
             name="attention_mask",
             shape=[batch_size, 1, sequence_len, sequence_len],
             dtype='float32')
-        labels = paddle.static.data(
-            name="labels", shape=[batch_size, sequence_len], dtype='int64')
-        loss_mask = paddle.static.data(
-            name="loss_mask", shape=[batch_size, sequence_len], dtype='float32')
+        labels = paddle.static.data(name="labels",
+                                    shape=[batch_size, sequence_len],
+                                    dtype='int64')
+        loss_mask = paddle.static.data(name="loss_mask",
+                                       shape=[batch_size, sequence_len],
+                                       dtype='float32')
         data_holder = [tokens, position_ids, attention_mask, labels, loss_mask]
 
-        gpt = GPTModel(
-            vocab_size=1000,
-            hidden_size=64,
-            num_hidden_layers=2,
-            num_attention_heads=8,
-            intermediate_size=256,
-            hidden_act="gelu",
-            hidden_dropout_prob=0.0,
-            attention_probs_dropout_prob=0.0,
-            max_position_embeddings=1024,
-            type_vocab_size=1,
-            initializer_range=0.02,
-            pad_token_id=0,
-            eos_token_id=7,
-            bos_token_id=0,
-            eol_token_id=3)
+        gpt = GPTModel(vocab_size=1000,
+                       hidden_size=64,
+                       num_hidden_layers=2,
+                       num_attention_heads=8,
+                       intermediate_size=256,
+                       hidden_act="gelu",
+                       hidden_dropout_prob=0.0,
+                       attention_probs_dropout_prob=0.0,
+                       max_position_embeddings=1024,
+                       type_vocab_size=1,
+                       initializer_range=0.02,
+                       pad_token_id=0,
+                       eos_token_id=7,
+                       bos_token_id=0,
+                       eol_token_id=3)
 
-        model = GPTForPretraining(
-            gpt, vocab_size=1000, hidden_size=64, initializer_range=0.02)
+        model = GPTForPretraining(gpt,
+                                  vocab_size=1000,
+                                  hidden_size=64,
+                                  initializer_range=0.02)
         preds = model(tokens, position_ids, attention_mask)
         criterion = GPTPretrainingCriterion()
         loss = criterion(preds, labels, loss_mask)
@@ -105,12 +109,11 @@ def train():
         train_program, start_program, place, batch_size, sequence_len,
         vocab_size)
 
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(
-        learning_rate=0.00001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1e-08,
-        grad_clip=None)
+    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
+                                                     beta1=0.9,
+                                                     beta2=0.999,
+                                                     epsilon=1e-08,
+                                                     grad_clip=None)
     optimizer = fleet.distributed_optimizer(optimizer)
     _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
         loss, start_program)

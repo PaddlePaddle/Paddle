@@ -23,6 +23,7 @@ __all__ = []
 
 
 class TensorParallel(MetaParallelBase):
+
     def __init__(self, layers, hcg, **kwargs):
         super(TensorParallel, self).__init__(layers, hcg, **kwargs)
 

@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import unittest
 from paddle.fluid.dygraph import declarative
@@ -23,7 +24,7 @@ from paddle.fluid.dygraph import declarative
 @fluid.dygraph.declarative
 def dygraph_decorated_func(x):
     x = fluid.dygraph.to_variable(x)
-    if fluid.layers.mean(x) > 0:
+    if paddle.mean(x) > 0:
         x_v = x - 1
     else:
         x_v = x + 1
@@ -33,7 +34,7 @@ def dygraph_decorated_func(x):
 @fluid.dygraph.declarative
 def jit_decorated_func(x):
     x = fluid.dygraph.to_variable(x)
-    if fluid.layers.mean(x) > 0:
+    if paddle.mean(x) > 0:
         x_v = x - 1
     else:
         x_v = x + 1
@@ -46,6 +47,7 @@ def decorated_call_decorated(x):
 
 
 class DoubleDecorated(object):
+
     @classmethod
     @declarative
     def double_decorated_func1(self, x):
@@ -58,15 +60,20 @@ class DoubleDecorated(object):
 
 
 class TestFullNameDecorator(unittest.TestCase):
+
     def test_run_success(self):
         x = np.ones([1, 2]).astype("float32")
         answer = np.zeros([1, 2]).astype("float32")
         with fluid.dygraph.guard():
-            self.assertTrue(
-                np.allclose(dygraph_decorated_func(x).numpy(), answer))
-            self.assertTrue(np.allclose(jit_decorated_func(x).numpy(), answer))
-            self.assertTrue(
-                np.allclose(decorated_call_decorated(x).numpy(), answer))
+            np.testing.assert_allclose(dygraph_decorated_func(x).numpy(),
+                                       answer,
+                                       rtol=1e-05)
+            np.testing.assert_allclose(jit_decorated_func(x).numpy(),
+                                       answer,
+                                       rtol=1e-05)
+            np.testing.assert_allclose(decorated_call_decorated(x).numpy(),
+                                       answer,
+                                       rtol=1e-05)
             with self.assertRaises(NotImplementedError):
                 DoubleDecorated().double_decorated_func1(x)
             with self.assertRaises(NotImplementedError):
@@ -74,6 +81,7 @@ class TestFullNameDecorator(unittest.TestCase):
 
 
 class TestImportProgramTranslator(unittest.TestCase):
+
     def test_diff_pkg_same_cls(self):
         dygraph_prog_trans = fluid.dygraph.ProgramTranslator()
         dy_to_stat_prog_trans = fluid.dygraph.dygraph_to_static.ProgramTranslator(

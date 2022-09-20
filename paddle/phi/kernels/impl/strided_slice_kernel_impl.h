@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/kernels/strided_slice_kernel.h"
-
 #include "paddle/phi/kernels/funcs/strided_slice.h"
+#include "paddle/phi/kernels/strided_slice_kernel.h"
 
 namespace phi {
 
@@ -56,14 +55,14 @@ void StridedSliceRawKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void StridedSliceArrayKernel(const Context& dev_ctx,
-                             const std::vector<const DenseTensor*>& x,
+                             const TensorArray& x,
                              const std::vector<int>& axes,
                              const IntArray& starts,
                              const IntArray& ends,
                              const IntArray& strides,
                              const std::vector<int>& infer_flags,
                              const std::vector<int>& decrease_axis,
-                             std::vector<DenseTensor*> out) {
+                             TensorArray* out) {
   funcs::StridedSliceCompute<Context, T, 1>(
       dev_ctx, x, axes, starts, ends, strides, infer_flags, decrease_axis, out);
 }

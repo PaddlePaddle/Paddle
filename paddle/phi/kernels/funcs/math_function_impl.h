@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -26,20 +27,27 @@ using paddle::framework::To32BitIndex;
 template <typename DeviceContext, typename T>
 void SetConstant<DeviceContext, T>::operator()(
     const DeviceContext& context, paddle::framework::Tensor* tensor, T num) {
-  bool xpu_place = false;
-#ifdef PADDLE_WITH_XPU
-  if (paddle::platform::is_xpu_place(context.GetPlace())) {
-    xpu_place = true;
-    phi::VisitDataType(
-        tensor->dtype(),
-        TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
-  }
-#endif
-  if (!xpu_place) {
-    auto t = paddle::framework::EigenVector<T>::Flatten(*tensor);
-    t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
-  }
+  auto t = paddle::framework::EigenVector<T>::Flatten(*tensor);
+  t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
 }
+
+#ifdef PADDLE_WITH_XPU
+template <typename T>
+void SetConstant<XPUContext, T>::operator()(const XPUContext& context,
+                                            paddle::framework::Tensor* tensor,
+                                            T num) {
+  phi::VisitDataType(tensor->dtype(),
+                     TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
+}
+template <typename T>
+void SetConstant<paddle::platform::XPUDeviceContext, T>::operator()(
+    const paddle::platform::XPUDeviceContext& context,
+    paddle::framework::Tensor* tensor,
+    T num) {
+  phi::VisitDataType(tensor->dtype(),
+                     TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
+}
+#endif
 
 template <typename DeviceContext, typename T, int Rank>
 void Transpose<DeviceContext, T, Rank>::operator()(
@@ -91,9 +99,9 @@ void ColwiseSum<DeviceContext, T>::operator()(
 // colwise-sum can be easily implemented. General reduce has a huge overhead in
 // CPU
 template <typename T>
-class ColwiseSum<paddle::platform::CPUDeviceContext, T> {
+class ColwiseSum<phi::CPUContext, T> {
  public:
-  void operator()(const paddle::platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const paddle::framework::Tensor& input,
                   paddle::framework::Tensor* out) {
     auto& in_dims = input.dims();
@@ -154,9 +162,9 @@ void RowwiseMean<DeviceContext, T>::operator()(
 // rowwise-sum can be easily implemented. General reduce has a huge overhead in
 // CPU
 template <typename T>
-class RowwiseMean<paddle::platform::CPUDeviceContext, T> {
+class RowwiseMean<phi::CPUContext, T> {
  public:
-  void operator()(const paddle::platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const paddle::framework::Tensor& input,
                   paddle::framework::Tensor* out) {
     auto& in_dims = input.dims();
@@ -221,9 +229,9 @@ void RowwiseSum<DeviceContext, T>::operator()(
 // rowwise-sum can be easily implemented. General reduce has a huge overhead in
 // CPU
 template <typename T>
-class RowwiseSum<paddle::platform::CPUDeviceContext, T> {
+class RowwiseSum<phi::CPUContext, T> {
  public:
-  void operator()(const paddle::platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const paddle::framework::Tensor& input,
                   paddle::framework::Tensor* out) {
     auto& in_dims = input.dims();

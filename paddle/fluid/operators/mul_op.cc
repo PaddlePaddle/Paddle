@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -64,8 +65,11 @@ class MulOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return framework::OpKernelType(input_data_type,
+                                   ctx.GetPlace(),
+                                   layout,
+                                   library,
+                                   customized_type_value);
   }
 };
 
@@ -75,10 +79,6 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The first input tensor of mul op.");
     AddInput("Y", "(Tensor), The second input tensor of mul op.");
     AddOutput("Out", "(Tensor), The output tensor of mul op.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<int>(
         "x_num_col_dims",
         R"DOC((int, default 1), The mul_op can take tensors with more than two
@@ -109,31 +109,6 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
-    AddAttr<float>(
-        "scale_x",
-        "scale_x to be used for int8 mul input data x. scale_x has the"
-        "same purpose as scale_in in OPs that support quantization."
-        "Only to be used with MKL-DNN INT8")
-        .SetDefault(1.0f)
-        .AsExtra();
-    AddAttr<std::vector<float>>(
-        "scale_y",
-        "scale_y to be used for int8 mul input data y. scale_y has the"
-        "same purpose as scale_weights in OPs that support quantization."
-        "Only to be used with MKL-DNN INT8")
-        .SetDefault({1.0f})
-        .AsExtra();
-    AddAttr<float>("scale_out",
-                   "scale_out to be used for int8 output data."
-                   "Only used with MKL-DNN INT8")
-        .SetDefault(1.0f)
-        .AsExtra();
-    AddAttr<bool>(
-        "force_fp32_output",
-        "(bool, default false) Force quantize kernel output FP32, only "
-        "used in quantized MKL-DNN.")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Mul Operator.
 
@@ -189,8 +164,11 @@ class MulGradOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return framework::OpKernelType(input_data_type,
+                                   ctx.GetPlace(),
+                                   layout,
+                                   library,
+                                   customized_type_value);
   }
 };
 
@@ -267,16 +245,22 @@ class MulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(mul, MulInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(mul,
+                            MulInferShapeFunctor,
                             PD_INFER_META(phi::MatmulWithFlattenInferMeta));
-REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
+REGISTER_OPERATOR(mul,
+                  ops::MulOp,
+                  ops::MulOpMaker,
+                  ops::MulOpInferVarType,
                   ops::MulOpGradMaker<paddle::framework::OpDesc>,
                   ops::MulOpGradMaker<paddle::imperative::OpBase>,
                   MulInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(mul_grad, MulGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(mul_grad,
+                            MulGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralBinaryGradInferMeta));
-REGISTER_OPERATOR(mul_grad, ops::MulGradOp,
+REGISTER_OPERATOR(mul_grad,
+                  ops::MulGradOp,
                   ops::MulDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MulDoubleGradMaker<paddle::imperative::OpBase>,
                   MulGradInferShapeFunctor);

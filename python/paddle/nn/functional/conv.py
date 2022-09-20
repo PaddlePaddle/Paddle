@@ -17,14 +17,14 @@ import numpy as np
 from ...device import get_cudnn_version
 from ...static import Variable
 from ...fluid import dygraph_utils
-from ...fluid.layers.utils import convert_to_list, _is_symmetric_padding
-from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.layers.utils import convert_to_list, _is_symmetric_padding, _contain_var, _convert_to_tensor_list
+from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ...framework import ParamAttr
 from ...fluid.layer_helper import LayerHelper
 from ...tensor.manipulation import unsqueeze, squeeze
 from ...tensor.math import add
 from ...fluid.layers import nn
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle import get_flags
 from paddle import in_dynamic_mode
 from paddle.device import is_compiled_with_cuda
@@ -35,6 +35,7 @@ from paddle.device import is_compiled_with_rocm
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 
 __all__ = []
 
@@ -79,8 +80,8 @@ def _update_padding_nd(padding, channel_last, num_dims):
                     "Non-zero padding({}) in the batch or channel dimensions "
                     "is not supported.".format(padding))
             padding_algorithm = "EXPLICIT"
-            padding = _exclude_padding_in_batch_and_channel(padding,
-                                                            channel_last)
+            padding = _exclude_padding_in_batch_and_channel(
+                padding, channel_last)
             if _is_symmetric_padding(padding, num_dims):
                 padding = padding[0::2]
         # for padding like [pad_before, pad_after, pad_before, pad_after, ...]
@@ -101,8 +102,8 @@ def _update_padding_nd(padding, channel_last, num_dims):
         padding = convert_to_list(padding, num_dims, 'padding')
     if not all([p >= 0 for p in padding]):
         raise ValueError(
-            "Invalid padding, all value should be larger than or equal to 0, but received: {}".
-            format(padding))
+            "Invalid padding, all value should be larger than or equal to 0, but received: {}"
+            .format(padding))
     return padding, padding_algorithm
 
 
@@ -123,28 +124,62 @@ def _conv_nd(x,
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dygraph_mode() and op_type == "conv2d":
-        pre_bias = _C_ops.final_state_conv2d(
-            x, weight, stride, padding, padding_algorithm, groups, dilation,
-            data_format, False, -1, False)
+        pre_bias = _C_ops.conv2d(x, weight, stride, padding, padding_algorithm,
+                                 groups, dilation, data_format, False, -1,
+                                 False)
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
+            if isinstance(x, tuple):
+                x = x[0]
+            if isinstance(bias, tuple):
+                bias = bias[0]
             if len(bias.shape) < len(x.shape):
-                tmp_bias = _C_ops.final_state_reshape(
-                    bias, bias.shape +
+                tmp_bias = _C_ops.reshape(
+                    bias, [1 for i in range(channel_dim)] + bias.shape +
                     [1 for i in range(len(x.shape) - channel_dim - 1)])
-                return _C_ops.final_state_add(pre_bias, tmp_bias)
+                return _C_ops.add(pre_bias, tmp_bias)
             else:
-                return _C_ops.final_state_add(pre_bias, bias)
+                return _C_ops.add(pre_bias, bias)
         else:
             return pre_bias
+
+    if in_dygraph_mode() and op_type == "depthwise_conv2d":
+        pre_bias = _C_ops.depthwise_conv2d(x, weight, stride, padding,
+                                           padding_algorithm, groups, dilation,
+                                           data_format, False, -1, False, False,
+                                           use_cudnn)
+        if bias is not None:
+            channel_dim = channel_dim + len(
+                x.shape) if channel_dim < 0 else channel_dim
+            tmp_bias = _C_ops.reshape(
+                bias,
+                bias.shape + [1 for i in range(len(x.shape) - channel_dim - 1)])
+            return _C_ops.add(pre_bias, tmp_bias)
+        else:
+            return pre_bias
+
+    if in_dygraph_mode() and op_type == "conv3d":
+        pre_bias = _C_ops.conv3d(x, weight, stride, padding, padding_algorithm,
+                                 groups, dilation, data_format, False, -1,
+                                 False)
+        if bias is not None:
+            channel_dim = channel_dim + len(
+                x.shape) if channel_dim < 0 else channel_dim
+            tmp_bias = _C_ops.reshape(
+                bias,
+                bias.shape + [1 for i in range(len(x.shape) - channel_dim - 1)])
+            return _C_ops.add(pre_bias, tmp_bias)
+        else:
+            return pre_bias
+
     if in_dynamic_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn',
                  use_mkldnn, 'fuse_relu_before_depthwise_conv', False,
                  "padding_algorithm", padding_algorithm, "data_format",
                  data_format)
-        pre_bias = getattr(_C_ops, op_type)(x, weight, *attrs)
+        pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:
@@ -168,17 +203,22 @@ def _conv_nd(x,
         dtype = helper.input_dtype(input_param_name='x')
         pre_bias = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [pre_bias]}
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
         if bias is not None:
             out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [pre_bias],
-                        'Y': [bias]},
-                outputs={'Out': [out]},
-                attrs={'axis': channel_dim,
-                       'use_mkldnn': use_mkldnn})
+            helper.append_op(type='elementwise_add',
+                             inputs={
+                                 'X': [pre_bias],
+                                 'Y': [bias]
+                             },
+                             outputs={'Out': [out]},
+                             attrs={
+                                 'axis': channel_dim,
+                                 'use_mkldnn': use_mkldnn
+                             })
         else:
             out = pre_bias
     return out
@@ -239,10 +279,10 @@ def conv1d(x,
             L_{out} = \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Args:
-        x (Tensor): The input is 3-D Tensor with shape [N, C, L], the data type 
+        x (Tensor): The input is 3-D Tensor with shape [N, C, L], the data type
             of input is float16 or float32 or float64.
         weight (Tensor): The convolution kernel with shape [M, C/g, K], where M is
-            the number of output channels, g is the number of groups, K is the kernel's size. 
+            the number of output channels, g is the number of groups, K is the kernel's size.
         bias (Tensor, optional): The bias with shape [M,]. Default: None.
         stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain one integers, (stride_size). Default: 1.
@@ -260,23 +300,23 @@ def conv1d(x,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: 1.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCL"`, `"NLC"`.
             The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
             `[batch_size, input_channels, feature_length]`.
-        name(str, optional): For detailed information, please refer 
-           to :ref:`api_guide_Name`. Usually name is no need to set and 
+        name(str, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
     Returns:
-        A tensor representing the conv1d, whose data type is the 
+        A tensor representing the conv1d, whose data type is the
         same with input.
 
     Raises:
         ValueError: If the channel dimension of the input is less than or equal to zero.
         ValueError: If `data_format` is not "NCL" or "NLC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
+        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0
             or the element corresponding to the input's channel is not 0.
         ShapeError: If the input is not 3-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
@@ -300,13 +340,13 @@ def conv1d(x,
            [[0, 3, 4],
             [2, 9, 7],
             [5, 6, 8]]]).astype(np.float32)
-          
+
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
           y_var = F.conv1d(x_var, w_var)
           y_np = y_var.numpy()
           print(y_np)
-          
+
           # [[[133. 238.]
           #   [160. 211.]]]
     """
@@ -335,8 +375,8 @@ def conv1d(x,
                              x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "The groups of conv1d should be greater than 0. Received groups: {}".
-            format(groups))
+            "The groups of conv1d should be greater than 0. Received groups: {}"
+            .format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -357,8 +397,8 @@ def conv1d(x,
         padding = [0] + padding
     else:
         raise ValueError(
-            "The size of padding's dimension should be 1 or 2. But got padding={}".
-            format(padding))
+            "The size of padding's dimension should be 1 or 2. But got padding={}"
+            .format(padding))
     stride = [1] + convert_to_list(stride, 1, 'stride')
     dilation = [1] + convert_to_list(dilation, 1, 'dilation')
     weight = unsqueeze(weight, axis=[-2])
@@ -366,8 +406,8 @@ def conv1d(x,
     l_type = "conv2d"
 
     # When "groups==num_channels and num_filters% num_channels == 0" using depthwise_conv2d has better performance
-    if (is_compiled_with_cuda() and num_channels == groups and
-            num_channels != 1 and num_filters % num_channels == 0):
+    if (is_compiled_with_cuda() and num_channels == groups and num_channels != 1
+            and num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
@@ -381,12 +421,19 @@ def conv1d(x,
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        out = getattr(_C_ops,
+                      l_type)(x, weight, stride, padding, padding_algorithm,
+                              groups, dilation, conv2d_data_format, False, -1,
+                              False, False, use_cudnn)
+        if bias is not None:
+            out = nn.elementwise_add(out, bias, axis=channel_dim)
+    elif _in_legacy_dygraph():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
                  'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
                  padding_algorithm, "data_format", conv2d_data_format)
-        out = getattr(_C_ops, l_type)(x, weight, *attrs)
+        out = getattr(_legacy_C_ops, l_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     else:
@@ -408,8 +455,10 @@ def conv1d(x,
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [out]}
-        helper.append_op(
-            type=l_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=l_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     out = squeeze(out, axis=[squeeze_aixs])
@@ -477,50 +526,50 @@ def conv2d(x,
             W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        x (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type 
+        x (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type
             of input is float16 or float32 or float64.
         weight (Tensor): The convolution kernel with shape [M, C/g, kH, kW], where M is
             the number of output channels, g is the number of groups, kH is the filter's
-            height, kW is the filter's width. 
+            height, kW is the filter's width.
         bias (Tensor, optional): The bias with shape [M,].
-        stride (int|list|tuple): The stride size. It means the stride in convolution. 
-            If stride is a list/tuple, it must contain two integers, (stride_height, stride_width). 
+        stride (int|list|tuple): The stride size. It means the stride in convolution.
+            If stride is a list/tuple, it must contain two integers, (stride_height, stride_width).
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         padding (string|int|list|tuple): The padding size. It means the number of zero-paddings
             on both sides for each dimension.If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when 
-            `data_format` is `"NCHW"`, `padding` can be in the form `[[0,0], [0,0], 
+            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when
+            `data_format` is `"NCHW"`, `padding` can be in the form `[[0,0], [0,0],
             [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
             when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         dilation (int|list|tuple): The dilation size. It means the spacing between the kernel
-            points. If dilation is a list/tuple, it must contain two integers, (dilation_height, 
-            dilation_width). Otherwise, dilation_height = dilation_width = dilation. 
+            points. If dilation is a list/tuple, it must contain two integers, (dilation_height,
+            dilation_width). Otherwise, dilation_height = dilation_width = dilation.
             Default: dilation = 1.
         groups (int): The groups number of the Conv2D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer 
-           to :ref:`api_guide_Name`. Usually name is no need to set and 
+        name(str, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
     Returns:
-        A Tensor representing the conv2d result, whose data type is the same with input. 
+        A Tensor representing the conv2d result, whose data type is the same with input.
 
     Raises:
         ValueError: If `data_format` is not "NCHW" or "NHWC".
         ValueError: If the channel dimension of the input is less than or equal to zero.
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
+        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0
             or the element corresponding to the input's channel is not 0.
         ShapeError: If the input is not 4-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
@@ -562,8 +611,8 @@ def conv2d(x,
                              x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "The groups of conv2d should be greater than 0. Received groups: {}".
-            format(groups))
+            "The groups of conv2d should be greater than 0. Received groups: {}"
+            .format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -577,8 +626,8 @@ def conv2d(x,
 
     cudnn_version = get_cudnn_version()
 
-    use_cudnn = True if (is_compiled_with_cuda() and
-                         cudnn_version is not None) else False
+    use_cudnn = True if (is_compiled_with_cuda()
+                         and cudnn_version is not None) else False
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
@@ -586,8 +635,8 @@ def conv2d(x,
     dilation = convert_to_list(dilation, 2, 'dilation')
 
     l_type = "conv2d"
-    if (num_channels == groups and num_channels != 1 and
-            num_filters % num_channels == 0):
+    if (num_channels == groups and num_channels != 1
+            and num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
         if is_compiled_with_rocm():
             use_cudnn = True
@@ -595,9 +644,9 @@ def conv2d(x,
             use_cudnn = False
     else:
         if in_dygraph_mode():
-            pre_bias = _C_ops.final_state_conv2d(
-                x, weight, stride, padding, padding_algorithm, groups, dilation,
-                data_format, False, -1, False)
+            pre_bias = _C_ops.conv2d(x, weight, stride, padding,
+                                     padding_algorithm, groups, dilation,
+                                     data_format, False, -1, False)
             if bias is not None:
                 out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
                 return out
@@ -613,8 +662,8 @@ def conv2d(x,
         else:
             l_type = 'conv2d'
 
-    if (is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")[
-            "FLAGS_conv2d_disable_cudnn"]):
+    if (is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")
+        ["FLAGS_conv2d_disable_cudnn"]):
         use_cudnn = False
 
     return _conv_nd(x, weight, bias, stride, padding, padding_algorithm,
@@ -715,12 +764,12 @@ def conv1d_transpose(x,
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple/list, it must contain one integer, `(feature_length)`. None if use
             filter_size(shape of weight), padding, and stride to calculate output_size.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCL"`, `"NLC"`.
             The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
             `[batch_size, input_channels, input_length]`.
-        name(str, optional): For detailed information, please refer 
-           to :ref:`api_guide_Name`. Usually name is no need to set and 
+        name(str, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
     Returns:
@@ -732,7 +781,7 @@ def conv1d_transpose(x,
     Raises:
         ValueError: If `data_format` is a string, but not "NCL" or "NLC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
+        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0
             or the element corresponding to the input's channel is not 0.
         ValueError: If `output_size` and filter_size are None at the same time.
         ValueError: If `output_padding` is greater than `stride`.
@@ -750,7 +799,7 @@ def conv1d_transpose(x,
           import paddle
           import paddle.nn.functional as F
           import numpy as np
-          
+
           # shape: (1, 2, 4)
           x=np.array([[[4, 0, 9, 7],
                        [8, 0, 9, 2,]]]).astype(np.float32)
@@ -761,7 +810,7 @@ def conv1d_transpose(x,
           w_var = paddle.to_tensor(w)
           y_var = F.conv1d_transpose(x_var, w_var)
           print(y_var)
-          
+
           # [[[60. 16. 99. 75.  4.]]]
     """
     cudnn_version = get_cudnn_version()
@@ -789,8 +838,8 @@ def conv1d_transpose(x,
                              x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "The groups of conv1d_transpose should be greater than 0. Received groups: {}".
-            format(groups))
+            "The groups of conv1d_transpose should be greater than 0. Received groups: {}"
+            .format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -833,13 +882,13 @@ def conv1d_transpose(x,
     if len(output_padding) > 0 and output_padding[0] > stride[0]:
         raise ValueError(
             "The size of output_padding should not be greater than stride."
-            "But got output_padding={} and stride={}".format(output_padding[0],
-                                                             stride[0]))
+            "But got output_padding={} and stride={}".format(
+                output_padding[0], stride[0]))
 
     op_type = 'conv2d_transpose'
     num_filters = weight.shape[1]
-    if (num_channels == groups and num_channels != 1 and num_filters == 1 and
-            not use_cudnn):
+    if (num_channels == groups and num_channels != 1 and num_filters == 1
+            and not use_cudnn):
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
@@ -849,12 +898,19 @@ def conv1d_transpose(x,
     x = unsqueeze(x, axis=[squeeze_axis])
     weight = unsqueeze(weight, axis=[-1])
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        out = getattr(_C_ops,
+                      op_type)(x, weight, stride, padding, output_padding,
+                               output_size, padding_algorithm, groups, dilation,
+                               conv2d_data_format)
+        if bias is not None:
+            out = nn.elementwise_add(out, bias, axis=channel_dim)
+    elif _in_legacy_dygraph():
         attrs = ('output_padding', output_padding, 'output_size', output_size,
                  'strides', stride, 'paddings', padding, 'padding_algorithm',
                  padding_algorithm, 'dilations', dilation, 'groups', groups,
                  'use_cudnn', use_cudnn, 'data_format', conv2d_data_format)
-        out = getattr(_C_ops, op_type)(x, weight, *attrs)
+        out = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     else:
@@ -876,8 +932,10 @@ def conv1d_transpose(x,
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [out]}
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
 
@@ -948,12 +1006,12 @@ def conv2d_transpose(x,
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
 
     Note:
-          The conv2d_transpose can be seen as the backward of the conv2d. For conv2d, 
-          when stride > 1, conv2d maps multiple input shape to the same output shape, 
+          The conv2d_transpose can be seen as the backward of the conv2d. For conv2d,
+          when stride > 1, conv2d maps multiple input shape to the same output shape,
           so for conv2d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
-          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
-          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
+          If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
+          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
+          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
           between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`.
 
     Args:
@@ -963,17 +1021,17 @@ def conv2d_transpose(x,
             where M is the number of output channels(filters), g is the number of groups,
             kH is the height of the kernel, and kW is the width of the kernel.
         bias(Tensor, optional): The bias, a Tensor with shape [M, ].
-        stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution. 
-            If stride is a list/tuple, it must contain two integers, (stride_height, stride_width). 
+        stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution.
+            If stride is a list/tuple, it must contain two integers, (stride_height, stride_width).
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
-        padding(str|int|list|tuple, optional): The padding size. It means the number of zero-paddings 
-            on both sides for each dimension. If `padding` is a string, either 'VALID' or 
+        padding(str|int|list|tuple, optional): The padding size. It means the number of zero-paddings
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
-            it could be in three forms: `[pad_height, pad_width]` or 
+            it could be in three forms: `[pad_height, pad_width]` or
             `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `"NCHW"`, `padding` can be in the form 
+            and when `data_format` is `"NCHW"`, `padding` can be in the form
             `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NHWC"`, `padding` can be in the form 
+            when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
@@ -984,30 +1042,30 @@ def conv2d_transpose(x,
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
-        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
-            If dilation is a list/tuple, it must contain two integers, (dilation_height, dilation_width). 
+        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
+            If dilation is a list/tuple, it must contain two integers, (dilation_height, dilation_width).
             Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple/list, it must contain two integers, (image_height, image_width). None if use
             filter_size(shape of weight), padding, and stride to calculate output_size.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer 
-           to :ref:`api_guide_Name`. Usually name is no need to set and 
+        name(str, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
     Returns:
         A Tensor representing the conv2d_transpose, whose
-        data type is the same with input and shape is (num_batches, channels, out_h, 
-        out_w) or (num_batches, out_h, out_w, channels). The tensor variable storing 
+        data type is the same with input and shape is (num_batches, channels, out_h,
+        out_w) or (num_batches, out_h, out_w, channels). The tensor variable storing
         transposed convolution result.
 
     Raises:
         ValueError: If `data_format` is not "NCHW" or "NHWC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
+        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0
             or the element corresponding to the input's channel is not 0.
         ValueError: If `output_size` and kernel_size are None at the same time.
         ShapeError: If the input is not 4-D Tensor.
@@ -1050,8 +1108,8 @@ def conv2d_transpose(x,
                              x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "The groups of conv2d_transpose should be greater than 0. Received groups: {}".
-            format(groups))
+            "The groups of conv2d_transpose should be greater than 0. Received groups: {}"
+            .format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -1060,8 +1118,8 @@ def conv2d_transpose(x,
 
     cudnn_version = get_cudnn_version()
 
-    use_cudnn = True if (is_compiled_with_cuda() and
-                         cudnn_version is not None) else False
+    use_cudnn = True if (is_compiled_with_cuda()
+                         and cudnn_version is not None) else False
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
@@ -1074,11 +1132,27 @@ def conv2d_transpose(x,
         if output_padding != 0:
             raise ValueError('output_padding option is mutually exclusive with '
                              'output_size')
-        if isinstance(output_size, (list, tuple, int)):
+        if isinstance(output_size, (list, tuple)):
+            if _contain_var(output_size):
+                output_size = _convert_to_tensor_list(output_size)
+            else:
+                output_size = convert_to_list(output_size, 2, 'output_size')
+        elif isinstance(output_size, int):
             output_size = convert_to_list(output_size, 2, 'output_size')
+        elif isinstance(output_size, Variable):
+            check_dtype(output_size.dtype, 'output_size', ['int32', 'int64'],
+                        'conv2d_transpose')
+            if len(output_size.shape) == 1 and (output_size.shape[0] == 1
+                                                or output_size.shape[0] == 2):
+                if output_size.shape[0] == 1:
+                    output_size = [output_size, output_size]
+            else:
+                raise ValueError(
+                    "output_size must contain one or two integers.")
         else:
             raise ValueError(
-                "output_size should be int, or list, tuple of ints")
+                "output_size should be int or Tensor or list, tuple of ints or Tensor"
+            )
 
     if output_padding == 0:
         output_padding = []
@@ -1092,10 +1166,9 @@ def conv2d_transpose(x,
         use_cudnn = False
 
     if in_dygraph_mode():
-        final_state_op = _C_ops.final_state_conv2d_transpose if op_type == 'conv2d_transpose' else _C_ops.final_state_depthwise_conv2d_transpose
-        pre_bias = final_state_op(x, weight, stride, padding, output_padding,
-                                  output_size, padding_algorithm, groups,
-                                  dilation, data_format)
+        op = _C_ops.conv2d_transpose if op_type == 'conv2d_transpose' else _C_ops.depthwise_conv2d_transpose
+        pre_bias = op(x, weight, stride, padding, output_padding, output_size,
+                      padding_algorithm, groups, dilation, data_format)
         if bias is not None:
             return nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:
@@ -1106,7 +1179,7 @@ def conv2d_transpose(x,
                  'strides', stride, 'paddings', padding, 'padding_algorithm',
                  padding_algorithm, 'dilations', dilation, 'groups', groups,
                  'use_cudnn', use_cudnn, 'data_format', data_format)
-        pre_bias = getattr(_C_ops, op_type)(x, weight, *attrs)
+        pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:
@@ -1129,8 +1202,10 @@ def conv2d_transpose(x,
         helper = LayerHelper(op_type, **locals())
         pre_bias = helper.create_variable_for_type_inference(x.dtype)
         outputs = {"Output": [pre_bias]}
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
 
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
@@ -1195,16 +1270,16 @@ def conv3d(x,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data 
+        x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
             type of input is float16 or float32 or float64.
         weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ].
-        stride (int|list|tuple): The stride size. It means the stride in convolution. If stride is a 
-            list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width). 
+        stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
+            list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width).
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
-        padding (string|int|list|tuple): The padding size. It means the number of zero-paddings 
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings
             on both sides for each dimension. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_depth, pad_height, pad_width]` or
@@ -1214,27 +1289,27 @@ def conv3d(x,
             when `data_format` is `"NDHWC"`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        dilation (int|list|tuple): The dilation size. It means the spacing between the kernel points. 
+        dilation (int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
             If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height,
-            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
+            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation.
             Default: dilation = 1.
-        groups (int): The groups number of the Conv3D Layer. According to grouped
+        groups (int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1
-        data_format (str, optional): Specify the data format of the input, and the data format of the output 
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-        name(str|None): For detailed information, please refer 
-           to :ref:`api_guide_Name`. Usually name is no need to set and 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
+            The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str|None, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
     Returns:
-        A Tensor representing the conv3d, whose data type is 
-        the same with input. If act is None, the tensor storing the 
-        convolution result, and if act is not None, the tensor storing 
+        A Tensor representing the conv3d, whose data type is
+        the same with input. If act is None, the tensor storing the
+        convolution result, and if act is not None, the tensor storing
         convolution and non-linearity activation result.
 
     Examples:
@@ -1272,22 +1347,22 @@ def conv3d(x,
             "Received: {}.".format(x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "The groups of conv3d should be greater than 0. Received groups: {}".
-            format(groups))
+            "The groups of conv3d should be greater than 0. Received groups: {}"
+            .format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "The number of input channels must be divisible by Attr(groups). "
-            "Received: number of channels({}), groups({}).".format(num_channels,
-                                                                   groups))
+            "Received: number of channels({}), groups({}).".format(
+                num_channels, groups))
     if num_filters % groups != 0:
         raise ValueError(
             "The number of filters must be divisible by Attr(groups). "
-            "Received: number of filters({}), groups({}).".format(num_filters,
-                                                                  groups))
+            "Received: number of filters({}), groups({}).".format(
+                num_filters, groups))
 
     cudnn_version = get_cudnn_version()
-    use_cudnn = True if (is_compiled_with_cuda() and
-                         cudnn_version is not None) else False
+    use_cudnn = True if (is_compiled_with_cuda()
+                         and cudnn_version is not None) else False
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
     stride = convert_to_list(stride, 3, 'stride')
@@ -1363,28 +1438,28 @@ def conv3d_transpose(x,
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
 
     Note:
-          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d, 
-          when stride > 1, conv3d maps multiple input shape to the same output shape, 
+          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
+          when stride > 1, conv3d maps multiple input shape to the same output shape,
           so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
           If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
-          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output 
-          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, 
-          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
-          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
+          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output
+          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`,
+          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
+          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must
           between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`.
 
     Args:
-        x(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type 
+        x(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
             of input is float32 or float64.
         weight (Tensor): The convolution kernel, a Tensor with shape [C, M/g, kD, kH, kW],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ].
-        stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution. 
-            If stride is a list/tuple, it must contain three integers, (stride_depth, stride_height, 
-            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
+        stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution.
+            If stride is a list/tuple, it must contain three integers, (stride_depth, stride_height,
+            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride.
             Default: stride = 1.
-        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings 
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings
             on both sides for each dimension. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_depth, pad_height, pad_width]` or
@@ -1402,32 +1477,32 @@ def conv3d_transpose(x,
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups=1
-        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
-            If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height, 
-            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
+        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
+            If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height,
+            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation.
             Default: dilation = 1.
         output_size(int|list|tuple, optional): The output image size. If output size is a
             list/tuple, it must contain three integers, (image_depth, image_height, image_width).
             None if use filter_size(shape of weight), padding, and stride to calculate output_size.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer 
-           to :ref:`api_guide_Name`. Usually name is no need to set and 
+        name(str, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
     Returns:
         A Tensor representing the conv3d_transpose, whose data
-        type is the same with input and shape is (num_batches, channels, out_d, out_h, 
-        out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor 
-        variable storing the transposed convolution result, and if act is not None, the tensor 
+        type is the same with input and shape is (num_batches, channels, out_d, out_h,
+        out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor
+        variable storing the transposed convolution result, and if act is not None, the tensor
         variable storing transposed convolution and non-linearity activation result.
 
     Raises:
         ValueError: If `data_format` is not "NCDHW" or "NDHWC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
+        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0
             or the element corresponding to the input's channel is not 0.
         ValueError: If `output_size` and kernel_size are None at the same time.
         ShapeError: If the input is not 5-D Tensor.
@@ -1438,7 +1513,7 @@ def conv3d_transpose(x,
 
     Examples:
        .. code-block:: python
-          
+
           import paddle
           import paddle.nn.functional as F
 
@@ -1471,13 +1546,13 @@ def conv3d_transpose(x,
             "Received: {}.".format(x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "The groups of conv3d_transpose should be greater than 0. Received groups: {}".
-            format(groups))
+            "The groups of conv3d_transpose should be greater than 0. Received groups: {}"
+            .format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "The number of input channels must be divisible by Attr(groups). "
-            "Received: number of channels({}), groups({}).".format(num_channels,
-                                                                   groups))
+            "Received: number of channels({}), groups({}).".format(
+                num_channels, groups))
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
     stride = convert_to_list(stride, 3, 'stride')
@@ -1502,16 +1577,17 @@ def conv3d_transpose(x,
     cudnn_version = get_cudnn_version()
 
     #TODO(LielinJiang): whether to use cudnn according to the version of cudnn
-    use_cudnn = True if (is_compiled_with_cuda() and
-                         cudnn_version is not None) else False
+    use_cudnn = True if (is_compiled_with_cuda()
+                         and cudnn_version is not None) else False
 
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"
 
     if in_dygraph_mode():
-        pre_bias = _C_ops.final_state_conv3d_transpose(
-            x, weight, stride, padding, output_padding, output_size,
-            padding_algorithm, groups, dilation, data_format_)
+        pre_bias = _C_ops.conv3d_transpose(x, weight, stride, padding,
+                                           output_padding, output_size,
+                                           padding_algorithm, groups, dilation,
+                                           data_format_)
         if bias is not None:
             return nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:
@@ -1522,7 +1598,7 @@ def conv3d_transpose(x,
                  'paddings', padding, "padding_algorithm", padding_algorithm,
                  'strides', stride, 'dilations', dilation, 'groups', groups,
                  'use_cudnn', use_cudnn, "data_format", data_format_)
-        pre_bias = getattr(_C_ops, op_type)(x, weight, *attrs)
+        pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:
@@ -1547,8 +1623,10 @@ def conv3d_transpose(x,
         pre_bias = helper.create_variable_for_type_inference(x.dtype)
         outputs = {"Output": [pre_bias]}
 
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:

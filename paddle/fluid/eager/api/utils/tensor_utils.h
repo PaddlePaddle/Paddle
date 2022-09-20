@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/phi/api/all.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace egr {
 namespace egr_utils_api {
@@ -25,8 +25,11 @@ namespace egr_utils_api {
 bool IsLeafTensor(const paddle::experimental::Tensor& target);
 
 paddle::experimental::Tensor CreateTensorWithValue(
-    const phi::DDim& ddim, const paddle::platform::Place& place,
-    const phi::DataType& dtype, const phi::DataLayout& layout, float value,
+    const phi::DDim& ddim,
+    const paddle::platform::Place& place,
+    const phi::DataType& dtype,
+    const phi::DataLayout& layout,
+    float value,
     bool is_leaf = true);
 
 }  // namespace egr_utils_api

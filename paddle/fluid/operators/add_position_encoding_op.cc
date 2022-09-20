@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/add_position_encoding_op.h"
+
 #include <memory>
 
 namespace paddle {
@@ -24,8 +25,8 @@ class AddPositionEncodingOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AddPositionEncoding");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "AddPositionEncoding");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "AddPositionEncoding");
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
@@ -70,7 +71,8 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1.0f)
         .AddCustomChecker([](const float& alpha) {
           PADDLE_ENFORCE_GE(
-              alpha, 0.0f,
+              alpha,
+              0.0f,
               platform::errors::InvalidArgument(
                   "Attribute 'alpha' must be greater than or equal to 0.0."));
         });
@@ -78,13 +80,14 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1.0f)
         .AddCustomChecker([](const float& beta) {
           PADDLE_ENFORCE_GE(
-              beta, 0.0f,
+              beta,
+              0.0f,
               platform::errors::InvalidArgument(
                   "Attribute 'beta' must be greater than or equal to 0.0."));
         });
     AddComment(R"DOC(
     Add Position Encoding Operator.
-    
+
     The add position encoding calculates the output based on the input, alpha, beta.
     The size of each dimension of the parameters checked in the infer-shape.
   )DOC");
@@ -112,18 +115,18 @@ namespace ops = paddle::operators;
 namespace plt = paddle::platform;
 
 REGISTER_OPERATOR(
-    add_position_encoding, ops::AddPositionEncodingOp,
+    add_position_encoding,
+    ops::AddPositionEncodingOp,
     ops::AddPositionEncodingOpMaker,
     ops::AddPositionEncodingGradOpMaker<paddle::framework::OpDesc>,
     ops::AddPositionEncodingGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(add_position_encoding_grad, ops::AddPositionEncodingOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    add_position_encoding,
-    ops::AddPositionEncodingKernel<plt::CPUDeviceContext, float>,
-    ops::AddPositionEncodingKernel<plt::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(add_position_encoding,
+                       ops::AddPositionEncodingKernel<phi::CPUContext, float>,
+                       ops::AddPositionEncodingKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     add_position_encoding_grad,
-    ops::AddPositionEncodingGradKernel<plt::CPUDeviceContext, float>,
-    ops::AddPositionEncodingGradKernel<plt::CPUDeviceContext, double>);
+    ops::AddPositionEncodingGradKernel<phi::CPUContext, float>,
+    ops::AddPositionEncodingGradKernel<phi::CPUContext, double>);

@@ -32,7 +32,7 @@ def ref_prelu(x, weight):
     neg_indices = x <= 0
     assert x.shape == neg_indices.shape
     x_t[neg_indices] = (x_t * weight)[neg_indices]
-    return (x_t, )
+    return x_t
 
 
 def ref_prelu_nn(x, num_parameters, init):
@@ -41,9 +41,10 @@ def ref_prelu_nn(x, num_parameters, init):
 
 
 class TestFunctionalPReluAPI(unittest.TestCase):
+
     def setUp(self):
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else paddle.CPUPlace()
+        self.place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
         self.x_np = np.random.uniform(-1., 1., [1, 2, 3, 4]).astype('float32')
         self.weight_np_0 = np.random.randn(1).astype('float32')
         self.weight_np_1 = np.random.randn(self.x_np.shape[1]).astype('float32')
@@ -54,11 +55,13 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             weight = paddle.fluid.data('Alpha', weight_np.shape, 'float32')
             out = F.prelu(x, weight)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np,
-                                'Alpha': weight_np},
+            res = exe.run(feed={
+                'X': self.x_np,
+                'Alpha': weight_np
+            },
                           fetch_list=[out])
         out_ref = ref_prelu(self.x_np, weight_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def dygraph_check(self, weight_np):
         paddle.disable_static(self.place)
@@ -66,7 +69,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         weight = paddle.to_tensor(weight_np)
         out = F.prelu(x, weight)
         out_ref = ref_prelu(self.x_np, weight_np)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_static_api(self):
@@ -83,32 +86,37 @@ class TestFunctionalPReluAPI(unittest.TestCase):
 
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            weight_fp32 = paddle.fluid.data(
-                name='weight_fp32', shape=[1], dtype='float32')
+            weight_fp32 = paddle.fluid.data(name='weight_fp32',
+                                            shape=[1],
+                                            dtype='float32')
             # The input type must be Variable.
             self.assertRaises(TypeError, F.prelu, x=1, weight=weight_fp32)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
-                name='x_int32', shape=[2, 3], dtype='int32')
+            x_int32 = paddle.fluid.data(name='x_int32',
+                                        shape=[2, 3],
+                                        dtype='int32')
             self.assertRaises(TypeError, F.prelu, x=x_int32, weight=weight_fp32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
-                name='x_fp16', shape=[2, 3], dtype='float16')
+            x_fp16 = paddle.fluid.data(name='x_fp16',
+                                       shape=[2, 3],
+                                       dtype='float16')
             F.prelu(x=x_fp16, weight=weight_fp32)
 
 
 class TestNNPReluAPI(unittest.TestCase):
+
     def setUp(self):
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else paddle.CPUPlace()
+        self.place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
         self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
 
     def test_static_api(self):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()
         with paddle.static.program_guard(train_program, startup_program):
-            x = paddle.fluid.data(
-                name='X', shape=self.x_np.shape, dtype='float32')
+            x = paddle.fluid.data(name='X',
+                                  shape=self.x_np.shape,
+                                  dtype='float32')
             m = paddle.nn.PReLU()
             out = m(x)
             exe = paddle.static.Executor(self.place)
@@ -117,7 +125,7 @@ class TestNNPReluAPI(unittest.TestCase):
                           feed={'X': self.x_np},
                           fetch_list=[out])
         out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -126,32 +134,32 @@ class TestNNPReluAPI(unittest.TestCase):
         m = paddle.nn.PReLU()
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(num_parameters=self.x_np.shape[1])
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, self.x_np.shape[1], 0.25)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(init=0.5)
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, 1, 0.5)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(weight_attr=fluid.ParamAttr(name="weight"))
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(0.5)))
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, 1, 0.5)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         paddle.enable_static()
 
@@ -162,6 +170,7 @@ def prelu_api_wrapper(x, weight, data_format="NCHW"):
 
 
 class PReluTest(OpTest):
+
     def setUp(self):
         self.init_dtype()
         self.init_input_shape()
@@ -196,16 +205,16 @@ class PReluTest(OpTest):
         self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
         # NOTE(zhiqu): reshape inputs['Alpha'] from [1, 100, 1, 1] to [1, 100] + [1]*len(x.shape[2:])
-        # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1) 	
+        # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1)
         reshaped_alpha = self.inputs['Alpha']
         if self.attrs == {'mode': "channel", "data_format": "NCHW"}:
-            reshaped_alpha = np.reshape(
-                self.inputs['Alpha'],
-                [1, self.x_shape[1]] + [1] * len(self.x_shape[2:]))
+            reshaped_alpha = np.reshape(self.inputs['Alpha'],
+                                        [1, self.x_shape[1]] +
+                                        [1] * len(self.x_shape[2:]))
         elif self.attrs == {'mode': "channel", "data_format": "NHWC"}:
-            reshaped_alpha = np.reshape(
-                self.inputs['Alpha'],
-                [1] + [1] * len(self.x_shape[1:-1]) + [self.x_shape[-1]])
+            reshaped_alpha = np.reshape(self.inputs['Alpha'],
+                                        [1] + [1] * len(self.x_shape[1:-1]) +
+                                        [self.x_shape[-1]])
         out_np = np.maximum(self.inputs['X'], 0.)
         out_np = out_np + np.minimum(self.inputs['X'], 0.) * reshaped_alpha
         assert out_np is not self.inputs['X']
@@ -228,9 +237,11 @@ class PReluTest(OpTest):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAll(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [2, 3, 4, 5]
 
@@ -239,9 +250,11 @@ class TestModeAll(PReluTest):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAllNHWC(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [2, 3, 4, 50]
 
@@ -250,6 +263,7 @@ class TestModeAllNHWC(PReluTest):
 
 
 class TestModeElt(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [3, 2, 5, 10]
 
@@ -258,6 +272,7 @@ class TestModeElt(PReluTest):
 
 
 class TestModeEltNHWC(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [3, 2, 5, 10]
 
@@ -266,9 +281,11 @@ class TestModeEltNHWC(PReluTest):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAllRank3(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [1, 200, 3]
 
@@ -277,9 +294,11 @@ class TestModeAllRank3(PReluTest):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAllRank3NHWC(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [1, 200, 3]
 
@@ -288,9 +307,11 @@ class TestModeAllRank3NHWC(PReluTest):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAllRank6(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [1, 2, 3, 4, 5, 6]
 
@@ -299,9 +320,11 @@ class TestModeAllRank6(PReluTest):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+    reason=
+    "[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
 )
 class TestModeAllRank6NHWC(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [1, 2, 3, 4, 5, 6]
 
@@ -310,6 +333,7 @@ class TestModeAllRank6NHWC(PReluTest):
 
 
 class TestModeChannelRank3(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [1, 200, 3]
 
@@ -318,6 +342,7 @@ class TestModeChannelRank3(PReluTest):
 
 
 class TestModeChannelRank3NHWC(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [1, 3, 100]
 
@@ -326,6 +351,7 @@ class TestModeChannelRank3NHWC(PReluTest):
 
 
 class TestModeChannelRank6(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [1, 100, 2, 2, 2, 2]
 
@@ -334,6 +360,7 @@ class TestModeChannelRank6(PReluTest):
 
 
 class TestModeChannelRank6NHWC(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [1, 2, 2, 2, 2, 100]
 
@@ -342,6 +369,7 @@ class TestModeChannelRank6NHWC(PReluTest):
 
 
 class TestModeElementRank3(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [3, 10, 10]
 
@@ -350,6 +378,7 @@ class TestModeElementRank3(PReluTest):
 
 
 class TestModeElementRank3NHWC(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [3, 10, 10]
 
@@ -358,6 +387,7 @@ class TestModeElementRank3NHWC(PReluTest):
 
 
 class TestModeElementRank6(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [3, 2, 2, 4, 5, 2]
 
@@ -366,6 +396,7 @@ class TestModeElementRank6(PReluTest):
 
 
 class TestModeElementRank6NHWC(PReluTest):
+
     def init_input_shape(self):
         self.x_shape = [3, 2, 2, 4, 5, 2]
 
@@ -377,9 +408,11 @@ def create_test_fp16_class(parent,
                            check_grad=True,
                            atol=1e-3,
                            max_relative_error=0.05):
+
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "core is not compiled with CUDA")
     class TestPReluFp16Case(parent):
+
         def init_dtype(self):
             self.dtype = np.float16
 
@@ -387,8 +420,9 @@ def create_test_fp16_class(parent,
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(
-                        place, atol=atol, check_eager=self.eager_mode)
+                    self.check_output_with_place(place,
+                                                 atol=atol,
+                                                 check_eager=self.eager_mode)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -431,21 +465,25 @@ def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
         is_bias=False,
         default_initializer=fluid.initializer.ConstantInitializer(0.25))
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="prelu",
-        inputs={"X": x,
-                'Alpha': alpha},
-        attrs={"mode": mode,
-               'data_format': data_format},
-        outputs={"Out": out})
+    helper.append_op(type="prelu",
+                     inputs={
+                         "X": x,
+                         'Alpha': alpha
+                     },
+                     attrs={
+                         "mode": mode,
+                         'data_format': data_format
+                     },
+                     outputs={"Out": out})
     return out
 
 
 # error message test if mode is not one of 'all', 'channel', 'element'
 class TestModeError(unittest.TestCase):
+
     def setUp(self):
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else paddle.CPUPlace()
+        self.place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
         self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
 
     def test_mode_error(self):

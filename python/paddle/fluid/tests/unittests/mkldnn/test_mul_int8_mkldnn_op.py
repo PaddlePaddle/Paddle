@@ -25,9 +25,11 @@ from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 
 
 @skip_check_grad_ci(
-    reason="mul_mkldnn_op does not implement grad operator, check_grad is not required."
+    reason=
+    "mul_mkldnn_op does not implement grad operator, check_grad is not required."
 )
 class TestMKLDNNMulOpS8S8(OpTest):
+
     def setUp(self):
         self.op_type = "mul"
         self.init_kernel_type()
@@ -62,7 +64,7 @@ class TestMKLDNNMulOpS8S8(OpTest):
 
         B_data = np.random.uniform(-127, 127, (5, 20)).astype(np.float32)
 
-        quant_B = np.round(B_data * self.scale_y[0]).astype(np.int)
+        quant_B = np.round(B_data * self.scale_y[0]).astype(np.int_)
         output = np.dot(A_data, quant_B)
 
         scale_output_shift = (self.scale_out) / \
@@ -78,27 +80,30 @@ class TestMKLDNNMulOpS8S8(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output_with_place(
-            core.CPUPlace(), atol=0, check_dygraph=False)
+        self.check_output_with_place(core.CPUPlace(),
+                                     atol=0,
+                                     check_dygraph=False)
 
 
 '''
- test case for  s8 * u8 
+ test case for  s8 * u8
 '''
 
 
 class TestMKLDNNMulOpS8U8(TestMKLDNNMulOpS8S8):
+
     def init_data_type(self):
         self.srctype = np.uint8
         self.dsttype = np.float32 if self.force_fp32 else np.int8
 
 
 '''
- test case for  s8 * s8 
+ test case for  s8 * s8
 '''
 
 
 class TestMKLDNNMulOpS8S8WithFlatten(TestMKLDNNMulOpS8S8):
+
     def setUp(self):
         self.op_type = "mul"
         self.init_kernel_type()
@@ -131,7 +136,7 @@ class TestMKLDNNMulOpS8S8WithFlatten(TestMKLDNNMulOpS8S8):
         A_data_reshape = A_data.reshape(3 * 4, 4 * 3)
         B_data_reshape = B_data.reshape(2 * 6, 1 * 2 * 3)
 
-        quant_B = np.round(B_data_reshape * self.scale_y[0]).astype(np.int)
+        quant_B = np.round(B_data_reshape * self.scale_y[0]).astype(np.int_)
         output = np.dot(A_data_reshape, quant_B)
 
         scale_output_shift = (self.scale_out) / \
@@ -149,11 +154,12 @@ class TestMKLDNNMulOpS8S8WithFlatten(TestMKLDNNMulOpS8S8):
 
 
 '''
- test case for  s8 * u8 
+ test case for  s8 * u8
 '''
 
 
 class TestMKLDNNMulOpS8U8WithFlatten(TestMKLDNNMulOpS8S8WithFlatten):
+
     def init_data_type(self):
         self.srctype = np.uint8
         self.dsttype = np.float32 if self.force_fp32 else np.int8

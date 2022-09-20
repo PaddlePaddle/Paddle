@@ -20,7 +20,7 @@ import random
 import unittest
 import warnings
 import numpy as np
-
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.framework import Program, Block
@@ -28,6 +28,7 @@ from paddle.fluid.backward import append_backward
 
 
 class PassTest(unittest.TestCase):
+
     @classmethod
     def setUpClass(self):
         self.main_program = fluid.Program()
@@ -55,7 +56,7 @@ class PassTest(unittest.TestCase):
 
     def append_gradients(self, outs):
         with fluid.program_guard(self.main_program, self.startup_program):
-            loss = fluid.layers.mean(outs)
+            loss = paddle.mean(outs)
             fluid.backward.append_backward(loss)
 
     def check_output(self, startup_on_cpu=False, atol=1e-5):
@@ -184,8 +185,9 @@ class PassTest(unittest.TestCase):
         self.assertTrue(
             self.num_fused_ops == acctual_num_fused_ops,
             "Checking of the number of fused operator < {} > failed. "
-            "Expected: {}, Received: {}".format(
-                self.fused_op_type, self.num_fused_ops, acctual_num_fused_ops))
+            "Expected: {}, Received: {}".format(self.fused_op_type,
+                                                self.num_fused_ops,
+                                                acctual_num_fused_ops))
 
     def check_program(self, program=None):
         '''
