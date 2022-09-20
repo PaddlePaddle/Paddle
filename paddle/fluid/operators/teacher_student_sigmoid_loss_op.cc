@@ -226,7 +226,7 @@ It's similarity to SigmoidCrossEntropyWithLogits Operator. The difference is tha
 we add another label(z') to original.
         loss = max(x, 0) - x * z + log(1 + exp(-abs(x))) + max(x, 0) - x * z' + log(1 + exp(-abs(x)))
         z is click or not
-        z' is teacher value 
+        z' is teacher value
         label = {-2, -1, [0, 2]}
         when z' is not exist, clk = 0 : label = -2;
         when z' is not exist, clk = 1 : label = -1;

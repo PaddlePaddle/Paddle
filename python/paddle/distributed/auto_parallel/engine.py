@@ -12,80 +12,169 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import time
 import copy
 import logging
+import random
+import numpy as np
 from collections import defaultdict
 
 import paddle
 import paddle.utils as utils
 
 from paddle import fluid, static
-from paddle.io import Dataset
 from paddle.jit import to_static
 from paddle.metric import Metric
 from paddle.static import InputSpec
 from paddle.fluid import core
-from paddle.fluid import program_guard
+from paddle.fluid import Variable
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.executor import global_scope, _to_name_str
-from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Operator, Parameter, _non_static_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
-from paddle.distributed.passes import new_pass, PassContext
 
-from .hepler import ProgramHelper
-from ..collective import _get_global_env
+from .converter import Converter
+from .helper import ProgramHelper
 from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .dist_loader import NonIterableGeneratorLoader
-from .utils import make_data_unshard, set_grad_var_shape
 from .utils import print_program_with_dist_attr, to_list
-from .process_group import new_process_group, get_all_process_groups, get_world_process_group
+from .utils import get_logger, get_dist_attr
+from .process_group import new_process_group, get_all_process_groups
 from .dist_context import DistributedContext, get_default_distributed_context
+from .strategy import Strategy
+from .interface import _get_fetches
 
 
 class Engine:
+    """
+    An Engine object can provide the full power of auto parallel to users.
+    With the help of it, users can easily obtain the abilities of the
+    distributed training and inference. It also support the dynamic graph and
+    static graph at the same time.
+
+    Args:
+        model (paddle.nn.Layer, optional): The model is an instance of
+            paddle.nn.Layer.
+        loss (Loss|Callable|None, optional): The loss can be a `paddle.nn.Layer`
+            instance or any callable function taken the predicted values and
+            ground truth values as input. It can be None when there is no loss.
+            Default: None.
+        optimizer (Optimizer|None, optional): The optimizer need to be set in training
+            and should be None in eval and predict mode. Default: None.
+        metrics (Metric|list[Metric]|None, optional): If metrics is set, all
+            metrics will be calculated and output in train/eval mode. Default: None.
+        cluster (Cluster|None, optional): The cluster represents the topology information
+            about the used physical devices. Default: None. (Unused for now)
+        strategy (Strategy|None, optional): The strategy is used to configure the
+        parallelization and optimization behaviors. Default: None.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.vision.transforms as T
+            from paddle.distributed.fleet import auto
+            from paddle.vision.datasets import MNIST
+
+            transform = T.Compose([
+                T.Transpose(),
+                T.Normalize([127.5], [127.5])
+            ])
+            train_dataset = MNIST(mode='train', transform=transform)
+            valid_dataset = MNIST(mode='test', transform=transform)
+
+            model = paddle.vision.models.LeNet()
+            loss = paddle.nn.CrossEntropyLoss()
+            optimizer = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=model.parameters())
+            metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+            engine = auto.Engine(model, loss, optimizer, metrics)
+            # fit
+            engine.fit(train_dataset,
+                       epochs=2,
+                       batch_size=64)
+            # evaluate
+            engine.evaluate(valid_dataset,
+                            batch_size=64)
+            # predict
+            engine.predict(valid_dataset,
+                           batch_size=64)
+            # save
+            engine.save("./my_model")
+            # load
+            engine.load("./my_model")
+
+    """
 
     def __init__(self,
                  model=None,
-                 inputs_spec=None,
-                 labels_spec=None,
+                 loss=None,
+                 optimizer=None,
+                 metrics=None,
                  cluster=None,
-                 strategy=None,
-                 user_tuning_config=None):
-        self.model = model
-        self.inputs_spec = self._validate_spec(inputs_spec)
-        self.labels_spec = self._validate_spec(labels_spec)
-        self.cluster = cluster
-        if self.cluster is None:
-            self.cluster = get_default_cluster()
-        self.strategy = strategy
-        if self.strategy is None:
-            self.strategy = fleet.DistributedStrategy()
-        self._user_tuning_config = user_tuning_config
+                 strategy=None):
+
+        if model and not isinstance(model,
+                                    paddle.nn.Layer) and not callable(model):
+            raise TypeError(
+                "'model must be sub classes of `paddle.nn.Layer` or any callable function."
+            )
+        self._model = model
+
+        if loss and not isinstance(loss,
+                                   paddle.nn.Layer) and not callable(loss):
+            raise TypeError(
+                "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
+            )
+        self._loss = loss
+
+        if optimizer and not isinstance(
+                optimizer,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
+            raise TypeError(
+                "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
+                " or `paddle.fluid.optimizer.Optimizer`.")
+        self._optimizer = self._validate_opt(optimizer)
+
+        metrics = metrics or []
+        for metric in to_list(metrics):
+            assert isinstance(metric, Metric), \
+                "{} is not sub class of Metric".format(
+                    metric.__class__.__name__)
+        self._metrics = to_list(metrics)
+
+        if cluster and not isinstance(cluster, Cluster):
+            raise TypeError(
+                "'cluster' must be the object or class `paddle.distributed.auto_parallel.Cluster`"
+            )
+        self._cluster = cluster or get_default_cluster()
+
+        if strategy and not isinstance(strategy, Strategy):
+            raise TypeError(
+                "'strategy' must be object of class `paddle.distributed.auto_parallel.Strategy`"
+            )
+        self._strategy = strategy or Strategy()
+
+        if os.getenv("POD_NAME"):
+            print("Distribute training by paddle.distributed.launch",
+                  flush=True)
+            fleet.init(is_collective=True)
 
         self._executor = None
         self._cur_rank = paddle.distributed.get_rank()
         self._nranks = paddle.distributed.get_world_size()
         self._saver = DistributedSaver()
 
-        # TODO: add logger module
-        self._logger = logging.getLogger()
-        self._logger.propagate = False
-        if not self._logger.handlers:
-            self._logger.setLevel(logging.INFO)
-            log_handler = logging.StreamHandler()
-            log_format = logging.Formatter(
-                '[%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s'
-            )
-            log_handler.setFormatter(log_format)
-            self._logger.addHandler(log_handler)
+        self._logger = get_logger(logging.INFO)
 
         self._orig_main_prog = static.default_main_program()
         self._orig_startup_prog = static.default_startup_program()
@@ -103,54 +192,18 @@ class Engine:
             "eval": False,
             "predict": False
         }
-        self._dygraph_mode = False
 
-    def prepare(self,
-                optimizer=None,
-                loss=None,
-                gradient_scale=True,
-                metrics=None,
-                all_ranks=False):
-        if optimizer and not isinstance(
-                optimizer,
-            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
-            raise TypeError(
-                    "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
-                        " or `paddle.fluid.optimizer.Optimizer`."
-                )
-        self._optimizer = optimizer
-        self._all_ranks = all_ranks
-
-        if loss and not isinstance(loss,
-                                   paddle.nn.Layer) and not callable(loss):
-            raise TypeError(
-                "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
-            )
-        self._loss = loss
-
-        metrics = metrics or []
-        for metric in to_list(metrics):
-            assert isinstance(metric, Metric), \
-                "{} is not sub class of Metric".format(
-                    metric.__class__.__name__)
-        self._metrics = to_list(metrics)
-        self._gradient_scale = gradient_scale
         self._planned_mode = None
-        self._prepare_single_mode("train")
+        self._dygraph_mode = False
+        self._tuning = self._strategy.tuning
 
     def _prepare_single_mode(self, mode):
-
+        # Do the build process
         self._build(mode)
         # Do the planning process
         self._plan(mode)
-
-        # Do the Optimization tuning
-        if self._user_tuning_config and mode == "train":
-            self._optimization_tuning(mode)
-
         # Do the parallel process
-        self._parallel(mode, self._all_ranks)
-
+        self._parallel(mode)
         # Init comm and startup program
         self._initialize(mode)
         self._mode_init_states[mode] = True
@@ -161,21 +214,23 @@ class Engine:
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
 
-            program_helper = ProgramHelper(self.model, self._loss,
-                                           self._metrics, self.inputs_spec,
-                                           self.labels_spec)
+            inputs_spec = self.inputs_spec
+            labels_spec = self.labels_spec if self.labels_spec else []
+            self.program_helper = ProgramHelper(self._model, self._loss,
+                                                self._metrics, inputs_spec,
+                                                labels_spec)
             # build forward main program
-            program_helper.build_program(mode)
+            self.program_helper.build_program(mode)
 
-            self.concrete_program = program_helper.concrete_program
-            serial_main_prog = program_helper.main_program
-            serial_startup_prog = program_helper.startup_program
+            self.concrete_program = self.program_helper.concrete_program
+            serial_main_prog = self.program_helper.main_program
+            serial_startup_prog = self.program_helper.startup_program
 
-            inputs = program_helper.input_vars
-            outputs = program_helper.output_vars
-            labels = program_helper.label_vars
-            losses = program_helper.loss_vars
-            metrics = program_helper.metric_vars
+            inputs = self.program_helper.input_vars
+            outputs = self.program_helper.output_vars
+            labels = self.program_helper.label_vars
+            losses = self.program_helper.loss_vars
+            metrics = self.program_helper.metric_vars
 
             paddle.enable_static()
         else:
@@ -188,14 +243,13 @@ class Engine:
             metrics = []
             serial_main_prog = self._orig_main_prog.clone()
             serial_startup_prog = self._orig_startup_prog.clone()
-            # FIXME to support grad clip
             with static.program_guard(serial_main_prog, serial_startup_prog), \
                 utils.unique_name.guard():
                 inputs_spec = self.inputs_spec
                 labels_spec = self.labels_spec if self.labels_spec else []
                 inputs = [s._create_feed_layer() for s in inputs_spec]
                 labels = [s._create_feed_layer() for s in labels_spec]
-                outputs = to_list(self.model(*inputs))
+                outputs = to_list(self._model(*inputs))
                 if mode != "predict" and self._loss:
                     losses = to_list(self._loss(*(outputs + labels)))
 
@@ -219,25 +273,30 @@ class Engine:
             "metrics": metrics
         }
 
+        if mode != "train":
+            serial_main_prog = serial_main_prog.clone(for_test=True)
+
         self._set_recompute_ckpts()
         self._dist_contexts[mode] = DistributedContext(
             serial_main_prog, serial_startup_prog, self._optimizer, losses,
-            feed_vars, fetch_vars, self.cluster, self.strategy)
-        self._dist_contexts[mode].gradient_scale = self._gradient_scale
-        self._dist_contexts[mode]._dygraph_mode = self._dygraph_mode
+            feed_vars, fetch_vars, self._cluster, self._strategy)
+        self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
 
-    def _optimization_tuning(self, mode):
+    def _optimization_tuning(self, mode, dataset, batch_size):
+        if not self._tuning.enable:
+            raise ValueError("Please set `tuning.enable=True`.")
 
-        self.mode = mode
-        assert "batch_size" in self._user_tuning_config, "Optimization Tuning should provide with batch size."
-        assert "dataset" in self._user_tuning_config, "Optimization Tuning should provide with dataset."
-        batch_size = self._user_tuning_config["batch_size"]
-        dataset = self._user_tuning_config["dataset"]
-        dataset.dp_world_size = self.dp_world_sizes
-        dataset.dp_rank = self.dp_ranks
+        assert mode == "train"
+        # Do the build process
+        self._build(mode)
+        # Do the planning process
+        self._plan(mode)
+
+        dataset.dp_world_size = self._dp_world_sizes
+        dataset.dp_rank = self._dp_ranks
 
         from .tuner.optimization_tuner import OptimizationTuner
-        self._optimization_tuner = OptimizationTuner(self._user_tuning_config,
+        self._optimization_tuner = OptimizationTuner(self._tuning.to_dict(),
                                                      self._dist_contexts[mode],
                                                      dataset,
                                                      self.inputs_spec,
@@ -247,12 +306,10 @@ class Engine:
 
         self._optimization_tuner.tune()
 
-        if self._user_tuning_config["run_after_tuning"]:
+        if self._tuning.run_after_tuning:
             # update the strategy
             self._dist_contexts[
                 mode]._strategy = self._optimization_tuner.get_best_config()
-        else:
-            return
 
     def _plan(self, mode):
         if self._planned_mode is None:
@@ -272,15 +329,15 @@ class Engine:
             if var.name in block.vars:
                 feed_list.append(block.vars[var.name])
 
-        self.dp_world_sizes = []
-        self.dp_ranks = []
+        self._dp_world_sizes = []
+        self._dp_ranks = []
         for feed_var in feed_list:
             dp_world_size, dp_rank = self._get_input_split_info(
                 feed_var, self._dist_contexts[mode])
-            self.dp_world_sizes.append(dp_world_size)
-            self.dp_ranks.append(dp_rank)
+            self._dp_world_sizes.append(dp_world_size)
+            self._dp_ranks.append(dp_rank)
 
-    def _parallel(self, mode, all_ranks):
+    def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
         # For now, the completer has to be passed to the planner,
         # because we may use it to complete the annotation of the backwarkward and update.
@@ -334,40 +391,22 @@ class Engine:
                     continue
                 process_group.instantiate()
 
-        self._place = _get_device()
-        if isinstance(self._place, fluid.CUDAPlace):
-            self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = _get_device()
+        if isinstance(place, fluid.CUDAPlace):
+            place = fluid.CUDAPlace(ParallelEnv().dev_id)
+
+        if self._strategy.seed:
+            paddle.seed(self._strategy.seed + self._dp_ranks[0])
+            np.random.seed(self._strategy.seed + self._dp_ranks[0])
+            random.seed(self._strategy.seed + self._dp_ranks[0])
 
         if self._dygraph_mode:
-            paddle.disable_static()
-            main_program = self._dist_main_progs[mode][self._cur_rank]
-            for param in self.concrete_program.parameters:
-                # create var in scope and share parameters to scope
-                if param.name not in main_program.global_block().vars:
-                    continue
-                # get param_var's dist_attr
-                var = main_program.global_block().vars[param.name]
-                var_dist_attr = self._dist_contexts[
-                    mode].get_tensor_dist_attr_for_program(var)
-                dist_attr = {
-                    "dims_mapping": var_dist_attr.dims_mapping,
-                    "process_shape": var_dist_attr.process_mesh.topology,
-                    "process_group": var_dist_attr.process_mesh.processes
-                }
-                # slice param_value with dist_attr
-                # share sliced_param_value with param_tensor in global_scope
-                from .converter import Converter
-                param_tensor = global_scope().var(param.name).get_tensor()
-                sliced_param = Converter.slice_with_dist_attr(
-                    param.numpy(), dist_attr)
-                shared_tensor = paddle.to_tensor(sliced_param,
-                                                 place=self._place)
-                param_tensor._share_data_with(
-                    shared_tensor.value().get_tensor())
-            paddle.enable_static()
+            dist_context = self._dist_contexts[mode]
+            dist_main_program = self._dist_main_progs[mode][self._cur_rank]
+            self.program_helper.init(dist_main_program, place, dist_context)
 
         if self._executor is None:
-            self._executor = paddle.static.Executor(self._place)
+            self._executor = paddle.static.Executor(place)
             uninitialized = []
             dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
             for var in dist_startup_prog.list_vars():
@@ -379,136 +418,303 @@ class Engine:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 self._executor.run(prune_startup_prog)
 
-            if self.strategy.amp and self.strategy.amp_configs['use_pure_fp16']:
-                # from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_parameters_to_fp16
-                def cast_parameters_to_fp16(place,
-                                            program,
-                                            scope=None,
-                                            to_fp16_var_names=None):
-                    """
-                    Traverse all parameters in the whole model and set them to the FP16 data type.
-                    Whereas, this function will keep parameters of batchnorms in FP32.
-                    Args:
-                        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
-                        program (Program): The used program.
-                        scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
-                                                    Default is None.
-                        to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
-                                                            will be set to FP16. Usually, it is the returned
-                                                            value of `cast_model_to_fp16` API.
-                    """
-                    from paddle.framework import core
-                    import numpy as np
-                    all_parameters = []
-                    for block in program.blocks:
-                        all_parameters.extend(block.all_parameters())
+            if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
+                self._set_state_dict(mode, self._strict, self._state_dict,
+                                     self._dist_attr)
 
-                    var_scope = scope if scope else paddle.static.global_scope()
-                    for param in all_parameters:
-                        if param.dtype == core.VarDesc.VarType.FP16:
-                            param_t = var_scope.find_var(
-                                param.name).get_tensor()
-                            data = np.array(param_t)
-                            param_t.set(np.float16(data), place)
+        if self._strategy.reinit:
+            self._logger.info("NOTE: parameters wiil be re-initialized.")
+            dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
+            self._executor.run(dist_startup_prog)
 
-                cast_parameters_to_fp16(self._place, prune_startup_prog)
+    def _infer_sample_spec(self, data, batch_size, split):
+        if isinstance(data, paddle.io.IterableDataset):
+            if split is None:
+                input, label = next(iter(data))
+            else:
+                sample = next(iter(data))
+                input = sample[:split]
+                label = sample[split:]
+        elif isinstance(data, paddle.io.Dataset):
+            if split is None:
+                input, label = data[0]
+            else:
+                sample = data[0]
+                input = sample[:split]
+                label = sample[split:]
+        else:
+            raise ValueError(
+                "Data should be a Dataset or IterableDatset, but received {}.".
+                format(type(data).__name__))
+
+        self.inputs_spec = []
+        self.labels_spec = []
+        input_list = to_list(input)
+        label_list = to_list(label)
+
+        def _infer_item_spec(item, name, batch_size, specs):
+            if isinstance(item, np.ndarray):
+                spec = InputSpec.from_numpy(item, name)
+                if batch_size is None:
+                    specs.append(spec)
+                else:
+                    specs.append(spec.batch(batch_size))
+            elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
+                spec = InputSpec.from_tensor(item, name)
+                if batch_size is None:
+                    specs.append(spec)
+                else:
+                    specs.append(spec.batch(batch_size))
+            else:
+                specs.append(InputSpec([batch_size], type(item), name))
+
+        if input_list is not None:
+            for i, item in enumerate(input_list):
+                assert item is not None, "Receive None input."
+                name = "input" + str(i)
+                _infer_item_spec(item, name, batch_size, self.inputs_spec)
+        if label_list is not None:
+            for i, item in enumerate(label_list):
+                assert item is not None, "Receive None input."
+                name = "label" + str(i)
+                _infer_item_spec(item, name, batch_size, self.labels_spec)
+
+        self.inputs_spec = self._validate_spec(self.inputs_spec)
+        self.labels_spec = self._validate_spec(self.labels_spec)
 
     def fit(self,
             train_data,
+            train_sample_split=None,
             batch_size=1,
             epochs=1,
-            fetches=None,
             steps_per_epoch=None,
+            valid_data=None,
+            valid_sample_split=None,
+            valid_freq=1,
+            valid_steps=None,
             collate_fn=None,
-            use_cache=False,
-            return_numpy=True):
-        # TODO: callbacks
-        # TODO: evaluate after training
+            callbacks=None):
+        """
+        Trains the model for a fixed number of epochs. If `valid_data` is set,
+        evaluation will be done at the end of each epoch.
 
-        if not self._mode_init_states['train']:
-            raise Exception(
-                "train program is not initialized yet, please call engine.prepare() before calling fit() funtion."
-            )
+        Args:
+            train_data (Dataset): An instance of paddle paddle.io.Dataset. Default: None.
+            train_sample_split (int, optional): Each sample of the train dataset is assumed
+                to be a (input, label) pair by default and has two items. If each sample has
+                more than two items, train_sample_split specifies how to split these items into
+                input and label. The items before it are input and the left are label. Default: None.
+            batch_size (int, optional): The batch size of train_data and valid_data if provided.
+                The user's data will be used directly without batching if set to None. Default: 1.
+            epochs (int, optional): The number of epochs to train the model. Default: 1.
+            steps_per_epoch (int, optional): The total number of steps (batches of samples)
+                is executed in one epoch before stating the next one. If None, it is equal to
+                the number samples in your dataset divided by the batch size. Default: None.
+            valid_data (Dataset, optional): An instance of paddle paddle.io.Dataset used for
+                evaluation at the end of epoch. No evaluation will be done if set to None.
+                Default: None. (Unsupported for now)
+            valid_freq (int, optional): Only relevant if valid_data is provided. This specifies
+                how many training epochs before a new evaluation is performed. Default: 1.
+            valid_sample_split (int, optional): Only relevant if valid_data is provided.
+                Each sample of the valid dataset is assumed to be a (input, label) pair
+                by default and has two items. If each sample has more than two items,
+                valid_sample_split specifies how to split these items into input and label.
+                The items before it are input and the left are label. Default: None.
+            valid_steps (int, optional): Only relevant if valid_data is provided.
+                It is the total number of steps (batches of samples) to draw before
+                stopping validation at the end of every epoch. If None, validation will run until the
+                `valid_data` dataset is exhausted. The validation will start from the
+                beginning of the dataset at each epoch. Default: None.
+            collate_fn(callable, optional): function to generate mini-batch data by merging
+                the sample list, None for only stack each fields of sample in axis
+                0. Default None.
+            callbacks (Callback|None, optional): A list of `Callback` instances to apply
+                during training. Default: None. (Unused for now)
 
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+                import paddle.vision.transforms as T
+                from paddle.distributed.fleet import auto
+                from paddle.vision.datasets import MNIST
+
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                train_dataset = MNIST(mode='train', transform=transform)
+
+                model = paddle.vision.models.LeNet()
+                loss = paddle.nn.CrossEntropyLoss()
+                optimizer = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=model.parameters())
+                metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                engine = auto.Engine(model, loss, optimizer, metrics)
+                engine.fit(train_dataset,
+                           epochs=2,
+                           batch_size=64)
+        """
         self.mode = 'train'
+        self._infer_sample_spec(train_data, batch_size, train_sample_split)
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+        else:
+            self._switch_mode("train")
+
         assert self.mode in self._dist_main_progs, \
-            "train model is not ready, please call `engine.prepare()` first."
+            "train model is not ready, please call `engine._prepare_single_mode('train')` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch,
                                                    collate_fn)
 
-        usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
-        fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
-        lr_scheduler = self.get_lr_scheduler(self.main_program)
+        fetch_metrics = self._validate_fetches(self.fetch_vars["metrics"])
+        inner_fetch = dict(fetch_loss, **fetch_metrics)
+        usr_fetch = self._validate_fetches(_get_fetches())
+        fetch_list, fetch_map = self._fetch_map(inner_fetch, usr_fetch)
+        lr_scheduler = self._get_lr_scheduler(self.main_program)
 
+        outputs = defaultdict(list)
         for epoch in range(epochs):
             train_logs = {"epoch: {:d} ": epoch}
             for step, _ in enumerate(train_dataloader):
                 try:
-                    outs = self._executor.run(self.main_program,
-                                              fetch_list=fetch_list,
-                                              use_program_cache=use_cache,
-                                              return_numpy=return_numpy)
-                except fluid.core.EOFException:
+                    outs = self._executor.run(
+                        self.main_program,
+                        fetch_list=fetch_list,
+                        use_program_cache=self._strategy.use_cache,
+                        return_numpy=self._strategy.return_numpy)
+                except core.EOFException:
                     break
-
                 train_logs["step: {:d} "] = step
-                if lr_scheduler is not None:
+                # update lr
+                if lr_scheduler and step % self._k_steps == 0:
                     lr_scheduler.step()
-                    try:
-                        train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
-                    except:
-                        train_logs[
-                            "lr: {:5e} "] = self._lr_optimizer._learning_rate.get_lr(
-                            )
+                train_logs["lr: {:5e} "] = self._get_lr(self._lr_optimizer)
                 # inner fetches
                 if fetch_loss:
-                    train_logs["loss: {:9f} "] = outs[0][0]
+                    train_logs["loss: {:8f} "] = outs[0][0]
+                    outputs["loss"].append(outs[0][0])
+                # Metric
+                if fetch_metrics:
+                    metric_out = outs[len(fetch_loss):len(inner_fetch)]
+                    for metric in self._metrics:
+                        metric.update(*metric_out)
+                        results = metric.accumulate()
+                        for i, res in enumerate(to_list(results)):
+                            train_logs[metric.name()[i] + ": {:8f} "] = res
+                            outputs[metric.name()[i]].append(outs[0][0])
                 # user fetches
-                user_outs = outs[len(fetch_loss):]
-                user_fetch_list = fetch_list[len(fetch_loss):]
+                user_outs = outs[len(inner_fetch):]
+                user_fetch_list = fetch_list[len(inner_fetch):]
                 for i, out in enumerate(user_outs):
                     train_logs[fetch_map[user_fetch_list[i]] + ": {}"] = out
                 # logger
                 string = '[train] ' + ''.join(list(train_logs.keys()))
                 self._logger.info(string.format(*list(train_logs.values())))
 
+            if valid_data and epoch % valid_freq == 0:
+                self.evaluate(valid_data, valid_sample_split, batch_size,
+                              valid_steps, collate_fn, callbacks)
+                self._switch_mode("train")
+            else:
+                self._reset_metrics()
+        return outputs
+
     def evaluate(self,
-                 eval_data,
+                 valid_data,
+                 valid_sample_split=None,
                  batch_size=1,
-                 fetches=None,
+                 steps=None,
                  collate_fn=None,
-                 use_cache=False,
-                 return_numpy=True):
+                 callbacks=None):
+        """
+        Evaluate the loss and metrics of the model on evaluation data.
+
+        Args:
+            valid_data (Dataset): An instance of paddle paddle.io.Dataset. Default: None.
+            valid_sample_split (int, optional): Each sample of the eval dataset is assumed
+                to be a (input, label) pair by default and has two items. If each sample has
+                more than two items, valid_sample_split specifies how to split these items into
+                input and label. The items before it are input and the left are label. Default: None.
+            batch_size (int, optional): The batch size of valid_data. The user's data will
+                be used directly without batching if set to None. Default: 1.
+            steps (int, optional): It is the total number of steps (batches of samples) to draw before
+                stopping evaluation. If None, evaluation will run until the `valid_data` dataset is exhausted.
+                The evaluation will start from the beginning of the dataset in each run. Default: None.
+            collate_fn(callable, optional): function to generate mini-batch data by merging
+                the sample list, None for only stack each fields of sample in axis
+                0. Default None.
+            callbacks (Callback|None, optional): A list of `Callback` instances to apply
+                during evaling. Default: None. (Unused for now)
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+                import paddle.vision.transforms as T
+                from paddle.distributed.fleet import auto
+                from paddle.vision.datasets import MNIST
+
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                valid_dataset = MNIST(mode='test', transform=transform)
+
+                model = paddle.vision.models.LeNet()
+                loss = paddle.nn.CrossEntropyLoss()
+                metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                engine = auto.Engine(model, loss, metrics=metrics)
+                engine.evaluate(valid_dataset, batch_size=64)
+
+        """
         self.mode = 'eval'
+        self._infer_sample_spec(valid_data, batch_size, valid_sample_split)
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
+        else:
+            self._switch_mode("eval")
 
         assert self.mode in self._dist_main_progs, \
-            "eval model is not ready, please call `engine.prepare()` first."
-        eval_dataloader = self._create_dataloader(eval_data,
-                                                  batch_size,
-                                                  collate_fn=collate_fn)
+            "eval model is not ready, please call `engine._prepare_single_mode('eval')` first."
+        valid_dataloader = self._create_dataloader(valid_data,
+                                                   batch_size,
+                                                   steps_per_epoch=steps,
+                                                   collate_fn=collate_fn)
 
-        usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
         fetch_metrics = self._validate_fetches(self.fetch_vars["metrics"])
         inner_fetch = dict(fetch_loss, **fetch_metrics)
+        usr_fetch = self._validate_fetches(_get_fetches())
         fetch_list, fetch_map = self._fetch_map(inner_fetch, usr_fetch)
 
-        for step, _ in enumerate(eval_dataloader):
-            eval_logs = {"step: {:d} ": step}
+        outputs = defaultdict(list)
+        for step, _ in enumerate(valid_dataloader):
             try:
-                outs = self._executor.run(self.main_program,
-                                          fetch_list=fetch_list,
-                                          use_program_cache=use_cache,
-                                          return_numpy=return_numpy)
-            except fluid.core.EOFException:
+                outs = self._executor.run(
+                    self.main_program,
+                    fetch_list=fetch_list,
+                    use_program_cache=self._strategy.use_cache,
+                    return_numpy=self._strategy.return_numpy)
+            except core.EOFException:
                 break
+            eval_logs = {"step: {:d} ": step}
             # inner fetches
             if fetch_loss:
-                eval_logs["loss: {:9f} "] = outs[0][0]
+                eval_logs["loss: {:8f} "] = outs[0][0]
+                outputs["eval_loss"].append(outs[0][0])
             # Metric
             if fetch_metrics:
                 metric_out = outs[len(fetch_loss):len(inner_fetch)]
@@ -516,8 +722,9 @@ class Engine:
                     metric.update(*metric_out)
                     results = metric.accumulate()
                     for i, res in enumerate(to_list(results)):
-                        eval_logs[metric.name()[i] + ": {:9f} "] = res
-            # usr fetches
+                        eval_logs[metric.name()[i] + ": {:8f} "] = res
+                        outputs["eval_" + metric.name()[i]].append(res)
+            # user fetches
             usr_outs = outs[len(inner_fetch):]
             usr_fetch_list = fetch_list[len(inner_fetch):]
             for i, out in enumerate(usr_outs):
@@ -525,38 +732,88 @@ class Engine:
             # logger
             string = '[eval] ' + ''.join(list(eval_logs.keys()))
             self._logger.info(string.format(*list(eval_logs.values())))
+        self._reset_metrics()
+        return outputs
 
     def predict(self,
                 test_data,
+                test_sample_split=None,
                 batch_size=1,
-                fetches=None,
+                steps=None,
                 collate_fn=None,
-                use_cache=False,
-                return_numpy=True):
+                callbacks=None):
+        """
+        Compute the output predictions on testing data.
+
+        Args:
+            test_data (Dataset): An instance of paddle paddle.io.Dataset. Default: None.
+            test_sample_split (int, optional): Each sample of the test dataset is assumed
+                to be a (input, label) pair by default and has two items. If each sample has
+                more than two items, test_sample_split specifies how to split these items into
+                input and label. The items before it are input and the left are label. Default: None.
+            batch_size (int, optional): The batch size of test_data. The user's data will
+                be used directly without batching if set to None. Default: 1.
+            steps (int, optional): It is the total number of steps (batches of samples) to draw before
+                stopping predict. If None, predict will run until the `test_data` dataset is exhausted.
+                The predict will start from the beginning of the dataset in each run. Default: None.
+            collate_fn(callable, optional): function to generate mini-batch data by merging
+                the sample list, None for only stack each fields of sample in axis
+                0. Default None.
+            callbacks (Callback|None, optional): A list of `Callback` instances to apply
+                during testing. Default: None. (Unused for now)
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+                import paddle.vision.transforms as T
+                from paddle.distributed.fleet import auto
+                from paddle.vision.datasets import MNIST
+
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                valid_dataset = MNIST(mode='test', transform=transform)
+
+                model = paddle.vision.models.LeNet()
+
+                engine = auto.Engine(model)
+                engine.predict(valid_dataset, batch_size=64)
+        """
         self.mode = 'predict'
+        self._infer_sample_spec(test_data, batch_size, test_sample_split)
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
+        else:
+            self._switch_mode("predict")
 
         assert self.mode in self._dist_main_progs, \
-            "predict model is not ready, please call `engine.prepare()` first."
+            "predict model is not ready, please call `engine._prepare_single_mode('predict')` first."
         test_dataloader = self._create_dataloader(test_data,
                                                   batch_size,
+                                                  steps_per_epoch=steps,
                                                   collate_fn=collate_fn)
 
-        usr_fetch = self._validate_fetches(fetches)
         fetch_outputs = self._validate_fetches(self.fetch_vars["outputs"])
+        usr_fetch = self._validate_fetches(_get_fetches())
         fetch_list, fetch_map = self._fetch_map(fetch_outputs, usr_fetch)
 
         outputs = []
         for step, _ in enumerate(test_dataloader):
-            predict_logs = {"step: {:d} ": step}
             try:
-                outs = self._executor.run(self.main_program,
-                                          fetch_list=fetch_list,
-                                          use_program_cache=use_cache,
-                                          return_numpy=return_numpy)
-            except fluid.core.EOFException:
+                outs = self._executor.run(
+                    self.main_program,
+                    fetch_list=fetch_list,
+                    use_program_cache=self._strategy.use_cache,
+                    return_numpy=self._strategy.return_numpy)
+            except core.EOFException:
                 break
+            predict_logs = {"step: {:d} ": step}
             outputs.append(outs[:len(fetch_outputs)])
             for i, out in enumerate(outs):
                 predict_logs[fetch_map[fetch_list[i]] + ": {}"] = out
@@ -566,26 +823,42 @@ class Engine:
 
         return outputs
 
+    def _tune(self, tune_data, tune_sample_split=None, batch_size=1):
+        self.mode = 'train'
+        self._infer_sample_spec(tune_data, batch_size, tune_sample_split)
+        self._optimization_tuning(self.mode, tune_data, batch_size)
+
     def _create_dataloader(self,
                            dataset,
                            batch_size,
                            epochs=1,
                            steps_per_epoch=None,
                            collate_fn=None):
+
+        if self._strategy.gradient_merge and batch_size is not None:
+            assert batch_size % self._k_steps == 0, \
+                "Requires batch_size:[{}] to be divisible by k_steps:[{}].".format(batch_size, self._k_steps)
+            batch_size //= self._k_steps
+
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
         dist_context = self._dist_contexts[self.mode]
         dist_main_block = dist_main_prog.global_block()
 
-        # NOTE: Get feed_list from dist_program, then insert dataloader op
-        # with sharded var shape. Because predict_program does not contain
-        # labels var, so we will filter dataset's value with length of feed_list.
+        # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
+        # Cause predict_program does not contain labels var,
+        # then we will add labels var from serial_program to dist_program,
+        # that maintains the length of feed_list equal to the length of dataset's values.
         inputs_var = self._feed_vars[self.mode]["inputs"]
         labels_var = self._feed_vars[self.mode]["labels"]
         feed_list = []
         for var in inputs_var + labels_var:
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
+            else:
+                copy_var = dist_main_block._clone_variable(var, var.persistable)
+                copy_var.desc.set_original_id(var.desc.original_id())
+                feed_list.append(copy_var)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
@@ -605,9 +878,9 @@ class Engine:
                 epochs,
                 steps_per_epoch,
                 collate_fn,
-                data_parallel_world_size=self.dp_world_sizes,
-                data_parallel_rank=self.dp_ranks,
-                split_data=self.strategy.split_data)
+                data_parallel_world_size=self._dp_world_sizes,
+                data_parallel_rank=self._dp_ranks,
+                split_data=self._strategy.split_data)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
@@ -628,6 +901,7 @@ class Engine:
 
     def _validate_spec(self, specs):
         specs = to_list(specs)
+        self._k_steps = self._strategy.gradient_merge.k_steps
         if specs is not None:
             for i, spec in enumerate(specs):
                 assert isinstance(spec, InputSpec)
@@ -635,6 +909,12 @@ class Engine:
                     raise ValueError(
                         "Requires Input[{}].name != None, but receive `None` with {}."
                         .format(i, spec))
+                if self._k_steps > 1:
+                    shape = list(spec.shape)
+                    assert shape[0] % self._k_steps == 0, \
+                        "Requires batch_size[{}] to be divisible by k_steps[{}].".format(spec.shape[0], self._k_steps)
+                    shape[0] //= self._k_steps
+                    spec.shape = shape
         return specs
 
     def _is_local_var(self, var):
@@ -688,42 +968,105 @@ class Engine:
                                           batch_size_axis, rank_id)
             return len(group_ranks), group_ranks.index(rank_id)
 
-        return None, None
+        return 1, 0
 
     def _set_recompute_ckpts(self):
         # NOTE hack to enable recompute in engine api for GPT-3
         # TODO support more PaddleNLP/CV models here
 
-        config = self.strategy.recompute_configs
+        recompute = self._strategy.recompute
 
         # extract ckpts by specific model
-        if isinstance(self.model, paddle.nn.Layer):
-            if hasattr(
-                    self.model, "gpt"
-            ) and self.model.__class__.__name__ == 'GPTForPretraining':
-                exact_ckpts = self.model.gpt.checkpoints
+        if isinstance(self._model, paddle.nn.Layer):
+            if hasattr(self._model,
+                       "gpt") and self._model.__class__.__name__ in [
+                           'GPTForPretraining', 'GPTForPretrainingAuto'
+                       ]:
+                exact_ckpts = self._model.gpt.checkpoints
             else:
-                exact_ckpts = config["checkpoints"]
+                exact_ckpts = recompute.checkpoints
         else:
-            exact_ckpts = config["checkpoints"]
+            exact_ckpts = recompute.checkpoints
 
         # modify strategy
-        if self.strategy.recompute:
-            config["checkpoints"] = exact_ckpts[:]
-            self.strategy.recompute_configs = config
+        if recompute.enable:
+            recompute.checkpoints = exact_ckpts[:]
             logs = {
-                'Model Class': self.model.__class__.__name__,
+                'Model Class': self._model.__class__.__name__,
                 'Applied Recompute ckpts': exact_ckpts
             }
             self._logger.info(logs)
 
-    def save(self, path, training=True, mode=None):
-        if not mode:
-            mode = self.mode
+    def _validate_opt(self, optimizer):
+        if optimizer is not None:
+            optimizer._parameter_list = None
+            optimizer._param_groups = None
+        return optimizer
 
+    def _reset_metrics(self):
+        for metric in self._metrics:
+            metric.reset()
+
+    def _switch_mode(self, mode):
+        self.mode = mode
+        self._initialize(mode)
+
+    def _set_state_dict(self, mode, strict, state_dict, dist_attr):
+        program = self._dist_main_progs[mode][self._cur_rank]
+        dist_context = self._dist_contexts[mode]
+        cur_dist_attr = get_dist_attr(program, dist_context)
+        converter = Converter(state_dict, dist_attr, cur_dist_attr)
+        state_dict = converter.convert(strict=strict)
+        program.set_state_dict(state_dict)
+
+    def save(self, path, training=True):
+        """
+        Saves the model, parameters, optimizer state to path.
+        If `training` is set to False, only inference model will be saved.
+
+        Args:
+            path (str): The file prefix to save model. The format
+                is 'dirname/file_prefix' or 'file_prefix'. if empty str.
+                A exception will be raised.
+            training (bool, optional): Whether to save for training. If not, save
+                for inference only. If `training` is set to True, the optimzer state
+                will be saved. Otherwise, only the model and parameters are saved.
+                This function will silently overwrite existing file at the target
+                location. Default: True.
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+                import paddle
+                import paddle.vision.transforms as T
+                from paddle.distributed.fleet import auto
+                from paddle.vision.datasets import MNIST
+
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                train_dataset = MNIST(mode='train', transform=transform)
+
+                model = paddle.vision.models.LeNet()
+                loss = paddle.nn.CrossEntropyLoss()
+                optimizer = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=model.parameters())
+                metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                engine = auto.Engine(model, loss, optimizer, metrics)
+                engine.fit(train_dataset,
+                           epochs=1,
+                           batch_size=64)
+                engine.save("./my_model")
+
+        """
         if training:
             assert 'train' in self._serial_main_progs, \
-                "training model is not ready, please call `engine.prepare()` first."
+                "training model is not ready, please call `engine._prepare_single_mode('train')` first."
             serial_program = self._serial_main_progs["train"]
             dist_main_prog = self._dist_main_progs["train"][self._cur_rank]
             dist_context = self._dist_contexts["train"]
@@ -732,7 +1075,7 @@ class Engine:
                              dist_main_program=dist_main_prog,
                              dist_context=dist_context)
         else:
-            assert mode, "Please set the 'mode' you want to save."
+            mode = "predict"
             feed_vars = self._feed_vars[mode]['inputs']
             fetch_vars = self._fetch_vars[mode]['outputs']
             dist_main_prog = self._dist_main_progs[mode][self._cur_rank]
@@ -742,24 +1085,79 @@ class Engine:
                                              self._executor,
                                              program=dist_main_prog)
 
-    def load(self, path, strict=True, load_optimizer=True, mode=None):
-        if not mode:
-            mode = self.mode
-        assert mode, "Please set the 'mode' you want to load."
+    def load(self, path, strict=True, load_optimizer=True):
+        """
+        Load the stored model, parameters and optimizer states.
 
-        dist_main_prog = self._dist_main_progs[mode][self._cur_rank]
-        dist_context = self._dist_contexts[mode]
-        self._saver.load(path, dist_main_prog, dist_context, strict,
-                         load_optimizer)
+        Args:
+            path (str): The prefix of files storing the model states and
+                optimizer states.
+            strict (bool, optional): Whether to skip the loading of mismatch
+                parameter or raise an error when mismatch happens (not found
+                the parameter in file storing model states of or receives a
+                mismatch shape). Default: False.
+            load_optimizer (bool, optional): If True, the stored optimizer
+                states is restored. Otherwise, the optimizer states is intialized
+                from scratch. Default: False.
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+                import paddle
+                import paddle.vision.transforms as T
+                from paddle.distributed.fleet import auto
+                from paddle.vision.datasets import MNIST
+
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                train_dataset = MNIST(mode='train', transform=transform)
+
+                model = paddle.vision.models.LeNet()
+                loss = paddle.nn.CrossEntropyLoss()
+                optimizer = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=model.parameters())
+                metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                engine = auto.Engine(model, loss, optimizer, metrics)
+                engine.fit(train_dataset,
+                           epochs=1,
+                           batch_size=64)
+                engine.save("./my_model")
+                engine.load("./my_model")
+
+        """
+        self._strict = strict
+        self._state_dict, self._dist_attr = self._saver.load(
+            path, load_optimizer)
+        return self._state_dict, self._dist_attr
 
     @staticmethod
-    def get_lr_scheduler(program):
+    def _get_lr_scheduler(program):
         lr_sheduler = None
         if hasattr(program, 'lr_sheduler'):
             from paddle.optimizer.lr import LRScheduler
             lr_sheduler = program.lr_sheduler
             assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
         return lr_sheduler
+
+    def _get_lr(self, optimizer):
+        if isinstance(optimizer, paddle.optimizer.Optimizer):
+            return optimizer.get_lr()
+        elif isinstance(optimizer, paddle.fluid.optimizer.Optimizer):
+            if isinstance(optimizer._learning_rate, float):
+                return optimizer._learning_rate
+            else:
+                return optimizer._learning_rate()
+        else:
+            raise TypeError(
+                    "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
+                        " or `paddle.fluid.optimizer.Optimizer`, but got {}.".format(type(optimizer))
+                )
 
     @property
     def mode(self):
@@ -792,3 +1190,11 @@ class Engine:
     @property
     def fetch_vars(self):
         return self._fetch_vars[self.mode]
+
+    @property
+    def inputs(self):
+        return self.inputs_spec
+
+    @property
+    def labels(self):
+        return self.labels_spec
