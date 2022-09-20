@@ -202,9 +202,6 @@ static PyObject* tensor__add__method(TensorObject* self,
           other_tensor = cast_ad_func(other_tensor, promote_dtype);
         }
       } else {
-        printf(
-            "Warning: update_value will not used. Please use "
-            "dy_mf_update_value\n");
         LOG(WARNING)
             << "The dtype of left and right Tensor are not the same, left "
                "dtype is "
@@ -288,9 +285,6 @@ static PyObject* tensor__sub__method(TensorObject* self,
           other_tensor = cast_ad_func(other_tensor, promote_dtype);
         }
       } else {
-        printf(
-            "Warning: update_value will not used. Please use "
-            "dy_mf_update_value\n");
         LOG(WARNING)
             << "The dtype of left and right Tensor are not the same, left "
                "dtype is "
@@ -374,9 +368,6 @@ static PyObject* tensor__rsub__method(TensorObject* self,
           other_tensor = cast_ad_func(other_tensor, promote_dtype);
         }
       } else {
-        printf(
-            "Warning: update_value will not used. Please use "
-            "dy_mf_update_value\n");
         LOG(WARNING)
             << "The dtype of left and right Tensor are not the same, left "
                "dtype is "
