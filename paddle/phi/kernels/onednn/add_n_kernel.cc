@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/add_n_kernel.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/add_n_kernel.h"
 
 namespace phi {
 namespace funcs {
@@ -24,7 +24,7 @@ class AddOneDNNHandler
  public:
   AddOneDNNHandler(dnnl::engine engine,
                    const phi::Place& cpu_place,
-                   const std::vector<const DenseTensor*>& x,
+                   const std::vector<const TensorBase*>& x,
                    DenseTensor* z)
 
       : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::sum>(engine, cpu_place),
@@ -35,7 +35,7 @@ class AddOneDNNHandler
     std::vector<dnnl::memory::desc> srcs_md;
     srcs_md.reserve(x.size());
     for (size_t i = 0; i < x.size(); i++) {
-      auto* input_it = x[i];
+      auto* input_it = (static_cast<const DenseTensor*>(x[i]));
       if (input_it->numel() == 0) {
         continue;
       }
@@ -82,7 +82,7 @@ class AddOneDNNHandler
 
 template <typename T, typename Context>
 void AddNKernel(const Context& dev_ctx,
-                const std::vector<const DenseTensor*>& x,
+                const std::vector<const TensorBase*>& x,
                 DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
@@ -94,7 +94,7 @@ void AddNKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NE(x.empty(),
                     true,
                     phi::errors::InvalidArgument("Input variable is empty."));
-  auto* input0 = x[0];
+  auto* input0 = (static_cast<const DenseTensor*>(x[0]));
 
   bool in_place = (input0->numel() > 0) && input0->IsSharedBufferWith(*out);
 
@@ -105,7 +105,7 @@ void AddNKernel(const Context& dev_ctx,
   srcs_mem.reserve(handler.GetNumInputs());
   int input_index = 0;
   for (size_t i = 0; i < x.size(); i++) {
-    auto* input_it = x[i];
+    auto* input_it = (static_cast<const DenseTensor*>(x[i]));
     if (input_it->numel() == 0) {
       continue;
     }
@@ -138,4 +138,4 @@ void AddNKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sum, OneDNN, ALL_LAYOUT, phi::AddNKernel, float, phi::dtype::bfloat16) {}
+    add_n, OneDNN, ALL_LAYOUT, phi::AddNKernel, float, phi::dtype::bfloat16) {}
