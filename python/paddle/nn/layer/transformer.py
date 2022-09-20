@@ -714,7 +714,7 @@ class TransformerEncoder(Layer):
                                         cache=cache[i])
                 new_caches.append(new_cache)
 
-            self.checkpoints.appned(output.name)
+            self.checkpoints.append(output.name)
         if self.norm is not None:
             output = self.norm(output)
 
