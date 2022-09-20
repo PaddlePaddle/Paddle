@@ -80,7 +80,7 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
     def gaussian_random_test_eager(self, place):
         with fluid.dygraph.guard(place):
             with _test_eager_guard():
-                out = paddle._C_ops.final_state_truncated_gaussian_random(
+                out = paddle._C_ops.truncated_gaussian_random(
                     self.attrs["shape"], self.attrs["mean"], self.attrs["std"],
                     self.attrs["seed"], core.VarDesc.VarType.FP32, place)
                 self.assertAlmostEqual(numpy.mean(out.numpy()), .0, delta=0.1)

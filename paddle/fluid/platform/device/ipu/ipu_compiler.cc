@@ -42,6 +42,7 @@ struct CustomOpAttrVisitor {
 
   void operator()(int v) const { attrs_->emplace(attr_name_, v); }
   void operator()(float v) const { attrs_->emplace(attr_name_, v); }
+  void operator()(double v) const { attrs_->emplace(attr_name_, v); }
   void operator()(const std::string& v) const {
     attrs_->emplace(attr_name_, v);
   }
@@ -134,6 +135,7 @@ struct ConstantOpAttrVisitor {
       platform::errors::InvalidArgument("Constant value must be a vector"))
   void operator()(int v) const { RAISE_ERROR; }
   void operator()(float v) const { RAISE_ERROR; }
+  void operator()(double v) const { RAISE_ERROR; }
   void operator()(const std::string& v) const { RAISE_ERROR; }
   void operator()(const std::vector<std::string>& v) const { RAISE_ERROR; }
   void operator()(bool v) const { RAISE_ERROR; }

@@ -188,6 +188,25 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
+  EAGER_TRY
+  std::string layout = "";
+  if (!self->tensor.defined()) {
+    return ToPyObject(layout);
+  }
+
+  if (egr::IsVariableCompatTensor(self->tensor)) {
+    VLOG(3) << "VariableCompatTensor does not support `layout` method.";
+    return ToPyObject(layout);
+  } else {
+    return ToPyObject(
+        paddle::framework::DataLayoutToString(self->tensor.layout()));
+  }
+
+  return ToPyObject(layout);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyObject* tensor_properties_get_place(TensorObject* self, void* closure) {
   EAGER_TRY
   return ToPyObject(self->tensor.place());
@@ -249,6 +268,7 @@ struct PyGetSetDef variable_properties[] = {
      nullptr,
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
+    {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
     // {"is_leaf", (getter)tensor_properties_get_is_leaf, nullptr,
     // nullptr,
     //  nullptr},
@@ -271,6 +291,7 @@ struct PyGetSetDef string_tensor_variable_properties[] = {
      nullptr,
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
+    {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,

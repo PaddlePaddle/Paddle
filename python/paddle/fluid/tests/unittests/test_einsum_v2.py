@@ -25,8 +25,8 @@ os.environ['FLAGS_new_einsum'] = "1"
 
 
 def error_trans(func, *args, **kargs):
-    """ 
-    transport C++ exception into Python exception. 
+    """
+    transport C++ exception into Python exception.
     because einsum_v2 raise different exception with einsum_v1.
     """
     try:
@@ -351,10 +351,13 @@ class TestNumpyTests(unittest.TestCase):
 
     def check_output_equal(self, actual, expect, rtol=1.e-5, atol=1.e-8):
         error_msg = 'Output has diff at place:{}. \nExpect: {} \nBut Got: {} in class {}'
-        self.assertTrue(
-            np.allclose(actual, expect, rtol=rtol, atol=atol),
-            error_msg.format(paddle.get_device(), expect, actual,
-                             self.__class__.__name__))
+        np.testing.assert_allclose(actual,
+                                   expect,
+                                   rtol=rtol,
+                                   atol=atol,
+                                   err_msg=error_msg.format(
+                                       paddle.get_device(), expect, actual,
+                                       self.__class__.__name__))
 
     def check_output(self, eqn, *ops):
         expect = np.einsum(eqn, *ops)
@@ -527,21 +530,26 @@ class TestStaticGraphShape(unittest.TestCase):
         self.assertEqual(C.shape, (-1, 384))
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda()
+                 or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+                 "core is not compiled with CUDA or not support the bfloat16")
 class TestBF16(unittest.TestCase):
     """
     EinsumOp support bfloat16 type, add unittest here for the correctness.
     """
 
     def test_shape(self):
-        if paddle.is_compiled_with_cuda() and _is_gpu_bfloat16_supported():
-            """ MatmulKernel support bfloat16 only if cuda_major >= 11.0 and Compute Capability >= 8.0
+        cuda_major = paddle.version.cuda().split('.')[0].strip()
+        if int(cuda_major) >= 11:
+            """ MatmulKernel support bfloat16 only if cuda_major > 11.0.
             """
             A = paddle.to_tensor(np.array([1.0, 2.0])).astype(paddle.bfloat16)
             A = A.cuda()
             B = paddle.to_tensor(np.array([2.0, 3.0])).astype(paddle.bfloat16)
             B = B.cuda()
             C = paddle.einsum('i,i->', A, B)
-            self.assertEqual(C.astype(paddle.float32).item(), 8.0)
+            D = paddle.to_tensor(8.0).astype(paddle.bfloat16)
+            self.assertEqual(C.item(), D.item())
 
 
 class TestComplex(unittest.TestCase):

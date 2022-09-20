@@ -20,15 +20,6 @@ from op_test import OpTest, skip_check_grad_ci
 
 paddle.enable_static()
 
-from white_list import (
-    op_accuracy_white_list,
-    check_shape_white_list,
-    compile_vs_runtime_white_list,
-    no_check_set_white_list,
-    op_threshold_white_list,
-    no_grad_set_white_list,
-)
-
 
 def AffineGrid(theta, grid_shape):
     n = grid_shape[0]
@@ -118,7 +109,6 @@ def getGridPointValue3D(data, x, y, z):
     out_H = x.shape[2]
     out_W = x.shape[3]
 
-    #out = np.zeros(data_shape, dtype='float64')
     out = np.zeros([N, C, out_D, out_H, out_W], dtype='float64')
     for i in range(N):
         for j in range(out_D):
@@ -334,51 +324,15 @@ class TestGridSamplerOp(OpTest):
                               self.padding_mode)
             }
 
-    def get_places(self):
-        places = []
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def test_check_output(self):
-        if len(self.grid_shape) == 4:
-            self.check_output(check_eager=True)
-        else:
-            check_eager_flag = True
-            check_dygraph_flag = False
-            for place in self.get_places():
-                res = self.check_output_with_place(
-                    place,
-                    atol=1e-5,
-                    check_dygraph=check_dygraph_flag,
-                    check_eager=check_eager_flag)
-                if check_eager_flag:
-                    assert check_dygraph_flag == False
-                    outs, eager_dygraph_outs, fetch_list = res
-                elif check_dygraph_flag:
-                    uts, dygraph_outs, fetch_list = res
-                else:
-                    outs, fetch_list = res
-                if self.op_type not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST:
-                    self.check_compile_vs_runtime(fetch_list, outs)
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        if len(self.grid_shape) == 4:
-            self.check_grad(['X', 'Grid'],
-                            'Output',
-                            max_relative_error=0.01,
-                            numeric_grad_delta=self.numeric_grad_delta,
-                            check_eager=True)
-        else:
-            self._check_grad_helper()
-            for place in self.get_places():
-                self.check_grad_with_place(
-                    place, ['X'],
-                    'Output',
-                    numeric_grad_delta=self.numeric_grad_delta,
-                    max_relative_error=0.01,
-                    check_eager=True,
-                    check_dygraph=False)
+        self.check_grad(['X', 'Grid'],
+                        'Output',
+                        max_relative_error=0.01,
+                        numeric_grad_delta=self.numeric_grad_delta,
+                        check_eager=True)
 
     def initTestCase(self):
         self.x_shape = (2, 3, 8, 8)
@@ -493,62 +447,66 @@ class Case6(TestGridSamplerOp):
         self.align_corners = False
         self.padding_mode = "zeros"
         self.mode = "bilinear"
+        self.numeric_grad_delta = 0.000001
 
 
 class Case6_(TestGridSamplerOp):
+
+    def initTestCase(self):
+        self.x_shape = (2, 3, 4, 5, 6)
+        self.grid_shape = (2, 7, 8, 9, 3)
+        self.theta_shape = (2, 3, 4)
+        self.align_corners = False
+        self.padding_mode = "border"
+        self.mode = "bilinear"
+        self.numeric_grad_delta = 0.000001
+
+
+class Case7(TestGridSamplerOp):
+
+    def initTestCase(self):
+        self.x_shape = (2, 3, 4, 5, 6)
+        self.grid_shape = (2, 7, 8, 9, 3)
+        self.theta_shape = (2, 3, 4)
+        self.align_corners = False
+        self.padding_mode = "reflection"
+        self.mode = "bilinear"
+        self.numeric_grad_delta = 0.000001
+
+
+class Case8(TestGridSamplerOp):
+
+    def initTestCase(self):
+        self.x_shape = (2, 3, 4, 5, 6)
+        self.grid_shape = (2, 7, 8, 9, 3)
+        self.theta_shape = (2, 3, 4)
+        self.align_corners = True
+        self.padding_mode = "reflection"
+        self.mode = "bilinear"
+        self.numeric_grad_delta = 0.000001
+
+
+class Case9(TestGridSamplerOp):
+
+    def initTestCase(self):
+        self.x_shape = (2, 3, 4, 5, 6)
+        self.grid_shape = (2, 7, 8, 9, 3)
+        self.theta_shape = (2, 3, 4)
+        self.align_corners = False
+        self.padding_mode = "reflection"
+        self.mode = "nearest"
+        self.numeric_grad_delta = 0.000001
+
+
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class LargeInput3DCase(TestGridSamplerOp):
 
     def get_places(self):
         places = []
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places
-
-    def initTestCase(self):
-        self.x_shape = (2, 3, 5, 6, 7)
-        self.grid_shape = (2, 8, 9, 10, 3)
-        self.theta_shape = (2, 3, 4)
-        self.align_corners = False
-        self.padding_mode = "border"
-        self.mode = "bilinear"
-
-
-class Case7(TestGridSamplerOp):
-
-    def initTestCase(self):
-        self.x_shape = (2, 3, 5, 6, 7)
-        self.grid_shape = (2, 8, 9, 10, 3)
-        self.theta_shape = (2, 3, 4)
-        self.align_corners = False
-        self.padding_mode = "reflection"
-        self.mode = "bilinear"
-
-
-class Case8(TestGridSamplerOp):
-
-    def initTestCase(self):
-        self.x_shape = (2, 3, 5, 6, 7)
-        self.grid_shape = (2, 8, 9, 10, 3)
-        self.theta_shape = (2, 3, 4)
-        self.align_corners = True
-        self.padding_mode = "reflection"
-        self.mode = "bilinear"
-
-
-class Case9(TestGridSamplerOp):
-
-    def initTestCase(self):
-        self.x_shape = (2, 3, 5, 6, 7)
-        self.grid_shape = (2, 8, 9, 10, 3)
-        self.theta_shape = (2, 3, 4)
-        self.align_corners = False
-        self.padding_mode = "reflection"
-        self.mode = "nearest"
-        self.numeric_grad_delta = 0.0001
-
-
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
-class LargeInput3DCase(TestGridSamplerOp):
 
     def initTestCase(self):
         self.no_need_check_grad = True
@@ -558,8 +516,8 @@ class LargeInput3DCase(TestGridSamplerOp):
         self.align_corners = False
         self.padding_mode = "reflection"
         self.mode = "bilinear"
+        self.numeric_grad_delta = 0.000001
         self.use_cudnn = False
-        self.__class__.op_type = 'grid_sampler'
 
     def test_check_grad_normal(self):
         pass
@@ -577,8 +535,7 @@ class Case10(LargeInput3DCase):
         self.align_corners = True
         self.padding_mode = "zeros"
         self.mode = "bilinear"
-        self.use_cudnn = False
-        self.__class__.op_type = 'grid_sampler'
+        self.numeric_grad_delta = 0.000001
 
 
 if __name__ == "__main__":

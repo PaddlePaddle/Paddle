@@ -746,9 +746,13 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
         np_div = np.array([[0, 2, 3], [2, 8, 10], [1, 4, 5]], dtype="float32")
 
         for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
-            self.assertTrue(
-                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, paddle_res))
+            np.testing.assert_allclose(
+                np_res,
+                paddle_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, paddle_res))
 
     def test_compute_all_with_mean(self):
         paddle.disable_static()
@@ -774,9 +778,13 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
         np_div = np.array([[0, 2, 3], [1, 4, 5], [1, 4, 5]], dtype="float32")
 
         for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
-            self.assertTrue(
-                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, paddle_res))
+            np.testing.assert_allclose(
+                np_res,
+                paddle_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, paddle_res))
 
     def test_compute_all_with_max(self):
         paddle.disable_static()
@@ -801,11 +809,15 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
         np_mul = np.array([[0, 2, 3], [2, 6, 7], [1, 4, 5]], dtype="float32")
         np_div = np.array([[0, 2, 3], [2, 6, 7], [1, 4, 5]], dtype="float32")
 
-        self.assertTrue(np.allclose(np_sub, res_sub, atol=1e-6))
+        np.testing.assert_allclose(np_sub, res_sub, rtol=1e-05, atol=1e-06)
         for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
-            self.assertTrue(
-                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, paddle_res))
+            np.testing.assert_allclose(
+                np_res,
+                paddle_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, paddle_res))
 
     def test_compute_all_with_max_fp16(self):
         paddle.disable_static()
@@ -840,13 +852,20 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                 np_div = np.array([[0, 2, 3], [2, 6, 7], [1, 4, 5]],
                                   dtype="float16")
 
-                self.assertTrue(np.allclose(np_sub, res_sub, atol=1e-6))
+                np.testing.assert_allclose(np_sub,
+                                           res_sub,
+                                           rtol=1e-05,
+                                           atol=1e-06)
                 for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div],
                                               res):
-                    self.assertTrue(
-                        np.allclose(np_res, paddle_res, atol=1e-6),
-                        "two value is\
-                        {}\n{}, check diff!".format(np_res, paddle_res))
+                    np.testing.assert_allclose(
+                        np_res,
+                        paddle_res,
+                        rtol=1e-05,
+                        atol=1e-06,
+                        err_msg=
+                        'two value is                        {}\n{}, check diff!'
+                        .format(np_res, paddle_res))
 
     def test_compute_all_with_min(self):
         paddle.disable_static()
@@ -872,9 +891,13 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
         np_div = np.array([[0, 2, 3], [0, 2, 3], [1, 4, 5]], dtype="float32")
 
         for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
-            self.assertTrue(
-                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, paddle_res))
+            np.testing.assert_allclose(
+                np_res,
+                paddle_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, paddle_res))
 
     def test_compute_all_with_min_fp16(self):
         paddle.disable_static()
@@ -910,10 +933,14 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
 
                 for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div],
                                               res):
-                    self.assertTrue(
-                        np.allclose(np_res, paddle_res, atol=1e-6),
-                        "two value is\
-                        {}\n{}, check diff!".format(np_res, paddle_res))
+                    np.testing.assert_allclose(
+                        np_res,
+                        paddle_res,
+                        rtol=1e-05,
+                        atol=1e-06,
+                        err_msg=
+                        'two value is                        {}\n{}, check diff!'
+                        .format(np_res, paddle_res))
 
     def test_reshape_lhs_rhs(self):
         paddle.disable_static()
@@ -927,9 +954,13 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                                                 "add", "min")
         np_add = np.array([[1, 3, 4], [1, 3, 4], [2, 5, 6]],
                           dtype="float16").reshape([3, 3, 1])
-        self.assertTrue(
-            np.allclose(np_add, res_add, atol=1e-6), "two value is\
-                        {}\n{}, check diff!".format(np_add, res_add))
+        np.testing.assert_allclose(
+            np_add,
+            res_add,
+            rtol=1e-05,
+            atol=1e-06,
+            err_msg='two value is                        {}\n{}, check diff!'.
+            format(np_add, res_add))
 
     def test_out_size_tensor_static(self):
         paddle.enable_static()
@@ -962,9 +993,13 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                 'out_size': data5,
             },
                           fetch_list=[res_sum])
-        self.assertTrue(
-            np.allclose(np_sum, ret[0], atol=1e-6), "two value is\
-                        {}\n{}, check diff!".format(np_sum, ret[0]))
+        np.testing.assert_allclose(
+            np_sum,
+            ret[0],
+            rtol=1e-05,
+            atol=1e-06,
+            err_msg='two value is                        {}\n{}, check diff!'.
+            format(np_sum, ret[0]))
 
     def test_api_eager_dygraph(self):
         with _test_eager_guard():

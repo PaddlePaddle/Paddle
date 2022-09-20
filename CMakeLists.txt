@@ -249,7 +249,7 @@ option(WITH_SYSTEM_BLAS "Use system blas library" OFF)
 option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
-       OFF)
+       ON)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
@@ -362,6 +362,18 @@ if(WIN32)
         OFF
         CACHE STRING "Disable NCCL when compiling for Windows" FORCE)
   endif()
+endif()
+
+if(NOT WITH_TESTING AND WITH_MULTINODE_TESTING)
+  message(
+    WARNING
+      "Disable WITH_MULTINODE_TESTING when compiling without TESTING. Force WITH_MULTINODE_TESTING=OFF."
+  )
+  set(WITH_MULTINODE_TESTING
+      OFF
+      CACHE STRING
+            "Disable WITH_MULTINODE_TESTING when compiling without TESTING"
+            FORCE)
 endif()
 
 if(NOT WITH_GPU AND WITH_NCCL)

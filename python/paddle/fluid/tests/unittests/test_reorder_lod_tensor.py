@@ -157,16 +157,20 @@ class TestReorderLoDTensor(unittest.TestCase):
         # check output
         expect_output, expect_output_lod = self.reorder()
         for actual_output in self.actual_outputs:
-            self.assertTrue(
-                np.allclose(np.array(actual_output), expect_output, atol=0.001))
+            np.testing.assert_allclose(np.array(actual_output),
+                                       expect_output,
+                                       rtol=1e-05,
+                                       atol=0.001)
             self.assertEqual(expect_output_lod,
                              actual_output.recursive_sequence_lengths())
         # check gradient
         expect_grad = np.ones_like(self.data[self.data_desc[0][0]][0])
         expect_grad_lod = self.data[self.data_desc[0][0]][1]
         for actual_grad in self.actual_grads:
-            self.assertTrue(
-                np.allclose(np.array(actual_grad), expect_grad, atol=0.001))
+            np.testing.assert_allclose(np.array(actual_grad),
+                                       expect_grad,
+                                       rtol=1e-05,
+                                       atol=0.001)
             self.assertEqual(expect_grad_lod,
                              actual_grad.recursive_sequence_lengths())
 
@@ -177,16 +181,20 @@ class TestReorderLoDTensor(unittest.TestCase):
         # check output
         expect_output, expect_output_lod = self.reorder()
         for actual_output in self.actual_outputs:
-            self.assertTrue(
-                np.allclose(np.array(actual_output), expect_output, atol=0.001))
+            np.testing.assert_allclose(np.array(actual_output),
+                                       expect_output,
+                                       rtol=1e-05,
+                                       atol=0.001)
             self.assertEqual(expect_output_lod,
                              actual_output.recursive_sequence_lengths())
         # check gradient
         expect_grad = np.ones_like(self.data[self.data_desc[0][0]][0])
         expect_grad_lod = self.data[self.data_desc[0][0]][1]
         for actual_grad in self.actual_grads:
-            self.assertTrue(
-                np.allclose(np.array(actual_grad), expect_grad, atol=0.001))
+            np.testing.assert_allclose(np.array(actual_grad),
+                                       expect_grad,
+                                       rtol=1e-05,
+                                       atol=0.001)
             self.assertEqual(expect_grad_lod,
                              actual_grad.recursive_sequence_lengths())
 
@@ -196,13 +204,16 @@ class TestReorderLoDTensor(unittest.TestCase):
         self.inputs[self.data_desc[0][0]].set_recursive_sequence_lengths(
             input_lod)
         # preserve the output of LodTensor with implicit lod to compare
-        expect_output = [
+        expect_outputs = [
             np.array(actual_output) for actual_output in self.actual_outputs
         ]
         self.run_program()
-        for actual_output in self.actual_outputs:
-            self.assertTrue(
-                np.allclose(np.array(actual_output), expect_output, atol=0.001))
+        for actual_output, expect_output in zip(self.actual_outputs,
+                                                expect_outputs):
+            np.testing.assert_allclose(np.array(actual_output),
+                                       expect_output,
+                                       rtol=1e-05,
+                                       atol=0.001)
 
 
 class TestReorderLoDTensorError(unittest.TestCase):

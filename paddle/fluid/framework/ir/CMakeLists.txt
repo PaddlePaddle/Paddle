@@ -147,6 +147,7 @@ pass_library(delete_dropout_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
+pass_library(constant_folding_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
@@ -167,17 +168,18 @@ if(WITH_TENSORRT)
   pass_library(trt_map_matmul_to_mul_pass inference)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(trt_multihead_matmul_fuse_pass inference)
+  pass_library(trt_skip_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_skip_layernorm_fuse_pass inference)
   pass_library(set_transformer_input_convert_pass inference)
   pass_library(remove_padding_recover_padding_pass inference)
   pass_library(delete_remove_padding_recover_padding_pass inference)
+  pass_library(layernorm_shift_partition_fuse_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
   pass_library(cudnn_placement_pass base DEPS placement_pass_base)
   pass_library(embedding_eltwise_layernorm_fuse_pass inference)
-  pass_library(trt_skip_layernorm_fuse_pass inference)
 endif()
 
 if(WITH_MKLDNN)
@@ -199,7 +201,6 @@ if(WITH_MKLDNN)
   pass_library(conv_affine_channel_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_bias_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_activation_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(conv_concat_relu_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
   pass_library(params_quantization_mkldnn_pass inference DIR mkldnn)
@@ -369,6 +370,10 @@ cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
+cc_test(
+  test_delete_dropout_pass_cc
+  SRCS delete_dropout_op_pass_test.cc
+  DEPS delete_dropout_op_pass)
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass
@@ -409,7 +414,7 @@ if(WITH_MKLDNN)
   cc_test(
     test_conv_concat_relu_mkldnn_fuse_pass
     SRCS mkldnn/conv_concat_relu_mkldnn_fuse_pass_tester.cc
-    DEPS conv_concat_relu_mkldnn_fuse_pass)
+    DEPS conv_activation_mkldnn_fuse_pass)
   cc_test(
     test_conv_elementwise_add_mkldnn_fuse_pass
     SRCS mkldnn/conv_elementwise_add_mkldnn_fuse_pass_tester.cc

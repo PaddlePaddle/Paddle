@@ -23,6 +23,16 @@ import paddle
 from op_test import OpTest
 
 
+def distribute_fpn_proposals_wrapper(fpn_rois, rois_num, min_level, max_level,
+                                     refer_level, refer_scale, pixel_offset):
+    return paddle.vision.ops.distribute_fpn_proposals(fpn_rois=fpn_rois,
+                                                      min_level=min_level,
+                                                      max_level=max_level,
+                                                      refer_level=refer_level,
+                                                      refer_scale=refer_scale,
+                                                      rois_num=rois_num)
+
+
 class TestDistributeFPNProposalsOp(OpTest):
 
     def set_data(self):
@@ -44,6 +54,8 @@ class TestDistributeFPNProposalsOp(OpTest):
             'MultiFpnRois': output,
             'RestoreIndex': self.rois_idx_restore.reshape(-1, 1),
         }
+        self.python_api = distribute_fpn_proposals_wrapper
+        self.python_out_sig = ['MultiFpnRois', 'RestoreIndex']
 
     def init_test_case(self):
         self.roi_max_level = 5
@@ -152,6 +164,10 @@ class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
             'RestoreIndex': self.rois_idx_restore.reshape(-1, 1),
             'MultiLevelRoIsNum': rois_num_per_level
         }
+        self.python_api = distribute_fpn_proposals_wrapper
+        self.python_out_sig = [
+            'MultiFpnRois', 'MultiLevelRoIsNum', 'RestoreIndex'
+        ]
 
 
 class TestDistributeFPNProposalsOpNoOffset(

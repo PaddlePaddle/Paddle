@@ -86,7 +86,7 @@ class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "If true, im_shape pixel offset is 1.")
         .SetDefault(true);
     AddComment(R"DOC(
-This operator is the second version of generate_proposals op to generate 
+This operator is the second version of generate_proposals op to generate
 bounding box proposals for Faster RCNN.
 The proposals are generated for a list of images based on image
 score 'Scores', bounding box regression result 'BboxDeltas' as
@@ -96,9 +96,9 @@ boxes.
 
 The difference between this version and the first version is that the image
  scale is no long needed now, so the input requires im_shape instead of im_info.
-The change aims to unify the input for all kinds of objective detection 
-such as YOLO-v3 and Faster R-CNN. As a result, the min_size represents the 
-size on input image instead of original image which is slightly different 
+The change aims to unify the input for all kinds of objective detection
+such as YOLO-v3 and Faster R-CNN. As a result, the min_size represents the
+size on input image instead of original image which is slightly different
 to before and will not effect the result.
 
 )DOC");

@@ -112,17 +112,17 @@ __global__ void VectorizedRandomGenerator(const size_t n,
   auto dst_functor =
       DstMaskFunctor<T, float>(1.0f - dropout_prob, is_upscale_in_train);
   for (; fix < main_offset; fix += stride) {
-    kps::ReadData<T, kCount, 1, 1, false>(&dst_mask[0], src + fix, deal_size);
-    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(
+    kps::ReadData<T, kCount, 1, false>(&dst_mask[0], src + fix, deal_size);
+    kps::ElementwiseRandom<SType, float, kCount, Rand>(
         &rands[0], Rand(), &state);
     // dst
     kps::OperatorTernary<T, float, T, DstMaskFunctor<T, float>>(
         &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
-    kps::WriteData<T, kCount, 1, 1, false>(dst + fix, &dst_mask[0], deal_size);
+    kps::WriteData<T, kCount, 1, false>(dst + fix, &dst_mask[0], deal_size);
     // mask
-    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, Cast>(
         &mask_result[0], &dst_mask[kCount], Cast());
-    kps::WriteData<MaskType, kCount, 1, 1, false>(
+    kps::WriteData<MaskType, kCount, 1, false>(
         mask + fix, &mask_result[0], deal_size);
     if (fix > idx * kCount + 1) {
       __syncthreads();
@@ -130,17 +130,17 @@ __global__ void VectorizedRandomGenerator(const size_t n,
   }
   int remainder = n - fix;
   if (remainder > 0) {
-    kps::ReadData<T, kCount, 1, 1, true>(&dst_mask[0], src + fix, remainder);
-    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(
+    kps::ReadData<T, kCount, 1, true>(&dst_mask[0], src + fix, remainder);
+    kps::ElementwiseRandom<SType, float, kCount, Rand>(
         &rands[0], Rand(), &state);
     // dst
     kps::OperatorTernary<T, float, T, DstMaskFunctor<T, float>>(
         &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
-    kps::WriteData<T, kCount, 1, 1, true>(dst + fix, &dst_mask[0], remainder);
+    kps::WriteData<T, kCount, 1, true>(dst + fix, &dst_mask[0], remainder);
     // mask
-    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, Cast>(
         &mask_result[0], &dst_mask[kCount], Cast());
-    kps::WriteData<MaskType, kCount, 1, 1, true>(
+    kps::WriteData<MaskType, kCount, 1, true>(
         mask + fix, &mask_result[0], remainder);
     __syncthreads();
   }
@@ -233,17 +233,17 @@ __global__ void VectorizedGeneratorMask(const size_t n,
 
   auto mask_functor = MaskFunctor<T, float>(1.0f - dropout_prob);
   for (; fix < main_offset; fix += stride) {
-    kps::ReadData<T, kCount, 1, 1, false>(&dst_mask[0], src + fix, deal_size);
-    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(
+    kps::ReadData<T, kCount, 1, false>(&dst_mask[0], src + fix, deal_size);
+    kps::ElementwiseRandom<SType, float, kCount, Rand>(
         &rands[0], Rand(), &state);
     // dst
     kps::OperatorBinary<float, T, MaskFunctor<T, float>>(
         &dst_mask[0], &rands[0], mask_functor, kCount);
 
     // mask
-    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, Cast>(
         &mask_result[0], &dst_mask[0], Cast());
-    kps::WriteData<MaskType, kCount, 1, 1, false>(
+    kps::WriteData<MaskType, kCount, 1, false>(
         mask + fix, &mask_result[0], deal_size);
     if (fix > idx * kCount + 1) {
       __syncthreads();
@@ -251,16 +251,16 @@ __global__ void VectorizedGeneratorMask(const size_t n,
   }
   int remainder = n - fix;
   if (remainder > 0) {
-    kps::ReadData<T, kCount, 1, 1, true>(&dst_mask[0], src + fix, remainder);
-    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(
+    kps::ReadData<T, kCount, 1, true>(&dst_mask[0], src + fix, remainder);
+    kps::ElementwiseRandom<SType, float, kCount, Rand>(
         &rands[0], Rand(), &state);
     // dst
     kps::OperatorBinary<float, T, MaskFunctor<T, float>>(
         &dst_mask[0], &rands[0], mask_functor, kCount);
     // mask
-    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, Cast>(
         &mask_result[0], &dst_mask[0], Cast());
-    kps::WriteData<MaskType, kCount, 1, 1, true>(
+    kps::WriteData<MaskType, kCount, 1, true>(
         mask + fix, &mask_result[0], remainder);
     __syncthreads();
   }

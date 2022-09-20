@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 namespace sparse {
@@ -43,25 +44,28 @@ namespace sparse {
   SparseCsrTensor ElementWise##name##Csr(const Context& dev_ctx,     \
                                          const SparseCsrTensor& x,   \
                                          const SparseCsrTensor& y) { \
-    DenseTensor non_zero_crows;                                      \
-    DenseTensor non_zero_cols;                                       \
-    DenseTensor non_zero_elements;                                   \
-    SparseCsrTensor out(                                             \
-        non_zero_crows, non_zero_cols, non_zero_elements, x.dims()); \
+    DenseTensor crows;                                               \
+    DenseTensor cols;                                                \
+    DenseTensor values;                                              \
+    SparseCsrTensor out(crows, cols, values, x.dims());              \
+    MetaTensor meta_out(out);                                        \
+    phi::ElementwiseInferMeta(x, y, &meta_out);                      \
     ElementWise##name##CsrKernel<T, Context>(dev_ctx, x, y, &out);   \
     return out;                                                      \
   }
 
-#define DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(name)                        \
-  template <typename T, typename Context>                               \
-  SparseCooTensor ElementWise##name##Coo(const Context& dev_ctx,        \
-                                         const SparseCooTensor& x,      \
-                                         const SparseCooTensor& y) {    \
-    DenseTensor non_zero_indices;                                       \
-    DenseTensor non_zero_elements;                                      \
-    SparseCooTensor out(non_zero_indices, non_zero_elements, x.dims()); \
-    ElementWise##name##CooKernel<T, Context>(dev_ctx, x, y, &out);      \
-    return out;                                                         \
+#define DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(name)                     \
+  template <typename T, typename Context>                            \
+  SparseCooTensor ElementWise##name##Coo(const Context& dev_ctx,     \
+                                         const SparseCooTensor& x,   \
+                                         const SparseCooTensor& y) { \
+    DenseTensor indices;                                             \
+    DenseTensor values;                                              \
+    SparseCooTensor out(indices, values, x.dims());                  \
+    MetaTensor meta_out(out);                                        \
+    phi::ElementwiseInferMeta(x, y, &meta_out);                      \
+    ElementWise##name##CooKernel<T, Context>(dev_ctx, x, y, &out);   \
+    return out;                                                      \
   }
 
 DEFINE_ELEMENTWISE_KERNEL_HEAD(Add)

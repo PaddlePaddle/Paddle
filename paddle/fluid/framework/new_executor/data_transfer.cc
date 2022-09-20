@@ -18,6 +18,10 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/phi/backends/onednn/onednn_context.h"
+#endif
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -165,7 +169,12 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   // NOTE(winter-wang): in npu device, D2H kernel is asynchronous. need to
   // explicit synchronization.
 #ifdef PADDLE_WITH_ASCEND_CL
-  if (op_type == kMemcpyD2H) {
+  if (op_type == kMemcpyD2H && platform::is_npu_place(dev_ctx->GetPlace())) {
+    dev_ctx->Wait();
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (op_type == kMemcpyD2H && platform::is_custom_place(dev_ctx->GetPlace())) {
     dev_ctx->Wait();
   }
 #endif
@@ -200,10 +209,26 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
                                              framework::Scope* local_scope,
                                              bool is_fetch_v2) {
 #ifdef PADDLE_WITH_MKLDNN
+
   // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
   if (in_layout == framework::DataLayout::kMKLDNN &&
       var_name == framework::GradVarName("Filter") && is_fetch_v2) {
+    VLOG(4) << "Match special case(Filter && fetch_v2) " << var_name;
     out_layout = framework::DataLayout::kNCHW;
+  }
+
+  if (in_layout == framework::DataLayout::ONEDNN &&
+      out_layout != framework::DataLayout::ONEDNN) {
+    auto target_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+    VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
+            << target_layout;
+
+    if (out_layout == DataLayout::kNCHW &&
+        var_name == framework::GradVarName("Filter")) {
+      VLOG(4) << "Match special case(Filter) " << var_name;
+      target_layout = out_layout;
+    }
+    out_layout = target_layout;
   }
 #endif
 
@@ -225,6 +250,8 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
+  var_scope->MutableDataTransferAddedVars().push_back(
+      std::make_pair(*new_var_name, var_type));
   var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
@@ -268,10 +295,11 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   auto* ptr = local_scope->Var(*new_var_name);
   auto var_type = local_scope->FindVar(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
-
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
+  var_scope->MutableDataTransferAddedVars().push_back(
+      std::make_pair(*new_var_name, var_type));
   var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
@@ -308,7 +336,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   *new_var_name = var_name + "_device_" + src_place.DebugString() + "_" +
                   dst_place.DebugString();
 
-  if (local_scope->FindVar(*new_var_name) &&
+  if (var_scope->HasVar(*new_var_name) &&
       IsTensorOfVarInitialized(local_scope->FindVar(*new_var_name))) {
     // already has same var
     VLOG(4) << "Use cached variable: " << *new_var_name;
@@ -321,6 +349,8 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
+  var_scope->MutableDataTransferAddedVars().push_back(
+      std::make_pair(*new_var_name, var_type));
   var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
@@ -338,11 +368,12 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                         src_place));
   if (IsSupportedHetePlace(dst_place)) {
     op_type = kMemcpyH2D;
-    int dst_place_type = platform::is_gpu_place(dst_place)   ? 0
-                         : platform::is_npu_place(dst_place) ? 1
-                         : platform::is_ipu_place(dst_place) ? 3
-                         : platform::is_xpu_place(dst_place) ? 2
-                                                             : -1;
+    int dst_place_type = platform::is_gpu_place(dst_place)      ? 0
+                         : platform::is_npu_place(dst_place)    ? 1
+                         : platform::is_ipu_place(dst_place)    ? 3
+                         : platform::is_xpu_place(dst_place)    ? 2
+                         : platform::is_custom_place(dst_place) ? 6
+                                                                : -1;
     attr_map = {{"dst_place_type", dst_place_type}};
   } else if (IsSupportedHetePlace(src_place)) {
     op_type = kMemcpyD2H;

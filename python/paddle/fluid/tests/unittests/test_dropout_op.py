@@ -25,7 +25,7 @@ from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
 import os
 
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 class TestDropoutOp(OpTest):
@@ -1031,8 +1031,8 @@ class TestDropoutBackward(unittest.TestCase):
                 with _test_eager_guard():
                     input = paddle.uniform([40, 40], dtype="float32")
                     input.stop_gradient = False
-                    out, mask = _C_ops.final_state_dropout(
-                        input, None, 0.5, False, "downgrade_in_infer", 0, False)
+                    out, mask = _C_ops.dropout(input, None, 0.5, False,
+                                               "downgrade_in_infer", 0, False)
                     out.backward()
                     np.testing.assert_array_equal(
                         input.gradient(),
@@ -1063,8 +1063,8 @@ class TestDropoutBackward(unittest.TestCase):
                     prob = 0.5
                     input = paddle.uniform([40, 40], dtype="float32")
                     input.stop_gradient = False
-                    out, mask = _C_ops.final_state_dropout(
-                        input, None, 0.5, False, "upscale_in_train", 0, False)
+                    out, mask = _C_ops.dropout(input, None, 0.5, False,
+                                               "upscale_in_train", 0, False)
                     out.backward()
 
                     np.testing.assert_allclose(input.gradient(),
@@ -1098,8 +1098,8 @@ class TestDropoutBackward(unittest.TestCase):
                     prob = 0.3
                     input = paddle.uniform([40, 40], dtype="float32")
                     input.stop_gradient = False
-                    out, mask = _C_ops.final_state_dropout(
-                        input, None, 0.3, False, "upscale_in_train", 0, False)
+                    out, mask = _C_ops.dropout(input, None, 0.3, False,
+                                               "upscale_in_train", 0, False)
 
                     out.backward()
 
@@ -1147,7 +1147,7 @@ class TestDropOutWithProbTensor(unittest.TestCase):
         for x in self.inputs:
             static_res = self.run_static(x)
             dygraph_res = self.run_dygraph(x)
-            self.assertTrue(np.array_equal(static_res, dygraph_res))
+            np.testing.assert_array_equal(static_res, dygraph_res)
 
 
 class TestRandomValue(unittest.TestCase):

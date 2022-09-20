@@ -119,13 +119,13 @@ class TestSearchSortedAPI(unittest.TestCase):
                                             dtype="float64")
                 out = paddle.searchsorted(sorted_sequence, values)
                 exe = paddle.static.Executor(place)
-                res = exe.run(feed={
+                res, = exe.run(feed={
                     'SortedSequence': self.sorted_sequence,
                     'Values': self.values
                 },
-                              fetch_list=out)
+                               fetch_list=out)
             out_ref = np.searchsorted(self.sorted_sequence, self.values)
-            self.assertTrue(np.allclose(out_ref, res))
+            np.testing.assert_allclose(out_ref, res, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -141,7 +141,7 @@ class TestSearchSortedAPI(unittest.TestCase):
             out_ref = np.searchsorted(self.sorted_sequence,
                                       self.values,
                                       side='right')
-            self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:

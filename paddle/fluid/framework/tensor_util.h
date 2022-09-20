@@ -22,7 +22,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -111,35 +110,6 @@ void TensorToVector(const Tensor& src,
                     std::vector<T>* dst);
 template <typename T>
 void TesnorToVector(const Tensor& src, std::vector<T>* dst);
-
-// copy the result bool to cpu
-bool TensorContainsNAN(const framework::Tensor& tensor);
-bool TensorContainsInf(const framework::Tensor& tensor);
-bool TensorIsfinite(const framework::Tensor& tensor);
-
-// store the result bool in gpu tensor, async operation. Faster than above ones.
-void TensorContainsNAN(const framework::Tensor& tensor, framework::Tensor* out);
-void TensorContainsInf(const framework::Tensor& tensor, framework::Tensor* out);
-void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out);
-
-void TensorToStream(std::ostream& os,
-                    const Tensor& tensor,
-                    const platform::DeviceContext& dev_ctx);
-void TensorFromStream(std::istream& is,
-                      Tensor* tensor,
-                      const platform::DeviceContext& dev_ctx);
-void TensorFromStream(std::istream& is,
-                      Tensor* tensor,
-                      const platform::DeviceContext& dev_ctx,
-                      const size_t& seek,
-                      const std::vector<int64_t>& shape);
-
-// store the bool result tensor in out tensor
-void TensorContainsNANV2(const framework::Tensor& tensor,
-                         framework::Tensor* out);
-void TensorContainsInfV2(const framework::Tensor& tensor,
-                         framework::Tensor* out);
-void TensorIsfiniteV2(const framework::Tensor& tensor, framework::Tensor* out);
 
 // convert dlpack's DLTensor to tensor
 void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);
@@ -599,6 +569,24 @@ inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
   res.ShareDataWith(src);
   res.Resize(phi::flatten_to_2d(src.dims(), num_col_dims));
   return res;
+}
+
+template <typename T>
+inline T GetValue(const framework::Tensor* x) {
+  T value = static_cast<T>(0);
+  if (!platform::is_cpu_place(x->place())) {
+    framework::Tensor cpu_x;
+    framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    const platform::DeviceContext* dev_ctx = pool.Get(x->place());
+    dev_ctx->Wait();
+#endif
+    value = cpu_x.data<T>()[0];
+  } else {
+    value = x->data<T>()[0];
+  }
+  return value;
 }
 
 }  // namespace framework

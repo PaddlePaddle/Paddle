@@ -41,7 +41,8 @@ class InterpreterCore {
   InterpreterCore(const platform::Place& place,
                   const BlockDesc& block,
                   const std::set<std::string>& skip_gc_vars,
-                  Scope* scope);
+                  Scope* scope,
+                  bool used_for_jit = false);
 
   ~InterpreterCore();
 
@@ -58,6 +59,12 @@ class InterpreterCore {
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
+
+  void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
+
+  const VariableScope* GetVariableScope() const;
+
+  void reset_scope(Scope* new_scope);
 
  private:
   bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
@@ -103,9 +110,9 @@ class InterpreterCore {
 
   bool is_build_;
 
-  const platform::Place& place_;
+  platform::Place place_;
   const BlockDesc& block_;  // not owned
-  const std::set<std::string> skip_gc_vars_;
+  std::set<std::string> skip_gc_vars_;
 
   interpreter::DependencyBuilder dependency_builder_;
 
@@ -122,7 +129,7 @@ class InterpreterCore {
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
-  // last_live_ops_[i] contains the id of operatos that last access var[i]
+  // last_live_ops_[i] contains the id of operators that last access var[i]
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
   std::vector<size_t> dependecy_count_;
@@ -144,6 +151,8 @@ class InterpreterCore {
 
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_deps_;
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;
+
+  bool used_for_jit_{false};
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

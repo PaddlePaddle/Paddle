@@ -69,11 +69,6 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
                             platform::errors::InvalidArgument(
                                 "group should be larger than 0."));
         });
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-
     AddComment(R"DOC(
 		Shuffle Channel operator
 		This opearator shuffles the channels of input x.

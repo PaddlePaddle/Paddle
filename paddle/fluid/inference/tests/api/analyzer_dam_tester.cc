@@ -169,9 +169,16 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   input_slots->push_back(std::move(response_mask_tensor));
 }
 
+/*
+ * this model is unreasonable, it set a output tensor persistable, so
+ * ridiculous! so I disable constant_folding_pass
+ */
+
 void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
   cfg->SwitchSpecifyInputNames();
+  auto pass_builder = cfg->pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
   cfg->SwitchIrOptim(true);
 }
 

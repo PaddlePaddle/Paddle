@@ -54,6 +54,9 @@ if(WITH_PSCORE)
   set(DISTRIBUTE_COMPILE_FLAGS
       "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
   )
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+    set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
   set_source_files_properties(
     reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(
@@ -382,7 +385,8 @@ set(IR_PASS_DEPS
     runtime_context_cache_pass
     graph_to_program_pass
     fix_op_run_order_pass
-    fuse_gemm_epilogue_pass)
+    fuse_gemm_epilogue_pass
+    delete_dropout_op_pass)
 
 if(WITH_CINN)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} build_cinn_pass)

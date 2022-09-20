@@ -360,8 +360,10 @@ class TestSoftmaxBF16Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
-    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0"
+)
 class TestSoftmaxBF16CUDNNOp(TestSoftmaxBF16Op):
 
     def init_cudnn(self):

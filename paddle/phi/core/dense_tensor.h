@@ -29,7 +29,7 @@ namespace phi {
 
 class DenseTensorUtils;
 
-/// \brief The Dense tensor store values in a contiguous sequential block
+/// \brief The Dense tensor stores values in a contiguous sequential block
 /// of memory where all values are represented. Tensors or multi-dimensional
 /// arrays are used in math operators.
 /// During the entire life cycle of a DenseTensor, its device type and key

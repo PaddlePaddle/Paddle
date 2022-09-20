@@ -517,7 +517,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * `transfer_scope` is created before PrepareData, the data after
    * transform is stored in the temporary scope, and then discarded
    * after the execution of op, but the original input is directly
-   * overwritten in the previous dynamic graph implemention.
+   * overwritten in the previous dynamic graph implementation.
    */
   auto prepared_op =
       PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
