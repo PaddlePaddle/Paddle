@@ -56,7 +56,6 @@ ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 RUN apt-get update && \
   apt-get install -y python2.7 python2.7-dev \
-  python3.6 python3.6-dev \
   python3.7 python3.7-dev \
   python3.8 python3.8-dev python3.8-distutils \
   python3.9 python3.9-dev python3.9-distutils && \
@@ -69,8 +68,8 @@ RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b
 WORKDIR /home/setuptools-50.3.2
 RUN python3.9 setup.py build && python3.9 setup.py install && \
   python3.8 setup.py build && python3.8 setup.py install && \
-  python3.7 setup.py build && python3.7 setup.py install && \
-  python3.6 setup.py build && python3.6 setup.py install
+  python3.7 setup.py build && python3.7 setup.py Install
+
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/b0/d1/8acb42f391cba52e35b131e442e80deffbb8d0676b93261d761b1f0ef8fb/setuptools-40.6.2.zip && apt-get -y install unzip && unzip setuptools-40.6.2.zip
 WORKDIR /home/setuptools-40.6.2
@@ -81,8 +80,7 @@ WORKDIR pip-20.0.1
 RUN python2.7 setup.py install && \
   python3.9 setup.py install && \
   python3.8 setup.py install && \
-  python3.7 setup.py install && \
-  python3.6 setup.py install
+  python3.7 setup.py install
 
 WORKDIR /home
 RUN rm setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.1.tar.gz && \

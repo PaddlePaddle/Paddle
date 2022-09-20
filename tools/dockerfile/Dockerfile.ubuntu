@@ -45,15 +45,6 @@ WORKDIR /home
 RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz && rm cmake-3.16.0-Linux-x86_64.tar.gz
 ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
-# Install Python3.6
-RUN mkdir -p /root/python_build/ && wget -q https://paddle-ci.gz.bcebos.com/sqlite-autoconf-3250300.tar.gz && \
-    tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
-    ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
-    wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
-    tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
-    make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
-
 # Install Python3.7
 RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
     tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
@@ -101,22 +92,21 @@ RUN python setup.py build && python setup.py install
 WORKDIR /home
 RUN python3.9 -m pip uninstall -y pip setuptools && \
   python3.8 -m pip uninstall -y pip setuptools && \
-  python3.7 -m pip uninstall -y pip setuptools && \
-  python3.6 -m pip uninstall -y pip setuptools
+  python3.7 -m pip uninstall -y pip setuptools
+  
 RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && apt-get -y install unzip && unzip setuptools-50.3.2.zip
 WORKDIR /home/setuptools-50.3.2
 RUN python3.9 setup.py build && python3.9 setup.py install && \
   python3.8 setup.py build && python3.8 setup.py install && \
-  python3.7 setup.py build && python3.7 setup.py install && \
-  python3.6 setup.py build && python3.6 setup.py install
+  python3.7 setup.py build && python3.7 setup.py Install
+  
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxvf pip-20.0.1.tar.gz
 WORKDIR pip-20.0.1
 RUN python setup.py install && \
   python3.9 setup.py install && \
   python3.8 setup.py install && \
-  python3.7 setup.py install && \
-  python3.6 setup.py install
+  python3.7 setup.py install
 
 WORKDIR /home
 RUN rm Python-$version.tgz setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.1.tar.gz && \

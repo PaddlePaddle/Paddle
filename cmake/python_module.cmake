@@ -48,3 +48,19 @@ function(find_python_module module)
       ${PY_${module_upper}_VERSION}
       PARENT_SCOPE)
 endfunction()
+
+function(check_py_version py_version)
+        string(REPLACE "." ";" version_list ${py_version})
+        list(LENGTH version_list version_list_len)
+        if(version_list_len LESS 2)
+                message(FATAL_ERROR "Please input Python version, eg:3.7 or 3.8 and so on")
+        endif()
+
+        list(GET version_list 0 MY_PROGRAM_VERSION_MAJOR)
+        list(GET version_list 1 MY_PROGRAM_VERSION_MINOR)
+
+        if((MY_PROGRAM_VERSION_MAJOR GREATER_EQUAL 3) AND (MY_PROGRAM_VERSION_MINOR GREATER_EQUAL 7))
+        else()
+                message(FATAL_ERROR "Paddle only support Python version >=3.7 now!")
+        endif()
+endfunction(check_py_version)
