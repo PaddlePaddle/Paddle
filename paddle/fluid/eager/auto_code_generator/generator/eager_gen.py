@@ -166,8 +166,11 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
 {}
   // Inplace Strategy
 {}
-  // Call grad_api function
+
   VLOG(5) << \"Running C++ API: \" << \"{}\";
+  // Before log info
+{}
+  // Call grad_api function
 {}
   // Check NaN and Inf id needed
 {}
@@ -195,8 +198,11 @@ FORWARD_FUNCTION_TEMPLATE = \
 {}
   // Get Input AutoGradMeta
 {}
-  // Forward API Call
+
   VLOG(5) << \"Running C++ API: \" << \"{}\";
+ // Before log info
+{}
+ // Forward API Call
 {}
   // Check NaN and Inf if needed
 {}
@@ -220,7 +226,7 @@ FORWARD_FUNCTION_TEMPLATE = \
 }}
 """
 
-LOG_PRINT_TEMPLATE = \
+AFTER_LOG_PRINT_TEMPLATE = \
 """
   if(VLOG_IS_ON(4)){{
       const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s],  Output: [%s] }} \";
@@ -229,6 +235,14 @@ LOG_PRINT_TEMPLATE = \
   }}
 """
 
+BEFORE_LOG_PRINT_TEMPLATE = \
+"""
+  if(VLOG_IS_ON(3)){{
+      const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s]}} \";
+      {}
+      VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+  }}
+"""
 
 FORWARD_ONLY_FUNCTION_TEMPLATE = \
 """
@@ -240,8 +254,10 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = \
 {}
   // Layout autotune
 {}
-  // Forward API Call
   VLOG(5) << \"Running C++ API: \" << \"{}\";
+  // Before log info
+{}
+  // Forward API Call
 {}
   // Get Outputs
 {}
@@ -1286,6 +1302,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             returns_str = f"{returns_type_str}{{{returns_str}}}"
 
         # Node Creation Pre-Processing
+        inputs_names = []
         if not self.is_forward_only:
             # 1. Get Input AutoGradMeta
             inputs_autograd_meta_list = []
@@ -1400,12 +1417,14 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             var_str += f"\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = \"({name}, [%s]), \";"
             var_str += f"\n{indent}  std::string input_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  input_str += input_{name}_str; "
+
+        before_log_str = BEFORE_LOG_PRINT_TEMPLATE.format(var_str)
         for name, (ttype, pos) in forward_outputs_position_map.items():
             var_str += f"\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = \"({name}, [%s]), \";"
             var_str += f"\n{indent}  std::string output_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  output_str += output_{name}_str; "
 
-        log_str = LOG_PRINT_TEMPLATE.format(var_str)
+        log_str = AFTER_LOG_PRINT_TEMPLATE.format(var_str)
 
         # Generate forward_definition_str and forward_declaration_str
         if self.is_forward_only:
@@ -1413,23 +1432,21 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 amp_logic_str = "\n VLOG(7) << \" No AMP for {} because it has no input. \"; ".format(
                     forward_ad_function_name)
             self.forward_definition_str += FORWARD_ONLY_FUNCTION_TEMPLATE.format(
-                returns_type_str,
-                forward_ad_function_name, inputs_args_definition_str,
-                GetDygraphLogName(forward_api_name), dygraph_event_str,
+                returns_type_str, forward_ad_function_name,
+                inputs_args_definition_str, forward_api_name, dygraph_event_str,
                 amp_logic_str, layout_logic_str, forward_api_name,
-                forward_call_str, get_outputs_str, forward_ad_function_name,
-                log_str, returns_str)
+                before_log_str, forward_call_str, get_outputs_str,
+                forward_api_name, log_str, returns_str)
         else:
             self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
-                returns_type_str,
-                forward_ad_function_name, inputs_args_definition_str,
-                GetDygraphLogName(forward_api_name), dygraph_event_str,
+                returns_type_str, forward_ad_function_name,
+                inputs_args_definition_str, forward_api_name, dygraph_event_str,
                 amp_logic_str, layout_logic_str, inputs_autograd_meta_str,
-                forward_api_name, forward_call_str, check_nan_inf_str,
-                get_outputs_str, outputs_autograd_meta_str,
+                forward_api_name, before_log_str, forward_call_str,
+                check_nan_inf_str, get_outputs_str, outputs_autograd_meta_str,
                 compute_require_grad_args_str, check_inplace_str,
-                bump_inplace_version_str, node_creation_str,
-                forward_ad_function_name, log_str, returns_str)
+                bump_inplace_version_str, node_creation_str, forward_api_name,
+                log_str, returns_str)
 
         self.forward_declaration_str += f"{returns_type_str} {forward_ad_function_name}({inputs_args_declaration_str});\n"
 
@@ -1924,6 +1941,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             var_str += f"\n{indent}  std::string input_{new_name}_str = paddle::string::Sprintf(TENSOR_{new_name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({new_name}));"
             var_str += f"\n{indent}  input_str += input_{new_name}_str; "
 
+        before_log_str = BEFORE_LOG_PRINT_TEMPLATE.format(var_str)
+
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
             new_name = self.TransformToNextGradName(name)
@@ -1931,16 +1950,16 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             var_str += f"\n{indent}  std::string output_{new_name}_str = paddle::string::Sprintf(TENSOR_{new_name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({new_name}));"
             var_str += f"\n{indent}  output_str += output_{new_name}_str; "
 
-        log_str = LOG_PRINT_TEMPLATE.format(var_str)
+        log_str = AFTER_LOG_PRINT_TEMPLATE.format(var_str)
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
-            grad_node_name, GetDygraphLogName(self.backward_api_name),
-            fill_zero_str, get_grad_in_args_str, grad_function_prepare_str,
+            grad_node_name, self.backward_api_name, fill_zero_str,
+            get_grad_in_args_str, grad_function_prepare_str,
             compute_require_next_grad_str, inplace_check_str,
-            inplace_for_grad_outs_str, self.backward_api_name,
+            inplace_for_grad_outs_str, self.backward_api_name, before_log_str,
             grad_function_call_str, check_nan_inf_str,
             outputs_autograd_meta_str, next_grad_node_creation_str,
-            GetDygraphLogName(self.backward_api_name), log_str, returns_str)
+            self.backward_api_name, log_str, returns_str)
 
     def run(self):
         super().run()
