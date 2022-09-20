@@ -348,7 +348,8 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
   const float* beta = mBetaDev.get();
   const float* gamma = mGammaDev.get();
   int32_t** tem_inputs_ptr_dev;
-  cudaMalloc(reinterpret_cast<void**>(&tem_inputs_ptr_dev), sizeof(void*) * nbLookupTables_);
+  cudaMalloc(reinterpret_cast<void**>(&tem_inputs_ptr_dev),
+             sizeof(void*) * nbLookupTables_);
   cudaMemcpy(tem_inputs_ptr_dev,
              inputs,
              sizeof(void*) * nbLookupTables_,
@@ -363,7 +364,8 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
   if (mType == nvinfer1::DataType::kFLOAT) {
     auto output = static_cast<float*>(outputs[0]);
     float** mIdsEmbDev_float;
-    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_float), sizeof(void*) * nbLookupTables_);
+    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_float),
+               sizeof(void*) * nbLookupTables_);
     cudaMemcpy(mIdsEmbDev_float,
                &(mIdsEmbDev[0]),
                sizeof(void*) * nbLookupTables_,
@@ -382,7 +384,8 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
   } else if (mType == nvinfer1::DataType::kHALF) {
     auto output = static_cast<half*>(outputs[0]);
     half** mIdsEmbDev_half;
-    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_half), sizeof(void*) * nbLookupTables_);
+    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_half),
+               sizeof(void*) * nbLookupTables_);
     cudaMemcpy(mIdsEmbDev_half,
                &(mIdsEmbDev[0]),
                sizeof(void*) * nbLookupTables_,
@@ -426,7 +429,8 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
   const float* beta = mBetaDev.get();
   const float* gamma = mGammaDev.get();
   int32_t** tem_inputs_ptr_dev;
-  cudaMalloc(reinterpret_cast<void**>(&tem_inputs_ptr_dev), sizeof(void*) * nbLookupTables_);
+  cudaMalloc(reinterpret_cast<void**>(&tem_inputs_ptr_dev),
+             sizeof(void*) * nbLookupTables_);
   cudaMemcpy(tem_inputs_ptr_dev,
              inputs,
              sizeof(void*) * nbLookupTables_,
@@ -442,7 +446,8 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
     auto output = static_cast<float*>(outputs[0]);
     auto skip = static_cast<float*>(outputs[1]);
     float** mIdsEmbDev_float;
-    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_float), sizeof(void*) * nbLookupTables_);
+    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_float),
+               sizeof(void*) * nbLookupTables_);
     cudaMemcpy(mIdsEmbDev_float,
                &(mIdsEmbDev[0]),
                sizeof(void*) * nbLookupTables_,
@@ -463,7 +468,8 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
     auto output = static_cast<half*>(outputs[0]);
     auto skip = static_cast<half*>(outputs[1]);
     half** mIdsEmbDev_half;
-    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_half), sizeof(void*) * nbLookupTables_);
+    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_half),
+               sizeof(void*) * nbLookupTables_);
     cudaMemcpy(mIdsEmbDev_half,
                &(mIdsEmbDev[0]),
                sizeof(void*) * nbLookupTables_,
@@ -622,24 +628,24 @@ EmbLayerNormVarSeqlenPluginBaseCreator::getFieldNames() noexcept {
 }
 
 bool initializeFields(nvinfer1::PluginFieldCollection const* fc,
-                      nvinfer1::Weights& beta,
-                      nvinfer1::Weights& gamma,
-                      std::vector<nvinfer1::Weights>& IdsEmb) {
+                      nvinfer1::Weights* beta,
+                      nvinfer1::Weights* gamma,
+                      std::vector<nvinfer1::Weights>* IdsEmb) {
   bool output_fp16 = false;
   for (int32_t i = 0; i < fc->nbFields; i++) {
     std::string field_name(fc->fields[i].name);
     if (field_name.compare("bert_embeddings_layernorm_beta") == 0) {
       TRANSFORMER_DEBUG_MSG("Building bert_embeddings_layernorm_beta...");
-      beta.values = fc->fields[i].data;
-      beta.count = fc->fields[i].length;
-      beta.type = fieldTypeToDataType(fc->fields[i].type);
+      beta->values = fc->fields[i].data;
+      beta->count = fc->fields[i].length;
+      beta->type = fieldTypeToDataType(fc->fields[i].type);
     }
 
     if (field_name.compare("bert_embeddings_layernorm_gamma") == 0) {
       TRANSFORMER_DEBUG_MSG("Building bert_embeddings_layernorm_gamma...");
-      gamma.values = fc->fields[i].data;
-      gamma.count = fc->fields[i].length;
-      gamma.type = fieldTypeToDataType(fc->fields[i].type);
+      gamma->values = fc->fields[i].data;
+      gamma->count = fc->fields[i].length;
+      gamma->type = fieldTypeToDataType(fc->fields[i].type);
     }
 
     if (field_name.compare("output_fp16") == 0) {
@@ -655,7 +661,7 @@ bool initializeFields(nvinfer1::PluginFieldCollection const* fc,
       tem.values = fc->fields[i].data;
       tem.count = fc->fields[i].length;
       tem.type = fieldTypeToDataType(fc->fields[i].type);
-      IdsEmb.push_back(tem);
+      IdsEmb->push_back(tem);
     }
   }
   return output_fp16;
