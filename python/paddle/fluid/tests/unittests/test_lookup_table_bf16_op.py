@@ -16,9 +16,10 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest, OpTestTool, convert_float_to_uint16, convert_uint16_to_float,
-    skip_check_grad_ci)
+from paddle.fluid.tests.unittests.op_test import (OpTest, OpTestTool,
+                                                  convert_float_to_uint16,
+                                                  convert_uint16_to_float,
+                                                  skip_check_grad_ci)
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
@@ -217,13 +218,13 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
 
         with fluid.program_guard(self.prog, self.startup_prog):
             x = fluid.layers.data(name='x', shape=self.ids_shape, dtype='int64')
-            self.emb = fluid.layers.embedding(
-                input=x,
-                size=self.w_shape,
-                param_attr=fluid.ParamAttr(
-                    name="emb_weight", initializer=self.initializer),
-                is_sparse=False,
-                dtype="bfloat16")
+            self.emb = fluid.layers.embedding(input=x,
+                                              size=self.w_shape,
+                                              param_attr=fluid.ParamAttr(
+                                                  name="emb_weight",
+                                                  initializer=self.initializer),
+                                              is_sparse=False,
+                                              dtype="bfloat16")
         exe = fluid.Executor(self.place)
         exe.run(self.startup_prog)
         self.result = exe.run(self.prog,

@@ -258,10 +258,9 @@ class UniformInitializer(Initializer):
         block = self._check_block(block)
 
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(
-            var, "Out",
-            ["bfloat16", "float16", "float32", "float64"],
-            "uniform_random")
+        check_variable_and_dtype(var, "Out",
+                                 ["bfloat16", "float16", "float32", "float64"],
+                                 "uniform_random")
 
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -372,10 +371,9 @@ class NormalInitializer(Initializer):
 
         assert isinstance(block, framework.Block)
 
-        check_variable_and_dtype(
-            var, "Out",
-            ["bfloat16", "float16", "float32", "float64"],
-            "guassian_random")
+        check_variable_and_dtype(var, "Out",
+                                 ["bfloat16", "float16", "float32", "float64"],
+                                 "guassian_random")
 
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -583,10 +581,9 @@ class XavierInitializer(Initializer):
         block = self._check_block(block)
 
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(
-            var, "Out",
-            ["bfloat16", "float16", "float32", "float64"],
-            "xavier_init")
+        check_variable_and_dtype(var, "Out",
+                                 ["bfloat16", "float16", "float32", "float64"],
+                                 "xavier_init")
 
         f_in, f_out = self._compute_fans(var)
 

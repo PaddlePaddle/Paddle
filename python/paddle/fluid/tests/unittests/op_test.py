@@ -400,14 +400,12 @@ class OpTest(unittest.TestCase):
     def is_bfloat16_op(self):
         # self.dtype is the dtype of inputs, and is set in infer_dtype_from_inputs_outputs.
         # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
-        return self.dtype == bfloat16 or self.dtype == np.uint16 or (
-            hasattr(self, 'output_dtype') and
-            self.output_dtype == bfloat16) or (
-                hasattr(self, 'mkldnn_data_type') and
-                getattr(self, 'mkldnn_data_type') == "bfloat16") or (
-                    hasattr(self, 'attrs') and
-                    'mkldnn_data_type' in self.attrs and
-                    self.attrs['mkldnn_data_type'] == 'bfloat16')
+        return self.dtype == bfloat16 or self.dtype == np.uint16 or (hasattr(
+            self, 'output_dtype') and self.output_dtype == bfloat16) or (
+                hasattr(self, 'mkldnn_data_type')
+                and getattr(self, 'mkldnn_data_type') == "bfloat16") or (
+                    hasattr(self, 'attrs') and 'mkldnn_data_type' in self.attrs
+                    and self.attrs['mkldnn_data_type'] == 'bfloat16')
 
     def is_mkldnn_op(self):
         return (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or (
@@ -455,9 +453,15 @@ class OpTest(unittest.TestCase):
         input_dtype_set = set()
         infer_dtype(inputs, input_dtype_set)
         dtype_list = [
-            np.dtype(np.float64), np.dtype(np.float32), np.dtype(np.float16),
-            np.dtype(np.int64), np.dtype(np.int32), np.dtype(bfloat16),
-            np.dtype(np.int16), np.dtype(np.int8), np.dtype(np.uint8),
+            np.dtype(np.float64),
+            np.dtype(np.float32),
+            np.dtype(np.float16),
+            np.dtype(np.int64),
+            np.dtype(np.int32),
+            np.dtype(bfloat16),
+            np.dtype(np.int16),
+            np.dtype(np.int8),
+            np.dtype(np.uint8),
             np.dtype(np.bool)
         ]
         # check the dtype in dtype_list in order, select the first dtype that in dtype_set

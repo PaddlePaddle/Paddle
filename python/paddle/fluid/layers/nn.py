@@ -12025,12 +12025,10 @@ def _elementwise_op(helper):
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
     check_variable_and_dtype(
-        x, 'x',
-        ['float16', 'bfloat16', 'float32', 'float64', 'int32', 'int64'],
+        x, 'x', ['float16', 'bfloat16', 'float32', 'float64', 'int32', 'int64'],
         op_type)
     check_variable_and_dtype(
-        y, 'y',
-        ['float16', 'bfloat16', 'float32', 'float64', 'int32', 'int64'],
+        y, 'y', ['float16', 'bfloat16', 'float32', 'float64', 'int32', 'int64'],
         op_type)
 
     axis = helper.kwargs.get('axis', -1)
@@ -13186,8 +13184,9 @@ def mean(x, name=None):
         return _C_ops.mean_all(x)
 
     helper = LayerHelper("mean", **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'bfloat16'], 'mean')
+    check_variable_and_dtype(x, 'x',
+                             ['float16', 'float32', 'float64', 'bfloat16'],
+                             'mean')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(type="mean",

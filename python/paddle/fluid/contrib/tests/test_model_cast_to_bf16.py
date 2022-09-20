@@ -95,10 +95,12 @@ class TestModelCastBF16(unittest.TestCase):
         nn_bf16 = nn.astype(bfloat16)
 
         with self.static_graph():
-            t_bf16 = layers.data(
-                name='t_bf16', shape=[size, size], dtype=bfloat16)
-            tt_bf16 = layers.data(
-                name='tt_bf16', shape=[size, size], dtype=bfloat16)
+            t_bf16 = layers.data(name='t_bf16',
+                                 shape=[size, size],
+                                 dtype=bfloat16)
+            tt_bf16 = layers.data(name='tt_bf16',
+                                  shape=[size, size],
+                                  dtype=bfloat16)
             t = layers.data(name='t', shape=[size, size], dtype='float32')
             tt = layers.data(name='tt', shape=[size, size], dtype='float32')
 

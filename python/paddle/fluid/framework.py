@@ -1173,7 +1173,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
     """
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
-        dtype = np.bfloat16
+        dtype = bfloat16
     else:
         dtype = np.dtype(np_dtype)
 

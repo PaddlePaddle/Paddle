@@ -97,8 +97,8 @@ class TestSaveLoadBF16(unittest.TestCase):
                 # slice_op PR(datatypes in model graph are different than datatypes during runtime because of that)
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype=bfloat16)
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype=bfloat16)
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype=bfloat16)
 
                 fetch_list = [static_loss, static_last_hidden, static_last_cell]
                 out = exe.run(fluid.default_main_program(),

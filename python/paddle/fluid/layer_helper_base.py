@@ -343,7 +343,7 @@ class LayerHelperBase(object):
                     )
             else:
                 if not (dtype.startswith("float")
-                        or dtype in ["double", "uint16"]):
+                        or dtype in ["double", "bfloat16"]):
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
                     )
