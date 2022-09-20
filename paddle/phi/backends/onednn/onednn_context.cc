@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 
 #include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -284,6 +285,39 @@ struct OneDNNContext::Impl {
     return key_it->second;
   }
 
+  bool HasDeviceAttr(const std::string& attr_name) const {
+    return device_attrs_.count(attr_name) != 0UL;
+  }
+  const Attribute& GetDeviceAttr(const std::string& attr_name) const {
+    auto iter = device_attrs_.find(attr_name);
+    PADDLE_ENFORCE_NE(
+        iter,
+        device_attrs_.end(),
+        phi::errors::NotFound("Attribute `%s` is not found in OneDNNContext."));
+    return iter->second;
+  }
+
+  void SetDeviceAttr(const std::string& attr_name, const Attribute& attr) {
+    if (device_attrs_version_ == 0) {
+      device_attrs_[attr_name] = attr;
+    } else {
+      auto iter = device_attrs_.find(attr_name);
+      // TODO(chenweihang): this check is not enough
+      PADDLE_ENFORCE_EQ(
+          iter,
+          device_attrs_.end(),
+          phi::errors::AlreadyExists(
+              "Attribute `%s` in OneDNNContext is being used now."));
+      device_attrs_[attr_name] = attr;
+    }
+  }
+
+  int8_t DeviceAttrsVersion() const { return device_attrs_version_; }
+
+  void SetDeviceAttrsVersion(int8_t version) {
+    device_attrs_version_ = version;
+  }
+
   std::shared_ptr<BlobMap> p_blobmap_;
   // Map key is pointer of executor and value is a data(iterator in map) needed
   // to erase
@@ -291,6 +325,17 @@ struct OneDNNContext::Impl {
   std::shared_ptr<std::mutex> p_mutex_;
   // 0 - clearing is allowed. x > 0 do not clear.
   unsigned int block_next_cache_clearing_ = 0;
+
+  // For thread safety when using device_attrs_
+  int8_t device_attrs_version_ = 0;
+  // Holds some attributes only used by the onednn kernel calculation
+  // Since original mkldnn op kernel directly adds the operations that require
+  // fusion to the native kernel operations, and uses the attribute `fuse_xxx`
+  // to control, for onednn, there will be some attributes that seem to be
+  // independent of the device are also saved here.
+  // Here, the operation of fusion needs to be implemented separately as
+  // a fusion op and kernel, instead of patching it to a basic operation.
+  AttributeMap device_attrs_;
 };
 
 OneDNNContext::OneDNNContext(const Place& place)
@@ -320,6 +365,28 @@ unsigned int OneDNNContext::GetCachedObjectsNumber(void) const {
 OneDNNContext::BlobPtr_t<void> OneDNNContext::GetBlob(
     const std::string& name) const {
   return impl_->GetBlob(name);
+}
+
+bool OneDNNContext::HasDeviceAttr(const std::string& attr_name) const {
+  return impl_->HasDeviceAttr(attr_name);
+}
+
+const Attribute& OneDNNContext::GetDeviceAttr(
+    const std::string& attr_name) const {
+  return impl_->GetDeviceAttr(attr_name);
+}
+
+void OneDNNContext::SetDeviceAttr(const std::string& attr_name,
+                                  const Attribute& attr) {
+  return impl_->SetDeviceAttr(attr_name, attr);
+}
+
+int8_t OneDNNContext::DeviceAttrsVersion() const {
+  return impl_->DeviceAttrsVersion();
+}
+
+void OneDNNContext::SetDeviceAttrsVersion(int8_t version) {
+  return impl_->SetDeviceAttrsVersion(version);
 }
 
 }  // namespace phi

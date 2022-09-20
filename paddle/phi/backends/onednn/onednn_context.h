@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/attribute.h"
 
 namespace phi {
 
@@ -133,6 +134,13 @@ class OneDNNContext : public CPUContext {
   static auto tls() -> decltype(OneDNNContextThreadLocals::fetch()) {
     return OneDNNContextThreadLocals::fetch();
   }
+
+  // Several methods for adapting ONEDNN-specific attributes
+  bool HasDeviceAttr(const std::string& attr_name) const;
+  const Attribute& GetDeviceAttr(const std::string& attr_name) const;
+  void SetDeviceAttr(const std::string& attr_name, const Attribute& attr);
+  int8_t DeviceAttrsVersion() const;
+  void SetDeviceAttrsVersion(int8_t version);
 
  private:
   struct Impl;
