@@ -28,7 +28,7 @@ import paddle.utils as utils
 from paddle.fluid import layers
 from paddle.io import Dataset, IterableDataset, DataLoader
 
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from engine_api_dp import MyDataset
 
 paddle.enable_static()
@@ -96,7 +96,7 @@ def train(fetch):
     # sharding config
     sharding = dist_strategy.sharding
     sharding.enable = True
-    sharding.sharding_degree = 2
+    sharding.degree = 2
     sharding.stage = 3
     sharding.enable_tuning = True
     sharding.tuning_range = [0, 1, 2, 3]
