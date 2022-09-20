@@ -113,5 +113,50 @@ SparseCooTensor ReluCsr(const Context& dev_ctx, const SparseCooTensor& x) {
   return csr;
 }
 
+template <typename T, typename Context>
+void ReshapeCooKernel(const Context &dev_ctx,
+                      const SparseCooTensor &x,
+                      const std::vector<int64_t> & new_shape,
+                      SparseCooTensor *out);
+
+template <typename T, typename Context>
+void ReshapeCsrKernel(const Context &dev_ctx,
+                      const SparseCsrTensor &x,
+                      const std::vector<int64_t> & new_shape,
+                      SparseCsrTensor *out);
+
+template <typename T, typename Context>
+SparseCooTensor ReshapeCoo(const Context &dev_ctx,
+                             const SparseCooTensor &x,
+                             const std::vector<int64_t>& new_shape) {
+  //TODO: product(new_shape) must be equal with x.dims().numel()
+  // // PADDLE_ENFORCE_EQ(x.sparse_dim(),
+  // PADDLE_ENFORCE_EQ(x.dims().size(),
+  //                   new_shape.size(),
+  //                   phi::errors::InvalidArgument(
+  //                       "size of perm must be equal with the x.dims().size()"));
+
+  SparseCooTensor coo;
+  ReshapeCooKernel<T, Context>(dev_ctx, x, new_shape, &coo);
+  return coo;
+}
+
+template <typename T, typename Context>
+SparseCsrTensor ReshapeCsr(const Context &dev_ctx,
+                             const SparseCsrTensor &x,
+                             const std::vector<int64_t> & new_shape) {
+  PADDLE_ENFORCE_LE(
+      2,
+      new_shape.size(),
+      phi::errors::InvalidArgument("size of new_shape must be equal to 2 or 3"));
+  PADDLE_ENFORCE_GE(
+      3,
+      new_shape.size(),
+      phi::errors::InvalidArgument("size of new_shape must be equal to 2 or 3"));
+  SparseCsrTensor csr;
+  ReshapeCsrKernel<T, Context>(dev_ctx, x, new_shape, &csr);
+  return csr;
+}
+
 }  // namespace sparse
 }  // namespace phi

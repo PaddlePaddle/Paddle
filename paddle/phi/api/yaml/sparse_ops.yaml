@@ -456,3 +456,14 @@
            mv_csr{sparse_csr, dense -> dense}
     layout : x
   backward: mv_grad
+
+- op : reshape
+  args : (Tensor x, int64_t[] new_shape)
+  output : Tensor(out)
+  infer_meta :
+    func : sparse::ReshapeInferMeta
+  kernel :
+    func : reshape_coo{sparse_coo -> sparse_coo},
+           reshape_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : reshape_grad

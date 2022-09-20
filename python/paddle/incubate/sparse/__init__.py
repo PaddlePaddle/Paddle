@@ -34,6 +34,7 @@ from .unary import coalesce
 from .unary import deg2rad
 from .unary import rad2deg
 from .unary import expm1
+from .unary import reshape
 
 from .binary import mv
 from .binary import matmul
@@ -79,4 +80,5 @@ __all__ = [
     'divide',
     'coalesce',
     'is_same_shape',
+    'reshape'
 ]
