@@ -44,6 +44,10 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
     std::vector<int32_t> shape =
         PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("shape"));
+    if (str_value == "") {
+      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+      str_value = std::to_string(value);
+    }
     float value = std::stof(str_value);
 
     auto* input_shape_tensor = Shape(input);
