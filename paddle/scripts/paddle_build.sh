@@ -1038,6 +1038,7 @@ function generate_api_spec() {
     else
         pip install -r ${PADDLE_ROOT}/python/requirements.txt
     fi
+    pip uninstall ${PADDLE_ROOT}/build/python/dist/*whl -y || true
     pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
