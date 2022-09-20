@@ -82,18 +82,41 @@ int xpu_activation_func(
 }
 
 template <typename Context, typename T, typename XPUType>
-int xpu_activation_1attr_func(
+int xpu_activation_with_maxparam_func(
     const Context& dev_ctx,
     const DenseTensor& x,
     DenseTensor* out,
-    float attr,
-    std::function<int(xpu::Context*, const XPUType*, XPUType*, int, float)>
+    std::function<
+        int(xpu::Context*, const XPUType*, XPUType*, int, const float*, float*)>
         func) {
   int r = func(dev_ctx.x_context(),
                reinterpret_cast<const XPUType*>(x.data<T>()),
                reinterpret_cast<XPUType*>(out->data<T>()),
                x.numel(),
-               attr);
+               nullptr,
+               nullptr);
+  return r;
+}
+
+template <typename Context, typename T, typename XPUType>
+int xpu_activation_1attr_func(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              DenseTensor* out,
+                              float attr,
+                              std::function<int(xpu::Context*,
+                                                const XPUType*,
+                                                XPUType*,
+                                                int,
+                                                float,
+                                                const float*,
+                                                float*)> func) {
+  int r = func(dev_ctx.x_context(),
+               reinterpret_cast<const XPUType*>(x.data<T>()),
+               reinterpret_cast<XPUType*>(out->data<T>()),
+               x.numel(),
+               attr,
+               nullptr,
+               nullptr);
   return r;
 }
 
@@ -213,7 +236,7 @@ struct XPUHardSwishFunctor : public funcs::BaseActivationFunctor<T> {
         offset,
         3.0f,
         errors::External("Not support offset [%f] in XPU", offset));
-    int r = xpu_activation_func<Context, T, XPUType>(
+    int r = xpu_activation_with_maxparam_func<Context, T, XPUType>(
         dev_ctx, x, out, xpu::hard_swish<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_swish");
   }
@@ -239,11 +262,8 @@ struct XPUReluFunctor : public funcs::BaseActivationFunctor<T> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) const {
-    const XPUType* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
-    XPUType* y_data = reinterpret_cast<XPUType*>(out->data<T>());
-
-    auto xpu_context = dev_ctx.x_context();
-    int r = xpu::relu(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+    int r = xpu_activation_with_maxparam_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::relu<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu");
   }
 };
@@ -259,7 +279,7 @@ struct XPURelu6Functor : public funcs::BaseActivationFunctor<T> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) const {
-    int r = xpu_activation_func<Context, T, XPUType>(
+    int r = xpu_activation_with_maxparam_func<Context, T, XPUType>(
         dev_ctx, x, out, xpu::relu6<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu6");
   }
@@ -272,7 +292,7 @@ struct XPUSigmoidFunctor : public funcs::BaseActivationFunctor<T> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) const {
-    int r = xpu_activation_func<Context, T, XPUType>(
+    int r = xpu_activation_with_maxparam_func<Context, T, XPUType>(
         dev_ctx, x, out, xpu::sigmoid<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid");
   }
@@ -322,19 +342,18 @@ struct XPUMishFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
-template <typename T, typename Context>
-void SwishKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 float beta,
-                 DenseTensor* out) {
+template <typename T>
+struct XPUSwishFunctor : public funcs::BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  dev_ctx.template Alloc<T>(out);
-  int r = xpu::swish(dev_ctx.x_context(),
-                     reinterpret_cast<const XPUType*>(x.data<T>()),
-                     reinterpret_cast<XPUType*>(out->data<T>()),
-                     x.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
-}
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    int r = xpu_activation_with_maxparam_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::swish<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+  }
+};
 
 template <typename T>
 struct XPUSoftplusFunctor : public funcs::BaseActivationFunctor<T> {
@@ -363,7 +382,7 @@ struct XPUTanhFunctor : public funcs::BaseActivationFunctor<T> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) const {
-    int r = xpu_activation_func<Context, T, XPUType>(
+    int r = xpu_activation_with_maxparam_func<Context, T, XPUType>(
         dev_ctx, x, out, xpu::tanh<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "tanh");
   }
@@ -377,6 +396,7 @@ DEFINE_XPU_ACTIVATION_KERNEL(Sigmoid, XPUSigmoidFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Square, XPUSquareFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Sqrt, XPUSqrtFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Tanh, XPUTanhFunctor)
+DEFINE_XPU_ACTIVATION_KERNEL(Swish, XPUSwishFunctor)
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
