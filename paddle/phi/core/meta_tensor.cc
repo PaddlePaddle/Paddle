@@ -39,7 +39,11 @@ int64_t MetaTensor::numel() const {
 
 DDim MetaTensor::dims() const {
   ValidCheck(*this);
-  return tensor_->dims();
+  if (phi::SelectedRows::classof(tensor_)) {
+    return static_cast<SelectedRows*>(tensor_)->GetCompleteDims();
+  } else {
+    return tensor_->dims();
+  }
 }
 
 DataType MetaTensor::dtype() const {
