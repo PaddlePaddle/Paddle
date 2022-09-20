@@ -173,17 +173,27 @@ void ReshapeKernel(const Context& dev_ctx,
   out->Resize(out_dims);
   out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
 }
+
+template <typename Context>
+void ReshapeWithXShape(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const IntArray& shape,
+                       DenseTensor* out,
+                       DenseTensor* xshape) {
+  ReshapeKernel(dev_ctx, x, shape, out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(reshape,
                    OneDNN,
                    ALL_LAYOUT,
-                   phi::ReshapeKernel<phi::OneDNNContext>,
+                   phi::ReshapeKernel,
                    float,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(reshape,
+PD_REGISTER_KERNEL(reshape_with_xshape,
                    OneDNN,
                    ALL_LAYOUT,
-                   phi::ReshapeWithXShape<phi::OneDNNContext>,
+                   phi::ReshapeWithXShape,
                    float,
                    phi::dtype::bfloat16) {}
