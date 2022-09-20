@@ -16,7 +16,7 @@
 
 // #include "paddle/phi/core/ddim.cc"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
-#include "paddle/phi/kernels/sparse/cpu/sparse_utils_kernel.cc"
+// #include "paddle/phi/kernels/sparse/cpu/sparse_utils_kernel.cc"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
