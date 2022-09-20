@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/gelu_grad_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
