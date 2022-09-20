@@ -51,16 +51,15 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     framework::DDim bias_dims, scale_dims, ele_bias_dims;
     auto* bias = get_persistable_data("Bias", &bias_dims);
     auto* scale = get_persistable_data("Scale", &scale_dims);
-    float* ele_bias = op_desc.Input("EleBias").front() == ""
-                          ? nullptr
-                          : get_persistable_data("EleBias", &ele_bias_dims);
+    auto const& vars = op_desc.Inputs(false);
+    bool has_bias = vars.find("EleBias") != vars.end();
+    float* ele_bias =
+        has_bias ? get_persistable_data("EleBias", &ele_bias_dims) : nullptr;
 
     int bias_size = phi::product(bias_dims);
 
     int scale_size = phi::product(scale_dims);
-    int ele_bias_size = op_desc.Input("EleBias").front() == ""
-                            ? 0
-                            : phi::product(ele_bias_dims);
+    int ele_bias_size = has_bias ? phi::product(ele_bias_dims) : 0;
     float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     if (engine_->precision() == AnalysisConfig::Precision::kInt8) {

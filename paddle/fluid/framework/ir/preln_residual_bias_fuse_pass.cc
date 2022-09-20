@@ -210,7 +210,9 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     new_desc.SetInput("Y", {subgraph.at(y)->Name()});
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
-    new_desc.SetInput("EleBias", {with_bias ? elementwise_bias->Name() : ""});
+    if (with_bias) {
+      new_desc.SetInput("EleBias", {elementwise_bias->Name()});
+    }
     // outputs
     new_desc.SetOutput("Out_0", {layer_norm_out->Name()});
     new_desc.SetOutput("Out_1", {elementwise1_out->Name()});
