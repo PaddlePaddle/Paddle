@@ -178,6 +178,7 @@ class OpConverter {
                                         op_desc.Type()));
 
     it->SetEngine(engine);
+    engine->SetScope(scope);
     it->SetBlockDesc(block);
     (*it)(op, scope, test_mode);
 
@@ -255,31 +256,6 @@ class OpConverter {
                     const framework::Scope& scope,
                     TensorRTEngine* engine) {
     std::unique_lock<std::mutex> lk(mut_);
-    for (int i = 0; i < block.ops_size(); i++) {
-      SetEngine(engine);
-      const auto& op = block.ops(i);
-      framework::OpDesc op_desc(op, nullptr);
-      framework::Variable* X_v = nullptr;
-      std::string X_name;
-      // inputs : string -> std::vector<string>
-      auto inputs = op_desc.Inputs();
-      if (inputs.count("X")) {
-        X_name = op_desc.Input("X")[0];
-      } else if (inputs.count("Input")) {
-        X_name = op_desc.Input("Input")[0];
-      } else if (inputs.count("Y")) {
-        X_name = op_desc.Input("Y")[0];
-      }
-      X_v = scope.FindVar(X_name);
-      // If this weight is shared between ops, it needn't to be convtered to
-      // itensor once again
-      if (engine->GetITensorMap()->count(X_name)) {
-        continue;
-      }
-      if (X_v) {
-        ConvertWeight2ITensor(scope, X_name);
-      }
-    }
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
       ConvertOp(op, parameters, scope, engine, false, &block);
@@ -594,35 +570,6 @@ class OpConverter {
     std::vector<T> input_data;
     input_data.push_back(data);
     return Add1DConstantLayer(input_data, weight_name, scalar);
-  }
-
-  // For cases when input is not middle-tensor , but persistable tensor
-  // you should call this.
-  nvinfer1::ITensor* ConvertWeight2ITensor(const framework::Scope& scope,
-                                           const std::string& name) {
-    auto* var_v = scope.FindVar(name);
-    auto* var_t = var_v->GetMutable<framework::LoDTensor>();
-    auto weight = engine_->GetTrtWeight(name, *var_t);
-
-    // Now we have create weights, then we need create a itensor
-    auto var_dims = var_t->dims();
-    nvinfer1::Dims trt_in_shape;
-    trt_in_shape.nbDims = var_t->dims().size();
-    for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
-      trt_in_shape.d[i] = var_dims[i];
-    }
-    // In fact , this is not always right, because we can't determine if the 0th
-    // dimension is batch. Just for run chenqu's model
-    if (!engine_->with_dynamic_shape()) {
-      trt_in_shape.nbDims--;
-      for (int i = 0; i < trt_in_shape.nbDims; i++) {
-        trt_in_shape.d[i] = trt_in_shape.d[i + 1];
-      }
-    }
-    nvinfer1::ILayer* layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_in_shape, weight.get());
-    engine_->SetITensor(name, layer->getOutput(0));
-    return layer->getOutput(0);
   }
 
   void RreplenishLayerAndOutput(
