@@ -550,9 +550,6 @@ class TestFusedMultiTransformerOp(OpTest):
         epsilon = 1e-05
         ln2_epsilon = 1e-05
 
-        if attn_mask is not None and self.attn_mask_type != np.bool_:
-            attn_mask = _convert_attention_mask(attn_mask, x.dtype)
-
         qkv_weights, qkv_biases = [], []
         out_weights, out_biases = [], []
         ln_scales, ln_biases = [], []
@@ -604,7 +601,9 @@ class TestFusedMultiTransformerOp(OpTest):
             ffn1_bias_attrs=ffn1_biases_attr,
             ffn2_weight_attrs=ffn2_weights_attr,
             ffn2_bias_attrs=ffn2_biases_attr)
+
         transformer.eval()
+
         for i in range(self.layers):
             if self.has_cache_kv:
                 cache_kvs.append(
