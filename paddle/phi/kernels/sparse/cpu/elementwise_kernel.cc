@@ -158,7 +158,10 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                         x.dims(),
                         y.dims()));
 
-  if (x.indices().numel() == y.indices().numel()) {
+  // temporary policy: for broadcast add
+  // TODO(zhangkaihuo): implement a correct function
+  const bool is_add = std::is_same<Functor, funcs::AddFunctor<T>>::value;
+  if (is_add && x.indices().numel() == y.indices().numel()) {
     int compare_indices = memcmp(x.indices().data<IntT>(),
                                  y.indices().data<IntT>(),
                                  sizeof(IntT) * x.indices().numel());

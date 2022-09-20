@@ -419,67 +419,6 @@ def divide(x, y, name=None):
         return _C_ops.sparse_divide(x, y)
 
 
-def values_add(x, y, name=None):
-    """
-    The `values_add` is to perform the addition of two sparse tensors in COO format, or the addition of one spare tensor in COO format and
-    one dense tensor.
-    If both x and y are sparse tensor:
-
-    .. math::
-        out.values() = x.values() + y.values()
-
-    if y is dense tensor:
-
-    .. math::
-        out.values() = x.values() + y
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be float16, float32, float64.
-        y (Tensor): the input tensor, it's data type should be float16, float32, float64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: the result tensor.
-
-    Examples:
-
-    ..  code-block:: python
-
-        import paddle
-        import paddle.incubate.sparse as sparse
-
-        indices_data = [[0, 1], [1, 2]]
-        values1_data = [[1.0], [2.0]]
-        values2_data = [[3.0], [4.0]]
-        x = sparse.sparse_coo_tensor(indices_data, values1_data, shape=[3,3,1])
-        y = sparse.sparse_coo_tensor(indices_data, values2_data, shape=[3,3,1])
-        out = sparse.values_add(x, y)
-        print(out.values())
-        # [[4.0], [6.0]]
-
-        values3_data = [[3.0]]
-        y_dense = paddle.to_tensor(values3_data)
-        out = sparse.values_add(x, y_dense)
-        print(out)
-        # [[4.0], [6.0]]
-    """
-    if in_dynamic_mode():
-        return _C_ops.sparse_values_add(x, y)
-    else:
-        if y.type == core.VarDesc.VarType.SPARSE_COO:
-            op_type = 'values_add_coo_coo'
-        else:
-            op_type = 'values_add_coo_dense'
-        inputs = {'X': x, 'Y': y}
-        helper = LayerHelper(op_type)
-        out = helper.create_sparse_variable_for_type_inference(x.dtype)
-        helper.append_op(type=op_type,
-                         inputs=inputs,
-                         outputs={'Out': out},
-                         attrs={})
-        return out
-
-
 @dygraph_only
 def is_same_shape(x, y):
     """
