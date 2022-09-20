@@ -137,10 +137,8 @@ PDNode* FusedMultiTransformerDecoderPattern::operator()() {
   auto* transpose2_1_out_var = pattern->NewNode(transpose2_1_out_repr())
                                   ->assert_is_op_output("transpose2")
                                   ->AsIntermediate();
-                                  // ->assert_is_op_nth_input("concat", "X", 1);
   auto* concat_0_in_var = pattern->NewNode(concat_0_in_repr())
                                   ->AsInput();
-                                  // ->assert_is_op_nth_input("concat", "X", 0);
   auto* concat_0 = pattern->NewNode(concat_0_repr())->assert_is_op("concat");
   auto* concat_0_out_var = pattern->NewNode(concat_0_out_repr())
                                   ->assert_is_op_output("concat")
@@ -862,9 +860,6 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph, const std::strin
     fused_multi_transformer_op_desc.SetAttr("is_test", dropout_op->GetAttr("is_test"));
     fused_multi_transformer_op_desc.SetAttr("dropout_implementation", dropout_op->GetAttr("dropout_implementation"));
 
-    // fused_multi_transformer_op_desc.SetAttr("act_method", {"gelu"});
-    // fused_multi_transformer_op_desc.SetAttr("trans_qkvw", {true});
-
     auto* fused_multi_transformer = graph->CreateOpNode(&fused_multi_transformer_op_desc);
     IR_NODE_LINK_TO(input0, fused_multi_transformer);
     IR_NODE_LINK_TO(layer_norm_scale, fused_multi_transformer);
@@ -1141,10 +1136,10 @@ void FusedMultiTransformerDecoderPass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal(
-          "During the multi_transformer pass, The scope should not be null."));
+        "During the multi_transformer pass, "
+        "The scope should not be null."));
 
   int fusion_count = BuildFusion(graph, name_scope_, scope);
-  LOG(ERROR) << "FusedMultiTransformerDecoder fusion_count: " << fusion_count;
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderPass, new bool(true));
   }
@@ -1417,9 +1412,7 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(Graph* graph, const std
     GET_IR_NODE_FROM_SUBGRAPH(concat_v, concat_v, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(concat_v_out, concat_v_out, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(assign_k, assign_k, fused_multi_transformer_fuse_qkv_pattern);
-    // GET_IR_NODE_FROM_SUBGRAPH(assign_k_out, assign_k_out, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(assign_v, assign_v, fused_multi_transformer_fuse_qkv_pattern);
-    // GET_IR_NODE_FROM_SUBGRAPH(assign_v_out, assign_v_out, fused_multi_transformer_fuse_qkv_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm, ffn_layer_norm, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_scale, ffn_layer_norm_scale, fused_multi_transformer_fuse_qkv_pattern);
@@ -1544,9 +1537,7 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(Graph* graph, const std
          concat_v,
          concat_v_out,
          assign_k,
-         // assign_k_out,
          assign_v,
-         // assign_v_out,
          matmul_qk,
          matmul_qk_out,
          eltadd_qk,
@@ -1606,10 +1597,9 @@ void FusedMultiTransformerDecoderFuseQKVPass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal(
-          "During the multi_transformer pass, The scope should not be null."));
+          "During the fused_multi_transformer_decoder pass, The scope should not be null."));
 
   int fusion_count = BuildFusion(graph, name_scope_, scope);
-  LOG(ERROR) << "FusedMultiTransformerDecoderFuseQKV fusion_count: " << fusion_count;
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderFuseQKVPass, new bool(true));
   }
@@ -1679,8 +1669,6 @@ FusedMultiTransformerDecoderFuseQKVPass::FusedMultiTransformerDecoderFuseQKVPass
       .IsType<std::vector<int>>()
       .End();
 
-  // -->: (B, S, H, N) -> (B, H, S, N)
-  // <--: (B, H, S, N) -> (B, S, H, N)
   AddOpCompat(OpCompat("transpose2"))
       .AddInput("X")
       .IsTensor()

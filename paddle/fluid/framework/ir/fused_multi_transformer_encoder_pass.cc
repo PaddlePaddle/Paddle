@@ -787,6 +787,73 @@ inline void QKVWeightsProcess(Tensor* wq_tensor,
          sizeof(float) * bq_tensor->numel());
 }
 
+inline void QKVWeightsProcessFuseQKV(Tensor* qkv_w_tensor,
+                                     Tensor* qkv_b_tensor,
+                                     const int num_head,
+                                     const int dim_head,
+                                     const int dim_embed) {
+  auto* qkv_w_data = qkv_w_tensor->mutable_data<float>(platform::CPUPlace());
+  auto transpose_w_dims =
+      phi::make_ddim({3, num_head, dim_head, dim_embed});
+
+  framework::LoDTensor tmp_transpose_w_tensor;
+  tmp_transpose_w_tensor.Resize(transpose_w_dims);
+  auto* tmp_transpose_w_data =
+      tmp_transpose_w_tensor.mutable_data<float>(platform::CPUPlace());
+
+  // transpose qkv matmul Y to QKVWeights
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < num_head; j++) {
+      for (int k = 0; k < dim_head; k++) {
+        for (int l = 0; l < dim_embed; l++) {
+          int out_idx = i * num_head * dim_head * dim_embed \
+                        + j * dim_head * dim_embed \
+                        + k * dim_embed + l;
+          int in_idx = l * num_head * 3 * dim_head \
+                       + j * 3 * dim_head \
+                       + i * dim_head + k;
+          tmp_transpose_w_data[out_idx] = qkv_w_data[in_idx];
+        }
+      }
+    }
+  }
+
+  qkv_w_tensor->Resize(transpose_w_dims);
+  auto* new_transpose_w_data =
+      qkv_w_tensor->mutable_data<float>(platform::CPUPlace());
+  memcpy(new_transpose_w_data,
+         tmp_transpose_w_data,
+         sizeof(float) * qkv_w_tensor->numel());
+
+  auto* qkv_b_data = qkv_b_tensor->mutable_data<float>(platform::CPUPlace());
+  auto transpose_b_dims = phi::make_ddim({3, num_head, dim_head});
+
+  framework::LoDTensor tmp_transpose_b_tensor;
+  tmp_transpose_b_tensor.Resize(transpose_b_dims);
+  auto* tmp_transpose_b_data =
+      tmp_transpose_b_tensor.mutable_data<float>(platform::CPUPlace());
+
+  // transpose qkv elemenwise_add Y to QKVBias
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < num_head; j++) {
+      for (int k = 0; k < dim_head; k++) {
+        int out_idx = i * num_head * dim_head \
+                      + j * dim_head + k; 
+        int in_idx = j * 3 * dim_head \
+                     + i * dim_head + k;
+        tmp_transpose_b_data[out_idx] = qkv_b_data[in_idx];
+      }
+    }
+  }
+
+  qkv_b_tensor->Resize({3, num_head, dim_head});
+  auto* new_transpose_b_data =
+      qkv_b_tensor->mutable_data<float>(platform::CPUPlace());
+  memcpy(new_transpose_b_data,
+         tmp_transpose_b_data,
+         sizeof(float) * qkv_b_tensor->numel());
+}
+
 int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
@@ -929,9 +996,6 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph, const std::strin
     fused_multi_transformer_op_desc.SetAttr("dropout_rate", dropout_op->GetAttr("dropout_prob"));
     fused_multi_transformer_op_desc.SetAttr("is_test", dropout_op->GetAttr("is_test"));
     fused_multi_transformer_op_desc.SetAttr("dropout_implementation", dropout_op->GetAttr("dropout_implementation"));
-
-    // fused_multi_transformer_op_desc.SetAttr("act_method", "gelu");
-    // fused_multi_transformer_op_desc.SetAttr("trans_qkvw", true);
 
     auto* fused_multi_transformer = graph->CreateOpNode(&fused_multi_transformer_op_desc);
     IR_NODE_LINK_TO(input0, fused_multi_transformer);
@@ -1231,7 +1295,6 @@ void FusedMultiTransformerEncoderPass::ApplyImpl(Graph* graph) const {
           "During the multi_transformer pass, The scope should not be null."));
 
   int fusion_count = BuildFusion(graph, name_scope_, scope);
-  LOG(ERROR) << "FusedMultiTransformerEncoder fusion_count: " << fusion_count;
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerEncoderPass, new bool(true));
   }
@@ -1301,8 +1364,6 @@ FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
       .IsType<std::vector<int>>()
       .End();
 
-  // -->: (B, S, H, N) -> (B, H, S, N)
-  // <--: (B, H, S, N) -> (B, S, H, N)
   AddOpCompat(OpCompat("transpose2"))
       .AddInput("X")
       .IsTensor()
@@ -1386,47 +1447,10 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(Graph* graph, const std
     int layer_idx = atoi(ln_idx_str.c_str()) / 2;
 
     auto* qkv_w_tensor = scope->FindVar(matmul0_w->Name())->GetMutable<LoDTensor>();
-    auto* qkv_w_data = qkv_w_tensor->mutable_data<float>(platform::CPUPlace());
-
-    auto transpose_w_dims =
-        phi::make_ddim({3, num_head, dim_head, dim_embed});
-
-    // reuse the mul0_w to transposed nodes for fused_multi_transformer.
-    auto* transpose_w_desc = matmul0_w->Var();
-    transpose_w_desc->SetShape({3, num_head, dim_head, dim_embed});
-    transpose_w_desc->SetPersistable(true);
-
-    framework::LoDTensor tmp_transpose_w_tensor;
-    tmp_transpose_w_tensor.Resize(transpose_w_dims);
-    auto* tmp_transpose_w_data =
-        tmp_transpose_w_tensor.mutable_data<float>(platform::CPUPlace());
-
-    // Combine the three fc weights together.
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < num_head; j++) {
-        for (int k = 0; k < dim_head; k++) {
-          for (int l = 0; l < dim_embed; l++) {
-            int out_idx = i * num_head * dim_head * dim_embed \
-                          + j * dim_head * dim_embed \
-                          + k * dim_embed + l;
-            int in_idx = l * num_head * 3 * dim_head \
-                         + j * 3 * dim_head \
-                         + i * dim_head + k;
-            tmp_transpose_w_data[out_idx] = qkv_w_data[in_idx];
-          }
-        }
-      }
-    }
-
-    qkv_w_tensor->Resize(transpose_w_dims);
-    auto* new_transpose_w_data =
-        qkv_w_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_transpose_w_data,
-           tmp_transpose_w_data,
-           sizeof(float) * qkv_w_tensor->numel());
-
     auto* qkv_b_tensor = scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
-    qkv_b_tensor->Resize({3, num_head, dim_head});
+
+    QKVWeightsProcessFuseQKV(qkv_w_tensor, qkv_b_tensor,
+                             num_head, dim_head, dim_embed);
 
     // create fused_multi_transformer
     OpDesc fused_multi_transformer_op_desc(layer_norm->Op()->Block());
@@ -1505,7 +1529,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(Graph* graph, const std
     while_Xs.erase(std::remove(std::begin(while_Xs), std::end(while_Xs), split0_v_out->Name()), std::end(while_Xs));
     while_Xs.emplace_back(cache_kv->Name());
     while0->Op()->SetInput("X", while_Xs);
-    
+
     // rewrite while OP output
     //  1. delete k, v
     //  2. add cache_kv
@@ -1731,10 +1755,10 @@ void FusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal(
-          "During the multi_transformer pass, The scope should not be null."));
+        "During the fused_multi_transformer_encoder pass, "
+        "The scope should not be null."));
 
   int fusion_count = BuildFusion(graph, name_scope_, scope);
-  LOG(ERROR) << "FusedMultiTransformerEncoderFusQKV fusion_count: " << fusion_count;
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerEncoderFuseQKVPass, new bool(true));
   }
