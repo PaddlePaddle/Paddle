@@ -172,10 +172,7 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
       LOG(WARNING) << "The subgraph is empty.";
       return;
     }
-    if (!IsCompat(subgraph, graph)) {
-      LOG(WARNING) << "preln_residual_bias pass in op compat failed.";
-      return;
-    }
+
     VLOG(4) << "handle PrelnResidualBias fuse";
     Node *elementwise_bias = nullptr;
     Node *elementwise0 = nullptr;
@@ -201,6 +198,21 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         layer_norm_variance, layer_norm_variance, fused_pattern);
+
+    // We can not accept that two or more layer_norm is connected to
+    // elementwise1_out. This will lead to two or more PrelnResidualBias
+    // patterns is found near elementwise1_out, and these patterns will interact
+    // on each other, so we make below check to ensure only one
+    // PrelnResidualBias pattern is delalted with.
+    for (auto op : elementwise1_out->inputs) {
+      if (op->Name() == "preln_residual_bias") return;
+    }
+
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "preln_residual_bias pass in op compat failed.";
+      return;
+    }
+
     std::unordered_set<const Node *> del_node_set;
     // Create an PrelnResidualBias op node
     OpDesc new_desc;

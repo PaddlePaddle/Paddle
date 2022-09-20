@@ -39,6 +39,7 @@
 #include "paddle/fluid/platform/init.h"
 
 using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
+constexpr size_t kPrepareWorkQueueIdx = 2;
 
 namespace paddle {
 namespace framework {
@@ -48,6 +49,7 @@ class AsyncWorkQueue {
  public:
   AsyncWorkQueue(size_t host_num_threads,
                  size_t deivce_num_threads,
+                 size_t prepare_num_threads,
                  EventsWaiter* waiter);
 
   std::future<std::unique_ptr<AtomicVectorSizeT>> PrepareAtomicDeps(
@@ -60,6 +62,10 @@ class AsyncWorkQueue {
   void AddTask(const OpFuncType& op_func_type, std::function<void()> fn);
 
   void Cancel() { queue_group_->Cancel(); }
+
+  size_t QueueNumThreads(size_t idx) {
+    return queue_group_->QueueNumThreads(idx);
+  }
 
  private:
   size_t host_num_thread_;
