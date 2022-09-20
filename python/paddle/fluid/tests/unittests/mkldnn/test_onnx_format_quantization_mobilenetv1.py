@@ -210,9 +210,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         config.set_cpu_math_library_num_threads(1)
         config.disable_glog_info()
         if is_quantized_model:
-            calibration_file_path = os.path.join(model_path,
-                                                 'calibration_table.txt')
-            config.set_calibration_file_path(calibration_file_path)
             config.enable_mkldnn_int8()
         predictor = paddle.inference.create_predictor(config)
 

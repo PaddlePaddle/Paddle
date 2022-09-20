@@ -177,9 +177,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
 #ifdef PADDLE_WITH_MKLDNN
-  // Calibration file path of quantize model
-  DECL_ARGUMENT_FIELD(calibration_file_path, CalibrationFilePath, std::string);
-
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types,
                       QuantizeEnabledOpTypes,
