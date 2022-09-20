@@ -20,5 +20,6 @@ ignore =
     W503,W504
     W601,W605
 per-file-ignores =
+    # These files need tabs for testing.
     python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py:E101,W191
     python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py:E101,W191
