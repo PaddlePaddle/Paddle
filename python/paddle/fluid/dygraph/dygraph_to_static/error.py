@@ -194,15 +194,13 @@ class ErrorData(object):
             is_numpy_api_err = module_result or (func_str.startswith("numpy.")
                                                  or func_str.startswith("np."))
         except Exception:
-            # np is imported, so if the name func_str is not defined
-            # it is not a numpy api
             is_numpy_api_err = False
 
         if is_numpy_api_err and func_str:
             return [
-                "TypeError: Variables created in dy2static process will be an unexpected keyword for numpy API",
-                "           Code '{}' called numpy API {}, please use Paddle API to replace it"
+                "TypeError: Code '{}' called numpy API {}, please use Paddle API to replace it."
                 .format(error_line, func_str),
+                "           values will be changed to variables by dy2static, numpy api can not handle variables"
             ]
         else:
             return format_exception
