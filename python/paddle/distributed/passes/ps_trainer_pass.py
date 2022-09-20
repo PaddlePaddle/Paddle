@@ -81,18 +81,21 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
         ps_mode = attrs['ps_mode']
-        if ps_mode == DistributedMode.GEO:
-            send_ctx = get_geo_trainer_send_context(attrs)  # geo 模式
-        elif attrs['is_heter_ps_mode'] == True:
-            print("is_heter_ps_mode in append_send_ops_pass!!")
-            send_ctx = get_the_one_send_context(attrs, split_dense_table=True)
-        else:
-            send_ctx = get_the_one_send_context(attrs)  # async、sync 等各种模式
+        #if ps_mode == DistributedMode.GEO:
+        #   send_ctx = get_geo_trainer_send_context(attrs)  # geo 模式, 没必要
+        send_ctx = get_the_one_send_context(
+            attrs,
+            split_dense_table=attrs['is_heter_ps_mode'])  # async、sync 等各种模式
+
         dummys = []
-        for merged_name, send in send_ctx.items():
+        for merged_name, send in send_ctx.items():  # embedding_0.w_0@GRAD
             if send.is_sparse() and ps_mode != DistributedMode.GEO:
                 continue
+            if (not send.is_sparse()) and ps_mode == DistributedMode.GEO:
+                continue
             if send.program_id() != id(attrs['loss'].block.program):
+                continue
+            if len(send.remote_sparse_ids()) > 0:
                 continue
             is_sparse = 1 if send.is_sparse() else 0
             is_sparse = 2 if send.is_distributed() else is_sparse
@@ -150,7 +153,7 @@ class DistributedOpsPass(PassBase):
             print('ShowClickEntry not configured, will not use')
             show = _program.global_block().create_var(
                 name="show",
-                dtype=core.VarDesc.VarType.INT64,
+                dtype=core.VarDesc.VarType.FP32,
                 persistable=False,
                 stop_gradient=True)
             _program.global_block()._insert_op(index=0,
@@ -165,7 +168,7 @@ class DistributedOpsPass(PassBase):
 
             clk = _program.global_block().create_var(
                 name="clk",
-                dtype=core.VarDesc.VarType.INT64,
+                dtype=core.VarDesc.VarType.FP32,
                 persistable=False,
                 stop_gradient=True)
             _program.global_block()._insert_op(index=0,
@@ -190,6 +193,9 @@ class DistributedOpsPass(PassBase):
             padding_idx = ops[0].attr("padding_idx")
             is_distributed = ops[0].attr("is_distributed")
             op_type = ops[0].type
+
+            slots = [op.attr("slot") for op in ops]
+            print('debug zcb slots: ', slots)
             outputs = [
                 _program.global_block().vars[op.input("Out@GRAD")[0]]
                 for op in ops
@@ -204,7 +210,7 @@ class DistributedOpsPass(PassBase):
                                                   'W': w,
                                                   "Outputs": outputs,
                                                   "Shows": show,
-                                                  "Clicks": clk
+                                                  "Clicks": clk,
                                               },
                                               outputs={"Outputs": outputs},
                                               attrs={
@@ -213,7 +219,8 @@ class DistributedOpsPass(PassBase):
                                                   "padding_idx": padding_idx,
                                                   "table_id": table_id,
                                                   "size": self.emb_size[param],
-                                                  "use_cvm_op": use_cvm_op
+                                                  "use_cvm_op": use_cvm_op,
+                                                  "slots": slots
                                               })
 
     def _pull_sparse_fuse(self, _program, pull_sparse_ops, attrs, send_ctx):
@@ -466,6 +473,8 @@ class DistributedOpsPass(PassBase):
                 if attrs['is_heter_ps_mode'] and not attrs['is_fl_ps_mode']:
                     # TODO: trick for matchnet, need to modify for heter_ps
                     param_name += op.input("Ids")[0][0]
+                if param_name in attrs['local_sparse']:  # for recall/ncf model
+                    continue
                 ops = pull_sparse_ops.get(param_name, [])
                 ops.append(op)
                 pull_sparse_ops[param_name] = ops
@@ -510,24 +519,37 @@ class DeleteOptimizesPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _delete_optimizer_op_and_vars(self, _program, optimize_ops):
-        optimize_vars = []
-        optimize_op_role_vars = []
+    def _delete_optimizer_op_and_vars(self, _program, remote_optimize_ops,
+                                      local_optimize_ops):
+        local_optimize_vars = []
+        remote_optimize_vars = []
+        remote_optimize_op_role_vars = []
         optimize_need_delete_vars = []
 
-        for op in optimize_ops:
-            optimize_vars.extend(op.input_arg_names)
-            optimize_op_role_vars.extend(op.attr("op_role_var"))
+        for op in local_optimize_ops:
+            local_optimize_vars.extend(op.input_arg_names)
 
-        optimize_vars = list(set(optimize_vars))
-        optimize_op_role_vars = list(set(optimize_op_role_vars))
+        for op in remote_optimize_ops:
+            remote_optimize_vars.extend(op.input_arg_names)
+            remote_optimize_op_role_vars.extend(op.attr("op_role_var"))
 
-        for var in optimize_vars:
-            if var not in optimize_op_role_vars:
+        remote_optimize_vars = list(
+            set(remote_optimize_vars
+                ))  # param + grad + optimizer_state + learning_rate
+        remote_optimize_op_role_vars = list(
+            set(remote_optimize_op_role_vars))  # param + grad
+        print(
+            "remote_optimize_vars: {}, remote_optimize_op_role_vars: {}, local_optimize_vars: {}"
+            .format(remote_optimize_vars, remote_optimize_op_role_vars,
+                    local_optimize_vars))
+        for var in remote_optimize_vars:
+            if var in local_optimize_vars:
+                continue
+            if var not in remote_optimize_op_role_vars:
                 optimize_need_delete_vars.append(var)
         need_delete_optimize_vars = list(set(optimize_need_delete_vars))
 
-        delete_ops(_program.global_block(), optimize_ops)
+        delete_ops(_program.global_block(), remote_optimize_ops)
         for var in need_delete_optimize_vars:
             if _program.global_block().has_var(var):
                 _program.global_block()._remove_var(var)
@@ -545,10 +567,15 @@ class DeleteOptimizesPass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        optimizer_ops = get_optimize_ops(main_program)
+        all_optimize_ops = get_optimize_ops(main_program)
+        remote_optimize_ops = get_optimize_ops(main_program,
+                                               attrs['remote_sparse'])
         lr_ops = get_lr_ops(main_program)
-        optimizer_ops.extend(lr_ops)
-        self._delete_optimizer_op_and_vars(main_program, optimizer_ops)
+        remote_optimize_ops.extend(lr_ops)
+        local_optimize_ops = list(
+            set(all_optimize_ops) - set(remote_optimize_ops))
+        self._delete_optimizer_op_and_vars(main_program, remote_optimize_ops,
+                                           local_optimize_ops)
 
         if hasattr(attrs['origin_main_program'], 'lr_sheduler'):
             self._add_lr_var(main_program, attrs)
@@ -568,18 +595,29 @@ class DeleteExtraOptimizerPass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        optimize_vars = []
-        optimize_op_role_vars = []
+        remote_optimize_vars = []
+        remote_optimize_op_role_vars = []
         optimize_need_delete_vars = []
+        all_optimize_ops = get_optimize_ops(main_program)
+        remote_optimize_ops = get_optimize_ops(main_program,
+                                               attrs['remote_sparse'])
+        local_optimize_ops = list(
+            set(all_optimize_ops) - set(remote_optimize_ops))
 
-        for op in get_optimize_ops(main_program):
-            optimize_vars.extend(op.input_arg_names)
-            optimize_op_role_vars.extend(op.attr("op_role_var"))
+        local_optimize_vars = []
+        for op in local_optimize_ops:
+            local_optimize_vars.extend(op.input_arg_names)
 
-        optimize_vars = list(set(optimize_vars))
-        optimize_op_role_vars = list(set(optimize_op_role_vars))
-        for var in optimize_vars:
-            if var not in optimize_op_role_vars:
+        for op in remote_optimize_ops:
+            remote_optimize_vars.extend(op.input_arg_names)
+            remote_optimize_op_role_vars.extend(op.attr("op_role_var"))
+
+        remote_optimize_vars = list(set(remote_optimize_vars))
+        remote_optimize_op_role_vars = list(set(remote_optimize_op_role_vars))
+        for var in remote_optimize_vars:
+            if var in local_optimize_vars:
+                continue
+            if var not in remote_optimize_op_role_vars:
                 optimize_need_delete_vars.append(var)
         need_delete_optimize_vars = list(set(optimize_need_delete_vars))
 
@@ -616,12 +654,16 @@ class FakeInitOpsPass(PassBase):
                                                 False)
         return list(set(dist_varnames + sparse_varnames))
 
-    def _fake_init_sparsetable(self, program, sparse_table_names):
+    def _fake_init_sparsetable(self, startup_program, sparse_table_names,
+                               attrs):
         # delete table init op
         for table_name in sparse_table_names:
-            table_var = program.global_block().vars[table_name]
+            table_var = startup_program.global_block().vars[table_name]
+            if str(table_var).split(
+                    ":")[0].strip().split()[-1] in attrs['local_sparse']:
+                continue
             table_param_init_op = []
-            for op in program.global_block().ops:
+            for op in startup_program.global_block().ops:
                 if table_name in op.output_arg_names:
                     table_param_init_op.append(op)
             init_op_num = len(table_param_init_op)
@@ -629,17 +671,17 @@ class FakeInitOpsPass(PassBase):
                 raise ValueError("table init op num should be 1, now is " +
                                  str(init_op_num))
             table_init_op = table_param_init_op[0]
-            program.global_block().append_op(
+            startup_program.global_block().append_op(
                 type="fake_init",
                 inputs={},
                 outputs={"Out": table_var},
                 attrs={"shape": table_init_op.attr('shape')})
-            delete_ops(program.global_block(), table_param_init_op)
+            delete_ops(startup_program.global_block(), table_param_init_op)
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
         sparse_tables = self._get_sparse_table_names(attrs)
-        self._fake_init_sparsetable(startup_program, sparse_tables)
+        self._fake_init_sparsetable(startup_program, sparse_tables, attrs)
 
 
 @register_pass("ps_gpu_pass")
@@ -1098,7 +1140,7 @@ class SplitTrainerOpsPass(PassBase):
         split cpu-trainer program from origin-program
         1. find heter op (located on different device)
         2. find input&output of every heter-block
-        3. create cpu-trainer program, add send&recv op 
+        3. create cpu-trainer program, add send&recv op
         """
         attrs = pass_ctx._attrs
         default_device_ = 'cpu'

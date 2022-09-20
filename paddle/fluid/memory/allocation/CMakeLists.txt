@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(ALLOCATOR_DEPS place stats profiler)
+set(ALLOCATOR_DEPS place stats profiler phi_backends device_context)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
@@ -54,7 +54,6 @@ endif()
 
 if(WITH_CUSTOM_DEVICE)
   list(APPEND ALLOCATOR_SRCS custom_allocator.cc)
-  list(APPEND ALLOCATOR_DEPS device_manager)
 endif()
 
 if(WITH_XPU)
@@ -171,7 +170,7 @@ if(WITH_TESTING)
   if(NOT WIN32)
     add_custom_target(
       download_data
-      COMMAND wget -nc
+      COMMAND wget -nc --no-check-certificate
               https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar
       COMMAND tar -xf buddy_allocator_test_data.tar)
     add_dependencies(buddy_allocator_test download_data)

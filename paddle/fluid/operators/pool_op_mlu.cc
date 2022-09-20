@@ -100,6 +100,25 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
     cnnlPoolingMode_t pool_mode =
         ToCnnlPoolingMode(pooling_type, exclusive, adaptive);
 
+    // transpose NCHW to NHWC since cnnl pool2d has worse performance in that
+    // layout.
+    framework::Tensor trans_in_x;
+    framework::Tensor trans_out;
+    if (channel_last) {
+      trans_in_x = *in_x;
+      trans_out = *out;
+    } else {
+      std::vector<int> perm{0, 2, 3, 1};
+      TransposeFromMLUTensor<T>(
+          ctx, perm, in_x, &trans_in_x, true /*need_reshape_or_alloc*/);
+      trans_out = ctx.AllocateTmpTensor<T, MLUDeviceContext>(
+          {out_dims[0], out_dims[2], out_dims[3], out_dims[1]}, dev_ctx);
+    }
+    MLUCnnlTensorDesc trans_in_x_desc(
+        trans_in_x, CNNL_LAYOUT_NHWC, ToCnnlDataType<T>());
+    MLUCnnlTensorDesc trans_out_desc(
+        trans_out, CNNL_LAYOUT_NHWC, ToCnnlDataType<T>());
+
     if (!adaptive) {
       MLUCnnlPoolingDesc pool_desc(pool_mode,
                                    CNNL_NOT_PROPAGATE_NAN,
@@ -122,14 +141,13 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
           handle, pool_mode, out_w, out_h, &extra_input_size);
 
       if (extra_input_size > 0) {
-        phi::CPUContext cpu_ctx;
-        framework::Tensor extra_host_tensor =
-            ctx.AllocateTmpTensor<int8_t, phi::CPUContext>(
-                {static_cast<int64_t>(extra_input_size)}, cpu_ctx);
+        framework::Tensor extra_host_tensor;
+        extra_host_tensor.mutable_data<int8_t>(
+            {static_cast<int64_t>(extra_input_size)}, platform::CPUPlace());
         cnnlInitPoolingExtraInput(handle,
                                   pool_desc.get(),
-                                  in_x_desc.get(),
-                                  out_desc.get(),
+                                  trans_in_x_desc.get(),
+                                  trans_out_desc.get(),
                                   GetBasePtr(&extra_host_tensor));
         framework::Tensor extra_device_tensor =
             ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
@@ -151,12 +169,12 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
             out_w,
             pool_desc.get(),
             nullptr /*alpha*/,
-            in_x_desc.get(),
-            GetBasePtr(in_x),
+            trans_in_x_desc.get(),
+            GetBasePtr(&trans_in_x),
             nullptr /*beta*/,
             GetBasePtr(&extra_device_tensor) /*params_shape_ptr*/,
-            out_desc.get(),
-            GetBasePtr(out));
+            trans_out_desc.get(),
+            GetBasePtr(&trans_out));
       } else {
         MLUCnnl::PoolingForward(ctx,
                                 pool_mode,
@@ -164,31 +182,14 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
                                 out_w,
                                 pool_desc.get(),
                                 nullptr /*alpha*/,
-                                in_x_desc.get(),
-                                GetBasePtr(in_x),
+                                trans_in_x_desc.get(),
+                                GetBasePtr(&trans_in_x),
                                 nullptr /*beta*/,
                                 nullptr /*params_shape_ptr*/,
-                                out_desc.get(),
-                                GetBasePtr(out));
+                                trans_out_desc.get(),
+                                GetBasePtr(&trans_out));
       }
     } else {
-      // cnnl Adaptive pooling only support NHWC layout
-      framework::Tensor trans_in_x;
-      framework::Tensor trans_out;
-      if (channel_last) {
-        trans_in_x = *in_x;
-        trans_out = *out;
-      } else {
-        std::vector<int> perm{0, 2, 3, 1};
-        TransposeFromMLUTensor<T>(
-            ctx, perm, in_x, &trans_in_x, true /*need_reshape_or_alloc*/);
-        trans_out = ctx.AllocateTmpTensor<T, MLUDeviceContext>(
-            {out_dims[0], out_dims[2], out_dims[3], out_dims[1]}, dev_ctx);
-      }
-      MLUCnnlTensorDesc trans_in_x_desc(
-          trans_in_x, CNNL_LAYOUT_NHWC, ToCnnlDataType<T>());
-      MLUCnnlTensorDesc trans_out_desc(
-          trans_out, CNNL_LAYOUT_NHWC, ToCnnlDataType<T>());
       MLUCnnl::AdaptivePoolingForward(ctx,
                                       pool_mode,
                                       trans_in_x_desc.get(),
@@ -197,11 +198,11 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
                                       GetBasePtr(&trans_out),
                                       nullptr,
                                       nullptr);
-      if (!channel_last) {
-        std::vector<int> perm{0, 3, 1, 2};
-        TransposeFromMLUTensor<T>(
-            ctx, perm, &trans_out, out, false /*need_reshape_or_alloc*/);
-      }
+    }
+    if (!channel_last) {
+      std::vector<int> perm{0, 3, 1, 2};
+      TransposeFromMLUTensor<T>(
+          ctx, perm, &trans_out, out, false /*need_reshape_or_alloc*/);
     }
   }
 };

@@ -29,7 +29,7 @@ template <typename DeviceContext, typename T>
 class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
@@ -46,7 +46,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
              << " , activation = " << activation;
     bool enable_auxiliary = reserve_space == nullptr ? false : true;
 
-    out->mutable_data<T>(ctx.GetPlace());
+    dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     auto* out_data = out->data<T>();
 
     auto x_mat_dims =
@@ -110,8 +110,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
       } else {
         reserve_space_size = phi::product(out->dims()) * sizeof(T);
       }
-      reserve_space->mutable_data(
-          ctx.GetPlace(), out->type(), reserve_space_size);
+      dev_ctx.Alloc(reserve_space, out->type(), reserve_space_size);
       void* aux_data = reinterpret_cast<void*>(reserve_space->data<T>());
 
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -150,8 +149,10 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     cudaStream_t stream = dev_ctx.stream();
-    memory::allocation::AllocationPtr workspace =
-        memory::Alloc(dev_ctx, workspace_size);
+    memory::allocation::AllocationPtr workspace = memory::Alloc(
+        dev_ctx.GetPlace(),
+        workspace_size,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
     double alpha64 = 1.0, beta64 = 0.0;
     float alpha32 = 1.0f, beta32 = 0.0f;
@@ -320,7 +321,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
   template <bool TransX, bool TransY>
   static void ComputeImpl(const framework::ExecutionContext& ctx) {
     using Trait = FusedGEMMGradTrait<TransX, TransY>;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     const Tensor* dout = ctx.Input<Tensor>("DOut");
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
@@ -486,9 +487,12 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
                 sizeof(aux_ld)));
       }
 
-      auto dx_workspace = memory::Alloc(dev_ctx, workspace_size);
+      auto dx_workspace = memory::Alloc(
+          dev_ctx.GetPlace(),
+          workspace_size,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
-      auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+      auto* dx_data = dev_ctx.Alloc<T>(dx, dx->numel() * sizeof(T));
       const auto* y_data = y->data<T>();
       const auto* dout_data = dout->data<T>();
       const auto* a_data = kXGradAIsDZ ? dout_data : y_data;
@@ -596,7 +600,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
               sizeof(epiloque_func_for_dy)));
 
       if (dbias) {
-        auto* dbias_data = dbias->mutable_data<T>(ctx.GetPlace());
+        auto* dbias_data = dev_ctx.Alloc<T>(dbias, dbias->numel() * sizeof(T));
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cublasLtMatmulDescSetAttribute(
                 dy_operation_desc,
@@ -605,8 +609,11 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
                 sizeof(dbias_data)));
       }
 
-      auto dy_workspace = memory::Alloc(dev_ctx, workspace_size);
-      auto* dy_data = dy->mutable_data<T>(ctx.GetPlace());
+      auto dy_workspace = memory::Alloc(
+          dev_ctx.GetPlace(),
+          workspace_size,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+      auto* dy_data = dev_ctx.Alloc<T>(dy, dy->numel() * sizeof(T));
       const auto* dout_data = dout->data<T>();
       const auto* x_data = x->data<T>();
       const auto* a_data = kYGradAIsDZ ? dout_data : x_data;
@@ -677,17 +684,14 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue,
-    ops::FusedGemmEpilogueKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FusedGemmEpilogueKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FusedGemmEpilogueKernel<paddle::platform::CUDADeviceContext,
-                                 paddle::platform::float16>);
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, float>,
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, double>,
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue_grad,
-    ops::FusedGemmEpilogueGradKernel<paddle::platform::CUDADeviceContext,
-                                     float>,
-    ops::FusedGemmEpilogueGradKernel<paddle::platform::CUDADeviceContext,
-                                     double>,
-    ops::FusedGemmEpilogueGradKernel<paddle::platform::CUDADeviceContext,
+    ops::FusedGemmEpilogueGradKernel<phi::GPUContext, float>,
+    ops::FusedGemmEpilogueGradKernel<phi::GPUContext, double>,
+    ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
                                      paddle::platform::float16>);
 #endif

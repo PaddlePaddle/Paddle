@@ -41,7 +41,9 @@ class TestOptimizerForVarBase(unittest.TestCase):
         z.backward()
         opt.step()
 
-        self.assertTrue(np.allclose(x.numpy(), np.full([2, 3], -self.lr)))
+        np.testing.assert_allclose(x.numpy(),
+                                   np.full([2, 3], -self.lr),
+                                   rtol=1e-05)
 
     def run_optimizer_minimize_with_varbase_list_input(self, optimizer):
         x = paddle.zeros([2, 3])
@@ -55,7 +57,9 @@ class TestOptimizerForVarBase(unittest.TestCase):
         z.backward()
         opt.minimize(z)
 
-        self.assertTrue(np.allclose(x.numpy(), np.full([2, 3], -self.lr)))
+        np.testing.assert_allclose(x.numpy(),
+                                   np.full([2, 3], -self.lr),
+                                   rtol=1e-05)
 
     def func_test_adam_with_varbase_list_input(self):
         self.run_optimizer_step_with_varbase_list_input(optimizer.Adam)

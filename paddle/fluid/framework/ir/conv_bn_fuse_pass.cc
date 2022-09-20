@@ -17,8 +17,13 @@
 #include <string>
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace phi {
 class DenseTensor;
@@ -29,6 +34,23 @@ namespace framework {
 class Scope;
 }  // namespace framework
 }  // namespace paddle
+
+namespace {
+template <typename T1, typename T2>
+void ConvertTensorType(paddle::framework::LoDTensor* tensor) {
+  paddle::framework::Tensor tmp_tensor;
+  tmp_tensor.set_type(paddle::experimental::CppTypeToDataType<T2>::Type());
+  tmp_tensor.Resize(tensor->dims());
+  auto* tmp_data = tmp_tensor.mutable_data<T2>(paddle::platform::CPUPlace());
+  auto* data = tensor->mutable_data<T1>(paddle::platform::CPUPlace());
+  for (int i = 0; i < tensor->numel(); i++) {
+    tmp_data[i] = static_cast<T2>(data[i]);
+  }
+  tensor->clear();
+  paddle::framework::TensorCopySync(
+      tmp_tensor, paddle::platform::CPUPlace(), tensor);
+}
+}  // namespace
 
 namespace paddle {
 namespace framework {
@@ -284,6 +306,15 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
+    // conv_weight fp32 --> fp16
+    auto* conv_weight_tensor =
+        scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
+    auto tensor_type = conv_weight_tensor->dtype();
+
+    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+      ConvertTensorType<float16, float>(conv_weight_tensor);
+    }
+
     // Get batch norm bias
     auto* bn_bias_tensor =
         scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
@@ -318,6 +349,11 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                eltwise_y_in_tensor,
                                epsilon,
                                conv_type());
+
+    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+      ConvertTensorType<float, float16>(conv_weight_tensor);
+      ConvertTensorType<float, float16>(eltwise_y_in_tensor);
+    }
 
     // with MKL-DNN fuse conv+bn into conv with bias
     // without MKL-DNN fuse conv+bn into conv+elementwise_add
@@ -554,6 +590,16 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
     float epsilon =
         PADDLE_GET_CONST(float, batch_norm->Op()->GetAttr("epsilon"));
 
+    // conv_weight fp16 --> fp32
+    auto* conv_weight_tensor =
+        scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
+    auto tensor_type = conv_weight_tensor->dtype();
+
+    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+      ConvertTensorType<float16, float>(conv_weight_tensor);
+      ConvertTensorType<float16, float>(eltwise_y_in_tensor);
+    }
+
     // if bias is an input to other ops as well then we cannot overwrite it
     // so we create separate elementwise Y in nodes
     if (eltwise_y_in->outputs.size() > 1) {
@@ -606,6 +652,11 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                  eltwise_y_in_tensor,
                                  epsilon,
                                  conv_type());
+    }
+
+    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+      ConvertTensorType<float, float16>(conv_weight_tensor);
+      ConvertTensorType<float, float16>(eltwise_y_in_tensor);
     }
 
     // Update the elementwise_add node

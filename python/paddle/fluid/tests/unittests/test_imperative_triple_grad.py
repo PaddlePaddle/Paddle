@@ -78,37 +78,34 @@ class TestDygraphTripleGradMatmul(TestCase):
             new_a.backward()
 
             out_ref = np.ones([3, 3]) * 12.0
-            self.assertTrue(np.array_equal(out.numpy(), out_ref))
+            np.testing.assert_array_equal(out.numpy(), out_ref)
 
             new_x_g_ref = np.ones([3, 3]) * 6.0
             new_y_g_ref = np.ones([3, 3]) * 6.0
-            self.assertTrue(np.array_equal(new_x_g.numpy(), new_x_g_ref))
-            self.assertTrue(np.array_equal(new_y_g.numpy(), new_y_g_ref))
+            np.testing.assert_array_equal(new_x_g.numpy(), new_x_g_ref)
+            np.testing.assert_array_equal(new_y_g.numpy(), new_y_g_ref)
 
             new_a_ref = np.ones([3, 3]) * 3.0
             new_b_ref = np.ones([3, 3]) * 3.0
             new_c_ref = np.ones([3, 3]) * 12.0
 
-            self.assertTrue(np.array_equal(new_a.numpy(), new_a_ref))
-            self.assertTrue(np.array_equal(new_b.numpy(), new_b_ref))
-            self.assertTrue(np.array_equal(new_c.numpy(), new_c_ref))
+            np.testing.assert_array_equal(new_a.numpy(), new_a_ref)
+            np.testing.assert_array_equal(new_b.numpy(), new_b_ref)
+            np.testing.assert_array_equal(new_c.numpy(), new_c_ref)
 
             x_grad_ref = np.ones([3, 3]) * 0.0
-            self.assertTrue(np.array_equal(x.grad.numpy(), x_grad_ref))
+            np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
 
             y_grad_ref = np.ones([3, 3]) * 0.0
-            self.assertTrue(np.array_equal(y.grad.numpy(), y_grad_ref))
+            np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
 
             new_out_g_ref = np.ones([3, 3]) * 3.0
-            self.assertTrue(
-                np.array_equal(new_out_g.grad.numpy(), new_out_g_ref))
+            np.testing.assert_array_equal(new_out_g.grad.numpy(), new_out_g_ref)
 
             new_x_g_g_ref = np.ones([3, 3]) * 0.0
             new_y_g_g_ref = np.ones([3, 3]) * 3.0
-            self.assertTrue(
-                np.array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref))
-            self.assertTrue(
-                np.array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref))
+            np.testing.assert_array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref)
+            np.testing.assert_array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref)
 
 
 class TestDygraphTripleGrad(TestCase):
@@ -187,7 +184,7 @@ class TestDygraphTripleGrad(TestCase):
         dout = np.ones(self.shape).astype('float32')
         dx_expected = np.matmul(dout * out_np * (1 - out_np),
                                 np.transpose(y_np))
-        self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
+        np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
         ddx_actual, = self.grad([dx_actual], [x], create_graph=True)
         # Theoritical result based on math calculation
@@ -200,7 +197,7 @@ class TestDygraphTripleGrad(TestCase):
             1 - 2 * out_np) * dout * double_grad_tmp2 * out_np * (1 - out_np)
         ddx_expected = double_grad_tmp1 + np.matmul(double_grad_tmp3,
                                                     np.transpose(y_np))
-        self.assertTrue(np.allclose(ddx_actual.numpy(), ddx_expected))
+        np.testing.assert_allclose(ddx_actual.numpy(), ddx_expected, rtol=1e-05)
 
         # Theoritical result based on math calculation
         d_ddout = np.zeros(self.shape).astype('float32')
@@ -213,7 +210,7 @@ class TestDygraphTripleGrad(TestCase):
 
         ddx_actual.backward()
         dddx_grad_actual = x.gradient()
-        self.assertTrue(np.allclose(dddx_grad_actual, dddx_expected))
+        np.testing.assert_allclose(dddx_grad_actual, dddx_expected, rtol=1e-05)
 
     def test_all_cases(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -273,7 +270,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         dout = np.ones(self.x_shape).astype('float32')
         dx_expected = np.matmul(dout * out_np * (1 - out_np),
                                 np.transpose(y_np, axes=(0, 2, 1)))
-        self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
+        np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
         ddx_actual, = self.grad([dx_actual], [x], create_graph=True)
         # Theoritical result based on math calculation
@@ -286,7 +283,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
             1 - 2 * out_np) * dout * double_grad_tmp2 * out_np * (1 - out_np)
         ddx_expected = double_grad_tmp1 + np.matmul(
             double_grad_tmp3, np.transpose(y_np, axes=(0, 2, 1)))
-        self.assertTrue(np.allclose(ddx_actual.numpy(), ddx_expected))
+        np.testing.assert_allclose(ddx_actual.numpy(), ddx_expected, rtol=1e-05)
 
         # Theoritical result based on math calculation
         d_ddout = np.zeros(self.x_shape).astype('float32')
@@ -299,7 +296,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
 
         ddx_actual.backward()
         dddx_grad_actual = x.gradient()
-        self.assertTrue(np.allclose(dddx_grad_actual, dddx_expected))
+        np.testing.assert_allclose(dddx_grad_actual, dddx_expected, rtol=1e-05)
 
     def test_all_cases(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})

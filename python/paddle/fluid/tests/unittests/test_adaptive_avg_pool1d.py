@@ -91,17 +91,17 @@ class TestPool1D_API(unittest.TestCase):
                                                  paddings=[0],
                                                  adaptive=True)
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             ada_max_pool1d_dg = paddle.nn.layer.AdaptiveAvgPool1D(
                 output_size=16)
             result = ada_max_pool1d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             result = paddle.nn.functional.common.interpolate(input,
                                                              mode="area",
                                                              size=16)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_adaptive_avg_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -119,7 +119,7 @@ class TestPool1D_API(unittest.TestCase):
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], result_np))
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def test_adaptive_avg_pool1d(self):
         for place in self.places:

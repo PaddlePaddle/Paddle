@@ -34,7 +34,7 @@ It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 from . import core
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
-__all__ = ['Communicator', 'LargeScaleKV']
+__all__ = ['Communicator', 'FLCommunicator', 'LargeScaleKV']
 
 
 class Communicator(object):
@@ -206,6 +206,37 @@ class Communicator(object):
         if table_id == -1:
             table_id = self.send_ctx_[var_name].table_id()
         self.communicator_.push_sparse_param(var_name, table_id, scope)
+
+
+class FLCommunicator(Communicator):  ## only for coordinator
+
+    def __init__(self, ps_hosts, kwargs=None):
+        mode = None
+        super(FLCommunicator, self).__init__(mode, kwargs)
+        send_ctx = {}
+        dense_map = {}
+        prototxt = ""
+        self.mode = "WITH_COORDINATOR"
+        self.init_with_ctx(send_ctx, dense_map, prototxt, ps_hosts)
+
+    def start_coordinator(self, self_endpoint, trainer_endpoints):
+        if self.communicator_ != None:
+            self.communicator_.start_coordinator(self_endpoint,
+                                                 trainer_endpoints)
+        return
+
+    def save_fl_strategy(self, mp):
+        if self.communicator_ != None:
+            self.communicator_.save_fl_strategy(mp)
+        else:
+            raise ValueError("self.communicator_ is null")
+        return
+
+    def query_fl_clients_info(self):
+        info_mp = {}
+        if self.communicator_ != None:
+            info_mp = self.communicator_.query_fl_clients_info()
+        return info_mp
 
 
 class LargeScaleKV(object):

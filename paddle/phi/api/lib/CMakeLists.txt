@@ -4,26 +4,26 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
 
 # forward api file
 set(api_gen_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_gen.py)
-set(api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/api.yaml)
+set(api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/ops.yaml)
 set(legacy_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_ops.yaml)
 set(api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/api.h)
 set(api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
@@ -55,7 +55,7 @@ set(dygraph_api_source_file_tmp ${dygraph_api_source_file}.tmp)
 set(sparse_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/sparse_api_gen.py)
 set(sparse_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_ops.yaml)
 set(sparse_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/sparse_api.h)
 set(sparse_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_api.cc)
@@ -66,7 +66,7 @@ set(sparse_api_source_file_tmp ${sparse_api_source_file}.tmp)
 set(sparse_bw_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/sparse_bw_api_gen.py)
 set(sparse_bw_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_bw_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_backward.yaml)
 set(sparse_bw_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/sparse_bw_api.h)
 set(sparse_bw_api_source_file
@@ -78,7 +78,7 @@ set(sparse_bw_api_source_file_tmp ${sparse_bw_api_source_file}.tmp)
 set(strings_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/strings_api_gen.py)
 set(strings_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/strings_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/strings_ops.yaml)
 set(strings_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/strings_api.h)
 set(strings_api_source_file
@@ -97,10 +97,9 @@ set(wrapped_infermeta_source_file
 # op extra info file
 set(ops_extra_info_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/ops_extra_info_gen.py)
-set(api_compat_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/api_compat.yaml)
+set(op_compat_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 set(ops_extra_info_file
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.h)
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.cc)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -130,10 +129,10 @@ message(
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_api_dir}
-  COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./api.yaml
+  COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./ops.yaml
           --output_path ./parsed_apis/api.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
-          ./legacy_api.yaml --output_path ./parsed_apis/legacy_api.parsed.yaml
+          ./legacy_ops.yaml --output_path ./parsed_apis/legacy_api.parsed.yaml
   COMMAND
     ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./backward.yaml
     --output_path ./parsed_apis/backward_api.parsed.yaml --backward
@@ -175,7 +174,7 @@ execute_process(
     ${PYTHON_EXECUTABLE} generator/generate_op.py --api_yaml_path
     ./parsed_apis/api.parsed.yaml --backward_api_yaml_path
     ./parsed_apis/backward_api.parsed.yaml --api_version_yaml_path
-    api_version.yaml --api_compat_yaml_path api_compat.yaml --output_op_path
+    op_version.yaml --op_compat_yaml_path op_compat.yaml --output_op_path
     "${generated_op_path}.tmp" --output_arg_map_path
     "${generated_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
@@ -221,9 +220,8 @@ endif()
 
 # generate ops extra info
 execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${ops_extra_info_gen_file} --api_compat_yaml_path
-    ${api_compat_yaml_file} --ops_extra_info_path ${ops_extra_info_file})
+  COMMAND ${PYTHON_EXECUTABLE} ${ops_extra_info_gen_file} --op_compat_yaml_path
+          ${op_compat_yaml_file} --ops_extra_info_path ${ops_extra_info_file})
 message("generate ${ops_extra_info_file}")
 
 # generate forward api
@@ -325,8 +323,8 @@ add_custom_command(
           ${dygraph_api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_source_file_tmp}
           ${dygraph_api_source_file}
-  DEPENDS ${api_yaml_file} ${sparse_api_yaml_file} ${im_api_gen_file}
-          ${api_gen_base} ${api_gen_file}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${sparse_api_yaml_file}
+          ${im_api_gen_file} ${api_gen_base} ${api_gen_file}
   VERBATIM)
 
 # generate wrapped infermeta
@@ -337,7 +335,8 @@ add_custom_command(
     ${api_yaml_file} ${legacy_api_yaml_file} --wrapped_infermeta_header_path
     ${wrapped_infermeta_header_file} --wrapped_infermeta_source_path
     ${wrapped_infermeta_source_file}
-  DEPENDS ${api_yaml_file} ${wrapped_infermeta_gen_file} ${api_gen_base}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${wrapped_infermeta_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 cc_library(
@@ -351,12 +350,12 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_context phi_enforce place init)
+  DEPS phi_backends phi_enforce place init)
 
 cc_library(
   kernel_dispatch
   SRCS kernel_dispatch.cc
-  DEPS phi_tensor_raw phi_context kernel_factory context_pool)
+  DEPS phi_tensor_raw phi_backends kernel_factory context_pool)
 cc_library(
   api_gen_utils
   SRCS api_gen_utils.cc
@@ -372,12 +371,6 @@ cc_library(
   DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta
        phi_data_transform)
 cc_library(
-  sparse_api_custom_impl
-  SRCS sparse_api_custom_impl.cc
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform
-       tensor_copy)
-
-cc_library(
   phi_function_api
   SRCS ${api_source_file}
   DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform
@@ -390,6 +383,7 @@ cc_library(
        kernel_dispatch
        api_gen_utils
        backward_infermeta
+       sparse_backward_infermeta
        phi_data_transform
        phi_function_api
        api_custom_impl
@@ -397,12 +391,12 @@ cc_library(
 cc_library(
   sparse_api
   SRCS ${sparse_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api_custom_impl)
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
 cc_library(
   sparse_bw_api
   SRCS ${sparse_bw_api_source_file}
   DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api
-       sparse_api_custom_impl)
+       sparse_backward_infermeta)
 cc_library(
   phi_dygraph_api
   SRCS ${dygraph_api_source_file}
@@ -425,6 +419,7 @@ cc_library(
        api_gen_utils
        kernel_dispatch
        infermeta
+       sparse_infermeta
        sparse_api
        strings_api)
 cc_library(

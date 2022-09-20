@@ -34,8 +34,41 @@ class Pad3dOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+#ifdef PADDLE_WITH_MKLDNN
+    // only constant mode and non-blocked layouts are supported for oneDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+        ctx.Attr<std::string>("mode") == "constant" &&
+        ctx.Input<Tensor>("X")
+                ->mem_desc()
+                .data.format_desc.blocking.inner_nblks == 0) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_format");
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_,
+          tensor.place(),
+          framework::StringToDataLayout(data_format));
+    }
+#endif
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -80,7 +113,7 @@ class Pad3dOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("NCDHW");
     AddComment(R"DOC(
 Pad3d Operator.
-Pad 3-d images according to 'paddings' and 'mode'. 
+Pad 3-d images according to 'paddings' and 'mode'.
 If mode is 'reflect', paddings[0] and paddings[1] must be no greater
 than width-1. The height and depth dimension have the same condition.
 

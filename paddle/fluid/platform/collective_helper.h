@@ -51,7 +51,6 @@ namespace platform {
 //
 // The NCCLComm instance is created and reversed in the NCCLCommContext
 // singleton with a global user specified group id.
-class CUDADeviceContext;
 
 class NCCLComm {
  public:
@@ -63,7 +62,7 @@ class NCCLComm {
   virtual gpuStream_t stream() const = 0;
   virtual gpuEvent_t compute_event() const = 0;
   virtual gpuEvent_t comm_event() const = 0;
-  virtual CUDADeviceContext* dev_context() const = 0;
+  virtual phi::GPUContext* dev_context() const = 0;
   virtual ~NCCLComm() = default;
 };
 
@@ -104,6 +103,17 @@ class NCCLCommContext {
                           "One device id should be specified to retrieve from "
                           "multiple communicators."));
     return comm_map_.at(ring_id).begin()->second.get();
+  }
+
+  int GetRingId(ncclComm_t comm) const {
+    for (const auto& pair : comm_map_) {
+      for (const auto& p : pair.second) {
+        if (p.second.get()->comm() == comm) {
+          return pair.first;
+        }
+      }
+    }
+    return -1;
   }
 
   // retrieve a communicator by the ring id and the device id

@@ -59,7 +59,7 @@ class MobileNetV1(nn.Layer):
 
     Args:
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
-        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
@@ -222,7 +222,7 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
     """MobileNetV1 from
     `"MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications" <https://arxiv.org/abs/1704.04861>`_.
-    
+
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.

@@ -19,6 +19,8 @@ from ..framework import core
 from ..framework import convert_np_dtype_to_dtype_
 from ..static import Variable
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.framework import in_dygraph_mode
+from .. import _C_ops, _legacy_C_ops
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -54,7 +56,6 @@ __unary_func__ = [
     'round',
     'reciprocal',
     'square',
-    'lgamma',
     'acosh',
     'asinh',
     'atanh',
@@ -217,7 +218,7 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.tanhshrink(x) 
+        out = F.tanhshrink(x)
         print(out)
         # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
 
@@ -476,20 +477,6 @@ Examples:
 """)
 
 add_sample_code(
-    globals()["lgamma"], r"""
-Examples:
-    .. code-block:: python
-
-        import paddle
-
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.lgamma(x)
-        print(out)
-        # [1.31452441, 1.76149750, 2.25271273, 1.09579802]
-
-""")
-
-add_sample_code(
     globals()["softplus"], r"""
 Examples:
     .. code-block:: python
@@ -498,7 +485,7 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softplus(x) 
+        out = F.softplus(x)
         print(out)
         # [0.513015, 0.598139, 0.744397, 0.854355]
 
@@ -513,7 +500,7 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softsign(x) 
+        out = F.softsign(x)
         print(out)
         # [-0.285714, -0.166667, 0.0909091, 0.230769]
 
@@ -525,6 +512,9 @@ _erf_ = generate_layer_fn('erf')
 
 
 def erf(x, name=None):
+    if in_dygraph_mode():
+        return _C_ops.erf(x)
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -551,11 +541,11 @@ Returns:
     Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
-    
+
     .. code-block:: python
-    
+
         import paddle
-        
+
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.erf(x)
         print(out)

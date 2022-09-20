@@ -77,7 +77,15 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             "use_ps_gpu"]
         attrs['lr_decay_steps'] = self.user_defined_strategy.a_sync_configs[
             "lr_decay_steps"]
+        # FL
+        attrs['local_sparse'] = attrs[
+            "user_defined_strategy"].trainer_desc_configs["local_sparse"]
+        attrs['remote_sparse'] = attrs[
+            "user_defined_strategy"].trainer_desc_configs["remote_sparse"]
         attrs['is_fl_ps_mode'] = self.user_defined_strategy.is_fl_ps_mode
+        attrs[
+            'with_coordinator'] = self.user_defined_strategy.is_with_coordinator
+
         attrs['k_steps'] = self.user_defined_strategy.a_sync_configs["k_steps"]
         attrs['launch_barrier'] = self.user_defined_strategy.a_sync_configs[
             "launch_barrier"]

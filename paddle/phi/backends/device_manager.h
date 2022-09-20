@@ -17,14 +17,16 @@
 
 #include <unordered_map>
 
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/utils/rw_lock.h"
+
 #include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace phi {
 class Device final {
@@ -53,7 +55,8 @@ class Device final {
 
   // Event
   // ! Create an event.
-  void CreateEvent(event::Event* event, event::Event::Flag flags);
+  void CreateEvent(event::Event* event,
+                   event::Event::Flag flags = event::Event::Flag::Default);
 
   // ! Destroy an event.
   void DestroyEvent(event::Event* event);
@@ -105,6 +108,16 @@ class Device final {
   void MemoryDeallocateUnified(void* ptr, size_t size);
 
   void MemorySet(void* ptr, uint8_t value, size_t size);
+
+  // Blas
+  // ! y = alpha * x + beta * y
+  template <typename T>
+  void BlasAXPBY(const stream::Stream& stream,
+                 size_t numel,
+                 float alpha,
+                 const T* x,
+                 float beta,
+                 T* y);
 
   std::string Type();
 
@@ -194,6 +207,7 @@ class DeviceManager {
                         size_t num,
                         ccl::CCLDataType data_type,
                         ccl::CCLReduceOp reduce_op,
+                        size_t root_id,
                         const ccl::CCLComm& ccl_comm,
                         const stream::Stream& stream);
   static void CCLAllGather(const std::string& device_type,
@@ -227,6 +241,32 @@ class DeviceManager {
                       size_t src_rank,
                       const ccl::CCLComm& ccl_comm,
                       const stream::Stream& stream);
+
+  // profiler
+  static void ProfilerInitialize(
+      const std::string& dev_type,
+      paddle::platform::TraceEventCollector* collector,
+      void** context);
+  static void ProfilerFinalize(const std::string& dev_type,
+                               paddle::platform::TraceEventCollector* collector,
+                               void* context);
+  static void ProfilerPrepareTracing(
+      const std::string& dev_type,
+      paddle::platform::TraceEventCollector* collector,
+      void* context);
+  static void ProfilerStartTracing(
+      const std::string& dev_type,
+      paddle::platform::TraceEventCollector* collector,
+      void* context);
+  static void ProfilerStopTracing(
+      const std::string& dev_type,
+      paddle::platform::TraceEventCollector* collector,
+      void* context);
+  static void ProfilerCollectTraceData(
+      const std::string& dev_type,
+      paddle::platform::TraceEventCollector* collector,
+      uint64_t start_ns,
+      void* context);
 
   static void Clear();
 

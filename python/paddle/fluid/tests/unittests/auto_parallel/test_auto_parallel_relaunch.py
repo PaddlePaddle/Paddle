@@ -81,12 +81,12 @@ cluster_json = """
 mapping_josn = """
 [
   {
-    "hostname": "machine1", 
-    "addr": "127.0.0.1", 
-    "port": "768", 
-    "ranks": 
+    "hostname": "machine1",
+    "addr": "127.0.0.1",
+    "port": "768",
+    "ranks":
       {
-        "0": [1], 
+        "0": [1],
         "1": [0]
       }
   }
@@ -126,7 +126,7 @@ class TestAutoParallelReLaunch(unittest.TestCase):
             coverage_args = []
 
         cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "launch", "--log_dir", self.temp_dir.name,
+            "-m", "paddle.distributed.launch", "--log_dir", self.temp_dir.name,
             "--cluster_topo_path", cluster_json_path, "--rank_mapping_path",
             mapping_json_path, "--enable_auto_mapping", "True",
             launch_model_path

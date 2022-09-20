@@ -191,6 +191,16 @@ class CTCForward(object):
         return self.loss
 
 
+def python_api(logits,
+               label,
+               logits_length=None,
+               labels_length=None,
+               blank=0,
+               norm_by_times=False):
+    return paddle.fluid.layers.warpctc(logits, label, blank, norm_by_times,
+                                       logits_length, labels_length)
+
+
 class TestWarpCTCOp(OpTest):
 
     def config(self):
@@ -280,6 +290,8 @@ class TestWarpCTCOpWithPadding(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+        self.python_api = python_api
+        self.python_out_sig = ["Loss"]
         self.config()
 
         logits = np.random.uniform(
@@ -344,7 +356,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -387,6 +399,8 @@ class TestWarpCTCOpFp64(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+        self.python_api = python_api
+        self.python_out_sig = ["Loss"]
         self.config()
 
         logits = np.random.uniform(
@@ -451,11 +465,11 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss")
+        self.check_grad(["Logits"], "Loss", check_eager=True)
 
 
 class TestWarpCTCOpError(unittest.TestCase):
@@ -578,8 +592,11 @@ class TestCTCLossAPICase(unittest.TestCase):
         loss_np_mean = (loss_np / labels_length.numpy()).mean()
         loss_np_sum = loss_np.sum()
 
-        self.assertTrue(np.allclose(loss_pd_mean, loss_np_mean, atol=1))
-        self.assertTrue(np.allclose(loss_pd_sum, loss_np_sum, atol=1))
+        np.testing.assert_allclose(loss_pd_mean,
+                                   loss_np_mean,
+                                   rtol=1e-05,
+                                   atol=1)
+        np.testing.assert_allclose(loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1)
 
     def test_class_api(self):
         self.batch_size = 3
@@ -619,7 +636,7 @@ class TestCTCLossAPICase(unittest.TestCase):
         paddle.enable_static()
         loss_np = np.squeeze(loss_np, axis=-1)
 
-        self.assertTrue(np.allclose(loss_pd, loss_np, atol=1))
+        np.testing.assert_allclose(loss_pd, loss_np, rtol=1e-05, atol=1)
 
 
 if __name__ == "__main__":

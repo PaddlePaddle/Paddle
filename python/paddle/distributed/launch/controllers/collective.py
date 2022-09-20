@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .controller import Controller, ControleMode
+from ..context.device import DeviceType
 
 import json
 import os
@@ -33,10 +34,67 @@ class CollectiveController(Controller):
             return False
 
     def build_pod(self):
+        if self.ctx.args.master is None and self.ctx.args.start_port and self.ctx.args.ips:
+            self._build_pod_with_args()
+        else:
+            self._build_pod_with_master()
+
+    def _build_pod_with_args(self):
+        self.pod.replicas = self.pod_replicas()
+
+        start_port = int(self.ctx.args.start_port)
+        ips = self.ctx.args.ips.split(',')
+
+        job_endpoints = [
+            f"{h}:{p+start_port}" for h in ips for p in range(self.pod.replicas)
+        ]
+
+        self.ctx.logger.debug("job endpoints: {}".format(job_endpoints))
+
+        rank_offset = ips.index(
+            self.ctx.node.ip
+        ) * self.pod.replicas if self.ctx.node.ip in ips else 0
+
+        self.save_pod_log(job_endpoints)
+
+        selected_dev_key = self.ctx.node.device.get_selected_device_key()
+        selected_dev_list = self.ctx.node.device.get_selected_devices(
+            self.ctx.args.devices)
+
+        for i in range(self.pod.replicas):
+            e = {
+                "PADDLE_GLOBAL_SIZE": "{}".format(len(job_endpoints)),
+                "PADDLE_LOCAL_SIZE": "{}".format(self.pod.replicas),
+                "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
+                "PADDLE_LOCAL_RANK": "{}".format(i),
+                "PADDLE_NNODES": "{}".format(len(ips)),
+                ## compatible env
+                "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
+                "PADDLE_CURRENT_ENDPOINT": job_endpoints[i + rank_offset],
+                "PADDLE_TRAINER_ID": "{}".format(i + rank_offset),
+                "PADDLE_TRAINERS_NUM": "{}".format(len(job_endpoints)),
+                "PADDLE_RANK_IN_NODE": str(i),
+            }
+            if len(selected_dev_list) > 0:
+                if self.ctx.node.device.dtype == DeviceType.CUSTOM_DEVICE:
+                    e.update(self.ctx.node.device.get_custom_device_envs())
+                if self.pod.replicas == 1:
+                    e.update({selected_dev_key: ",".join(selected_dev_list)})
+                else:
+                    e.update({selected_dev_key: selected_dev_list[i]})
+            else:
+                e.update({'PADDLE_DISTRI_BACKEND': 'gloo'})
+
+            log_file = f"workerlog.{i}"
+            self.add_container(envs=e, log_file=log_file)
+
+        return True
+
+    def _build_pod_with_master(self):
         self.pod.replicas = self.pod_replicas()
 
         # rank will be reset when restart
-        self.pod.rank = self.ctx.args.rank
+        self.pod.rank = int(self.ctx.args.rank)
 
         port = self.ctx.node.get_free_port()
 
@@ -97,11 +155,19 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINERS_NUM": "{}".format(global_size),
                 "PADDLE_RANK_IN_NODE": str(i),
             }
-            if self.pod.replicas == 1:
-                e.update({selected_dev_key: ",".join(selected_dev_list)})
+            if len(selected_dev_list) > 0:
+                if self.ctx.node.device.dtype == DeviceType.CUSTOM_DEVICE:
+                    e.update(self.ctx.node.device.get_custom_device_envs())
+                if self.pod.replicas == 1:
+                    e.update({selected_dev_key: ",".join(selected_dev_list)})
+                else:
+                    e.update({selected_dev_key: selected_dev_list[i]})
             else:
-                e.update({selected_dev_key: selected_dev_list[i]})
-            self.add_container(envs=e, log_tag=i)
+                e.update({'PADDLE_DISTRI_BACKEND': 'gloo'})
+
+            # log_file = "{}.{}.{}.log".format(self.job.id, self.pod.name, i)
+            log_file = f"workerlog.{i}"
+            self.add_container(envs=e, log_file=log_file)
 
         return True
 
@@ -127,7 +193,8 @@ class CollectiveElasticController(CollectiveController):
 
     def run(self):
 
-        timeout = self.ctx.args.elastic_timeout if self.job.elastic else self.ctx.args.elastic_timeout * 10
+        timeout = int(self.ctx.args.elastic_timeout)
+        timeout = timeout if self.job.elastic else timeout * 10
         self.register()
 
         while self.pod.restart <= self.ctx.args.max_restart:

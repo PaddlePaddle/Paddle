@@ -15,6 +15,7 @@
 from __future__ import print_function
 from __future__ import division
 
+import os
 import unittest
 import numpy as np
 
@@ -23,6 +24,8 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+
+from test_attribute_var import UnittestBase
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -286,6 +289,82 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             assert np.allclose(out_4.numpy(), self.res_4_np)
 
             assert np.allclose(out_5.numpy(), self.res_5_np)
+
+
+class TestOutputSizeTensor(UnittestBase):
+
+    def init_info(self):
+        self.shapes = [[1, 3, 6, 6]]
+        self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
+
+    def test_static(self):
+        paddle.enable_static()
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            fc = paddle.nn.Linear(6, 6)
+            x = paddle.randn(self.shapes[0])
+            x.stop_gradient = False
+            feat = fc(x)  # [1,3,6,6]
+
+            out1, out2 = self.call_func(feat)
+
+            sgd = paddle.optimizer.SGD()
+            sgd.minimize(paddle.mean(out1 + out2))
+            self.assertTrue(self.var_prefix() in str(main_prog))
+
+            exe = paddle.static.Executor()
+            exe.run(starup_prog)
+            res = exe.run(fetch_list=[out1, out2])
+            np.testing.assert_allclose(res[0], res[1])
+            paddle.static.save_inference_model(self.save_path, [x],
+                                               [out1, out2], exe)
+            # Test for Inference Predictor
+            infer_outs = self.infer_prog()
+            np.testing.assert_array_equal(infer_outs[0].shape, (1, 3, 3, 3))
+            np.testing.assert_allclose(infer_outs[0], infer_outs[1])
+
+    def path_prefix(self):
+        return 'pool2d_tensor'
+
+    def var_prefix(self):
+        return "Vars["
+
+    def call_func(self, x):
+        # list[Tensor]
+        output_size = [paddle.assign([3]), paddle.assign([3])]
+        out1 = paddle.nn.functional.adaptive_avg_pool2d(x=x, output_size=[3, 3])
+        out2 = paddle.nn.functional.adaptive_avg_pool2d(x=x,
+                                                        output_size=output_size)
+        return out1, out2
+
+
+class TestOutputSizeListTensor(TestOutputSizeTensor):
+
+    def path_prefix(self):
+        return 'pool2d_tensors'
+
+    def call_func(self, x):
+        # list[int, Tensor]
+        output_size = [paddle.assign([3]), 3]
+        out1 = paddle.nn.functional.adaptive_avg_pool2d(x=x, output_size=[3, 3])
+        out2 = paddle.nn.functional.adaptive_avg_pool2d(x=x,
+                                                        output_size=output_size)
+        return out1, out2
+
+
+class TestOutputSizeListTensor2(TestOutputSizeTensor):
+
+    def path_prefix(self):
+        return 'pool2d_tensor2'
+
+    def call_func(self, x):
+        # A Tensor
+        output_size = paddle.assign([3, 3])
+        out1 = paddle.nn.functional.adaptive_avg_pool2d(x=x, output_size=[3, 3])
+        out2 = paddle.nn.functional.adaptive_avg_pool2d(x=x,
+                                                        output_size=output_size)
+        return out1, out2
 
 
 if __name__ == '__main__':

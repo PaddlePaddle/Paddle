@@ -43,7 +43,9 @@ class ComplexKronTestCase(unittest.TestCase):
             x_var = dg.to_variable(self.x)
             y_var = dg.to_variable(self.y)
             out_var = paddle.kron(x_var, y_var)
-            self.assertTrue(np.allclose(out_var.numpy(), self.ref_result))
+            np.testing.assert_allclose(out_var.numpy(),
+                                       self.ref_result,
+                                       rtol=1e-05)
 
     def test_eager(self, place):
         with _test_eager_guard():

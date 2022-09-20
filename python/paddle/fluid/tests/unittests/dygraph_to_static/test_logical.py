@@ -204,9 +204,12 @@ class TestLogicalNot(TestLogicalBase):
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph result is {}\nstatic_result is {}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic_result is {}'.format(
+                dygraph_res, static_res))
 
 
 class TestLogicalNot2(TestLogicalBase):
@@ -217,9 +220,12 @@ class TestLogicalNot2(TestLogicalBase):
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph result is {}\nstatic_result is {}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic_result is {}'.format(
+                dygraph_res, static_res))
 
 
 class TestLogicalAnd(TestLogicalNot):

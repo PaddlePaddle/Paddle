@@ -31,6 +31,9 @@ from .unary import pow
 from .unary import cast
 from .unary import neg
 from .unary import coalesce
+from .unary import deg2rad
+from .unary import rad2deg
+from .unary import expm1
 
 from .binary import mv
 from .binary import matmul
@@ -39,6 +42,9 @@ from .binary import add
 from .binary import divide
 from .binary import multiply
 from .binary import subtract
+from .binary import is_same_shape
+
+from .multiary import addmm
 
 from . import nn
 
@@ -60,12 +66,17 @@ __all__ = [
     'pow',
     'cast',
     'neg',
+    'deg2rad',
+    'rad2deg',
+    'expm1',
     'mv',
     'matmul',
     'masked_matmul',
+    'addmm',
     'add',
     'subtract',
     'multiply',
     'divide',
     'coalesce',
+    'is_same_shape',
 ]

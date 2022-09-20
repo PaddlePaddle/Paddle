@@ -35,7 +35,7 @@ paddle.enable_static()
 
 def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     """
-    Decode proposals by anchors and bbox_deltas from RPN 
+    Decode proposals by anchors and bbox_deltas from RPN
     """
     offset = 1 if pixel_offset else 0
     # proposals: xmin, ymin, xmax, ymax
@@ -549,7 +549,7 @@ for stype in support_types:
                       XPUGenerateProposalsV2Op,
                       stype,
                       test_grad=False,
-                      ignore_deivce_version=[core.XPUVersion.XPU1])
+                      ignore_device_version=[core.XPUVersion.XPU1])
 
 if __name__ == '__main__':
     unittest.main()

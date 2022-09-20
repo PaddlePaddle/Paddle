@@ -25,6 +25,11 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_engine_api_dp
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
 
+  py_test_modules(test_optimization_tuner_api MODULES
+                  test_optimization_tuner_api ENVS ${dist_ENVS})
+  set_tests_properties(test_optimization_tuner_api
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
+
   py_test_modules(test_converter MODULES test_converter ENVS ${dist_ENVS})
   set_tests_properties(test_converter PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                  TIMEOUT 50)
@@ -32,6 +37,29 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   ${dist_ENVS})
   set_tests_properties(test_high_order_grad
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_iterable_dataset MODULES test_iterable_dataset ENVS
+                  ${dist_ENVS})
+  set_tests_properties(test_iterable_dataset
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
+  py_test_modules(test_pass_grad_clip MODULES test_pass_grad_clip ENVS
+                  ${dist_ENVS})
+  set_tests_properties(test_pass_grad_clip
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_gradient_merge MODULES test_pass_gradient_merge
+                  ENVS ${dist_ENVS})
+  set_tests_properties(test_pass_gradient_merge
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_recompute MODULES test_pass_recompute ENVS
+                  ${dist_ENVS})
+  set_tests_properties(test_pass_recompute
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_sharding MODULES test_pass_sharding ENVS
+                  ${dist_ENVS})
+  set_tests_properties(test_pass_sharding
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_amp MODULES test_pass_amp ENVS ${dist_ENVS})
+  set_tests_properties(test_pass_amp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                TIMEOUT 50)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
@@ -47,6 +75,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   ${dist_ENVS})
   py_test_modules(test_dist_reshape MODULES test_dist_reshape ENVS ${dist_ENVS})
   py_test_modules(test_dist_pnorm MODULES test_dist_pnorm ENVS ${dist_ENVS})
+  py_test_modules(test_dist_embedding MODULES test_dist_embedding ENVS
+                  ${dist_ENVS})
   py_test_modules(test_dist_slice MODULES test_dist_slice ENVS ${dist_ENVS})
   py_test_modules(test_cluster MODULES test_cluster ENVS ${dist_ENVS})
   py_test_modules(test_comm_cost MODULES test_comm_cost ENVS ${dist_ENVS})
@@ -55,4 +85,15 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_context MODULES test_dist_context ENVS ${dist_ENVS})
   py_test_modules(test_prim_dist_op MODULES test_prim_dist_op ENVS ${dist_ENVS})
   py_test_modules(test_to_static MODULES test_to_static ENVS ${dist_ENVS})
+  py_test_modules(test_dist_op_cost MODULES test_dist_op_cost ENVS ${dist_ENVS})
+  py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
+  py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
+  py_test_modules(test_dist_attr_v2 MODULES test_dist_attr_v2)
+  py_test_modules(test_lr_grad_clip MODULES test_lr_grad_clip)
+  py_test_modules(test_dist_matmul MODULES test_dist_matmul)
+  py_test_modules(test_process_mesh MODULES test_process_mesh)
+  py_test_modules(test_interface MODULES test_interface)
+  py_test_modules(test_strategy MODULES test_strategy)
+  py_test_modules(test_pass_quantization MODULES test_pass_quantization)
+
 endif()

@@ -34,7 +34,7 @@ namespace tensorrt {
 class TensorRTDynamicEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new platform::CUDADeviceContext(platform::CUDAPlace(0));
+    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -94,7 +94,7 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
   framework::Tensor input_;
   framework::Tensor output_;
   TensorRTEngine *engine_;
-  platform::CUDADeviceContext *ctx_;
+  phi::GPUContext *ctx_;
 };
 
 TEST_F(TensorRTDynamicEngineTest, test_spmm) {
@@ -199,7 +199,7 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
 class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new platform::CUDADeviceContext(platform::CUDAPlace(0));
+    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -279,11 +279,12 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
   std::vector<framework::Tensor> inputs_;
   std::vector<framework::Tensor> outputs_;
   TensorRTEngine *engine_;
-  platform::CUDADeviceContext *ctx_;
+  phi::GPUContext *ctx_;
 };
 
 TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
 #if IS_TRT_VERSION_GE(8000)
+  tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
   auto *attn = engine_->DeclareInput(
       "attn", nvinfer1::DataType::kHALF, nvinfer1::Dims4{-1, 1, 4, 4});
   auto *x = engine_->DeclareInput(
@@ -293,8 +294,10 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
   auto *new_mask = engine_->DeclareInput(
       "new_mask", nvinfer1::DataType::kHALF, nvinfer1::Dims4{-1, 1, 2, 2});
   plugin::FusedTokenPrunePluginDynamic *plugin =
-      new plugin::FusedTokenPrunePluginDynamic(
-          true, /*keep_first_token*/ false, /*keep_order*/ true);
+      new plugin::FusedTokenPrunePluginDynamic(true,
+                                               /*keep_first_token*/ false,
+                                               /*keep_order*/ true,
+                                               /*flag_varseqlen*/ false);
   std::vector<nvinfer1::ITensor *> itensors = {attn, x, mask, new_mask};
   auto *layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
   PADDLE_ENFORCE_NOT_NULL(layer,

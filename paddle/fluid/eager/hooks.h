@@ -29,16 +29,16 @@ class TensorHook {
       const paddle::experimental::Tensor& var) = 0;
 };
 
-class TensorVoidHook {
+class VoidHook {
  public:
-  virtual ~TensorVoidHook() = default;
+  virtual ~VoidHook() = default;
   virtual void operator()() = 0;
 };
 
 class CppTensorHook : public TensorHook {
  public:
-  explicit CppTensorHook(std::function<paddle::experimental::Tensor(
-                             const paddle::experimental::Tensor&)>&& fn)
+  explicit CppTensorHook(const std::function<paddle::experimental::Tensor(
+                             const paddle::experimental::Tensor&)>& fn)
       : fn_(std::move(fn)) {}
 
   paddle::experimental::Tensor operator()(
@@ -52,13 +52,28 @@ class CppTensorHook : public TensorHook {
       fn_;
 };
 
-class CppTensorVoidHook : public TensorVoidHook {
+class CppVoidHook : public VoidHook {
  public:
-  explicit CppTensorVoidHook(std::function<void()>&& fn) : fn_(std::move(fn)) {}
+  explicit CppVoidHook(const std::function<void()>& fn) : fn_(std::move(fn)) {}
 
   void operator()() override { return fn_(); }
 
  private:
   std::function<void()> fn_;
 };
+
+class PackHookBase {
+ public:
+  virtual ~PackHookBase() = default;
+  virtual void* operator()(const paddle::experimental::Tensor& tensor) = 0;
+  virtual void* operator()(void* py_tensor) = 0;
+};
+
+class UnPackHookBase {
+ public:
+  virtual ~UnPackHookBase() = default;
+  virtual paddle::experimental::Tensor operator()(void* packed_value) = 0;
+  virtual void* operator()(void* packed_value, void* other) = 0;
+};
+
 }  // namespace egr

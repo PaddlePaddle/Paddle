@@ -47,10 +47,15 @@ class TestUVATensorFromNumpy(unittest.TestCase):
                 data = np.random.randint(10, size=[4, 5]).astype(dtype)
                 if _in_legacy_dygraph():
                     tensor = paddle.fluid.core.to_uva_tensor(data, 0)
+                    tensor2 = paddle.fluid.core.to_uva_tensor(data)
                 else:
                     tensor = core.eager.to_uva_tensor(data, 0)
+                    tensor2 = core.eager.to_uva_tensor(data)
+
                 self.assertTrue(tensor.place.is_gpu_place())
-                self.assertTrue(np.allclose(tensor.numpy(), data))
+                self.assertTrue(tensor2.place.is_gpu_place())
+                np.testing.assert_allclose(tensor.numpy(), data, rtol=1e-05)
+                np.testing.assert_allclose(tensor2.numpy(), data, rtol=1e-05)
 
     def test_uva_tensor_creation(self):
         with _test_eager_guard():

@@ -9,11 +9,13 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/spectral_norm_op.h"
-
 #include <memory>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -23,82 +25,6 @@ using framework::Tensor;
 class SpectralNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "SpectralNorm");
-    OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "SpectralNorm");
-    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "SpectralNorm");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SpectralNorm");
-
-    auto dim_weight = ctx->GetInputDim("Weight");
-    auto rank_weight = dim_weight.size();
-    PADDLE_ENFORCE_GE(rank_weight,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The rank of Input(Weights) should be greater equal "
-                          "than 2, but received Weight rank(%d)",
-                          rank_weight));
-    PADDLE_ENFORCE_LE(rank_weight,
-                      5,
-                      platform::errors::InvalidArgument(
-                          "The rank of Input(Weights) should be less equal "
-                          "than 5, but received Weight rank(%d)",
-                          rank_weight));
-
-    int dim = ctx->Attrs().Get<int>("dim");
-    int power_iters = ctx->Attrs().Get<int>("power_iters");
-    auto dim_valid = dim == 0 || dim == 1;
-    PADDLE_ENFORCE_EQ(
-        dim_valid,
-        true,
-        platform::errors::InvalidArgument(
-            "Attr(dim) can only be 0 or 1, but received %d", dim));
-    PADDLE_ENFORCE_GE(
-        power_iters,
-        0,
-        platform::errors::InvalidArgument(
-            "Attr(power_iters) should be greater equal then 0, but received %d",
-            power_iters));
-
-    int h = dim_weight[dim];
-    int w = 1;
-    for (int i = 0; i < rank_weight; i++) {
-      if (i != dim) {
-        w *= dim_weight[i];
-      }
-    }
-    auto dim_u = ctx->GetInputDim("U");
-    auto dim_v = ctx->GetInputDim("V");
-
-    if (ctx->IsRuntime() || (dim_u[0] > 0 && h > 0)) {
-      PADDLE_ENFORCE_EQ(dim_u[0],
-                        h,
-                        platform::errors::InvalidArgument(
-                            "Input(U) dimension[0] should be equal to "
-                            "Input(Weight) dimension[Attr(dim)], but received "
-                            "U dimension[0](%d) != Weight dimension[%d](%d)",
-                            dim_u[0],
-                            dim,
-                            h));
-    }
-
-    if (ctx->IsRuntime() || (dim_v[0] > 0 && w > 0)) {
-      PADDLE_ENFORCE_EQ(
-          dim_v[0],
-          w,
-          platform::errors::InvalidArgument(
-              "Input(V) dimension[0] should be equal to the product of "
-              "Input(Weight) dimension except dimension[Attr(dim)], but "
-              "received V dimension[0](%d) != product of Input(Weight) "
-              "dimension(%d)",
-              dim_v[0],
-              w));
-    }
-
-    ctx->SetOutputDim("Out", dim_weight);
-    ctx->ShareLoD("Weight", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -188,7 +114,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
 
             $$\sigma{\mathbf{W}} = \mathbf{u}^{T} \mathbf{W} \mathbf{v}$$
 
-          For details of spectral normalization, please refer to paper: 
+          For details of spectral normalization, please refer to paper:
           `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
          )DOC");
   }
@@ -219,26 +145,6 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(
-        ctx->HasInput("Weight"), "Input", "Weight", "SpectralNormGrad");
-    OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "SpectralNormGrad");
-    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "SpectralNormGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   "Out@GRAD",
-                   "SpectralNormGrad");
-
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")),
-        true,
-        platform::errors::NotFound("Input(Out@GRAD) should not be null"));
-    auto dim_x = ctx->GetInputDim("Weight");
-    if (ctx->HasOutput(framework::GradVarName("Weight"))) {
-      ctx->SetOutputDim(framework::GradVarName("Weight"), dim_x);
-    }
-  }
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
@@ -250,15 +156,20 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(spectral_norm,
+                            SpectralNormInferMetaFunctor,
+                            PD_INFER_META(phi::SpectralNormInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(spectral_norm_grad,
+                            SpectralNormGradInferMetaFunctor,
+                            PD_INFER_META(phi::SpectralNormGradInferMeta));
+
 REGISTER_OPERATOR(spectral_norm,
                   ops::SpectralNormOp,
                   ops::SpectralNormOpMaker,
                   ops::SpectralNormGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SpectralNormGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(spectral_norm_grad, ops::SpectralNormOpGrad);
-REGISTER_OP_CPU_KERNEL(spectral_norm,
-                       ops::SpectralNormKernel<phi::CPUContext, float>,
-                       ops::SpectralNormKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(spectral_norm_grad,
-                       ops::SpectralNormGradKernel<phi::CPUContext, float>,
-                       ops::SpectralNormGradKernel<phi::CPUContext, double>);
+                  ops::SpectralNormGradOpMaker<paddle::imperative::OpBase>,
+                  SpectralNormInferMetaFunctor);
+REGISTER_OPERATOR(spectral_norm_grad,
+                  ops::SpectralNormOpGrad,
+                  SpectralNormGradInferMetaFunctor);

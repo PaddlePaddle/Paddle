@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/*************************************************************************
-  > File Name: interpretercore_util.h
-  > Author: guanshanshan@baidu.com
-  > Created Time: Fri 23 Jul 2021 06:19:19 AM UTC
- ************************************************************************/
-
 #pragma once
 
 #include <chrono>
@@ -48,7 +42,6 @@ using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
 
 namespace paddle {
 namespace framework {
-
 namespace interpreter {
 
 class AsyncWorkQueue {
@@ -87,11 +80,8 @@ void build_op_func_list(const platform::Place& place,
                         const std::set<std::string>& skip_gc_vars,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* scope,
-                        bool use_local_scope = true);
-
-std::map<int, std::list<int>> build_op_downstream_map(
-    const std::vector<Instruction>& vec_instruction,
-    std::vector<std::vector<bool>>* op_happens_before);
+                        bool use_local_scope = true,
+                        bool used_for_jit = false);
 
 void add_fetch(const std::vector<std::string>& fetch_names,
                framework::BlockDesc* block);

@@ -41,10 +41,10 @@ class NCCLCommImpl : public NCCLComm {
 
   gpuStream_t stream() const override { return dev_ctx_->stream(); }
 
-  void set_dev_ctx(std::unique_ptr<CUDADeviceContext>&& dev_ctx) {
+  void set_dev_ctx(std::unique_ptr<phi::GPUContext>&& dev_ctx) {
     dev_ctx_ = std::move(dev_ctx);
   }
-  CUDADeviceContext* dev_context() const override { return dev_ctx_.get(); }
+  phi::GPUContext* dev_context() const override { return dev_ctx_.get(); }
 
   gpuEvent_t compute_event() const override { return compute_event_.get(); }
 
@@ -64,7 +64,7 @@ class NCCLCommImpl : public NCCLComm {
   int nranks_;
   int rank_;
   ncclComm_t comm_;
-  std::unique_ptr<CUDADeviceContext> dev_ctx_;
+  std::unique_ptr<phi::GPUContext> dev_ctx_;
 
   // used for comm wait compute, compute_stream-->event-->comm_stream
   std::shared_ptr<platform::CudaEventObject> compute_event_;
@@ -203,8 +203,8 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
 
 NCCLComm* NCCLCommContext::AssignNCCLComm(
     ncclComm_t comm, int nranks, int rank, int dev_id, int ring_id) {
-  std::unique_ptr<CUDADeviceContext> dev_ctx(
-      new CUDADeviceContext(CUDAPlace(dev_id)));
+  std::unique_ptr<phi::GPUContext> dev_ctx(
+      new phi::GPUContext(CUDAPlace(dev_id)));
   dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(CUDAPlace(dev_id), dev_ctx->stream())
                             .get());
@@ -246,12 +246,13 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
   comm_map_mutex_.unlock();
 
   if (ring_id == 0) {
-    auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
+    auto* dev_ctx = static_cast<phi::GPUContext*>(
         platform::DeviceContextPool::Instance().Get(
             platform::CUDAPlace(dev_id)));
     dev_ctx->set_nccl_comm(comm);
   }
-
+  VLOG(4) << "add mccl comm: " << comm_map_[ring_id][dev_id].get()
+          << ", ring_id:" << ring_id << ", dev_id:" << dev_id;
   return comm_map_[ring_id][dev_id].get();
 }
 

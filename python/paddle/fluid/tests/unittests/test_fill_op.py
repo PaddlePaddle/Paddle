@@ -78,7 +78,7 @@ class TestFillOp3(unittest.TestCase):
         result_array = np.array(out)
         full_array = np.array(val, 'float32')
 
-        self.assertTrue(np.array_equal(result_array, full_array))
+        np.testing.assert_array_equal(result_array, full_array)
 
     def test_fill_op(self):
         places = [core.CPUPlace()]

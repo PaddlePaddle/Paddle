@@ -43,6 +43,7 @@ class TestAngleOpFloat(OpTest):
 
     def setUp(self):
         self.op_type = "angle"
+        self.python_api = paddle.angle
         self.dtype = "float64"
         self.x = np.linspace(-5, 5, 101).astype(self.dtype)
         out_ref = np.angle(self.x)
@@ -50,7 +51,7 @@ class TestAngleOpFloat(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(['X'],
@@ -58,13 +59,15 @@ class TestAngleOpFloat(OpTest):
                         user_defined_grads=[
                             angle_grad(self.x,
                                        np.ones_like(self.x) / self.x.size)
-                        ])
+                        ],
+                        check_eager=True)
 
 
 class TestAngleOpComplex(OpTest):
 
     def setUp(self):
         self.op_type = "angle"
+        self.python_api = paddle.angle
         self.dtype = "complex128"
         real = np.expand_dims(np.linspace(-2, 2, 11), -1).astype("float64")
         imag = np.linspace(-2, 2, 11).astype("float64")
@@ -74,7 +77,7 @@ class TestAngleOpComplex(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(['X'],
@@ -82,7 +85,8 @@ class TestAngleOpComplex(OpTest):
                         user_defined_grads=[
                             angle_grad(self.x,
                                        np.ones_like(self.x) / self.x.size)
-                        ])
+                        ],
+                        check_eager=True)
 
 
 class TestAngleAPI(unittest.TestCase):
@@ -95,7 +99,7 @@ class TestAngleAPI(unittest.TestCase):
         with dygraph.guard():
             x = paddle.to_tensor(self.x)
             out_np = paddle.angle(x).numpy()
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_static(self):
         mp, sp = static.Program(), static.Program()
@@ -106,7 +110,7 @@ class TestAngleAPI(unittest.TestCase):
         exe = static.Executor()
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
 
 if __name__ == "__main__":

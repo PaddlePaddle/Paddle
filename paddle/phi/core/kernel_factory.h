@@ -210,7 +210,7 @@ class KernelArgsDef {
 
 class Kernel {
  public:
-  // for map element contruct
+  // for map element construct
   Kernel() = default;
 
   explicit Kernel(KernelFn fn, void* variadic_fn)
@@ -252,6 +252,14 @@ using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
 
 using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
 
+struct KernelResult {
+  KernelResult(const Kernel& kernel, bool fallback_cpu)
+      : kernel(kernel), has_fallback_cpu(fallback_cpu) {}
+
+  const Kernel& kernel;
+  bool has_fallback_cpu = false;
+};
+
 /**
  * Note: Each Computation need a basic kernel map that named by kernel_name.
  *       Such as for scale op, KernelMap contains a `scale` kernel map,
@@ -268,14 +276,9 @@ class KernelFactory {
     return kernels_.find(TransToPhiKernelName(op_type)) != kernels_.end();
   }
 
-  const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,
-                                         const KernelKey& kernel_key,
-                                         bool use_gpudnn = false) const;
-
-  const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,
-                                         Backend backend,
-                                         DataLayout layout,
-                                         DataType dtype) const;
+  KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
+                                        const KernelKey& kernel_key,
+                                        bool use_gpudnn = false) const;
 
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;

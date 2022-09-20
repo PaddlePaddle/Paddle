@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
@@ -104,14 +105,14 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
          This operator generates yolov3 loss based on given predict result and ground
          truth boxes.
-         
+
          The output of previous network is in shape [N, C, H, W], while H and W
-         should be the same, H and W specify the grid size, each grid point predict 
+         should be the same, H and W specify the grid size, each grid point predict
          given number bounding boxes, this given number, which following will be represented as S,
          is specified by the number of anchor clusters in each scale. In the second dimension(the channel
-         dimension), C should be equal to S * (class_num + 5), class_num is the object 
-         category number of source dataset(such as 80 in coco dataset), so in the 
-         second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
+         dimension), C should be equal to S * (class_num + 5), class_num is the object
+         category number of source dataset(such as 80 in coco dataset), so in the
+         second(channel) dimension, apart from 4 box location coordinates x, y, w, h,
          also includes confidence score of the box and class one-hot key of each anchor box.
 
          Assume the 4 location coordinates are :math:`t_x, t_y, t_w, t_h`, the box predictions
@@ -134,21 +135,21 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          and :math:`p_w, p_h` is specified by anchors.
 
          As for confidence score, it is the logistic regression value of IoU between
-         anchor boxes and ground truth boxes, the score of the anchor box which has 
-         the max IoU should be 1, and if the anchor box has IoU bigger than ignore 
+         anchor boxes and ground truth boxes, the score of the anchor box which has
+         the max IoU should be 1, and if the anchor box has IoU bigger than ignore
          thresh, the confidence score loss of this anchor box will be ignored.
 
          Therefore, the yolov3 loss consists of three major parts: box location loss,
-         objectness loss and classification loss. The L1 loss is used for 
-         box coordinates (w, h), sigmoid cross entropy loss is used for box 
+         objectness loss and classification loss. The L1 loss is used for
+         box coordinates (w, h), sigmoid cross entropy loss is used for box
          coordinates (x, y), objectness loss and classification loss.
 
-         Each groud truth box finds a best matching anchor box in all anchors. 
+         Each groud truth box finds a best matching anchor box in all anchors.
          Prediction of this anchor box will incur all three parts of losses, and
          prediction of anchor boxes with no GT box matched will only incur objectness
          loss.
 
-         In order to trade off box coordinate losses between big boxes and small 
+         In order to trade off box coordinate losses between big boxes and small
          boxes, box coordinate losses will be mutiplied by scale weight, which is
          calculated as follows.
 
@@ -164,12 +165,12 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          $$
 
          While :attr:`use_label_smooth` is set to be :attr:`True`, the classification
-         target will be smoothed when calculating classification loss, target of 
+         target will be smoothed when calculating classification loss, target of
          positive samples will be smoothed to :math:`1.0 - 1.0 / class\_num` and target of
          negetive samples will be smoothed to :math:`1.0 / class\_num`.
 
-         While :attr:`GTScore` is given, which means the mixup score of ground truth 
-         boxes, all losses incured by a ground truth box will be multiplied by its 
+         While :attr:`GTScore` is given, which means the mixup score of ground truth
+         boxes, all losses incured by a ground truth box will be multiplied by its
          mixup score.
          )DOC");
   }
@@ -178,20 +179,6 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
 class Yolov3LossOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"),
-        true,
-        platform::errors::NotFound("Input(X) should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Loss")),
-        true,
-        platform::errors::NotFound("Input(Loss@GRAD) should not be null"));
-    auto dim_x = ctx->GetInputDim("X");
-    if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), dim_x);
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -234,10 +221,15 @@ namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(yolov3_loss,
                             Yolov3LossInferShapeFunctor,
                             PD_INFER_META(phi::Yolov3LossInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(yolov3_loss_grad,
+                            Yolov3LossGradInferShapeFunctor,
+                            PD_INFER_META(phi::Yolov3LossGradInferMeta));
 REGISTER_OPERATOR(yolov3_loss,
                   ops::Yolov3LossOp,
                   ops::Yolov3LossOpMaker,
                   ops::Yolov3LossGradMaker<paddle::framework::OpDesc>,
                   ops::Yolov3LossGradMaker<paddle::imperative::OpBase>,
                   Yolov3LossInferShapeFunctor);
-REGISTER_OPERATOR(yolov3_loss_grad, ops::Yolov3LossOpGrad);
+REGISTER_OPERATOR(yolov3_loss_grad,
+                  ops::Yolov3LossOpGrad,
+                  Yolov3LossGradInferShapeFunctor);

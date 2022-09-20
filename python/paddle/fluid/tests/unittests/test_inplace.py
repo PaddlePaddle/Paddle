@@ -142,7 +142,7 @@ class TestDygraphInplace(unittest.TestCase):
         self.assertTrue(id(var) == id(inplace_var))
 
         inplace_var[0] = 2.
-        self.assertTrue(np.array_equal(var.numpy(), inplace_var.numpy()))
+        np.testing.assert_array_equal(var.numpy(), inplace_var.numpy())
 
     def test_inplace_api(self):
         with _test_eager_guard():
@@ -276,7 +276,7 @@ class TestDygraphInplace(unittest.TestCase):
 
             loss.backward()
             grad_var_a = var_a.grad.numpy()
-        self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
+        np.testing.assert_array_equal(grad_var_a_inplace, grad_var_a)
 
     def test_backward_success_2(self):
         with _test_eager_guard():
@@ -300,6 +300,17 @@ class TestDygraphInplaceReshape(TestDygraphInplace):
 
     def inplace_api_processing(self, var):
         return paddle.reshape_(var, [-1])
+
+
+class TestDygraphInplaceReshapeTensor(TestDygraphInplace):
+
+    def non_inplace_api_processing(self, var):
+        shape = paddle.to_tensor(-1)
+        return paddle.reshape(var, shape)
+
+    def inplace_api_processing(self, var):
+        shape = paddle.to_tensor(-1)
+        return paddle.reshape_(var, shape)
 
 
 class TestDygraphInplaceFlatten(TestDygraphInplace):
@@ -483,6 +494,29 @@ class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
         return var.subtract_(input_var_2)
 
 
+class TestDygraphInplaceRemainder(TestDygraphInplaceAdd):
+
+    def non_inplace_api_processing(self, var):
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.remainder(input_var_2)
+
+    def inplace_api_processing(self, var):
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.remainder_(input_var_2)
+
+    def test_leaf_inplace_var_error(self):
+        pass
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
+
 class TestLossIsInplaceVar(unittest.TestCase):
 
     def func_test_loss_is_inplace_var(self):
@@ -506,7 +540,7 @@ class TestLossIsInplaceVar(unittest.TestCase):
             loss.backward()
             grad_var_a = var_a.grad.numpy()
 
-        self.assertTrue(np.array_equal(inplace_grad_var_a, grad_var_a))
+        np.testing.assert_array_equal(inplace_grad_var_a, grad_var_a)
 
     def test_loss_is_inplace_var(self):
         with _test_eager_guard():

@@ -25,7 +25,7 @@ from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
 import os
 
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 class TestDropoutOp(OpTest):
@@ -345,7 +345,7 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
                 feed={},
                 fetch_list=[x_out_var.name, mask_var.name])
             x_in_np = np.ones([40, 40]).astype("float32")
-            self.assertTrue(np.allclose(x_out, x_in_np))
+            np.testing.assert_allclose(x_out, x_in_np, rtol=1e-05)
 
 
 class TestDropoutOpError(unittest.TestCase):
@@ -451,11 +451,11 @@ class TestDropoutFAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"input": in_np},
                                   fetch_list=[res])
-                self.assertTrue(np.allclose(fetches[0], res_np))
+                np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
             fetches2 = exe.run(fluid.default_main_program(),
                                feed={"input": in_np},
                                fetch_list=[res10])
-            self.assertTrue(np.allclose(fetches2[0], res_np2))
+            np.testing.assert_allclose(fetches2[0], res_np2, rtol=1e-05)
             fetches3 = exe.run(fluid.default_main_program(),
                                feed={"input": in_np},
                                fetch_list=[res13])
@@ -536,8 +536,8 @@ class TestDropoutFAPI(unittest.TestCase):
                 res12
             ]
             for res in res_list:
-                self.assertTrue(np.allclose(res.numpy(), res_np))
-            self.assertTrue(np.allclose(res10.numpy(), res_np2))
+                np.testing.assert_allclose(res.numpy(), res_np, rtol=1e-05)
+            np.testing.assert_allclose(res10.numpy(), res_np2, rtol=1e-05)
 
 
 class TestDropoutFAPIError(unittest.TestCase):
@@ -636,7 +636,9 @@ class TestDropoutCAPI(unittest.TestCase):
                 m = paddle.nn.Dropout(p=0.)
                 m.eval()
                 result = m(input)
-                self.assertTrue(np.allclose(result.numpy(), result_np))
+                np.testing.assert_allclose(result.numpy(),
+                                           result_np,
+                                           rtol=1e-05)
 
 
 class TestDropout2DFAPI(unittest.TestCase):
@@ -670,7 +672,7 @@ class TestDropout2DFAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"input": in_np},
                                   fetch_list=[res])
-                self.assertTrue(np.allclose(fetches[0], res_np))
+                np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -694,7 +696,7 @@ class TestDropout2DFAPI(unittest.TestCase):
 
             res_list = [res1, res2]
             for res in res_list:
-                self.assertTrue(np.allclose(res.numpy(), res_np))
+                np.testing.assert_allclose(res.numpy(), res_np, rtol=1e-05)
 
 
 class TestDropout2DFAPIError(unittest.TestCase):
@@ -734,7 +736,9 @@ class TestDropout2DCAPI(unittest.TestCase):
                 m = paddle.nn.Dropout2D(p=0.)
                 m.eval()
                 result = m(input)
-                self.assertTrue(np.allclose(result.numpy(), result_np))
+                np.testing.assert_allclose(result.numpy(),
+                                           result_np,
+                                           rtol=1e-05)
 
 
 class TestDropout3DFAPI(unittest.TestCase):
@@ -768,7 +772,7 @@ class TestDropout3DFAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"input": in_np},
                                   fetch_list=[res])
-                self.assertTrue(np.allclose(fetches[0], res_np))
+                np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -792,7 +796,7 @@ class TestDropout3DFAPI(unittest.TestCase):
 
             res_list = [res1, res2]
             for res in res_list:
-                self.assertTrue(np.allclose(res.numpy(), res_np))
+                np.testing.assert_allclose(res.numpy(), res_np, rtol=1e-05)
 
 
 class TestDropout3DFAPIError(unittest.TestCase):
@@ -832,7 +836,9 @@ class TestDropout3DCAPI(unittest.TestCase):
                 m = paddle.nn.Dropout3D(p=0.)
                 m.eval()
                 result = m(input)
-                self.assertTrue(np.allclose(result.numpy(), result_np))
+                np.testing.assert_allclose(result.numpy(),
+                                           result_np,
+                                           rtol=1e-05)
 
 
 class TestAlphaDropoutFAPI(unittest.TestCase):
@@ -862,11 +868,11 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"input": in_np},
                                   fetch_list=[res])
-                self.assertTrue(np.allclose(fetches[0], res_np))
+                np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": in_np},
                               fetch_list=[res3])
-            self.assertTrue(np.allclose(fetches[0], res_np3))
+            np.testing.assert_allclose(fetches[0], res_np3, rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -888,8 +894,8 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
 
             res_list = [res1, res2]
             for res in res_list:
-                self.assertTrue(np.allclose(res.numpy(), res_np))
-            self.assertTrue(np.allclose(res3.numpy(), res_np3))
+                np.testing.assert_allclose(res.numpy(), res_np, rtol=1e-05)
+            np.testing.assert_allclose(res3.numpy(), res_np3, rtol=1e-05)
 
 
 class TestAlphaDropoutFAPIError(unittest.TestCase):
@@ -944,7 +950,9 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
                 m = paddle.nn.AlphaDropout(p=0.)
                 m.eval()
                 result = m(input)
-                self.assertTrue(np.allclose(result.numpy(), result_np))
+                np.testing.assert_allclose(result.numpy(),
+                                           result_np,
+                                           rtol=1e-05)
 
 
 class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
@@ -982,7 +990,7 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
                 out1, out2 = exe.run(static.default_main_program(),
                                      feed={"input": in_np},
                                      fetch_list=res_list)
-                self.assertTrue(np.allclose(out1, out2))
+                np.testing.assert_allclose(out1, out2, rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -1013,10 +1021,9 @@ class TestDropoutBackward(unittest.TestCase):
                 out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
                 out.backward()
 
-                self.assertTrue(
-                    np.array_equal(
-                        input.gradient(),
-                        self.cal_grad_downscale_in_infer(mask.numpy())))
+                np.testing.assert_array_equal(
+                    input.gradient(),
+                    self.cal_grad_downscale_in_infer(mask.numpy()))
 
     def test_backward_downscale_in_infer_eager(self):
         for place in self.places:
@@ -1024,13 +1031,12 @@ class TestDropoutBackward(unittest.TestCase):
                 with _test_eager_guard():
                     input = paddle.uniform([40, 40], dtype="float32")
                     input.stop_gradient = False
-                    out, mask = _C_ops.final_state_dropout(
-                        input, None, 0.5, False, "downgrade_in_infer", 0, False)
+                    out, mask = _C_ops.dropout(input, None, 0.5, False,
+                                               "downgrade_in_infer", 0, False)
                     out.backward()
-                    self.assertTrue(
-                        np.array_equal(
-                            input.gradient(),
-                            self.cal_grad_downscale_in_infer(mask.numpy())))
+                    np.testing.assert_array_equal(
+                        input.gradient(),
+                        self.cal_grad_downscale_in_infer(mask.numpy()))
 
     def test_backward_upscale_train(self):
         _enable_legacy_dygraph()
@@ -1045,10 +1051,10 @@ class TestDropoutBackward(unittest.TestCase):
                                              "upscale_in_train")
                 out.backward()
 
-                self.assertTrue(
-                    np.allclose(input.gradient(),
-                                self.cal_grad_upscale_train(mask.numpy(),
-                                                            prob)))
+                np.testing.assert_allclose(input.gradient(),
+                                           self.cal_grad_upscale_train(
+                                               mask.numpy(), prob),
+                                           rtol=1e-05)
 
     def test_backward_upscale_train_eager(self):
         for place in self.places:
@@ -1057,14 +1063,14 @@ class TestDropoutBackward(unittest.TestCase):
                     prob = 0.5
                     input = paddle.uniform([40, 40], dtype="float32")
                     input.stop_gradient = False
-                    out, mask = _C_ops.final_state_dropout(
-                        input, None, 0.5, False, "upscale_in_train", 0, False)
+                    out, mask = _C_ops.dropout(input, None, 0.5, False,
+                                               "upscale_in_train", 0, False)
                     out.backward()
 
-                    self.assertTrue(
-                        np.allclose(
-                            input.gradient(),
-                            self.cal_grad_upscale_train(mask.numpy(), prob)))
+                    np.testing.assert_allclose(input.gradient(),
+                                               self.cal_grad_upscale_train(
+                                                   mask.numpy(), prob),
+                                               rtol=1e-05)
 
     def test_backward_upscale_train_2(self):
         _enable_legacy_dygraph()
@@ -1079,10 +1085,10 @@ class TestDropoutBackward(unittest.TestCase):
                                              "upscale_in_train")
                 out.backward()
 
-                self.assertTrue(
-                    np.allclose(input.gradient(),
-                                self.cal_grad_upscale_train(mask.numpy(),
-                                                            prob)))
+                np.testing.assert_allclose(input.gradient(),
+                                           self.cal_grad_upscale_train(
+                                               mask.numpy(), prob),
+                                           rtol=1e-05)
 
     def test_backward_upscale_train_2_eager(self):
         for place in self.places:
@@ -1092,15 +1098,56 @@ class TestDropoutBackward(unittest.TestCase):
                     prob = 0.3
                     input = paddle.uniform([40, 40], dtype="float32")
                     input.stop_gradient = False
-                    out, mask = _C_ops.final_state_dropout(
-                        input, None, 0.3, False, "upscale_in_train", 0, False)
+                    out, mask = _C_ops.dropout(input, None, 0.3, False,
+                                               "upscale_in_train", 0, False)
 
                     out.backward()
 
-                    self.assertTrue(
-                        np.allclose(
-                            input.gradient(),
-                            self.cal_grad_upscale_train(mask.numpy(), prob)))
+                    np.testing.assert_allclose(input.gradient(),
+                                               self.cal_grad_upscale_train(
+                                                   mask.numpy(), prob),
+                                               rtol=1e-05)
+
+
+class TestDropOutWithProbTensor(unittest.TestCase):
+
+    def setUp(self):
+        shapes = [[10, 10], [10, 10, 10], [10, 10, 10, 10]]
+        self.inputs = [
+            np.random.random(shape).astype("float32") for shape in shapes
+        ]
+        self.place = paddle.CUDAPlace(
+            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+
+    def api_case(self, x):
+        p = paddle.assign([0.5])
+        out = paddle.nn.functional.dropout(x=x, p=p, training=True)
+        return out
+
+    def run_static(self, x):
+        paddle.seed(2022)
+        main_program = Program()
+
+        with program_guard(main_program):
+            input = paddle.static.data(shape=x.shape, name='x', dtype='float32')
+            out = self.api_case(input)
+
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': x}, fetch_list=[out])
+
+        return res[0]
+
+    def run_dygraph(self, x):
+        paddle.seed(2022)
+        with fluid.dygraph.guard(self.place):
+            out = self.api_case(paddle.to_tensor(x))
+        return out
+
+    def test_p_tensor(self):
+        for x in self.inputs:
+            static_res = self.run_static(x)
+            dygraph_res = self.run_dygraph(x)
+            np.testing.assert_array_equal(static_res, dygraph_res)
 
 
 class TestRandomValue(unittest.TestCase):
@@ -1130,7 +1177,7 @@ class TestRandomValue(unittest.TestCase):
             0.6914956, 0.5294584, 0.19032137, 0.6996228, 0.3338527, 0.8442094,
             0.96965003, 1.1726775, 0., 0.28037727
         ]
-        self.assertTrue(np.allclose(out[10, 100, 500:510], expect))
+        np.testing.assert_allclose(out[10, 100, 500:510], expect, rtol=1e-05)
 
         x = paddle.rand([32, 1024, 1024], dtype='float64')
         out = paddle.nn.functional.dropout(x).numpy()
@@ -1143,7 +1190,7 @@ class TestRandomValue(unittest.TestCase):
             1.28587354, 0.15563703, 0., 0.28799703, 0., 0., 0., 0.54964,
             0.51355682, 0.33818988
         ]
-        self.assertTrue(np.allclose(out[20, 100, 500:510], expect))
+        np.testing.assert_allclose(out[20, 100, 500:510], expect, rtol=1e-05)
 
         x = paddle.ones([32, 1024, 1024], dtype='float16')
         out = paddle.nn.functional.dropout(x, 0.75).numpy()
@@ -1152,7 +1199,7 @@ class TestRandomValue(unittest.TestCase):
         self.assertEqual(np.sum(index1), 4291190105)
         self.assertEqual(np.sum(index2), 4292243807)
         expect = [0., 0., 0., 0., 0., 0., 0., 0., 4., 4.]
-        self.assertTrue(np.allclose(out[0, 100, 500:510], expect))
+        np.testing.assert_allclose(out[0, 100, 500:510], expect, rtol=1e-05)
 
         paddle.enable_static()
 

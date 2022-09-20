@@ -84,7 +84,7 @@ class TestFetchLoDTensorArray(unittest.TestCase):
             self.assertEqual(np.array(loss_v).shape, (device_num, ))
             self.assertEqual(np.array(array_v[0]).shape, (batch_size, 784))
             self.assertEqual(np.array(array_v[1]).shape, (batch_size, 1))
-            self.assertTrue(np.allclose(loss_v, array_v[2]))
+            np.testing.assert_allclose(loss_v, array_v[2], rtol=1e-05)
 
     def test_fetch_lod_tensor_array(self):
         if fluid.core.is_compiled_with_cuda():

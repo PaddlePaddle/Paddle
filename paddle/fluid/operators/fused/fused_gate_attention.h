@@ -44,10 +44,10 @@ inline std::string MemoryDebugString(const Tensor& t) {
 }
 
 template <typename T>
-void AllocWithDebugInfo(const platform::CUDADeviceContext& dev_ctx,
+void AllocWithDebugInfo(const phi::GPUContext& dev_ctx,
                         const std::string& info,
                         Tensor* t) {
-  t->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.Alloc<T>(t, t->numel() * sizeof(T));
   VLOG(4) << info << ": " << MemoryDebugString(*t);
 }
 
@@ -59,7 +59,7 @@ struct TernaryAddFunctor {
 template <typename T>
 struct GateAttentionConfig {
  public:
-  const platform::CUDADeviceContext& dev_ctx;
+  const phi::GPUContext& dev_ctx;
 
   bool merge_qkv;
   bool has_gating;
@@ -86,7 +86,7 @@ struct GateAttentionConfig {
   phi::DDim qktv_out_dims;
   phi::DDim gate_out_dims;
 
-  GateAttentionConfig(const platform::CUDADeviceContext& dev_ctx,
+  GateAttentionConfig(const phi::GPUContext& dev_ctx,
                       const Tensor* query,
                       const Tensor* key,
                       const Tensor* query_weight,
@@ -249,7 +249,7 @@ struct GateAttentionConfig {
 template <typename T>
 struct GateAttentionGradConfig : public GateAttentionConfig<T> {
  public:
-  GateAttentionGradConfig(const platform::CUDADeviceContext& dev_ctx,
+  GateAttentionGradConfig(const phi::GPUContext& dev_ctx,
                           const Tensor* query,
                           const Tensor* key,
                           const Tensor* query_weight,
@@ -322,7 +322,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
 template <typename T>
 class FMHAGateRef {
  public:
-  FMHAGateRef(const platform::CUDADeviceContext& dev_ctx, bool merge_qkv)
+  FMHAGateRef(const phi::GPUContext& dev_ctx, bool merge_qkv)
       : dev_ctx_(dev_ctx), merge_qkv_(merge_qkv) {}
 
   void ComputeForward(const Tensor* nonbatched_bias,
@@ -505,9 +505,12 @@ class FMHAGateRef {
       k_transpose_out_grad.Resize(config->kv_transpose_out_dims);
       v_transpose_out_grad.Resize(config->kv_transpose_out_dims);
 
-      q_grad_ptr = q_transpose_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
-      k_grad_ptr = k_transpose_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
-      v_grad_ptr = v_transpose_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
+      q_grad_ptr = dev_ctx_.Alloc<T>(&q_transpose_out_grad,
+                                     q_transpose_out_grad.numel() * sizeof(T));
+      k_grad_ptr = dev_ctx_.Alloc<T>(&k_transpose_out_grad,
+                                     k_transpose_out_grad.numel() * sizeof(T));
+      v_grad_ptr = dev_ctx_.Alloc<T>(&v_transpose_out_grad,
+                                     v_transpose_out_grad.numel() * sizeof(T));
     }
 
     Tensor softmax_out_grad;
@@ -748,7 +751,7 @@ class FMHAGateRef {
     int64_t stride_a = m * k;
     int64_t stride_b = k * n;
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     blas.BatchedGEMM(cblas_trans_a,
                      cblas_trans_b,
                      m,
@@ -764,7 +767,7 @@ class FMHAGateRef {
                      stride_b);
   }
 
-  const platform::CUDADeviceContext& dev_ctx_;
+  const phi::GPUContext& dev_ctx_;
   bool merge_qkv_;
 };
 

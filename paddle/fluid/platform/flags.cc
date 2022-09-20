@@ -68,6 +68,20 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Checking whether operator produce NAN/INF or not. It will be "
     "extremely slow so please use this flag wisely.");
 
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_nan_inf
+ * Since Version: 0.13.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Checking whether operator produce NAN/INF or not.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_opt_get_features,
+    false,
+    "Checking whether operator produce NAN/INF or not. It will be "
+    "extremely slow so please use this flag wisely.");
+
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
@@ -183,6 +197,19 @@ PADDLE_DEFINE_EXPORTED_string(
     "allow_fp32_to_fp16), set this to empty string. For more details, "
     "please refer to the documents");
 #endif
+
+/*
+ * Kernel related FLAG
+ * Name: FLAGS_enable_api_kernel_fallback
+ * Since Version: 2.4
+ * Value Range: bool, default=true
+ * Example: FLAGS_enable_api_kernel_fallback=true would allow kernel of current
+ * backend fallback to CPU one when not found
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_api_kernel_fallback,
+    true,
+    "Whether enable api kernel fallback to CPU one when not found");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
@@ -361,11 +388,7 @@ PADDLE_DEFINE_EXPORTED_int32(
  *       enable garbage collection strategy when training large networks.
  */
 // Disable gc by default when inference library is built
-#ifdef PADDLE_ON_INFERENCE
-static const double kDefaultEagerDeleteTensorGB = -1;
-#else
 static const double kDefaultEagerDeleteTensorGB = 0;
-#endif
 
 PADDLE_DEFINE_EXPORTED_double(
     eager_delete_tensor_gb,
@@ -636,7 +659,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
  * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
  * message summary will be shown.
  */
-#ifdef PADDLE_ON_INFERENCE
+#ifdef PADDLE_NO_PYTHON
 static const int32_t kDefaultCallStackLevel = 2;
 #else
 static const int32_t kDefaultCallStackLevel = 1;
@@ -773,6 +796,34 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
 /**
+ * Distributed related FLAG
+ * Name: FLAGS_graph_load_in_parallel
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control whether load graph node and edge with multi threads parallely
+ *       If it is not set, load graph data with one thread
+ */
+PADDLE_DEFINE_EXPORTED_bool(graph_load_in_parallel,
+                            false,
+                            "It controls whether load graph node and edge with "
+                            "mutli threads parallely.");
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_graph_get_neighbor_id
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control get all neighbor id when running sub part graph
+ *       If it is not set, do not need get neighbor id when run all part graph
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    graph_get_neighbor_id,
+    false,
+    "It controls get all neighbor id when running sub part graph.");
+
+/**
  * KP kernel related FLAG
  * Name: FLAGS_run_kp_kernel
  * Since Version: 2.3.0
@@ -880,7 +931,33 @@ DEFINE_bool(enable_slotrecord_reset_shrink,
             "enable slotrecord obejct reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file,
             false,
-            "enable parser ins file , default false");
+            "enable parser ins file, default false");
+PADDLE_DEFINE_EXPORTED_bool(
+    gpugraph_enable_hbm_table_collision_stat,
+    false,
+    "enable hash collisions stat for hbm table, default false");
+PADDLE_DEFINE_EXPORTED_double(gpugraph_hbm_table_load_factor,
+                              0.75,
+                              "the load factor of hbm table, default 0.75");
+PADDLE_DEFINE_EXPORTED_bool(
+    gpugraph_enable_gpu_direct_access,
+    false,
+    "enable direct access bwtween multi gpu cards, default false");
+PADDLE_DEFINE_EXPORTED_bool(
+    gpugraph_enable_segment_merge_grads,
+    false,
+    "enable segment merge gradients while push sparse, default false");
+PADDLE_DEFINE_EXPORTED_uint64(
+    gpugraph_merge_grads_segment_size,
+    128,
+    "segment size with segment gradient merge, default 128");
+PADDLE_DEFINE_EXPORTED_int32(
+    gpugraph_dedup_pull_push_mode,
+    0,
+    "enable dedup keys while pull push sparse, default 0");
+PADDLE_DEFINE_EXPORTED_bool(gpugraph_load_node_list_into_hbm,
+                            true,
+                            "enable load_node_list_into_hbm, default true");
 
 /**
  * ProcessGroupNCCL related FLAG
@@ -904,6 +981,17 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 
 /**
+ * Conv Search cache max number related FLAG
+ * Name: FLAGS_search_cache_max_number
+ * Since Version: 2.3.0
+ * Value Range: int32, default=1000000
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_int32(search_cache_max_number,
+                             1000000,
+                             "search_cache_max_number.");
+
+/**
  * Preformance related FLAG
  * Name: einsum_opt
  * Since Version: 2.3.0
@@ -916,3 +1004,19 @@ PADDLE_DEFINE_EXPORTED_bool(
     einsum_opt,
     false,
     "EinsumOp backward will be speedup at the expense of more gpu memory.");
+
+/**
+ * JitLayer related FLAG
+ * Name: FLAGS_jit_engine_type
+ * Since Version: 2.3.0
+ * Value Range: string, {Executor, PE},
+ * default=PE
+ * Example:
+ * Note:
+ * FLAGS_jit_engine_type == Executor, using ExecutorEngine by default
+ * FLAGS_jit_engine_type == PE, using PEEngine by default
+ * FLAGS_jit_engine_type == New, using InterpreterEngine by default
+ */
+PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
+                              "PE",
+                              "Choose default funciton type in JitLayer.");

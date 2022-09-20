@@ -85,6 +85,9 @@ def classify_cases_by_mem(rootPath):
                 case = case.replace('^', '').replace('$', '').strip()
                 all_tests_by_card['exclusive_card_tests'].append(case)
 
+    if not os.path.exists("/pre_test"):
+        os.mkdir("/pre_test")
+
     with open("/pre_test/classify_case_by_cardNum.json", "w") as f:
         json.dump(all_tests_by_card, f)
 
@@ -120,7 +123,7 @@ def classify_cases_by_mem(rootPath):
         mem_1_sum = 0
         with open('/pre_test/%s' % cardType, 'w') as f_not_0:
             for index in case_mem_1_sort:
-                if mem_1_sum < 16 * 1024 * 2:
+                if mem_1_sum < 14 * 1024 * 2:
                     mem_1_sum += index[1]
                     case_mem_1_line = case_mem_1_line + '|^' + index[0] + '$'
                 else:
@@ -132,7 +135,7 @@ def classify_cases_by_mem(rootPath):
                                 always_timeout_list[0])
                         always_timeout_list.pop(0)
                     else:
-                        f.write(case_mem_1_line + '\n') 
+                        f.write(case_mem_1_line + '\n')
                     count += 1
                     '''
                     case_mem_1_line = '^job$|^' + index[0] + '$'

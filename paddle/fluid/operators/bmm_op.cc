@@ -16,6 +16,11 @@
 
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
+
 namespace paddle {
 namespace operators {
 
@@ -24,62 +29,6 @@ class BmmOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"),
-        true,
-        platform::errors::NotFound("Input(X) of BmmOp should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"),
-        true,
-        platform::errors::NotFound("Input(Y) of BmmOp should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"),
-        true,
-        platform::errors::NotFound("Output(Out) of BmmOp should not be null."));
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
-
-    PADDLE_ENFORCE_EQ(x_dims.size(),
-                      3,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
-                          "but received X's shape: [%s].",
-                          x_dims));
-    PADDLE_ENFORCE_EQ(y_dims.size(),
-                      3,
-                      platform::errors::InvalidArgument(
-                          "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
-                          "but received Y's shape: [%s].",
-                          y_dims));
-    PADDLE_ENFORCE_EQ(
-        x_dims[0],
-        y_dims[0],
-        platform::errors::InvalidArgument(
-            "Input(X) and Input(Y) must have the same batch size in BmmOp, "
-            "but received X's batch size: [%s],"
-            "Y's batch size [%s]",
-            x_dims[0],
-            y_dims[0]));
-    PADDLE_ENFORCE_EQ(
-        x_dims[2],
-        y_dims[1],
-        platform::errors::InvalidArgument(
-            "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
-            "but receive X's width: [%s],"
-            "Y's height: [%s].",
-            x_dims[2],
-            y_dims[1]));
-
-    std::vector<int64_t> dim_out;
-    dim_out.push_back(x_dims[0]);
-    dim_out.push_back(x_dims[1]);
-    dim_out.push_back(y_dims[2]);
-    ctx->SetOutputDim("Out", phi::make_ddim(dim_out));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -95,8 +44,8 @@ class BmmOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor), The output tensor of Bmm op.");
     AddComment(R"DOC(
 The Bmm operator is used to perform batched matrix multiplication
-over the last two dimensions of the input tensors `X` and `Y` 
-which are both 3-dimentionsal. 
+over the last two dimensions of the input tensors `X` and `Y`
+which are both 3-dimentionsal.
 
 Examples:
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
@@ -110,33 +59,6 @@ class BmmOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"),
-        true,
-        platform::errors::NotFound("Input(X) of BmmOp should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"),
-        true,
-        platform::errors::NotFound("Input(Y) of BmmOp should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
-                      true,
-                      platform::errors::NotFound(
-                          "Output(Out@GRAD) of BmmOp should not be null."));
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
-
-    auto x_grad_name = framework::GradVarName("X");
-    auto y_grad_name = framework::GradVarName("Y");
-
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
-    }
-    if (ctx->HasOutput(y_grad_name)) {
-      ctx->SetOutputDim(y_grad_name, y_dims);
-    }
-  }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
@@ -166,15 +88,16 @@ class BmmOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(bmm,
+                            BmmInferShapeFunctor,
+                            PD_INFER_META(phi::BmmInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(bmm_grad,
+                            BmmGradInferShapeFunctor,
+                            PD_INFER_META(phi::BmmGradInferMeta));
 REGISTER_OPERATOR(bmm,
                   ops::BmmOp,
                   ops::BmmOpMaker,
                   ops::BmmOpGradMaker<paddle::framework::OpDesc>,
-                  ops::BmmOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(bmm_grad, ops::BmmOpGrad);
-REGISTER_OP_CPU_KERNEL(bmm,
-                       ops::BmmKernel<phi::CPUContext, float>,
-                       ops::BmmKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(bmm_grad,
-                       ops::BmmGradKernel<phi::CPUContext, float>,
-                       ops::BmmGradKernel<phi::CPUContext, double>);
+                  ops::BmmOpGradMaker<paddle::imperative::OpBase>,
+                  BmmInferShapeFunctor);
+REGISTER_OPERATOR(bmm_grad, ops::BmmOpGrad, BmmGradInferShapeFunctor);

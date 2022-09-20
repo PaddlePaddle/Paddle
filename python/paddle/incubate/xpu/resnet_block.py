@@ -31,7 +31,7 @@ from paddle.fluid.layers import utils
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.param_attr import ParamAttr
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['resnet_basic_block', 'ResNetBasicBlock']
 

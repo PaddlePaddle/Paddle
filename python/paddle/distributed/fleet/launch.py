@@ -211,6 +211,10 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
                           type=str,
                           default="",
                           help="User defined workers ip:port")
+    ps_group.add_argument("--coordinators",
+                          type=str,
+                          default="",
+                          help="User defined coordinators ip:port")
     ps_group.add_argument(
         "--heter_workers",
         type=str,
@@ -223,6 +227,9 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         help="User defined heter devices in each stage cpu;gpu;cpu")
 
     ps_group.add_argument("--worker_num", type=int, help="number of workers")
+    ps_group.add_argument("--coordinator_num",
+                          type=int,
+                          help="number of coordinators")
     ps_group.add_argument("--server_num", type=int, help="number of servers")
     ps_group.add_argument("--heter_worker_num",
                           type=str,
@@ -474,6 +481,8 @@ def which_distributed_mode(args):
 
     ps_heter_args = ["--heter_worker_num", "--heter_workers", "--heter_devices"]
 
+    coordinator_args = ["--coordinator_num", "--coordinators"]
+
     has_ps_args = [
         ps_arg for ps_arg in ps_args if ps_arg in " ".join(sys.argv[1:-1])
     ]
@@ -503,6 +512,7 @@ def which_distributed_mode(args):
             "Run parameter-sever mode. pserver arguments:{}, accelerators count:{}"
             .format(has_ps_args, accelerators))
         has_ps_heter_args = list(set(has_ps_args) & set(ps_heter_args))
+        has_coordinator_args = list(set(has_ps_args) & set(coordinator_args))
         if len(has_ps_heter_args) > 0:
             return DistributeMode.PS_HETER
         else:
@@ -533,7 +543,7 @@ def which_distributed_mode(args):
 def launch():
     """
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
-    
+
     Usage:
         .. code-block:: bash
             :name: code-block-bash1
@@ -543,7 +553,7 @@ def launch():
                              [--worker_num WORKER_NUM] [--server_num SERVER_NUM] [--heter_worker_num HETER_WORKER_NUM]
                              [--http_port HTTP_PORT] [--elastic_server ELASTIC_SERVER] [--job_id JOB_ID] [--np NP] [--scale SCALE]
                              [--host HOST] [--force FORCE]
-                             training_script ...    
+                             training_script ...
 
 
     Base Parameters:
@@ -556,9 +566,9 @@ def launch():
         - ``--gpus``: It's for gpu training. e.g., ``--gpus=0,1,2,3`` will launch four training processes each bound to one gpu.
 
         - ``--selected_gpus``: gpus aliases, recommend to use ``--gpus``.
-        
+
         - ``--xpus``: It's for xpu training if xpu is available. e.g., ``--xpus=0,1,2,3``.
-        
+
         - ``--selected_xpus``: xpus aliases, recommend to use ``--xpus``.
 
         - ``--mlus``: It's for mlu training. e.g., ``--mlus=0,1,2,3`` will launch four training processes each bound to one mlu.
@@ -584,7 +594,7 @@ def launch():
         - ``--server_num``: Number of servers (It recommend to set when in the emulated distributed environment using single node)
 
         - ``--heter_worker_num``: Number of heter_workers in each stage (It recommend to set when in the emulated distributed environment using single node)
-        
+
         - ``--heter_devices``: Type of heter_device in each stage
 
         - ``--http_port``: Gloo http Port
@@ -605,18 +615,18 @@ def launch():
     Examples 1 (collective, single node):
         .. code-block:: bash
             :name: code-block-example-bash1
-            
+
             # For training on single node using 4 gpus.
 
             python -m paddle.distributed.launch --gpus=0,1,2,3 train.py --lr=0.01
-        
+
     Examples 2 (collective, multi node):
         .. code-block:: bash
             :name: code-block-example-bash2
 
             # The parameters of --gpus and --ips must be consistent in each node.
 
-            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17
 
             # On 192.168.0.16:
 
@@ -624,15 +634,15 @@ def launch():
 
             # On 192.168.0.17:
             python -m paddle.distributed.launch --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --lr=0.01
-        
+
     Examples 3 (ps, cpu, single node):
         .. code-block:: bash
             :name: code-block-example-bash3
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers.
-            
+
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
-        
+
     Examples 4 (ps, cpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash4
@@ -652,10 +662,10 @@ def launch():
             :name: code-block-example-bash5
 
            # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, each worker use single gpu.
-            
+
             export CUDA_VISIBLE_DEVICES=0,1,2,3
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
-            
+
     Examples 6 (ps, gpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash6
@@ -677,10 +687,10 @@ def launch():
             :name: code-block-example-bash7
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, two workers use gpu, two workers use cpu.
-            
+
             export CUDA_VISIBLE_DEVICES=0,1
             python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
-            
+
     Examples 8 (ps-heter, cpu + gpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash8
@@ -702,7 +712,7 @@ def launch():
             :name: code-block-example-bash9
 
             python -m paddle.distributed.launch --elastic_server=127.0.0.1:2379 --np=2 --job_id=job1  --gpus=0,1,2,3 train.py
-        
+
     """
 
     args = _parse_args()

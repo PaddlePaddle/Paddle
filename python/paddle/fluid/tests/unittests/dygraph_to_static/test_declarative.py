@@ -127,7 +127,7 @@ class TestInputSpec(unittest.TestCase):
             jit.save(net, self.model_path)
             infer_net = fluid.dygraph.jit.load(self.model_path)
             pred = infer_net(x)
-            self.assertTrue(np.allclose(out.numpy(), pred.numpy()))
+            np.testing.assert_allclose(out.numpy(), pred.numpy(), rtol=1e-05)
 
             # 3. we can decorate any method
             x_2 = to_variable(np.ones([4, 20]).astype('float32'))
@@ -218,25 +218,33 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
 
             # [16, 10] + [10] (varbase)
             out_1 = foo(to_variable(x_data), to_variable(y_data))
-            self.assertTrue(np.allclose(x_data + y_data, out_1.numpy()))
+            np.testing.assert_allclose(x_data + y_data,
+                                       out_1.numpy(),
+                                       rtol=1e-05)
             self.assertTrue(len(foo.program_cache) == 1)
             self.assertTrue(len(foo.program_cache.concrete_programs()) == 1)
             first_program = foo.program_cache.last()
 
             # [16, 10] + [10] (numpy)
             out_2 = foo(to_variable(x_data), y_data)
-            self.assertTrue(np.allclose(x_data + y_data, out_2.numpy()))
+            np.testing.assert_allclose(x_data + y_data,
+                                       out_2.numpy(),
+                                       rtol=1e-05)
             self.assertTrue(len(foo.program_cache) == 1)
 
             # [16, 10] + [10] (numpy)
             out_3 = foo(to_variable(x_data), z_data)
-            self.assertTrue(np.allclose(x_data + z_data, out_3.numpy()))
+            np.testing.assert_allclose(x_data + z_data,
+                                       out_3.numpy(),
+                                       rtol=1e-05)
             # hit cache program
             self.assertTrue(len(foo.program_cache) == 1)
 
             # [16, 10] + [10] (numpy) with other different arguments (c=3)
             out_4 = foo(to_variable(x_data), z_data, 3)
-            self.assertTrue(np.allclose(x_data + z_data, out_4.numpy()))
+            np.testing.assert_allclose(x_data + z_data,
+                                       out_4.numpy(),
+                                       rtol=1e-05)
             # create a new program
             self.assertTrue(len(foo.program_cache) == 2)
 
@@ -476,6 +484,22 @@ class TestSetBuffers(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             out = net()
         paddle.enable_static()
+
+
+class ClassNoInheritLayer:
+
+    def func(self, x):
+        return x + 1
+
+
+class TestClassNoInheritLayer(unittest.TestCase):
+
+    def test_to_static(self):
+        paddle.disable_static()
+        net = ClassNoInheritLayer()
+        input_spec = [paddle.static.InputSpec(name='x', shape=[1])]
+        with self.assertRaises(TypeError):
+            static_func = paddle.jit.to_static(net.func, input_spec=input_spec)
 
 
 if __name__ == '__main__':

@@ -21,6 +21,7 @@ import scipy.stats
 import config
 import parameterize as param
 
+np.random.seed(2022)
 paddle.enable_static()
 
 

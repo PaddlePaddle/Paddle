@@ -180,9 +180,6 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default: False) "
                   "whether to compute reversed GRU.")
         .SetDefault(false);
-    AddAttr<bool>("is_test", "True if in test phase.")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<bool>("origin_mode",
                   "bool"
                   "use origin mode in article https://arxiv.org/abs/1412.3555")

@@ -113,7 +113,6 @@ endif()
 
 add_subdirectory(device)
 add_subdirectory(dynload)
-add_subdirectory(stream)
 
 cc_library(
   cpu_helper
@@ -130,7 +129,7 @@ if(WITH_DGC)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
+  set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
 endif()
 
 if(WITH_IPU)
@@ -220,16 +219,9 @@ cc_library(
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
        eigen3
+       phi_backends
+       phi_device_context
        generator)
-if(WITH_XPU)
-  target_link_libraries(device_context xpu_context xpu_resource_pool)
-endif()
-
-if(WITH_MKLDNN)
-  target_link_libraries(device_context onednn_context)
-endif()
-
-target_link_libraries(device_context cpu_context)
 
 cc_library(
   collective_helper
@@ -244,14 +236,15 @@ if(WITH_CNCL)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  target_link_libraries(device_context gpu_info gpu_context phi_gpu_info)
   target_link_libraries(device_context gpu_resource_pool)
 endif()
-if(WITH_CUSTOM_DEVICE)
-  target_link_libraries(device_context custom_context)
-endif()
+
 if(WITH_ASCEND_CL)
   target_link_libraries(device_context npu_resource_pool)
+endif()
+
+if(WITH_XPU)
+  target_link_libraries(device_context xpu_resource_pool)
 endif()
 
 if(WITH_MLU)
@@ -259,7 +252,7 @@ if(WITH_MLU)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
-  target_link_libraries(device_context custom_context)
+  target_link_libraries(device_context custom_device_resource_pool)
 endif()
 
 cc_test(
@@ -276,15 +269,6 @@ cc_library(
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
-if(WITH_XPU)
-  cc_library(
-    device_event_xpu
-    SRCS device_event_xpu.cc
-    DEPS device_event_base xpu_info)
-  set(DEVICE_EVENT_LIBS
-      device_event_xpu
-      CACHE INTERNAL "device event libs")
-endif()
 
 if(WITH_ASCEND_CL)
   cc_library(
@@ -304,11 +288,17 @@ if(WITH_GPU)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
-  nv_test(
-    device_event_test
-    SRCS device_event_test.cc
-    DEPS device_event_gpu)
-
+  if(WITH_CUSTOM_DEVICE)
+    nv_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu device_event_custom_device)
+  else()
+    nv_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu)
+  endif()
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -331,11 +321,17 @@ if(WITH_ROCM)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
-  hip_test(
-    device_event_test
-    SRCS device_event_test.cc
-    DEPS device_event_gpu)
-
+  if(WITH_CUSTOM_DEVICE)
+    hip_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu device_event_custom_device)
+  else()
+    hip_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu)
+  endif()
   hip_test(
     device_context_test
     SRCS device_context_test.cu
@@ -489,4 +485,14 @@ if(NOT APPLE AND NOT WIN32)
       SRCS device_code_test.cc
       DEPS device_code lod_tensor)
   endif()
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  cc_library(
+    device_event_custom_device
+    SRCS device_event_custom_device.cc
+    DEPS device_event_base custom_device_resource_pool)
+  set(DEVICE_EVENT_LIBS
+      ${DEVICE_EVENT_LIBS} device_event_custom_device
+      CACHE INTERNAL "device event libs")
 endif()

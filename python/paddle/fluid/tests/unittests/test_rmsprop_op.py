@@ -127,10 +127,13 @@ class TestBase(unittest.TestCase):
             self.mean_grad_tensor.set(self.mean_grad, place)
 
     def check(self, actual_t, expect_t, place, out_name, atol=1e-5):
-        self.assertTrue(
-            np.allclose(actual_t, expect_t, atol=atol),
-            "Output (" + out_name + ") has diff at " + str(place) +
-            "\nExpect " + str(expect_t) + "\n" + "But Got" + str(actual_t))
+        np.testing.assert_allclose(
+            actual_t,
+            expect_t,
+            rtol=1e-05,
+            atol=atol,
+            err_msg='Output (' + out_name + ') has diff at ' + str(place) +
+            '\nExpect ' + str(expect_t) + '\n' + 'But Got' + str(actual_t))
 
 
 class TestRmspropOp(TestBase):

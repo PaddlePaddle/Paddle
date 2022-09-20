@@ -199,7 +199,9 @@ def get_user_defined_strategy(config):
         "dump_fields_path": config.get("runner.dump_fields_path", ""),
         "dump_fields": config.get("runner.dump_fields", []),
         "dump_param": config.get("runner.dump_param", []),
-        "stat_var_names": config.get("stat_var_names", [])
+        "stat_var_names": config.get("stat_var_names", []),
+        "local_sparse": config.get("runner.local_sparse", []),
+        "remote_sparse": config.get("runner.remote_sparse", [])
     }
     print("strategy:", strategy.trainer_desc_configs)
 
@@ -484,11 +486,11 @@ class DnnTrainer(object):
 
         else:
             pass
-        '''          
+        '''
             print("entering run_the_one_ps -- old")
             fleet_obj = fleet.distributed_optimizer(
-                inner_optimizer, user_defined_strategy)  
-            fleet_obj.minimize(loss)  
+                inner_optimizer, user_defined_strategy)
+            fleet_obj.minimize(loss)
             if fleet.is_worker():
                 worker_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=False, is_sync=False)
                 server_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=True, is_sync=False)

@@ -209,7 +209,7 @@ input: sparse C in CSR format (num_rows,num_rows)
 output: sparse C after softmax operation
 */
 template <typename DeviceContext, typename T>
-void SparseSoftmaxForward(const platform::CUDADeviceContext& ctx,
+void SparseSoftmaxForward(const phi::GPUContext& ctx,
                           const Tensor* offset,
                           const Tensor* columns,
                           Tensor* input,
@@ -322,7 +322,7 @@ void SparseSoftmaxForward(const platform::CUDADeviceContext& ctx,
 }
 
 template <typename DeviceContext, typename T>
-void SparseSoftmaxBackward(const platform::CUDADeviceContext& ctx,
+void SparseSoftmaxBackward(const phi::GPUContext& ctx,
                            const Tensor* offset,
                            const Tensor* columns,
                            Tensor* dx,
@@ -453,7 +453,7 @@ input: dense A (num_rows,num_cols), dense B (num_rows,num_cols)
 output: sparse C in CSR format (num_rows,num_rows)
 */
 template <typename DeviceContext, typename T>
-void DotSdd(const platform::CUDADeviceContext& ctx,
+void DotSdd(const phi::GPUContext& ctx,
             const Tensor* a,
             const Tensor* b,
             const Tensor* c_offset,
@@ -522,7 +522,10 @@ void DotSdd(const platform::CUDADeviceContext& ctx,
       gpu_type,
       CUSPARSE_SDDMM_ALG_DEFAULT,
       &buffer_size);
-  auto d_buffer_ptr = paddle::memory::Alloc(ctx, buffer_size);
+  auto d_buffer_ptr = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
 
   platform::dynload::cusparseSDDMM(handle,
@@ -546,7 +549,7 @@ input: sparse A in CSR format (num_rows,num_rows), dense B (num_rows,num_cols)
 output: dense C (num_rows,num_cols)
 */
 template <typename DeviceContext, typename T>
-void DotDsd(const platform::CUDADeviceContext& ctx,
+void DotDsd(const phi::GPUContext& ctx,
             const Tensor* a_offset,
             const Tensor* a_columns,
             const Tensor* a_value,
@@ -616,7 +619,10 @@ void DotDsd(const platform::CUDADeviceContext& ctx,
                                              gpu_type,
                                              CUSPARSE_SPMM_ALG_DEFAULT,
                                              &buffer_size);
-  auto d_buffer_ptr = paddle::memory::Alloc(ctx, buffer_size);
+  auto d_buffer_ptr = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
 
   platform::dynload::cusparseSpMM(handle,
@@ -881,10 +887,10 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 REGISTER_OP_CUDA_KERNEL(
     sparse_attention,
-    ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, float>,
-    ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, double>);
+    ops::SparseAttentionCUDAKernel<phi::GPUContext, float>,
+    ops::SparseAttentionCUDAKernel<phi::GPUContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     sparse_attention_grad,
-    ops::SparseAttentionGradCUDAKernel<plf::CUDADeviceContext, float>,
-    ops::SparseAttentionGradCUDAKernel<plf::CUDADeviceContext, double>);
+    ops::SparseAttentionGradCUDAKernel<phi::GPUContext, float>,
+    ops::SparseAttentionGradCUDAKernel<phi::GPUContext, double>);

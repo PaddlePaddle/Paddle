@@ -22,6 +22,7 @@ import functools
 from collections import OrderedDict
 import inspect
 import threading
+from typing import Text, Tuple, Any, List
 
 import six
 import paddle
@@ -34,7 +35,7 @@ from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import ConversionOptions, CONVERSION_OPTIONS
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticFunction, unwrap_decorators
-from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
+from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX, INFER_PROPERTY_SUFFIX
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter, EagerParamBase
@@ -380,7 +381,8 @@ class _SaveLoadConfig(object):
 
 def _parse_save_configs(configs):
     supported_configs = [
-        'output_spec', "with_hook", "combine_params", "clip_extra"
+        'output_spec', "with_hook", "combine_params", "clip_extra",
+        "skip_forward"
     ]
 
     # input check
@@ -396,6 +398,7 @@ def _parse_save_configs(configs):
     inner_config.with_hook = configs.get('with_hook', False)
     inner_config.combine_params = configs.get("combine_params", False)
     inner_config.clip_extra = configs.get("clip_extra", False)
+    inner_config.skip_forward = configs.get("skip_forward", False)
 
     return inner_config
 
@@ -483,9 +486,9 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         if isinstance(var, Variable):
             output_vars_dict[var.name] = var
     if output_spec is None:
-        result_list = output_vars_dict.values()
+        result_list = list(output_vars_dict.values())
     elif output_spec is not None and len(output_spec) == len(output_vars_dict):
-        result_list = output_vars_dict.values()
+        result_list = list(output_vars_dict.values())
         for var in output_spec:
             if var.name not in output_vars_dict:
                 warnings.warn(name_no_exists_error % var.name)
@@ -521,7 +524,10 @@ def _build_load_path_and_config(path, config):
             "don't know which one to load, please make sure that the specified target "
             "of ``path`` is unique." % (path, path))
     elif not prefix_format_exist and not directory_format_exist:
-        raise ValueError("The ``path`` (%s) to load model not exists." % path)
+        raise ValueError("The ``path`` (%s) to load model not exists. "
+                         "Please make sure that *.pdmodel exists or "
+                         "don't using ``skip_forward=True`` to jit.save." %
+                         path)
     else:
         if prefix_format_exist:
             file_prefix = os.path.basename(path)
@@ -633,6 +639,7 @@ def _remove_save_pre_hook(hook):
     _save_pre_hooks_lock.release()
 
 
+@wrap_decorator
 def _run_save_pre_hooks(func):
 
     def wrapper(layer, path, input_spec=None, **configs):
@@ -642,6 +649,40 @@ def _run_save_pre_hooks(func):
         func(layer, path, input_spec, **configs)
 
     return wrapper
+
+
+def _save_property(filename: Text, property_vals: List[Tuple[Any, Text]]):
+    """class property serialization.
+
+    Args:
+        filename (Text): *.meta
+        property_vals (List[Tuple): class property.
+    """
+
+    def set_property(meta, key, val):
+        if isinstance(val, float):
+            meta.set_float(key, val)
+        elif isinstance(val, int):
+            meta.set_int(key, val)
+        elif isinstance(val, str):
+            meta.set_string(key, val)
+        elif isinstance(val, (tuple, list)):
+            if isinstance(val[0], float):
+                meta.set_floats(key, val)
+            elif isinstance(val[0], int):
+                meta.set_ints(key, val)
+            elif isinstance(val[0], str):
+                meta.set_strings(key, val)
+        else:
+            raise ValueError(f"Note support val type: {type(val)}")
+        return
+
+    with open(filename, 'wb') as f:
+        meta = paddle.framework.core.Property()
+        for item in property_vals:
+            val, key = item[0], item[1]
+            set_property(meta, key, val)
+        f.write(meta.serialize_to_string())
 
 
 @_run_save_pre_hooks
@@ -665,7 +706,7 @@ def save(layer, path, input_spec=None, **configs):
       - Other C++ inference APIs
 
     .. note::
-        When using ``paddle.jit.save`` to save a function, parameters will not be saved. If you have to 
+        When using ``paddle.jit.save`` to save a function, parameters will not be saved. If you have to
         save the parameter, please pass the Layer containing function and parameter to ``paddle.jit.save``.
 
     Args:
@@ -777,7 +818,7 @@ def save(layer, path, input_spec=None, **configs):
 
                 load_result = load_func(inps)
                 print((load_result - origin).abs().max() < 1e-10)
-                
+
             save_function()
     """
 
@@ -868,8 +909,9 @@ def save(layer, path, input_spec=None, **configs):
             layer,
         ]
 
-    all_vars = set()
+    combine_vars = {}
     property_vals = []  # (value, key)
+    concrete_program = None
     for attr_func in functions:
         if isinstance(layer, Layer):
             static_func = getattr(inner_layer, attr_func, None)
@@ -885,6 +927,10 @@ def save(layer, path, input_spec=None, **configs):
                 concrete_program = static_func.concrete_program_specify_input_spec(
                     inner_input_spec, with_hook=with_hook)
             elif 'forward' == attr_func:
+                if configs.skip_forward:
+                    # do not jit.save forward function
+                    continue
+
                 # transform in jit.save, if input_spec is incomplete, declarative will throw error
                 # inner_input_spec is list[InputSpec], it should be packed with same structure
                 # as original input_spec here.
@@ -1020,21 +1066,33 @@ def save(layer, path, input_spec=None, **configs):
                 program_only=configs._program_only,
                 clip_extra=configs.clip_extra)
 
-        # collect all vars
-        for var in concrete_program.main_program.list_vars():
-            all_vars.add(var)
+        if combine_params:
+            clone_main_program = concrete_program.main_program.clone()
+            clone_main_program = clone_main_program._prune_with_input(
+                input_var_names, output_vars)
+            for block in clone_main_program.blocks:
+                combine_vars.update(block.vars)
 
     # save shared params
     if combine_params:
+        # sort vars by name
+        combine_vars = sorted(combine_vars.items(), key=lambda item: item[0])
+        ordered_vars = []
+        for name, var in combine_vars:
+            ordered_vars.append(var)
+
         params_filename = file_prefix + INFER_PARAMS_SUFFIX
         with scope_guard(scope):
             paddle.static.save_vars(Executor(_current_expected_place()),
                                     dirname=model_path,
                                     vars=list(
                                         filter(paddle.fluid.io.is_persistable,
-                                               all_vars)),
+                                               ordered_vars)),
                                     filename=params_filename)
-        # TODO: save property
+        # save property
+        property_save_path = os.path.join(os.path.normpath(model_path),
+                                          file_prefix + INFER_PROPERTY_SUFFIX)
+        _save_property(property_save_path, property_vals)
 
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:
@@ -1053,10 +1111,10 @@ def save(layer, path, input_spec=None, **configs):
     # file `***.pdiparams.info`
 
     # "layer" can only be Layer or function or StaticFunction.
-
     contain_parameter = False
-    for var in concrete_program.main_program.list_vars():
-        contain_parameter |= isinstance(var, Parameter)
+    if concrete_program is not None:
+        for var in concrete_program.main_program.list_vars():
+            contain_parameter |= isinstance(var, Parameter)
 
     if (isinstance(layer, Layer) or contain_parameter) and extra_var_info:
         with scope_guard(scope):

@@ -114,7 +114,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/device_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -379,6 +379,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
+           &TensorCopyFrom<paddle::platform::IPUPlace>,
+           py::arg("tensor"),
+           py::arg("place"),
+           py::arg("batch_size") = -1)
+      .def("_copy_from",
            &TensorCopyFrom<paddle::platform::Place>,
            py::arg("tensor"),
            py::arg("place"),
@@ -425,7 +430,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("zero_copy") = false,
            R"DOC(
         Set the data of Tensor on place with given numpy array.
-        
+
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace|MLUPlace): The place where the
@@ -608,7 +613,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
            Args:
                 recursive_sequence_lengths (list[list[int]]): The recursive sequence lengths.
-           
+
            Returns:
                 None.
 
@@ -639,7 +644,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
            Returns:
                list[list[int]]: The lod of the Tensor.
-           
+
            Examples:
                .. code-block:: python
 
@@ -663,7 +668,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             return new_lod;
           },
           R"DOC(
-           Return the recursive sequence lengths corresponding to of the LodD 
+           Return the recursive sequence lengths corresponding to of the LodD
            of the Tensor.
 
            Returns:
@@ -801,7 +806,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // TODO(ZHUI): use cuda event, to avoid sync.
              const auto &device_id = paddle::platform::GetCurrentDeviceId();
              auto stream =
-                 paddle::platform::stream::get_current_stream(device_id);
+                 paddle::platform::get_current_stream(device_id);
              stream->Synchronize();
 
              int type_idx = static_cast<int>(self.type());

@@ -29,7 +29,7 @@ from .data_feeder import check_variable_and_dtype
 from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from .layer_helper import LayerHelper
 from .framework import default_main_program
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'set_gradient_clip', 'ErrorClipByValue', 'ClipGradByValue',
@@ -71,13 +71,9 @@ def _squared_l2_norm(x):
         return sum_square
 
     if in_dygraph_mode():
-        if x.is_selected_rows():
-            new_x = paddle.to_tensor(x.numpy())
-            return _C_ops.squared_l2_norm(new_x)
         return _C_ops.squared_l2_norm(x)
-    else:
-        if _in_legacy_dygraph():
-            return _C_ops.squared_l2_norm(x)
+    elif _in_legacy_dygraph():
+        return _legacy_C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
@@ -213,34 +209,34 @@ class ClipGradBase(object):
 class ClipGradByValue(ClipGradBase):
     """
     Limit the value of multi-dimensional Tensor :math:`X` to the range [min, max].
-    
+
     - Any values less than min are set to ``min``.
-    
+
     - Any values greater than max are set to ``max``.
 
-    The multi-dimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters set in ``optimizer``. 
+    The multi-dimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters set in ``optimizer``.
     If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
-    
-    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
+
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer``
     (for example: :ref:`api_paddle_optimizer_SGD`).
 
     Note:
-        ``need_clip`` of ``ClipGradByValue`` HAS BEEN DEPRECATED since 2.0. 
+        ``need_clip`` of ``ClipGradByValue`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
-    
+
     Args:
         max (float): The maximum value to clip by.
-        min (float, optional): The minimum value to clip by. if not set by user, it will be set to ``-max`` 
+        min (float, optional): The minimum value to clip by. if not set by user, it will be set to ``-max``
             automatically. In this case, ``max`` must be greater than 0.
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10, 
-                                      weight_attr=paddle.ParamAttr(need_clip=True), 
+            linear = paddle.nn.Linear(in_features=10, out_features=10,
+                                      weight_attr=paddle.ParamAttr(need_clip=True),
                                       bias_attr=paddle.ParamAttr(need_clip=False))
             out = linear(x)
             loss = paddle.mean(out)
@@ -271,7 +267,7 @@ class ClipGradByValue(ClipGradBase):
             if getattr(p, 'need_clip', True) is False:
                 params_and_grads.append((p, g))
                 continue
-            new_grad = layers.clip(x=g, min=self.min, max=self.max)
+            new_grad = paddle.clip(x=g, min=self.min, max=self.max)
             params_and_grads.append((p, new_grad))
         return params_and_grads
 
@@ -304,17 +300,17 @@ class ClipGradByValue(ClipGradBase):
 class ClipGradByNorm(ClipGradBase):
     r"""
     Limit the l2 norm of multi-dimensional Tensor :math:`X` to ``clip_norm`` .
-    
+
     - If the l2 norm of :math:`X` is greater than ``clip_norm`` , :math:`X` will be compressed by a ratio.
-    
+
     - If the l2 norm of :math:`X` is less than or equal to ``clip_norm`` , nothing will be done.
-    
+
     The multidimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters set in ``optimizer``.
     If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
-    
-    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
+
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer``
     (for example: :ref:`api_paddle_optimizer_SGD`).
-    
+
     The clipping formula is:
 
     .. math::
@@ -333,7 +329,7 @@ class ClipGradByNorm(ClipGradBase):
         norm(X) = ( \sum_{i=1}^{n}|x\_i|^2)^{ \frac{1}{2}}
 
     Note:
-        ``need_clip`` of ``ClipGradByNorm`` HAS BEEN DEPRECATED since 2.0. 
+        ``need_clip`` of ``ClipGradByNorm`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
 
     Args:
@@ -341,12 +337,12 @@ class ClipGradByNorm(ClipGradBase):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10, 
-                                      weight_attr=paddle.ParamAttr(need_clip=True), 
+            linear = paddle.nn.Linear(in_features=10, out_features=10,
+                                      weight_attr=paddle.ParamAttr(need_clip=True),
                                       bias_attr=paddle.ParamAttr(need_clip=False))
             out = linear(x)
             loss = paddle.mean(out)
@@ -419,17 +415,17 @@ def _allow_pure_fp16_global_norm_clip(*args):
 
 class ClipGradByGlobalNorm(ClipGradBase):
     r"""
-    Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in 
+    Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in
     :math:`t\_list` , and limit it to ``clip_norm`` .
-    
+
     - If the global norm is greater than ``clip_norm`` , all elements of :math:`t\_list` will be compressed by a ratio.
-    
+
     - If the global norm is less than or equal to ``clip_norm`` , nothing will be done.
-    
+
     The list of Tensor :math:`t\_list` is not passed from this class, but the gradients of all parameters set in ``optimizer``.
     If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
-    
-    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
+
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer``
     (for example: :ref:`api_paddle_optimizer_SGD`).
 
     The clipping formula is:
@@ -445,7 +441,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global\_norm = \sqrt{\sum_{i=0}^{N-1}(l2norm(t\_list[i]))^2}
 
     Note:
-        ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0. 
+        ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
 
     Args:
@@ -454,12 +450,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10, 
-                                      weight_attr=paddle.ParamAttr(need_clip=True), 
+            linear = paddle.nn.Linear(in_features=10, out_features=10,
+                                      weight_attr=paddle.ParamAttr(need_clip=True),
                                       bias_attr=paddle.ParamAttr(need_clip=False))
             out = linear(x)
             loss = paddle.mean(out)
@@ -495,7 +491,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if getattr(p, 'need_clip', True) is False:
                 continue
             merge_grad = g
-            if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+
+            if in_dygraph_mode() and g.is_selected_rows():
+                merge_grad = layers.merge_selected_rows(g)
+                merge_grad = merge_grad._get_tensor_from_selected_rows()
+
+            elif g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
@@ -555,7 +556,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if need_clip:
                 clip_input = (clip_var.astype('float16') if g.dtype
                               == core.VarDesc.VarType.FP16 else clip_var)
-                new_grad = _C_ops.elementwise_mul(g, clip_input)
+                new_grad = layers.elementwise_mul(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
                 params_and_grads.append((p, g))
@@ -718,23 +719,23 @@ class ClipGradByGlobalNorm(ClipGradBase):
 def set_gradient_clip(clip, param_list=None, program=None):
     """
     :api_attr: Static Graph
-    
+
     Warning:
-    
-        This API must be used after building network, and before ``minimize`` , 
-        and it may be removed in future releases, so it is not recommended. 
+
+        This API must be used after building network, and before ``minimize`` ,
+        and it may be removed in future releases, so it is not recommended.
         It is recommended to set ``grad_clip`` when initializing the ``optimizer`` ,
         this is a better method to clip gradient. There are three clipping strategies:
-         :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+         :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
          :ref:`api_fluid_clip_GradientClipByValue` .
-        
+
     To specify parameters that require gradient clip.
 
     Args:
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no
             gradient clipping.
         param_list (list(Variable), optional): Parameters that require gradient clip.
                 It can be a list of parameter or a list of parameter's name.
@@ -788,7 +789,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
                     param_list=[param_var1, param_var2])
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
-            
+
             # network 4: use 'set_gradient_clip' and 'optimize(grad_clip=clip)' together
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 loss = network()
@@ -799,10 +800,10 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 # Set the gradient clipping strategy: clip2
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3, grad_clip=clip2)
                 sgd.minimize(loss)
-                # 'set_gradient_clip' will not take effect when setting has a conflict, 
+                # 'set_gradient_clip' will not take effect when setting has a conflict,
                 # and the gradient clipping strategy will be 'clip2'
-            
-            
+
+
     """
     warnings.warn("Caution! 'set_gradient_clip' is not recommended "
                   "and may be deprecated in future! "

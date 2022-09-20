@@ -39,7 +39,7 @@ class Partitioner(object):
     warning:: Partitioner is experimental and subject to change.
 
     Partitioner convert a program into another program.
-    Given a serial program which has been auto completed with shard annotation, the Partitioner 
+    Given a serial program which has been auto completed with shard annotation, the Partitioner
     convert the serial program into a "distributed" program. The Partitioner will  modify the serial
     program in following two ways, which is also the major difference between serial and distributed program:
         1. partition op: replace a serial op into its corresponding dist op infered from the shard annotation
@@ -179,6 +179,16 @@ class Partitioner(object):
 
         partitioned_main_prog.current_block_idx = 0
 
+        # should reconnect the block_attr ptr to the correct block
+        for block_id in range(self._dist_context.block_state.nblock):
+            block = partitioned_main_prog.block(block_id)
+            for op in block.ops:
+                for attr_name in op.all_attrs():
+                    if op.attr_type(attr_name) == core.AttrType.BLOCK:
+                        relative_id = op._block_attr_id(attr_name)
+                        op._set_attr(attr_name,
+                                     partitioned_main_prog.block(relative_id))
+
         partitioned_params_and_grads = []
         for p, g in params_and_grads:
             assert p.name in self._serial2dist_varname_mapping
@@ -214,13 +224,15 @@ class Partitioner(object):
                 forward_op_id2forward_op[
                     serial_ops[idx].desc.original_id()] = serial_ops[idx]
 
-        appended_grad_times = 0
         # partiiton
+        appended_grad_times = 0
         for idx, op in enumerate(serial_ops):
 
+            op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
             if is_backward_op(op) and (is_forward_op(serial_ops[idx - 1])
                                        or is_loss_op(serial_ops[idx - 1])):
-                appended_grad_times += 1
+                if not op_dist_attr.is_recompute:
+                    appended_grad_times += 1
 
             # partititon input variables
             for serial_input_varname in op.desc.input_arg_names():
@@ -246,7 +258,6 @@ class Partitioner(object):
                         serial_output_varname] = new_varname
 
             # partition op
-            op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
             if is_forward_op(op) or op_dist_attr.is_recompute:
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_forward_impl = _get_dist_op_forward_implement(
@@ -269,7 +280,7 @@ class Partitioner(object):
                 dist_op_opt_impl = _get_dist_op_backward_implement(
                     op, self._dist_context, forward_op_id2forward_op)
                 dist_op_opt_impl.backward(self._dist_context, **kinputs,
-                                          **koutputs)
+                                          **koutputs, **{"grad_var_to_var": {}})
             else:
                 raise NotImplementedError(
                     "partitioner only support forward and backward, optimize ops, but got {}"

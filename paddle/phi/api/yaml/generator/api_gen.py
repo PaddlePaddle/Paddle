@@ -130,20 +130,20 @@ class ForwardAPI(BaseAPI):
                 selected_code = [
                     f"std::get<{i}>(api_output)" for i in return_out_list
                 ]
-            return 'return {' + ", ".join(selected_code) + '};'
+            return 'return std::make_tuple(' + ", ".join(selected_code) + ');'
 
     def gene_output(self,
                     out_dtype_list,
                     out_tensor_type_list=None,
                     code_indent='',
                     inplace_flag=False):
-        kernel_output = ""
+        kernel_output = []
         output_names = []
         output_create = ""
         return_type = self.get_return_type_with_intermediate(inplace_flag)
 
         if len(out_dtype_list) == 1:
-            kernel_output = 'kernel_out'
+            kernel_output.append('kernel_out')
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[
                 self.outputs['names'][0]] if inplace_flag and self.outputs[
@@ -156,11 +156,11 @@ class ForwardAPI(BaseAPI):
                 assert self.outputs['out_size_expr'][0] is not None, \
                      f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                 output_create = output_create + f"""
-{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, kernel_backend, &api_output);"""
+{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output);"""
 
             else:
                 output_create = output_create + f"""
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
+{code_indent}  auto kernel_out = {set_out_func}(&api_output);"""
 
             if not inplace_flag and self.view_map is not None and self.outputs[
                     'names'][0] in self.view_map:
@@ -179,14 +179,13 @@ class ForwardAPI(BaseAPI):
 
                 for out_name in self.outputs['names']:
                     if out_name in self.inplace_map:
-                        output_create = output_create + self.inplace_map[
-                            out_name] + ', '
+                        output_create += self.inplace_map[out_name] + ', '
                     else:
                         output_create += 'Tensor(), '
                 output_create = output_create[:-2] + '};'
 
             for i in range(len(out_dtype_list)):
-                kernel_output = kernel_output + f'kernel_out_{i}, '
+                kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
                 set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
                     i] == 'dense' else 'SetSelectedRowsKernelOutput'
@@ -200,12 +199,19 @@ class ForwardAPI(BaseAPI):
                 if out_dtype_list[i] == 'std::vector<Tensor>':
                     assert self.outputs['out_size_expr'][i] is not None, \
                         f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    # Special case for inplace vector and inplace optional<vector>
+                    if self.outputs['names'][i] in self.inplace_map:
+                        set_out_func = "SetInplaceVectorKernelOutput"
+                        if self.inplace_map[self.outputs['names']
+                                            [i]] in self.optional_vars:
+                            set_out_func = "SetInplaceOptionalVectorKernelOutput"
+                            get_out_code = f"std::get<{i}>(api_output)"
                     output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, kernel_backend, {get_out_code});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
 
                 else:
                     output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {get_out_code});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({get_out_code});"""
 
                 if not inplace_flag and self.view_map is not None and self.outputs[
                         'names'][i] in self.view_map:
@@ -214,7 +220,6 @@ class ForwardAPI(BaseAPI):
 {code_indent}  kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
 {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
 
-            kernel_output = kernel_output[:-2]
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(
@@ -253,6 +258,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/ternary.h"
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
 """
@@ -313,7 +319,7 @@ def main():
     parser.add_argument('--api_yaml_path',
                         help='path to api yaml file',
                         nargs='+',
-                        default='paddle/phi/api/yaml/api.yaml')
+                        default='paddle/phi/api/yaml/ops.yaml')
 
     parser.add_argument('--api_header_path',
                         help='output of generated api header code file',

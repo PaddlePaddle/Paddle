@@ -40,8 +40,8 @@ void DivCooScalarKernel(const Context& dev_ctx,
                         SparseCooTensor* out) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
 
-  std::vector<const DenseTensor*> ins = {&(x.non_zero_elements())};
-  std::vector<DenseTensor*> outs = {out->mutable_non_zero_elements()};
+  std::vector<const DenseTensor*> ins = {&(x.values())};
+  std::vector<DenseTensor*> outs = {out->mutable_values()};
   DivScalarFunctor<T> func(static_cast<T>(scalar));
   funcs::ElementwiseKernel<T, DivScalarFunctor<T>>(dev_ctx, ins, &outs, func);
 }
@@ -53,8 +53,8 @@ void DivCsrScalarKernel(const Context& dev_ctx,
                         SparseCsrTensor* out) {
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
 
-  std::vector<const DenseTensor*> ins = {&(x.non_zero_elements())};
-  std::vector<DenseTensor*> outs = {out->mutable_non_zero_elements()};
+  std::vector<const DenseTensor*> ins = {&(x.values())};
+  std::vector<DenseTensor*> outs = {out->mutable_values()};
   DivScalarFunctor<T> func(static_cast<T>(scalar));
   funcs::ElementwiseKernel<T, DivScalarFunctor<T>>(dev_ctx, ins, &outs, func);
 }
@@ -98,6 +98,9 @@ PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu, Relu)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(abs, Abs)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(pow, Pow)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(scale, Scale)
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(expm1, Expm1)
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6, Relu6)
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(leaky_relu, LeakyRelu)
 
 PD_REGISTER_KERNEL(divide_coo_scalar,
                    GPU,

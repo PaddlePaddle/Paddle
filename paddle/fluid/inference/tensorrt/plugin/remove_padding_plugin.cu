@@ -72,9 +72,10 @@ bool RemovePaddingPlugin::supportsFormatCombination(
   if (pos == 1 || pos == 2) {  // pos_id, work_id
     return inOut[pos].type == nvinfer1::DataType::kINT32 &&
            inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
+  } else {
+    return inOut[pos].type == nvinfer1::DataType::kFLOAT &&
+           inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
   }
-  return inOut[pos].type == nvinfer1::DataType::kFLOAT &&
-         inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
   // return (inOut[pos].type == nvinfer1::DataType::kFLOAT && inOut[pos].format
   // == nvinfer1::TensorFormat::kLINEAR)||
   // (inOut[pos].type == nvinfer1::DataType::kHALF && inOut[pos].format ==
@@ -109,10 +110,29 @@ int RemovePaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
   const int32_t* input1 =
       static_cast<const int32_t*>(inputs[1]);  // pos_id_tensor
   float* output = static_cast<float*>(outputs[0]);
-
   const auto input0_desc = inputDesc[0];
-
-  const int32_t num_threads = 256;
+  int32_t num_threads;
+  if (input0_desc.dims.d[2] % 512 == 0) {
+    num_threads = 512;
+  } else if (input0_desc.dims.d[2] % 256 == 0) {
+    num_threads = 256;
+  } else if (input0_desc.dims.d[2] % 128 == 0) {
+    num_threads = 128;
+  } else if (input0_desc.dims.d[2] % 64 == 0) {
+    num_threads = 64;
+  } else if (input0_desc.dims.d[2] % 32 == 0) {
+    num_threads = 32;
+  } else if (input0_desc.dims.d[2] % 16 == 0) {
+    num_threads = 16;
+  } else if (input0_desc.dims.d[2] % 8 == 0) {
+    num_threads = 8;
+  } else if (input0_desc.dims.d[2] % 4 == 0) {
+    num_threads = 4;
+  } else if (input0_desc.dims.d[2] % 2 == 0) {
+    num_threads = 2;
+  } else {
+    num_threads = 1;
+  }
   const dim3 num_blocks(
       input0_desc.dims.d[0],
       input0_desc.dims.d[1],

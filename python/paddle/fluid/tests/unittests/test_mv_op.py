@@ -56,7 +56,7 @@ class TestMVAPI(unittest.TestCase):
         z = paddle.mv(self.x, self.vec)
         np_z = z.numpy()
         z_expected = np.array(np.dot(self.x_data, self.vec_data))
-        self.assertTrue(np.allclose(np_z, z_expected))
+        np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
         paddle.enable_static()
 
@@ -93,7 +93,7 @@ class TestMVAPI(unittest.TestCase):
                     },
                                    fetch_list=[result_vec])
                     z_expected = np.array(np.dot(self.input_x, self.input_vec))
-                    self.assertTrue(np.allclose(res, z_expected))
+                    np.testing.assert_allclose(res, z_expected, rtol=1e-05)
 
 
 class TestMVError(unittest.TestCase):

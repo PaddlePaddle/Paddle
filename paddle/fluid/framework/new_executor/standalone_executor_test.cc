@@ -50,20 +50,21 @@ USE_OP_ITSELF(concat_grad);
 USE_OP_ITSELF(elementwise_mul_grad);
 USE_OP_ITSELF(sigmoid_grad);
 USE_OP_ITSELF(tanh_grad);
-USE_OP(sum);
+USE_OP_ITSELF(sum);
 USE_OP_ITSELF(slice_grad);
 USE_OP_ITSELF(lookup_table_grad);
 USE_OP_ITSELF(sqrt);
 USE_OP_ITSELF(elementwise_max);
 USE_OP_ITSELF(elementwise_div);
 USE_OP_ITSELF(sgd);
-USE_OP(squared_l2_norm);
+USE_OP_ITSELF(squared_l2_norm);
 USE_OP_ITSELF(memcpy_h2d);
 USE_OP_ITSELF(memcpy_d2h);
 USE_OP_ITSELF(fetch_v2);
 
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform_random_raw, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(uniform_random, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(transpose, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(reshape, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(split, GPU, ALL_LAYOUT);
@@ -87,6 +88,7 @@ PD_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(mean_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sigmoid, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sigmoid_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(squared_l2_norm, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(reshape_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
@@ -99,6 +101,7 @@ PD_DECLARE_KERNEL(slice_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_n, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace framework {

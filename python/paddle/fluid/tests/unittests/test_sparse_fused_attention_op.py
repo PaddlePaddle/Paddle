@@ -37,7 +37,7 @@ def get_cuda_version():
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11070,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.7"
 )
 class TestSparseAttentionAPI1(unittest.TestCase):
 
@@ -107,12 +107,18 @@ class TestSparseAttentionAPI1(unittest.TestCase):
                     query_sp, key_sp, value_sp, sp_mask)
                 output_sp.backward()
 
-            self.assertTrue(np.allclose(output_sp.numpy(), output.numpy()))
-            self.assertTrue(
-                np.allclose(query_sp.grad.numpy(), query.grad.numpy()))
-            self.assertTrue(np.allclose(key_sp.grad.numpy(), key.grad.numpy()))
-            self.assertTrue(
-                np.allclose(value_sp.grad.numpy(), value.grad.numpy()))
+            np.testing.assert_allclose(output_sp.numpy(),
+                                       output.numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(query_sp.grad.numpy(),
+                                       query.grad.numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(key_sp.grad.numpy(),
+                                       key.grad.numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(value_sp.grad.numpy(),
+                                       value.grad.numpy(),
+                                       rtol=1e-05)
 
 
 class TestSparseAttentionAPI2(TestSparseAttentionAPI1):

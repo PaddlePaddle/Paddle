@@ -87,6 +87,7 @@ class DistributedMode:
     HALF_ASYNC = 2
     GEO = 3
     FL = 4
+    NU = 5
 
 
 class TrainerRuntimeConfig(object):
@@ -187,11 +188,15 @@ def get_lr_ops(program):
     return lr_ops
 
 
-def get_optimize_ops(_program):
+def get_optimize_ops(_program, remote_sparse=[]):
     block = _program.global_block()
     opt_ops = []
     for op in block.ops:
         if _is_opt_role_op(op):
+            if len(remote_sparse) > 0 and op.input(
+                    "Param"
+            )[0] not in remote_sparse:  # for fl: only delete remote sparse optimize
+                continue
             # delete clip op from opt_ops when run in Parameter Server mode
             if OP_NAME_SCOPE in op.all_attrs() \
                     and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
@@ -199,6 +204,15 @@ def get_optimize_ops(_program):
                     "op_role",
                     int(core.op_proto_and_checker_maker.OpRole.Backward))
                 continue
+            opt_ops.append(op)
+    return opt_ops
+
+
+def get_datanorm_ops(_program):
+    block = _program.global_block()
+    opt_ops = []
+    for op in block.ops:
+        if op.type == 'data_norm':
             opt_ops.append(op)
     return opt_ops
 
@@ -248,6 +262,10 @@ def get_heter_worker_endpoint(role_maker):
 
 def get_trainer_endpoint(role_maker):
     return role_maker._get_trainer_endpoint()
+
+
+def get_trainer_endpoints(role_maker):
+    return role_maker._get_trainer_endpoints()
 
 
 def get_previous_stage_trainers(role_maker):
@@ -344,7 +362,7 @@ def get_dense_send_context(program,
         dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                 [var_numel], origin_varnames, trainer_id,
                                 aggregate, False, False, idx, False, False,
-                                id(program))
+                                id(program), [])
         send_ctx[grad_name] = dense_ctx
         idx += 1
 
@@ -367,7 +385,7 @@ def get_dense_send_context(program,
         data_norm_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
                                     aggregate, False, False, idx, False, True,
-                                    id(program))
+                                    id(program), [])
         send_ctx[grad_name] = data_norm_ctx
         idx += 1
     else:
@@ -382,45 +400,49 @@ def get_dense_send_context(program,
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], [origin_varname], trainer_id,
                                     aggregate, False, False, idx, False, False,
-                                    id(program))
+                                    id(program), [])
             send_ctx[grad_name] = dense_ctx
             idx += 1
     return idx
 
 
-def get_geo_trainer_send_context(context):
-    if context['ps_mode'] != DistributedMode.GEO:
+def get_geo_trainer_send_context(attrs):
+    if attrs['ps_mode'] != DistributedMode.GEO:
         raise ValueError("ps mode: {} not matched {}",
                          format(ps_mode, "get_geo_trainer_send_context"))
     send_ctx = {}
-    trainer_id = get_role_id(context['role_maker'])
-    origin_programs = context['origin_main_programs']
-    idx = 0
+    trainer_id = get_role_id(attrs['role_maker'])
+    origin_programs = attrs['origin_main_programs']
+    idx = 0  # table idx
 
     distibuted_varnames = get_sparse_tablenames(origin_programs, True)
     for i, program in enumerate(origin_programs):
-        merged_sparse_pairs = context['merged_sparse_pairs'][i]
+        merged_sparse_pairs = attrs['merged_sparse_pairs'][i]
         for merged in merged_sparse_pairs:
             param, grad = merged
             grad_name = grad.merged_var.name
             param_name = param.merged_var.name
-            is_distributed = True if param_name in distibuted_varnames else False
+            if param_name in attrs['remote_sparse']:  # for recall/ncf model
+                continue
 
+            is_distributed = True if param_name in distibuted_varnames else False
             var = program.global_block().vars[grad.merged_var.name]
             var_numel = reduce(lambda x, y: x * y, var.shape[1:])
             from paddle.fluid.core import CommContext
+            print("public get_the_geo_send_context sparse: ", grad_name,
+                  var_numel)
             sparse_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                      [var_numel], [grad_name], trainer_id, True,
                                      True, is_distributed, idx, False, False,
-                                     id(program))
+                                     id(program), [])
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
     if len(send_ctx) == 0:
         raise ValueError("GeoSGD require sparse parameters in your net.")
 
-    if len(context['tensor_table']) > 0 and context['is_worker']:
-        name, ctx = _step_ctx(idx, context['role_maker'])
+    if len(attrs['tensor_table']) > 0 and attrs['is_worker']:
+        name, ctx = _step_ctx(idx, attrs['role_maker'])
         send_ctx[name] = ctx
 
     return send_ctx
@@ -434,32 +456,33 @@ def _step_ctx(idx, role_maker):
     names = [name] * len(endpoints)
     from paddle.fluid.core import CommContext
     ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
-                      True, False, False, idx, True, False, -1)
+                      True, False, False, idx, True, False, -1, [])
     return name, ctx
 
 
-def get_the_one_send_context(context,
-                             use_origin_program=False,
-                             split_dense_table=False,
-                             ep_list=None):
+def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
     if ep_list is None:
         ep_list = ["127.0.0.1:6071"]
     send_ctx = {}
-    trainer_id = get_role_id(context['role_maker'])
-    origin_programs = context['origin_main_programs']
+    trainer_id = get_role_id(attrs['role_maker'])
+    origin_programs = attrs['origin_main_programs']
     print("is_heter_ps_mode? {}".format(split_dense_table))
 
     idx = 0
     distibuted_varnames = get_sparse_tablenames(origin_programs, True)
     # print("public distibuted_varnames:", distibuted_varnames)
     for i, program in enumerate(origin_programs):
-        merged_sparse_pairs = context['merged_sparse_pairs'][i]
+        merged_sparse_pairs = attrs['merged_sparse_pairs'][i]
         for merged in merged_sparse_pairs:
             param, grad = merged
             grad_name = grad.merged_var.name
             param_name = param.merged_var.name
-            splited_varname = []
 
+            remote_sparse_ids = []
+            if param_name in attrs['remote_sparse']:  # for recall/ncf model
+                remote_sparse_ids.append(idx)
+
+            splited_varname = []
             for i in range(len(ep_list)):
                 splited_varname.append("{}.block{}".format(param_name, i))
 
@@ -470,26 +493,26 @@ def get_the_one_send_context(context,
             shape = list(var.shape)
             shape[0] = 0 if is_distributed else shape[0]
 
-            #print("public get_the_one_send_context sparse:", grad_name,
-            #      splited_varname, shape)
             if grad_name in send_ctx:
                 continue
             from paddle.fluid.core import CommContext
+            print("public get_the_one_send_context sparse: ", grad_name,
+                  splited_varname, shape)
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
                                      is_distributed, idx, False, False,
-                                     id(program))
+                                     id(program), remote_sparse_ids)
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
     for i, program in enumerate(origin_programs):
-        merged_dense_pairs = context['merged_dense_pairs'][i]
+        merged_dense_pairs = attrs['merged_dense_pairs'][i]
         idx = get_dense_send_context(program, send_ctx, idx, merged_dense_pairs,
                                      trainer_id, split_dense_table)
 
-    if len(context['tensor_table']) > 0 and context['is_worker']:
-        name, ctx = _step_ctx(idx, context['role_maker'])
+    if len(attrs['tensor_table']) > 0 and attrs['is_worker']:
+        name, ctx = _step_ctx(idx, attrs['role_maker'])
         send_ctx[name] = ctx
 
     return send_ctx
@@ -588,7 +611,7 @@ def find_heter_ops(program, default_device="cpu"):
                     if no_grad_var in var2idx:
                         """
                        insert sum op & remove sum op from var2idx and origin place
-  
+
                        """
                         op_list = list(block.ops)
                         sum_op = op_list[var2idx[no_grad_var]]
@@ -1161,17 +1184,12 @@ def insert_communicate_op(orign_program,
     return entrance_var
 
 
-def get_the_one_recv_context(context,
-                             is_dense=True,
-                             split_dense_table=False,
-                             use_origin_program=False):
+def get_the_one_recv_context(context, is_dense=True, split_dense_table=False):
     recv_id_maps = {}
     grad_name_to_param_name = {}
     if is_dense:
-        send_ctx = get_the_one_send_context(
-            context,
-            split_dense_table=split_dense_table,
-            use_origin_program=use_origin_program)
+        send_ctx = get_the_one_send_context(context,
+                                            split_dense_table=split_dense_table)
         for idx, (name, ctx) in enumerate(send_ctx.items()):
             if ctx.is_sparse():
                 continue
@@ -1188,7 +1206,6 @@ def get_the_one_recv_context(context,
     else:
         send_ctx = get_the_one_send_context(context,
                                             split_dense_table=False,
-                                            use_origin_program=False,
                                             ep_list=None)
         for idx, (name, ctx) in enumerate(send_ctx.items()):
             if not ctx.is_sparse():
@@ -1262,8 +1279,8 @@ def build_var_distributed(context):
     context["merged_variable_map"] = {}
     for origin_program in origin_programs:
         sparse_pairs, dense_pairs = get_param_grads(origin_program)
-        #        print("public build_var_distributed sparse_pairs:", sparse_pairs)
-        #        print("public build_var_distributed dense_pairs:", dense_pairs)
+        #print("public build_var_distributed sparse_pairs:", sparse_pairs)
+        #print("public build_var_distributed dense_pairs:", dense_pairs)
         origin_for_sparse = []
         origin_for_dense = []
         merged_sparse_pairs = []
@@ -1283,7 +1300,7 @@ def build_var_distributed(context):
             m_grad = MergedVariable(grad, [grad], [0])
             merged_variables_pairs.append((m_param, m_grad))
             merged_dense_pairs.append((m_param, m_grad))
-        # print("public build_var_distributed merged_dense_pairs:",
+        #print("public build_var_distributed merged_dense_pairs:",
         #       merged_dense_pairs)
 
         for sparse_pair in origin_for_sparse:
@@ -1293,7 +1310,7 @@ def build_var_distributed(context):
             m_grad = MergedVariable(grad, [grad], [0])
             merged_variables_pairs.append((m_param, m_grad))
             merged_sparse_pairs.append((m_param, m_grad))
-        # print("public build_var_distributed merged_sparse_pairs:",
+        #print("public build_var_distributed merged_sparse_pairs:",
         #       merged_sparse_pairs)
 
         for merged in merged_variables_pairs:
@@ -1318,20 +1335,20 @@ def build_var_distributed(context):
 
     context["param_name_to_grad_name"] = param_name_to_grad_name
     context["grad_name_to_param_name"] = grad_name_to_param_name
-
-
-#    print("public build_var_distributed origin_sparse_pairs:",
-#          context["origin_sparse_pairs"])
-#    print("public build_var_distributed origin_for_dense:",
-#          context["origin_dense_pairs"])
-#    print("public build_var_distributed merged_sparse_pairs:",
-#          context["merged_sparse_pairs"])
-#    print("public build_var_distributed merged_dense_pairs:",
-#          context['merged_dense_pairs'])
-#    print("public build_var_distributed param_name_to_grad_name:",
-#          param_name_to_grad_name)
-#    print("public build_var_distributed grad_name_to_param_name:",
-#          grad_name_to_param_name)
+    '''
+    print("public build_var_distributed origin_sparse_pairs:",
+        context["origin_sparse_pairs"])
+    print("public build_var_distributed origin_for_dense:",
+        context["origin_dense_pairs"])
+    print("public build_var_distributed merged_sparse_pairs:",
+        context["merged_sparse_pairs"])
+    print("public build_var_distributed merged_dense_pairs:",
+        context['merged_dense_pairs'])
+    print("public build_var_distributed param_name_to_grad_name:",
+        param_name_to_grad_name)
+    print("public build_var_distributed grad_name_to_param_name:",
+        grad_name_to_param_name)
+    '''
 
 
 def _is_opt_role_op(op):
@@ -1591,3 +1608,11 @@ def debug_program(file, program):
     os.makedirs(os.path.dirname(file), exist_ok=True)
     with open(file, 'w+') as f:
         f.write(str(program))
+
+
+def is_distributed_env():
+    node_role = os.getenv("TRAINING_ROLE")
+    if node_role is None:
+        return False
+    else:
+        return True

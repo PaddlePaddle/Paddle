@@ -128,6 +128,8 @@ class TestLUOp(OpTest):
 
     def setUp(self):
         self.op_type = "lu"
+        self.python_api = paddle.tensor.linalg.lu
+        self.python_out_sig = ["Out", "Pivots"]
         self.config()
 
         self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
@@ -140,10 +142,10 @@ class TestLUOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'])
+        self.check_grad(['X'], ['Out'], check_eager=True)
 
 
 # m = n 2D
@@ -203,15 +205,15 @@ class TestLUAPI(unittest.TestCase):
                 mtp = Pmat_to_perm(sP, min(m, n))
                 nP = perm_to_Pmat(P, sP.shape[-1])
 
-                self.assertTrue(np.allclose(sU, triu, atol=1e-5))
-                self.assertTrue(np.allclose(sL, tril, atol=1e-5))
-                self.assertTrue(np.allclose(P, mtp, atol=1e-5))
-                self.assertTrue(np.allclose(nP, sP, atol=1e-5))
+                np.testing.assert_allclose(sU, triu, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(sL, tril, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(P, mtp, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(nP, sP, rtol=1e-05, atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors
@@ -269,12 +271,15 @@ class TestLUAPI(unittest.TestCase):
                     fetches = exe.run(fluid.default_main_program(),
                                       feed={"input": a},
                                       fetch_list=[lu, p])
-                    self.assertTrue(np.allclose(fetches[0], NLU, atol=1e-5))
+                    np.testing.assert_allclose(fetches[0],
+                                               NLU,
+                                               rtol=1e-05,
+                                               atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors

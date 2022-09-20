@@ -77,8 +77,7 @@ void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
 
   size_t max_num_runs = accuracy_check ? 2 : max_num_benchmark_runs;
   for (size_t i = 0; i < max_num_runs; i++) {
-    input_tensor0 =
-        matmul_final_state_dygraph_function(input_tensor0, Y, false, false);
+    input_tensor0 = matmul_ad_func(input_tensor0, Y, false, false);
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
@@ -171,8 +170,7 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
   if (place == paddle::platform::CUDAPlace()) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx =
-        dynamic_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+    auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
     paddle::memory::Copy(paddle::platform::CPUPlace(),
@@ -204,8 +202,7 @@ static void FluidCheckGradTensorValue(
   if (place == paddle::platform::CUDAPlace()) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx =
-        dynamic_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+    auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
     paddle::memory::Copy(paddle::platform::CPUPlace(),

@@ -49,7 +49,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(input, label)
         expected = calc_hinge_embedding_loss(self.input_np, self.label_np)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(input,
@@ -58,7 +58,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         expected = calc_hinge_embedding_loss(self.input_np,
                                              self.label_np,
                                              reduction='sum')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(input,
@@ -67,7 +67,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         expected = calc_hinge_embedding_loss(self.input_np,
                                              self.label_np,
                                              reduction='none')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, self.shape)
 
     def run_static_check(self, place=paddle.CPUPlace):
@@ -91,7 +91,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
                     "label": self.label_np
                 },
                                         fetch_list=[st_result])
-                self.assertTrue(np.allclose(result_numpy, expected))
+                np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
 
     def test_cpu(self):
         self.run_dynamic_check(place=paddle.CPUPlace())
@@ -129,7 +129,7 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss()
         dy_result = hinge_embedding_loss(input, label)
         expected = calc_hinge_embedding_loss(self.input_np, self.label_np)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
@@ -138,7 +138,7 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         expected = calc_hinge_embedding_loss(self.input_np,
                                              self.label_np,
                                              reduction='sum')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
@@ -147,7 +147,7 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         expected = calc_hinge_embedding_loss(self.input_np,
                                              self.label_np,
                                              reduction='none')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, self.shape)
 
     def run_static_check(self, place=paddle.CPUPlace):
@@ -172,7 +172,7 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
                     "label": self.label_np
                 },
                                         fetch_list=[st_result])
-                self.assertTrue(np.allclose(result_numpy, expected))
+                np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
 
     def test_cpu(self):
         self.run_dynamic_check(place=paddle.CPUPlace())

@@ -15,6 +15,7 @@
 #include <paddle/fluid/platform/device_context.h>
 
 #include <algorithm>
+#include <type_traits>
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -43,7 +44,8 @@ class SkipLayerNormKernel : public framework::OpKernel<T> {
 
     auto *out = context.Output<framework::Tensor>("Out");
     out->Resize(X->dims());
-    auto *output_d = out->mutable_data<T>(context.GetPlace());
+    auto &dev_ctx = context.template device_context<phi::GPUContext>();
+    auto *output_d = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
 
     size_t num = 1;
     for (size_t i = 0; i < X->dims().size(); i++) {
@@ -53,15 +55,34 @@ class SkipLayerNormKernel : public framework::OpKernel<T> {
     auto &device_ctx = context.template device_context<DeviceContext>();
     operators::math::SkipLayerNormFunctor<T> skip_layer_norm_func;
 
-    skip_layer_norm_func(num,
-                         hidden,
-                         X_d,
-                         Y_d,
-                         scale_d,
-                         bias_d,
-                         output_d,
-                         epsilon,
-                         device_ctx.stream());
+    if (std::is_same<T, paddle::platform::float16>::value) {
+      const half *X_new = reinterpret_cast<const half *>(X_d);
+      const half *Y_new = reinterpret_cast<const half *>(Y_d);
+      const half *scale_new = reinterpret_cast<const half *>(scale_d);
+      const half *bias_new = reinterpret_cast<const half *>(bias_d);
+      half *output_new = reinterpret_cast<half *>(output_d);
+      operators::math::SkipLayerNormFunctor<half> skip_layer_norm_func;
+      skip_layer_norm_func(num,
+                           hidden,
+                           X_new,
+                           Y_new,
+                           scale_new,
+                           bias_new,
+                           output_new,
+                           epsilon,
+                           device_ctx.stream());
+    } else {
+      operators::math::SkipLayerNormFunctor<T> skip_layer_norm_func;
+      skip_layer_norm_func(num,
+                           hidden,
+                           X_d,
+                           Y_d,
+                           scale_d,
+                           bias_d,
+                           output_d,
+                           epsilon,
+                           device_ctx.stream());
+    }
   }
 };
 
@@ -69,6 +90,13 @@ class SkipLayerNormKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
 REGISTER_OP_CUDA_KERNEL(
     skip_layernorm,
-    ops::SkipLayerNormKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::SkipLayerNormKernel<phi::GPUContext, float>,
+    ops::SkipLayerNormKernel<phi::GPUContext, paddle::platform::float16>);
+#else
+REGISTER_OP_CUDA_KERNEL(skip_layernorm,
+                        ops::SkipLayerNormKernel<phi::GPUContext, float>);
+#endif

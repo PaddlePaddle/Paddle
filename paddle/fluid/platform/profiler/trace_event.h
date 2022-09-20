@@ -105,6 +105,11 @@ struct KernelEventInfo {
   uint64_t submitted;
   // The completed timestamp for the kernel execution, in ns.
   uint64_t completed;
+
+  float blocks_per_sm;
+  float warps_per_sm;
+  // theoretical achieved occupancy
+  float occupancy;
 };
 
 static constexpr size_t kMemKindMaxLen = 50;

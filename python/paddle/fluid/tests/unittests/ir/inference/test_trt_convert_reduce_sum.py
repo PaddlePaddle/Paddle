@@ -44,9 +44,9 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
 
         def generate_input1(dtype, attrs: List[Dict[str, Any]]):
             if dtype == -1 or dtype == 5:
-                return np.random.random([1, 3, 64, 64]).astype(np.float32)
+                return np.random.random([1, 3, 32, 32]).astype(np.float32)
             elif dtype == 2:
-                return np.random.random([1, 3, 64, 64]).astype(np.int32)
+                return np.random.random([1, 3, 32, 32]).astype(np.int32)
 
         for keep_dim in [True, False]:
             for dim in [[], [1], [0], [0, 1], [1, 2, 3], [-2, 0, 3], [-3],
@@ -93,7 +93,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 32, 32]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}

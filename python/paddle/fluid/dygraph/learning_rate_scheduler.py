@@ -31,7 +31,7 @@ __all__ = [
 class LearningRateDecay(object):
     """
     Base class of learning rate decay
-    
+
     Define the common interface of an LearningRateDecay.
     User should not use this class directly,
     but need to use one of it's implementation.
@@ -53,7 +53,7 @@ class LearningRateDecay(object):
         """
         convert lr from float to variable
 
-        Args: 
+        Args:
             lr: learning rate
         Returns:
             learning rate variable
@@ -124,7 +124,7 @@ class LearningRateDecay(object):
 class PiecewiseDecay(LearningRateDecay):
     """
     :api_attr: imperative
-    
+
     Piecewise decay scheduler.
 
     The algorithm can be described as the code below.
@@ -141,7 +141,7 @@ class PiecewiseDecay(LearningRateDecay):
             learning_rate = 0.1
 
     Parameters:
-        boundaries(list): A list of steps numbers. The type of element in the list is python int. 
+        boundaries(list): A list of steps numbers. The type of element in the list is python int.
         values(list): A list of learning rate values that will be picked during
             different step boundaries. The type of element in the list is python float.
         begin(int): The begin step to initialize the global_step in the description above.
@@ -187,12 +187,12 @@ class NaturalExpDecay(LearningRateDecay):
     :api_attr: imperative
 
     Applies natural exponential decay to the initial learning rate.
-    
+
     The algorithm can be described as following.
 
     .. math::
 
-        decayed\_learning\_rate = learning\_rate * e^{y} 
+        decayed\_learning\_rate = learning\_rate * e^{y}
 
     If staircase is set to False, then:
 
@@ -204,15 +204,15 @@ class NaturalExpDecay(LearningRateDecay):
 
     .. math::
 
-        y = - decay\_rate * math.floor(\\frac{global\_step}{decay\_steps}) 
+        y = - decay\_rate * math.floor(\\frac{global\_step}{decay\_steps})
 
     Parameters:
-        learning_rate(Variable|float): The initial learning rate. If the type 
-            is Variable, it's a tensor with shape [1], the data type can be  
+        learning_rate(Variable|float): The initial learning rate. If the type
+            is Variable, it's a tensor with shape [1], the data type can be
             float32 or float64. It also can be set to python int number.
         decay_steps(int): The decay step size. It determines the decay cycle.
         decay_rate(int): The decay rate.
-        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
+        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The
             default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
@@ -272,16 +272,16 @@ class ExponentialDecay(LearningRateDecay):
     Applies exponential decay to the learning rate.
 
     The algorithm can be described as following.
-    
+
     .. math::
 
-        decayed\_learning\_rate = learning\_rate * decay\_rate ^ y 
+        decayed\_learning\_rate = learning\_rate * decay\_rate ^ y
 
     If staircase is set to False, then:
 
     .. math::
 
-        y = \\frac{global\_step}{decay\_steps} 
+        y = \\frac{global\_step}{decay\_steps}
 
     If staircase is set to True, then:
 
@@ -291,12 +291,12 @@ class ExponentialDecay(LearningRateDecay):
 
 
     Parameters:
-        learning_rate(Variable|float): The initial learning rate. If the type 
-            is Variable, it's a tensor with shape [1], the data type can be  
+        learning_rate(Variable|float): The initial learning rate. If the type
+            is Variable, it's a tensor with shape [1], the data type can be
             float32 or float64. It also can be set to python int number.
         decay_steps(int): The decay step size. It determines the decay cycle.
         decay_rate(float): The decay rate.
-        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
+        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The
             default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
@@ -358,7 +358,7 @@ class InverseTimeDecay(LearningRateDecay):
 
     .. math::
 
-        decayed\_learning\_rate = \\frac{learning\_rate}{1 + decay\_rate * \\frac{global\_step}{decay\_step}}  
+        decayed\_learning\_rate = \\frac{learning\_rate}{1 + decay\_rate * \\frac{global\_step}{decay\_step}}
 
     If staircase is set to True, then:
 
@@ -367,17 +367,17 @@ class InverseTimeDecay(LearningRateDecay):
         decayed\_learning\_rate = \\frac{learning\_rate}{1 + decay\_rate * math.floor(\\frac{global\_step}{decay\_step})}
 
     Parameters:
-        learning_rate(Variable|float): The initial learning rate. If the type 
-            is Variable, it's a tensor with shape [1], the data type can be  
+        learning_rate(Variable|float): The initial learning rate. If the type
+            is Variable, it's a tensor with shape [1], the data type can be
             float32 or float64. It also can be set to python int number.
         decay_steps(int): The decay step size. It determines the decay cycle.
         decay_rate(float): The decay rate.
-        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
+        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The
             default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
             The default value is 1.
-        dtype(str, optional): The data type used to create the learning rate variable. The data type can be 
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be
             'float32', 'float64'. The default value is 'float32'.
 
     Returns:
@@ -437,7 +437,7 @@ class PolynomialDecay(LearningRateDecay):
 
     .. math::
 
-        decay\_steps & = decay\_steps * math.ceil(\\frac{global\_step}{decay\_steps}) 
+        decay\_steps & = decay\_steps * math.ceil(\\frac{global\_step}{decay\_steps})
 
         decayed\_learning\_rate & = (learning\_rate-end\_learning\_rate)*(1-\\frac{global\_step}{decay\_steps})^{power}+end\_learning\_rate
 
@@ -445,13 +445,13 @@ class PolynomialDecay(LearningRateDecay):
 
     .. math::
 
-        global\_step & = min(global\_step, decay\_steps) 
+        global\_step & = min(global\_step, decay\_steps)
 
         decayed\_learning\_rate & = (learning\_rate-end\_learning\_rate)*(1-\\frac{global\_step}{decay\_steps})^{power}+end\_learning\_rate
 
     Parameters:
-        learning_rate(Variable|float): The initial learning rate. If the type 
-            is Variable, it's a tensor with shape [1], the data type can be  
+        learning_rate(Variable|float): The initial learning rate. If the type
+            is Variable, it's a tensor with shape [1], the data type can be
             float32 or float64. It also can be set to python int number.
         decay_steps(int): The decay step size. It determines the decay cycle.
         end_learning_rate(float, optional): The minimum final learning rate. The default value is 0.0001.
@@ -530,10 +530,10 @@ class CosineDecay(LearningRateDecay):
     .. math::
 
         decayed\_learning\_rate = learning\_rate * 0.5 * (math.cos(global\_step * \\frac{math.pi}{step\_each\_epoch} ) + 1)
-    
+
     Parameters:
-        learning_rate(Variable|float): The initial learning rate. If the type 
-            is Variable, it's a tensor with shape [1], the data type can be  
+        learning_rate(Variable|float): The initial learning rate. If the type
+            is Variable, it's a tensor with shape [1], the data type can be
             float32 or float64. It also can be set to python int number.
         step_each_epoch(int): The number of steps in an epoch.
         epochs(int): The number of epochs.
@@ -581,7 +581,7 @@ class NoamDecay(LearningRateDecay):
     r"""
     :api_attr: imperative
 
-    Applies Noam decay to the initial learning rate. 
+    Applies Noam decay to the initial learning rate.
 
     The algorithm can be described as following.
 
@@ -589,12 +589,12 @@ class NoamDecay(LearningRateDecay):
 
         decayed\_learning\_rate = learning\_rate * d_{model}^{-0.5} * min(global\_step^{-0.5}, global\_step * warmup\_steps^{-1.5})
 
-    Please reference `attention is all you need <https://arxiv.org/pdf/1706.03762.pdf>`_ 
+    Please reference `attention is all you need <https://arxiv.org/pdf/1706.03762.pdf>`_
 
     Parameters:
-        d$_{model}$(Variable|int): The dimensionality of input and output feature vector of model. If type is Variable, 
+        d$_{model}$(Variable|int): The dimensionality of input and output feature vector of model. If type is Variable,
             it's a tensor with shape [1] and the data type can be int32 or int64. The type can also be python int.
-        warmup_steps(Variable|int): The number of warmup steps. A super parameter. If type is Variable, 
+        warmup_steps(Variable|int): The number of warmup steps. A super parameter. If type is Variable,
             it's a tensor with shape [1] and the data type can be int32 or int64. The type can also be python int.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
@@ -650,24 +650,24 @@ class LinearLrWarmup(LearningRateDecay):
 
     This operator use the linear learning rate warm up strategy to adjust the learning rate preliminarily before the normal learning rate scheduling.
     For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_
-    
+
     When global_step < warmup_steps, learning rate is updated as:
-    
+
     .. code-block:: text
-    
+
             linear_step = end_lr - start_lr
             lr = start_lr + linear_step * (global_step / warmup_steps)
-    
+
     where start_lr is the initial learning rate, and end_lr is the final learning rate;
-    
+
     When global_step >= warmup_steps, learning rate is updated as:
-    
+
     .. code-block:: text
-    
+
             lr = learning_rate
-    
+
     where lr is the learning_rate after warm-up.
-    
+
     Args:
         learning_rate (Variable|float): Learning_rate after warm-up, it could be 1D-Tensor or single value with the data type of float32.
         warmup_steps (int): Steps for warm up.
@@ -678,26 +678,26 @@ class LinearLrWarmup(LearningRateDecay):
             The default value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
             'float32', 'float64'. The default value is 'float32'.
-    
+
     Returns:
         Variable: Warm-up learning rate with the same data type as learning_rate.
-    
-    
+
+
     Examples:
-    
+
     .. code-block:: python
-    
+
         import paddle.fluid as fluid
-    
-        learning_rate = 0.1 
+
+        learning_rate = 0.1
         warmup_steps = 50
         start_lr = 0
         end_lr = 0.1
 
-        with fluid.dygraph.guard(): 
+        with fluid.dygraph.guard():
             lr_decay = fluid.dygraph.LinearLrWarmup( learning_rate, warmup_steps, start_lr, end_lr)
-    
-       
+
+
     """
 
     def __init__(self,
@@ -739,12 +739,12 @@ class ReduceLROnPlateau(LearningRateDecay):
     """
     :api_attr: imperative
 
-    Reduce learning rate when ``loss`` has stopped descending. Models often benefit from reducing the learning rate 
+    Reduce learning rate when ``loss`` has stopped descending. Models often benefit from reducing the learning rate
     by 2 to 10 times once model performance has no longer improvement.
 
-    The ``loss`` is the one which has been pass into ``step`` , it must be 1-D Tensor with shape [1]. When ``loss`` 
-    stop descending for a ``patience`` number of epochs, the learning rate will be reduced to ``learning_rate * decay_rate`` . 
-    (Specially, ``mode`` can also be set to ``'max`` , in this case, when ``loss`` stop ascending for a ``patience`` number 
+    The ``loss`` is the one which has been pass into ``step`` , it must be 1-D Tensor with shape [1]. When ``loss``
+    stop descending for a ``patience`` number of epochs, the learning rate will be reduced to ``learning_rate * decay_rate`` .
+    (Specially, ``mode`` can also be set to ``'max`` , in this case, when ``loss`` stop ascending for a ``patience`` number
     of epochs, the learning rate will be reduced.)
 
     In addition, After each reduction, it will wait a ``cooldown`` number of epochs before resuming normal operation.
@@ -752,31 +752,31 @@ class ReduceLROnPlateau(LearningRateDecay):
     Args:
         learning_rate (Variable|float|int): The initial learning rate. It can be set to python float or int number.
             If the type is Variable, it should be 1-D Tensor with shape [1], the data type can be 'float32' or 'float64'.
-        mode (str, optional): ``'min'`` or ``'max'`` can be selected. Normally, it is ``'min'`` , which means that the 
-            learning rate will reduce when ``loss`` stops descending. Specially, if it's set to ``'max'`` ,  the learning 
+        mode (str, optional): ``'min'`` or ``'max'`` can be selected. Normally, it is ``'min'`` , which means that the
+            learning rate will reduce when ``loss`` stops descending. Specially, if it's set to ``'max'`` ,  the learning
             rate will reduce when ``loss`` stops ascending. Default: ``'min'`` .
-        decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
+        decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` .
             It should be less than 1.0. Default: 0.1.
-        patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learing rate will be reduced. 
+        patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learing rate will be reduced.
             Default: 10.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False``.
-        threshold (float, optional): ``threshold`` and ``threshold_mode`` will determine the minimum change of ``loss`` . 
+        threshold (float, optional): ``threshold`` and ``threshold_mode`` will determine the minimum change of ``loss`` .
             This make tiny changes of ``loss`` will be ignored. Default: 1e-4.
         threshold_mode (str, optional): ``'rel'`` or ``'abs'`` can be selected. In ``'rel'`` mode, the minimum change of ``loss``
-            is ``last_loss * threshold`` , where ``last_loss`` is ``loss`` in last epoch. In ``'abs'`` mode, the minimum 
+            is ``last_loss * threshold`` , where ``last_loss`` is ``loss`` in last epoch. In ``'abs'`` mode, the minimum
             change of ``loss`` is ``threshold`` . Default: ``'rel'`` .
         cooldown (int, optional): The number of epochs to wait before resuming normal operation. Default: 0.
         min_lr (float, optional): The lower bound of the learning rate after reduction. Default: 0.
         eps (float, optional): Minimal decay applied to lr. If the difference between new and old lr is smaller than eps, the update is
             ignored. Default: 1e-8.
         dtype (str, optional): The data type used to create the learning rate variable. The data type can be set as
-            'float32', 'float64'. Default: 'float32'. 
-    
+            'float32', 'float64'. Default: 'float32'.
+
     Returns:
         Reduced learning rate.
 
     Examples:
-    
+
     .. code-block:: python
 
         import paddle.fluid as fluid
@@ -791,7 +791,7 @@ class ReduceLROnPlateau(LearningRateDecay):
                                     learning_rate = 1.0,
                                     decay_rate = 0.5,
                                     patience = 5,
-                                    verbose = True, 
+                                    verbose = True,
                                     cooldown = 3)
             adam = fluid.optimizer.Adam(
                 learning_rate = reduce_lr,
@@ -804,7 +804,7 @@ class ReduceLROnPlateau(LearningRateDecay):
                     loss = fluid.layers.reduce_mean(out)
                     total_loss += loss
                     adam.minimize(loss)
-                
+
                 avg_loss = total_loss/5
 
                 # adjust learning rate according to avg_loss
@@ -878,17 +878,17 @@ class ReduceLROnPlateau(LearningRateDecay):
 
     def step(self, loss):
         """
-        It should be invoked on each epoch. Update the learning rate in optimizer according to ``loss`` .  
+        It should be invoked on each epoch. Update the learning rate in optimizer according to ``loss`` .
         The new learning rate will take effect on next call to ``optimizer.minimize`` .
 
         Args:
-            loss (Variable): A ``Variable`` that will be monitored to determine whether the learning rate will reduce. 
-                If it stop descending for a ``patience`` number of epochs, the learning rate will reduce. It should 
-                be 1-D Tensor with shape [1]. 
+            loss (Variable): A ``Variable`` that will be monitored to determine whether the learning rate will reduce.
+                If it stop descending for a ``patience`` number of epochs, the learning rate will reduce. It should
+                be 1-D Tensor with shape [1].
                 Specially, if ``mode`` has been set to ``'max'`` ,  the learning rate will reduce when it stops ascending.
         Returns:
             None
-        
+
         Examples:
             Please refer to the example of current LearningRateDecay.
         """
@@ -944,7 +944,7 @@ class _LearningRateEpochDecay(LearningRateDecay):
     :api_attr: imperative
 
     Base class of learning rate decay, which is updated each epoch.
-    
+
     Define the common interface of an _LearningRateEpochDecay.
     User should not use this class directly,
     but need to use one of it's implementation. And invoke method: `epoch()` each epoch.
@@ -974,7 +974,7 @@ class _LearningRateEpochDecay(LearningRateDecay):
         self.keys = ['epoch_num', 'learning_rate']
 
     def __call__(self):
-        """ 
+        """
         Return last computed learning rate on current epoch.
         """
         if not isinstance(self.learning_rate, Variable):
@@ -1002,7 +1002,7 @@ class StepDecay(_LearningRateEpochDecay):
 
     Decays the learning rate of ``optimizer`` by ``decay_rate`` every ``step_size`` number of epoch.
 
-    The algorithm can be described as the code below. 
+    The algorithm can be described as the code below.
 
     .. code-block:: text
 
@@ -1018,7 +1018,7 @@ class StepDecay(_LearningRateEpochDecay):
     Parameters:
         learning_rate (float|int): The initial learning rate. It can be set to python float or int number.
         step_size (int): Period of learning rate decay.
-        decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
+        decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` .
             It should be less than 1.0. Default: 0.1.
 
     Returns:
@@ -1026,7 +1026,7 @@ class StepDecay(_LearningRateEpochDecay):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
             import numpy as np
             with fluid.dygraph.guard():
@@ -1040,7 +1040,7 @@ class StepDecay(_LearningRateEpochDecay):
                     for batch_id in range(5):
                         out = linear(input)
                         loss = fluid.layers.reduce_mean(out)
-                        adam.minimize(loss)  
+                        adam.minimize(loss)
                     scheduler.epoch()
 
                     print("epoch:{}, current lr is {}" .format(epoch, adam.current_step_lr()))
@@ -1080,7 +1080,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
 
     Decays the learning rate of ``optimizer`` by ``decay_rate`` once ``epoch`` reaches one of the milestones.
 
-    The algorithm can be described as the code below. 
+    The algorithm can be described as the code below.
 
     .. code-block:: text
 
@@ -1097,7 +1097,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
     Parameters:
         learning_rate (float|int): The initial learning rate. It can be set to python float or int number.
         milestones (tuple|list): List or tuple of each boundaries. Must be increasing.
-        decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
+        decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` .
             It should be less than 1.0. Default: 0.1.
 
     Returns:
@@ -1105,7 +1105,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
             import numpy as np
             with fluid.dygraph.guard():
@@ -1166,7 +1166,7 @@ class LambdaDecay(_LearningRateEpochDecay):
     Sets the learning rate of ``optimizer`` to the initial lr times a multiplicative factor, and this multiplicative
     factor is computed by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
 
-    The algorithm can be described as the code below. 
+    The algorithm can be described as the code below.
 
     .. code-block:: text
 
@@ -1179,15 +1179,15 @@ class LambdaDecay(_LearningRateEpochDecay):
 
     Parameters:
         learning_rate (float|int): The initial learning rate. It can be set to python float or int number.
-        lr_lambda (function): A function which computes a multiplicative factor given an integer parameter ``epoch`` , and 
+        lr_lambda (function): A function which computes a multiplicative factor given an integer parameter ``epoch`` , and
             then multiply the initial learning rate by this multiplicative factor.
-    
+
     Returns:
         None.
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
             import numpy as np
             with fluid.dygraph.guard():

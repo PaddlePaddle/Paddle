@@ -28,14 +28,14 @@ class BackwardAPI(BaseAPI):
         self.no_need_buffer = self.parse_no_need_buffer(backward_item_yaml)
 
     def get_api_name(self, api_item_yaml):
-        return api_item_yaml['backward_api']
+        return api_item_yaml['backward_op']
 
     def parse_forward_config(self, forward_config):
         # api_name (const Tensor& input, ... , int attr, ...) -> Tensor(out)
         result = re.search(
-            r"(?P<api>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
+            r"(?P<op>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
             forward_config)
-        api = result.group('api')
+        api = result.group('op')
         _, outputs, _, = self.parse_output(self.api, result.group('outputs'))
         outputs = [item.split('@')[0] for item in outputs]
         fw_inputs, fw_attrs = self.parse_input_and_attr(api,
@@ -97,6 +97,18 @@ class BackwardAPI(BaseAPI):
     def gene_return_code(self):
         return ""
 
+    def gene_api_declaration(self):
+        if not self.is_base_api:
+            invoke_func_name = self.invoke.split('(')[0]
+            if (not invoke_func_name.endswith("_grad")) and (
+                    not invoke_func_name.endswith('_impl')):
+                return ""
+        api_func_name = self.get_api_func_name()
+        api_declaration = f"""
+PADDLE_API void {api_func_name}({self.get_declare_args()});
+"""
+        return api_declaration
+
     def gene_kernel_backend_select(self):
         all_no_need_buffer = True
         for in_name in self.inputs['names']:
@@ -118,12 +130,12 @@ class BackwardAPI(BaseAPI):
                     out_tensor_type_list=None,
                     code_indent='',
                     inplace_flag=False):
-        kernel_output = ""
+        kernel_output = []
         output_names = []
         output_create = ""
 
         if len(out_dtype_list) == 1:
-            kernel_output = 'kernel_out'
+            kernel_output.append('kernel_out')
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[self.outputs['names'][
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
@@ -139,12 +151,12 @@ class BackwardAPI(BaseAPI):
 
             else:
                 output_create = output_create + f"""
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, {self.outputs['names'][0]});"""
+{code_indent}  auto kernel_out = {set_out_func}({self.outputs['names'][0]});"""
 
         elif len(out_dtype_list) > 1:
             output_create = ""
             for i, out_type_item in enumerate(out_dtype_list):
-                kernel_output = kernel_output + f'kernel_out_{i}, '
+                kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
                 set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
                     i] == 'dense' else 'SetSelectedRowsKernelOutput'
@@ -155,7 +167,7 @@ class BackwardAPI(BaseAPI):
 {code_indent}  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
 
                     output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {self.outputs['names'][i]});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i]});"""
 
                 else:
                     if inplace_flag and self.inplace_map is not None and self.outputs[
@@ -168,7 +180,6 @@ class BackwardAPI(BaseAPI):
                     output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(&{self.outputs['names'][i]});"""
 
-            kernel_output = kernel_output[:-2]
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(
@@ -179,17 +190,14 @@ class BackwardAPI(BaseAPI):
     def gene_invoke_code(self, invoke_code, params_code):
         invoke_func_name = invoke_code.split('(')[0].strip()
         if invoke_func_name.endswith('_grad') or invoke_func_name.endswith(
-                '_grad_impl'):
+                '_impl'):
             return f"""
 PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
   {invoke_code};
 }}"""
 
         else:
-            return f"""
-PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
-  *{self.outputs['names'][0].split('@')[0]} = {invoke_code};
-}}"""
+            return ""
 
 
 def header_include():
@@ -221,6 +229,7 @@ def source_include(header_file_path):
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
 """

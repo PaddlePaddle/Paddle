@@ -57,7 +57,7 @@ def split_trainer_ops_pass(program, config, default_device="cpu"):
     split cpu-trainer program from origin-program
     1. find heter op (located on different device)
     2. find input&output of every heter-block
-    3. create cpu-trainer program, add send&recv op 
+    3. create cpu-trainer program, add send&recv op
     """
     # Todo: support user define default_device (MrChengmo)
     default_device_ = default_device

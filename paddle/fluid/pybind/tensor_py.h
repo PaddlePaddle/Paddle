@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -368,7 +369,7 @@ void SetTensorFromPyArrayT(
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
+    dims.push_back(static_cast<int64_t>(array.shape()[i]));
   }
   self->Resize(phi::make_ddim(dims));
 
@@ -439,7 +440,11 @@ void SetTensorFromPyArrayT(
     platform::Place tmp_place = place;
     platform::MLUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
-    paddle::platform::MLUMemcpyH2DSync(dst, array.data(), array.nbytes());
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto dev_ctx = static_cast<platform::MLUDeviceContext *>(pool.Get(place));
+    paddle::platform::MLUMemcpyH2DAsync(
+        dst, array.data(), array.nbytes(), dev_ctx->stream());
+    dev_ctx->Wait();
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use MLUPlace in CPU/GPU version, "
@@ -612,8 +617,8 @@ void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
   dims.reserve(array.ndim());
   int64_t numel = 1;
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.emplace_back(static_cast<int>(array.shape()[i]));
-    numel *= static_cast<int>(array.shape()[i]);
+    dims.emplace_back(static_cast<int64_t>(array.shape()[i]));
+    numel *= static_cast<int64_t>(array.shape()[i]);
   }
   self_tensor->Resize(phi::make_ddim(dims));
 

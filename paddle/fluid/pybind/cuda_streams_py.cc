@@ -19,11 +19,30 @@
 
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 namespace py = pybind11;
 
 namespace paddle {
+namespace platform {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+phi::CUDAStream *get_current_stream(int device_id) {
+  if (device_id == -1) {
+    device_id = phi::backends::gpu::GetCurrentDeviceId();
+  }
+  auto *gpu_context = static_cast<const phi::GPUContext *>(
+      DeviceContextPool::Instance().Get(GPUPlace(device_id)));
+  return gpu_context->cuda_stream();
+}
+
+phi::CUDAStream *set_current_stream(phi::CUDAStream *stream) {
+  auto *original_stream = get_current_stream(stream->place().GetDeviceId());
+  auto *gpu_context = static_cast<phi::GPUContext *>(
+      DeviceContextPool::Instance().Get(stream->place()));
+  gpu_context->SetCUDAStream(stream, /*clear=*/false);
+  return original_stream;
+}
+#endif
+}  // namespace platform
 namespace pybind {
 void BindCudaStream(py::module *m_ptr) {
   auto &m = *m_ptr;
@@ -33,24 +52,24 @@ void BindCudaStream(py::module *m_ptr) {
       "_get_current_stream",
       [](int deviceId) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        return paddle::platform::stream::get_current_stream(deviceId);
+        return platform::get_current_stream(deviceId);
 #else
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Paddle is not compiled with CUDA. Cannot visit cuda current"
-            "stream."));
+        PADDLE_THROW(
+            platform::errors::Unavailable("Paddle is not compiled with CUDA. "
+                                          "Cannot visit device synchronize."));
 #endif
       },
       py::return_value_policy::reference);
 
   m.def(
       "_set_current_stream",
-      [](paddle::platform::stream::CUDAStream &stream) {
+      [](phi::CUDAStream *stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        return paddle::platform::stream::set_current_stream(&stream);
+        return platform::set_current_stream(stream);
 #else
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Paddle is not compiled with CUDA. Cannot set cuda current "
-            "stream."));
+        PADDLE_THROW(
+            platform::errors::Unavailable("Paddle is not compiled with CUDA. "
+                                          "Cannot visit device synchronize."));
 #endif
       },
       py::return_value_policy::reference);
@@ -75,16 +94,16 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
   });
 
-  py::class_<paddle::platform::stream::CUDAStream>(m, "CUDAStream", R"DOC(
+  py::class_<phi::CUDAStream>(m, "CUDAStream", R"DOC(
       The handle of the CUDA stream.
 
       Parameters:
-        device(paddle.CUDAPlace()|int|None, optional): The device which wanted to allocate the stream. 
-        If device is None or negative integer, device will be the current device. 
-        If device is positive integer, it must less than the device count. Default: None. 
+        device(paddle.CUDAPlace()|int|None, optional): The device which wanted to allocate the stream.
+        If device is None or negative integer, device will be the current device.
+        If device is positive integer, it must less than the device count. Default: None.
 
         priority(int|None, optional): The priority of stream. The priority can be 1(high) or 2(normal).
-        If priority is None, the priority is 2(normal). Default: None. 
+        If priority is None, the priority is 2(normal). Default: None.
 
       Examples:
         .. code-block:: python
@@ -99,8 +118,7 @@ void BindCudaStream(py::module *m_ptr) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def(
           "wait_event",
-          [](paddle::platform::stream::CUDAStream &self,
-             paddle::platform::CudaEvent &event) {
+          [](phi::CUDAStream &self, paddle::platform::CudaEvent &event) {
             self.WaitEvent(event.GetRawCudaEvent());
           },
           R"DOC(
@@ -108,7 +126,7 @@ void BindCudaStream(py::module *m_ptr) {
 
       Parameters:
         event(CUDAEvent): The event to wait on.
-      
+
       Examples:
         .. code-block:: python
 
@@ -121,11 +139,9 @@ void BindCudaStream(py::module *m_ptr) {
            )DOC")
       .def(
           "wait_stream",
-          [](paddle::platform::stream::CUDAStream &self,
-             paddle::platform::stream::CUDAStream &stream) {
+          [](phi::CUDAStream &self, phi::CUDAStream &stream) {
             paddle::platform::CudaEvent event;
             event.Record(stream.raw_stream());
-
             self.WaitEvent(event.GetRawCudaEvent());
           },
           R"DOC(
@@ -133,7 +149,7 @@ void BindCudaStream(py::module *m_ptr) {
 
       Parameters:
         stream(CUDAStream): The stream to synchronize with.
-      
+
       Examples:
         .. code-block:: python
 
@@ -146,9 +162,7 @@ void BindCudaStream(py::module *m_ptr) {
            )DOC")
       .def(
           "query",
-          [](paddle::platform::stream::CUDAStream &self) {
-            return self.Query();
-          },
+          [](phi::CUDAStream &self) { return self.Query(); },
           R"DOC(
       Return the status whether if all operations in stream have completed.
 
@@ -165,9 +179,7 @@ void BindCudaStream(py::module *m_ptr) {
            )DOC")
       .def(
           "synchronize",
-          [](paddle::platform::stream::CUDAStream &self) {
-            self.Synchronize();
-          },
+          [](phi::CUDAStream &self) { self.Synchronize(); },
           R"DOC(
       Waits for stream tasks to complete.
 
@@ -182,8 +194,7 @@ void BindCudaStream(py::module *m_ptr) {
            )DOC")
       .def(
           "record_event",
-          [](paddle::platform::stream::CUDAStream &self,
-             paddle::platform::CudaEvent *event) {
+          [](phi::CUDAStream &self, paddle::platform::CudaEvent *event) {
             if (event == nullptr) {
               event = new paddle::platform::CudaEvent();
             }
@@ -196,7 +207,7 @@ void BindCudaStream(py::module *m_ptr) {
       Parameters:
           event(CUDAEvent, optional): The event to be record. If event is None, a new event is created.
           Default: None.
-      
+
       Returns:
           The recored event.
 
@@ -212,7 +223,7 @@ void BindCudaStream(py::module *m_ptr) {
           py::arg("event") = nullptr)
       .def_property_readonly(
           "cuda_stream",
-          [](paddle::platform::stream::CUDAStream &self) {
+          [](phi::CUDAStream &self) {
             VLOG(10) << self.raw_stream();
             return reinterpret_cast<std::uintptr_t>(self.raw_stream());
           },
@@ -227,7 +238,7 @@ void BindCudaStream(py::module *m_ptr) {
             import ctypes
             cuda_stream = paddle.device.cuda.current_stream().cuda_stream
             print(cuda_stream)
-            
+
             ptr = ctypes.c_void_p(cuda_stream)  # convert back to void*
             print(ptr)
 
@@ -235,26 +246,22 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
       .def(
           "__init__",
-          [](paddle::platform::stream::CUDAStream &self,
-             platform::CUDAPlace *device,
-             int priority) {
+          [](phi::CUDAStream &self, platform::CUDAPlace *place, int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             if (priority != 1 && priority != 2) {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Priority should be 1(high) or 2(normal) "));
             }
-            auto prio = paddle::platform::stream::Priority(priority);
-            auto stream_flag =
-                paddle::platform::stream::StreamFlag::kStreamNonBlocking;
+            auto prio = phi::CUDAStream::Priority(priority);
+            auto stream_flag = phi::CUDAStream::StreamFlag::kStreamNonBlocking;
 
-            if (device == nullptr) {
+            if (place == nullptr) {
               int curr_device_id = platform::GetCurrentDeviceId();
-              auto device_tmp = platform::CUDAPlace(curr_device_id);
-              device = &device_tmp;
+              auto place_tmp = platform::CUDAPlace(curr_device_id);
+              place = &place_tmp;
             }
 
-            new (&self) paddle::platform::stream::CUDAStream(
-                *device, prio, stream_flag);
+            new (&self) phi::CUDAStream(*place, prio, stream_flag);
 #else
             PADDLE_THROW(platform::errors::Unavailable(
         "Class CUDAStream can only be initialized on the GPU platform."));
@@ -264,17 +271,14 @@ void BindCudaStream(py::module *m_ptr) {
           py::arg("priority") = 2)
       .def(
           "__init__",
-          [](paddle::platform::stream::CUDAStream &self,
-             int device,
-             int priority) {
+          [](phi::CUDAStream &self, int device, int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             if (priority != 1 && priority != 2) {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Priority should be 1(high) or 2(normal) "));
             }
-            auto prio = paddle::platform::stream::Priority(priority);
-            auto stream_flag =
-                paddle::platform::stream::StreamFlag::kStreamNonBlocking;
+            auto prio = phi::CUDAStream::Priority(priority);
+            auto stream_flag = phi::CUDAStream::StreamFlag::kStreamNonBlocking;
 
             int device_count = platform::GetGPUDeviceCount();
             if (device < 0) {
@@ -287,8 +291,8 @@ void BindCudaStream(py::module *m_ptr) {
                   device));
             }
 
-            new (&self) paddle::platform::stream::CUDAStream(
-                platform::CUDAPlace(device), prio, stream_flag);
+            new (&self)
+                phi::CUDAStream(platform::CUDAPlace(device), prio, stream_flag);
 #else
             PADDLE_THROW(platform::errors::Unavailable(
         "Class CUDAStream can only be initialized on the GPU platform."));
@@ -296,16 +300,15 @@ void BindCudaStream(py::module *m_ptr) {
           },
           py::arg("device") = -1,
           py::arg("priority") = 2)
-      .def("__init__", [](paddle::platform::stream::CUDAStream &self) {
+      .def("__init__", [](phi::CUDAStream &self) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        auto prio = paddle::platform::stream::Priority::kNormal;
-        auto stream_flag =
-            paddle::platform::stream::StreamFlag::kStreamNonBlocking;
+        auto prio = phi::CUDAStream::Priority::kNormal;
+        auto stream_flag = phi::CUDAStream::StreamFlag::kStreamNonBlocking;
 
         int device_id = platform::GetCurrentDeviceId();
 
-        new (&self) paddle::platform::stream::CUDAStream(
-            platform::CUDAPlace(device_id), prio, stream_flag);
+        new (&self)
+            phi::CUDAStream(platform::CUDAPlace(device_id), prio, stream_flag);
 #else
             PADDLE_THROW(platform::errors::Unavailable(
         "Class CUDAStream can only be initialized on the GPU platform."));
@@ -319,7 +322,7 @@ void BindCudaStream(py::module *m_ptr) {
         enable_timing(bool, optional): Whether the event will measure time. Default: False.
         blocking(bool, optional): Whether the wait() func will be blocking. Default: False;
         interprocess(bool, optional): Whether the event can be shared between processes. Defalut: False.
-      
+
       Examples:
         .. code-block:: python
 
@@ -331,10 +334,9 @@ void BindCudaStream(py::module *m_ptr) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def(
           "record",
-          [](paddle::platform::CudaEvent &self,
-             paddle::platform::stream::CUDAStream *stream) {
+          [](paddle::platform::CudaEvent &self, phi::CUDAStream *stream) {
             if (stream == nullptr) {
-              stream = paddle::platform::stream::get_current_stream(-1);
+              stream = paddle::platform::get_current_stream(-1);
             }
             self.Record(stream->raw_stream());
           },
@@ -343,7 +345,7 @@ void BindCudaStream(py::module *m_ptr) {
 
           Parameters:
             stream(CUDAStream, optional): The handle of CUDA stream. If None, the stream is the current stream. Default: None.
-          
+
           Examples:
             .. code-block:: python
 
@@ -351,7 +353,7 @@ void BindCudaStream(py::module *m_ptr) {
               import paddle
               event = paddle.device.cuda.Event()
               event.record()
-    
+
         )DOC",
           py::arg("stream") = nullptr)
       .def(
@@ -410,5 +412,4 @@ void BindCudaStream(py::module *m_ptr) {
 }
 
 }  // namespace pybind
-
 }  // namespace paddle

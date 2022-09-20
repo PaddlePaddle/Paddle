@@ -57,7 +57,7 @@ class ApiFMaxTest(unittest.TestCase):
                 "y": self.input_y
             },
                            fetch_list=[result_fmax])
-        self.assertTrue(np.allclose(res, self.np_expected1))
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -70,7 +70,7 @@ class ApiFMaxTest(unittest.TestCase):
                 "z": self.input_z
             },
                            fetch_list=[result_fmax])
-        self.assertTrue(np.allclose(res, self.np_expected2))
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -83,7 +83,7 @@ class ApiFMaxTest(unittest.TestCase):
                 "c": self.input_c
             },
                            fetch_list=[result_fmax])
-        self.assertTrue(np.allclose(res, self.np_expected3))
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -96,7 +96,7 @@ class ApiFMaxTest(unittest.TestCase):
                 "c": self.input_c
             },
                            fetch_list=[result_fmax])
-        self.assertTrue(np.allclose(res, self.np_expected4))
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
     def test_dynamic_api(self):
         """test_dynamic_api"""
@@ -111,20 +111,20 @@ class ApiFMaxTest(unittest.TestCase):
 
         res = paddle.fmax(x, y)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected1))
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
 
         # test broadcast
         res = paddle.fmax(x, z)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected2))
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
 
         res = paddle.fmax(a, c)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected3))
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
 
         res = paddle.fmax(b, c)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected4))
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
 
 class TestElementwiseFmaxOp(OpTest):
@@ -209,3 +209,33 @@ class TestElementwiseFmax2Op(OpTest):
                         max_relative_error=0.005,
                         no_grad_set=set('Y'),
                         check_eager=True)
+
+
+class TestElementwiseFmax3Op(OpTest):
+    """TestElementwiseFmax3Op"""
+
+    def setUp(self):
+        """setUp"""
+        self.op_type = "elementwise_fmax"
+        self.python_api = paddle.fmax
+        # If x and y have the same value, the max() is not differentiable.
+        # So we generate test data by the following method
+        # to avoid them being too close to each other.
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
+        sgn = np.random.choice([-1, 1], [13, 17]).astype("float16")
+        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float16")
+
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.fmax(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        """test_check_output"""
+        self.check_output(check_eager=True)
+
+    def test_check_grad_normal(self):
+        """test_check_grad_normal"""
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+
+
+if __name__ == "__main__":
+    unittest.main()

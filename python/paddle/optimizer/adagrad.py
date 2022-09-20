@@ -22,7 +22,7 @@ __all__ = []
 
 class Adagrad(Optimizer):
     r"""
-    The Adaptive Gradient optimizer (Adagrad for short) use an optimization described 
+    The Adaptive Gradient optimizer (Adagrad for short) use an optimization described
     in paper: `Adaptive Subgradient Methods for Online Learning and
     Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
 
@@ -58,9 +58,9 @@ class Adagrad(Optimizer):
 	    the regularization setting here in optimizer will be ignored for this parameter. \
 	    Otherwise, the regularization setting here in optimizer will take effect. \
 	    Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies, 
-            ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None, 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies,
+            ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None,
             meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -100,7 +100,7 @@ class Adagrad(Optimizer):
                     'weight_decay': 0.001,
                     'learning_rate': 0.1,
                 }],
-                weight_decay=0.01)                   
+                weight_decay=0.01)
             out.backward()
             adagrad.step()
             adagrad.clear_grad()

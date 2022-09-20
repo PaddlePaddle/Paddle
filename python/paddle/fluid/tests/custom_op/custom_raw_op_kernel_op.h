@@ -62,7 +62,7 @@ struct ReluFunctor {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
     if (paddle::platform::is_gpu_place(place)) {
-      LAUNCH_RELU_KERNEL(paddle::platform::CUDADeviceContext);
+      LAUNCH_RELU_KERNEL(phi::GPUContext);
       return;
     }
 #endif

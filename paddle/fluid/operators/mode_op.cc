@@ -51,7 +51,7 @@ class ModeOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1);
     AddAttr<bool>("keepdim", "Keep the dim that to reduce.").SetDefault(false);
     AddComment(R"DOC(
-This operator finds the mode of input Tensor. And outputs their values and indices as vectors. 
+This operator finds the mode of input Tensor. And outputs their values and indices as vectors.
 )DOC");
   }
 };

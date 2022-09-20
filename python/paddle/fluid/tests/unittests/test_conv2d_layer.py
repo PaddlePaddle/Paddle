@@ -197,8 +197,8 @@ class Conv2DTestCase(unittest.TestCase):
                 res_eager, g2 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
-        self.assertTrue(np.allclose(result3, res_eager))
-        self.assertTrue(np.allclose(g1, g2))
+        np.testing.assert_allclose(result3, res_eager, rtol=1e-05)
+        np.testing.assert_allclose(g1, g2, rtol=1e-05)
 
     def runTest(self):
         place = fluid.CPUPlace()

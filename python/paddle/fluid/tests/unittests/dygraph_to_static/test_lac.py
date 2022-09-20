@@ -30,7 +30,7 @@ from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _non_static_mode
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 SEED = 2020
 
@@ -176,7 +176,7 @@ class LinearChainCRF(fluid.dygraph.Layer):
 
     def forward(self, input, label, length=None):
         if _non_static_mode():
-            _, _, _, log_likelihood = _C_ops.linear_chain_crf(
+            _, _, _, log_likelihood = _legacy_C_ops.linear_chain_crf(
                 input, self._transition, label, length, "is_test",
                 self._is_test)
             return log_likelihood
@@ -234,8 +234,8 @@ class CRFDecoding(fluid.dygraph.Layer):
 
     def forward(self, input, label=None, length=None):
         if _non_static_mode():
-            return _C_ops.crf_decoding(input, self._transition, label, length,
-                                       "is_test", self._is_test)
+            return _legacy_C_ops.crf_decoding(input, self._transition, label,
+                                              length, "is_test", self._is_test)
 
         viterbi_path = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
@@ -268,11 +268,12 @@ class ChunkEval(fluid.dygraph.Layer):
 
     def forward(self, input, label, seq_length=None):
         if _non_static_mode():
-            return _C_ops.chunk_eval(input, label, seq_length,
-                                     "num_chunk_types", self.num_chunk_types,
-                                     "chunk_scheme", self.chunk_scheme,
-                                     "excluded_chunk_types",
-                                     self.excluded_chunk_types or [])
+            return _legacy_C_ops.chunk_eval(input, label, seq_length,
+                                            "num_chunk_types",
+                                            self.num_chunk_types,
+                                            "chunk_scheme", self.chunk_scheme,
+                                            "excluded_chunk_types",
+                                            self.excluded_chunk_types or [])
 
         precision = self._helper.create_variable_for_type_inference(
             dtype="float32")
@@ -549,9 +550,12 @@ class TestLACModel(unittest.TestCase):
     def test_train(self):
         st_out = self.train(self.args, to_static=True)
         dy_out = self.train(self.args, to_static=False)
-        self.assertTrue(np.allclose(dy_out, st_out),
-                        msg="dygraph output:\n{},\nstatic output:\n {}.".format(
-                            dy_out, st_out))
+        np.testing.assert_allclose(
+            dy_out,
+            st_out,
+            rtol=1e-05,
+            err_msg='dygraph output:\n{},\nstatic output:\n {}.'.format(
+                dy_out, st_out))
         # Prediction needs trained models, so put `test_predict` at last of `test_train`
         # self.verify_predict()
 
@@ -564,12 +568,8 @@ class TestLACModel(unittest.TestCase):
             dy_pre = self.predict_dygraph(batch)
             st_pre = self.predict_static(batch)
             dy_jit_pre = self.predict_dygraph_jit(batch)
-            self.assertTrue(np.allclose(dy_pre, st_pre),
-                            msg="dy_pre:\n {}\n, st_pre: \n{}.".format(
-                                dy_pre, st_pre))
-            self.assertTrue(np.allclose(dy_jit_pre, st_pre),
-                            msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(
-                                dy_jit_pre, st_pre))
+            np.testing.assert_allclose(dy_pre, st_pre, rtol=1e-05)
+            np.testing.assert_allclose(dy_jit_pre, st_pre, rtol=1e-05)
 
     def predict_dygraph(self, batch):
         words, targets, length = batch

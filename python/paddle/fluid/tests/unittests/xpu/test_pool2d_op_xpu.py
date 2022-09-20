@@ -341,6 +341,24 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
         def init_adaptive(self):
             self.adaptive = False
 
+    class TestAvgPoolAdaptive(TestPool2D_Op):
+
+        def init_adaptive(self):
+            self.adaptive = True
+
+    class TestAvgPoolAdaptiveAsyOutSize(TestPool2D_Op):
+
+        def init_adaptive(self):
+            self.adaptive = True
+
+        def init_shape(self):
+            self.shape = [8, 3, 6, 6]
+
+        def init_test_case(self):
+            self.ksize = [2, 3]
+            self.strides = [1, 1]
+            self.paddings = [0, 0, 0, 0]
+
     class TestCase1(TestPool2D_Op):
 
         def init_test_case(self):
@@ -540,6 +558,50 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
 
         def init_ceil_mode(self):
             self.ceil_mode = True
+
+    class TestCaseAdaptiveAvg(TestPool2D_Op):
+
+        def init_test_case(self):
+            self.ksize = [2, 2]
+            self.strides = [2, 2]
+
+        def init_paddings(self):
+            self.paddings = [0, 0]
+
+        def init_pool_type(self):
+            self.pool_type = "avg"
+            self.pool2D_forward_naive = avg_pool2D_forward_naive
+
+        def init_global_pool(self):
+            self.global_pool = False
+
+        def init_shape(self):
+            self.shape = [2, 4, 8, 8]
+
+        def init_adaptive_mode(self):
+            self.adaptive = True
+
+    class TestCaseAdaptiveMax(TestPool2D_Op):
+
+        def init_test_case(self):
+            self.ksize = [2, 2]
+            self.strides = [2, 2]
+
+        def init_paddings(self):
+            self.paddings = [0, 0]
+
+        def init_pool_type(self):
+            self.pool_type = "max"
+            self.pool2D_forward_naive = max_pool2D_forward_naive
+
+        def init_global_pool(self):
+            self.global_pool = False
+
+        def init_shape(self):
+            self.shape = [2, 4, 8, 8]
+
+        def init_adaptive_mode(self):
+            self.adaptive = True
 
 
 support_types = get_xpu_op_support_types('pool2d')

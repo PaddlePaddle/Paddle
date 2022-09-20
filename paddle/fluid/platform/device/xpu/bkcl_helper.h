@@ -27,6 +27,7 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
@@ -42,12 +43,38 @@ namespace platform {
 inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
   if (type == framework::proto::VarType::FP32) {
     return BKCL_FLOAT;
+  } else if (type == framework::proto::VarType::INT64) {
+    return BKCL_INT64;
+  } else if (type == framework::proto::VarType::INT32) {
+    return BKCL_INT32;
+  } else if (type == framework::proto::VarType::FP64) {
+    return BKCL_FLOAT64;
+  } else if (type == framework::proto::VarType::FP16) {
+    return BKCL_FLOAT16;
   } else {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("BKCL currently only support FP32, "
-                                        "other data types are not supported."));
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "BKCL currently only support FP32, INT64, INT32, FP64 and FP16, other "
+        "data types are not supported."));
   }
 }
+
+class BKCLGroupGuard {
+ public:
+  static std::mutex &BKCLMutex() {
+    static std::mutex mtx;
+    return mtx;
+  }
+
+  inline BKCLGroupGuard() {
+    BKCLMutex().lock();
+    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
+  }
+
+  inline ~BKCLGroupGuard() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
+    BKCLMutex().unlock();
+  }
+};
 
 struct BKCLContext {
   std::unique_ptr<platform::XPUDeviceContext> ctx_;
@@ -57,6 +84,7 @@ struct BKCLContext {
       : ctx_(new platform::XPUDeviceContext(XPUPlace(dev_id))),
         comm_{nullptr} {}
 
+  XPUStream stream() const { return ctx_->stream(); }
   BKCLContext_t comm() const { return comm_; }
 
   int device_id() const { return ctx_->GetPlace().device; }
@@ -250,19 +278,33 @@ class BKCLCommunicator {
       ptr->init();
       VLOG(1) << "init local trainer";
       flat_ctxs_.emplace_back(ptr);
-      return;
+    } else {
+      PADDLE_ENFORCE_EQ(bkcl_ids.size(),
+                        1,
+                        platform::errors::Unimplemented(
+                            "Multi-all-reduce-ring is not support for XPU"));
+      for (size_t i = 0; i < bkcl_ids.size(); i++) {
+        auto ptr = new platform::BKCLContextMap(
+            places, bkcl_ids[i], trainers_num, trainer_id);
+        ptr->init();
+        VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
+        flat_ctxs_.emplace_back(ptr);
+      }
     }
 
-    PADDLE_ENFORCE_EQ(bkcl_ids.size(),
-                      1,
-                      platform::errors::Unimplemented(
-                          "Multi-all-reduce-ring is not support for XPU"));
-    for (size_t i = 0; i < bkcl_ids.size(); i++) {
-      auto ptr = new platform::BKCLContextMap(
-          places, bkcl_ids[i], trainers_num, trainer_id);
-      ptr->init();
-      VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
-      flat_ctxs_.emplace_back(ptr);
+    // as Executor have no way to use BKCLComm created by ParallelExecutor,
+    // we assign all flatten contexts to BKCLCommContext to fix.
+    int nranks = static_cast<int>(trainers_num * places.size());
+    int nrings = static_cast<int>(flat_ctxs_.size());
+    for (int ring_id = 0; ring_id < nrings; ++ring_id) {
+      for (size_t p = 0; p < places.size(); ++p) {
+        int rank = trainer_id * places.size() + p;
+        int dev_id = places[p].device;
+        platform::SetXPUDeviceId(dev_id);
+        auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
+        BKCLCommContext::Instance().AssignBKCLComm(
+            ctx.comm_, nranks, rank, dev_id, ring_id);
+      }
     }
   }
 

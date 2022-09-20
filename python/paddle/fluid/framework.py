@@ -86,6 +86,8 @@ _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
 _enable_standalone_executor_ = (os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR',
                                                None))
+_dy2st_enable_standalone_executor_ = (os.environ.get(
+    'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 0))
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -115,7 +117,7 @@ def _update_monkey_methods(is_eager):
     Update monkey methods of VarBase or eager.Tensor while
     switching eager mode and legacy mode.
     """
-    from paddle import _C_ops
+    from paddle import _C_ops, _legacy_C_ops
     from .dygraph.varbase_patch_methods import monkey_patch_varbase
     from .dygraph import monkey_patch_math_varbase
 
@@ -125,7 +127,7 @@ def _update_monkey_methods(is_eager):
     assert isinstance(is_eager, bool)
     # switch into eager mode
     if is_eager:
-        _C_ops.switch_to_eager_ops()
+        _legacy_C_ops.switch_to_eager_ops()
         if not _already_patch_eager_tensor:
             monkey_patch_varbase()
             monkey_patch_math_varbase()
@@ -133,7 +135,7 @@ def _update_monkey_methods(is_eager):
             _already_patch_eager_tensor = True
     # switch back into legacy mode
     else:
-        _C_ops.switch_to_core_ops()
+        _legacy_C_ops.switch_to_core_ops()
         if not _already_patch_varbase:
             monkey_patch_varbase()
             monkey_patch_math_varbase()
@@ -281,15 +283,15 @@ def ipu_shard_guard(index=-1, stage=-1):
         index(int, optional): Specify which ipu the Tensor is computed on, (such as '0, 1, 2, 3').
             The default value is -1, which means the Op only run on IPU 0.
         stage(int, optional): Specify the computation order of the sharded model(such as '0, 1, 2, 3').
-            The sharded model will be computed from small to large. The default value is -1, 
+            The sharded model will be computed from small to large. The default value is -1,
             which means no pipelining computation order and run Ops in terms of graph.
-    
+
     **Note**:
-    Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer 
-    to :code:`paddle.static.IpuStrategy` . 
-    Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer 
+    Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer
     to :code:`paddle.static.IpuStrategy` .
-    A index is allowed to match none stage or a stage. A stage is only allowed to match a new or 
+    Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer
+    to :code:`paddle.static.IpuStrategy` .
+    A index is allowed to match none stage or a stage. A stage is only allowed to match a new or
     duplicated index.
 
     Examples:
@@ -334,7 +336,7 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
         index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
             The default value is -1, which means the Op only run on IPU 0.
         stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
-            The sharded model will be computed from small to large. The default value is -1, 
+            The sharded model will be computed from small to large. The default value is -1,
             which means no pipelining computation order and run Ops in terms of graph.
 
     Returns:
@@ -637,12 +639,12 @@ def _set_expected_place(place):
 
 # TODO(zhiqiu): remove this function.
 def _var_base_to_np(var_base):
-    """	
-    convert VarBase tp numpy	
+    """
+    convert VarBase tp numpy
 
-    Args:	
-        var_base(VarBase) : the VarBase to convert	
-    Returns (np.ndarray): the np.ndarray contain the value of VarBase	
+    Args:
+        var_base(VarBase) : the VarBase to convert
+    Returns (np.ndarray): the np.ndarray contain the value of VarBase
     """
 
     warnings.warn(
@@ -740,14 +742,14 @@ def disable_signal_handler():
     Paddle installs signal handlers at C++ level to log debug information upon failing.
     However, conflicts can happen if another python module is making use of such signal.
     Such being the case, one may disblae paddle signal handler via this interface.
-    
+
     Known frameworks that require disabling signal handler includes:
     1. TVM
     2. ADLIK
 
     Make sure you called paddle.disable_signal_handler() before using above mentioned frameworks.
 
-    Returns: None 
+    Returns: None
 
     Examples:
         .. code-block:: python
@@ -820,7 +822,7 @@ def cuda_places(device_ids=None):
 
     If :code:`device_ids` is not None, it should be the device
     ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be 
+    the returned list would be
     [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
 
     Parameters:
@@ -830,14 +832,14 @@ def cuda_places(device_ids=None):
         list of paddle.CUDAPlace: Created GPU place list.
 
     Examples:
-    
+
         .. code-block:: python
 
             import paddle
             import paddle.static as static
 
             # required: gpu
-            
+
             paddle.enable_static()
 
             cuda_places = static.cuda_places()
@@ -865,9 +867,9 @@ def xpu_places(device_ids=None):
         xpu places would be returned.
         If :code:`device_ids` is not None, it should be the device
         ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
-        the returned list would be 
+        the returned list would be
         [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
-    
+
     Parameters:
         device_ids (list or tuple of int, optional): list of XPU device ids.
     Returns:
@@ -879,7 +881,7 @@ def xpu_places(device_ids=None):
 
             import paddle
             import paddle.static as static
-            
+
             paddle.enable_static()
             xpu_places = static.xpu_places()
     """
@@ -896,7 +898,7 @@ def npu_places(device_ids=None):
     """
     **Note**:
         For multi-card tasks, please use `FLAGS_selected_npus` environment variable to set the visible NPU device.
-    
+
     This function creates a list of :code:`paddle.NPUPlace` objects.
     If :code:`device_ids` is None, environment variable of
     :code:`FLAGS_selected_npus` would be checked first. For example, if
@@ -906,9 +908,9 @@ def npu_places(device_ids=None):
     npu places would be returned.
     If :code:`device_ids` is not None, it should be the device
     ids of NPUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be 
+    the returned list would be
     [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
-    
+
     Parameters:
         device_ids (list or tuple of int, optional): list of NPU device ids.
     Returns:
@@ -920,7 +922,7 @@ def npu_places(device_ids=None):
 
             import paddle
             import paddle.static as static
-            
+
             paddle.enable_static()
             npu_places = static.npu_places()
     """
@@ -938,7 +940,7 @@ def cpu_places(device_count=None):
     This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
 
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`. 
+    be determined by environment variable :code:`CPU_NUM`.
     If :code:`CPU_NUM` is not set, the default value is 1,
     i.e. CPU_NUM=1.
     :code:`CPU_NUM` indicates the number of devices used in the current task.
@@ -951,7 +953,7 @@ def cpu_places(device_count=None):
         list of paddle.CPUPlace: Created list of CPU places.
 
     Examples:
-    
+
         .. code-block:: python
 
             import paddle
@@ -972,7 +974,7 @@ def cuda_pinned_places(device_count=None):
     This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`. 
+    be determined by environment variable :code:`CPU_NUM`.
     If :code:`CPU_NUM` is not set, the default value is 1,
     i.e. CPU_NUM=1.
     :code:`CPU_NUM` indicates the number of devices used in the current task.
@@ -1075,7 +1077,7 @@ def name_scope(prefix=None):
 
     Generate hierarchical name prefix for the operators in Static Graph.
 
-    Note: 
+    Note:
         This should only used for debugging and visualization purpose.
         Don't use it for serious analysis such as graph/program transformations.
         Don't use it in dygraph, since it will cause memory leak.
@@ -1084,7 +1086,7 @@ def name_scope(prefix=None):
         prefix(str, optional): prefix. Default is none.
 
     Examples:
-    
+
         .. code-block:: python
 
           import paddle
@@ -1101,7 +1103,7 @@ def name_scope(prefix=None):
           with paddle.static.name_scope("s4"):
                 g = f - 1
 
-          # Op are created in the default main program.  
+          # Op are created in the default main program.
           for op in paddle.static.default_main_program().block(0).ops:
               # elementwise_add is created in /s1/
               if op.type == 'elementwise_add':
@@ -1158,16 +1160,22 @@ def grad_var_name(var_name):
 
 def convert_np_dtype_to_dtype_(np_dtype):
     """
-    Convert the data type in numpy to the data type in Paddle
+    Convert the data type in numpy to the data type in Paddle.
 
     Args:
-        np_dtype(np.dtype): the data type in numpy.
+        np_dtype (np.dtype|str): The data type in numpy or valid data type
+            string.
 
     Returns:
-        core.VarDesc.VarType: the data type in Paddle.
+        core.VarDesc.VarType: The data type in Paddle.
 
     """
-    dtype = np.dtype(np_dtype)
+    # Convert the data type string to numpy data type.
+    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
+        dtype = np.uint16
+    else:
+        dtype = np.dtype(np_dtype)
+
     if dtype == np.float32:
         return core.VarDesc.VarType.FP32
     elif dtype == np.float64:
@@ -1260,6 +1268,17 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
                             list(shape) if shape else [], name,
                             type if type else core.VarDesc.VarType.LOD_TENSOR,
                             True if persistable else False)
+
+
+def _all_is_type(vals, expected_type):
+    """
+    Return True if type of each element is expected_type.
+
+    NOTE: BuiltIn all() will always return True if vals is empty.
+    """
+    assert isinstance(vals, (list, tuple))
+    if not vals: return False
+    return all(isinstance(v, expected_type) for v in vals)
 
 
 class VariableMetaClass(type):
@@ -1742,7 +1761,7 @@ class Variable(object):
     def element_size(self):
         """
         Returns the size in bytes of an element in the Tensor.
-        
+
         Examples:
           .. code-block:: python
 
@@ -2048,7 +2067,7 @@ class Variable(object):
     def clone(self):
         """
         Returns a new static Variable, which is the clone of the original static
-        Variable. It remains in the current graph, that is, the cloned Variable 
+        Variable. It remains in the current graph, that is, the cloned Variable
         provides gradient propagation. Calling ``out = tensor.clone()`` is same
         as ``out = assign(tensor)`` .
 
@@ -2100,7 +2119,7 @@ class Variable(object):
             key(str): Key for this information.
             value(object): The value associated to the key.
 
-        Returns: 
+        Returns:
             None
         """
         if not hasattr(self, "_info"):
@@ -2114,7 +2133,7 @@ class Variable(object):
         Args:
             key(str): Key for this information.
 
-        Returns: 
+        Returns:
             object
         """
         if hasattr(self, "_info") and key in self._info:
@@ -2277,10 +2296,10 @@ class Variable(object):
 
     def get_value(self, scope=None):
         """
-        Get the value of variable in given scope. 
+        Get the value of variable in given scope.
 
         Args:
-            scope(Scope, optional) : If `scope` is None, it will be set to global scope 
+            scope(Scope, optional) : If `scope` is None, it will be set to global scope
                 obtained through 'paddle.static.global_scope()'. Otherwise, use `scope`.
                 Default: None
 
@@ -2291,7 +2310,7 @@ class Variable(object):
             .. code-block:: python
 
                 import paddle
-                import paddle.static as static 
+                import paddle.static as static
                 import numpy as np
 
                 paddle.enable_static()
@@ -2336,22 +2355,22 @@ class Variable(object):
 
     def set_value(self, value, scope=None):
         '''
-        Set the value to the tensor in given scope. 
+        Set the value to the tensor in given scope.
 
         Args:
             value(Tensor/ndarray) : The value to be set.
-            scope(Scope, optional) : If `scope` is None, it will be set to global scope 
+            scope(Scope, optional) : If `scope` is None, it will be set to global scope
                 obtained through 'paddle.static.global_scope()'. Otherwise, use `scope`.
                 Default: None
 
         Returns:
             None
-        
+
         Examples:
             .. code-block:: python
 
                 import paddle
-                import paddle.static as static 
+                import paddle.static as static
                 import numpy as np
 
                 paddle.enable_static()
@@ -2520,31 +2539,18 @@ class Variable(object):
         return self.desc.attr(name)
 
     @property
-    def process_mesh(self):
+    def dist_attr(self):
         """
-        Get the process mesh belonging to this Variable.
+        Get distributed attribute of this Variable.
         """
-        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
-        from paddle.distributed.auto_parallel.interface import ProcessMesh
-        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
-        mesh_id = self.desc.attr(mesh_attr_name)
-        return _g_process_mesh_map[mesh_id]
+        return self.desc.dist_attr
 
-    @property
-    def shard_mask(self):
+    @dist_attr.setter
+    def dist_attr(self, dist_attr):
         """
-        Get shard_mask belonging to this Variable.
+        Set distributed attribute of this Variable.
         """
-        mask_attr_name = 'mask' + core.kAutoParallelSuffix()
-        return self.desc.attr(mask_attr_name)
-
-    @property
-    def offload_device(self):
-        """
-        Get the offload device of this Variable.
-        """
-        offload_attr_name = 'offload_device' + core.kAutoParallelSuffix()
-        return self.desc.attr(offload_attr_name)
+        self.desc.dist_attr = dist_attr
 
 
 def get_all_op_protos():
@@ -2677,6 +2683,16 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
+        # read attr type index from op proto to avoid unexpected type
+        # conversions, e.g. narrowing conversion like double to float
+        try:
+            proto = OpProtoHolder.instance().get_op_proto(type)
+            self._attr_types = {}
+            for attr in proto.attrs:
+                self._attr_types[attr.name] = attr.type
+        except ValueError:
+            pass
+
         if _non_static_mode():
             if type is None:
                 raise ValueError(
@@ -2830,6 +2846,7 @@ class Operator(object):
                                 arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
+            extra_attrs_map = core.get_op_extra_attrs(type)
             if op_attrs is not None:
                 if not isinstance(op_attrs, dict):
                     raise TypeError("'attrs' should be a dict.")
@@ -2840,6 +2857,13 @@ class Operator(object):
                         continue
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
+                for attr_name in extra_attrs_map.keys():
+                    if (attr_name
+                            not in op_attrs) or (op_attrs[attr_name] is None):
+                        self._update_desc_attr(attr_name,
+                                               extra_attrs_map[attr_name])
+                    else:
+                        self._update_desc_attr(attr_name, op_attrs[attr_name])
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
@@ -2934,7 +2958,28 @@ class Operator(object):
             if skip_op_callstack and name == "op_callstack":
                 continue
 
-            attr_type = self.desc.attr_type(name)
+            attr_type = self.desc.attr_type(name, True)
+            if attr_type == core.AttrType.VAR:
+                attr_var_name = self.desc.attr(name, True).name()
+                a = "{name} = Var['{value}']".format(name=name,
+                                                     type=attr_type,
+                                                     value=attr_var_name)
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
+            if attr_type == core.AttrType.VARS:
+                attr_var_names = [
+                    "'%s'" % var.name() for var in self.desc.attr(name, True)
+                ]
+                a = "{name} = Vars[{value}]".format(
+                    name=name, type=attr_type, value=','.join(attr_var_names))
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
             if attr_type == core.AttrType.BLOCK:
                 a = "{name} = block[{value}]".format(
                     name=name, type=attr_type, value=self._block_attr_id(name))
@@ -3099,7 +3144,7 @@ class Operator(object):
         Returns:
             core.AttrType: the attribute type.
         """
-        return self.desc.attr_type(name)
+        return self.desc.attr_type(name, True)
 
     def _set_attr(self, name, val):
         """
@@ -3128,20 +3173,58 @@ class Operator(object):
         Raises:
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            self.desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            self.desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and all(
-                isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             self.desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
             self.desc.set_serialized_attr(name, val.serialize_to_string())
         else:
-            self.desc._set_attr(name, val)
+            self._update_desc_plain_attr(name, val)
+
+    def _update_desc_plain_attr(self, name, val):
+        desc = self.desc
+        if not hasattr(self, "_attr_types") or (name not in self._attr_types):
+            desc._set_attr(name, val)
+            return
+
+        type_index = self._attr_types[name]
+        if type_index == core.AttrType.BOOL:
+            desc._set_bool_attr(name, val)
+        elif type_index == core.AttrType.INT:
+            desc._set_int32_attr(name, val)
+        elif type_index == core.AttrType.LONG:
+            desc._set_int64_attr(name, val)
+        elif type_index == core.AttrType.FLOAT:
+            desc._set_float32_attr(name, val)
+        # elif type_index == core.AttrType.FLOAT64:
+        #     desc._set_float64_attr(name, val)
+        elif type_index == core.AttrType.STRING:
+            desc._set_str_attr(name, val)
+        elif type_index == core.AttrType.BOOLS:
+            desc._set_bools_attr(name, val)
+        elif type_index == core.AttrType.INTS:
+            desc._set_int32s_attr(name, val)
+        elif type_index == core.AttrType.LONGS:
+            desc._set_int64s_attr(name, val)
+        elif type_index == core.AttrType.FLOATS:
+            desc._set_float32s_attr(name, val)
+        elif type_index == core.AttrType.FLOAT64S:
+            desc._set_float64s_attr(name, val)
+        elif type_index == core.AttrType.STRINGS:
+            desc._set_strs_attr(name, val)
+        else:
+            # defaults to old methods
+            desc._set_attr(name, val)
 
     @property
     def attr_names(self):
-        return self.desc.attr_names()
+        return self.desc.attr_names(True)
 
     def attr(self, name):
         """
@@ -3213,6 +3296,41 @@ class Operator(object):
 
         return self.desc._blocks_attr_ids(name)
 
+    def _var_attr(self, name):
+        """
+        Get the Variable attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            Variable: the Variable attribute.
+        """
+        attr_type = self.desc.attr_type(name, True)
+        assert attr_type == core.AttrType.VAR, "Required type attr({}) is Variable, but received {}".format(
+            name, attr_type)
+        attr_var_name = self.desc.attr(name, True).name()
+        return self.block._var_recursive(attr_var_name)
+
+    def _vars_attr(self, name):
+        """
+        Get the Variables attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            Variables: the Variables attribute.
+        """
+        attr_type = self.desc.attr_type(name, True)
+        assert attr_type == core.AttrType.VARS, "Required type attr({}) is list[Variable], but received {}".format(
+            name, attr_type)
+        attr_vars = [
+            self.block._var_recursive(var.name())
+            for var in self.desc.attr(name, True)
+        ]
+        return attr_vars
+
     def all_attrs(self):
         """
         Get the attribute dict.
@@ -3223,16 +3341,17 @@ class Operator(object):
         attr_names = self.attr_names
         attr_map = {}
         for n in attr_names:
-            attr_type = self.desc.attr_type(n)
+            attr_type = self.desc.attr_type(n, True)
             if attr_type == core.AttrType.BLOCK:
                 attr_map[n] = self._block_attr(n)
-                continue
-
-            if attr_type == core.AttrType.BLOCKS:
+            elif attr_type == core.AttrType.BLOCKS:
                 attr_map[n] = self._blocks_attr(n)
-                continue
-
-            attr_map[n] = self.attr(n)
+            elif attr_type == core.AttrType.VAR:
+                attr_map[n] = self._var_attr(n)
+            elif attr_type == core.AttrType.VARS:
+                attr_map[n] = self._vars_attr(n)
+            else:
+                attr_map[n] = self.attr(n)
 
         return attr_map
 
@@ -3263,29 +3382,18 @@ class Operator(object):
         return False
 
     @property
-    def process_mesh(self):
+    def dist_attr(self):
         """
-        Get the process mesh belonging to this Operator.
+        Get distributed attribute of this Variable.
         """
-        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
-        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
-        mesh_id = self.attr(mesh_attr_name)
-        return _g_process_mesh_map[mesh_id]
+        return self.desc.dist_attr
 
-    def dims_mapping(self, name):
+    @dist_attr.setter
+    def dist_attr(self, dist_attr):
         """
-        Get the dims_mapping for the op's var named `name`.
+        Set distributed attribute of this Variable.
         """
-        dims_mapping_attr_name = name + core.kAutoParallelSuffix()
-        return self.attr(dims_mapping_attr_name)
-
-    @property
-    def pipeline_stage(self):
-        """
-        Get pipeline stage of the Operator.
-        """
-        pipeline_stage_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix()
-        return self.desc.attr(pipeline_stage_attr_name)
+        self.desc.dist_attr = dist_attr
 
 
 class Block(object):
@@ -3744,7 +3852,7 @@ class Block(object):
 
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
-        Insert an Operator according to the giving arguments, 
+        Insert an Operator according to the giving arguments,
         without sync_with_cpp to meke the compilation faster.
 
         Args:
@@ -4392,10 +4500,13 @@ class IrOpNode(IrNode):
         assert self.node.op() is not None, \
             "The node operator description can not be None."
         desc = self.node.op()
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and \
-                all(isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -4850,10 +4961,13 @@ class IrGraph(object):
         """
         Update the value of desc's attribute by attribute's name.
         """
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and all(
-                isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -4978,6 +5092,8 @@ class Program(object):
         all_new_vars = []
         block_num = new_desc.num_blocks()
         for idx in range(block_num):
+            if (idx > (len(self.blocks) - 1)):
+                self._create_block()
             new_block_desc = new_desc.block(idx)
             all_new_vars.append([])
             block_new_vars = all_new_vars[-1]
@@ -5348,8 +5464,8 @@ class Program(object):
     def clone(self, for_test=False):
         """
         .. note:::
-            1. :code:`Program.clone()` method DOES NOT clone :ref:`api_paddle_io_DataLoader` . 
-            2. Recommend you to use :code:`clone` before using :code:`Opimizer.minimize` . 
+            1. :code:`Program.clone()` method DOES NOT clone :ref:`api_paddle_io_DataLoader` .
+            2. Recommend you to use :code:`clone` before using :code:`Opimizer.minimize` .
             3. This API has no effect in Dygraph Mode.
 
         Create a new Program with forward content of original one when ``for_test=True``.
@@ -5577,8 +5693,8 @@ class Program(object):
     def _prune_with_input(self, feeded_var_names, targets):
         """
         Prune operators and variables which are not needed to generate
-        :code:`targets`. Prune operators and variables which are needed 
-        to generate feeded_var 
+        :code:`targets`. Prune operators and variables which are needed
+        to generate feeded_var
 
         Notes: This is a very low level API. Users should not use this API
         directly. This API is in flux and not stable.
@@ -5755,6 +5871,12 @@ class Program(object):
         ]
         res._sync_with_cpp()
 
+        # Note: The op_role and op_role_var cann't be deleted currently,
+        # and we will try to remove them in the future.
+        common_clipped_attrs_list = [
+            'op_namescope', 'op_callstack', 'op_device', 'with_quant_attr'
+        ]
+
         for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
             for var in block.all_vars():
@@ -5766,6 +5888,9 @@ class Program(object):
                 op = block.op(op_idx)
                 if op.type() not in OpProtoHolder.instance().op_proto_map:
                     continue
+
+                extra_attrs_map = core.get_op_extra_attrs(op.type())
+
                 proto = OpProtoHolder.instance().get_op_proto(op.type())
                 remove_input_list = []
                 for name in op.input_names():
@@ -5813,6 +5938,10 @@ class Program(object):
                             continue
                         if name.endswith("_threshold"):
                             continue
+                    if len(extra_attrs_map) > 0:
+                        if name in extra_attrs_map or name in common_clipped_attrs_list:
+                            op.remove_attr(name)
+                        continue
                     find = False
                     for attr_proto in proto.attrs:
                         if attr_proto.name != name:
@@ -5831,7 +5960,7 @@ class Program(object):
     def parse_from_string(binary_str):
         """
         .. note::
-            1. All information about parameters will be lost after serialization; 
+            1. All information about parameters will be lost after serialization;
             2. This API has no effect in Dygraph mode.
 
         Deserialize a Program from  `protobuf <https://en.wikipedia.org/wiki/Protocol_Buffers>`_  binary string.
@@ -5896,7 +6025,7 @@ class Program(object):
         The default random seed for random operators in Program. ``0`` means get
         the random seed from random device.
 
-        .. note:: 
+        .. note::
             It must be set before the operators have been added.
 
         Returns:
@@ -5934,7 +6063,7 @@ class Program(object):
         """
         The number of :ref:`api_guide_Block_en`  in this Program.
 
-        .. note:: 
+        .. note::
             This API has no effect in Dygraph mode.
 
         Returns:
@@ -6142,8 +6271,8 @@ class Program(object):
         Args:
             other(Program): Other program
             pruned_origin_block_id_map(dict{int:int}): A dict which maps the block id in program
-            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is 
-            cloned from block 0 in other, etc. Default is None, which means default mapped, 
+            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is
+            cloned from block 0 in other, etc. Default is None, which means default mapped,
             {0:0, 1:1,..., n:n}.
 
         Returns:
@@ -6249,12 +6378,12 @@ class Program(object):
             This function MUST called after run start_up_program
 
         Args:
-            mode(str, optional): Source of the obtained parameters and buffers. 
-                    'opt' :  The return value only contains the variable in the optimizer. 
-                    'param' : The return value only contains the variable in the network, not the variable in the optimizer.  
+            mode(str, optional): Source of the obtained parameters and buffers.
+                    'opt' :  The return value only contains the variable in the optimizer.
+                    'param' : The return value only contains the variable in the network, not the variable in the optimizer.
                     'all' : The return value contains the variable in the network and optimizer.
                     Default: 'all'
-            scope(Scope, optional) : If scope is None, state_dict will be set to global scope 
+            scope(Scope, optional) : If scope is None, state_dict will be set to global scope
                 obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
                 Default: None
 
@@ -6341,20 +6470,20 @@ class Program(object):
 
     def set_state_dict(self, state_dict, scope=None):
         """
-        Set parameters and persistable buffers in state_dict to program. 
+        Set parameters and persistable buffers in state_dict to program.
         An exception will throw if shape or dtype of the parameters is not match.
-        
+
         .. note::
             This function MUST called after run start_up_program
 
         Args:
-            state_dict(dict): the dict store parameters and persistable buffers. 
+            state_dict(dict): the dict store parameters and persistable buffers.
                 The key is the name of the parameter or the name of the buffer.
                 The value is the tensor of this variable in the given scope.
-            scope(Scope, optional) : If scope is None, state_dict will be set to global scope 
+            scope(Scope, optional) : If scope is None, state_dict will be set to global scope
                 obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
                 Default: None
-        
+
         Returns:
             None
 
@@ -6430,7 +6559,7 @@ class Parameter(Variable):
             be applied on the parameter. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this parameter.
-        need_clip (bool): Whether the parameter gradient need to be cliped 
+        need_clip (bool): Whether the parameter gradient need to be cliped
             in optimizer. Default is True.
     """
 
@@ -6519,8 +6648,8 @@ class Parameter(Variable):
 
 class ParamBase(core.VarBase):
     """
-    ParamBase is derived from Tensor( Which is the concept in Dygraph Mode). 
-    A ParamBase is a persistable Tensor, and will be updated by optimizers 
+    ParamBase is derived from Tensor( Which is the concept in Dygraph Mode).
+    A ParamBase is a persistable Tensor, and will be updated by optimizers
     after each iteration.
     The training of a neural network is essentially the updating of
     its ParamBase.
@@ -6538,7 +6667,7 @@ class ParamBase(core.VarBase):
             be applied on the ParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this ParamBase.
-        need_clip (bool): Whether the parameter gradient need to be cliped 
+        need_clip (bool): Whether the parameter gradient need to be cliped
             in optimizer. Default is True.
     """
 
@@ -6665,8 +6794,8 @@ else:
 
 class EagerParamBase(_core_eager_eagertensor):
     """
-    EagerParamBase is derived from Tensor( Which is the concept in Eager-Dygraph Mode). 
-    A EagerParamBase is a persistable Tensor, and will be updated by optimizers 
+    EagerParamBase is derived from Tensor( Which is the concept in Eager-Dygraph Mode).
+    A EagerParamBase is a persistable Tensor, and will be updated by optimizers
     after each iteration.
     The training of a neural network is essentially the updating of
     its EagerParamBase.
@@ -6684,7 +6813,7 @@ class EagerParamBase(_core_eager_eagertensor):
             be applied on the EagerParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this EagerParamBase.
-        need_clip (bool): Whether the parameter gradient need to be cliped 
+        need_clip (bool): Whether the parameter gradient need to be cliped
             in optimizer. Default is True.
     """
 
@@ -6732,7 +6861,19 @@ class EagerParamBase(_core_eager_eagertensor):
         self.need_clip = kwargs.get('need_clip', True)
 
         self.is_distributed = kwargs.get('is_distributed', False)
-        # self.block = default_main_program().global_block()
+        # hook functions for lazy initialization
+        self._init_func = None
+        self._init_op_creator = None
+
+    def set_init_func(self, obj):
+        self._init_func = obj
+
+    @dygraph_only
+    def initialize(self):
+        assert self._init_func is not None, "Required self._init_func is not None, but received None."
+        self._init_func()
+        # clear function handle to release resource
+        self._init_func = None
 
     @property
     def trainable(self):
@@ -6746,6 +6887,13 @@ class EagerParamBase(_core_eager_eagertensor):
             raise ValueError(
                 "The type of trainable MUST be bool, but the type is ",
                 type(trainable))
+
+    def _create_init_op(self, block):
+        """
+        Call init_op_creator function to create initializer operation in block.
+        """
+        assert self._init_op_creator is not None, "Required self._init_op_creator is not None, but received None."
+        self._init_op_creator(block)
 
     def __str__(self):
         """
@@ -6818,7 +6966,7 @@ def default_startup_program():
     Get default/global startup program.
 
     The :code:`paddle.nn` function will append the initialization operators into startup program.
-    The :code:`startup_program` will initialize the parameters by the OPs. 
+    The :code:`startup_program` will initialize the parameters by the OPs.
 
     This method will return the default or the current startup program. Users can use
     :ref:`api_paddle_fluid_framework_program_guard`  to switch :ref:`api_paddle_fluid_framework_Program` .
@@ -6826,7 +6974,7 @@ def default_startup_program():
     Returns:
         Program: current default startup program.
 
-    Returns type: 
+    Returns type:
 
     Examples:
         .. code-block:: python
@@ -6844,13 +6992,13 @@ def default_startup_program():
 
 def default_main_program():
     """
-    This API can be used to get ``default main program`` which store the 
+    This API can be used to get ``default main program`` which store the
     descriptions of Ops and tensors.
 
-    For example ``z = paddle.add(x, y)`` will create a new ``add`` 
-    Op and a new ``z`` tensor, and they will be recorded in ``default main program`` . 
+    For example ``z = paddle.add(x, y)`` will create a new ``add``
+    Op and a new ``z`` tensor, and they will be recorded in ``default main program`` .
 
-    The ``default main program`` is the default value for ``Program`` parameter in 
+    The ``default main program`` is the default value for ``Program`` parameter in
     a lot of APIs. For example, the :code:`Executor.run()` will execute the
     :code:`default_main_program` when the program is not specified.
 
@@ -6920,8 +7068,8 @@ def program_guard(main_program, startup_program=None):
 
     Args:
         main_program(Program): New main program inside ``with`` statement.
-        startup_program(Program, optional): New startup program inside ``with`` 
-            statement. :code:`None` means not changing startup program, 
+        startup_program(Program, optional): New startup program inside ``with``
+            statement. :code:`None` means not changing startup program,
             default_startup_program is still used.
             Default: None.
 
@@ -7028,7 +7176,7 @@ def switch_device(device):
 @signature_safe_contextmanager
 def device_guard(device=None):
     """
-    
+
     Note:
         The API only supports static mode.
 
@@ -7036,7 +7184,7 @@ def device_guard(device=None):
 
     Args:
         device(str|None): Specify the device to use in the context. It should be ``cpu``,
-            ``gpu`` or ``gpu:x``, where ``x`` is the index of the GPUs. 
+            ``gpu`` or ``gpu:x``, where ``x`` is the index of the GPUs.
             When it is set to 'cpu' or 'gpu', all OPs created in the context will be
             placed on CPUPlace or CUDAPlace. When 'gpu' is set and the program runs on
             single-card, the device index will be the same as the device on which the
@@ -7044,9 +7192,9 @@ def device_guard(device=None):
             assigned devices.
 
     Examples:
-    
+
         .. code-block:: python
-            
+
             # required: gpu
             import paddle
 
@@ -7078,9 +7226,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'npu', '', None]:
+    if device not in ['cpu', 'gpu', 'npu', 'xpu', 'mlu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' 'npu' 'xpu' 'mlu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     if index:
         device = ":".join([device, index])

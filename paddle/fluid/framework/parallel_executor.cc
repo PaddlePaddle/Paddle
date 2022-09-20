@@ -863,12 +863,12 @@ void ParallelExecutor::BCastParamsToDevices(
         nccl_ctxs->WaitAll();
       } else {
         auto src_place = member_->places_[0];
-        auto src_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+        auto src_dev_ctx = static_cast<phi::GPUContext *>(
             platform::DeviceContextPool::Instance().Get(src_place));
         auto sizeof_dtype = framework::SizeOfType(dtype) * numel;
         for (size_t i = 1; i < member_->places_.size(); ++i) {
           auto dst_place = member_->places_[i];
-          auto dst_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+          auto dst_dev_ctx = static_cast<phi::GPUContext *>(
               platform::DeviceContextPool::Instance().Get(dst_place));
           src_dev_ctx->Wait();
           dst_dev_ctx->Wait();
@@ -983,6 +983,7 @@ void ParallelExecutor::BCastParamsToDevices(
 
 FetchUnmergedList ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
+  LOG_FIRST_N(INFO, 1) << "ParallelExecutor is Running (Run).";
   PreludeToRun(fetch_tensors);
   platform::RecordBlock b(0);
 
@@ -1000,6 +1001,7 @@ FetchUnmergedList ParallelExecutor::Run(
 
 FetchList ParallelExecutor::RunAndMerge(
     const std::vector<std::string> &fetch_tensors) {
+  LOG_FIRST_N(INFO, 1) << "ParallelExecutor is Running (RunAndMerge).";
   PreludeToRun(fetch_tensors);
   platform::RecordBlock b(0);
 
@@ -1492,8 +1494,8 @@ void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
         global_scope, member_->places_);
     auto &pool = platform::DeviceContextPool::Instance();
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-          pool.Get(member_->places_[dev_id]));
+      auto *dev_ctx =
+          static_cast<phi::GPUContext *>(pool.Get(member_->places_[dev_id]));
       auto &nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }

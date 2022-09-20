@@ -170,6 +170,7 @@ C_Status XcclReduce(void *send_buf,
                     size_t count,
                     C_DataType data_type,
                     C_CCLReduceOp op,
+                    size_t root_id,
                     C_CCLComm comm,
                     C_Stream stream) {
   return C_SUCCESS;
@@ -207,6 +208,17 @@ C_Status XcclRecv(void *recv_buf,
                   size_t src_rank,
                   C_CCLComm comm,
                   C_Stream stream) {
+  return C_SUCCESS;
+}
+
+C_Status BlasAXPBY(const C_Device device,
+                   C_Stream stream,
+                   C_DataType dtype,
+                   size_t numel,
+                   float alpha,
+                   void *x,
+                   float beta,
+                   void *y) {
   return C_SUCCESS;
 }
 
@@ -278,4 +290,6 @@ void InitFakeCPUDevice(CustomRuntimeParams *params) {
   params->interface->xccl_reduce_scatter = XcclReduceScatter;
   params->interface->xccl_send = XcclSend;
   params->interface->xccl_recv = XcclRecv;
+
+  params->interface->blas_axpby = BlasAXPBY;
 }

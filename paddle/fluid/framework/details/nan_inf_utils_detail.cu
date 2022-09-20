@@ -135,7 +135,7 @@ __global__ void CheckNanInfKernel(const T* value,
 
 template <>
 template <typename T>
-void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
+void TensorCheckerVisitor<phi::GPUContext>::apply(
     typename std::enable_if<
         std::is_floating_point<T>::value ||
         std::is_same<T, ::paddle::platform::complex<float>>::value ||
@@ -143,7 +143,7 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
     const {
   int print_num = 3;
 
-  auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(tensor_.place()));
   int dev_id = tensor_.place().device;
   PADDLE_ENFORCE_EQ(
@@ -161,8 +161,10 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
 
     std::lock_guard<std::mutex> guard(op_var2gpu_str_mutex);
     if (op_var2gpu_str.find(op_var) == op_var2gpu_str.end()) {  // insert
-      auto gpu_str_tensor =
-          paddle::memory::Alloc(*dev_ctx, op_var.length() + 1);
+      auto gpu_str_tensor = paddle::memory::Alloc(
+          dev_ctx->GetPlace(),
+          op_var.length() + 1,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx->stream())));
       gpu_str_ptr = reinterpret_cast<char*>(gpu_str_tensor->ptr());
 
       op_var2gpu_str.emplace(op_var, std::move(gpu_str_tensor));
@@ -226,13 +228,13 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
 }
 
 template <>
-void tensor_check<platform::CUDADeviceContext>(const std::string& op_type,
-                                               const std::string& var_name,
-                                               const framework::Tensor& tensor,
-                                               const platform::Place& place) {
+void tensor_check<phi::GPUContext>(const std::string& op_type,
+                                   const std::string& var_name,
+                                   const framework::Tensor& tensor,
+                                   const platform::Place& place) {
   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
 
-  TensorCheckerVisitor<platform::CUDADeviceContext> vistor(
+  TensorCheckerVisitor<phi::GPUContext> vistor(
       op_type, var_name, tensor, place);
   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }

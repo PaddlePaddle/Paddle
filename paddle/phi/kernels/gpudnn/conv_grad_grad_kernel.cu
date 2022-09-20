@@ -254,6 +254,8 @@ void ConvCudnnGradGradKernel(
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
   auto handle = ctx.cudnn_handle();
+  auto layout = paddle::platform::GetCudnnTensorFormat(
+      paddle::platform::DataLayout::kNCHW);
 
   paddle::operators::ConvArgs args1{&transformed_ddX,
                                     W,
@@ -261,28 +263,36 @@ void ConvCudnnGradGradKernel(
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
   paddle::operators::ConvArgs args2{&transformed_X,
                                     ddW,
                                     &transformed_ddO_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
   paddle::operators::ConvArgs args3{&transformed_ddX,
                                     dW,
                                     &transformed_dO_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
   paddle::operators::ConvArgs args4{&transformed_dX,
                                     ddW,
                                     &transformed_dO_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
 
 #ifdef PADDLE_WITH_HIP
   paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result1;
@@ -297,9 +307,6 @@ void ConvCudnnGradGradKernel(
   paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
       filter_result;
 #endif
-
-  auto layout = paddle::platform::GetCudnnTensorFormat(
-      paddle::platform::DataLayout::kNCHW);
 
   // ddo = conv(ddI, W) + conv(I, ddW)
   size_t workspace_size = 0;

@@ -130,6 +130,7 @@ class MinusGradMaker : public imperative::GradOpBaseMakerBase {
       op.SetInput("X", this->OutputGrad("Out"));
       op.SetOutput("Out", x_g);
       op.SetAttr("scale", 1.0f);
+      op.SetDefaultAttrsMap(DefaultAttrsMap());
     }
 
     if (!y_g.empty()) {
@@ -138,6 +139,7 @@ class MinusGradMaker : public imperative::GradOpBaseMakerBase {
       op.SetInput("X", this->OutputGrad("Out"));
       op.SetOutput("Out", y_g);
       op.SetAttr("scale", -1.0f);
+      op.SetDefaultAttrsMap(DefaultAttrsMap());
     }
 
     return node;
@@ -155,5 +157,4 @@ REGISTER_OPERATOR(minus,
                   ops::MinusGradMaker);
 REGISTER_OP_CPU_KERNEL(minus, ops::MinusKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(
-    minus, ops::MinusKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(minus, ops::MinusKernel<phi::GPUContext, float>);

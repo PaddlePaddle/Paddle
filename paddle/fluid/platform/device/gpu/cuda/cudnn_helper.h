@@ -621,7 +621,7 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
   use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_CUDA
   if (use_cudnn) {
-    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
   }
 #endif

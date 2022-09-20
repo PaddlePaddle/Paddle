@@ -270,6 +270,8 @@ packages=['paddle',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
+          'paddle.distributed.communication',
+          'paddle.distributed.communication.stream',
           'paddle.distributed.metric',
           'paddle.distributed.ps',
           'paddle.distributed.ps.utils',
@@ -294,6 +296,7 @@ packages=['paddle',
           'paddle.distributed.launch.plugins',
           'paddle.distributed.launch.utils',
           'paddle.distributed.fleet.base',
+          'paddle.distributed.fleet.recompute',
           'paddle.distributed.fleet.elastic',
           'paddle.distributed.fleet.meta_optimizers',
           'paddle.distributed.fleet.meta_optimizers.sharding',
@@ -305,6 +308,8 @@ packages=['paddle',
           'paddle.distributed.fleet.metrics',
           'paddle.distributed.fleet.proto',
           'paddle.distributed.fleet.utils',
+          'paddle.distributed.fleet.layers',
+          'paddle.distributed.fleet.layers.mpu',
           'paddle.distributed.fleet.meta_parallel',
           'paddle.distributed.fleet.meta_parallel.pp_utils',
           'paddle.distributed.fleet.meta_parallel.sharding',
@@ -363,6 +368,10 @@ packages=['paddle',
           'paddle.vision.models',
           'paddle.vision.transforms',
           'paddle.vision.datasets',
+          'paddle.audio',
+	  'paddle.audio.functional',
+	  'paddle.audio.features',
+	  'paddle.audio.utils',
           'paddle.text',
           'paddle.text.datasets',
           'paddle.incubate',
@@ -372,6 +381,7 @@ packages=['paddle',
           'paddle.incubate.optimizer.functional',
           'paddle.incubate.autograd',
           'paddle.incubate.distributed',
+          'paddle.incubate.distributed.fleet',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
@@ -400,6 +410,9 @@ packages=['paddle',
           'paddle.device.cuda',
           'paddle.version',
           'paddle.profiler',
+          'paddle.geometric',
+          'paddle.geometric.message_passing',
+          'paddle.geometric.sampling',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -441,8 +454,6 @@ else:
     package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
 package_data['paddle.fluid'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
-if '${HAS_NOAVX_CORE}' == 'ON':
-    package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -484,7 +495,7 @@ else:
         package_data['paddle.libs'] += ['openblas' + ext_name]
     elif os.name == 'posix' and platform.machine() == 'aarch64' and '${OPENBLAS_LIB}'.endswith('so'):
         # copy the libopenblas.so on linux+aarch64
-        # special: core_noavx.so depends on 'libopenblas.so.0', not 'libopenblas.so'
+        # special: libpaddle.so without avx depends on 'libopenblas.so.0', not 'libopenblas.so'
         if os.path.exists('${OPENBLAS_LIB}' + '.0'):
             shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
             package_data['paddle.libs'] += ['libopenblas.so.0']
@@ -579,8 +590,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
         else:
-            commands = ["patchelf --set-soname '${FLUID_CORE_NAME}.so' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
-            commands.append("patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
+            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
@@ -618,11 +628,21 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # phi backends headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels')) +  # phi kernels headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/sparse')) +  # phi sparse kernels headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/selected_rows')) +  # phi selected_rows kernels headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/strings')) +  # phi sparse kernels headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/primitive')) +  # phi kernel primitive api headers
     # capi headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/capi', recursive=True)) +  # phi capi headers
-    # utila api headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True)))  # paddle utils headers
+    # profiler headers
+    list(find_files('trace_event.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform/profiler')) +  # phi profiler headers
+    # utils api headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True))) # paddle utils headers
+
+jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'function.h']
+for f in jit_layer_headers:
+    headers += list(find_files(f, '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=True))
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
@@ -667,6 +687,13 @@ class InstallHeaders(Command):
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
+            print('install_dir: ', install_dir)
+            if 'fluid/jit' in install_dir:
+                install_dir = re.sub('fluid/jit', 'jit', install_dir)
+                print('fluid/jit install_dir: ', install_dir)
+            if 'trace_event.h' in install_dir:
+                install_dir = re.sub('fluid/platform/profiler', 'phi/backends/custom', install_dir)
+                print('trace_event.h install_dir: ', install_dir)
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)

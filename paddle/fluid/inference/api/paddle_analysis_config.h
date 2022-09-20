@@ -523,7 +523,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// quantization).
   ///
   ///
-  void EnableTensorRtEngine(int workspace_size = 1 << 20,
+  void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
                             int max_batch_size = 1,
                             int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
@@ -663,7 +663,15 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableTensorRtInspector();
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
-  void EnableDlnne(int min_subgraph_size = 3);
+  void EnableDlnne(
+      int min_subgraph_size = 3,
+      int max_batch_size = 1,
+      bool use_static_batch = false,
+      std::string weight_share_mode = "0",
+      std::unordered_set<std::string> disable_nodes_by_outputs = {},
+      std::map<std::string, std::vector<int64_t>> input_dict = {},
+      bool use_calib_mode = false,
+      AnalysisConfig::Precision precision_mode = Precision::kFloat32);
   bool dlnne_enabled() const { return use_dlnne_; }
 
   ///
@@ -754,6 +762,18 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMkldnnQuantizer();
+
+  ///
+  /// \brief Set the calibration ranges file path of quantize model.
+  ///
+  ///
+  void SetCalibrationFilePath(const std::string& calibration_file_path = "");
+
+  ///
+  /// \brief Return the calibration ranges file path of quantize model.
+  ///
+  ///
+  std::string CalibrationFilePath() { return calibration_file_path_; }
 
   ///
   /// \brief Turn on MKLDNN int8.
@@ -933,6 +953,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;
+  mutable std::string calibration_file_path_;
 
   // Mixed precision.
   std::unordered_set<std::string> mixed_black_list_;
@@ -967,7 +988,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
-  int tensorrt_workspace_size_{1 << 30};
+  int64_t tensorrt_workspace_size_{1 << 30};
   // While TensorRT allows an engine optimized for a given max batch size
   // to run at any smaller size, the performance for those smaller
   // sizes may not be as well-optimized. Therefore, Max batch is best
@@ -1006,6 +1027,13 @@ struct PD_INFER_DECL AnalysisConfig {
   // dlnne related.
   bool use_dlnne_{false};
   int dlnne_min_subgraph_size_{3};
+  int dlnne_max_batchsize_{1};
+  std::unordered_set<std::string> dlnne_disable_nodes_by_outputs_;
+  bool dlnne_use_static_batch_{true};
+  std::string dlnne_weight_share_mode_;
+  std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict_{};
+  bool dlnne_use_calib_mode_{false};
+  Precision dlnne_precision_mode_{Precision::kFloat32};
 
   // memory reuse related.
   bool enable_memory_optim_{false};

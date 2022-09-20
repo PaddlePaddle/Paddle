@@ -60,17 +60,6 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
-
-    # set CI_SKIP_CPP_TEST if only *.py changed
-    # In order to avoid using in some CI(such as daily performance), the current
-    # branch must not be `${BRANCH}` which is usually develop.
-    if [ ${CI_SKIP_CPP_TEST:-ON} == "OFF"  ];then
-        echo "CI_SKIP_CPP_TEST=OFF"
-    else
-        if [ "$(git branch | grep "^\*" | awk '{print $2}')" != "${BRANCH}" ]; then
-            git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_CPP_TEST=ON
-        fi
-    fi
 }
 
 function cmake_base() {
@@ -78,6 +67,9 @@ function cmake_base() {
     rm *.deb 2>/dev/null || true
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
+
+    # Delete previous built paddle cache
+    rm -rf python/paddle 2>/dev/null || true
 
     # Support build for all python3 versions
     PYTHON_FLAGS=""
@@ -87,7 +79,7 @@ function cmake_base() {
         if [ "$1" == "cp36-cp36m" ] || [ "$1" == "" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
@@ -99,7 +91,7 @@ function cmake_base() {
         elif [ "$1" == "cp37-cp37m" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
@@ -111,7 +103,7 @@ function cmake_base() {
         elif [ "$1" == "cp38-cp38" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
@@ -123,7 +115,7 @@ function cmake_base() {
         elif [ "$1" == "cp39-cp39" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
@@ -135,7 +127,7 @@ function cmake_base() {
         elif [ "$1" == "cp310-cp310" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
@@ -209,6 +201,8 @@ function cmake_base() {
     gloo_flag=${distibuted_flag}
 
     if [ "$CMD" != "assert_file_approvals" ];then
+      which python
+      python -V
       python -m pip install distro
       python ${PADDLE_ROOT}/tools/summary_env.py
       bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
@@ -281,7 +275,6 @@ EOF
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
-        -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
         -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} \
         -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} \
@@ -555,22 +548,25 @@ EOF
 }
 
 
-function combine_avx_noavx_build() {
-    mkdir -p ${PADDLE_ROOT}/build.noavx
-    cd ${PADDLE_ROOT}/build.noavx
-    WITH_AVX=OFF
-    cmake_base ${PYTHON_ABI:-""}
-    build_base
-
-    # build combined one
+function avx_build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    NOAVX_CORE_FILE=`find ${PADDLE_ROOT}/build.noavx/python/paddle/fluid/ -name "core_noavx.*"`
     WITH_AVX=ON
 
     cmake_base ${PYTHON_ABI:-""}
     build_base
 }
+
+
+function noavx_build() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    WITH_AVX=OFF
+
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+}
+
 
 function mac_m1_arm_build() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -998,7 +994,7 @@ function generate_upstream_develop_api_spec() {
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
     echo "pr_whl_size: ${pr_whl_size}"
 
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/python/paddle
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
 
     cd ${PADDLE_ROOT}
@@ -1049,6 +1045,10 @@ function generate_api_spec() {
     # used to log op_register data_type
     op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/check_op_register_type.py > $op_type_path
+
+    # used to log op_register data_type
+    op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/check_op_kernel_same_dtypes.py > $op_type_path
 
     # print all ops desc in dict to op_desc_path
     op_desc_path=${PADDLE_ROOT}/paddle/fluid/OP_DESC_${spec_kind}.spec
@@ -1115,9 +1115,8 @@ function check_approvals_of_unittest() {
         curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
         oriBuildSize=`cat fluidInference_so_size`
         curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
-        apt-get install -y bc
-        diffSize=$(printf "%.2f" `echo "$curBuildSize - $oriBuildSize" | bc`)
-        AllDiffSize=$(printf "%.2f" `echo "$diffSize * 4" | bc`)
+        diffSize=$(awk "BEGIN{print $curBuildSize-$oriBuildSize}")
+        AllDiffSize=$(awk "BEGIN{print $diffSize * 4}")
         cat <<EOF
         ========================================
         Original libpaddle_inference.so Size is ${oriBuildSize}M.
@@ -1127,8 +1126,7 @@ function check_approvals_of_unittest() {
         It means the release version library size growth is about ${AllDiffSize}M.
         ========================================
 EOF
-        if [ `echo "20 < $AllDiffSize"|bc` -eq 1 ] ; then
-            
+        if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 328693`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
@@ -1237,7 +1235,7 @@ function bind_test() {
     NUM_PROC=6
 
     # calculate and set the memory usage for each process
-    MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
+    MEM_USAGE=$(awk "BEGIN{scale=5; print 1.0/$NUM_PROC}")
     export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
 
     # get the CUDA device count
@@ -1880,6 +1878,18 @@ function precise_card_test_single {
     done
 }
 
+function parallel_card_test_single {
+    set +e
+    set +x
+    testcases=$1
+    num=$2
+    for case in $(echo $testcases | tr "$|^" "\n")
+    do
+        cd ${PADDLE_ROOT}/build
+        precise_card_test "^${case}$" $num
+    done
+}
+
 function precise_card_test() {
     set -m
     testcases=$1
@@ -1927,6 +1937,8 @@ function get_precise_tests_map_file {
     multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
     is_exclusive=''           # indicate whether the case is exclusive type
     is_multicard=''           # indicate whether the case is multiple GPUs type
+
+    single_card_test_num=0
 set +x
 
     while read -r line; do
@@ -1962,7 +1974,8 @@ set +x
                     multiple_card_tests="$multiple_card_tests|^$testcase$"
                 fi
             else
-                if [[ "${single_card_tests}" -gt 3000 ]];then
+                single_card_test_num=$(($single_card_test_num+1))
+                if [[ $single_card_test_num -gt 3000 ]];then
                     if [[ "$single_card_tests_1" == "" ]]; then
                         single_card_tests_1="^$testcase$"
                     else
@@ -2006,7 +2019,86 @@ set -x
 
     #generate ut file map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
+    
+}
 
+function get_parallel_tests_map_file {
+    cd ${PADDLE_ROOT}/build
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    ut_total_startTime_s=`date +%s`
+    EXIT_CODE=0;
+    test_cases=$(ctest -N -V) # get all test cases
+    single_card_tests='' # all cases list which would take one graph card
+    exclusive_tests=''        # cases list which would be run exclusively
+    multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
+    is_exclusive=''           # indicate whether the case is exclusive type
+    is_multicard=''           # indicate whether the case is multiple GPUs type
+    single_card_test_num=0
+set +x
+
+    while read -r line; do
+        if [[ "$line" == "" ]]; then
+            continue
+        fi
+            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            if [[ "$matchstr" == "" ]]; then
+                # Any test case with LABELS property would be parse here
+                # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
+                # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
+                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                continue
+            fi
+            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+
+            if [[ "$is_multicard" == "" ]]; then
+                # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
+                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+            fi
+
+            if [[ "$is_exclusive" != "" ]]; then
+                if [[ "$exclusive_tests" == "" ]]; then
+                    exclusive_tests="^$testcase$"
+                else
+                    exclusive_tests="$exclusive_tests|^$testcase$"
+                fi
+            elif [[ "$is_multicard" != "" ]]; then
+                if [[ "$multiple_card_tests" == "" ]]; then
+                    multiple_card_tests="^$testcase$"
+                else
+                    multiple_card_tests="$multiple_card_tests|^$testcase$"
+                fi
+            else
+                single_card_test_num=$(($single_card_test_num+1))
+                if [[ $single_card_test_num -gt 3000 ]];then
+                    if [[ "$single_card_tests_1" == "" ]]; then
+                        single_card_tests_1="^$testcase$"
+                    else
+                        single_card_tests_1="$single_card_tests_1|^$testcase$"
+                    fi
+                    continue
+                fi
+                if [[ "$single_card_tests" == "" ]]; then
+                    single_card_tests="^$testcase$"
+                else
+                    single_card_tests="$single_card_tests|^$testcase$"
+                fi
+            fi
+            is_exclusive=''
+            is_multicard=''
+            is_nightly=''
+            matchstr=''
+            testcase=''
+    done <<< "$test_cases";
+
+set -x
+    mkdir -p ${PADDLE_ROOT}/build/ut_map
+    mkdir -p ${PADDLE_ROOT}/build/pytest
+
+    parallel_card_test_single "$single_card_tests" 1
+    parallel_card_test_single "$single_card_tests_1" 1
+    parallel_card_test_single "$multiple_card_tests" 2
+    parallel_card_test_single "$exclusive_tests"
 
     wait;
     #classify_case_by_cardNum
@@ -2289,7 +2381,14 @@ EOF
 
 set +x
         test_cases=$(ctest -N -V) # get all test cases
-        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+
+        mlu_card_num=$(cnmon info -t | grep Card | wc -l)
+        if [[ $mlu_card_num == 1 ]]; then
+            get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+        else
+            disable_ut_quickly='disable_ut'
+        fi
+        
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -2385,7 +2484,6 @@ set +x
                     else 
                         break
                     fi
-
                 done
         fi
 
@@ -2794,12 +2892,12 @@ EOF
     local LIB_TYPE=$1
     case $LIB_TYPE in
       full)
-        # Build full Paddle Python module. Will timeout without caching 'copy_paddle_pybind' first
-        make -j `nproc` framework_py_proto copy_paddle_pybind paddle_python
+        # Build full Paddle Python module. Will timeout without caching 'copy_libpaddle' first
+        make -j `nproc` framework_py_proto copy_libpaddle paddle_python
         ;;
       pybind)
         # Build paddle pybind library. Takes 49 minutes to build. Might timeout
-        make -j `nproc` copy_paddle_pybind
+        make -j `nproc` copy_libpaddle
         ;;
       proto)
         # Even smaller library.
@@ -3232,7 +3330,6 @@ function reuse_so_cache() {
     down_proto_so=`echo $?`
     set -e
     if [ "${down_proto_so}" -eq 0 ];then
-        export CI_SKIP_CPP_TEST=ON
         cd build && mv ../proto_so.tar.gz .
         tar --use-compress-program=pigz -xpf proto_so.tar.gz
         cmake_gen ${PYTHON_ABI:-""} ${parallel_number}
@@ -3393,16 +3490,25 @@ function main() {
         gen_dockerfile ${PYTHON_ABI:-""}
         assert_api_spec_approvals
         ;;
-      combine_avx_noavx)
-        combine_avx_noavx_build
+      avx_build)
+        avx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        ;;
+      noavx_build)
+        noavx_build
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       mac_m1_arm)
         mac_m1_arm_build
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
-      combine_avx_noavx_build_and_test)
-        combine_avx_noavx_build
+      avx_build_and_test)
+        avx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        parallel_test_base
+        ;;
+      noavx_build_and_test)
+        noavx_build
         gen_dockerfile ${PYTHON_ABI:-""}
         parallel_test_base
         ;;
@@ -3468,8 +3574,10 @@ function main() {
       ci_preciseTest)
         insert_pile_to_h_cu_diff 
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        enable_unused_var_check
         get_precise_tests_map_file
+        ;;
+      ci_parallelTest)
+        get_parallel_tests_map_file
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}

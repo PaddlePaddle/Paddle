@@ -173,17 +173,26 @@ class OperatorBase {
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportNPU() const { return false; }
   virtual bool SupportMLU() const { return false; }
+  virtual bool SupportXPU() const { return false; }
 
   const std::string& Type() const { return type_; }
 
-  bool HasAttr(const std::string& name) const { return attrs_.count(name); }
+  bool HasAttr(const std::string& name) const {
+    return attrs_.count(name) || runtime_attrs_.count(name);
+  }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE_NE(
-        attrs_.find(name),
-        attrs_.end(),
-        platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
-    return PADDLE_GET_CONST(T, attrs_.at(name));
+    auto it = attrs_.find(name);
+    if (it == attrs_.end()) {
+      it = runtime_attrs_.find(name);
+      PADDLE_ENFORCE_NE(
+          it,
+          runtime_attrs_.end(),
+          platform::errors::NotFound(
+              "(%s) is not found in AttributeMap and RuntimeAttributeMap.",
+              name));
+    }
+    return PADDLE_GET_CONST(T, it->second);
   }
   void SetAttr(const std::string& name, const Attribute& v) {
     PADDLE_ENFORCE_EQ(
@@ -195,6 +204,10 @@ class OperatorBase {
     attrs_[name] = v;
   }
   const AttributeMap& Attrs() const { return attrs_; }
+  const AttributeMap& RuntimeAttrs() const { return runtime_attrs_; }
+  void SetRuntimeAttributeMap(const AttributeMap& runtime_attrs) {
+    runtime_attrs_ = runtime_attrs;
+  }
 
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
@@ -249,6 +262,12 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  // NOTE: runtime_attrs_ contains the attributes which used for dispatching
+  // kernel (use_mkldnn, use_cudnn, ...) or passing additional configuration
+  // for special heterogeneous kernel (workspace_size_MB, ...).
+  // The attributes in runtime_attrs_ are setted by framework (such as PASS),
+  // and not in the python api.
+  AttributeMap runtime_attrs_;
 
   // OpInfo
   const OpInfo* info_;
@@ -301,7 +320,12 @@ class ExecutionContext {
   }
 
   virtual const Attribute& GetAttr(const std::string& name) const {
-    return op_.Attrs().at(name);
+    auto iter = op_.Attrs().find(name);
+    if (iter == op_.Attrs().end()) {
+      return op_.RuntimeAttrs().at(name);
+    } else {
+      return iter->second;
+    }
   }
 
   virtual bool HasInput(const std::string& name) const;
@@ -415,39 +439,22 @@ class ExecutionContext {
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  const inline platform::CUDADeviceContext& cuda_device_context() const {
+  const inline phi::GPUContext& cuda_device_context() const {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()),
                       true,
                       platform::errors::PreconditionNotMet(
                           "Current device context place is not GPUPlace."));
-    return *reinterpret_cast<const platform::CUDADeviceContext*>(
-        &device_context_);
+    return *reinterpret_cast<const phi::GPUContext*>(&device_context_);
   }
 #endif
 
   template <typename T, typename DevContext>
   Tensor AllocateTmpTensor(const framework::DDim& dim,
                            const DevContext& dev_ctx) const {
-    auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
-    auto& deleter = tmp_allocation_ptr.get_deleter();
-    auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation =
-        std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
-
-    PADDLE_ENFORCE_GE(
-        allocation_ptr->size(),
-        phi::product(dim) * sizeof(T),
-        platform::errors::PreconditionNotMet(
-            "The data memory size(%d) is less than the tensor needed memory "
-            "size(%d).",
-            allocation_ptr->size(),
-            phi::product(dim) * sizeof(T)));
-
-    paddle::framework::Tensor temp_tensor(framework::TransToPhiDataType(
-        framework::ToDataType(std::type_index(typeid(T)))));
-    temp_tensor.Resize(dim);
-    temp_tensor.ResetHolder(std::move(shared_allocation));
-    return temp_tensor;
+    phi::DenseTensor tmp;
+    tmp.Resize(dim);
+    dev_ctx.template Alloc<T>(&tmp);
+    return tmp;
   }
 
   const RuntimeContext Context() const { return ctx_; }
@@ -502,6 +509,13 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     auto vars = ctx_.MultiInputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
       return var->IsType<phi::DenseTensor>();
+    });
+  }
+
+  bool IsSelectedRowsInputs(const std::string& name) const override {
+    auto vars = ctx_.MultiInputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SelectedRows>();
     });
   }
 
@@ -596,6 +610,9 @@ class OperatorWithKernel : public OperatorBase {
                          return platform::is_mlu_place(kern_pair.first.place_);
                        });
   }
+
+  bool SupportXPU() const override;
+
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
   bool SupportsKernelType(const OpKernelType& kernel_type) const;
@@ -649,16 +666,16 @@ class OperatorWithKernel : public OperatorBase {
 
   void BuildPhiKernelContext(const RuntimeContext& ctx,
                              platform::DeviceContext* dev_ctx,
-                             phi::KernelContext* pt_kernel_context) const;
+                             phi::KernelContext* phi_kernel_context) const;
 
   phi::KernelSignature* PhiKernelSignature() const {
     return kernel_signature_.get();
   }
 
-  phi::Kernel* PhiKernel() const { return pt_kernel_.get(); }
+  phi::Kernel* PhiKernel() const { return phi_kernel_.get(); }
 
   void ResetPhiKernel(phi::Kernel* kernel) const {
-    return pt_kernel_.reset(kernel);
+    return phi_kernel_.reset(kernel);
   }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
@@ -676,8 +693,7 @@ class OperatorWithKernel : public OperatorBase {
 
   /**
    * Transfer data from scope to a transferred scope. If there is no data need
-   * to
-   * be tranfered, it returns nullptr.
+   * to be transferred, it returns nullptr.
    *
    * * transfered_inplace_vars is a output vector.
    */
@@ -727,7 +743,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_phi_kernel_ = false;
   mutable bool run_kp_kernel = false;
   mutable std::unique_ptr<phi::KernelSignature> kernel_signature_;
-  mutable std::unique_ptr<phi::Kernel> pt_kernel_;
+  mutable std::unique_ptr<phi::Kernel> phi_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
   struct CacheImpl;

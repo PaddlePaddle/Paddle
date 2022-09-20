@@ -28,9 +28,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(pool2d);
-USE_OP_DEVICE_KERNEL(pool2d, MKLDNN);
+PD_DECLARE_KERNEL(pool2d, OneDNN, ALL_LAYOUT);
 USE_OP_ITSELF(relu);
-USE_OP_DEVICE_KERNEL(relu, MKLDNN);
+PD_DECLARE_KERNEL(relu, OneDNN, ALL_LAYOUT);
 USE_OP_ITSELF(transpose);
 USE_OP_DEVICE_KERNEL(transpose, MKLDNN);
 USE_OP_ITSELF(shape);

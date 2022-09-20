@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace framework {
@@ -367,8 +368,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 
   if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    tensor_check<platform::CUDADeviceContext>(
-        op_type, var_name, *tensor, place);
+    tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",

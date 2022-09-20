@@ -260,16 +260,6 @@ class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<int>>("decrease_axis", "(list<int>) decrease_axis")
         .SetDefault({});
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
     AddComment(R"DOC(
 Slice Operator.
 
@@ -488,32 +478,24 @@ REGISTER_OP_CPU_KERNEL(
 
 REGISTER_OP_CUDA_KERNEL(
     slice,
-    ops::SliceKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::SliceKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SliceKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SliceKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SliceKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SliceKernel<paddle::platform::CUDADeviceContext,
-                     paddle::platform::float16>,
-    ops::SliceKernel<paddle::platform::CUDADeviceContext,
-                     paddle::platform::bfloat16>,
-    ops::SliceKernel<paddle::platform::CUDADeviceContext,
-                     paddle::platform::complex<float>>,
-    ops::SliceKernel<paddle::platform::CUDADeviceContext,
-                     paddle::platform::complex<double>>);
+    ops::SliceKernel<phi::GPUContext, bool>,
+    ops::SliceKernel<phi::GPUContext, float>,
+    ops::SliceKernel<phi::GPUContext, double>,
+    ops::SliceKernel<phi::GPUContext, int>,
+    ops::SliceKernel<phi::GPUContext, int64_t>,
+    ops::SliceKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::SliceKernel<phi::GPUContext, paddle::platform::bfloat16>,
+    ops::SliceKernel<phi::GPUContext, paddle::platform::complex<float>>,
+    ops::SliceKernel<phi::GPUContext, paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     slice_grad,
-    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::float16>,
-    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::bfloat16>,
-    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::complex<double>>);
+    ops::SliceGradKernel<phi::GPUContext, bool>,
+    ops::SliceGradKernel<phi::GPUContext, float>,
+    ops::SliceGradKernel<phi::GPUContext, double>,
+    ops::SliceGradKernel<phi::GPUContext, int>,
+    ops::SliceGradKernel<phi::GPUContext, int64_t>,
+    ops::SliceGradKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::SliceGradKernel<phi::GPUContext, paddle::platform::bfloat16>,
+    ops::SliceGradKernel<phi::GPUContext, paddle::platform::complex<float>>,
+    ops::SliceGradKernel<phi::GPUContext, paddle::platform::complex<double>>);
