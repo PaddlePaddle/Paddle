@@ -38,6 +38,7 @@ _act_supported_quantizable_op_type = [
     "mean",
     "not_equal",
     "reshape",
+    "reshape2",
     "dropout",
     "bilinear_interp",
     "nearest_interp",
@@ -429,6 +430,9 @@ def calculate_quant_cos_error(orig_tensor, qdq_tensor):
               / (np.linalg.norm(orig_tensor.flatten()) * np.linalg.norm(qdq_tensor.flatten()))
     return cos_sim
 
+
+def l2_loss(gt, pred):
+    return ((gt - pred)**2).mean()
 
 class tqdm(object):
 
