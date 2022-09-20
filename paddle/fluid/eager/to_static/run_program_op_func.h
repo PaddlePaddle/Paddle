@@ -54,7 +54,7 @@ static void clear_no_grad_edges_with_partial_block(
   }
 }
 
-inline void run_program_dygraph_function(
+inline void run_program_ad_func(
     const std::vector<paddle::experimental::Tensor>& x,
     const std::vector<paddle::experimental::Tensor>& params,
     std::vector<paddle::experimental::Tensor*>& out,     // NOLINT

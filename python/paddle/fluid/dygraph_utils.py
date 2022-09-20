@@ -25,7 +25,7 @@ def _append_activation_in_dygraph(input,
     """Append activation in dygraph mode.
 
         Args:
-            input: the input variable. 
+            input: the input variable.
             act: activation type
             use_mkldnn: if use mkldnn
             use_cudnn: if use cudnn
@@ -50,7 +50,7 @@ def _append_bias_in_dygraph(input, bias=None, axis=1, use_mkldnn=False):
     """Append bias operation in dygraph mode.
 
         Args:
-            input: the input variable. 
+            input: the input variable.
             bias:  the bias to be appended
             axis:  the axis to perform operation
             use_mkldnn: whether to use mkldnn
