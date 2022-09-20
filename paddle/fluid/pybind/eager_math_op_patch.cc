@@ -69,7 +69,7 @@ std::set<phi::DataType> _complex_dtypes{
     DataType::COMPLEX128,
 };
 
-// std::set<string> _supported_promote_complex_types_{
+// _supported_promote_complex_types_
 //     '__add__',
 //     '__radd__',
 //     '__sub__',
@@ -81,7 +81,6 @@ std::set<phi::DataType> _complex_dtypes{
 //     '__rdiv__',
 //     '__rtruediv__',
 //     '__matmul__',
-// }
 
 void SetDevice(paddle::platform::Place place) {
   if (paddle::platform::is_gpu_place(place)) {
@@ -123,7 +122,7 @@ paddle::experimental::Tensor CallScalarFuction(
         _supported_int_dtype_.end()) {
       (*self_tensor) = cast_ad_func(*self_tensor, DataType::FLOAT32);
     }
-  } else if (PyLong_Check(other_obj)) {
+  } else if (PyLong_Check(other_obj) && !PyBool_Check(other_obj)) {
     other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     if (op_type == "div" && _supported_int_dtype_.find(self_tensor->dtype()) !=
                                 _supported_int_dtype_.end()) {
@@ -152,7 +151,7 @@ static PyObject* tensor__add__method(TensorObject* self,
       1);
   PyThreadState* tstate = nullptr;
   try {
-    VLOG(6) << "Running Eager tensor__add__method: add";
+    VLOG(6) << "Running Eager tensor__add__method";
     tstate = PyEval_SaveThread();
 
     // Set Device ID
@@ -164,7 +163,8 @@ static PyObject* tensor__add__method(TensorObject* self,
     PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
     // 1. scalar exists cases
-    if (PyFloat_Check(other_obj) || PyLong_Check(other_obj)) {
+    if ((PyFloat_Check(other_obj) || PyLong_Check(other_obj)) &&
+        !PyBool_Check(other_obj)) {
       ret = CallScalarFuction(&self_tensor, other_obj, "add");
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
@@ -238,7 +238,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
       1);
   PyThreadState* tstate = nullptr;
   try {
-    VLOG(6) << "Running Eager tensor__sub__method: add";
+    VLOG(6) << "Running Eager tensor__sub__method";
     tstate = PyEval_SaveThread();
 
     // Set Device ID
@@ -251,7 +251,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
     PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
     // 1. scalar exists cases
-    if (PyFloat_Check(other_obj) || PyLong_Check(other_obj)) {
+    if ((PyFloat_Check(other_obj) || PyLong_Check(other_obj)) &&
+        !PyBool_Check(other_obj)) {
       ret = CallScalarFuction(&self_tensor, other_obj, "sub");
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
@@ -318,14 +319,13 @@ static PyObject* tensor__sub__method(TensorObject* self,
 static PyObject* tensor__rsub__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
-  VLOG(1) << "running in tensor__rsub__method";
   paddle::platform::RecordEvent pythonc_record_event(
       "rsub pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
   PyThreadState* tstate = nullptr;
   try {
-    VLOG(6) << "Running Eager tensor__rsub__method: add";
+    VLOG(6) << "Running Eager tensor__rsub__method";
     tstate = PyEval_SaveThread();
 
     // Set Device ID
@@ -337,7 +337,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
     // 1. scalar exists cases
-    if (PyFloat_Check(other_obj) || PyLong_Check(other_obj)) {
+    if ((PyFloat_Check(other_obj) || PyLong_Check(other_obj)) &&
+        !PyBool_Check(other_obj)) {
       ret = CallScalarFuction(&self_tensor, other_obj, "rsub");
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
@@ -347,7 +348,6 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     // 2. create or get tensor for other_obj
     paddle::experimental::Tensor other_tensor;
     if (!PyCheckTensor(other_obj)) {
-      VLOG(1) << "============= before ====== CastPyArg2Scalar ====== ";
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "full", 0);
       other_tensor =
