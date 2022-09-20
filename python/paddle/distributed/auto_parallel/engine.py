@@ -81,7 +81,7 @@ class Engine:
 
             import paddle
             import paddle.vision.transforms as T
-            import paddle.distributed.auto_parallel as auto
+            from paddle.distributed.fleet import auto
             from paddle.vision.datasets import MNIST
 
             transform = T.Compose([
@@ -540,7 +540,7 @@ class Engine:
 
                 import paddle
                 import paddle.vision.transforms as T
-                import paddle.distributed.auto_parallel as auto
+                from paddle.distributed.fleet import auto
                 from paddle.vision.datasets import MNIST
 
                 transform = T.Compose([
@@ -663,7 +663,7 @@ class Engine:
 
                 import paddle
                 import paddle.vision.transforms as T
-                import paddle.distributed.auto_parallel as auto
+                from paddle.distributed.fleet import auto
                 from paddle.vision.datasets import MNIST
 
                 transform = T.Compose([
@@ -771,7 +771,7 @@ class Engine:
 
                 import paddle
                 import paddle.vision.transforms as T
-                import paddle.distributed.auto_parallel as auto
+                from paddle.distributed.fleet import auto
                 from paddle.vision.datasets import MNIST
 
                 transform = T.Compose([
@@ -978,9 +978,10 @@ class Engine:
 
         # extract ckpts by specific model
         if isinstance(self._model, paddle.nn.Layer):
-            if hasattr(
-                    self._model, "gpt"
-            ) and self._model.__class__.__name__ == 'GPTForPretraining':
+            if hasattr(self._model,
+                       "gpt") and self._model.__class__.__name__ in [
+                           'GPTForPretraining', 'GPTForPretrainingAuto'
+                       ]:
                 exact_ckpts = self._model.gpt.checkpoints
             else:
                 exact_ckpts = recompute.checkpoints
@@ -1041,7 +1042,7 @@ class Engine:
             .. code-block:: python
                 import paddle
                 import paddle.vision.transforms as T
-                import paddle.distributed.auto_parallel as auto
+                from paddle.distributed.fleet import auto
                 from paddle.vision.datasets import MNIST
 
                 transform = T.Compose([
@@ -1107,7 +1108,7 @@ class Engine:
             .. code-block:: python
                 import paddle
                 import paddle.vision.transforms as T
-                import paddle.distributed.auto_parallel as auto
+                from paddle.distributed.fleet import auto
                 from paddle.vision.datasets import MNIST
 
                 transform = T.Compose([

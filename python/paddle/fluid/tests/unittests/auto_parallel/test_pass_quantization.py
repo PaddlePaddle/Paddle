@@ -18,7 +18,7 @@ import random
 import numpy as np
 import paddle
 
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from get_gpt_model import generate_model, create_data_holder, FakeDataset
 
 paddle.enable_static()
