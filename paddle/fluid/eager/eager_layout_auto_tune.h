@@ -292,10 +292,15 @@ EagerLayoutAutotune<paddle::experimental::Scalar>(
     transposer =
         std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
     return transposer;
-  } else {
+  } else if (desired_layout == tensors_vector[0][0].layout()){
+    VLOG(3) << op_name << "Use Concat transformer axis is " << axis;
     auto trans = std::make_shared<EagerConcatOpTransformer>(op_name);
     trans->SetAttr(axis, desired_layout);
     return trans;
+  } else {
+    transposer = std::make_shared<EagerLayoutTransformer>(
+        op_name, tensors_vector, first_layout);
+    return transposer;
   }
 }
 

@@ -205,7 +205,7 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
   if (NeedTransformLayout(tensor->layout(),
                           target_args_def.layout,
                           tensor->place(),
-                          transform_flag)) {
+                          transform_flag) && tensor->dims().size() != 1) {
     out = TransDataLayout(out, target_args_def.layout);
     trans_layout = true;
   }

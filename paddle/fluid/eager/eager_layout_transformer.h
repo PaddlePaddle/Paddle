@@ -445,11 +445,11 @@ class EagerConcatOpTransformer
   explicit EagerConcatOpTransformer(const std::string& op_name)
       : op_name_(op_name) {
     VLOG(3) << "Optimze Layout lightly " << op_name;
-    auto default_layout =
-        paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
-    std::string default_layout_str =
-        paddle::framework::DataLayoutToString(default_layout);
-    final_layout_ = default_layout_str;
+    auto desired_layout =
+        paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
+    std::string desired_layout_str =
+        paddle::framework::DataLayoutToString(desired_layout);
+    final_layout_ = desired_layout_str;
   }
 
   void SetAttr(paddle::experimental::Scalar* axis,
@@ -457,8 +457,11 @@ class EagerConcatOpTransformer
     std::vector<int> perm_nhwc = {0, 3, 1, 2};
     std::vector<int> perm_nchw = {0, 2, 3, 1};
     int axes = axis->to<int>();
+    axes = axes < 0 ? axes + 4 : axes;
+    VLOG(3) << "Optimze Layout lightly concat axes is " << axes;
     auto perm =
         (paddle::framework::DataLayout::NHWC == layout) ? perm_nhwc : perm_nchw;
+    VLOG(3) << "NWWWWW Optimze Layout lightly concat axes is " << perm[axes];
     (*axis) = static_cast<paddle::experimental::Scalar>(perm[axes]);
   }
 
