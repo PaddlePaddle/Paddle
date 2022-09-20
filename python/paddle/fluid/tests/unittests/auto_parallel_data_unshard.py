@@ -23,7 +23,7 @@ import random
 import paddle
 import paddle.nn as nn
 import paddle.fluid.core as core
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 import paddle.nn.functional as F
 from paddle.distributed import fleet
 
@@ -38,7 +38,7 @@ class TestDataUnshard(unittest.TestCase):
         def create_model(train_program, start_program):
             with paddle.static.program_guard(train_program, start_program):
 
-                MESH_0 = auto.ProcessMesh([0, 1])
+                MESH_0 = auto.ProcessMesh([0, 1], dim_names=["x"])
                 input = paddle.static.data(name='input', shape=[2, 8])
                 label = paddle.static.data(name='label', shape=[2, 8])
 
@@ -47,26 +47,10 @@ class TestDataUnshard(unittest.TestCase):
                 linear0 = nn.Linear(8, 8, weight_attr)
                 linear1 = nn.Linear(8, 8, weight_attr)
 
-                auto.shard_tensor(input,
-                                  dist_attr={
-                                      "process_mesh": MESH_0,
-                                      "dims_mapping": [0, -1]
-                                  })
-                auto.shard_tensor(label,
-                                  dist_attr={
-                                      "process_mesh": MESH_0,
-                                      "dims_mapping": [0, -1]
-                                  })
-                auto.shard_tensor(linear0.weight,
-                                  dist_attr={
-                                      "process_mesh": MESH_0,
-                                      "dims_mapping": [-1, -1]
-                                  })
-                auto.shard_tensor(linear1.weight,
-                                  dist_attr={
-                                      "process_mesh": MESH_0,
-                                      "dims_mapping": [-1, -1]
-                                  })
+                auto.shard_tensor(input, MESH_0, ["x", None])
+                auto.shard_tensor(label, MESH_0, ["x", None])
+                auto.shard_tensor(linear0.weight, MESH_0, [None, None])
+                auto.shard_tensor(linear1.weight, MESH_0, [None, None])
 
                 linear0_out = linear0(input)
                 gelu_out = F.gelu(linear0_out)
@@ -124,7 +108,7 @@ class TestDataUnshard(unittest.TestCase):
         def create_model(train_program, start_program):
             with paddle.static.program_guard(train_program, start_program):
 
-                MESH_0 = auto.ProcessMesh([0, 1])
+                MESH_0 = auto.ProcessMesh([0, 1], dim_names=["x"])
                 input = paddle.static.data(name='input', shape=[8, 8])
                 label = paddle.static.data(name='label', shape=[8, 8])
 
@@ -133,27 +117,10 @@ class TestDataUnshard(unittest.TestCase):
                 linear0 = nn.Linear(8, 8, weight_attr)
                 linear1 = nn.Linear(8, 8, weight_attr)
 
-                auto.shard_tensor(input,
-                                  dist_attr={
-                                      "process_mesh": MESH_0,
-                                      "dims_mapping": [-1, -1]
-                                  })
-                auto.shard_tensor(label,
-                                  dist_attr={
-                                      "process_mesh": MESH_0,
-                                      "dims_mapping": [-1, -1]
-                                  })
-
-                auto.shard_tensor(linear0.weight,
-                                  dist_attr={
-                                      "process_mesh": MESH_0,
-                                      "dims_mapping": [-1, 0]
-                                  })
-                auto.shard_tensor(linear1.weight,
-                                  dist_attr={
-                                      "process_mesh": MESH_0,
-                                      "dims_mapping": [0, -1]
-                                  })
+                auto.shard_tensor(input, MESH_0, [None, None])
+                auto.shard_tensor(label, MESH_0, [None, None])
+                auto.shard_tensor(linear0.weight, MESH_0, [None, "x"])
+                auto.shard_tensor(linear1.weight, MESH_0, ["x", None])
 
                 linear0_out = linear0(input)
                 gelu_out = F.gelu(linear0_out)

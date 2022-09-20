@@ -54,7 +54,7 @@ class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
               "consistent with :code:`x`.")
         .AsDuplicable();
     AddComment(
-        R"DOC(This OP is used to broadcast a vector of inputs 
+        R"DOC(This OP is used to broadcast a vector of inputs
                      with Tensor or LoDTensor type, following broadcast semantics.)DOC");
   }
 };

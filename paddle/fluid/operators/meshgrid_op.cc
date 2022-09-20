@@ -65,7 +65,7 @@ Take: N tensors, each of which can be either scalr or 1-dimensional vector, and 
 N-dimensional grids.
 
 Args:
-  tensors (list of tensor): if the input k tensors has (N1,), (N2,),..., (Nk,), then 
+  tensors (list of tensor): if the input k tensors has (N1,), (N2,),..., (Nk,), then
   the output tensors are all of size (N1, N2, ...., Nk).
 
 Example::

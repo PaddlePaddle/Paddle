@@ -78,7 +78,7 @@ def _switch_scope(scope):
 @signature_safe_contextmanager
 def scope_guard(scope):
     """
-    
+
     This function switches scope through python `with` statement.
     Scope records the mapping between variable names and variables ( :ref:`api_guide_Variable` ),
     similar to brackets in programming languages.
@@ -96,7 +96,7 @@ def scope_guard(scope):
         None
 
     Examples:
-    
+
         .. code-block:: python
 
             import paddle
@@ -164,10 +164,10 @@ def dtype_is_compatible_with(first, second):
     """
     Returns True if the first dtype can be compatible the second one.
     Currently, we require the two dtype's have to be same.
-      
+
     Args:
         dtype (np.dtype|VarType|str): The type of data: float32, int64, etc.
-    
+
     Returns:
         True if the two types are same.
     """
@@ -223,7 +223,7 @@ def check_feed_shape_type(var, feed, num_places=1):
     2. Each non-negative number of the two dimensions are same.
     3. For negative number or 'None' in a dimension, it means unknown so it
        is compatible with any number.
-    
+
     Args:
         var (Variable): the Variable object
         feed (LoDTensor): the fed value, which must be a LoDTensor
@@ -621,7 +621,7 @@ class _StandaloneExecutor(object):
         Args:
             feed_names(list): This parameter represents the input names of the model.
             fetch_list(list): This parameter represents the Tensors that need to be returned
-                after the model runs. The default is None. 
+                after the model runs. The default is None.
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
@@ -642,10 +642,10 @@ class _StandaloneExecutor(object):
 
     def _update_feed(self, feed):
         """
-        Update the feed dict, remove the feed item which is pruned in program.  
+        Update the feed dict, remove the feed item which is pruned in program.
 
         Notes: This is a very low level API. Users should not use this API
-        directly. 
+        directly.
 
         Args:
             feed(list|dict): feed dict or list.
@@ -708,6 +708,11 @@ class _ExecutorCache(object):
             # NOTE(Ruibiao): Not all changeable item is considered for key at present,
             # ONLY: program, feed, and fetch_list
             if isinstance(self.program, compiler.CompiledProgram):
+                if not self.program._program:
+                    # The program holds no _program, maybe it is constructed by graph.
+                    # Convert graph to program in order to generate key.
+                    self.program._program = framework.IrGraph(
+                        self.program._graph).to_program()
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
                         self.program._program, feed, fetch_list))
@@ -766,9 +771,6 @@ class _ExecutorCache(object):
 
             inner_program = converted_program
             # print(f"Program after convert:\n {inner_program}", flush=True)
-            warnings.warn(
-                "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
-            )
         else:
             build_strategy = None
             from paddle.incubate.autograd import prim_enabled, prim2orig
@@ -784,9 +786,16 @@ class _ExecutorCache(object):
                                       fetch_var_name=fetch_var_name,
                                       use_fetch_v2=True)
 
-        # If there are multiple blocks in the program, subblock will not be executed with the new executor in temporary
-        if program.num_blocks > 1:
-            warnings.warn("There are more than 1 block in program.")
+        if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None) in [
+                1, '1', True, 'True', 'true'
+        ] and not program._is_start_up_program_:
+            if program.num_blocks > 1:
+                # If there are multiple blocks in the program, subblock will not be executed with the new executor in temporary
+                logging.warning("There are more than 1 block in program.")
+            elif program.num_blocks == 1:
+                logging.warning("There are 1 block in program.")
+            else:
+                logging.warning("There are no block in program.")
 
         # standalone executor will apply buffer_shared_inplace_pass and
         # inplace_addto_op_pass to program according to build_strategy
@@ -816,10 +825,10 @@ class Executor(object):
             will set the default device according to its installation version. If Paddle
             is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
             GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
-            If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x`` 
+            If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x``
             is the index of the GPUs. Note: users only pass one Place or None to initialize
             Executor when using multiple-cards. Other APIs will override the cards. See
-            `document for multiple-cards <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/01_paddle2.0_introduction/update_en.html#stand-alone-multi-card-launch>`_ 
+            `document for multiple-cards <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/01_paddle2.0_introduction/update_en.html#stand-alone-multi-card-launch>`_
 
     Returns:
         Executor
@@ -998,7 +1007,7 @@ class Executor(object):
 
         Returns:
             optimize_ops(list): The optimize operators splited from fetch_list.
-            fetch_list(list):  The updated fetch_list which does not contain optimize operators.  
+            fetch_list(list):  The updated fetch_list which does not contain optimize operators.
         """
         _optimize_ops = []
         _fetch_list = []
@@ -1046,12 +1055,12 @@ class Executor(object):
                        optimize_ops=None):
         """
         Prune operators and variables which are not needed to generate
-        :code:`fetch_list` and optimize operators. 
-        Prune operators and variables which are needed 
-        to generate variables to be feeded.  
+        :code:`fetch_list` and optimize operators.
+        Prune operators and variables which are needed
+        to generate variables to be feeded.
 
         Notes: This is a very low level API. Users should not use this API
-        directly. 
+        directly.
 
         Args:
             program(Program): the origin program
@@ -1105,10 +1114,10 @@ class Executor(object):
     @classmethod
     def _update_feed(cls, program, feed):
         """
-        Update the feed dict, remove the feed item which is pruned in program.  
+        Update the feed dict, remove the feed item which is pruned in program.
 
         Notes: This is a very low level API. Users should not use this API
-        directly. 
+        directly.
 
         Args:
             program(Program): the pruned program.
@@ -1125,6 +1134,7 @@ class Executor(object):
                 warnings.warn(
                     "The program holds no _program, maybe it is constructed by graph."
                 )
+                return feed
         else:
             global_block = program.global_block()
 
@@ -1278,12 +1288,12 @@ class Executor(object):
                 so the length of this list should be equal to the number of places.
                 The default is None.
             fetch_list(list): This parameter represents the Tensors that need to be returned
-                after the model runs. The default is None. 
+                after the model runs. The default is None.
             feed_var_name(str): This parameter represents the name of the input Tensor of
                 the feed operator. The default is "feed".
             fetch_var_name(str): This parameter represents the name of the output Tensor of
                 the fetch operator. The default is "fetch".
-            scope(Scope): the scope used to run this program, you can switch 
+            scope(Scope): the scope used to run this program, you can switch
                 it to different scope. default is :code:`paddle.static.global_scope()`
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
@@ -1304,14 +1314,14 @@ class Executor(object):
                 results are variant, please set :code:`return_merged` as False, which denotes that the fetched
                 results will not be merged. The default is True, but it is just for the compatibility, and may
                 use False as default value in the future version.
-            use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
+            use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned.
                 If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
-                which means the operators and variables in program that generate :code:`feed` and are not 
-                needed to generate :code:`fetch_list` will be pruned. The default is False, which means the 
+                which means the operators and variables in program that generate :code:`feed` and are not
+                needed to generate :code:`fetch_list` will be pruned. The default is False, which means the
                 program will not pruned and all the operators and variables will be executed during running.
-                Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`, 
+                Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`,
                 :code:`use_prune` will be overrided to True, and the program will be pruned.
-                
+
         Returns:
 
             List: The fetched result list.
@@ -1549,16 +1559,9 @@ class Executor(object):
                     place, core.CustomPlace):
                 return False
 
-            use_standalone_executor_for_compiled_program = os.environ.get(
+            use_standalone_executor_for_distribution = os.environ.get(
                 'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
                 None) in [1, '1', True, 'True', 'true']
-
-            # Only support fleet when 'FLAGS_CONVERT_GRAPH_TO_PROGRAM' is set to true
-            from paddle.distributed.fleet import fleet
-            if fleet._role_maker is not None and not use_standalone_executor_for_compiled_program:
-                warnings.warn("Standalone executor is not used for fleet",
-                              UserWarning)
-                return False
 
             compiled = isinstance(program,
                                   compiler.CompiledProgram) or isinstance(
@@ -1566,13 +1569,17 @@ class Executor(object):
             if compiled:
                 compiled_program = program if isinstance(
                     program, compiler.CompiledProgram) else program._graph
-                # Unsupported case 1 : the CompiledProgram is constructed by Graph
-                if compiled_program._program is None:
-                    warnings.warn("Standalone executor is not used for Graph",
-                                  UserWarning)
-                    return False
 
-                # Unsupported case 2: data parallel
+                # delete this code after supporting distribution
+                if compiled_program._build_strategy is not None and (
+                        compiled_program._build_strategy.is_distribution
+                        or compiled_program._build_strategy.num_trainers > 1):
+                    warnings.warn(
+                        "Standalone executor is not used for distribution",
+                        UserWarning)
+                    return use_standalone_executor_for_distribution
+
+                # Unsupported case 1: data parallel
                 if compiled_program._is_data_parallel and len(
                         compiled_program._get_places(
                             place, compiled_program._places)) != 1:
@@ -1581,7 +1588,7 @@ class Executor(object):
                         UserWarning)
                     return False
 
-                # Unsupported case 3 : parallel graph
+                # Unsupported case 2: parallel graph
                 if core.globals()['FLAGS_enable_parallel_graph'] in [
                         1, '1', True, 'True', 'true'
                 ]:
@@ -1590,31 +1597,35 @@ class Executor(object):
                         UserWarning)
                     return False
 
-                # Unsupported case 4: inference
+                # Unsupported case 3: inference
                 if compiled_program._is_inference:
                     warnings.warn(
                         "Standalone executor is not used for inference",
                         UserWarning)
                     return False
 
-                # Unsupported case 5: CUDA Graph
+                # Unsupported case 4: CUDA Graph
                 if compiled_program._build_strategy is not None and compiled_program._build_strategy.allow_cuda_graph_capture:
                     warnings.warn(
                         "Standalone executor is not used for CUDA Graph",
                         UserWarning)
                     return False
 
-                # Unsupported case 6: async mode
+                # Unsupported case 5: async mode
                 if compiled_program._build_strategy is not None and compiled_program._build_strategy.async_mode:
                     warnings.warn(
                         "Standalone executor is not used for async mode",
                         UserWarning)
                     return False
 
-                return use_standalone_executor_for_compiled_program
-            else:
-                assert isinstance(program, Program)
-                return True
+            # delete this code after supporting fleet
+            from paddle.distributed.fleet import fleet
+            if fleet._role_maker is not None:
+                warnings.warn("Standalone executor is not used for fleet",
+                              UserWarning)
+                return use_standalone_executor_for_distribution
+
+            return True
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
@@ -1653,10 +1664,6 @@ class Executor(object):
                     tensor._copy_from(cpu_tensor, tensor._place())
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
-
-            warnings.warn(
-                "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
-            )
 
             return new_exe.run(scope, list(feed.keys()), fetch_list,
                                return_numpy)
@@ -2610,7 +2617,7 @@ class Executor(object):
                 for each run. default is global_scope
             thread(int): number of thread a user wants to run in this function. Default is 0, which
                 means using thread num of dataset
-            debug(bool): whether a user wants to run train_from_dataset 
+            debug(bool): whether a user wants to run train_from_dataset
             fetch_list(Tensor List): fetch Tensor list, each variable will be printed
                 during training
             fetch_info(String List): print information for each Tensor, its length should be equal
@@ -2620,9 +2627,9 @@ class Executor(object):
 
         Returns:
             None
-        
+
         Examples:
-        
+
             .. code-block:: python
 
               import paddle
