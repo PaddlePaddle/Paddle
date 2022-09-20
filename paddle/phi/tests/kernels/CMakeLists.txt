@@ -74,10 +74,6 @@ cc_test(
   test_sparse_elementwise_dev_api
   SRCS test_sparse_elementwise_dev_api.cc
   DEPS phi phi_api_utils)
-cc_test(
-  test_sparse_reshape_dev_api
-  SRCS test_sparse_reshape_dev_api.cc
-  DEPS phi phi_api_utils)
 
 cc_test(
   test_math_function
