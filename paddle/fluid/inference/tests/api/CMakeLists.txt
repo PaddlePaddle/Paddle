@@ -1365,15 +1365,3 @@ if(WITH_IPU)
     --warmup=true
     --repeat=10)
 endif()
-
-cc_binary(
-  ernie_debug_tool
-  SRCS
-  ernie_debug_tool.cc
-  DEPS
-  ${INFERENCE_C_EXTRA_DEPS}
-  init
-  gflags
-  glog)
-target_compile_options(ernie_debug_tool PRIVATE -Wno-error=sign-compare)
-target_link_options(ernie_debug_tool PRIVATE -Wl,--enable-new-dtags)
