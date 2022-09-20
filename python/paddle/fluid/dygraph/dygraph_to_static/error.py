@@ -20,6 +20,7 @@ import linecache
 import re
 
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import Location, OriginInfo, global_origin_info_map
+from paddle.fluid.dygraph.dygraph_to_static.utils import _is_api_in_module_helper, RE_PYMODULE
 
 ERROR_DATA = "Error data about original source code information and traceback."
 
@@ -176,20 +177,32 @@ class ErrorData(object):
     def numpy_api_check(self, format_exception, error_line):
         if self.error_type is not TypeError:
             return format_exception
+
         tb = self.origin_traceback
-        is_numpy_api_err = False
-        np_api_name = ''
+        func_str = None
         for frame in tb:
-            if 'site-packages/numpy/' in frame.filename:
-                if 'np.' + frame.name in error_line or 'numpy.' + frame.name in error_line:
-                    is_numpy_api_err = True
-                    np_api_name = frame.name
-                    break
-        if is_numpy_api_err:
+            searched_name = re.search(
+                r'({module})*{name}'.format(module=RE_PYMODULE,
+                                            name=frame.name), error_line)
+            if searched_name:
+                func_str = searched_name.group(0)
+                break
+        try:
+            import numpy as np
+            module_result = eval("_is_api_in_module_helper({}, '{}')".format(
+                func_str, "numpy"))
+            is_numpy_api_err = module_result or (func_str.startswith("numpy.")
+                                                 or func_str.startswith("np."))
+        except Exception:
+            # np is imported, so if the name func_str is not defined
+            # it is not a numpy api
+            is_numpy_api_err = False
+
+        if is_numpy_api_err and func_str:
             return [
                 "TypeError: Variables created in dy2static process will be an unexpected keyword for numpy API",
                 "           Code '{}' called numpy API {}, please use Paddle API to replace it"
-                .format(error_line, np_api_name),
+                .format(error_line, func_str),
             ]
         else:
             return format_exception
