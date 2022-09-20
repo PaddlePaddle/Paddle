@@ -987,10 +987,10 @@ function check_whl_size() {
 
         set +x
     pr_so_size=`du -m ${PADDLE_ROOT}/build/pr_whl/libpaddle.so|awk '{print $1}'`
-    echo "pr_whl_size: ${pr_so_size}"
+    echo "pr_so_size: ${pr_so_size}"
 
-    dev_so_size=`du -m ${PADDLE_ROOT}/build/python/dist/libpaddle.so|awk '{print $1}'`
-    echo "dev_whl_size: ${dev_so_size}"
+    dev_so_size=`du -m ${PADDLE_ROOT}/build/python/paddle/fluid/libpaddle.so|awk '{print $1}'`
+    echo "dev_so_size: ${dev_so_size}"
 
     sodiffSize=`echo $(($pr_so_size - $dev_so_size))`
     if [ ${sodiffSize} -gt 20 ]; then
@@ -999,7 +999,7 @@ function check_whl_size() {
        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
        if [ "${APPROVALS}" == "FALSE" ]; then
            echo "=========================================================================================="
-           echo "This PR make the release paddlepaddle whl size growth exceeds 10 M."
+           echo "This PR make the release paddlepaddle so size growth exceeds 20 M."
            echo "Then you must have one RD (jim19930609 (Recommend) or JiabinYang) approval for this PR\n"
            echo "=========================================================================================="
            exit 6
