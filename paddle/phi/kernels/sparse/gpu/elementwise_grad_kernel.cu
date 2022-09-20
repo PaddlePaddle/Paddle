@@ -42,6 +42,7 @@ void ElementWiseAddCooGradKernel(const Context& dev_ctx,
       Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     } else if (y.dims()[0] == 1 && dout.dims()[dout.dims().size() - 1] ==
                                        y.dims()[y.dims().size() - 1]) {
+      EmptyLikeCooKernel<T, Context>(dev_ctx, y, dy);
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.values().dims(), dout.values().dims(), 1);
       funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(

@@ -163,6 +163,38 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         np.testing.assert_allclose(sp_b.grad.values().numpy(),
                                    values2.grad.numpy())
 
+    def test_add_bias(self):
+        indices_data = [[0, 1], [0, 3]]
+        values_data = [[1.0, 1.0], [2.0, 2.0]]
+        shape = [2, 4, 2]
+
+        sp_a = sparse.sparse_coo_tensor(indices_data,
+                                        values_data,
+                                        shape,
+                                        stop_gradient=False)
+
+        bias_indices = [[0, 0], [0, 1]]
+        bias_values = [1.0, 2.0]
+        bias_shape = [1, 2]
+        sp_b = sparse.sparse_coo_tensor(bias_indices,
+                                        bias_values,
+                                        bias_shape,
+                                        stop_gradient=False)
+
+        values1 = paddle.to_tensor(values_data, stop_gradient=False)
+        values2 = paddle.to_tensor(bias_values, stop_gradient=False)
+
+        #c.values() = a.values() + b.values()
+        sp_c = sparse.add(sp_a, sp_b)
+        sp_c.backward()
+        ref_c = values1 + values2
+        ref_c.backward()
+        np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
+        np.testing.assert_allclose(sp_a.grad.values().numpy(),
+                                   values1.grad.numpy())
+        np.testing.assert_allclose(sp_b.grad.values().numpy(),
+                                   values2.grad.numpy())
+
 
 if __name__ == "__main__":
     paddle.device.set_device('cpu')
