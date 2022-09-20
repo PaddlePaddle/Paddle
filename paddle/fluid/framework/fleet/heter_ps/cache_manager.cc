@@ -110,9 +110,16 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   VLOG(0) << "build_sign2fids: resize fid2meta from " << origin_size << " to " << fid2meta_.size();
   // build sign 2 fids
   std::vector<std::thread> threads(thread_num_);
-  size_t split_len = len % thread_num_ == 0 ? (len / thread_num_) : (len / thread_num_ + 1);
+  int split_len = len % thread_num_ == 0 ? (len / thread_num_) : (len / thread_num_ + 1);
   for (int i = 0; i < thread_num_; ++i) {
+    int beg_pos = i * split_len;
+    int thread_read_len = std::max<int>(std::min<int>(split_len, len - beg_pos), 0);
+    const FeatureKey* beg_pos_p = thread_read_len > 0 ? &d_keys[beg_pos] : nullptr;
+
     threads[i] = std::thread([i, this](const FeatureKey* keys, size_t keys_len) {
+      if (keys == nullptr) {
+          return;
+      }
       for (size_t j = 0; j < keys_len; ++j) {
         if (keys[j] == 0) {
           continue;
@@ -125,7 +132,7 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
             platform::errors::External("fid2meta_ size too small"));
         fid2meta_[tmp_fid] = {keys[j]};
       }
-    }, &d_keys[i * split_len], std::min(split_len, len - i * split_len));
+    }, beg_pos_p, thread_read_len);
   }
   for (auto & thd : threads) {
     thd.join();
@@ -224,27 +231,28 @@ std::shared_ptr<BatchFidSeq> CacheManager::parse_uniq_fids(
     }
   }
 
+  //std::set<uint32_t> debug_fid_set;
   // set bitset of fid & slot
   PADDLE_ENFORCE_LT(max_slot, (int)slot_is_dense.size());
-  int uint64_fid_bit_vec_size = (max_fid + 63) / 64;
+  int uint64_fid_bit_vec_size = (max_fid / 64) + 1;
   std::vector<std::bitset<64>> fid_bit_vec(uint64_fid_bit_vec_size);
-  int uint64_slot_bit_vec_size = (max_slot + 63) / 64;
+  int uint64_slot_bit_vec_size = (max_slot / 64) + 1;
   std::vector<std::bitset<64>> slot_bit_vec(uint64_slot_bit_vec_size);
   for (size_t train_data_idx = 0; train_data_idx < train_data_iters.size(); ++train_data_idx) {
     auto it = train_data_iters[train_data_idx] + iter_offset;
     for (int j = 0; j < batch_sz; ++j) {
       const Record & cur_rec = *(it++);
       for (auto & fea : cur_rec.uint64_feasigns_) {
+        int vec_idx = fea.slot() / 64;
+        int bit_offset = fea.slot() % 64;
+        slot_bit_vec[vec_idx].set(bit_offset);
         if (slot_is_dense[fea.slot()]) {
           continue;
         }
-        int vec_idx = fea.sign().uint64_feasign_ / 64;
-        int bit_offset = fea.sign().uint64_feasign_ % 64;
+        vec_idx = fea.sign().uint64_feasign_ / 64;
+        bit_offset = fea.sign().uint64_feasign_ % 64;
         fid_bit_vec[vec_idx].set(bit_offset);
-
-        vec_idx = fea.slot() / 64;
-        bit_offset = fea.slot() % 64;
-        slot_bit_vec[vec_idx].set(bit_offset);
+        //debug_fid_set.insert(fea.sign().uint64_feasign_);
       }
     }
   }
@@ -257,6 +265,7 @@ std::shared_ptr<BatchFidSeq> CacheManager::parse_uniq_fids(
   // add default 0 if slot has no fid
   if (slot_has_value_count < slot_is_dense.size()) {
     fid_bit_vec[0].set(0);
+    //debug_fid_set.insert(0);
   }
   // count total fids
   int total_fid_count = 0;
@@ -345,8 +354,6 @@ void CacheManager::build_batch_fidseq(std::vector<std::deque<Record> *> & all_ch
     int thread_num = build_fidseq_pool.get_thread_num();
     fidseq_chan_->SetBlockSize(1);
     fidseq_chan_->SetCapacity(3 * thread_num);
-    //ThreadBarrier barrier(thread_num);
-    //std::vector<std::shared_ptr<BatchFidSeq>> result_vec(thread_num, nullptr); 
 
     std::mutex cv_mtx;
     std::condition_variable write_cv;
@@ -359,35 +366,34 @@ void CacheManager::build_batch_fidseq(std::vector<std::deque<Record> *> & all_ch
         auto batch_fidseq = parse_uniq_fids(train_data_iters, i, current_batch_sz, slot_is_dense);
 
         std::shared_ptr<std::vector<uint32_t>> fidseq_before_opt = std::make_shared<std::vector<uint32_t>>();
-        { // before opt
-          // process batch data for every chan_recs
-          std::set<uint32_t> current_bfid_set;
-          std::set<int> slot_has_val;
-          for (size_t train_data_idx = 0; train_data_idx < train_data_iters.size(); ++train_data_idx) {
-            auto it = train_data_iters[train_data_idx] + i;
-            for (int j = 0; j < current_batch_sz; ++j) {
-              const Record & cur_rec = *(it++);
-              for (auto & fea : cur_rec.uint64_feasigns_) {
-                slot_has_val.insert(fea.slot());
-                PADDLE_ENFORCE_LT(fea.slot(), slot_is_dense.size());
-                if (slot_is_dense[fea.slot()]) {
-                  continue;
-                }
-                current_bfid_set.insert((uint32_t)fea.sign().uint64_feasign_); // feasign already converted to fid(uint32_t)
-              }
-            }
-          } // process finished
-          if (slot_has_val.size() < slot_is_dense.size()) {
-            current_bfid_set.insert(0); // add 0 as padding feasign
-          }
-          fidseq_before_opt->assign(current_bfid_set.begin(), current_bfid_set.end());
-
-          PADDLE_ENFORCE_EQ(batch_fidseq->h_fidseq.size(), fidseq_before_opt->size());
-          for (size_t j = 0; j < batch_fidseq->h_fidseq.size(); ++j) {
-            PADDLE_ENFORCE_EQ(batch_fidseq->h_fidseq[j], (*fidseq_before_opt)[j]);
-          }
-          //VLOG(0) << "tid:" << tid << ", check consistency ok";
-        }
+        //{ // before opt
+        //  // process batch data for every chan_recs
+        //  std::set<uint32_t> current_bfid_set;
+        //  std::set<int> slot_has_val;
+        //  for (size_t train_data_idx = 0; train_data_idx < train_data_iters.size(); ++train_data_idx) {
+        //    auto it = train_data_iters[train_data_idx] + i;
+        //    for (int j = 0; j < current_batch_sz; ++j) {
+        //      const Record & cur_rec = *(it++);
+        //      for (auto & fea : cur_rec.uint64_feasigns_) {
+        //        slot_has_val.insert(fea.slot());
+        //        PADDLE_ENFORCE_LT(fea.slot(), slot_is_dense.size());
+        //        if (slot_is_dense[fea.slot()]) {
+        //          continue;
+        //        }
+        //        current_bfid_set.insert((uint32_t)fea.sign().uint64_feasign_); // feasign already converted to fid(uint32_t)
+        //      }
+        //    }
+        //  } // process finished
+        //  if (slot_has_val.size() < slot_is_dense.size()) {
+        //    current_bfid_set.insert(0); // add 0 as padding feasign
+        //  }
+        //  fidseq_before_opt->assign(current_bfid_set.begin(), current_bfid_set.end());
+        
+        //  PADDLE_ENFORCE_EQ(batch_fidseq->h_fidseq.size(), fidseq_before_opt->size());
+        //  for (size_t j = 0; j < batch_fidseq->h_fidseq.size(); ++j) {
+        //    PADDLE_ENFORCE_EQ(batch_fidseq->h_fidseq[j], (*fidseq_before_opt)[j]);
+        //  }
+        //}
         while (true) {
           std::unique_lock<std::mutex> lock(cv_mtx);
           if (tid == writer_idx.load()) {
