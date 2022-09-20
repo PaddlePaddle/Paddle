@@ -98,7 +98,7 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
                                    ->assert_is_op_output("transpose2")
                                    ->AsIntermediate()
                                    ->assert_is_op_input("matmul", "X");
-  
+
   // Q path Links
   matmul0->LinksFrom({layer_norm_out_var, matmul0_w_var}).LinksTo({matmul0_out_var});
   eltadd0->LinksFrom({matmul0_out_var, eltadd0_b_var}).LinksTo({eltadd0_out_var});
@@ -838,7 +838,7 @@ inline void QKVWeightsProcessFuseQKV(Tensor* qkv_w_tensor,
     for (int j = 0; j < num_head; j++) {
       for (int k = 0; k < dim_head; k++) {
         int out_idx = i * num_head * dim_head \
-                      + j * dim_head + k; 
+                      + j * dim_head + k;
         int in_idx = j * 3 * dim_head \
                      + i * dim_head + k;
         tmp_transpose_b_data[out_idx] = qkv_b_data[in_idx];
@@ -955,7 +955,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph, const std::strin
     fused_multi_transformer_op_desc.SetInput("QKVW", {matmul0_w->Name()});
     fused_multi_transformer_op_desc.SetInput("QKVBias", {eltadd0_b->Name()});
     fused_multi_transformer_op_desc.SetInput("SrcMask", {eltadd_qk_b->Name()});
-    
+
     // CacheKV input
     VarDesc cache_kv_desc("cache_kv" + std::to_string(layer_idx));
     // FIXME: only support batch_size = 1, and max_seq_len <= 1024
@@ -1467,7 +1467,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(Graph* graph, const std
     fused_multi_transformer_op_desc.SetInput("QKVW", {matmul0_w->Name()});
     fused_multi_transformer_op_desc.SetInput("QKVBias", {eltadd0_b->Name()});
     fused_multi_transformer_op_desc.SetInput("SrcMask", {eltadd_qk_b->Name()});
-    
+
     // CacheKV input
     VarDesc cache_kv_desc("cache_kv" + std::to_string(layer_idx));
     // FIXME: only support batch_size = 1, and max_seq_len <= 1024
@@ -1519,7 +1519,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(Graph* graph, const std
     IR_NODE_LINK_TO(eltadd_qk_b, fused_multi_transformer);
 
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
-    
+
     // rewrite while OP input
     //  1. delete k, v
     //  2. delete matmul1/2_w eltadd1/2_w

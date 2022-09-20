@@ -98,7 +98,7 @@ PDNode* FusedMultiTransformerPattern::operator()() {
                                    ->assert_is_op_output("transpose2")
                                    ->AsIntermediate()
                                    ->assert_is_op_input("matmul", "X");
-  
+
   // Q path Links
   matmul0->LinksFrom({layer_norm_out_var, matmul0_w_var}).LinksTo({matmul0_out_var});
   eltadd0->LinksFrom({matmul0_out_var, eltadd0_b_var}).LinksTo({eltadd0_out_var});
@@ -566,7 +566,7 @@ int FusedMultiTransformerPass::BuildFusion(Graph* graph, const std::string& name
     fused_multi_transformer_op_desc.SetInput("QKVW", {matmul0_w->Name()});
     fused_multi_transformer_op_desc.SetInput("QKVBias", {eltadd0_b->Name()});
     fused_multi_transformer_op_desc.SetInput("SrcMask", {eltadd_qk_b->Name()});
-    
+
     // CacheKV input
     VarDesc cache_kv_desc(
         patterns::PDNodeName("cache_kv", layer_norm->Name()));
@@ -631,7 +631,7 @@ int FusedMultiTransformerPass::BuildFusion(Graph* graph, const std::string& name
     IR_NODE_LINK_TO(eltadd_qk_b, fused_multi_transformer);
 
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
-    
+
     // // // link CacheKV to while
     // // IR_NODE_LINK_TO(cache_kv, while0)
     // // unlink origin KV output to while

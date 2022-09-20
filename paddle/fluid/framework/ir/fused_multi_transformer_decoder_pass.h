@@ -138,7 +138,7 @@ struct FusedMultiTransformerDecoderPattern : public PatternBase {
   PATTERN_DECL_NODE(ffn_eltadd1_out);
   PATTERN_DECL_NODE(ffn_dropout);
   PATTERN_DECL_NODE(ffn_dropout_out);
-  
+
   // output elementwise_add
   PATTERN_DECL_NODE(ffn_eltadd_out)
   PATTERN_DECL_NODE(ffn_output);
@@ -238,7 +238,7 @@ struct FusedMultiTransformerDecoderFuseQKVPattern : public PatternBase {
   PATTERN_DECL_NODE(ffn_eltadd1_out);
   PATTERN_DECL_NODE(ffn_dropout);
   PATTERN_DECL_NODE(ffn_dropout_out);
-  
+
   // output elementwise_add
   PATTERN_DECL_NODE(ffn_eltadd_out)
   PATTERN_DECL_NODE(ffn_output);

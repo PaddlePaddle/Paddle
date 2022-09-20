@@ -98,7 +98,7 @@ PDNode* FusedMultiTransformerDecoderPattern::operator()() {
                                    ->assert_is_op_output("transpose2")
                                    ->AsIntermediate()
                                    ->assert_is_op_input("matmul", "X");
-  
+
   // Q path Links
   matmul0->LinksFrom({layer_norm_out_var, matmul0_w_var}).LinksTo({matmul0_out_var});
   eltadd0->LinksFrom({matmul0_out_var, eltadd0_b_var}).LinksTo({eltadd0_out_var});

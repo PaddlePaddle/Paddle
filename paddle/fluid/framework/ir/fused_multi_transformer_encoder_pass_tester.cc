@@ -81,13 +81,13 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   // (transpose_0, transpose_1)       matmul           -> matmul_qk
   // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
   // (eltadd_qk)                      softmax          -> softmax_qk
-  // (softmax_qk)                     dropout          -> dropout_qk 
+  // (softmax_qk)                     dropout          -> dropout_qk
   // (dropout_qk, transpose_2)        matmul_v2        -> matmul_qkv
   // (matmul_qkv)                     transpose        -> transpose_qkv
   // (transpose_qkv)                  reshape          -> reshape_qkv
   // (reshape_qkv)                    matmul_v2        -> matmul_linear
   // (matmul_linear)                  elementwise_add  -> eltadd_linear
-  // (eltadd_linear)                  dropout          -> dropout_linear 
+  // (eltadd_linear)                  dropout          -> dropout_linear
   // (eltadd_out)                     elementwise_add  -> attention_out
   //
   // (attention_out, scale, bias)     layer_norm       -> ffn_layer_norm_out
@@ -96,13 +96,13 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   // (ffn_eltadd0)                    gelu             -> ffn_gelu
   // (ffn_gelu)                       matmul_v2        -> ffn_matmul1
   // (ffn_matmul1, ffn_bias1)         elementwise_add  -> ffn_eltadd1
-  // (ffn_eltadd1)                    dropout          -> ffn_dropout 
+  // (ffn_eltadd1)                    dropout          -> ffn_dropout
   // (attention_out, ffn_dropout)     elementwise_add  -> ffn_output
   //
   // (transpose_1, transpose_2)       while            -> decoder block
 
   Layers layers;
-  // MHA: pre LayerNorm 
+  // MHA: pre LayerNorm
   auto* x = layers.data("x", {1, 128, 1024});
   auto* ln_scale = layers.data("ln_scale", {1024}, true);
   auto* ln_bias = layers.data("ln_bias", {1024}, true);
@@ -223,19 +223,19 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   // (matmul_out0, bias_0)            elementwise_add  -> eltadd_0
   // (eltadd_0)                       reshape2         -> reshape_0
   // (reshape_0)                      transpose2       -> transpose_0
-  // (transpose_0)                    split            -> split_q, split_k, split_v 
-  // (split_k)                        assign           -> assign_k 
-  // (split_v)                        assign           -> assign_v 
+  // (transpose_0)                    split            -> split_q, split_k, split_v
+  // (split_k)                        assign           -> assign_k
+  // (split_v)                        assign           -> assign_v
   // (split_q, split_k)               matmul           -> matmul_qk
   // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
   // (eltadd_qk)                      softmax          -> softmax_qk
-  // (softmax_qk)                     dropout          -> dropout_qk 
+  // (softmax_qk)                     dropout          -> dropout_qk
   // (dropout_qk, transpose_2)        matmul_v2        -> matmul_qkv
   // (matmul_qkv)                     transpose        -> transpose_qkv
   // (transpose_qkv)                  reshape          -> reshape_qkv
   // (reshape_qkv)                    matmul_v2        -> matmul_linear
   // (matmul_linear)                  elementwise_add  -> eltadd_linear
-  // (eltadd_linear)                  dropout          -> dropout_linear 
+  // (eltadd_linear)                  dropout          -> dropout_linear
   // (eltadd_out)                     elementwise_add  -> attention_out
   //
   // (attention_out, scale, bias)     layer_norm       -> ffn_layer_norm_out
@@ -244,13 +244,13 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   // (ffn_eltadd0)                    gelu             -> ffn_gelu
   // (ffn_gelu)                       matmul_v2        -> ffn_matmul1
   // (ffn_matmul1, ffn_bias1)         elementwise_add  -> ffn_eltadd1
-  // (ffn_eltadd1)                    dropout          -> ffn_dropout 
+  // (ffn_eltadd1)                    dropout          -> ffn_dropout
   // (attention_out, ffn_dropout)     elementwise_add  -> ffn_output
   //
   // (transpose_1, transpose_2)       while            -> decoder block
 
   Layers layers;
-  // MHA: pre LayerNorm 
+  // MHA: pre LayerNorm
   auto* x = layers.data("x", {1, 128, 1024});
   auto* ln_scale = layers.data("ln_scale", {1024}, true);
   auto* ln_bias = layers.data("ln_bias", {1024}, true);
