@@ -116,7 +116,6 @@ if "%WITH_PYTHON%" == "ON" (
 rem -------Caching strategy 1: keep build directory for incremental compilation-----------
 rmdir %BUILD_DIR%\python /s/q
 rmdir %BUILD_DIR%\paddle\third_party\externalError /s/q
-rem rmdir %BUILD_DIR%\paddle\fluid\pybind /s/q
 rmdir %BUILD_DIR%\paddle_install_dir /s/q
 rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
 rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
@@ -172,14 +171,16 @@ echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
 cd /d %BUILD_DIR%
 dir .
 dir %cache_dir%
-dir paddle\fluid\pybind\Release
 rem -------Caching strategy 1: End --------------------------------
 
 
 rem -------Caching strategy 2: sccache decorate compiler-----------
 if not defined SCCACHE_ROOT set SCCACHE_ROOT=D:\sccache
+set PATH=%SCCACHE_ROOT%;%PATH%
 if "%WITH_SCCACHE%"=="ON" (
     cmd /C sccache -V || call :install_sccache
+    cmd /C sccache -V || echo install sccache failed!
+
     sccache --stop-server 2> NUL
     del %SCCACHE_ROOT%\sccache_log.txt
 
@@ -203,7 +204,7 @@ if "%WITH_SCCACHE%"=="ON" (
     sccache -z
     goto :CASE_%1
 ) else (
-    del %PYTHON_ROOT%\sccache.exe 2> NUL
+    del %SCCACHE_ROOT%\sccache.exe 2> NUL
     goto :CASE_%1
 )
 
@@ -211,7 +212,7 @@ if "%WITH_SCCACHE%"=="ON" (
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
-xcopy sccache.exe %PYTHON_ROOT%\ /Y
+xcopy sccache.exe %SCCACHE_ROOT%\ /Y
 del sccache.exe
 goto:eof
 rem -------Caching strategy 2: End --------------------------------
