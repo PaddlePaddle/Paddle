@@ -142,10 +142,37 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
           op_with_kernel->Type())) {
     auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+    auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
     VLOG(6) << "phi_kernel_key " << phi_kernel_key << "\n";
+    VLOG(6) << "phi_kernel_name " << phi_kernel_name << "\n";
 
     if (op_with_kernel->PhiKernel()->IsValid()) {
       run_phi_kernel = true;
+
+      // For transfer layout op, it should not fallback.
+      // Though it's a devece-independent operation,
+      // its implementation is device-related.
+      // For example, consider changing the layout of a gpu tensor
+      // while the gpu kernel does not exist.
+      // To use the cpu kernel, you must insert memcpy_d2h/mepcpy_h2d op
+      // in addition. But such operation should not be done here.
+    } else if (op_type != kTransferLayout) {
+      if (!op_with_kernel->SupportsKernelType(expected_kernel_key)) {
+        auto phi_cpu_kernel_key =
+            FallBackToCpu(expected_kernel_key, phi_kernel_key, *op_with_kernel);
+        VLOG(6) << "phi kernel fall back to cpu: " << phi_cpu_kernel_key;
+        op_with_kernel->ResetPhiKernel(
+            new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
+                phi_kernel_name, phi_cpu_kernel_key)));
+        if (op_with_kernel->PhiKernel()->IsValid()) {
+          VLOG(6) << "Static mode PrepareImpl - kernel name: "
+                  << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key
+                  << " | kernel: " << *(op_with_kernel->PhiKernel());
+          op_with_kernel->ResetKernelType(new OpKernelType(
+              TransPhiKernelKeyToOpKernelType(phi_cpu_kernel_key)));
+          run_phi_kernel = true;
+        }
+      }
     }
   }
 
