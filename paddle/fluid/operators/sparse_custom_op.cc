@@ -184,48 +184,6 @@ DECLARE_INFER_SHAPE_FUNCTOR(conv3d_coo,
                             Conv3dCooInferShapeFunctor,
                             PD_INFER_META(phi::sparse::Conv3dInferMeta));
 
-class ValuesAddCooCooOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor), input 0 of values_add_coo_coo op.");
-    AddInput("Y", "(Tensor), input 1 of values_add_coo_coo op.");
-    AddOutput("Out", "(Tensor), output 0 of relu_coo op.");
-    AddComment(R"DOC(
-TODO: Documentation of values_add_coo_coo op.
-)DOC");
-  }
-};
-
-class ValuesAddCooCooOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-};
-
-DECLARE_INFER_SHAPE_FUNCTOR(values_add_coo_coo,
-                            ValuesAddCooCooInferShapeFunctor,
-                            PD_INFER_META(phi::UnchangedInferMeta));
-
-class ValuesAddCooDenseOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor), input 0 of values_add_coo_dense op.");
-    AddInput("Y", "(Tensor), input 1 of values_add_coo_dense op.");
-    AddOutput("Out", "(Tensor), output 0 of relu_coo op.");
-    AddComment(R"DOC(
-TODO: Documentation of values_add_coo_dense op.
-)DOC");
-  }
-};
-
-class ValuesAddCooDenseOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-};
-
-DECLARE_INFER_SHAPE_FUNCTOR(values_add_coo_dense,
-                            ValuesAddCooDenseInferShapeFunctor,
-                            PD_INFER_META(phi::UnchangedInferMeta));
-
 class CastCooOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -308,16 +266,6 @@ REGISTER_OPERATOR(conv3d_coo,
                   ops::Conv3dCooOp,
                   ops::Conv3dCooOpMaker,
                   ops::Conv3dCooInferShapeFunctor);
-
-REGISTER_OPERATOR(values_add_coo_coo,
-                  ops::ValuesAddCooCooOp,
-                  ops::ValuesAddCooCooOpMaker,
-                  ops::ValuesAddCooCooInferShapeFunctor);
-
-REGISTER_OPERATOR(values_add_coo_dense,
-                  ops::ValuesAddCooDenseOp,
-                  ops::ValuesAddCooDenseOpMaker,
-                  ops::ValuesAddCooDenseInferShapeFunctor);
 
 REGISTER_OPERATOR(cast_coo,
                   ops::CastCooOp,
