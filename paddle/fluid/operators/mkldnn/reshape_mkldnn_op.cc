@@ -456,28 +456,12 @@ REGISTER_OP_KERNEL(
                                  ReshapeKernelOpName::squeeze2>);
 
 REGISTER_OP_KERNEL(
-    reshape,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::reshape>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
-                             ReshapeKernelOpName::reshape>);
-
-REGISTER_OP_KERNEL(
     reshape_grad,
     MKLDNN,
     paddle::platform::CPUPlace,
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::reshape>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::reshape>);
-
-REGISTER_OP_KERNEL(
-    reshape2,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::reshape2>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
-                             ReshapeKernelOpName::reshape2>);
 
 REGISTER_OP_KERNEL(
     reshape2_grad,

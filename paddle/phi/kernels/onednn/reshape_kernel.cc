@@ -174,3 +174,16 @@ void ReshapeKernel(const Context& dev_ctx,
   out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
 }
 }  // namespace phi
+
+PD_REGISTER_KERNEL(reshape,
+                   OneDNN,
+                   ALL_LAYOUT,
+                   phi::ReshapeKernel<phi::OneDNNContext>,
+                   float,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(reshape,
+                   OneDNN,
+                   ALL_LAYOUT,
+                   phi::ReshapeWithXShape<phi::OneDNNContext>,
+                   float,
+                   phi::dtype::bfloat16) {}
