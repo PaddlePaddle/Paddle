@@ -2351,6 +2351,14 @@ struct GenericPluginTeller : public Teller {
       if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
         return false;
     }
+    if (op_type == "pad3d") {
+      auto pad3d_inputs = desc.Inputs();
+      if (pad3d_inputs.find("Paddings") != pad3d_inputs.end()) {
+        if (desc.Input("Paddings").size() >= 1) {
+          return false;
+        }
+      }
+    }
     if (use_no_calib_int8) {
       return false;
     } else {
