@@ -296,7 +296,7 @@ void Copy(const Context& dev_ctx,
                      dst_place,
                      blocking,
                      dst->mutable_non_zero_elements());
-  dst->set_dims(src.dims());
+  dst->set_meta(src.meta());
   dst->SetCoalesced(src.coalesced());
 }
 
