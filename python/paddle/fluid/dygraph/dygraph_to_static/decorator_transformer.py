@@ -22,6 +22,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, as
 import warnings
 
 import re
+from paddle.fluid.dygraph.dygraph_to_static.utils import RE_PYNAME, RE_PYMODULE
 
 IGNORE_NAMES = [
     'declarative', 'to_static', 'dygraph_to_static_func', 'wraps',
@@ -71,14 +72,16 @@ class DecoratorTransformer(BaseTransformer):
                 # 1: @_jst.Call(a.b.c.d.deco)()
                 # 2: @q.w.e.r.deco()
                 re_tmp = re.match(
-                    r'([a-zA-Z0-9_]+\.)*([a-zA-Z0-9_]+\(){0,1}([a-zA-Z0-9_]+\.)*([a-zA-Z0-9_]+?)(\)){0,1}\(.*$',
-                    deco_full_name)
+                    r'({module})*({name}\(){{0,1}}({module})*({name})(\)){{0,1}}\(.*$'
+                    .format(name=RE_PYNAME, module=RE_PYMODULE), deco_full_name)
                 deco_name = re_tmp.group(4)
             else:
                 # match case like:
                 # @a.d.g.deco
-                re_tmp = re.match(r'([a-zA-Z0-9_]+\.)*([a-zA-Z0-9_]+?)$',
-                                  deco_full_name)
+                re_tmp = re.match(
+                    r'({module})*({name})$'.format(name=RE_PYNAME,
+                                                   module=RE_PYMODULE),
+                    deco_full_name)
                 deco_name = re_tmp.group(2)
             if deco_name in IGNORE_NAMES:
                 continue
