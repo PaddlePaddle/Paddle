@@ -68,16 +68,16 @@ def load(filepath: Union[str, Path],
 
     Parameters:
     load the audio content start form frame_offset, and get num_frames.
-    frame_offset: from 0 to total_frames, 
-    num_frames: from -1 (means total frames) or number frames which want to read, 
+    frame_offset: from 0 to total_frames,
+    num_frames: from -1 (means total frames) or number frames which want to read,
     normalize:
         if True: return audio which norm to (-1, 1), dtype=float32
         if False: return audio with raw data, dtype=int16
 
-    channels_first: 
+    channels_first:
         if True: return audio with shape (channels, time)
-    
-    Return: 
+
+    Return:
         Tuple[paddle.Tensor, int]: (audio_content, sample rate)
     """
     if hasattr(filepath, 'read'):
