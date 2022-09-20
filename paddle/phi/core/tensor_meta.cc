@@ -48,4 +48,16 @@ bool StringTensorMeta::valid() const noexcept {
   return valid;
 }
 
+SparseTensorMeta::SparseTensorMeta(const DDim& dims) : dims(dims) {}
+
+SparseTensorMeta::SparseTensorMeta(const DDim& dims, const DataLayout& layout)
+    : dims(dims), layout(layout) {}
+
+bool SparseTensorMeta::valid() const noexcept {
+  bool valid{true};
+  valid = valid && (layout != DataLayout::UNDEFINED);
+  valid = valid && (product(dims) >= 0);
+  return valid;
+}
+
 }  // namespace phi
