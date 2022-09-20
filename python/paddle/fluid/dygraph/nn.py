@@ -1368,7 +1368,7 @@ class BatchNorm(layers.Layer):
 
         if _non_static_mode():
             if in_dygraph_mode():
-                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
+                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm_(
                     input, self.weight, self.bias, self._mean, self._variance,
                     self._momentum, self._epsilon, self._data_layout,
                     not self.training, self._use_global_stats,
