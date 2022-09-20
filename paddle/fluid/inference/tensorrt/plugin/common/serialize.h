@@ -33,7 +33,6 @@ template <typename T>
 inline void deserialize_value(void const** buffer,
                               size_t* buffer_size,
                               T* value);
-namespace {
 
 template <typename T, class Enable = void>
 struct Serializer {};
@@ -60,7 +59,7 @@ template <>
 struct Serializer<const char*> {
   static size_t serialized_size(const char* value) { return strlen(value) + 1; }
   static void serialize(void** buffer, const char* value) {
-    ::strcpy(static_cast<char*>(*buffer), value);
+    ::snprintf(static_cast<char*>(*buffer), value);
     reinterpret_cast<char*&>(*buffer) += strlen(value) + 1;
   }
   static void deserialize(void const** buffer,
@@ -101,8 +100,6 @@ struct Serializer<std::vector<T>,
     *buffer_size -= nbyte;
   }
 };
-
-}  // namespace
 
 template <typename T>
 inline size_t serialized_size(T const& value) {
