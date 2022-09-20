@@ -196,6 +196,14 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.offset = meta.offset;
 }
 
+void DenseTensor::set_meta_dim(int id, int size) {
+  PADDLE_ENFORCE(
+      meta_.valid(),
+      phi::errors::InvalidArgument(
+          "Input meta is invalid, please check the meta attribute."));
+  meta_.dims[id] = size;
+}
+
 /* @jim19930609: This interface will be further modified util we finalized the
    design for Allocator - Allocation
    For now, we have to temporarily accommodate two independent use cases:

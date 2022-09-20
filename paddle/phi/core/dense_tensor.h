@@ -112,6 +112,11 @@ class DenseTensor : public TensorBase,
 
   void set_meta(const DenseTensorMeta& meta);
 
+  /// \brief Set the DenseTensorMeta's dim.
+  /// \param id The id of dim.
+  /// \param size The size to be set in dim[id].
+  void set_meta_dim(int id, int size);
+
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return meta_.valid(); }
