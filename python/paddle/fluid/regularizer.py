@@ -49,14 +49,14 @@ class WeightDecayRegularizer(object):
 
 
 class L2DecayRegularizer(WeightDecayRegularizer):
-    r""" 
+    r"""
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
 
-    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ). 
-    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
-    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
+    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ).
+    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in
+    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has
     higher priority than ``optimizer`` .
-    
+
     In the implementation, the formula of L2 Weight Decay Regularization is as follows:
 
     .. math::
@@ -94,7 +94,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
             l2 = fluid.regularizer.L2Decay(regularization_coeff=0.1)
             x = fluid.layers.uniform_random([3,4])
-            
+
             # set L1 regularization in fluid.ParamAttr
             w_param = fluid.ParamAttr(regularizer=l1)
             hidden1 = fluid.layers.fc(x, 8, param_attr=w_param)  # fc_0.w_0(L1), fc_0.b_0
@@ -105,9 +105,9 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             # set L2 regularization in optimizer
             optimizer = fluid.optimizer.SGD(learning_rate=1e-4, regularization=l2)
             optimizer.minimize(avg_loss)
-            
+
             # it will Print Message:
-            # Regularization of [fc_0.w_0, fc_1.w_0] have been set by ParamAttr or WeightNormParamAttr already. 
+            # Regularization of [fc_0.w_0, fc_1.w_0] have been set by ParamAttr or WeightNormParamAttr already.
             # So, the Regularization of Optimizer will not take effect for these parameters!
 
     """
@@ -160,21 +160,21 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 class L1DecayRegularizer(WeightDecayRegularizer):
     r"""
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
-    
-    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ). 
-    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
-    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
+
+    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ).
+    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in
+    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has
     higher priority than ``optimizer`` .
-    
+
     In the implementation, the formula of L1 Weight Decay Regularization is as follows:
-	
+
     .. math::
 
         L1WeightDecay = reg\_coeff * sign(parameter)
 
     Args:
         regularization_coeff(float, optional): regularization coeff. Default:0.0.
-	
+
     Examples:
         .. code-block:: python
 
@@ -195,7 +195,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
                 regularization=fluid.regularizer.L1DecayRegularizer(
                     regularization_coeff=0.1))
             optimizer.minimize(avg_loss)
- 
+
 
             # Example2: set Regularizer both in ParamAttr and optimizer
             import paddle.fluid as fluid
@@ -203,7 +203,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
             l2 = fluid.regularizer.L2Decay(regularization_coeff=0.1)
             x = fluid.layers.uniform_random([3,4])
-            
+
             # set L1 regularization in fluid.ParamAttr
             w_param = fluid.ParamAttr(regularizer=l1)
             hidden1 = fluid.layers.fc(x, 8, param_attr=w_param)  # fc_0.w_0(L1), fc_0.b_0
@@ -214,9 +214,9 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             # set L2 regularization in optimizer
             optimizer = fluid.optimizer.SGD(learning_rate=1e-4, regularization=l2)
             optimizer.minimize(avg_loss)
-            
+
             # it will Print Message:
-            # Regularization of [fc_0.w_0, fc_1.w_0] have been set by ParamAttr or WeightNormParamAttr already. 
+            # Regularization of [fc_0.w_0, fc_1.w_0] have been set by ParamAttr or WeightNormParamAttr already.
             # So, the Regularization of Optimizer will not take effect for these parameters!
 
     """

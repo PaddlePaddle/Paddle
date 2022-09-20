@@ -27,7 +27,7 @@ def _is_trainable(param):
 
 class DygraphShardingOptimizer(object):
     """
-    A wrapper for Sharding Optimizer in Dygraph. 
+    A wrapper for Sharding Optimizer in Dygraph.
 
     .. warning: DygraphShardingOptimizer is experimental and subject to change.
 
@@ -88,7 +88,7 @@ class DygraphShardingOptimizer(object):
         Partitions parameters among sharding ranks.
 
         Return:
-        Dict[int, List] 
+        Dict[int, List]
         """
         # TODO(JZ-LIANG) support multiple partition methods
         # method1: greedy even but unorder
@@ -113,7 +113,7 @@ class DygraphShardingOptimizer(object):
         mapping parameters to the shard which holds it.
 
         Return:
-        Dict[str, int] 
+        Dict[str, int]
         """
         mapping = {}
         for rank, params in self._rank2params.items():

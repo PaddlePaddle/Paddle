@@ -25,17 +25,18 @@ class Graph;
 void IsTestPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Sets is_test attrbiute to true and if it is missing, inserts it "
              "for activations and pooling.";
-  auto op_list = {"pool2d",      "sigmoid",      "logsigmoid",
-                  "softshrink",  "exp",          "brelu",
-                  "pow",         "leaky_relu",   "stanh",
-                  "relu",        "tanh",         "tanh_shrink",
-                  "sqrt",        "abs",          "ceil",
-                  "elu",         "floor",        "cos",
-                  "sin",         "round",        "reciprocal",
-                  "hard_shrink", "hard_sigmoid", "relu6",
-                  "soft_relu",   "swish",        "thresholded_relu",
-                  "log",         "square",       "softplus",
-                  "softsign",    "silu",         "mish"};
+  auto op_list = {"pool2d",        "sigmoid",      "logsigmoid",
+                  "softshrink",    "exp",          "brelu",
+                  "pow",           "leaky_relu",   "stanh",
+                  "relu",          "tanh",         "tanh_shrink",
+                  "sqrt",          "abs",          "ceil",
+                  "elu",           "floor",        "cos",
+                  "sin",           "round",        "reciprocal",
+                  "hard_shrink",   "hard_sigmoid", "relu6",
+                  "soft_relu",     "swish",        "thresholded_relu",
+                  "log",           "square",       "softplus",
+                  "softsign",      "silu",         "mish",
+                  "gumbel_softmax"};
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();

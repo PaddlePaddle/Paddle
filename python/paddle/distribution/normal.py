@@ -55,7 +55,7 @@ class Normal(distribution.Distribution):
 
     Examples:
         .. code-block:: python
-          
+
           import paddle
           from paddle.distribution import Normal
 
@@ -248,7 +248,7 @@ class Normal(distribution.Distribution):
         .. math::
 
             ratio = \\frac{\sigma_0}{\sigma_1}
-        
+
         .. math::
 
             diff = \mu_1 - \mu_0
