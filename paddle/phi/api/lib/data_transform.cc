@@ -81,7 +81,7 @@ inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
 }
 
 template <typename Context>
-phi::DenseTensor CastDateType(const Context& dev_ctx,
+phi::DenseTensor CastDataType(const Context& dev_ctx,
                               const phi::DenseTensor& tensor,
                               DataType dtype) {
   switch (tensor.dtype()) {
@@ -111,7 +111,7 @@ phi::DenseTensor CastDateType(const Context& dev_ctx,
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-phi::DenseTensor CastDateType(const phi::GPUContext& dev_ctx,
+phi::DenseTensor CastDataType(const phi::GPUContext& dev_ctx,
                               const phi::DenseTensor& tensor,
                               DataType dtype) {
   switch (tensor.dtype()) {
@@ -151,11 +151,11 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
 
   if (platform::is_cpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
-    return CastDateType(*dev_ctx, tensor, dtype);
+    return CastDataType(*dev_ctx, tensor, dtype);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (platform::is_gpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
-    return CastDateType(*dev_ctx, tensor, dtype);
+    return CastDataType(*dev_ctx, tensor, dtype);
 #endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
