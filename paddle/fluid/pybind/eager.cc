@@ -67,36 +67,43 @@ void EmptyTensorInitializer(TensorObject* self,
                             const std::vector<int>& dims = {0},
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
+  VLOG(1) << "========== EmptyTensorInitializer ==== self: " << self;
+  VLOG(1) << "========== EmptyTensorInitializer ==== 1";
   auto ddims = phi::make_ddim(dims);
   self->tensor.set_name(name);
+  VLOG(1) << "========== EmptyTensorInitializer ==== 2";
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
   if (stop_gradient != -1) {
     autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
   }
+  VLOG(1) << "========== EmptyTensorInitializer ==== 3";
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     // TODO(jiabin): Maybe support LOD later
     std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
     if (dims.size() == 1 && dims[0] == 0) {
+      VLOG(1) << "========== EmptyTensorInitializer ==== 4";
       std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
       dense_tensor = std::make_shared<phi::DenseTensor>(
           allocation_ptr,
           phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                ddims));
     } else {
+      VLOG(1) << "========== EmptyTensorInitializer ==== 5";
       // TODO(dev): we need enhance check for ddims.
       dense_tensor = std::make_shared<phi::DenseTensor>(
           std::make_shared<phi::Allocation>(),
           phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                ddims));
     }
+    VLOG(1) << "========== EmptyTensorInitializer ==== 6";
     self->tensor.set_impl(dense_tensor);
   } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
     std::shared_ptr<phi::SelectedRows> tensor =
         std::make_shared<phi::SelectedRows>();
     self->tensor.set_impl(tensor);
   }
-
+  VLOG(1) << "========== EmptyTensorInitializer ==== 7";
   if (!autograd_meta->GetMutableGradNode()) {
     autograd_meta->SetGradNode(
         std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
@@ -104,6 +111,7 @@ void EmptyTensorInitializer(TensorObject* self,
             << ") have not GradNode, add GradNodeAccumulation"
             << autograd_meta->GradNode() << " for it.";
   }
+  VLOG(1) << "========== EmptyTensorInitializer ==== 8";
 }
 
 void EmptyStringTensorInitializer(TensorObject* self,
@@ -377,6 +385,10 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   stop_gradient = ParseBooleanArgs(
       "stop_gradient", kws_map, kw_order_map, args, flag_kwargs, args_num);
 
+  VLOG(1) << " ====== place:" << place;
+  VLOG(1) << " ====== persistable:" << persistable;
+  VLOG(1) << " ====== stop_gradient:" << stop_gradient;
+  VLOG(1) << " ====== zero_copy:" << zero_copy;
   EmptyTensorInitializer(
       py_tensor_ptr, act_name, place, persistable, stop_gradient);
   InitTensorWithNumpyValue(py_tensor_ptr, numpy_value, place, zero_copy);
