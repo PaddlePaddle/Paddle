@@ -26,15 +26,12 @@ from .backend import AudioInfo
 __all__ = ['load', 'info', 'save']
 
 
-def info(filepath: str, format: Optional[str] = None) -> AudioInfo:
-    """Get signal information of an audio file.
-    only support WAV, PCM16
+def info(filepath: str) -> AudioInfo:
+    """Get signal information of input audio file.
+    only support WAV with PCM_16 encoding.
 
-    Args:
-        filepath (path-like object or file-like object):
-            Source of audio data.
-        format (str or None, optional):
-            Not used.
+    Parameters:
+       filepath: audio path or file object.
 
     Returns:
         AudioInfo: info of the given audio.
@@ -50,7 +47,7 @@ def info(filepath: str, format: Optional[str] = None) -> AudioInfo:
     except wave.Error:
         file_obj.seek(0)
         file_obj.close()
-        raise NotImplementedError(f"Unsupported wave type")
+        raise NotImplementedError(f"Unsupported wav type")
 
     channels = file_.getnchannels()
     sample_rate = file_.getframerate()
@@ -66,42 +63,22 @@ def load(filepath: Union[str, Path],
          frame_offset: int = 0,
          num_frames: int = -1,
          normalize: bool = True,
-         channels_first: bool = True,
-         format: Optional[str] = None) -> Tuple[paddle.Tensor, int]:
+         channels_first: bool = True) -> Tuple[paddle.Tensor, int]:
     """Load audio data from file.
 
-    Note:
-    the wave backend implement by wave.
-    Only support wav, 16-bit signed integer
+    Parameters:
+    load the audio content start form frame_offset, and get num_frames.
+    frame_offset: from 0 to total_frames, 
+    num_frames: from -1 (means total frames) or number frames which want to read, 
+    normalize:
+        if True: return audio which norm to (-1, 1), dtype=float32
+        if False: return audio with raw data, dtype=int16
 
-    By default (``normalize=True``, ``channels_first=True``), this function returns Tensor with
-    ``float32`` dtype and the shape of `[channel, time]`.
-    The samples are normalized to fit in the range of ``[-1.0, 1.0]``.
-
-    ``normalize`` parameter has no effect on 32-bit floating-point WAV.
-    For these formats, this function always returns ``float32`` Tensor with values normalized to
-    ``[-1.0, 1.0]``.
-
-    Args:
-        filepath (path-like object or file-like object):
-            Source of audio data.
-        frame_offset (int, optional):
-            Number of frames to skip before start reading data.
-        num_frames (int, optional):
-            ``-1`` reads all the remaining samples,
-            starting from ``frame_offset``.
-        normalize (bool, optional):
-            normalize to (-1, 1)
-        channels_first (bool, optional):
-            When True, the returned Tensor has dimension `[channel, time]`.
-            Otherwise, the returned Tensor's dimension is `[time, channel]`.
-        format (str or None, optional):
-            Not used.
-
-    Returns:
-        (paddle.Tensor, int): Resulting Tensor and sample rate.
-        If ``channels_first=True``, return `[channel, time]`
-        else return [time, channel]`.
+    channels_first: 
+        if True: return audio with shape (channels, time)
+    
+    Return: 
+        Tuple[paddle.Tensor, int]: (audio_content, sample rate)
     """
     if hasattr(filepath, 'read'):
         file_obj = filepath
@@ -113,7 +90,7 @@ def load(filepath: Union[str, Path],
     except wave.Error:
         file_obj.seek(0)
         file_obj.close()
-        raise NotImplementedError(f"Unsupported wave type, only PCM16 support")
+        raise NotImplementedError(f"Unsupported wav type, only PCM16 support")
 
     channels = file_.getnchannels()
     sample_rate = file_.getframerate()
@@ -146,61 +123,36 @@ def save(
     src: paddle.Tensor,
     sample_rate: int,
     channels_first: bool = True,
-    compression: Optional[float] = None,
-    format: Optional[str] = None,
     encoding: Optional[str] = None,
-    bits_per_sample: Optional[int] = None,
+    bits_per_sample: Optional[int] = 16,
 ):
-    """Save audio data to file.
-
-    Note:
-        Only support the following formats,
-
-        * WAV
-
-            * 16-bit signed integer
-
-    Note:
-        ``filepath`` argument is intentionally annotated as ``str`` only, even though it accepts
-        ``pathlib.Path`` object as well.
-
-    Args:
-        filepath (str or pathlib.Path): Path to audio file.
-        src (paddle.Tensor): Audio data to save. must be 2D tensor.
-        sample_rate (int): sampling rate
-        channels_first (bool, optional): If ``True``, the given tensor is interpreted as `[channel, time]`,
-            otherwise `[time, channel]`.
-        compression (float of None, optional): Not used.
-        format (str or None, optional): wav only.
-        encoding (str or None, optional): default PCM.
-
-        bits_per_sample (int or None, optional): 16bit only
-
-    Supported formats/encodings/bit depth/compression are:
-    ``"wav"``
-        - 16-bit signed integer PCM
     """
-    # the src shape is (time, channels), not channel_first
-    if src.ndim != 2:
-        raise ValueError(f"Expected 2D Tensor, got {src.ndim}D.")
+    Save audio tensor to file.
 
-    if compression is not None:
-        warnings.warn("The argument compression is silently ignored.")
-
-    if format not in (None, "WAV", "wav"):
-        raise RuntimeError("`format` is only support WAV.")
+    Parameters:
+    src: the audio tensor
+    sample_rate: the number of samples of audio per second.
+    channels_first: src channel infomation
+        if True, means input tensor is (channels, time)
+        if False, means input tensor is (time, channels)
+    encoding: only support PCM16 now.
+    bits_per_sample: bits per sample, only support 16 bits now.
+    """
+    assert src.ndim == 2, "Expected 2D tensor"
 
     audio_numpy = src.numpy()
+
+    # change src shape to (time, channels)
     if channels_first:
         audio_numpy = np.transpose(audio_numpy)
 
-    channels = audio_numpy.shape[0]
+    channels = audio_numpy.shape[1]
 
     # only support PCM16
     if bits_per_sample not in (None, 16):
-        raise ValueError("Invalid bits_per_sample.")
+        raise ValueError("Invalid bits_per_sample, only supprt 16 bit")
 
-    sample_width = 2  #bits_per_sample / 8
+    sample_width = int(bits_per_sample / 8)  # 2
 
     if src.dtype == paddle.float32:
         audio_numpy = (audio_numpy * (2**15)).astype("<h")

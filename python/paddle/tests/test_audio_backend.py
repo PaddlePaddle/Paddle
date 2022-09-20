@@ -40,6 +40,7 @@ class TestAudioDatasets(unittest.TestCase):
         waveform_tensor = get_wav_data(self.dtype,
                                        self.num_channels,
                                        num_frames=self.duration * self.sr)
+        # shape (1, 8000)
         self.waveform = waveform_tensor.numpy()
 
     def test_backend(self):
@@ -48,7 +49,7 @@ class TestAudioDatasets(unittest.TestCase):
         paddle.audio.backends.save(wave_wav_path,
                                    paddle.to_tensor(self.waveform),
                                    self.sr,
-                                   channels_first=False)
+                                   channels_first=True)
 
         # test backends(wave)(wave_backend) info
         wav_info = paddle.audio.backends.info(wave_wav_path)
@@ -84,12 +85,11 @@ class TestAudioDatasets(unittest.TestCase):
             np.testing.assert_array_almost_equal(wav_data, waveform)
 
         current_backend = paddle.audio.backends.get_current_audio_backend()
-        self.assertTrue(
-            current_backend in ["wave_backend", "sox_io", "soundfile"])
+        self.assertTrue(current_backend in ["wave_backend", "soundfile"])
 
         backends = paddle.audio.backends.list_available_backends()
         for backend in backends:
-            self.assertTrue(backend in ["wave_backend", "sox_io", "soundfile"])
+            self.assertTrue(backend in ["wave_backend", "soundfile"])
 
         # Test error
         try:
@@ -101,7 +101,6 @@ class TestAudioDatasets(unittest.TestCase):
             paddle.audio.backends.save(wave_wav_path,
                                        paddle.to_tensor(self.waveform),
                                        self.sr,
-                                       compression=2.9,
                                        bits_per_sample=24,
                                        channels_first=True)
         except ValueError:
@@ -111,15 +110,7 @@ class TestAudioDatasets(unittest.TestCase):
             paddle.audio.backends.save(
                 wave_wav_path,
                 paddle.to_tensor(self.waveform).unsqueeze(0), self.sr)
-        except ValueError:
-            pass
-
-        try:
-            paddle.audio.backends.save("xx.mp3",
-                                       paddle.to_tensor(self.waveform),
-                                       self.sr,
-                                       format="mp3")
-        except RuntimeError:
+        except AssertionError:
             pass
 
         fake_data = np.array([0, 1, 2, 3, 4, 6], np.float32)
