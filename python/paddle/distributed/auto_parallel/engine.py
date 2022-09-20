@@ -978,9 +978,10 @@ class Engine:
 
         # extract ckpts by specific model
         if isinstance(self._model, paddle.nn.Layer):
-            if hasattr(
-                    self._model, "gpt"
-            ) and self._model.__class__.__name__ == 'GPTForPretraining':
+            if hasattr(self._model,
+                       "gpt") and self._model.__class__.__name__ in [
+                           'GPTForPretraining', 'GPTForPretrainingAuto'
+                       ]:
                 exact_ckpts = self._model.gpt.checkpoints
             else:
                 exact_ckpts = recompute.checkpoints
