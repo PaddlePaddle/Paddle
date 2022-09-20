@@ -30,7 +30,7 @@ namespace inference {
 namespace tensorrt {
 
 /*
- * MatMulOp, IMatrixMultiplyLayer in TRT. This Layer doesn't has weights.
+ * MatMulV2Op, IMatrixMultiplyLayer in TRT. This Layer doesn't has weights.
  */
 class MatMulV2OpConverter : public OpConverter {
  public:
@@ -105,10 +105,10 @@ class MatMulV2OpConverter : public OpConverter {
                                    *input2,
                                    matrix_operation_Y);
     }
-    VLOG(3) << "Convert a fluid matmul_op_float to TensorRT ";
+    VLOG(3) << "Convert a fluid matmul_v2_op_float to TensorRT ";
 
     RreplenishLayerAndOutput(
-        layer, "matmul_op_float_no_alpha", {output_name}, test_mode);
+        layer, "matmul_v2_op_float_no_alpha", {output_name}, test_mode);
   }
 };
 
