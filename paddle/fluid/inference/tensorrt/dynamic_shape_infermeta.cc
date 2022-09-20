@@ -54,7 +54,61 @@ nvinfer1::DimsExprs GatherNdInferMeta(
   }
   return output;
 }
+
+nvinfer1::DimsExprs YoloBoxInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  PADDLE_ENFORCE_EQ(
+      nb_inputs,
+      2,
+      phi::errors::InvalidArgument("inputs of yolo_box should be equal to 2, "
+                                   "But received (%s)",
+                                   nb_inputs));
+
+  const nvinfer1::DimsExprs dim_x = inputs[0];
+
+  auto anchors = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("anchors"));
+  int anchor_num = anchors.size() / 2;
+
+  // box_num = dim_x[2] * dim_x[3] * anchor_num;
+  const nvinfer1::IDimensionExpr* box_num = expr_builder.operation(
+      nvinfer1::DimensionOperation::kPROD,
+      *expr_builder.operation(
+          nvinfer1::DimensionOperation::kPROD, *dim_x.d[2], *dim_x.d[3]),
+      *expr_builder.constant(anchor_num));
+
+  nvinfer1::DimsExprs output;
+  output.nbDims = 3;
+  if (output_index == 0) {
+    output.d[0] = dim_x.d[0];
+    output.d[1] = box_num;
+    output.d[2] = expr_builder.constant(4);
+  } else {
+    auto class_num = PADDLE_GET_CONST(int, op_desc.GetAttr("class_num"));
+    output.d[0] = dim_x.d[0];
+    output.d[1] = box_num;
+    output.d[2] = expr_builder.constant(class_num);
+  }
+  return output;
+}
+
+nvinfer1::DimsExprs InstanceNormInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  nvinfer1::DimsExprs x_dims = inputs[0];
+  return x_dims;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

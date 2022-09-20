@@ -14,7 +14,6 @@
 import paddle
 import paddle.fluid as fluid
 from .meta_parallel_base import MetaParallelBase
-from .pp_utils.utils import is_float_tensor, _initialize_recompute_hcg
 from .parallel_layers.pp_layers import PipelineLayer
 
 from ..utils.hybrid_parallel_util import broadcast_mp_parameters
@@ -60,8 +59,6 @@ class PipelineParallel(MetaParallelBase):
         self._real_pp_rank = self.stage_id
 
         p2p.initialize_p2p_groups(hcg, self._using_cache)
-
-        _initialize_recompute_hcg(hcg)
 
         self.global_rank = self._hcg.get_global_rank()
         self.micro_batch_id = 0

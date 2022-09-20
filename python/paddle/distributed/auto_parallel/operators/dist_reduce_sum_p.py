@@ -33,21 +33,21 @@ from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 
 
-class DistributedReducePrimtive(DistributedOperatorImplContainer):
+class DistributedReduceSumPrimtive(DistributedOperatorImplContainer):
 
     def __init__(self, op_type):
-        super(DistributedReducePrimtive, self).__init__(op_type)
+        super(DistributedReduceSumPrimtive, self).__init__(op_type)
 
 
 register_distributed_operator_impl_container(
-    DistributedReducePrimtive("reduce_p"))
+    DistributedReduceSumPrimtive("reduce_sum_p"))
 
 
-# Batch Dimension Reduce Primitive
-class DistributedReducePrimtiveImpl0(DistributedOperatorImpl):
+# Batch Dimension ReduceSum Primitive
+class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
 
     def __init__(self, name):
-        super(DistributedReducePrimtiveImpl0, self).__init__(name)
+        super(DistributedReduceSumPrimtiveImpl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -149,4 +149,5 @@ class DistributedReducePrimtiveImpl0(DistributedOperatorImpl):
 
 
 register_distributed_operator_impl(
-    "reduce_p", DistributedReducePrimtiveImpl0("batch_dimension_reduce_p"))
+    "reduce_sum_p",
+    DistributedReduceSumPrimtiveImpl0("batch_dimension_reduce_sum_p"))
