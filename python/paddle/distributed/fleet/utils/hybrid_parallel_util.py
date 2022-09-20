@@ -107,13 +107,20 @@ def _broadcast_data_help(data, shape, dtype, hcg):
                                  group=model_parallel_group,
                                  use_calc_stream=True)
 
+    if mp_rank != 0:
+        data._clear_data()
+        input_data._share_buffer_to(data)
+
 
 def broadcast_input_data(hcg, *inputs, **kwargs):
     cur_device = paddle.get_device()
     for v in inputs:
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
-                v = v.cuda() if "gpu" in cur_device else v
+                if "gpu" in cur_device and in_dygraph_mode():
+                    v_gpu = v.cuda()
+                    v._clear_data()
+                    v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
         else:
             logger.error("it doesn't support data type {}".format(type(v)))
@@ -121,7 +128,10 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     for k, v in kwargs.items():
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
-                v = v.cuda() if "gpu" in cur_device else v
+                if "gpu" in cur_device and in_dygraph_mode():
+                    v_gpu = v.cuda()
+                    v._clear_data()
+                    v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
             kwargs[k] = v
         else:
