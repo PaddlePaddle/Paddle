@@ -48,7 +48,7 @@ TEST(DEV_API, sparse_reshape) {
   memcpy(dense_x.data<float>(), data.data(), data.size() * sizeof(float));
   auto sparse_coo = sparse::DenseToCoo<float>(dev_ctx_cpu, dense_x, 3);
   auto sparse_out =
-      sparse::ReshapeCoo<float>(dev_ctx_cpu, sparse_coo, {2, 6});
+      sparse::ReshapeCoo<float>(dev_ctx_cpu, sparse_coo, {2L, 6L});
   DenseTensor dense_out = phi::Empty(
       dev_ctx_cpu,
       DenseTensorMeta(DataType::FLOAT32, {2, 6}, DataLayout::NCHW));
