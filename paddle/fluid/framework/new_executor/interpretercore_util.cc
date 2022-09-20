@@ -42,10 +42,12 @@ namespace framework {
 namespace interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
-constexpr size_t kPrepareWorkQueueIdx = 2;
 
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
-    size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
+    size_t host_num_threads,
+    size_t device_num_threads,
+    size_t prepare_num_threads,
+    EventsWaiter* waiter) {
   std::vector<WorkQueueOptions> group_options;
   // for execute host Kernel
   group_options.emplace_back(/*name*/ "HostTasks",
@@ -65,7 +67,7 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
                              /*events_waiter*/ waiter);
   // for prepare deps and others
   group_options.emplace_back(/*name*/ "Prepare",
-                             /*num_threads*/ 1,
+                             /*num_threads*/ prepare_num_threads,
                              /*allow_spinning*/ true,
                              /*always_spinning*/ false,
                              /*track_task*/ false,
@@ -76,10 +78,11 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
 
 AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
                                size_t device_num_threads,
+                               size_t prepare_num_threads,
                                EventsWaiter* waiter)
     : host_num_thread_(host_num_threads) {
-  queue_group_ = CreateWorkQueueGroup(
-      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
+  queue_group_ = CreateWorkQueueGroup(ConstructWorkQueueOptions(
+      host_num_threads, device_num_threads, prepare_num_threads, waiter));
 }
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,

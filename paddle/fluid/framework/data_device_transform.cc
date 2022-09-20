@@ -51,8 +51,7 @@ void TransDataDevice(const Tensor &in,
   // the elements of learning rate are one and it's CPU side.
   // One solution is to use a CUDA kernel to complete the copy operation when
   // the transforming is from CPU to GPU and the number of elements is little.
-  // But the embarrassment is that this solution this solution makes training
-  // slower.
+  // But the embarrassment is that this solution makes training slower.
   TensorCopySync(in, dst_place, out);
 }
 
