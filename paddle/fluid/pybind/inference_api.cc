@@ -35,6 +35,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/cuda_stream.h"
@@ -401,6 +402,12 @@ void BindInferenceApi(py::module *m) {
                new paddle_infer::Predictor(config));
            return pred;
          });
+  m->def(
+      "get_phi_kernel_name",
+      [](const std::string &fluid_op_name) {
+        return phi::TransToPhiKernelName(fluid_op_name);
+      },
+      py::return_value_policy::reference);
   m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
