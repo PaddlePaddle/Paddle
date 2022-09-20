@@ -740,6 +740,7 @@ def fused_multi_transformer(x,
         pre_layer_norm (bool, optional): whether it is pre_layer_norm(True) or post_layer_norm(False). Default True.
         epsilon (float, optional): Small float value added to denominator of the layer_norm to avoid dividing by zero. Default is 1e-5.
         cache_kvs (list(Tensor)|tuple(Tensor), optional): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`. Default None.
+        pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
         time_step (Tensor, optional): The time step tensor for the generation model. Which used in decode stage, to represent the time step, that is, the real seq_len of CacheKV. The shape is `[1]`, must be in CPUPlace. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
             some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
@@ -859,6 +860,7 @@ def fused_multi_transformer(x,
             inputs['CacheKV'] = cache_kvs
             if time_step is not None:
                 inputs['TimeStep'] = time_step
+        print("pre_caches")
         if pre_caches is not None:
             inputs['PreCaches'] = pre_caches
         inputs['SrcMask'] = attn_mask
