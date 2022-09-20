@@ -178,6 +178,10 @@ struct ConvProgramStrategy : public ProgramStrategy {
       op2->SetAttr("Scale_weights", scale_weights);
       op2->SetAttr("Scale_in", 1.0f);
       op2->SetAttr("groups", groups);
+      if (HasBias()) {
+        AddInput(op2, "Bias", bias, "Bias2");
+        op2->SetAttr("Bias_scales", {1});
+      }
     }
   }
 
