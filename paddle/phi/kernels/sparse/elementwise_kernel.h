@@ -87,9 +87,11 @@ void ElementWiseAddDenseKernel(const Context& dev_ctx,
                                const SparseCooTensor& x,
                                const DenseTensor& y,
                                SparseCooTensor* out) {
+  // TODO(zhangkaiuo): to support universal sparse + dense
   if (y.dims().size() == 1 && y.dims()[0] == x.dims()[x.dims().size() - 1]) {
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
     phi::AddKernel<T, Context>(dev_ctx, x.values(), y, out->mutable_values());
+    out->SetIndicesDict(x.GetIndicesDict());
   } else {
     PADDLE_THROW(
         errors::Unimplemented("Not support Sparse + Dense in GPU mode"));

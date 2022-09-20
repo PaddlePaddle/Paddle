@@ -31,6 +31,7 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
                                 const SparseCooTensor& x,
                                 const SparseCooTensor& y,
                                 SparseCooTensor* out) {
+  // TODO(zhangkaiuo): to support universal sparse + sparse
   const auto& x_indices = x.indices();
   const auto& y_indices = y.indices();
   PADDLE_ENFORCE_EQ(
@@ -57,6 +58,7 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
   EmptyLikeCooKernel<T, GPUContext>(dev_ctx, x, out);
   phi::AddKernel<T, GPUContext>(
       dev_ctx, x.values(), y.values(), out->mutable_values());
+  out->SetIndicesDict(x.GetIndicesDict());
 }
 
 template <typename T, typename Context>
