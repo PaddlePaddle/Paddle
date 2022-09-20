@@ -374,19 +374,6 @@ class NormalInitializer(Initializer):
                                  ["uint16", "float16", "float32", "float64"],
                                  "guassian_random")
 
-        # to be compatible of fp16 initalizers
-        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-            out_dtype = VarDesc.VarType.FP32
-            out_var = block.create_var(name=unique_name.generate(".".join(
-                ['normal_init', var.name, 'tmp'])),
-                                       shape=var.shape,
-                                       dtype=out_dtype,
-                                       type=VarDesc.VarType.LOD_TENSOR,
-                                       persistable=False)
-        else:
-            out_dtype = var.dtype
-            out_var = var
-
         if self._seed == 0:
             self._seed = block.program.random_seed
 
@@ -394,48 +381,29 @@ class NormalInitializer(Initializer):
             place = _current_expected_place()
             out_var = _C_ops.gaussian_random(var.shape, self._mean,
                                              self._std_dev, self._seed,
-                                             out_dtype, place)
-
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.cast(out_var, var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
+                                             var.dtype, place)
+            out_var._share_underline_tensor_to(var)
             return None
 
         if _in_legacy_dygraph():
             out_var = _legacy_C_ops.gaussian_random(
-                'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
+                'shape', var.shape, 'dtype', var.dtype, 'mean', self._mean,
                 'std', self._std_dev, 'seed', self._seed, 'use_mkldnn', False)
 
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
+            out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(type="gaussian_random",
-                                 outputs={"Out": out_var},
+                                 outputs={"Out": var},
                                  attrs={
                                      "shape": var.shape,
-                                     "dtype": out_dtype,
+                                     "dtype": var.dtype,
                                      "mean": self._mean,
                                      "std": self._std_dev,
                                      "seed": self._seed,
                                      "use_mkldnn": False
                                  },
                                  stop_gradient=True)
-
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                block.append_op(type="cast",
-                                inputs={"X": out_var},
-                                outputs={"Out": var},
-                                attrs={
-                                    "in_dtype": out_var.dtype,
-                                    "out_dtype": var.dtype
-                                })
             var.op = op
             return op
 
@@ -695,7 +663,7 @@ class XavierInitializer(Initializer):
                                      outputs={"Out": out_var},
                                      attrs={
                                          "shape": out_var.shape,
-                                         "dtype": out_dtype,
+                                         "dtype": out_var.dtype,
                                          "mean": 0.0,
                                          "std": std,
                                          "seed": self._seed

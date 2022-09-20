@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/threadpool_config.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -47,9 +48,6 @@ constexpr const char* kTaskCompletion = "TaskCompletion";
 
 namespace paddle {
 namespace framework {
-// NOTE(Aurelius84): Need a better strategy to determine it.
-static constexpr size_t kHostNumThreads = 4;
-static constexpr size_t kDeviceNumThreads = 1;
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
@@ -165,7 +163,14 @@ paddle::framework::FetchList InterpreterCore::Run(
 
     ExecuteInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    if (platform::is_npu_place(place_)) {
+      platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (platform::is_custom_place(place_)) {
+      platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    }
 #endif
   }
   if (create_local_scope_) {
@@ -223,7 +228,14 @@ paddle::framework::FetchList InterpreterCore::Run(
 
     ExecuteInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    if (platform::is_npu_place(place_)) {
+      platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (platform::is_custom_place(place_)) {
+      platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    }
 #endif
   }
 
@@ -294,8 +306,14 @@ bool InterpreterCore::BuildInplaceCheckVarIsOnlyInput(size_t var_index) {
 
 std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
   if (async_work_queue_ == nullptr) {
-    async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
-        kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+    int host_num_threads = 1, deivce_num_threads = 1, prepare_num_threads = 1;
+    std::tie(host_num_threads, deivce_num_threads, prepare_num_threads) =
+        interpreter::GetThreadPoolConfig(place_, vec_instruction_.size());
+    async_work_queue_ =
+        std::make_shared<interpreter::AsyncWorkQueue>(host_num_threads,
+                                                      deivce_num_threads,
+                                                      prepare_num_threads,
+                                                      &main_thread_blocker_);
   }
   return async_work_queue_;
 }
@@ -774,14 +792,23 @@ void InterpreterCore::ExecuteInstructionList(
 
   platform::RecordEvent record_prepare(
       "PrepareAtomic", platform::TracerEventType::UserDefined, 1);
-  // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
-  // those for the next step
-  auto atomic_deps = atomic_deps_.get();
-  auto atomic_var_ref = atomic_var_ref_.get();
 
-  atomic_deps_ = async_work_queue_->PrepareAtomicDeps(dependecy_count_);
-  atomic_var_ref_ =
-      async_work_queue_->PrepareAtomicVarRef(var_scope_.VecMetaInfo());
+  std::unique_ptr<std::vector<std::atomic<size_t>>> atomic_deps = nullptr;
+  std::unique_ptr<std::vector<std::atomic<size_t>>> atomic_var_ref = nullptr;
+
+  if (async_work_queue_->QueueNumThreads(kPrepareWorkQueueIdx)) {
+    // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
+    // those for the next step
+    atomic_deps = atomic_deps_.get();
+    atomic_var_ref = atomic_var_ref_.get();
+
+    atomic_deps_ = async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+    atomic_var_ref_ =
+        async_work_queue_->PrepareAtomicVarRef(var_scope_.VecMetaInfo());
+  } else {
+    atomic_deps = interpreter::PrepareAtomicDeps(dependecy_count_);
+    atomic_var_ref = interpreter::PrepareAtomicVarRef(var_scope_.VecMetaInfo());
+  }
   record_prepare.End();
 
   exception_holder_.Clear();

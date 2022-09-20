@@ -12,101 +12,199 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
-import copy
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.framework import Variable
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid import core
+from .process_mesh import ProcessMesh
+from .process_mesh import get_current_process_mesh
+from .process_mesh import set_current_process_mesh
+from .process_mesh import reset_current_process_mesh
 from .dist_context import get_default_distributed_context
 from .dist_tensor import DistributedTensor
-from .dist_op import DistributedModule
-from .dist_attribute import TensorDistributedAttribute
-from .dist_attribute import OperatorDistributedAttribute
+from .dist_op import DistributedOperatorHelper
+from .utils import verify_shard_spec, convert_to_dims_mapping
 
 
-def _static_mode_check():
-    if _non_static_mode():
-        raise RuntimeError("Auto-parallel only supports static mode for now, "
-                           "please use paddle.enable_static() first.")
-
-
-def shard_tensor(x, dist_attr=None):
+def shard_tensor(x, process_mesh=None, shard_spec=None):
     """
-    Add distributed attributes for a tensors.
+    Shard a tensor on a process mesh according to the shard specification.
 
     Args:
         x (Tensor): the tensor to be sharded.
-        dist_attr (dict): the tensor distributed attributes. The accepted attributes are as follow:
-            "process_mesh": a nested list an to describe the mesh topology of logical processes.
-            "dims_mapping": a list to describe the mapping between `x` and `process_mesh`, the dimension
-                `i` of `x` is split across the dimension `dims_mapping[i]` of `process_mesh`,
-                where -1 means that tensor dimension is not split.
-            Both process_mesh and dims_mapping are optional and users can specify as need.
+        process_mesh (ProcessMesh, optional): An instance of ProcessMesh describes a mesh
+            topology of the used logical processes where the tensor is sharded. If it is None,
+            the found current process mesh will be used. And an error will be raised if the
+            current process mesh cannot be found. Default: None.
+        shard_spec (list, optional): a list to describe the sharding mapping between `x` and `process_mesh`,
+            which means the dimension `i` of `x` is split across the dimension `shard_spec[i]` of `process_mesh`,
+            where `None` means that tensor dimension is not split. For example, given a tensor wih
+            the shape [6, 12] and a process mesh with the shape [2, 3] and the dimension names ["x", "y"]:
+                If `shard_spec=["x", "y"]`, each shard of the tensor will have a shape [3, 4];
+                If `shard_spec=["y", "x"]`, each shard of the tensor will have a shape [2, 6];
+                If `shard_spec=["x", None]`, each shard of the tensor will have a shape [3, 12];
+                If `shard_spec=[None, "x"]`, each shard of the tensor will have a shape [6, 4];
+                If `shard_spec=["y", None]`, each shard of the tensor will have a shape [2, 12];
+                If `shard_spec=[None, "y"]`, each shard of the tensor will have a shape [6, 4];
+                If `shard_spec=[None, None]`, each shard of the tensor will have a shape [6, 12];
+        If the `shard_spec` is None, the tensor will be replicated across all the processes of `process_mesh`.
+        In the above example, the `shard_spec=None` is same as 'shard_spec=[None, None]'. Defaults: None.
 
     Returns:
-        Tensor: the tensor `x` annotated with distributed attributes.
+        Tensor: the tensor `x` annotated with sharding information.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.distributed as dist
+            from paddle.distributed.fleet import auto
 
-            paddle.enable_static()
-
+            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
             x = paddle.ones([4, 6])
-            dist.shard_tensor(x, dist_attr={"process_mesh": [[0, 1], [2, 3]],
-                                            "dims_mapping": [0, -1]})
+            shard_spec = ["x", "y"]
+            auto.shard_tensor(x, mesh, shard_spec)
 
     """
-    _static_mode_check()
-    assert dist_attr is None or isinstance(dist_attr, (dict, TensorDistributedAttribute)), \
-        "The type of dist_attr must be None, dict or TensorDistributedAttribute."
-    dist_tensor = DistributedTensor(x, dist_attr)
-    dist_tensor.dist_attr.mark_annotated_as(dist_attr)
+
+    if process_mesh is not None:
+        assert isinstance(process_mesh, ProcessMesh), \
+            "Argument process_mesh {} is not an instance of ProcessMesh".format(process_mesh)
+    else:
+        process_mesh = get_current_process_mesh()
+        assert  process_mesh is not None, \
+            "Specify the process mesh argument or use ProcessMesh context manager first."
+    assert isinstance(shard_spec, list), \
+        "Argument shard_spec {} is not an instance of list".format(shard_spec)
+    dist_tensor = DistributedTensor(x)
+    serial_tensor = dist_tensor.serial_tensor
+    dist_tensor.dist_attr.process_mesh = process_mesh
+    if serial_tensor.type == core.VarDesc.VarType.READER \
+        or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+        or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+        tensor_shape = []
+    else:
+        tensor_shape = serial_tensor.shape
+    if shard_spec is not None:
+        assert verify_shard_spec(shard_spec, tensor_shape, process_mesh), \
+            "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+                serial_tensor.name, shard_spec, tensor_shape, process_mesh)
+        dist_tensor.dist_attr.dims_mapping = convert_to_dims_mapping(
+            shard_spec, process_mesh)
+    if process_mesh is not None:
+        dist_tensor.dist_attr.mark_annotated("process_mesh")
+    if shard_spec is not None:
+        dist_tensor.dist_attr.mark_annotated("dims_mapping")
     default_dist_ctx = get_default_distributed_context()
     default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
+    dist_tensor = default_dist_ctx.get_dist_tensor_for_program(x)
     return x
 
 
-def shard_op(op_fn, dist_attr=None):
+def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     """
-    Call a functioin and add distributed attributes for ops added by the function.
+    Shard an operation on a process mesh according to its input and output shard specification.
 
     Args:
-        op_fn (callable): a callable operator or module to be sharded.
-        dist_attr (dict): the operator distributed attributes. The accepted attributes are classified into
-            two categories. The first category decsribes the distributed attributes shared by all inputs and
-            outputs, and only `process_mesh` can be specified now. The second category describes distributed
-            attributes for inputs or outputs same as the `dist_attr` of `shard_tensor`. All of them are
-            optional and users can specify them as need. Note that `process_mesh` for operators must be the
-            same as these process_meshes for inputs and outputs.
+        op (Callable): a callable operator or module to be sharded.
+        process_mesh (ProcessMesh, optional): An instance of ProcessMesh describes a mesh
+            topology of the used logical processes where the op is sharded. All of its inputs and
+            outputs are sharded by this process mesh. If it is None, the found current process mesh
+            will be used. And an error will be raised if the current process mesh cannot be found.
+            Default: None.
+        in_shard_specs (list of list, optional): a list of list to describe the sharding specifications
+            for the inputs. Each item of `in_shard_specs` is a `shard_spec` between the correspoinding input
+            and `process_mesh`. If one item is None, the cooresponding input is replicated across all processes
+            If it is None, all inputs are replicated accross all processes. Note that the lenght of the
+            `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
+            Default: None.
+        out_shard_specs (list of list, optional): a list of list to describe the sharding specifications
+            for the outputs. Each item of `out_shard_specs` is a `shard_spec` between the correspoinding output
+            and `process_mesh`. If one item is None, the cooresponding output is replicated across all processes
+            If it is None, all outputs are replicated accross all processes. Note that the lenght of the
+            `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
+            Default: None. Default: None.
 
     Returns:
-        list: the outputs of the function `op_fn`, which are annotated with distributed attributes.
+        Outputs of `op`, each of which is annotated with sharding information.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.distributed as dist
-
-            paddle.enable_static()
+            from paddle.distributed.fleet import auto
 
             x = paddle.ones([4, 6])
             y = paddle.zeros([4, 6])
-            dist_add = dist.shard_op(paddle.add,
-                                     dist_attr={
-                                         "process_mesh": [[2, 3, 1], [0, 4, 5]],
-                                         x: {"dims_mapping": [-1, 0]},
-                                         y: {"dims_mapping": [0, -1]}
-                                     })
+            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            dist_add = auto.shard_op(paddle.add,
+                                     in_shard_specs=[["x", "y"], ["y", None]],
+                                     out_shard_specs=[[None, "x"]])
             dist_add(x, y)
 
     """
-    _static_mode_check()
-    assert dist_attr is None or isinstance(dist_attr, (dict, OperatorDistributedAttribute)), \
-        "The type of dist_attr must be dict or OperatorDistributedAttribute."
-    dist_module = DistributedModule(op_fn, dist_attr)
-    return dist_module
+
+    if process_mesh is not None:
+        assert isinstance(process_mesh, ProcessMesh), \
+            "Argument process_mesh {} is not an instance of ProcessMesh".format(process_mesh)
+    else:
+        process_mesh = get_current_process_mesh()
+        assert  process_mesh is not None, \
+            "Specify the process mesh argument or use ProcessMesh context manager first."
+    in_dims_mappings = []
+    if in_shard_specs is not None:
+        assert all((isinstance(shard_spec, list) or shard_spec is None) for shard_spec in in_shard_specs), \
+            "in_shard_spec {} is not a list of list or None".format(in_shard_specs)
+        for shard_spec in in_shard_specs:
+            if shard_spec is not None:
+                in_dims_mappings.append(
+                    convert_to_dims_mapping(shard_spec, process_mesh))
+            else:
+                in_dims_mappings.append(None)
+    out_dims_mappings = []
+    if out_shard_specs is not None:
+        assert all((isinstance(shard_spec, list) or shard_spec is None) for shard_spec in out_shard_specs), \
+            "out_shard_spec {} is not a list of list or None".format(out_shard_specs)
+        for shard_spec in out_shard_specs:
+            if shard_spec is not None:
+                out_dims_mappings.append(
+                    convert_to_dims_mapping(shard_spec, process_mesh))
+            else:
+                out_dims_mappings.append(None)
+    op = DistributedOperatorHelper(op, process_mesh, in_dims_mappings,
+                                   out_dims_mappings)
+    return op
+
+
+def recompute(op):
+
+    class RecomputeOperator:
+
+        def __init__(self, op):
+            self._op = op
+
+        def __call__(self, *args, **kwargs):
+            default_prog = paddle.fluid.default_main_program()
+            cur_block = default_prog.current_block()
+            op_size = len(cur_block.ops)
+            output = self._op(*args, **kwargs)
+            new_op_size = len(cur_block.ops)
+
+            for idx in range(op_size, new_op_size):
+                op = cur_block.ops[idx]
+                op._set_attr("is_recompute@auto_parallel", True)
+
+            return output
+
+    return RecomputeOperator(op)
+
+
+_g_fetched_tensors = {}
+
+
+def fetch(tensor, name=None):
+    if name is None:
+        _g_fetched_tensors[tensor.name] = tensor
+    else:
+        _g_fetched_tensors[name] = tensor
+
+
+def _get_fetches():
+    return _g_fetched_tensors

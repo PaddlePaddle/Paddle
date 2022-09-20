@@ -24,6 +24,7 @@ namespace cub = hipcub;
 
 #include <iostream>
 
+#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/core/ddim.h"
@@ -355,16 +356,24 @@ using LayerNormScaleBiasT =
 template <typename T,
           typename U,
           int BlockDim,
-          bool ScaleBiasWithSameTypeX = false>
+          bool ScaleBiasWithSameTypeX = false,
+          typename InType = T,
+          typename OutType = T>
 __global__ void LayerNormForward(
-    const T *x,
+    const InType *x,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *bias,
-    T *y,
+    OutType *y,
     U *mean,
     U *var,
     float epsilon,
-    int64_t feature_size) {
+    int64_t feature_size,
+    const float *dequant_out_scale_data = nullptr,
+    const int quant_out_scale_offset = 0,
+    const float quant_in_scale = 1.0,
+    const int quant_round_type = 1,
+    const float quant_max_bound = 127.0,
+    const float quant_min_bound = -127.0) {
   __shared__ U mean_share;
   __shared__ U var_share;
   __shared__ U shared_mean[32];  // threadIdx.x / warpSize <= kMaxBlockDim /
@@ -405,36 +414,92 @@ __global__ void LayerNormForward(
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = data_convert<U, T>(
-            data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, U>(
-                scale[j]) *
-                (data_convert<T, U>(x[i]) - mean_val) * invvar +
-            data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, U>(
-                bias[j]));
+        if (std::is_same<OutType, int8_t>::value) {
+          y[i] = quant_helper(
+              data_convert<U, OutType>(
+                  data_convert<
+                      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                      U>(scale[j]) *
+                      (data_convert<InType, U>(x[i]) - mean_val) * invvar +
+                  data_convert<
+                      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                      U>(bias[j])),
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
+        } else {
+          y[i] = data_convert<U, OutType>(
+              data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                           U>(scale[j]) *
+                  (data_convert<InType, U>(x[i]) - mean_val) * invvar +
+              data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                           U>(bias[j]));
+        }
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = data_convert<U, T>(
-            data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, U>(
-                scale[j]) *
-            (data_convert<T, U>(x[i]) - mean_val) * invvar);
+        if (std::is_same<OutType, int8_t>::value) {
+          y[i] = quant_helper(
+              data_convert<U, OutType>(
+                  data_convert<
+                      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                      U>(scale[j]) *
+                  (data_convert<InType, U>(x[i]) - mean_val) * invvar),
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
+        } else {
+          y[i] = data_convert<U, OutType>(
+              data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                           U>(scale[j]) *
+              (data_convert<InType, U>(x[i]) - mean_val) * invvar);
+        }
       }
     }
   } else {  // scale == nullptr
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = data_convert<U, T>(
-            (data_convert<T, U>(x[i]) - mean_val) * invvar +
+        y[i] = data_convert<U, OutType>(
+            (data_convert<InType, U>(x[i]) - mean_val) * invvar +
             data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, U>(
                 bias[j]));
+        if (std::is_same<OutType, int8_t>::value) {
+          y[i] = quant_helper(
+              data_convert<U, OutType>(
+                  (data_convert<InType, U>(x[i]) - mean_val) * invvar +
+                  data_convert<
+                      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                      U>(bias[j])),
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
+        } else {
+          y[i] = data_convert<U, OutType>(
+              (data_convert<InType, U>(x[i]) - mean_val) * invvar +
+              data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                           U>(bias[j]));
+        }
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] =
-            data_convert<U, T>((data_convert<T, U>(x[i]) - mean_val) * invvar);
+        if (std::is_same<OutType, int8_t>::value) {
+          y[i] = quant_helper(
+              data_convert<U, OutType>(
+                  (data_convert<InType, U>(x[i]) - mean_val) * invvar),
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
+        } else {
+          y[i] = data_convert<U, OutType>(
+              (data_convert<InType, U>(x[i]) - mean_val) * invvar);
+        }
       }
     }
   }

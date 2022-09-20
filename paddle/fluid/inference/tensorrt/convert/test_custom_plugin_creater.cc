@@ -102,6 +102,8 @@ TEST(CustomPluginCreater, StaticShapePlugin) {
 
   framework::Scope scope;
 
+  tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
+
   auto &custom_plugin_tell = OpTeller::Global().GetCustomPluginTeller();
 
   framework::OpDesc custom_op(*op_desc, nullptr);
@@ -185,6 +187,8 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
       "X", nvinfer1::DataType::kFLOAT, nvinfer1::Dims4(-1, 2, 5, 5));
 
   framework::Scope scope;
+
+  tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
 
   auto &custom_plugin_tell = OpTeller::Global().GetCustomPluginTeller();
 

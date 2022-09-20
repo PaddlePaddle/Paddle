@@ -399,7 +399,8 @@ static bool IsCpuOp(const Instruction& instr) {
 // is supported heterogeneous place
 static bool IsSupportedHetePlace(const phi::Place& place) {
   return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
-         platform::is_xpu_place(place) || platform::is_ipu_place(place);
+         platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
+         platform::is_custom_place(place);
 }
 
 }  // namespace interpreter
