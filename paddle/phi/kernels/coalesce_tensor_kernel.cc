@@ -22,6 +22,10 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/kernels/funcs/math_function_impl.h"
+#endif
 
 namespace phi {
 
@@ -271,6 +275,19 @@ PD_REGISTER_KERNEL(coalesce_tensor,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(coalesce_tensor,
                    GPU,
+                   ALL_LAYOUT,
+                   phi::CoalesceTensorKernel,
+                   phi::dtype::float16,
+                   int,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_KERNEL(coalesce_tensor,
+                   XPU,
                    ALL_LAYOUT,
                    phi::CoalesceTensorKernel,
                    phi::dtype::float16,

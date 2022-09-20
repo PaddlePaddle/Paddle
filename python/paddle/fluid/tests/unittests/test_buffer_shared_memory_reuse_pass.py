@@ -103,11 +103,11 @@ class InplaceTestBase(unittest.TestCase):
                 compiled_programs.append(compiled_prog)
 
         all_vars_name = self.get_all_vars(prog1)
-        repeated_var_names = all_vars_name * 2
+        repeated_var_names = all_vars_name
         random.shuffle(repeated_var_names)  # add some random
 
-        for fetch_var in repeated_var_names:
-            for _ in range(4):
+        for fetch_var in repeated_var_names[:4]:
+            for _ in range(2):
                 with fluid.scope_guard(scope1):
                     fetch_val1, = exe.run(prog1,
                                           feed=feed_dict,
@@ -155,11 +155,11 @@ class InplaceTestBase(unittest.TestCase):
                                              places=places)
                 compiled_programs.append(compiled_program)
 
-        repeated_var_names = self.get_all_vars(prog1) * 2
+        repeated_var_names = self.get_all_vars(prog1)
         random.shuffle(repeated_var_names)  # add some random
 
-        for fetch_var in repeated_var_names:
-            for _ in range(4):
+        for fetch_var in repeated_var_names[:4]:
+            for _ in range(2):
                 fetch_vals = []
                 for scope, compiled_prog in zip(scopes, compiled_programs):
                     with fluid.scope_guard(scope):

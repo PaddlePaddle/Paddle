@@ -22,7 +22,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -111,18 +110,6 @@ void TensorToVector(const Tensor& src,
                     std::vector<T>* dst);
 template <typename T>
 void TesnorToVector(const Tensor& src, std::vector<T>* dst);
-
-void TensorToStream(std::ostream& os,
-                    const Tensor& tensor,
-                    const platform::DeviceContext& dev_ctx);
-void TensorFromStream(std::istream& is,
-                      Tensor* tensor,
-                      const platform::DeviceContext& dev_ctx);
-void TensorFromStream(std::istream& is,
-                      Tensor* tensor,
-                      const platform::DeviceContext& dev_ctx,
-                      const size_t& seek,
-                      const std::vector<int64_t>& shape);
 
 // convert dlpack's DLTensor to tensor
 void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);

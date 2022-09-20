@@ -137,6 +137,11 @@ def exp(x, out=None):
     return _simple_unop(LayerHelper('exp_p', **locals()))
 
 
+@REGISTER_FN('abs_p', 'X', 'Y')
+def abs(x, out=None):
+    return _simple_unop(LayerHelper('abs_p', **locals()))
+
+
 @REGISTER_FN('reshape_p', 'X', 'Y')
 def reshape(x, shape, out=None):
     return _manipulation_unop(LayerHelper('reshape_p', **locals()))
@@ -193,15 +198,17 @@ def concat(xs, axis=0, out=None):
     return out
 
 
-@REGISTER_FN('reduce_p', 'X', 'Y')
-def reduce(x, axis, keepdim=False, out=None):
+@REGISTER_FN('reduce_sum_p', 'X', 'Y')
+def reduce_sum(x, axis=None, keepdim=False, out=None):
+    axes = axis or tuple(range(0, len(x.shape)))
+    axes = (axes, ) if isinstance(axes, int) else axes
     if not isinstance(axis, (tuple, list)):
         raise TypeError(f'axis must be tuple or list, but got {type(axis)}')
     if not isinstance(keepdim, bool):
         raise TypeError(f'keepdim must be bool, but got {type(keepdim)}')
-    attrs = {'axis': axis, 'keepdim': keepdim}
 
-    helper = LayerHelper('reduce_p', **locals())
+    attrs = {'axis': axis, 'keepdim': keepdim}
+    helper = LayerHelper('reduce_sum_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -347,6 +354,21 @@ def eq(x, y, out=None):
     return _simple_binop(LayerHelper('eq_p', **locals()))
 
 
+@REGISTER_FN('gt_p', 'X', 'Y', 'Z')
+def gt(x, y, out=None):
+    return _simple_binop(LayerHelper('gt_p', **locals()))
+
+
+@REGISTER_FN('ge_p', 'X', 'Y', 'Z')
+def ge(x, y, out=None):
+    return _simple_binop(LayerHelper('ge_p', **locals()))
+
+
+@REGISTER_FN('ne_p', 'X', 'Y', 'Z')
+def ne(x, y, out=None):
+    return _simple_binop(LayerHelper('ne_p', **locals()))
+
+
 @REGISTER_FN('pow_p', 'X', 'Y', 'Z')
 def pow(x, y, out=None):
     return _simple_binop(LayerHelper('pow_p', **locals()))
@@ -355,3 +377,20 @@ def pow(x, y, out=None):
 @REGISTER_FN('max_p', 'X', 'Y', 'Z')
 def max(x, y, out=None):
     return _simple_binop(LayerHelper('max_p', **locals()))
+
+
+@REGISTER_FN('erf_p', 'X', 'Y')
+def erf(x, out=None):
+    return _simple_unop(LayerHelper('erf_p', **locals()))
+
+
+@REGISTER_FN('cast_p', 'X', 'Y')
+def cast(x, dtype, out=None):
+    helper = LayerHelper('cast_p', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type=helper.layer_type,
+                     inputs={'X': x},
+                     outputs={'Y': out},
+                     attrs={'dtype': dtype})
+    return out

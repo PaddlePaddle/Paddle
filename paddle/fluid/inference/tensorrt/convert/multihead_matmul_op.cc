@@ -536,8 +536,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
                   "but it's (%d) now.",
                   input->getDimensions().nbDims));
           // transpose weight_data from m * n to  n * m
-          auto* input_bias_qk =
-              engine_->GetITensor(op_desc.Input("BiasQK").front());
 
           TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                         static_cast<void*>(weight_data),
@@ -615,6 +613,17 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
           plugin_inputs.push_back(fc_layer->getOutput(0));
+          auto inputs = op_desc.Inputs();
+          bool hasBiasQK =
+              (inputs.find("BiasQK") == inputs.end()) ? false : true;
+          nvinfer1::ITensor* input_bias_qk = nullptr;
+          if (hasBiasQK) {
+            input_bias_qk =
+                engine_->GetITensor(op_desc.Input("BiasQK").front());
+          } else {
+            // fake input will be updated in qkv_plugin
+            input_bias_qk = fc_layer->getOutput(0);
+          }
           plugin_inputs.push_back(input_bias_qk);
           bool with_fp16 =
               engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();

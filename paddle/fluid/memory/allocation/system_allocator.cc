@@ -111,15 +111,14 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
     munlock(p, size);
 #endif
   }
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
+  platform::RecordMemEvent(
+      p, CPUPlace(), size, platform::TracerMemEventType::ReservedFree);
 #ifdef _WIN32
   _aligned_free(p);
 #else
   free(p);
 #endif
-
-  HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
-  platform::RecordMemEvent(
-      p, CPUPlace(), size, platform::TracerMemEventType::ReservedFree);
 }
 
 bool CPUAllocator::UseGpu() const { return false; }

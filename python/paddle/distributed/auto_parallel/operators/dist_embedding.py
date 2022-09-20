@@ -31,7 +31,7 @@ from paddle.fluid.framework import Program, Parameter, Variable
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
-from ..utils import _get_comm_group, _get_idx_in_axis, _get_corresponding_rank
+from ..utils import _get_comm_group, _get_idx_in_axis, _get_corresponding_rank, set_var_dist_attr
 from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op
 from ..cost import build_comm_costs_from_descs, build_comp_costs_from_descs, build_dp_costs
 from ..cost import EmbeddingOpCost, EmbeddingGradOpCost
@@ -48,6 +48,79 @@ register_distributed_operator_impl_container(
     DistributedEmbedding("lookup_table_v2"))
 register_distributed_operator_impl_container(
     DistributedEmbedding("c_embedding"))
+register_distributed_operator_impl_container(
+    DistributedEmbedding("lookup_table"))
+
+
+def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
+
+    assert len(
+        Ids_var.shape
+    ) == 3, "input Ids to lookup_table should have 3 dimensions but got [{}] with shape [{}]".format(
+        Ids_var.name, Ids_var.shape)
+    if not Ids_var.stop_gradient:
+        raise NotImplementedError(
+            'Requiring the gradient of Ids of lookup_table(v1）dist op is not currently supported. Please open an issue with details on your use case so that we can prioritize adding this (for instance, adversarial training for language model).'
+        )
+
+    target_shape = list(Ids_var.shape[:-1])
+    intermediate_var_0 = main_block.create_var(
+        name=unique_name.generate_with_ignorable_key(".".join(
+            ["dist_reshape", 'tmp'])),
+        dtype=Ids_var.dtype,
+        shape=target_shape,
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        persistable=False,
+        stop_gradient=True)
+
+    target_shape = [0] + list(Ids_var.shape[:-1])
+    xshape_var = main_block.create_var(
+        name=unique_name.generate_with_ignorable_key(".".join(
+            ["dist_Xshape", 'tmp'])),
+        dtype=Ids_var.dtype,
+        shape=target_shape,
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        persistable=False,
+        stop_gradient=True)
+
+    # TODO use inplace reshape for memory saving
+    reshape_op = main_block.append_op(type='reshape2',
+                                      inputs={'X': [Ids_var]},
+                                      outputs={
+                                          'Out': [intermediate_var_0],
+                                          'XShape': [xshape_var]
+                                      },
+                                      attrs={
+                                          "shape": [0, -1],
+                                      })
+
+    # set dist attr
+    op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
+    Ids_var_dist_attr = op_dist_attr.get_input_dist_attr(Ids_var.name)
+    assert Ids_var_dist_attr is not None
+    intermediate_var_0_dist_attr = set_var_dist_attr(
+        ctx, intermediate_var_0, Ids_var_dist_attr.dims_mapping,
+        Ids_var_dist_attr.process_mesh)
+    set_var_dist_attr(ctx, xshape_var,
+                      [-1] + list(Ids_var_dist_attr.dims_mapping),
+                      Ids_var_dist_attr.process_mesh)
+    op_dist_attr.del_input_dist_attr(Ids_var.name)
+    op_dist_attr.set_input_dist_attr(intermediate_var_0.name,
+                                     intermediate_var_0_dist_attr)
+
+    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr.process_mesh = Ids_var_dist_attr.process_mesh
+    new_op_dist_attr.impl_type = "default"
+    new_op_dist_attr.impl_idx = 0
+    new_op_dist_attr.set_input_dims_mapping(Ids_var.name,
+                                            Ids_var_dist_attr.dims_mapping)
+    new_op_dist_attr.set_output_dims_mapping(intermediate_var_0.name,
+                                             Ids_var_dist_attr.dims_mapping)
+    new_op_dist_attr.set_output_dims_mapping(
+        xshape_var.name, [-1] + list(Ids_var_dist_attr.dims_mapping))
+    ctx.set_op_dist_attr_for_program(reshape_op, new_op_dist_attr)
+
+    return intermediate_var_0
 
 
 # RowParallel
@@ -253,6 +326,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         Ids_var = main_block.var(kwargs['Ids'][0])
         Weight_var = main_block._var_recursive(kwargs['W'][0])
         Out_var = main_block.var(kwargs['Out'][0])
+
+        # support lookup_table_v1
+        if src_op.type == 'lookup_table':
+            Ids_var = adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var)
 
         # got dist attribute info
         embedding_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
@@ -531,4 +608,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 register_distributed_operator_impl("lookup_table_v2",
                                    DistributedEmbeddingImpl("row_parallel"))
 register_distributed_operator_impl("c_embedding",
+                                   DistributedEmbeddingImpl("row_parallel"))
+register_distributed_operator_impl("lookup_table",
                                    DistributedEmbeddingImpl("row_parallel"))

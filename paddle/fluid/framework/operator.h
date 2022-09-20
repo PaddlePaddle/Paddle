@@ -182,11 +182,17 @@ class OperatorBase {
   }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE_NE(
-        attrs_.find(name),
-        attrs_.end(),
-        platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
-    return PADDLE_GET_CONST(T, attrs_.at(name));
+    auto it = attrs_.find(name);
+    if (it == attrs_.end()) {
+      it = runtime_attrs_.find(name);
+      PADDLE_ENFORCE_NE(
+          it,
+          runtime_attrs_.end(),
+          platform::errors::NotFound(
+              "(%s) is not found in AttributeMap and RuntimeAttributeMap.",
+              name));
+    }
+    return PADDLE_GET_CONST(T, it->second);
   }
   void SetAttr(const std::string& name, const Attribute& v) {
     PADDLE_ENFORCE_EQ(
@@ -445,26 +451,10 @@ class ExecutionContext {
   template <typename T, typename DevContext>
   Tensor AllocateTmpTensor(const framework::DDim& dim,
                            const DevContext& dev_ctx) const {
-    auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
-    auto& deleter = tmp_allocation_ptr.get_deleter();
-    auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation =
-        std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
-
-    PADDLE_ENFORCE_GE(
-        allocation_ptr->size(),
-        phi::product(dim) * sizeof(T),
-        platform::errors::PreconditionNotMet(
-            "The data memory size(%d) is less than the tensor needed memory "
-            "size(%d).",
-            allocation_ptr->size(),
-            phi::product(dim) * sizeof(T)));
-
-    paddle::framework::Tensor temp_tensor(framework::TransToPhiDataType(
-        framework::ToDataType(std::type_index(typeid(T)))));
-    temp_tensor.Resize(dim);
-    temp_tensor.ResetHolder(std::move(shared_allocation));
-    return temp_tensor;
+    phi::DenseTensor tmp;
+    tmp.Resize(dim);
+    dev_ctx.template Alloc<T>(&tmp);
+    return tmp;
   }
 
   const RuntimeContext Context() const { return ctx_; }
@@ -519,6 +509,13 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     auto vars = ctx_.MultiInputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
       return var->IsType<phi::DenseTensor>();
+    });
+  }
+
+  bool IsSelectedRowsInputs(const std::string& name) const override {
+    auto vars = ctx_.MultiInputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SelectedRows>();
     });
   }
 
@@ -696,10 +693,9 @@ class OperatorWithKernel : public OperatorBase {
 
   /**
    * Transfer data from scope to a transferred scope. If there is no data need
-   * to
-   * be tranfered, it returns nullptr.
+   * to be transferred, it returns nullptr.
    *
-   * * transfered_inplace_vars is a output vector.
+   * transfered_inplace_vars is a output vector.
    */
   Scope* PrepareData(const Scope& scope,
                      const OpKernelType& expected_kernel_key,

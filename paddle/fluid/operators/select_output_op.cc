@@ -83,7 +83,7 @@ class SelectOutputOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     // (minimal viable product) here.
     AddComment(R"DOC(
 Split input variable into one output branch. The mask is an integer tensor to
-specify which output branch should copy the input. 
+specify which output branch should copy the input.
 )DOC");
   }
 };

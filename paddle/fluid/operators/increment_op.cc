@@ -61,7 +61,7 @@ class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Increment Operator.
 
-The equation is: 
+The equation is:
 $$Out = X + step$$
 
 )DOC");

@@ -425,7 +425,7 @@ struct EnforceNotMet : public std::exception {
  *     __ROLE: (string), Input or Output
  *     __NAME: (string), Input or Output name
  *     __OP_TYPE: (string), the op type
- *  
+ *
  * Return: The data pointed to by the pointer.
  *
  * Examples:

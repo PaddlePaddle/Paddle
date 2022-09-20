@@ -92,3 +92,15 @@ PD_REGISTER_KERNEL(uniform_random_sr,
                    float,
                    double) {}
 #endif
+
+#if defined(PADDLE_WITH_XPU)
+
+PD_REGISTER_KERNEL(uniform_random_raw_sr,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::sr::UniformRandomRawKernel,
+                   float) {}
+
+PD_REGISTER_KERNEL(
+    uniform_random_sr, XPU, ALL_LAYOUT, phi::sr::UniformRandomKernel, float) {}
+#endif

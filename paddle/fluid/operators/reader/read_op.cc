@@ -106,7 +106,7 @@ class ReadOp : public framework::OperatorBase {
             scope.FindVar(Input("Reader")), "Input", "Reader", "Read")
             .GetMutable<framework::ReaderHolder>();
     std::vector<std::string> out_arg_names = Outputs("Out");
-    std::vector<framework::LoDTensor> ins;
+    paddle::framework::LoDTensorArray ins;
 
     // For profiling
     platform::RecordEvent record_event(

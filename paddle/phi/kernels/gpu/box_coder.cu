@@ -199,7 +199,10 @@ void BoxCoderKernel(const Context &dev_ctx,
   int grid = (row * col + block - 1) / block;
 
   int bytes = var_size * sizeof(float);
-  auto dev_var = paddle::memory::Alloc(dev_ctx, bytes);
+  auto dev_var = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   float *dev_var_data = reinterpret_cast<float *>(dev_var->ptr());
   auto cplace = phi::CPUPlace();
   const auto gplace = dev_ctx.GetPlace();

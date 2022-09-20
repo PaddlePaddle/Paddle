@@ -58,21 +58,19 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.device_context(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
 
-    return framework::OpKernelType(
-        data_type, ctx.device_context(), layout, library);
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -161,7 +159,7 @@ REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
 REGISTER_OP_VERSION(gaussian_random)
     .AddCheckpoint(
         R"ROC(
-               Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList] 
+               Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList]
                and modify the attribute of [shape])ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewInput("ShapeTensor",
