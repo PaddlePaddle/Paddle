@@ -14,10 +14,8 @@
 
 import os
 import paddle
-from paddle.distributed.utils import get_cluster
-from paddle.distributed.utils import logger
-from paddle.distributed.utils import get_gpus
-from paddle.distributed.utils import get_cluster_from_args
+from paddle.distributed.utils.launch_utils import get_cluster, get_gpus, get_cluster_from_args
+from paddle.distributed.utils.launch_utils import logger
 
 __all__ = []
 
