@@ -29,7 +29,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
-  auto* out_data = param_out->mutable_data<T>(dev_ctx.GetPlace());
+  auto* out_data = dev_ctx.template Alloc<T>(param_out);
   const T* param_data = param.data<T>();
   const auto* grad_data = grad.data<T>();
   const auto* lr = learning_rate.data<T>();
