@@ -1,5 +1,5 @@
 [flake8]
-select = E,F,W
+select = C,E,F,W
 exclude = ./build
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
