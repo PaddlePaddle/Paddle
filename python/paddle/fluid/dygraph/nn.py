@@ -1083,17 +1083,17 @@ class InstanceNorm(layers.Layer):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the param_attr is not set, the parameter is initialized
-	     one. If it is set to False, will not create param_attr. Default: None.
+            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the param_attr is not set, the parameter is initialized
+            one. If it is set to False, will not create param_attr. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
-             If it is set to False, will not create bias_attr. Default: None.
+            If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            If it is set to False, will not create bias_attr. Default: None.
         dtype(str, optional): Indicate the data type of the input ``Tensor``,
-             which can be float32 or float64. Default: float32.
+            which can be float32 or float64. Default: float32.
 
     Returns:
         None.
@@ -1557,8 +1557,8 @@ class Dropout(layers.Layer):
 class Embedding(layers.Layer):
     r"""
     :alias_main: paddle.nn.Embedding
-	:alias: paddle.nn.Embedding,paddle.nn.layer.Embedding,paddle.nn.layer.common.Embedding
-	:old_api: paddle.fluid.dygraph.Embedding
+    :alias: paddle.nn.Embedding,paddle.nn.layer.Embedding,paddle.nn.layer.common.Embedding
+    :old_api: paddle.fluid.dygraph.Embedding
 
     **Embedding Layer**
 
@@ -1719,8 +1719,8 @@ class Embedding(layers.Layer):
 class LayerNorm(layers.Layer):
     r"""
     :alias_main: paddle.nn.LayerNorm
-	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
-	:old_api: paddle.fluid.dygraph.LayerNorm
+    :alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
+    :old_api: paddle.fluid.dygraph.LayerNorm
 
     This interface is used to construct a callable object of the ``LayerNorm`` class.
     For more details, refer to code examples.
@@ -2981,8 +2981,8 @@ class RowConv(layers.Layer):
 class GroupNorm(layers.Layer):
     """
     :alias_main: paddle.nn.GroupNorm
-	:alias: paddle.nn.GroupNorm,paddle.nn.layer.GroupNorm,paddle.nn.layer.norm.GroupNorm
-	:old_api: paddle.fluid.dygraph.GroupNorm
+    :alias: paddle.nn.GroupNorm,paddle.nn.layer.GroupNorm,paddle.nn.layer.norm.GroupNorm
+    :old_api: paddle.fluid.dygraph.GroupNorm
 
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.

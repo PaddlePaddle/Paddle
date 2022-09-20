@@ -475,9 +475,9 @@ def rpn_target_assign(bbox_pred,
 
 def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
     r"""
-	:alias_main: paddle.nn.functional.sigmoid_focal_loss
-	:alias: paddle.nn.functional.sigmoid_focal_loss,paddle.nn.functional.loss.sigmoid_focal_loss
-	:old_api: paddle.fluid.layers.sigmoid_focal_loss
+    :alias_main: paddle.nn.functional.sigmoid_focal_loss
+    :alias: paddle.nn.functional.sigmoid_focal_loss,paddle.nn.functional.loss.sigmoid_focal_loss
+    :old_api: paddle.fluid.layers.sigmoid_focal_loss
 
     **Sigmoid Focal Loss Operator.**
 
@@ -771,9 +771,9 @@ def detection_output(loc,
 @templatedoc()
 def iou_similarity(x, y, box_normalized=True, name=None):
     """
-	:alias_main: paddle.nn.functional.iou_similarity
-	:alias: paddle.nn.functional.iou_similarity,paddle.nn.functional.loss.iou_similarity
-	:old_api: paddle.fluid.layers.iou_similarity
+    :alias_main: paddle.nn.functional.iou_similarity
+    :alias: paddle.nn.functional.iou_similarity,paddle.nn.functional.loss.iou_similarity
+    :old_api: paddle.fluid.layers.iou_similarity
 
     ${comment}
 
@@ -1558,9 +1558,9 @@ def ssd_loss(location,
              normalize=True,
              sample_size=None):
     r"""
-	:alias_main: paddle.nn.functional.ssd_loss
-	:alias: paddle.nn.functional.ssd_loss,paddle.nn.functional.loss.ssd_loss
-	:old_api: paddle.fluid.layers.ssd_loss
+    :alias_main: paddle.nn.functional.ssd_loss
+    :alias: paddle.nn.functional.ssd_loss,paddle.nn.functional.loss.ssd_loss
+    :old_api: paddle.fluid.layers.ssd_loss
 
     **Multi-box loss layer for object detection algorithm of SSD**
 
@@ -1843,66 +1843,66 @@ def prior_box(
         Tuple: A tuple with two Variable (boxes, variances)
 
         boxes(Variable): the output prior boxes of PriorBox.
-	4-D tensor, the layout is [H, W, num_priors, 4].
-        H is the height of input, W is the width of input,
-        num_priors is the total box count of each position of input.
+            4-D tensor, the layout is [H, W, num_priors, 4].
+            H is the height of input, W is the width of input,
+            num_priors is the total box count of each position of input.
 
         variances(Variable): the expanded variances of PriorBox.
-    	4-D tensor, the layput is [H, W, num_priors, 4].
-        H is the height of input, W is the width of input
-        num_priors is the total box count of each position of input
+            4-D tensor, the layput is [H, W, num_priors, 4].
+            H is the height of input, W is the width of input
+            num_priors is the total box count of each position of input
 
     Examples:
         .. code-block:: python
 
-	    #declarative mode
-	    import paddle.fluid as fluid
-	    import numpy as np
-        import paddle
-        paddle.enable_static()
-	    input = fluid.data(name="input", shape=[None,3,6,9])
-	    image = fluid.data(name="image", shape=[None,3,9,12])
-	    box, var = fluid.layers.prior_box(
-                 input=input,
-                 image=image,
-		 min_sizes=[100.],
-                 clip=True,
-                 flip=True)
+            #declarative mode
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+            paddle.enable_static()
+            input = fluid.data(name="input", shape=[None,3,6,9])
+            image = fluid.data(name="image", shape=[None,3,9,12])
+            box, var = fluid.layers.prior_box(
+                    input=input,
+                    image=image,
+            min_sizes=[100.],
+                    clip=True,
+                    flip=True)
 
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
 
-	    # prepare a batch of data
-	    input_data = np.random.rand(1,3,6,9).astype("float32")
-	    image_data = np.random.rand(1,3,9,12).astype("float32")
+            # prepare a batch of data
+            input_data = np.random.rand(1,3,6,9).astype("float32")
+            image_data = np.random.rand(1,3,9,12).astype("float32")
 
-	    box_out, var_out = exe.run(fluid.default_main_program(),
-                feed={"input":input_data,"image":image_data},
-                fetch_list=[box,var],
-                return_numpy=True)
+            box_out, var_out = exe.run(fluid.default_main_program(),
+                    feed={"input":input_data,"image":image_data},
+                    fetch_list=[box,var],
+                    return_numpy=True)
 
-	    # print(box_out.shape)
-	    # (6, 9, 1, 4)
-	    # print(var_out.shape)
-	    # (6, 9, 1, 4)
+            # print(box_out.shape)
+            # (6, 9, 1, 4)
+            # print(var_out.shape)
+            # (6, 9, 1, 4)
 
-	    # imperative mode
-	    import paddle.fluid.dygraph as dg
+            # imperative mode
+            import paddle.fluid.dygraph as dg
 
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		image = dg.to_variable(image_data)
-    		box, var = fluid.layers.prior_box(
-		    input=input,
-		    image=image,
-		    min_sizes=[100.],
-		    clip=True,
-		    flip=True)
-		# print(box.shape)
-		# [6L, 9L, 1L, 4L]
-                # print(var.shape)
-		# [6L, 9L, 1L, 4L]
+            with dg.guard(place) as g:
+                input = dg.to_variable(input_data)
+                image = dg.to_variable(image_data)
+                box, var = fluid.layers.prior_box(
+                input=input,
+                image=image,
+                min_sizes=[100.],
+                clip=True,
+                flip=True)
+            # print(box.shape)
+            # [6L, 9L, 1L, 4L]
+                    # print(var.shape)
+            # [6L, 9L, 1L, 4L]
 
     """
 
@@ -2177,7 +2177,7 @@ def multi_box_head(inputs,
                    name=None,
                    min_max_aspect_ratios_order=False):
     """
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Base on SSD ((Single Shot MultiBox Detector) algorithm, generate prior boxes,
     regression location and classification confidence on multiple input feature

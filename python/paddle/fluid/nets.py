@@ -44,7 +44,7 @@ def simple_img_conv_pool(input,
                          act=None,
                          use_cudnn=True):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     The simple_img_conv_pool api is composed of :ref:`api_fluid_layers_conv2d` and :ref:`api_fluid_layers_pool2d` .
 
@@ -152,7 +152,7 @@ def img_conv_group(input,
                    pool_type="max",
                    use_cudnn=True):
     """
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     The Image Convolution Group is composed of Convolution2d, BatchNorm, DropOut,
     and Pool2D. According to the input arguments, img_conv_group will do serials of
@@ -263,7 +263,7 @@ def sequence_conv_pool(input,
                        pool_type="max",
                        bias_attr=None):
     """
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     **This api takes input as an LoDTensor. If input is a Tensor, please use**
     :ref:`api_fluid_nets_simple_img_conv_pool` **instead**
@@ -331,7 +331,7 @@ def sequence_conv_pool(input,
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.glu")
 def glu(input, dim=-1):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` ,
     :ref:`api_fluid_layers_sigmoid`  and :ref:`api_fluid_layers_elementwise_mul` .
@@ -382,7 +382,7 @@ def scaled_dot_product_attention(queries,
                                  num_heads=1,
                                  dropout_rate=0.):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     This interface Multi-Head Attention using scaled dot product.
     Attention mechanism can be seen as mapping a query and a set of key-value

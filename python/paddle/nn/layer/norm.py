@@ -135,15 +135,15 @@ class InstanceNorm1D(_InstanceNormBase):
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the weight_attr is not set, the parameter is initialized
-	     one. If it is set to False, will not create weight_attr. Default: None.
+            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the weight_attr is not set, the parameter is initialized
+            one. If it is set to False, will not create weight_attr. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
-             If it is set to False, will not create bias_attr. Default: None.
+            If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            If it is set to False, will not create bias_attr. Default: None.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL". Default "NCL".
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -207,15 +207,15 @@ class InstanceNorm2D(_InstanceNormBase):
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the weight_attr is not set, the parameter is initialized
-	     one. If it is set to False, will not create weight_attr. Default: None.
+            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the weight_attr is not set, the parameter is initialized
+            one. If it is set to False, will not create weight_attr. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
-             If it is set to False, will not create bias_attr. Default: None.
+            If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+    `       If it is set to False, will not create bias_attr. Default: None.
         data_format(str, optional): Specify the input data format, could be "NCHW". Default: NCHW.
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -231,16 +231,16 @@ class InstanceNorm2D(_InstanceNormBase):
 
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
+            import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
-          instance_norm = paddle.nn.InstanceNorm2D(2)
-          instance_norm_out = instance_norm(x)
+            np.random.seed(123)
+            x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
+            x = paddle.to_tensor(x_data)
+            instance_norm = paddle.nn.InstanceNorm2D(2)
+            instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out)
+            print(instance_norm_out)
     """
 
     def _check_input_dim(self, input):
@@ -277,15 +277,15 @@ class InstanceNorm3D(_InstanceNormBase):
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the weight_attr is not set, the parameter is initialized
-	     one. If it is set to False, will not create weight_attr. Default: None.
+            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the weight_attr is not set, the parameter is initialized
+            one. If it is set to False, will not create weight_attr. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
-             If it is set to False, will not create bias_attr. Default: None.
+            If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            If it is set to False, will not create bias_attr. Default: None.
         data_format(str, optional): Specify the input data format, could be "NCDHW". Default: NCDHW.
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -301,16 +301,16 @@ class InstanceNorm3D(_InstanceNormBase):
 
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
+            import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
-          instance_norm = paddle.nn.InstanceNorm3D(2)
-          instance_norm_out = instance_norm(x)
+            np.random.seed(123)
+            x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
+            x = paddle.to_tensor(x_data)
+            instance_norm = paddle.nn.InstanceNorm3D(2)
+            instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy)
+            print(instance_norm_out.numpy)
     """
 
     def _check_input_dim(self, input):
@@ -330,13 +330,13 @@ class GroupNorm(Layer):
         num_groups(int): The number of groups that divided from channels.
         num_channels(int): The number of channels of input.
         epsilon(float, optional): The small value added to the variance to prevent
-                                  division by zero. Default: 1e-05.
+            division by zero. Default: 1e-05.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
-                                         scale :math:`g`. If it is set to False, no scale will be added to the output units.
-                                         If it is set to None, the bias is initialized one. Default: None.
+            scale :math:`g`. If it is set to False, no scale will be added to the output units.
+            If it is set to None, the bias is initialized one. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
-                                        bias :math:`b`. If it is set to False, no bias will be added to the output units.
-                                        If it is set to None, the bias is initialized zero. Default: None.
+            bias :math:`b`. If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
         name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -350,17 +350,17 @@ class GroupNorm(Layer):
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
+            import numpy as np
 
-          paddle.disable_static()
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 6, 2, 2)).astype('float32')
-          x = paddle.to_tensor(x_data)
-          group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
-          group_norm_out = group_norm(x)
+            paddle.disable_static()
+            np.random.seed(123)
+            x_data = np.random.random(size=(2, 6, 2, 2)).astype('float32')
+            x = paddle.to_tensor(x_data)
+            group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
+            group_norm_out = group_norm(x)
 
-          print(group_norm_out.numpy())
+            print(group_norm_out.numpy())
     """
 
     def __init__(self,
@@ -465,8 +465,8 @@ class GroupNorm(Layer):
 class LayerNorm(Layer):
     r"""
     :alias_main: paddle.nn.LayerNorm
-	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
-	:old_api: paddle.fluid.dygraph.LayerNorm
+    :alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
+    :old_api: paddle.fluid.dygraph.LayerNorm
 
     This interface is used to construct a callable object of the ``LayerNorm`` class.
     For more details, refer to code examples.

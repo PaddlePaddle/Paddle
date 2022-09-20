@@ -65,7 +65,7 @@ __all__ = [
 
 class RNNCell(object):
     """
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     RNNCell is the base class for abstraction representing the calculations
     mapping the input and state to the output and new state. It is suitable to
@@ -235,7 +235,7 @@ class RNNCell(object):
 
 class GRUCell(RNNCell):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Gated Recurrent Unit cell. It is a wrapper for
     `fluid.contrib.layers.rnn_impl.BasicGRUUnit` to make it adapt to RNNCell.
@@ -333,7 +333,7 @@ class GRUCell(RNNCell):
 
 class LSTMCell(RNNCell):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Long-Short Term Memory cell. It is a wrapper for
     `fluid.contrib.layers.rnn_impl.BasicLSTMUnit` to make it adapt to RNNCell.
@@ -757,7 +757,7 @@ def birnn(cell_fw,
 
 class Decoder(object):
     """
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Decoder is the base class for any decoder instance used in `dynamic_decode`.
     It provides interface for output generation for one time step, which can be
@@ -2294,7 +2294,7 @@ def dynamic_lstm(input,
                  dtype='float32',
                  name=None):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     **Note**:
         1. This OP only supports LoDTensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
@@ -2471,7 +2471,7 @@ def lstm(input,
          default_initializer=None,
          seed=-1):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     **Note**:
         This OP only supports running on GPU devices.
@@ -2654,7 +2654,7 @@ def dynamic_lstmp(input,
                   cell_clip=None,
                   proj_clip=None):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     **Note**:
         1. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
@@ -2868,7 +2868,7 @@ def dynamic_gru(input,
                 h_0=None,
                 origin_mode=False):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     **Note: The input type of this must be LoDTensor. If the input type to be
     processed is Tensor, use** :ref:`api_fluid_layers_StaticRNN` .
@@ -3032,7 +3032,7 @@ def gru_unit(input,
              gate_activation='sigmoid',
              origin_mode=False):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Gated Recurrent Unit (GRU) RNN cell. This operator performs GRU calculations for
     one time step and it supports these two modes:
@@ -3432,7 +3432,7 @@ def lstm_unit(x_t,
               bias_attr=None,
               name=None):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Long-Short Term Memory (LSTM) RNN cell. This operator performs LSTM calculations for
     one time step, whose implementation is based on calculations described in `RECURRENT

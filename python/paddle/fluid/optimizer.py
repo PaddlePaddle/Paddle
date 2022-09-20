@@ -1544,7 +1544,7 @@ class MomentumOptimizer(Optimizer):
 
 class DGCMomentumOptimizer(Optimizer):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
 
@@ -3804,7 +3804,7 @@ Lamb = LambOptimizer
 
 class ModelAverage(Optimizer):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     The ModelAverage optimizer accumulates specific continuous historical parameters
     during training. The accumulated historical range can be controlled by the passed
@@ -4120,7 +4120,7 @@ class ModelAverage(Optimizer):
 
 class ExponentialMovingAverage(object):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Compute the moving average of parameters with exponential decay.
     Given a parameter :math:`\\theta`, its exponential moving average (EMA)
@@ -4128,9 +4128,8 @@ class ExponentialMovingAverage(object):
 
     ..  math::
 
-        \\text{EMA}_0 & = 0
-
-	\\text{EMA}_t & = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
+        \text{EMA}_0 & = 0 \\
+        \text{EMA}_t & = \text{decay} * \text{EMA}_{t-1} + (1 - \text{decay}) * \theta_t
 
     The average results calculated by **update()** method will be saved in
     temporary variables which are created and maintained by the object, and can
@@ -4366,7 +4365,7 @@ class ExponentialMovingAverage(object):
 
 class PipelineOptimizer(object):
     """
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Pipeline Optimizer: Make a program to run as pipeline, that is splitting a
     program into multiple sections (sub-programs) and each section run on a
@@ -6149,7 +6148,7 @@ class PipelineOptimizer(object):
 
 class RecomputeOptimizer(Optimizer):
     """
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Recompute Optimizer Wrapper
 
@@ -6241,7 +6240,7 @@ class RecomputeOptimizer(Optimizer):
     @framework.deprecate_stat_dict
     def load(self, state_dict):
         """
-	    :api_attr: Static Graph
+        :api_attr: Static Graph
 
         load function is not supported by Recompute Optimizer for now.
         :return: None
@@ -6833,7 +6832,7 @@ class RecomputeOptimizer(Optimizer):
 
 class LookaheadOptimizer(object):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     This implements the Lookahead optimizer of the
     paper : https://arxiv.org/abs/1907.08610.
@@ -6843,11 +6842,10 @@ class LookaheadOptimizer(object):
     training step. Lookahead updates the slow_params and fast_params
     every k training steps as follows:
 
-    .. math::
+    ..  math::
 
-        slow\_param_t &= slow\_param_{t-1} + \\alpha * (fast\_param_{t-1} - slow\_param_{t-1})
-
-	fast\_param_t &=  slow\_param_t
+        slow\_param_t &= slow\_param_{t-1} + \alpha * (fast\_param_{t-1} - slow\_param_{t-1}) \\
+        fast\_param_t &=  slow\_param_t
 
     Args:
         inner_optimizer (Optimizer): The optimizer that update fast params step by step.

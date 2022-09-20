@@ -48,7 +48,7 @@ class PSDispatcher(object):
 
 class HashName(PSDispatcher):
     """
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Hash variable names to several endpoints using python
     "hash()" function.
@@ -90,7 +90,7 @@ class HashName(PSDispatcher):
 
 class RoundRobin(PSDispatcher):
     """
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     Distribute variables to several endpoints using
     RondRobin<https://en.wikipedia.org/wiki/Round-robin_scheduling> method.
