@@ -108,7 +108,7 @@ class MatMulV2OpConverter : public OpConverter {
     VLOG(3) << "Convert a fluid matmul_v2_op_float to TensorRT ";
 
     RreplenishLayerAndOutput(
-        layer, "matmul_v2_op_float_no_alpha", {output_name}, test_mode);
+        layer, "matmul_v2_op", {output_name}, test_mode);
   }
 };
 
