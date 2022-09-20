@@ -7,6 +7,9 @@ repos:
     rev: v1.1.14
     hooks:
     -   id: remove-crlf
+    -   id: remove-tabs
+        files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
+        args: [--whitespaces-count, '4']
 -   repo: https://github.com/google/yapf
     rev: v0.32.0
     hooks:
