@@ -1740,6 +1740,40 @@ class TestInputSpecCompatibility(unittest.TestCase):
             shutil.rmtree(save_dir)
 
 
+class NotJitForward(paddle.nn.Layer):
+
+    def __init__(self):
+        super(NotJitForward, self).__init__()
+
+    def forward(self, x, y):
+        return x + y
+
+
+class TestNotJitForward(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_jit_not_save_forward(self):
+        layer = NotJitForward()
+
+        save_dir = os.path.join(self.temp_dir.name, "jit_not_save_forward")
+        path = save_dir + "/model"
+
+        paddle.jit.save(layer=layer, path=path, skip_forward=True)
+
+        self.assertTrue(not os.path.exists(path + ".pdmodel"))
+        self.assertTrue(not os.path.exists(path + ".pdparam"))
+
+        with self.assertRaises(ValueError):
+            paddle.jit.load(path=path)
+
+        shutil.rmtree(save_dir)
+
+
 if __name__ == '__main__':
     with fluid.framework._test_eager_guard():
         unittest.main()

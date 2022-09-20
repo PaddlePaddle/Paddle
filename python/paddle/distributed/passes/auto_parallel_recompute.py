@@ -95,7 +95,7 @@ class RecomputeState(ProgramStats):
 
     def modify_forward_desc_for_recompute(self, dist_context):
         """
-        If program's foward part has 'dropout' op, this function will insert 
+        If program's foward part has 'dropout' op, this function will insert
         a seed op before it to guarantee that two dropout op have the same outputs.
         """
         op_types = [op.desc.type() for op in self._ops]

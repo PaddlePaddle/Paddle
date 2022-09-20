@@ -33,7 +33,7 @@ from types import MethodType
 import paddle
 from paddle import nn
 from paddle.distributed import collective
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 
 from .group_sharded_storage import GradStorage
 from .group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
@@ -47,8 +47,8 @@ def _trainable(param):
 
 
 class GroupShardedStage2(nn.Layer):
-    """ 
-    A wrapper for Sharding Stage2 Layer in Dygraph. 
+    """
+    A wrapper for Sharding Stage2 Layer in Dygraph.
     .. warning: GroupShardedStage2 encapsulates the layer strategy and integrates it into the nn.Layer.
     .. ZeRO: https://arxiv.org/pdf/1910.02054.pdf.
     """

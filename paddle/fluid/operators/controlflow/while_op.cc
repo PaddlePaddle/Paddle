@@ -221,11 +221,6 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
-                                      "Vars that would skip eager deletion."
-                                      "Users should not set this manually.")
-        .SetDefault(std::vector<std::string>())
-        .AsExtra();
     AddComment(R"DOC(
 )DOC");
   }
