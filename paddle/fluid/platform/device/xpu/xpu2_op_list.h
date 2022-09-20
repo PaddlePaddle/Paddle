@@ -449,6 +449,9 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
      {"data_norm",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+     {"data_norm_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+ 
   };
 
   return s_xpu2_kernels;

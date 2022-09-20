@@ -13,6 +13,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/squared_l2_norm_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/framework/data_layout.h"
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
+#include "paddle/fluid/platform/collective_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -67,6 +71,93 @@ class  DataNormXPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class  DataNormGradXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    const auto *x = ctx.Input<Tensor>("X");
+    const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    const auto *scales = ctx.Input<Tensor>("Scales");
+    const auto *means = ctx.Input<Tensor>("Means");
+    const float epsilon = ctx.Attr<float>("epsilon");
+    const float dr = ctx.Attr<float>("summary_decay_rate");
+    const bool need_sync_stats = ctx.Attr<bool>("sync_stats");
+
+    const auto &x_dims = x->dims();
+    // Align with CPU version, but should we add this restriction?
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::PreconditionNotMet(
+                                            "The Input dim size should be 2"));
+    const int N = x_dims[0];
+    const int C = x_dims[1];
+    // init output
+    Tensor *d_x = nullptr;
+    T* dx = nullptr;
+    if (ctx.HasOutput(framework::GradVarName("X"))) {
+      d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+      dx = d_x->mutable_data<T>(ctx.GetPlace());
+    }
+    T *d_batch_size = ctx.Output<Tensor>(framework::GradVarName("BatchSize"))
+                          ->mutable_data<T>(ctx.GetPlace());
+    T *d_batch_sum = ctx.Output<Tensor>(framework::GradVarName("BatchSum"))
+                         ->mutable_data<T>(ctx.GetPlace());
+    T *d_batch_square_sum =
+        ctx.Output<Tensor>(framework::GradVarName("BatchSquareSum"))->mutable_data<T>(ctx.GetPlace());
+    /*
+     * data_norm_grad(Context *ctx, const T* dy, const T* scale, T* x, T* means,
+                 T* batch_size, T* batch_square_sum, T* batch_sum, T* dx,
+                 T squared_sum_epsilon, int N, int C);
+     * */
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    int r = xpu::data_norm_grad<T>(dev_ctx.x_context(), d_y->data<T>(),  scales->data<T>(), const_cast<T*>(x->data<T>()), const_cast<T*>(means->data<T>()),
+		    d_batch_size, d_batch_square_sum, d_batch_sum, dx,
+		    epsilon, N, C);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU data_norm_grad return wrong value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
+      if (need_sync_stats) {
+          //d_batch_size, d_batch_square_sum,d_batch_sum
+#if defined(PADDLE_WITH_XPU_BKCL)
+	  auto place = ctx.GetPlace();
+          auto comm = platform::BKCLCommContext::Instance().Get(0, place);
+	  auto stream = dev_ctx.x_context()->xpu_stream;
+          PADDLE_ENFORCE_EQ(bkcl_all_reduce(comm->comm(), d_batch_size, d_batch_size,
+		          C,  BKCL_FLOAT, BKCL_ADD, stream),
+			  BKCL_SUCCESS, platform::errors::PreconditionNotMet(
+                                        "BKCL all reduce failed"));
+          PADDLE_ENFORCE_EQ(bkcl_all_reduce(comm->comm(), d_batch_square_sum, d_batch_square_sum,
+                           C,  BKCL_FLOAT, BKCL_ADD, stream),
+			   BKCL_SUCCESS, platform::errors::PreconditionNotMet(
+                                        "BKCL all reduce failed"));
+          PADDLE_ENFORCE_EQ(bkcl_all_reduce(comm->comm(), d_batch_sum, d_batch_sum,
+                           C,  BKCL_FLOAT, BKCL_ADD, stream),
+			   BKCL_SUCCESS, platform::errors::PreconditionNotMet(
+                                        "BKCL all reduce failed"));
+#else
+	  PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with XPU, and need_sync_stats connot be "
+          "supported on windows now."));
+#endif	
+      }
+
+      T *batch_size_data =
+        ctx.Output<Tensor>("BatchSize")->mutable_data<T>(ctx.GetPlace());
+
+      T *batch_sum_data =
+        ctx.Output<Tensor>("BatchSum")->mutable_data<T>(ctx.GetPlace());
+      T *batch_square_sum_data =
+        ctx.Output<Tensor>("BatchSquareSum")->mutable_data<T>(ctx.GetPlace());
+      r = xpu::kernel_update_param<T>(dev_ctx.x_context(), d_batch_size, d_batch_sum, d_batch_square_sum,
+                 batch_size_data, batch_sum_data, batch_square_sum_data,  dr,  C);
+      PADDLE_ENFORCE_EQ(
+         r, XPU_SUCCESS,
+        platform::errors::External("XPU kernel_update_param return wrong value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
+  }
+};
+
+
+
 
 }  // namespace operators
 }  // namespace paddle
@@ -76,4 +167,6 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(
      data_norm, ops::DataNormXPUKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(
+     data_norm_grad, ops::DataNormGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif
