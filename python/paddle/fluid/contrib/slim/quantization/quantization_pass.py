@@ -1880,14 +1880,17 @@ class InsertQuantizeLinear(object):
         if self.channel_wise:
             scale_var_shape = var_node.shape()[self.quant_axis]
             scale_var_type = core.VarDesc.VarType.LOD_TENSOR
-            init_scale_value = np.ones(scale_var_shape, dtype=data_type) * _SCALE_DEFAULT_VALUE
+            init_scale_value = np.ones(scale_var_shape,
+                                       dtype=data_type) * _SCALE_DEFAULT_VALUE
         else:
             scale_var_shape = 1
             scale_var_type = var_node.type()
             init_scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
-        
-        if self._scale_dict is not None and var_node.name() in self._scale_dict.keys():
-            init_scale_value = np.array([self._scale_dict[var_node.name()]], dtype=data_type)
+
+        if self._scale_dict is not None and var_node.name(
+        ) in self._scale_dict.keys():
+            init_scale_value = np.array([self._scale_dict[var_node.name()]],
+                                        dtype=data_type)
 
         scale_var_node = graph.create_persistable_node(
             name=scale_name,
@@ -1895,7 +1898,7 @@ class InsertQuantizeLinear(object):
             shape=[scale_var_shape],
             var_dtype=var_node.dtype())
         _init_var_node(scale_var_node, init_scale_value, self._scope,
-                    self._place)
+                       self._place)
 
         zero_point_node = None
         if zero_point_node is None:
@@ -2742,6 +2745,7 @@ class OutScaleForInferencePassV2(object):
     """
     Insert quant/dequant linear op with act and remove moving_average_abs_max_scale op.
     """
+
     def __init__(self, scope, place, quant_bits=8):
         """
         This pass is used for setting output scales of some operators.
@@ -2775,7 +2779,7 @@ class OutScaleForInferencePassV2(object):
                 var_names = utils._get_op_output_var_names(op_node)
                 for var_name in var_names:
                     out_node = graph._find_node_by_name(op_node.outputs,
-                                                       var_name)
+                                                        var_name)
                     if out_node.dtype() not in \
                         [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]:
                         continue
@@ -2786,7 +2790,7 @@ class OutScaleForInferencePassV2(object):
                             graph, out_node)
                         dequantized_vars_map[var_name] = dequant_var_node
                     quant_dequant_node_map[var_name] = dequant_var_node
-        
+
         # remove unuse node and link act quant/dequant linear to op node
         for op_node in graph.all_op_nodes():
             if op_node.name() == 'moving_average_abs_max_scale':
@@ -2795,10 +2799,11 @@ class OutScaleForInferencePassV2(object):
                 var_names = utils._get_op_input_var_names(op_node)
                 for var_name in var_names:
                     if var_name in quant_dequant_node_map:
-                        in_node = graph._find_node_by_name(op_node.inputs,
-                                                        var_name)
-                        graph.update_input_link(in_node, quant_dequant_node_map[var_name], op_node)
- 
+                        in_node = graph._find_node_by_name(
+                            op_node.inputs, var_name)
+                        graph.update_input_link(
+                            in_node, quant_dequant_node_map[var_name], op_node)
+
         return graph
 
     def _scale_name(self, var_name):
@@ -2806,7 +2811,7 @@ class OutScaleForInferencePassV2(object):
         Return the scale name for the var named `var_name`.
         """
         return "%s@scale" % (var_name)
-    
+
     def _insert_quant_dequant_op(self, graph, var_node):
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
         var_name = var_node.name()
@@ -2817,10 +2822,11 @@ class OutScaleForInferencePassV2(object):
             shape=var_node.shape(),
             var_dtype=var_node.dtype())
         scale_var_node = graph._find_node_by_name(graph.all_persistable_nodes(),
-                                                       self._scale_name(var_name))
+                                                  self._scale_name(var_name))
         try:
-            zero_point_node = graph._find_node_by_name(graph.all_persistable_nodes(),
-                                                       "{}@zero_point".format(quant_var_node.name()))
+            zero_point_node = graph._find_node_by_name(
+                graph.all_persistable_nodes(),
+                "{}@zero_point".format(quant_var_node.name()))
         except:
             zero_point_node = graph.create_persistable_node(
                 name="{}@zero_point".format(quant_var_node.name()),
@@ -2828,8 +2834,8 @@ class OutScaleForInferencePassV2(object):
                 shape=scale_var_node.shape(),
                 var_dtype=core.VarDesc.VarType.INT32)
             _init_var_node(zero_point_node,
-                            np.zeros(scale_var_node.shape(), dtype="int32"),
-                            self._scope, self._place)
+                           np.zeros(scale_var_node.shape(), dtype="int32"),
+                           self._scope, self._place)
 
         inputs = {"X": var_node, "Scale": scale_var_node}
         if zero_point_node is not None:
@@ -2865,9 +2871,9 @@ class OutScaleForInferencePassV2(object):
         attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
 
         dequant_op_node = graph.create_op_node(op_type="dequantize_linear",
-                                             attrs=attrs,
-                                             inputs=inputs,
-                                             outputs={"Y": dequant_var_node})
+                                               attrs=attrs,
+                                               inputs=inputs,
+                                               outputs={"Y": dequant_var_node})
 
         graph.link_to(quant_var_node, dequant_op_node)
         graph.link_to(scale_var_node, dequant_op_node)

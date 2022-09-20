@@ -434,6 +434,7 @@ def calculate_quant_cos_error(orig_tensor, qdq_tensor):
 def l2_loss(gt, pred):
     return ((gt - pred)**2).mean()
 
+
 class tqdm(object):
 
     def __init__(self, total, bar_format='Loading|{bar}', ncols=80):
