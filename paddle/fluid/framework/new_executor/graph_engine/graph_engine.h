@@ -30,8 +30,7 @@ class GraphEngine {
 
   virtual ~GraphEngine() {}
 
-  virtual void SetGraph(Scope* scope,
-                        const ProgramDesc& prog,
+  virtual void SetGraph(const ProgramDesc& prog,
                         const std::vector<std::string>& feed_names,
                         const std::vector<std::string>& fetch_names,
                         bool add_fetch_op) = 0;
@@ -71,8 +70,7 @@ class CustomGraphEngine final : public GraphEngine {
         place_, phi::stream::Stream(place_, nullptr));
   }
 
-  void SetGraph(Scope* scope,
-                const ProgramDesc& prog,
+  void SetGraph(const ProgramDesc& prog,
                 const std::vector<std::string>& feed_names,
                 const std::vector<std::string>& fetch_names,
                 bool add_fetch_op) override {
@@ -230,6 +228,7 @@ class CustomGraphEngine final : public GraphEngine {
     phi::DeviceManager::GraphEngineExecuteGraph(
         place_,
         phi::stream::Stream(place_, nullptr),
+        reinterpret_cast<void*>(local_scope_),
         reinterpret_cast<void*>(copy_program_.get()),
         feed_tensor_name.data(),
         feed_tensor_data.data(),

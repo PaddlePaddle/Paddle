@@ -885,25 +885,9 @@ class CustomDevice : public DeviceInterface {
         reinterpret_cast<C_Stream>(const_cast<void*>(stream.raw_stream())));
   }
 
-  void GraphEnginePrepareGraph(size_t dev_id,
-                               const stream::Stream& stream,
-                               const void* prog,
-                               char** init_tensor_name,
-                               void** init_tensor_data,
-                               size_t init_tensor_num) override {
-    CHECK_PTR(pimpl_->graph_engine_prepare);
-    const auto device = &devices_pool[dev_id];
-    pimpl_->graph_engine_prepare(
-        device,
-        reinterpret_cast<C_Stream>(const_cast<void*>(stream.raw_stream())),
-        reinterpret_cast<C_Graph>(const_cast<void*>(prog)),
-        init_tensor_name,
-        init_tensor_data,
-        init_tensor_num);
-  }
-
   void GraphEngineExecuteGraph(size_t dev_id,
                                const stream::Stream& stream,
+                               const void* scope,
                                const void* prog,
                                char** feed_tensor_name,
                                void** feed_tensor_data,
@@ -916,6 +900,7 @@ class CustomDevice : public DeviceInterface {
     pimpl_->graph_engine_execute_graph(
         device,
         reinterpret_cast<C_Stream>(const_cast<void*>(stream.raw_stream())),
+        reinterpret_cast<C_Scope>(const_cast<void*>(scope)),
         reinterpret_cast<C_Graph>(const_cast<void*>(prog)),
         feed_tensor_name,
         feed_tensor_data,

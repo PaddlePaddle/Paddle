@@ -35,7 +35,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     VLOG(4) << "StandaloneExecutor: " << this
             << ", GraphEngine: " << graph_engine_.get() << " Run.";
 
-    graph_engine_->SetGraph(scope, prog_, feed_names, fetch_names, false);
+    graph_engine_->SetGraph(prog_, feed_names, fetch_names, false);
     return graph_engine_->Run(feed_names, fetch_names);
   } else {
     auto core =

@@ -91,6 +91,8 @@ void profiler_add_device_trace_event(C_Profiler prof, void* event);
 
 typedef struct C_Graph_st* C_Graph;
 
+typedef struct C_Scope_st* C_Scope;
+
 struct C_DeviceInterface {
   // Core fill it and plugin must to check it
   size_t size;
@@ -683,15 +685,9 @@ struct C_DeviceInterface {
   C_Status (*graph_engine_finalize)(const C_Device device,
                                     const C_Stream stream);
 
-  C_Status (*graph_engine_prepare)(const C_Device device,
-                                   const C_Stream stream,
-                                   const C_Graph graph,
-                                   char** init_tensor_name,
-                                   void** init_tensor_data,
-                                   size_t init_tensor_num);
-
   C_Status (*graph_engine_execute_graph)(const C_Device device,
                                          const C_Stream stream,
+                                         const C_Scope scope,
                                          const C_Graph graph,
                                          char** feed_tensor_name,
                                          void** feed_tensor_data,
