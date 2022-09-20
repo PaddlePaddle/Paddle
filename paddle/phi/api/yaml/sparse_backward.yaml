@@ -406,7 +406,7 @@
     data_type: query
 
 - backward_op : reshape_grad
-  forward : reshape(Tensor x, int[] new_shape) -> Tensor(out)
+  forward : reshape(Tensor x, int64_t[] new_shape) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   kernel :
