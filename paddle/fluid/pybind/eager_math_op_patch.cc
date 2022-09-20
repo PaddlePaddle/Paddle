@@ -109,34 +109,35 @@ void SetDevice(paddle::platform::Place place) {
   }
 }
 
+// scalar func only support add, radd, sub, rsub, mul, rmul, div, truediv.
+// this function will update gradually.
 paddle::experimental::Tensor CallScalarFuction(
     paddle::experimental::Tensor* self_tensor,
     PyObject* other_obj,
     std::string op_type) {
   paddle::experimental::Tensor ret;
+  float other;
   if (PyFloat_Check(other_obj)) {
+    other = CastPyArg2AttrFloat(other_obj, 0);
     if (_supported_int_dtype_.find(self_tensor->dtype()) !=
         _supported_int_dtype_.end()) {
+      (*self_tensor) = cast_ad_func(*self_tensor, DataType::FLOAT32);
+    }
+  } else if (PyLong_Check(other_obj)) {
+    other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+    if (op_type == "div" && _supported_int_dtype_.find(self_tensor->dtype()) !=
+                                _supported_int_dtype_.end()) {
       (*self_tensor) = cast_ad_func(*self_tensor, DataType::FLOAT32);
     }
   }
 
   if (op_type == "add" || op_type == "radd") {
-    ret = scale_ad_func(*self_tensor,
-                        phi::Scalar(1.0),
-                        CastPyArg2AttrFloat(other_obj, 0),
-                        true);
+    ret = scale_ad_func(*self_tensor, phi::Scalar(1.0), other, true);
   } else if (op_type == "sub") {
-    ret = scale_ad_func(*self_tensor,
-                        phi::Scalar(1.0),
-                        -CastPyArg2AttrFloat(other_obj, 0),
-                        true);
+    ret = scale_ad_func(*self_tensor, phi::Scalar(1.0), -other, true);
 
   } else if (op_type == "rsub") {
-    ret = scale_ad_func(*self_tensor,
-                        phi::Scalar(-1.0),
-                        CastPyArg2AttrFloat(other_obj, 0),
-                        true);
+    ret = scale_ad_func(*self_tensor, phi::Scalar(-1.0), other, true);
   }
 
   return ret;
