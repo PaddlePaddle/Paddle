@@ -19,7 +19,7 @@ from paddle import framework
 import paddle
 from paddle.fluid import core
 from paddle.fluid.dygraph.parallel import _split_tensors, sync_params_buffers, build_groups
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph, EagerParamBase
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 from collections import OrderedDict
 from .log_util import logger
 
@@ -118,7 +118,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
 def broadcast_input_data(hcg, *inputs, **kwargs):
     cur_device = paddle.get_device()
     for v in inputs:
-        if isinstance(v, (core.VarBase, EagerParamBase)):
+        if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
                 if "gpu" in cur_device and in_dygraph_mode():
                     v_gpu = v.cuda()
@@ -129,7 +129,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
             logger.error("it doesn't support data type {}".format(type(v)))
 
     for k, v in kwargs.items():
-        if isinstance(v, (core.VarBase, EagerParamBase)):
+        if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
                 if "gpu" in cur_device and in_dygraph_mode():
                     v_gpu = v.cuda()
