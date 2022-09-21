@@ -82,6 +82,33 @@ class TestCase2(TestSliceOp):
         self.out = self.input[-3:3, 0:100, :, 2:-1]
 
 
+class TestSliceZerosShapeTensor(OpTest):
+
+    def setUp(self):
+        self.op_type = "slice"
+        self.config()
+        self.inputs = {'Input': self.input}
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'infer_flags': self.infer_flags,
+            'use_mkldnn': True
+        }
+
+    def config(self):
+        self.input = np.random.random([0, 0, 0]).astype("float32")
+        self.starts = [1]
+        self.ends = [2]
+        self.axes = [0]
+        self.infer_flags = []
+        self.out = self.input[1:2]
+
+    def test_check_output(self):
+        self.check_output_with_place(paddle.CPUPlace())
+
+
 # 1.2 with attr(decrease)
 class TestSliceOp_decs_dim(OpTest):
 

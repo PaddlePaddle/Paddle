@@ -108,8 +108,8 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
       Sequence Unpad Operator
 
-      This operator removes the padding data in the input sequences and convert 
-      them into sequences with actual length as output, identitied by lod 
+      This operator removes the padding data in the input sequences and convert
+      them into sequences with actual length as output, identitied by lod
       information.
 
       Example:
@@ -117,9 +117,9 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
       Given input tensor Input(X):
           X.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
                     [ 6.0,  7.0,  8.0,  9.0, 10.0],
-                    [11.0, 12.0, 13.0, 14.0, 15.0]], 
-`     
-      in which there are 3 sequences padded to length 5, and the actual length 
+                    [11.0, 12.0, 13.0, 14.0, 15.0]],
+`
+      in which there are 3 sequences padded to length 5, and the actual length
       specified by Input(Length):
 
           Length.data = [2, 3, 4],
@@ -127,7 +127,7 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
       after unpadding, Output(Out) will be:
 
           Out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
-          Out.lod = [[0, 2, 5, 9]]      
+          Out.lod = [[0, 2, 5, 9]]
 
     )DOC");
   }

@@ -230,7 +230,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_launch_coverage',
     'test_mkldnn_conv_activation_fuse_pass',
     'test_inference_model_io',
-    'test_fusion_repeated_fc_relu_op',  #'heter_listen_and_server_test', 
+    'test_fusion_repeated_fc_relu_op',  #'heter_listen_and_server_test',
     'cudnn_desc_test',
     'test_beam_search_op',
     'test_var_conv_2d',

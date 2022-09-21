@@ -125,7 +125,7 @@ class ActivationOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     // When activation is first oneDNN op (there was some non oneDNN op
     // previously)
@@ -607,7 +607,7 @@ class LogitOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1e-6f) the epsilon for input clamp bound")
         .SetDefault(1e-6f);
     AddComment(R"DOC(
-Logit Operator. 
+Logit Operator.
 
 this function is defined as follow:
 $ logit=ln\left ( {\frac {x} {1-x}} \right ) $
