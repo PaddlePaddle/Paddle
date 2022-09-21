@@ -285,7 +285,7 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
     for (int offset = 16; offset > 0; offset >>= 1) {
       T tmp_val = platform::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
       int tmp_id = platform::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
-      if (input.v < tmp_val) {
+      if (input.v < tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
         input.id = tmp_id;
       }
@@ -295,7 +295,7 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
     for (int offset = 16; offset > 0; offset >>= 1) {
       T tmp_val = platform::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
       int tmp_id = platform::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
-      if (input.v > tmp_val) {
+      if (input.v > tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
         input.id = tmp_id;
       }
