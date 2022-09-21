@@ -59,10 +59,11 @@ class BaseConfig(object):
         return result_dict
 
     def __repr__(self):
-        return yaml.dump(self.to_dict(),
-                         default_flow_style=False,
-                         sort_keys=True,
-                         indent=4)
+        result_dict = self.to_dict()
+        string = "{"
+        for k, v in result_dict.items():
+            string += "\"%s\":\"%s\"," % (k, v)
+        return string + "}"
 
     def __deepcopy__(self, memo):
         cls = self.__class__
@@ -130,7 +131,7 @@ class Strategy(BaseConfig):
         .. code-block:: python
 
             import paddle
-            import paddle.distributed.auto_parallel as auto
+            from paddle.distributed.fleet import auto
 
             strategy = auto.Strategy()
             sharding = strategy.sharding
