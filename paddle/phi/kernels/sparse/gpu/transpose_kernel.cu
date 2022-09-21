@@ -27,10 +27,10 @@ __global__ void TransposeCooCudaKernel(const int64_t *x_indices_data,
                                        const std::size_t n_dim,
                                        const int64_t x_nnz,
                                        int64_t *out_indices_data) {
-  for (std::size_t i = 0; i < n_dim; ++i) {
-    CUDA_KERNEL_LOOP_TYPE(j, x_nnz, int64_t) {
-      out_indices_data[j + i * x_nnz] = x_indices_data[j + perm[i] * x_nnz];
-    }
+  CUDA_KERNEL_LOOP_TYPE(index, x_nnz * n_dim, int64_t) {
+    int64_t i = index / x_nnz;
+    int64_t j = index % x_nnz;
+    out_indices_data[index] = x_indices_data[j + perm[i] * x_nnz];
   }
 }
 
@@ -50,27 +50,23 @@ __global__ void TransposeCsr2DCudaKernel(const int64_t *x_crows_data,
   // compute out_crows_data by x_cols_data
   for (int64_t i = __index__; i <= out_dims[0]; i += blockDim.x * gridDim.x) {
     out_crows_data[i] = 0;
+    for (int64_t j = 0; j < x_nnz; ++i) {
+      if (x_cols_data[j] + 2 <= i) {
+        out_crows_data[i]++;
+      }
+    }
   }
   __syncthreads();
-  if (__index__ == 0) {
-    for (int64_t i = 0; i < x_nnz; ++i) {
-      int j = x_cols_data[i];
-      out_crows_data[j + 2]++;
-    }
-    for (int64_t i = 0; i < out_dims[0]; i += 1) {
-      out_crows_data[i + 1] += out_crows_data[i];
-    }
-    // compute out_cols_data and out_values_data by out_crows_data and x
-    for (int i = 0; i < x_dims[0]; ++i) {
-      int64_t start = x_crows_data[i];
-      int64_t end = x_crows_data[i + 1];
-      for (int64_t j = start; j < end; ++j) {
-        int64_t x_cols_j = x_cols_data[j] + 1;
-        int64_t jjj = out_crows_data[x_cols_j];
-        out_cols_data[jjj] = i;
-        out_values_data[jjj] = x_values_data[j];
-        out_crows_data[x_cols_j]++;
-      }
+  // compute out_cols_data and out_values_data by out_crows_data and x
+  for (int64_t i = __index__; i < x_dims[0]; i += blockDim.x * gridDim.x) {
+    int64_t start = x_crows_data[i];
+    int64_t end = x_crows_data[i + 1];
+    for (int64_t j = start; j < end; ++j) {
+      int64_t x_cols_j = x_cols_data[j] + 1;
+      int64_t jjj = out_crows_data[x_cols_j];
+      out_cols_data[jjj] = i;
+      out_values_data[jjj] = x_values_data[j];
+      out_crows_data[x_cols_j]++;
     }
   }
 }
@@ -82,7 +78,7 @@ __global__ void TransposeCsr3DCudaKernel(const int64_t *x_crows_data,
                                          const int *perm,
                                          const int64_t *x_dims,
                                          const int64_t *out_dims,
-                                         const std::size_t n_dims,
+                                         const std::size_t n_dim,
                                          const int64_t x_nnz,
                                          int64_t *out_crows_data,
                                          int64_t *out_cols_data,
@@ -158,6 +154,7 @@ void TransposeCooKernel(const Context &dev_ctx,
                         SparseCooTensor *out) {
   // create out sparse tensor
   int64_t x_nnz = x.nnz();
+  std::size_t n_dim = perm.size();
   DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
   DenseTensor out_values(x.values());
@@ -177,12 +174,13 @@ void TransposeCooKernel(const Context &dev_ctx,
   cudaMemcpy(
       d_perm, perm.data(), sizeof(int) * perm.size(), cudaMemcpyHostToDevice);
 #endif
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz, 1);
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz * n_dim, 1);
   TransposeCooCudaKernel<<<config.block_per_grid.x,
                            config.thread_per_block.x,
                            0,
                            dev_ctx.stream()>>>(
-      x_indices_data, d_perm, perm.size(), x_nnz, out_indices_data);
+      x_indices_data, d_perm, n_dim, x_nnz, out_indices_data);
 }
 
 template <typename T, typename Context>
@@ -190,7 +188,7 @@ void TransposeCsrKernel(const Context &dev_ctx,
                         const SparseCsrTensor &x,
                         const std::vector<int> &perm,
                         SparseCsrTensor *out) {
-  unsigned int n_dim = perm.size();
+  std::size_t n_dim = perm.size();
   // create out sparse tensor
   DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_crows;
