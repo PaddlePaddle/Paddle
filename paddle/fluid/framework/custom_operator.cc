@@ -302,7 +302,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     PADDLE_THROW(platform::errors::External("%s", ex.what()));
   } catch (...) {
     PADDLE_THROW(platform::errors::Fatal(
-        "Custom operator raises an unknown exception in rumtime."));
+        "Custom operator raises an unknown exception in runtime."));
   }
 }
 
