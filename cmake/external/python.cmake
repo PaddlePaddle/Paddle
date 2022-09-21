@@ -82,6 +82,6 @@ if(PYTHONINTERP_FOUND)
         "please use pip to upgrade protobuf. pip install -U protobuf")
   endif()
 endif(PYTHONINTERP_FOUND)
-if 
+
 include_directories(${PYTHON_INCLUDE_DIR})
 include_directories(${PYTHON_NUMPY_INCLUDE_DIR})
