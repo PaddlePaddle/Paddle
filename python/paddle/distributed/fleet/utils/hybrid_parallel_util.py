@@ -120,8 +120,9 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     for v in inputs:
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
-                if "gpu" in cur_device and in_dygraph_mode():
-                    v_gpu = v.cuda()
+                if "gpu" in cur_device and in_dygraph_mode() \
+                    and not v.place.is_gpu_place():
+                    v_gpu = v.cuda(cur_device.split(":")[1])
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
@@ -131,8 +132,9 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     for k, v in kwargs.items():
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
-                if "gpu" in cur_device and in_dygraph_mode():
-                    v_gpu = v.cuda()
+                if "gpu" in cur_device and in_dygraph_mode() \
+                    and not v.place.is_gpu_place():
+                    v_gpu = v.cuda(cur_device.split(":")[1])
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
