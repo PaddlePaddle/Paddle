@@ -156,9 +156,10 @@ class OptimizationTunerTrial(Trial):
             draws += h1_format.format("{} auto=True <-> {}".format(name, name))
             draws += line + "\n"
             my_configs = getattr(self.space, name)
-            keys = my_configs.keys()
+            keys = my_configs.to_dict().keys()
             for key in keys:
-                draws += h2_format.format(key, str(my_configs.get(key, None)))
+                draws += h2_format.format(
+                    key, str(my_configs.to_dict().get(key, None)))
 
         result_res = draws + border
         return result_res

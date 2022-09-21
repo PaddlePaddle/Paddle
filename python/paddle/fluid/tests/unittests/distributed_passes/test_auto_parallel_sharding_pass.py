@@ -20,7 +20,7 @@ import unittest
 import paddle
 import paddle.nn as nn
 import paddle.distributed.fleet as fleet
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.passes import new_pass, PassManager
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 

@@ -177,7 +177,7 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
                   [x_14, x_15, x_16]]
                  [[x_21, x_22, x_23]
                   [x_24, x_25, x_26]]]
-    
+
         OutputShape = [2, 3, 5, 5]
 
     Step 1:
@@ -185,12 +185,12 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
         Generate relative coordinates according to OutputShape.
         The values of relative coordinates are in the interval between -1 and 1.
         The shape of the relative coordinates is [2, H, W] as below:
-    
+
         C = [[[-1.  -1.  -1.  -1.  -1. ]
               [-0.5 -0.5 -0.5 -0.5 -0.5]
               [ 0.   0.   0.   0.   0. ]
               [ 0.5  0.5  0.5  0.5  0.5]
-              [ 1.   1.   1.   1.   1. ]] 
+              [ 1.   1.   1.   1.   1. ]]
              [[-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]
@@ -198,7 +198,7 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
               [-1.  -0.5  0.   0.5  1. ]]]
         C[0] is the coordinates in height axis and  C[1] is the coordinates in
         width axis.
-    
+
     Step2:
         Tanspose and reshape C to shape [H * W, 2] and append ones to last
         dimension. The we get:

@@ -42,7 +42,7 @@ paddle.disable_static()
 
 def get_warning_index(api):
     """
-    Given an paddle API, return the index of the Warinng information in its doc string if exists; 
+    Given an paddle API, return the index of the Warinng information in its doc string if exists;
     If Warinng information doesn't exist, return the default ERROR_WARNING_POSTION, sys.maxsize.
 
     Args:
@@ -72,7 +72,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
 
     def test_fluid_data(self):
         """
-        test old fluid elementwise_mul api, it should fire Warinng function, 
+        test old fluid elementwise_mul api, it should fire Warinng function,
         which insert the Warinng info on top of API's doc string.
         """
         paddle.enable_static()
@@ -91,7 +91,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
 
     def test_fluid_elementwise_mul(self):
         """
-        test old fluid elementwise_mul api, it should trigger Warinng function, 
+        test old fluid elementwise_mul api, it should trigger Warinng function,
         which insert the Warinng info on top of API's doc string.
         """
 
@@ -133,7 +133,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
 
     def test_ops_elementwise_mul(self):
         """
-        Test for new C++ elementwise_op, expected result should be True, 
+        Test for new C++ elementwise_op, expected result should be True,
         because not matter what fluid.layers.elementwise_mul is deprecated.
         """
 
