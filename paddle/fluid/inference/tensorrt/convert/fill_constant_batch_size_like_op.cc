@@ -69,7 +69,7 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     auto layer = TRT_ENGINE_ADD_LAYER(
         engine_, Fill, nvinfer1::Dims{}, nvinfer1::FillOperation::kLINSPACE);
     std::vector<float> value_vec(1, value);
-    std::vector<float> beta_vec(3, 0.);
+    std::vector<float> beta_vec(shape.size(), 0.);
     layer->setAlpha(value);
     layer->setBeta(0.f);
     layer->setInput(0, *out_shape_tensor);
