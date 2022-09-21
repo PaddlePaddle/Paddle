@@ -118,6 +118,21 @@ class ProcessGroupStream : public ProcessGroup {
       int length,
       bool sync_op,
       bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      int offset,
+      int length,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      int offset,
+      int length,
+      bool sync_op,
+      bool use_calc_stream);
 };
 
 }  // namespace distributed

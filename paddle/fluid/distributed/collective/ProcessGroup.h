@@ -205,6 +205,16 @@ class ProcessGroup {
         "ProcessGroup%s does not support AllGather_Partial", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      int offset,
+      int length,
+      bool) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support AllGather_Partial", GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>&,    // NOLINT
       std::vector<phi::DenseTensor>&) {  // NOLINT

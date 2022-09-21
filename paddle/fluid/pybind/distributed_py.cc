@@ -516,6 +516,37 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+              "all_gather_partial_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_in_tensor,
+                 py::handle py_out_tensor,
+                 int nranks,
+                 int rank_id) {
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    out_tensor.impl());
+                std::vector<phi::DenseTensor> in_tensors = {*in_dense};
+                std::vector<phi::DenseTensor> out_tensors = {*out_dense};
+                int numel = (*in_dense).numel();
+                int send_numel = numel / nranks;
+                int offset = send_numel * rank_id;
+                return self.AllGather_Partial(in_tensors,
+                                              out_tensors,
+                                              offset,
+                                              send_numel,
+                                              /*sync_op*/ true,
+                                              /*use_calc_stream*/ true);
+              },
+              py::arg("in"),
+              py::arg("out"),
+              py::arg("num"),
+              py::arg("id"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
               "send_on_calc_stream",
               [](distributed::ProcessGroupStream &self,
                  py::handle py_tensor,
