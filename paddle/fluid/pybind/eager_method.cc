@@ -217,6 +217,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 #endif
 #if defined(PADDLE_WITH_XPU)
   } else if (self->tensor.is_xpu()) {
+    platform::CPUPlace place;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -236,7 +237,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       paddle::memory::Copy(
           place,
           reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
-          tensor.place(),
+          dense_tensor->place(),
           dense_tensor->data(),
           sizeof_dtype * numel);
     }
