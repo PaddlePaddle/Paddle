@@ -2,7 +2,8 @@
 select = C,E,F,W
 exclude =
     ./build,
-    # A trick to exclude fluid/ but keep fluid/tests/
+    # A trick to exclude fluid/ but keep fluid/tests/, see more at
+    # https://github.com/PaddlePaddle/Paddle/pull/46290#discussion_r976392010
     ./python/paddle/fluid/[!t]**,
     ./python/paddle/fluid/transpiler/
 ignore =
