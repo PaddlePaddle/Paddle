@@ -110,6 +110,7 @@ std::vector<DenseTensor> PEEngine::operator()(
   std::vector<DenseTensor> outputs;
   utils::FetchOuts(info_->OutputArgNames(), scope_, &outputs);
   scope_.DropKids();
+  scope_.EraseVars(info_->OutputArgNames());
   return outputs;
 }
 
