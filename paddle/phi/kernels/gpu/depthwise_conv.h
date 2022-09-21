@@ -1252,7 +1252,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 #ifdef __HIPCC__
     int block_size = 256;
 #else
-    int block_size = 1024;
+    int block_size = 512;
 #endif
     int grid_size = (nums_output + block_size - 1) / block_size;
 
