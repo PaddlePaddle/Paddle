@@ -91,10 +91,10 @@ PURE_FP16_BLACK_LIST = {
 }
 
 BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
-BF16_BLACK_LIST = {''}
+BF16_BLACK_LIST = set()
 
-PURE_BF16_WHITE_LIST = {''}
-PURE_BF16_BLACK_LIST = {''}
+PURE_BF16_WHITE_LIST = set()
+PURE_BF16_BLACK_LIST = set()
 
 _g_amp_state_ = None
 

@@ -45,5 +45,12 @@ void WhereKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    where, GPU, ALL_LAYOUT, phi::WhereKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(where,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::WhereKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16) {}
