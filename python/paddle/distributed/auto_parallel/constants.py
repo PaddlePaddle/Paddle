@@ -45,7 +45,7 @@ set_field_default_config(BASE, "gradient_scale", True)
 set_field_default_config(BASE, "use_cache", True)
 set_field_default_config(BASE, "return_numpy", True)
 set_field_default_config(BASE, "all_ranks", False)
-set_field_default_config(BASE, "split_data", False)
+set_field_default_config(BASE, "split_data", True)
 set_field_default_config(BASE, "seed", None)
 set_field_default_config(BASE, "reinit", False)  # Only for debug
 
