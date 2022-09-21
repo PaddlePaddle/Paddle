@@ -77,6 +77,7 @@ list(
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
+  celu_op.cc
   layernorm_shift_partition_op.cc
   generic_and_custom_plugin_creater.cc)
 
