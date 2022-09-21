@@ -181,7 +181,7 @@ void ReshapeWithXShape(const Context& dev_ctx,
                        const IntArray& shape,
                        DenseTensor* out,
                        DenseTensor* xshape) {
-  ReshapeKernel(dev_ctx, x, shape, out);
+  ReshapeKernel<T, Context>(dev_ctx, x, shape, out);
 }
 
 }  // namespace phi
