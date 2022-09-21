@@ -4122,7 +4122,7 @@ def lerp_(x, y, weight, name=None):
 
 def erfinv(x, name=None):
     r"""
-    The inverse error function of x. Please refer to :ref:`en_api_paddle_erf`
+    The inverse error function of x. Please refer to :ref:`api_paddle_erf`
 
         .. math::
 
