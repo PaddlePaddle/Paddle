@@ -1941,13 +1941,11 @@ def matrix_power(x, n, name=None):
 
     Specifically,
 
-    - If `n > 0`, it returns the matrix or a batch of matrices raised to the power
-    of `n`.
+    - If `n > 0`, it returns the matrix or a batch of matrices raised to the power of `n`.
 
     - If `n = 0`, it returns the identity matrix or a batch of identity matrices.
 
-    - If `n < 0`, it returns the inverse of each matrix (if invertible) raised to
-    the power of `abs(n)`.
+    - If `n < 0`, it returns the inverse of each matrix (if invertible) raised to the power of `abs(n)`.
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices to be raised
