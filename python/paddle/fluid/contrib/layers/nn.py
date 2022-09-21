@@ -138,8 +138,8 @@ def var_conv_2d(input,
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
             input is a lodTensor:
-                input.lod = [[60, 56]]  # where 60 = input_channel * 5 * 6
-                input.dims = [116, 1]   # where 116 = 60 + 56
+                input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
+                input.dims = [116, 1]	# where 116 = 60 + 56
 
             If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
                 # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
@@ -344,8 +344,8 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
                 input.dims = [116, 1]   # where 116 = 60 + 56
 
             If topks is [1, 3, 5], then we get a 1-level LoDTensor:
-                out.lod =  [[5, 4]]     # share Lod info with row LodTensor
-                out.dims = [9, 6]       # where 6 = len(topks) * channel_num
+                out.lod =  [[5, 4]] 	# share Lod info with row LodTensor
+                out.dims = [9, 6]   	# where 6 = len(topks) * channel_num
 
     Args:
         input (Variable): The input should be 2D LodTensor with dims[1] equals 1.
@@ -1741,8 +1741,8 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
 def bilateral_slice(x, guide, grid, has_offset, name=None):
     """
     :alias_main: paddle.nn.functional.bilateral_slice
-    :alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
-    :old_api: paddle.fluid.layers.bilateral_slice
+	:alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
+	:old_api: paddle.fluid.layers.bilateral_slice
 
     This operation implements bilateral slicing on the input according to the guide map.
     For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_
@@ -1909,14 +1909,14 @@ def fused_bn_add_act(x,
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-            will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-            If the Initializer of the param_attr is not set, the parameter is initialized
-            with Xavier. Default: None.
+	        will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	        If the Initializer of the param_attr is not set, the parameter is initialized
+	        with Xavier. Default: None.
         bias_attr(ParamAttr, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
-            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-            If the Initializer of the bias_attr is not set, the bias is initialized zero.
-            Default: None.
+	        will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+	        If the Initializer of the bias_attr is not set, the bias is initialized zero.
+	        Default: None.
         moving_mean_name(str, optional): The name of moving_mean which store the global Mean. If it
             is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm
             will save global mean with the string.

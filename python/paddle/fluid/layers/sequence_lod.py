@@ -56,7 +56,7 @@ def sequence_conv(input,
     r"""
 
     Note:
-        Only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
+    	Only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
     configuration parameters(num_filters, filter_size) to apply the convolution operation.
@@ -749,7 +749,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             #    data: [1 2 3 4]
 
             np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
-            y_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2], [3,3,1,1]], place)
+	    y_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2], [3,3,1,1]], place)
             print(y_lod_tensor)
             #lod: [[0, 2, 4][0, 3, 6, 7, 8]]
             #    dim: 8, 1
@@ -870,7 +870,7 @@ def sequence_expand_as(x, y, name=None):
             #    data: [1 2 3 4]
 
             np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
-            y_lod_tensor = fluid.create_lod_tensor(np_data, [[3,3,1,1]], place)
+	    y_lod_tensor = fluid.create_lod_tensor(np_data, [[3,3,1,1]], place)
             print(y_lod_tensor)
             #lod: [[0, 3, 6, 7, 8]]
             #    dim: 8, 1
@@ -1032,22 +1032,22 @@ def sequence_unpad(x, length, name=None):
 
     .. code-block:: text
 
-    Case 1:
+	Case 1:
 
-    Given input Variable **x**:
-        x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
-              [ 6.0,  7.0,  8.0,  9.0, 10.0],
-              [11.0, 12.0, 13.0, 14.0, 15.0]],
+	Given input Variable **x**:
+	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
+		      [ 6.0,  7.0,  8.0,  9.0, 10.0],
+		      [11.0, 12.0, 13.0, 14.0, 15.0]],
 
-    in which there are 3 sequences padded to length 5, and the actual length
-    specified by input Variable **length**:
+	in which there are 3 sequences padded to length 5, and the actual length
+	specified by input Variable **length**:
 
-        length.data = [2, 3, 4],
+	    length.data = [2, 3, 4],
 
-    after unpadding, the output Variable will be:
+	after unpadding, the output Variable will be:
 
-        out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
-        out.lod = [[0, 2, 5, 9]]
+	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
+	    out.lod = [[0, 2, 5, 9]]
 
     Args:
         x(Variable): A Tensor which contains padding data, and its shape size can not be less than 2.

@@ -564,7 +564,7 @@ def py_reader(capacity,
               name=None,
               use_double_buffer=True):
     """
-    :api_attr: Static Graph
+	:api_attr: Static Graph
 
     Create a Python reader for data feeding in Python
 
@@ -732,7 +732,7 @@ def create_py_reader_by_data(capacity,
                              name=None,
                              use_double_buffer=True):
     """
-    :api_attr: Static Graph
+	:api_attr: Static Graph
 
     The OP creates a Python reader for data feeding in Python, it is similar
     to :ref:`api_fluid_layers_py_reader` except that it can read data from
@@ -872,7 +872,7 @@ def double_buffer(reader, place=None, name=None):
 
 def read_file(reader):
     """
-    :api_attr: Static Graph
+	:api_attr: Static Graph
 
     Execute the given reader and get data via it.
 

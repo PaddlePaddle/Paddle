@@ -26,8 +26,8 @@ __all__ = ['one_hot', 'embedding']
 def one_hot(input, depth, allow_out_of_range=False):
     """
     :alias_main: paddle.nn.functional.one_hot
-    :alias: paddle.nn.functional.one_hot,paddle.nn.functional.common.one_hot
-    :old_api: paddle.fluid.one_hot
+	:alias: paddle.nn.functional.one_hot,paddle.nn.functional.common.one_hot
+	:old_api: paddle.fluid.one_hot
 
     The operator converts each id in the input to an one-hot vector with a
     depth length. The value in the vector dimension corresponding to the id

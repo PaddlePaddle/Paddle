@@ -102,7 +102,7 @@ def create_parameter(shape,
                      is_bias=False,
                      default_initializer=None):
     """
-    :api_attr: Static Graph
+	:api_attr: Static Graph
 
     This function creates a parameter. The parameter is a learnable variable, which can have
     gradient, and can be optimized.
@@ -934,9 +934,9 @@ def fill_constant_batch_size_like(input,
 
 def argmin(x, axis=0):
     """
-    :alias_main: paddle.argmin
-    :alias: paddle.argmin,paddle.tensor.argmin,paddle.tensor.search.argmin
-    :old_api: paddle.fluid.layers.argmin
+	:alias_main: paddle.argmin
+	:alias: paddle.argmin,paddle.tensor.argmin,paddle.tensor.search.argmin
+	:old_api: paddle.fluid.layers.argmin
 
     **argmin**
 
@@ -1062,9 +1062,9 @@ def argmax(x, axis=0):
 
 def argsort(input, axis=-1, descending=False, name=None):
     """
-    :alias_main: paddle.argsort
-    :alias: paddle.argsort,paddle.tensor.argsort,paddle.tensor.search.argsort
-    :old_api: paddle.fluid.layers.argsort
+	:alias_main: paddle.argsort
+	:alias: paddle.argsort,paddle.tensor.argsort,paddle.tensor.search.argsort
+	:old_api: paddle.fluid.layers.argsort
 
     This OP sorts the input along the given axis, and returns sorted output
     data Varibale and its corresponding index Variable with the same shape as
@@ -1217,9 +1217,9 @@ def zeros(shape, dtype, force_cpu=False, name=None):
 
 def reverse(x, axis):
     """
-    :alias_main: paddle.reverse
-    :alias: paddle.reverse,paddle.tensor.reverse,paddle.tensor.manipulation.reverse
-    :old_api: paddle.fluid.layers.reverse
+	:alias_main: paddle.reverse
+	:alias: paddle.reverse,paddle.tensor.reverse,paddle.tensor.manipulation.reverse
+	:old_api: paddle.fluid.layers.reverse
 
     The OP reverses the tensor :attr:`x` along the given :attr:`axis`.
 
@@ -1705,9 +1705,9 @@ def zeros_like(x, out=None):
 @deprecated(since="2.0.0", update_to="paddle.diag")
 def diag(diagonal):
     r"""
-    :alias_main: paddle.diag
-    :alias: paddle.diag,paddle.tensor.diag,paddle.tensor.creation.diag
-    :old_api: paddle.fluid.layers.diag
+	:alias_main: paddle.diag
+	:alias: paddle.diag,paddle.tensor.diag,paddle.tensor.creation.diag
+	:old_api: paddle.fluid.layers.diag
 
     This OP creates a square matrix which has diagonal values specified by input :attr:`diagonal`.
 

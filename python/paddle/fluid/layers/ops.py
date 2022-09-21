@@ -549,9 +549,9 @@ def softshrink(x, alpha=None):
 
 
 softshrink.__doc__ = r"""
-    :alias_main: paddle.nn.functional.softshrink
-    :alias: paddle.nn.functional.softshrink,paddle.nn.functional.activation.softshrink
-    :old_api: paddle.fluid.layers.softshrink
+	:alias_main: paddle.nn.functional.softshrink
+	:alias: paddle.nn.functional.softshrink,paddle.nn.functional.activation.softshrink
+	:old_api: paddle.fluid.layers.softshrink
 
 :strong:`Softshrink Activation Operator`
 
@@ -619,9 +619,9 @@ def cumsum(x, axis=None, exclusive=None, reverse=None):
 
 
 cumsum.__doc__ = """
-    :alias_main: paddle.cumsum
-    :alias: paddle.cumsum,paddle.tensor.cumsum,paddle.tensor.math.cumsum
-    :old_api: paddle.fluid.layers.cumsum
+	:alias_main: paddle.cumsum
+	:alias: paddle.cumsum,paddle.tensor.cumsum,paddle.tensor.math.cumsum
+	:old_api: paddle.fluid.layers.cumsum
 
 The cumulative sum of the elements along a given axis. By default, the first element of the result is the same of the first element of the input. If exlusive is true, the first element of the result is 0.
 
@@ -659,9 +659,9 @@ def thresholded_relu(x, threshold=None):
 
 
 thresholded_relu.__doc__ = r"""
-    :alias_main: paddle.nn.functional.thresholded_relu
-    :alias: paddle.nn.functional.thresholded_relu,paddle.nn.functional.activation.thresholded_relu
-    :old_api: paddle.fluid.layers.thresholded_relu
+	:alias_main: paddle.nn.functional.thresholded_relu
+	:alias: paddle.nn.functional.thresholded_relu,paddle.nn.functional.activation.thresholded_relu
+	:old_api: paddle.fluid.layers.thresholded_relu
 
 :strong:`Thresholded ReLU Activation Operator`
 

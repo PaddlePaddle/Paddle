@@ -564,7 +564,7 @@ def decorate(optimizer,
         enabled.
 
     Examples 1:
-        .. code-block:: python
+	    .. code-block:: python
 
             # black&white list based strategy example
             import paddle

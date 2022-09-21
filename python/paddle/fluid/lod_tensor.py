@@ -113,7 +113,7 @@ def create_lod_tensor(data, recursive_seq_lens, place):
 def create_random_int_lodtensor(recursive_seq_lens, base_shape, place, low,
                                 high):
     """
-    :api_attr: Static Graph
+	:api_attr: Static Graph
 
     Create a LoDTensor containing random integers.
 
@@ -153,11 +153,11 @@ def create_random_int_lodtensor(recursive_seq_lens, base_shape, place, low,
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+          import paddle.fluid as fluid
 
-            t = fluid.create_random_int_lodtensor(recursive_seq_lens=[[2, 3]],
-                        base_shape=[30], place=fluid.CPUPlace(), low=0, high=10)
-            print(t.shape()) # [5, 30]
+          t = fluid.create_random_int_lodtensor(recursive_seq_lens=[[2, 3]],
+                    base_shape=[30], place=fluid.CPUPlace(), low=0, high=10)
+          print(t.shape()) # [5, 30]
     """
     assert isinstance(base_shape, list), "base_shape should be a list"
     # append the total number of basic elements to the front of its shape

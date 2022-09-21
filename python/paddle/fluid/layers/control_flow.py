@@ -639,56 +639,56 @@ class StaticRNN(object):
         Examples 1:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                import paddle.fluid.layers as layers
+            	import paddle.fluid as fluid
+            	import paddle.fluid.layers as layers
 
-                vocab_size, hidden_size=10000, 200
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
-                # create word sequence
-                x_emb = layers.embedding(
-                    input=x,
-                    size=[vocab_size, hidden_size],
-                    dtype='float32',
-                    is_sparse=False)
-                # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            	vocab_size, hidden_size=10000, 200
+            	x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            	# create word sequence
+            	x_emb = layers.embedding(
+                	input=x,
+                	size=[vocab_size, hidden_size],
+                	dtype='float32',
+                	is_sparse=False)
+            	# transform batch size to dim 1
+            	x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
 
-                rnn = fluid.layers.StaticRNN()
-                with rnn.step():
-                    # mark created x_emb as input, each step process a word
-                    word = rnn.step_input(x_emb)
-                    # create prev memory parameter, batch size comes from word
-                    prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                    hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
-                    # use hidden to update prev
-                    rnn.update_memory(prev, hidden)
+            	rnn = fluid.layers.StaticRNN()
+            	with rnn.step():
+                	# mark created x_emb as input, each step process a word
+                	word = rnn.step_input(x_emb)
+                	# create prev memory parameter, batch size comes from word
+                	prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                	hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                	# use hidden to update prev
+                	rnn.update_memory(prev, hidden)
 
 
         Examples 2:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                import paddle.fluid.layers as layers
-                vocab_size, hidden_size=10000, 200
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
-                # create word sequence
-                x_emb = layers.embedding(
-                    input=x,
-                    size=[vocab_size, hidden_size],
-                    dtype='float32',
-                    is_sparse=False)
-                # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
-                boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
-                rnn = fluid.layers.StaticRNN()
-                with rnn.step():
-                    # mark created x_emb as input, each step process a word
-                    word = rnn.step_input(x_emb)
-                    # init memory
-                    prev = rnn.memory(init=boot_memory)
-                    hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
-                    # update hidden with prev
-                    rnn.update_memory(prev, hidden)
+            	import paddle.fluid as fluid
+            	import paddle.fluid.layers as layers
+            	vocab_size, hidden_size=10000, 200
+            	x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            	# create word sequence
+            	x_emb = layers.embedding(
+                	input=x,
+                	size=[vocab_size, hidden_size],
+                	dtype='float32',
+                	is_sparse=False)
+            	# transform batch size to dim 1
+            	x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            	boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
+            	rnn = fluid.layers.StaticRNN()
+            	with rnn.step():
+            		# mark created x_emb as input, each step process a word
+            		word = rnn.step_input(x_emb)
+            		# init memory
+            		prev = rnn.memory(init=boot_memory)
+            		hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+            		# update hidden with prev
+            		rnn.update_memory(prev, hidden)
 
         """
         self._assert_in_rnn_block_('memory')
@@ -746,29 +746,29 @@ class StaticRNN(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                import paddle.fluid.layers as layers
+            	import paddle.fluid as fluid
+            	import paddle.fluid.layers as layers
 
-                vocab_size, hidden_size=10000, 200
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
-                # create word sequence
-                x_emb = layers.embedding(
-                    input=x,
-                    size=[vocab_size, hidden_size],
-                    dtype='float32',
-                    is_sparse=False)
-                # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            	vocab_size, hidden_size=10000, 200
+            	x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            	# create word sequence
+            	x_emb = layers.embedding(
+                	input=x,
+                	size=[vocab_size, hidden_size],
+                	dtype='float32',
+                	is_sparse=False)
+            	# transform batch size to dim 1
+            	x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
 
-                rnn = fluid.layers.StaticRNN()
-                with rnn.step():
-                    # mark created x_emb as input, each step process a word
-                    word = rnn.step_input(x_emb)
-                    # create prev memory parameter, batch size comes from word
-                    prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                    hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
-                    # use hidden to update prev
-                    rnn.update_memory(prev, hidden)
+            	rnn = fluid.layers.StaticRNN()
+            	with rnn.step():
+                	# mark created x_emb as input, each step process a word
+                	word = rnn.step_input(x_emb)
+                	# create prev memory parameter, batch size comes from word
+                	prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                	hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                	# use hidden to update prev
+                	rnn.update_memory(prev, hidden)
 
         """
         self._assert_in_rnn_block_('step_input')
@@ -798,32 +798,32 @@ class StaticRNN(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                import paddle.fluid.layers as layers
+            	import paddle.fluid as fluid
+            	import paddle.fluid.layers as layers
 
-                vocab_size, hidden_size=10000, 200
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
-                # create word sequence
-                x_emb = layers.embedding(
-                    input=x,
-                    size=[vocab_size, hidden_size],
-                    dtype='float32',
-                    is_sparse=False)
-                # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            	vocab_size, hidden_size=10000, 200
+            	x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            	# create word sequence
+            	x_emb = layers.embedding(
+                	input=x,
+                	size=[vocab_size, hidden_size],
+               		dtype='float32',
+                	is_sparse=False)
+            	# transform batch size to dim 1
+            	x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
 
-                rnn = fluid.layers.StaticRNN()
-                with rnn.step():
-                    # mark created x_emb as input, each step process a word
-                    word = rnn.step_input(x_emb)
-                    # create prev memory parameter, batch size comes from word
-                    prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                    hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
-                    # use hidden to update prev
-                    rnn.update_memory(prev, hidden)
-                    rnn.step_output(hidden)
+            	rnn = fluid.layers.StaticRNN()
+            	with rnn.step():
+                	# mark created x_emb as input, each step process a word
+               		word = rnn.step_input(x_emb)
+                	# create prev memory parameter, batch size comes from word
+                	prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                	hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                	# use hidden to update prev
+                	rnn.update_memory(prev, hidden)
+                	rnn.step_output(hidden)
 
-                result = rnn()
+            	result = rnn()
 
         """
         self._assert_in_rnn_block_('step_output')
@@ -855,33 +855,33 @@ class StaticRNN(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                import paddle.fluid.layers as layers
+            	import paddle.fluid as fluid
+            	import paddle.fluid.layers as layers
 
-                vocab_size, hidden_size=10000, 200
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
-                # create word sequence
-                x_emb = layers.embedding(
-                    input=x,
-                    size=[vocab_size, hidden_size],
-                    dtype='float32',
-                    is_sparse=False)
-                # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            	vocab_size, hidden_size=10000, 200
+            	x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            	# create word sequence
+            	x_emb = layers.embedding(
+                	input=x,
+                	size=[vocab_size, hidden_size],
+                	dtype='float32',
+                	is_sparse=False)
+            	# transform batch size to dim 1
+            	x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
 
-                rnn = fluid.layers.StaticRNN()
-                with rnn.step():
-                    # mark created x_emb as input, each step process a word
-                    word = rnn.step_input(x_emb)
-                    # create prev memory parameter, batch size comes from word
-                    prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                    hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
-                    # use hidden to update prev
-                    rnn.update_memory(prev, hidden)
-                    # mark each step's hidden and word as output
-                    rnn.output(hidden, word)
+            	rnn = fluid.layers.StaticRNN()
+            	with rnn.step():
+                	# mark created x_emb as input, each step process a word
+                	word = rnn.step_input(x_emb)
+                	# create prev memory parameter, batch size comes from word
+                	prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                	hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                	# use hidden to update prev
+                	rnn.update_memory(prev, hidden)
+                	# mark each step's hidden and word as output
+                	rnn.output(hidden, word)
 
-                result = rnn()
+            	result = rnn()
         """
         for each in outputs:
             self.step_output(each)
@@ -1255,7 +1255,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping. And ``cond`` takes
-        as many arguments as ``loop_vars`` .
+	    as many arguments as ``loop_vars`` .
         body(Callable): A callable returning a tuple or list of tensors or LoDTensorArrays of the same arity
             (length and structure) and types as ``loops_vars`` . And ``body`` takes as many arguments as ``loop_vars`` .
         loop_vars(list|tuple): A list or tuple of tensors or LoDTensorArrays that is passed to both ``cond`` and ``body`` .
@@ -1818,8 +1818,8 @@ def less_than(x, y, force_cpu=None, cond=None, name=None):
 def less_equal(x, y, cond=None, name=None):
     """
     :alias_main: paddle.less_equal
-    :alias: paddle.less_equal,paddle.tensor.less_equal,paddle.tensor.logic.less_equal
-    :old_api: paddle.fluid.layers.less_equal
+	:alias: paddle.less_equal,paddle.tensor.less_equal,paddle.tensor.logic.less_equal
+	:old_api: paddle.fluid.layers.less_equal
 
     This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
@@ -1873,8 +1873,8 @@ def less_equal(x, y, cond=None, name=None):
 def greater_than(x, y, cond=None, name=None):
     """
     :alias_main: paddle.greater_than
-    :alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
-    :old_api: paddle.fluid.layers.greater_than
+	:alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
+	:old_api: paddle.fluid.layers.greater_than
 
     This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
@@ -1930,8 +1930,8 @@ def greater_than(x, y, cond=None, name=None):
 def greater_equal(x, y, cond=None, name=None):
     """
     :alias_main: paddle.greater_equal
-    :alias: paddle.greater_equal,paddle.tensor.greater_equal,paddle.tensor.logic.greater_equal
-    :old_api: paddle.fluid.layers.greater_equal
+	:alias: paddle.greater_equal,paddle.tensor.greater_equal,paddle.tensor.logic.greater_equal
+	:old_api: paddle.fluid.layers.greater_equal
 
     This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
@@ -2039,8 +2039,8 @@ def equal(x, y, cond=None, name=None):
 def not_equal(x, y, cond=None, name=None):
     """
     :alias_main: paddle.not_equal
-    :alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
-    :old_api: paddle.fluid.layers.not_equal
+	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
+	:old_api: paddle.fluid.layers.not_equal
 
     This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 

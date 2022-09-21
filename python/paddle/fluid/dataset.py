@@ -1284,12 +1284,12 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
-                filelist = ["a.txt", "b.txt"]
-                dataset.set_filelist(filelist)
-                dataset.load_into_memory()
-        """
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+	    """
         self._prepare_to_run()
         self.boxps.load_into_memory()
 

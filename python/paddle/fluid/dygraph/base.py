@@ -562,7 +562,7 @@ def grad(outputs,
             # dy1 = [3], dy2 = [4]
             grad_y1 = paddle.to_tensor(3.0)
             print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
-    '''
+	'''
 
     def check_in_out(in_out_list, name):
         assert in_out_list is not None, "{} should not be None".format(name)

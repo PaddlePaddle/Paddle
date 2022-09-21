@@ -211,8 +211,8 @@ def bpr_loss(input, label, name=None):
 def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     r"""
     :alias_main: paddle.nn.functional.cross_entropy
-    :alias: paddle.nn.functional.cross_entropy,paddle.nn.functional.loss.cross_entropy
-    :old_api: paddle.fluid.layers.cross_entropy
+	:alias: paddle.nn.functional.cross_entropy,paddle.nn.functional.loss.cross_entropy
+	:old_api: paddle.fluid.layers.cross_entropy
 
     This operator computes the cross entropy between input and label. It
     supports both hard-label and and soft-label cross entropy computation.
@@ -384,9 +384,10 @@ def edit_distance(input,
         NOTE: This Api is different from fluid.metrics.EditDistance
 
     Returns:
-        Tuple:
-            distance(Tensor): edit distance result, its data type is float32, and its shape is (batch_size, 1).
-            sequence_num(Tensor): sequence number, its data type is float32, and its shape is (1,).
+	Tuple:
+
+        distance(Tensor): edit distance result, its data type is float32, and its shape is (batch_size, 1).
+        sequence_num(Tensor): sequence number, its data type is float32, and its shape is (1,).
 
     Examples:
         .. code-block:: python
