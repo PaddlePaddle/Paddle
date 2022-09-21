@@ -73,7 +73,10 @@ RUN python3.9 setup.py build && python3.9 setup.py install && \
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxvf pip-20.0.1.tar.gz
 WORKDIR pip-20.0.1
-RUN python3.9 setup.py install && \
+
+# TODO: remove python2.7
+RUN python2.7 setup.py install && \
+    python3.9 setup.py install && \
   python3.8 setup.py install && \
   python3.7 setup.py install
 

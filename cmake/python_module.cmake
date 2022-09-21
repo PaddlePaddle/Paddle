@@ -56,10 +56,10 @@ function(check_py_version py_version)
                 message(FATAL_ERROR "Please input Python version, eg:3.7 or 3.8 and so on")
         endif()
 
-        list(GET version_list 0 MY_PROGRAM_VERSION_MAJOR)
-        list(GET version_list 1 MY_PROGRAM_VERSION_MINOR)
+        list(GET version_list 0 version_major)
+        list(GET version_list 1 version_minor)
 
-        if((MY_PROGRAM_VERSION_MAJOR GREATER_EQUAL 3) AND (MY_PROGRAM_VERSION_MINOR GREATER_EQUAL 7))
+        if((version_major GREATER_EQUAL 3) AND (version_minor GREATER_EQUAL 7))
         else()
                 message(FATAL_ERROR "Paddle only support Python version >=3.7 now!")
         endif()
