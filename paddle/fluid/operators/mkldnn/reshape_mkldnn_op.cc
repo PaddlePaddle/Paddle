@@ -107,12 +107,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
                        framework::DDim& x_dims,            // NOLINT
                        framework::DDim& out_dims) const {  // NOLINT
     switch (op_name) {
-      case ReshapeKernelOpName::squeeze:
-        InferShapeSqueezeOp(ctx, x_dims, out_dims);
-        break;
-      case ReshapeKernelOpName::squeeze2:
-        InferShapeSqueeze2Op(ctx, x_dims, out_dims);
-        break;
       case ReshapeKernelOpName::flatten:
         InferShapeFlattenOp(ctx, x_dims, out_dims);
         break;
@@ -123,25 +117,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         PADDLE_THROW(paddle::platform::errors::OutOfRange(
             "Reshape kernel doesn not support that operator name"));
     }
-  }
-
-  void InferShapeSqueezeOp(const framework::ExecutionContext& ctx,
-                           framework::DDim& x_dims,            // NOLINT
-                           framework::DDim& out_dims) const {  // NOLINT
-    auto* x = ctx.Input<LoDTensor>("X");
-    x_dims = x->dims();
-    const auto& axes = ctx.Attr<std::vector<int>>("axes");
-    out_dims = GetOutputShape(axes, x_dims, true);
-  }
-
-  void InferShapeSqueeze2Op(const framework::ExecutionContext& ctx,
-                            framework::DDim& x_dims,            // NOLINT
-                            framework::DDim& out_dims) const {  // NOLINT
-    auto* out = ctx.Output<LoDTensor>("Out");
-    auto* xshape = ctx.Output<LoDTensor>("XShape");
-    auto xshape_dims = xshape->dims();
-    x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    out_dims = out->dims();
   }
 
   void InferShapeFlattenOp(const framework::ExecutionContext& ctx,
@@ -391,14 +366,6 @@ REGISTER_OP_KERNEL(
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::squeeze>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::squeeze>);
-
-REGISTER_OP_KERNEL(
-    squeeze2,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::squeeze2>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
-                             ReshapeKernelOpName::squeeze2>);
 
 REGISTER_OP_KERNEL(
     squeeze2_grad,
