@@ -71,7 +71,6 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
 
 // Enforce GradNode has TensorWrappers as Input
 void EnforceGradNodeHasInput(GradNodeBase* node) {
-  VLOG(6) << "Running in EnforceGradNodeHasInput";
   PADDLE_ENFORCE_NE(
       node->IsTensorWrappersCleared(),
       true,
@@ -388,8 +387,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   }
   egr::Controller::Instance().ClearFinalBackwardHooks();
   if (!is_general_grad) return {};
-  return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
   VLOG(3) << "Finish Backward";
+  return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }
 
 void Backward(

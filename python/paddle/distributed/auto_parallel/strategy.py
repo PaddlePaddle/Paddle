@@ -59,10 +59,11 @@ class BaseConfig(object):
         return result_dict
 
     def __repr__(self):
-        return yaml.dump(self.to_dict(),
-                         default_flow_style=False,
-                         sort_keys=True,
-                         indent=4)
+        result_dict = self.to_dict()
+        string = "{"
+        for k, v in result_dict.items():
+            string += "\"%s\":\"%s\"," % (k, v)
+        return string + "}"
 
     def __deepcopy__(self, memo):
         cls = self.__class__
@@ -117,7 +118,7 @@ class TuningConfig(BaseConfig):
 
 class Strategy(BaseConfig):
     """
-    The `Strategy` object is used to configure the paralleization and optimization beheviors. 
+    The `Strategy` object is used to configure the paralleization and optimization beheviors.
 
     Args:
         config (dict|string, optional): If this is None, the default configurations will used.
@@ -130,19 +131,19 @@ class Strategy(BaseConfig):
         .. code-block:: python
 
             import paddle
-            import paddle.distributed.auto_parallel as auto
+            from paddle.distributed.fleet import auto
 
             strategy = auto.Strategy()
             sharding = strategy.sharding
             self.assertEqual(sharding.enabled, False)
             self.assertEqual(sharding.stage, 1)
-            self.assertEqual(sharding.sharding_degree, 8)
+            self.assertEqual(sharding.degree, 8)
             sharding.enabled = True
             sharding.stage = 2
-            sharding.sharding_degree = 2
+            sharding.degree = 2
             self.assertEqual(sharding.enabled, True)
             self.assertEqual(sharding.stage, 2)
-            self.assertEqual(sharding.sharding_degree, 2)
+            self.assertEqual(sharding.degree, 2)
 
     """
 
