@@ -16,7 +16,7 @@ import paddle
 import warnings
 from paddle.nn.layer.norm import _BatchNormBase
 from paddle.framework import no_grad
-from .. import functional as F
+from paddle import _C_ops
 
 
 class BatchNorm(paddle.nn.BatchNorm1D):
@@ -125,16 +125,17 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             warnings.warn(
                 "When training, we now always track global mean and variance.")
 
-        return F.batch_norm(input,
-                            self._mean,
-                            self._variance,
-                            weight=self.weight,
-                            bias=self.bias,
-                            training=self.training,
-                            momentum=self._momentum,
-                            epsilon=self._epsilon,
-                            data_format=self._data_format,
-                            use_global_stats=self._use_global_stats)
+        if self.use_global_stats == None:
+            self._use_global_stats = not self.training
+            trainable_statistics = False
+        else:
+            trainable_statistics = not self._use_global_stats
+
+        batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm(
+            input, self.weight, self.bias, self._mean, self._variance,
+            self._momentum, self._epsilon, self._data_format, not self.training,
+            self._use_global_stats, trainable_statistics, False)
+        return batch_norm_out
 
 
 class SyncBatchNorm(paddle.nn.SyncBatchNorm):
