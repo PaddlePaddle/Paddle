@@ -14,7 +14,6 @@
 import os
 import six
 import numpy as np
-import warnings
 
 from paddle import framework
 import paddle
