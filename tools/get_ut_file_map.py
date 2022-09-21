@@ -165,11 +165,12 @@ def ut_file_map_supplement(rootPath):
             all_uts_paddle_list.append(ut.strip())
         f.close()
 
-    for filename in load_dict_old:
-        if filename not in load_dict_new:
-            load_dict_new[filename] = load_dict_old[filename]
+    #for filename in load_dict_old:
+    #    if filename not in load_dict_new:
+    #       load_dict_new[filename] = load_dict_old[filename]
 
-    with open("/pre_test/ut_file_map.json", "w") as f:
+    os.system('mkdir /pre_test_tmp')
+    with open("/pre_test_tmp/ut_file_map_ljd_test.json", "w") as f:
         json.dump(load_dict_new, f, indent=4)
         print("load_dict_new success!!")
 
@@ -188,6 +189,7 @@ def ut_file_map_supplement(rootPath):
         for ut in f.readlines():
             prec_delta_new_list.append(ut.strip())
         f.close()
+
     for ut in prec_delta_old_list:
         filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, ut)
         if ut in all_uts_paddle_list:
@@ -195,7 +197,7 @@ def ut_file_map_supplement(rootPath):
                 prec_delta_new_list.append(ut)
     prec_delta_new_list.append(
         'test_py_reader_error_msg')  #add a python case for pycoverage
-    prec_delta_file = open("/pre_test/prec_delta", 'w')
+    prec_delta_file = open("/pre_test_tmp/prec_delta_ljd_test", 'w')
     for ut in prec_delta_new_list:
         prec_delta_file.write(ut + '\n')
     print("prec_delta_file success!!")
