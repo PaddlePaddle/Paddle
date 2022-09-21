@@ -16,6 +16,7 @@ include(python_module)
 
 check_py_version(${PY_VERSION})
 
+# Find Python with mnimum PY_VERSION specified or will raise error!
 find_package(PythonInterp ${PY_VERSION} REQUIRED)
 find_package(PythonLibs ${PY_VERSION} REQUIRED)
 
@@ -80,10 +81,6 @@ if(PYTHONINTERP_FOUND)
         "Found Python Protobuf ${PY_GOOGLE.PROTOBUF_VERSION} < 3.0.0, "
         "please use pip to upgrade protobuf. pip install -U protobuf")
   endif()
-else()
-  message(
-    FATAL_ERROR
-      "Can't find Python in your environment")
 endif(PYTHONINTERP_FOUND)
 if 
 include_directories(${PYTHON_INCLUDE_DIR})
