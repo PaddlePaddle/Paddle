@@ -2084,10 +2084,12 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
     Pivoting is done if pivot is set to True.
     P mat can be get by pivots:
-    # ones = eye(rows) #eye matrix of rank rows
-    # for i in range(cols):
-    #     swap(ones[i], ones[pivots[i]])
-    # return ones
+
+    .. code-block:: text
+        ones = eye(rows) #eye matrix of rank rows
+        for i in range(cols):
+            swap(ones[i], ones[pivots[i]])
+        return ones
 
     Args:
 
@@ -2101,15 +2103,15 @@ def lu(x, pivot=True, get_infos=False, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        factorization (Tensor): LU matrix, the factorization of input X.
+        factorization (Tensor), LU matrix, the factorization of input X.
 
-        pivots (IntTensor): the pivots of size(∗(N-2), min(m,n)). `pivots` stores all the
-                    intermediate transpositions of rows. The final permutation `perm` could be
-                    reconstructed by this, details refer to upper example.
+        pivots (IntTensor), the pivots of size(∗(N-2), min(m,n)). `pivots` stores all the
+        intermediate transpositions of rows. The final permutation `perm` could be
+        reconstructed by this, details refer to upper example.
 
-        infos (IntTensor, optional): if `get_infos` is `True`, this is a tensor of size (∗(N-2))
-                    where non-zero values indicate whether factorization for the matrix or each minibatch
-                    has succeeded or failed.
+        infos (IntTensor, optional), if `get_infos` is `True`, this is a tensor of size (∗(N-2))
+        where non-zero values indicate whether factorization for the matrix or each minibatch
+        has succeeded or failed.
 
 
     Examples:
