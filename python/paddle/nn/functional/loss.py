@@ -859,10 +859,10 @@ def hsigmoid_loss(input,
     For each class(word), there's a unique path from root to itself, hsigmoid calculate the cost for each non-leaf node on
     the path, and sum them to get a total cost.
 
-    Comparing to softmax, the OP can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
+    Comparing to softmax, hsigmoid can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
     represents the number of classes or the size of word dict.
 
-    The OP supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
+    The API supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
     Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_.
 
     For the custom tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
