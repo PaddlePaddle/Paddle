@@ -1890,7 +1890,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   PADDLE_ENFORCE_NE(
       kernels_iter,
       all_op_kernels.end(),
-      platform::errors::Unavailable(
+      platform::errors::Unimplemented(
           "There are no kernels which are registered in the %s operator.",
           type_));
 

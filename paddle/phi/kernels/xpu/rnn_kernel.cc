@@ -89,7 +89,7 @@ void RnnKernel(const Context& dev_ctx,
   // weightlist
   std::vector<std::vector<const T*>> parameter_lists;
   parameter_lists.resize(num_layers);
-  reset_parameter_vector(weight_list, num_layers, is_bidirec, &parameter_lists);
+  ResetParameterVector(weight_list, num_layers, is_bidirec, &parameter_lists);
 
   // init the output and allocate the memory
   dev_ctx.template Alloc<T>(out);

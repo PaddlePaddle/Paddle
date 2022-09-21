@@ -273,12 +273,12 @@ def get_buffers(layer_instance, include_sublayer=True):
 def convert_to_input_spec(inputs, input_spec):
     """
     Replaces tensor in structured `inputs` by InputSpec in `input_spec`.
-    
+
     Args:
         inputs(list|dict): nested structure list or dict.
-        input_spec(list|dict): same nested structure list or dict as inputs. 
+        input_spec(list|dict): same nested structure list or dict as inputs.
 
-    
+
     Return:
         Same structure with inputs by replacing the element with specified InputSpec.
     """
@@ -341,7 +341,7 @@ def replace_spec_empty_name(args_name, input_with_spec):
         4. If the arguments `input_dic` corresponds to a dict(InputSpec), using key as name.
 
     For example:
-        
+
         # case 1: foo(x, y)
         foo = to_static(foo, input_spec=[InputSpec([None, 10]), InputSpec([None])])
         print([in_var.name for in_var in foo.inputs])  # [x, y]

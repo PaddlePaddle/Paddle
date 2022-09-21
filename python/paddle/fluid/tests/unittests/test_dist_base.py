@@ -627,7 +627,8 @@ class TestParallelDyGraphRunnerBase(object):
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id
-        args.trainer_id = paddle.distributed.get_rank()
+        paddle.distributed.parallel._get_global_parallel_env()
+        args.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
 
         # 3. init parallel env
         if args.update_method in ["nccl2", "gloo"]:
@@ -666,7 +667,8 @@ class TestParallelDyGraphRunnerBase(object):
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id
-        args.trainer_id = paddle.distributed.get_rank()
+        paddle.distributed.parallel._get_global_parallel_env()
+        args.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
 
         # set strategy
         strategy = fleet.DistributedStrategy()

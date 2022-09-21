@@ -511,9 +511,9 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Custom Operator.
 
-According to the Tensor operation function implemented by the user 
-independently of the framework, it is encapsulated into a framework 
-operator to adapt to various execution scenarios such as dynamic graph, 
+According to the Tensor operation function implemented by the user
+independently of the framework, it is encapsulated into a framework
+operator to adapt to various execution scenarios such as dynamic graph,
 mode static graph mode, and inference mode.
 
 )DOC");
@@ -801,7 +801,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
   // Infer Dtype
   if (infer_dtype_func == nullptr) {
-    // use defalut InferDtype
+    // use default InferDtype
     info.infer_var_type_ = [op_inputs, op_outputs](InferVarTypeContext* ctx) {
       PADDLE_ENFORCE_EQ(
           op_inputs.size(),

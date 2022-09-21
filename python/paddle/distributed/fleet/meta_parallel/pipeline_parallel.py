@@ -14,7 +14,6 @@
 import paddle
 import paddle.fluid as fluid
 from .meta_parallel_base import MetaParallelBase
-from .pp_utils.utils import is_float_tensor, _initialize_recompute_hcg
 from .parallel_layers.pp_layers import PipelineLayer
 
 from ..utils.hybrid_parallel_util import broadcast_mp_parameters
@@ -60,8 +59,6 @@ class PipelineParallel(MetaParallelBase):
         self._real_pp_rank = self.stage_id
 
         p2p.initialize_p2p_groups(hcg, self._using_cache)
-
-        _initialize_recompute_hcg(hcg)
 
         self.global_rank = self._hcg.get_global_rank()
         self.micro_batch_id = 0
@@ -380,18 +377,18 @@ class PipelineParallel(MetaParallelBase):
                 1) if loss.dtype == paddle.float32 else paddle.to_tensor(0)
             paddle.distributed.broadcast(is_fp32,
                                          src=self.global_rank,
-                                         use_calc_stream=True,
+                                         sync_op=True,
                                          group=self.pp_group)
             paddle.distributed.broadcast(loss,
                                          src=self.global_rank,
-                                         use_calc_stream=True,
+                                         sync_op=True,
                                          group=self.pp_group)
         else:
             is_fp32 = paddle.to_tensor(1)
             paddle.distributed.broadcast(
                 is_fp32,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                use_calc_stream=True,
+                sync_op=True,
                 group=self.pp_group)
             loss = paddle.zeros(shape=[
                 1
@@ -400,7 +397,7 @@ class PipelineParallel(MetaParallelBase):
             paddle.distributed.broadcast(
                 loss,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                use_calc_stream=True,
+                sync_op=True,
                 group=self.pp_group)
         return loss
 
