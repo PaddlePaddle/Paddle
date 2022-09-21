@@ -2923,8 +2923,8 @@ def solve(x, y, name=None):
 
     .. math::
         Out = X^-1 * Y
-    Specifically,
-    - This system of linear equations has one solution if and only if input 'X' is invertible.
+
+    Specifically, this system of linear equations has one solution if and only if input 'X' is invertible.
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices. Its shape should be `[*, M, M]`, where `*` is zero or
@@ -2939,6 +2939,7 @@ def solve(x, y, name=None):
         Its data type should be the same as that of `x`.
 
     Examples:
+
         .. code-block:: python
 
             # a square system of linear equations:
@@ -2946,12 +2947,9 @@ def solve(x, y, name=None):
             # X0 + 2*X1 = 8
 
             import paddle
-            import numpy as np
 
-            np_x = np.array([[3, 1],[1, 2]])
-            np_y = np.array([9, 8])
-            x = paddle.to_tensor(np_x, dtype="float64")
-            y = paddle.to_tensor(np_y, dtype="float64")
+            x = paddle.to_tensor([[3, 1],[1, 2]], dtype="float64")
+            y = paddle.to_tensor([9, 8], dtype="float64")
             out = paddle.linalg.solve(x, y)
 
             print(out)
