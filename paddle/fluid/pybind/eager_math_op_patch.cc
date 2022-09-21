@@ -141,6 +141,9 @@ paddle::experimental::Tensor CallScalarFuction(
     ret = scale_ad_func(*self_tensor, phi::Scalar(other), 0.0, true);
   } else if (op_type == "div") {
     ret = scale_ad_func(*self_tensor, phi::Scalar(1.0 / other), 0.0, true);
+  } else if (op_type == "pow") {
+    // pow support scalar as input
+    ret = pow_ad_func(*self_tensor, other);
   }
 
   return ret;
@@ -665,6 +668,159 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   }
 }
 
+static PyObject* tensor__pow__method(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  paddle::platform::RecordEvent pythonc_record_event(
+      "pow pybind_patch_func",
+      paddle::platform::TracerEventType::UserDefined,
+      1);
+  PyThreadState* tstate = nullptr;
+  try {
+    VLOG(6) << "Running Eager tensor__pow__method";
+    tstate = PyEval_SaveThread();
+
+    // Set Device ID
+    auto place = egr::Controller::Instance().GetExpectedPlace();
+    SetDevice(place);
+
+    paddle::experimental::Tensor ret;
+    paddle::experimental::Tensor self_tensor = self->tensor;
+
+    PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+
+    // 1. scalar exists cases
+    if ((PyFloat_Check(other_obj) || PyLong_Check(other_obj)) &&
+        !PyBool_Check(other_obj)) {
+      ret = CallScalarFuction(&self_tensor, other_obj, "pow");
+      PyEval_RestoreThread(tstate);
+      tstate = nullptr;
+      return ToPyObject(ret);
+    }
+
+    // 2. create or get tensor for other_obj
+    paddle::experimental::Tensor other_tensor;
+    if (!PyCheckTensor(other_obj)) {
+      paddle::experimental::Scalar value =
+          CastPyArg2Scalar(other_obj, "full", 0);
+      if (PyComplex_Check(other_obj)) {
+        other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      } else {
+        other_tensor = full_ad_func(
+            self_tensor.shape(), value, self_tensor.dtype(), place);
+      }
+    } else {
+      other_tensor = CastPyArg2Tensor(other_obj, 0);
+    }
+
+    // 3. promote types or unify right var type to left var
+    phi::DataType lhs_dtype = self_tensor.dtype();
+    phi::DataType rhs_dtype = other_tensor.dtype();
+    if (lhs_dtype != rhs_dtype) {
+      // note: only op_type in _supported_promote_complex_types_ should promote
+      // dtype, pow is not in _supported_promote_complex_types_, will not do
+      // promote dtype
+      LOG(WARNING)
+          << "The dtype of left and right Tensor are not the same, left "
+             "dtype is "
+          << lhs_dtype << ", but right dtype is " << rhs_dtype
+          << ", the right dtype will convert to " << lhs_dtype;
+      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    }
+
+    // 4. calculation
+    VLOG(6) << "Calling elementwise_pow_ad_func in tensor__pow__method";
+    ret = elementwise_pow_ad_func(self_tensor, other_tensor);
+
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    return ToPyObject(ret);
+  } catch (...) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+static PyObject* tensor__rpow__method(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  paddle::platform::RecordEvent pythonc_record_event(
+      "rpow pybind_patch_func",
+      paddle::platform::TracerEventType::UserDefined,
+      1);
+  PyThreadState* tstate = nullptr;
+  try {
+    VLOG(6) << "Running Eager tensor__rpow__method";
+    tstate = PyEval_SaveThread();
+
+    // Set Device ID
+    auto place = egr::Controller::Instance().GetExpectedPlace();
+    SetDevice(place);
+
+    paddle::experimental::Tensor ret;
+    paddle::experimental::Tensor self_tensor = self->tensor;
+
+    PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+
+    // 1. scalar exists cases or not
+    // there is no scalar case for rpow, but alse need to cast self_tensor in
+    // need.
+    if (PyFloat_Check(other_obj)) {
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      }
+    }
+
+    // 2. create or get tensor for other_obj
+    paddle::experimental::Tensor other_tensor;
+    if (!PyCheckTensor(other_obj)) {
+      paddle::experimental::Scalar value =
+          CastPyArg2Scalar(other_obj, "full", 0);
+      if (PyComplex_Check(other_obj)) {
+        other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      } else {
+        other_tensor = full_ad_func(
+            self_tensor.shape(), value, self_tensor.dtype(), place);
+      }
+    } else {
+      other_tensor = CastPyArg2Tensor(other_obj, 0);
+    }
+
+    // 3. promote types or unify right var type to left var
+    phi::DataType lhs_dtype = self_tensor.dtype();
+    phi::DataType rhs_dtype = other_tensor.dtype();
+    if (lhs_dtype != rhs_dtype) {
+      // note: only op_type in _supported_promote_complex_types_ should promote
+      // dtype, pow is not in _supported_promote_complex_types_, will not do
+      // promote dtype
+      LOG(WARNING)
+          << "The dtype of left and right Tensor are not the same, left "
+             "dtype is "
+          << lhs_dtype << ", but right dtype is " << rhs_dtype
+          << ", the right dtype will convert to " << lhs_dtype;
+      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    }
+
+    // 4. calculation
+    VLOG(6) << "Calling elementwise_pow_ad_func in tensor__rpow__method";
+    ret = elementwise_pow_ad_func(other_tensor, self_tensor);
+
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    return ToPyObject(ret);
+  } catch (...) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 PyMethodDef math_op_patch_methods[] = {
     {"__add__",
      (PyCFunction)(void (*)(void))tensor__add__method,
@@ -704,6 +860,14 @@ PyMethodDef math_op_patch_methods[] = {
      NULL},
     {"__rtruediv__",
      (PyCFunction)(void (*)(void))tensor__rdiv__method,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"__pow__",
+     (PyCFunction)(void (*)(void))tensor__pow__method,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"__rpow__",
+     (PyCFunction)(void (*)(void))tensor__rpow__method,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {NULL, NULL, 0, NULL}};
