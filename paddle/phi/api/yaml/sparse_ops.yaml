@@ -35,7 +35,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
-    func : ElementwiseInferMeta 
+    func : ElementwiseInferMeta
   kernel :
     func : add_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
            add_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
@@ -114,7 +114,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
-    func : ElementwiseInferMeta 
+    func : ElementwiseInferMeta
   kernel :
     func : divide_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
            divide_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
@@ -460,6 +460,8 @@
 - op : transpose
   args : (Tensor x, int[] dims)
   output : Tensor(out)
+  infer_meta :
+    func : TransposeInferMeta
   kernel :
     func : transpose_coo{sparse_coo -> sparse_coo},
            transpose_csr{sparse_csr -> sparse_csr}
