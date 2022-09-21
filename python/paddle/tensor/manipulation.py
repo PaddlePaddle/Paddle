@@ -1133,7 +1133,9 @@ def broadcast_tensors(input, name=None):
     Broadcast a list of tensors following broadcast semantics
 
     .. note::
-        If you want know more about broadcasting, please refer to :ref:`https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor`.
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+    .. _Tensor介绍: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
