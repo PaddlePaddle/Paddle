@@ -34,15 +34,15 @@ if(WIN32)
 
   add_custom_command(
     OUTPUT ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_FILE:libpaddle> ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_LINKER_FILE:libpaddle> ${FLUID_CORE_LIB}
-    DEPENDS libpaddle)
+    COMMAND cmake -E copy $<TARGET_FILE:paddle> ${FLUID_CORE}
+    COMMAND cmake -E copy $<TARGET_LINKER_FILE:paddle> ${FLUID_CORE_LIB}
+    DEPENDS paddle)
 else()
   set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.so)
   add_custom_command(
     OUTPUT ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_FILE:libpaddle> ${FLUID_CORE}
-    DEPENDS libpaddle)
+    COMMAND cmake -E copy $<TARGET_FILE:paddle> ${FLUID_CORE}
+    DEPENDS paddle)
 endif()
 
 set(FLUID_CORE_DEPS ${FLUID_CORE})
