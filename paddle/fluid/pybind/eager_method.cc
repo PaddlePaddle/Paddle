@@ -227,7 +227,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       paddle::memory::Copy(
           place,
           reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
-          tensor.place(),
+          dense_tensor->place(),
           dense_tensor->data(),
           sizeof_dtype * numel);
     } else {
