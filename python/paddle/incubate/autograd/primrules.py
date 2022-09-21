@@ -423,7 +423,7 @@ def gelu_orig2prim(op, x):
 
 @REGISTER_ORIG2PRIM('dropout')
 def dropout_orig2prim(op, x, seed_t=None):
-    assert seed_t is None, 'Can not lower concat into prim ops with seedtensor.'
+    assert seed_t is None, 'Can not lower dropout into prim ops with seedtensor.'
     mask = bernoulli(shape=x.shape, dtype=x.dtype, p=op.attr('dropout_prob'))
     if op.attr('dropout_implementation') == 'upscale_in_train':
         if op.attr('is_test') == False:

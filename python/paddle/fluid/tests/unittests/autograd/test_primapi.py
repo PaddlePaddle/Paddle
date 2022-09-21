@@ -316,7 +316,9 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          lambda x: paddle.var(x, axis=1, unbiased=False),
          (np.random.rand(10, 20, 30), ), None, 'float32'),
         ('var_with_keepdim', lambda x: paddle.var(x, axis=1, keepdim=True),
-         (np.random.rand(10, 20, 30), ), None, 'float32')))
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('dropout', paddle.dropout,
+         (np.random.rand(100, 200), ), None, 'float32')))
 class TestGrad(unittest.TestCase):
 
     def setUp(self):
