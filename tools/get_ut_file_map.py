@@ -165,10 +165,6 @@ def ut_file_map_supplement(rootPath):
             all_uts_paddle_list.append(ut.strip())
         f.close()
 
-    #for filename in load_dict_old:
-    #    if filename not in load_dict_new:
-    #       load_dict_new[filename] = load_dict_old[filename]
-
     os.system('mkdir /pre_test_tmp')
     with open("/pre_test_tmp/ut_file_map_ljd_test.json", "w") as f:
         json.dump(load_dict_new, f, indent=4)
