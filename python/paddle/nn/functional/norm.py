@@ -31,7 +31,7 @@ __all__ = []
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     r"""
-    This op normalizes ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
+    Normalize ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
 
     .. math::
 
