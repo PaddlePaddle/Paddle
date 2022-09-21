@@ -68,15 +68,11 @@ void SetOp(ProgramDesc* prog,
     op->SetAttr("padding_algorithm", std::string("EXPLICIT"));
     op->SetAttr("data_format", std::string("NCHW"));
     op->SetAttr("force_fp32_output", false);
-  } else if (type == "quantize") {
+  } else if (type == "quantize" || type == "dequantize") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
     op->SetAttr("Scale", scale[0]);
     op->SetAttr("is_negative_input", is_negative_input);
-  } else if (type == "dequantize") {
-    op->SetInput("Input", {inputs[0]});
-    op->SetOutput("Output", {outputs[0]});
-    op->SetAttr("Scale", scale[0]);
   } else if (type == "requantize") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
@@ -303,9 +299,8 @@ ProgramDesc BuildConvMultiRequantProgramDesc(bool use_mkldnn,
   return prog;
 }
 
-/* a->relu->b->Dequant->c(u8)->Quant->d-\
- * e->relu->f->Dequant->g(u8)->Quant->h--Concat1->x
- * i->relu->j->Dequant->k(u8)->Quant->l-/
+/* a->relu->b->Dequant(u8)->c->Quant(u8)->d-\
+ * e->relu->f->Dequant(u8)->g->Quant(u8)->h--Concat1->i
  */
 ProgramDesc BuildU8U8U8ConcatProgramDesc(float scale_out, float scale) {
   ProgramDesc prog;
@@ -314,14 +309,31 @@ ProgramDesc BuildU8U8U8ConcatProgramDesc(float scale_out, float scale) {
   }
   SetOp(&prog, "relu", "Relu1", {"a"}, {"b"}, true, {scale, scale_out});
   SetOp(&prog, "relu", "Relu2", {"e"}, {"f"}, true, {scale, scale_out});
-  SetOp(&prog, "relu", "Relu3", {"i"}, {"j"}, true, {scale, scale_out});
 
-  SetOp(
-      &prog, "dequantize", "Dequant1", {"b"}, {"c"}, true, {scale, scale_out});
-  SetOp(
-      &prog, "dequantize", "Dequant2", {"f"}, {"g"}, true, {scale, scale_out});
-  SetOp(
-      &prog, "dequantize", "Dequant3", {"j"}, {"k"}, true, {scale, scale_out});
+  SetOp(&prog,
+        "dequantize",
+        "Dequant1",
+        {"b"},
+        {"c"},
+        true,
+        {scale, scale_out},
+        0.0f,
+        "float32",
+        false,
+        1,
+        false);  // is_negative_input = false
+  SetOp(&prog,
+        "dequantize",
+        "Dequant2",
+        {"f"},
+        {"g"},
+        true,
+        {scale, scale_out},
+        0.0f,
+        "float32",
+        false,
+        1,
+        false);  // is_negative_input = false
 
   SetOp(&prog,
         "quantize",
@@ -347,11 +359,29 @@ ProgramDesc BuildU8U8U8ConcatProgramDesc(float scale_out, float scale) {
         false,
         1,
         false);  // is_negative_input = false
+
+  SetOp(&prog, "concat", "Concat1", {"d", "h"}, {"i"}, true);
+  return prog;
+}
+
+/* a->relu->b->Dequant(u8)->c->Quant(s8)->d-\
+ * e->relu->f->Dequant(u8)->g->Quant(s8)->h--Concat1->x
+ * i->pool2d->j->Dequant(s8)->k->Quant(s8)->l-/
+ */
+ProgramDesc BuildU8U8S8ConcatProgramDesc(float scale_out, float scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "relu", "Relu1", {"a"}, {"b"}, true, {scale, scale_out});
+  SetOp(&prog, "relu", "Relu2", {"e"}, {"f"}, true, {scale, scale_out});
+  SetOp(&prog, "pool2d", "Pool2d2", {"i"}, {"j"}, true, {scale, scale_out});
+
   SetOp(&prog,
-        "quantize",
-        "Quant3",
-        {"k"},
-        {"l"},
+        "dequantize",
+        "Dequant1",
+        {"b"},
+        {"c"},
         true,
         {scale, scale_out},
         0.0f,
@@ -359,28 +389,18 @@ ProgramDesc BuildU8U8U8ConcatProgramDesc(float scale_out, float scale) {
         false,
         1,
         false);  // is_negative_input = false
-
-  SetOp(&prog, "concat", "Concat1", {"d", "h", "l"}, {"x"}, true);
-  return prog;
-}
-
-/* a->relu->b->Dequant->c(u8)->Quant->d-\
- * e->relu->f->Dequant->g(u8)->Quant->h--Concat1->x
- * i->pool2d->j->Dequant->k(s8)->Quant->l-/
- */
-ProgramDesc BuildU8U8S8ConcatProgramDesc(float scale_out, float scale) {
-  ProgramDesc prog;
-  for (auto& v : variable_names) {
-    prog.MutableBlock(0)->Var(v);
-  }
-  SetOp(&prog, "relu", "Pool2d1", {"a"}, {"b"}, true, {scale, scale_out});
-  SetOp(&prog, "relu", "Relu1", {"e"}, {"f"}, true, {scale, scale_out});
-  SetOp(&prog, "pool2d", "Pool2d2", {"i"}, {"j"}, true, {scale, scale_out});
-
-  SetOp(
-      &prog, "dequantize", "Dequant1", {"b"}, {"c"}, true, {scale, scale_out});
-  SetOp(
-      &prog, "dequantize", "Dequant2", {"f"}, {"g"}, true, {scale, scale_out});
+  SetOp(&prog,
+        "dequantize",
+        "Dequant2",
+        {"f"},
+        {"g"},
+        true,
+        {scale, scale_out},
+        0.0f,
+        "float32",
+        false,
+        1,
+        false);  // is_negative_input = false
   SetOp(
       &prog, "dequantize", "Dequant3", {"j"}, {"k"}, true, {scale, scale_out});
 
@@ -392,9 +412,9 @@ ProgramDesc BuildU8U8S8ConcatProgramDesc(float scale_out, float scale) {
   return prog;
 }
 
-/* a->pool2d->b->Dequant->c(s8)->Quant->d-\
- * e->relu->f->Dequant->g(u8)->Quant->h--Concat1->x
- * i->pool2d->j->Dequant->k(s8)->Quant->l-/
+/* a->pool2d->b->Dequant(s8)->c->Quant(s8)->d-\
+ * e->relu->f->Dequant(u8)->g->Quant(s8)->h--Concat1->x
+ * i->pool2d->j->Dequant(s8)->k->Quant(s8)->l-/
  */
 ProgramDesc BuildS8U8S8ConcatProgramDesc(float scale_out, float scale) {
   ProgramDesc prog;
@@ -407,8 +427,18 @@ ProgramDesc BuildS8U8S8ConcatProgramDesc(float scale_out, float scale) {
 
   SetOp(
       &prog, "dequantize", "Dequant1", {"b"}, {"c"}, true, {scale, scale_out});
-  SetOp(
-      &prog, "dequantize", "Dequant2", {"f"}, {"g"}, true, {scale, scale_out});
+  SetOp(&prog,
+        "dequantize",
+        "Dequant2",
+        {"f"},
+        {"g"},
+        true,
+        {scale, scale_out},
+        0.0f,
+        "float32",
+        false,
+        1,
+        false);  // is_negative_input = false
   SetOp(
       &prog, "dequantize", "Dequant3", {"j"}, {"k"}, true, {scale, scale_out});
 
@@ -1141,10 +1171,10 @@ TEST(CpuQuantizeSquashPass, squash_all_s8_input_to_concat1) {
 }
 
 TEST(CpuQuantizeSquashPass, squash_all_u8_input_to_concat2) {
-  // removed 3 x 4 (dequantize_op, dequantize_out, quantize, quantize_out)
-  auto remove_nodes = 12;
+  // removed 2 x 4 (dequantize_op, dequantize_out, quantize, quantize_out)
+  auto remove_nodes = 8;
   std::unordered_map<std::string, int> expected_operators = {
-      {"concat", 1}, {"quantize", 0}, {"dequantize", 0}, {"relu", 3}};
+      {"concat", 1}, {"quantize", 0}, {"dequantize", 0}, {"relu", 2}};
   CheckNodesTest(BuildU8U8U8ConcatProgramDesc(1.2f, 1.2f),
                  expected_operators,
                  remove_nodes);
