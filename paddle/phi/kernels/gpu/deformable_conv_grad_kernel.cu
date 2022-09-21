@@ -29,7 +29,7 @@ static inline int NumBlocks(const int N) {
                   kNumMaximumNumBlocks);
 }
 
-template <typename T>
+template <typename T, typename MT>
 __global__ void ModulatedDeformableCol2imGpuKernel(
     const int nthreads,
     const T* data_col,
@@ -51,10 +51,10 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
     const int deformable_group,
     const int height_col,
     const int width_col,
-    T* grad_im) {
+    MT* grad_im) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  // using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (size_t thread = index; thread < nthreads; thread += offset) {
     const int j = (thread / width_col / height_col / batch_size) % kernel_w;
     const int i =
@@ -107,18 +107,15 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
                                             cur_w + dx,
                                             height,
                                             width);
-          paddle::platform::fastAtomicAdd<T>(
-              grad_im,
-              cur_bottom_grad_pos,
-              nthreads,
-              static_cast<T>(weight * cur_top_grad));
+          paddle::platform::CudaAtomicAdd(grad_im + cur_bottom_grad_pos,
+                                          weight * cur_top_grad);
         }
       }
     }
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename MT, typename Context>
 void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const T* data_col,
                                const T* data_offset,
@@ -130,13 +127,13 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const std::vector<int>& stride,
                                const std::vector<int>& dilation,
                                const int deformable_group,
-                               T* grad_im) {
+                               MT* grad_im) {
   int channel_per_deformable_group = im_shape[0] / deformable_group;
   int num_kernels = col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
 
-  ModulatedDeformableCol2imGpuKernel<T>
+  ModulatedDeformableCol2imGpuKernel<T, MT>
       <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
                                                  data_col,
                                                  data_offset,
@@ -243,14 +240,13 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
       if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
         inv_h = inv_w = -2;
       } else {
-        mval +=
-            static_cast<MT>(data_col_ptr[col_pos]) *
-            funcs::DmcnIm2colBilinear<T, MT>(data_im_ptr + cnt * height * width,
-                                             width,
-                                             height,
-                                             width,
-                                             inv_h,
-                                             inv_w);
+        mval += static_cast<MT>(data_col_ptr[col_pos]) *
+                funcs::DmcnIm2colBilinear<T, MT>(data_im_ptr + cnt * height * width,
+                                                 width,
+                                                 height,
+                                                 width,
+                                                 inv_h,
+                                                 inv_w);
       }
       const MT weight =
           DmcnGetCoordinateWeight<T, MT>(inv_h,
