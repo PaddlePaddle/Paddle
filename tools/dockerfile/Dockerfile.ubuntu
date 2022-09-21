@@ -152,10 +152,7 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
-    pip3.6 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3.6 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip3.7 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
+RUN pip3.7 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.7 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.7 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip3.8 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
@@ -167,9 +164,7 @@ RUN pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
-RUN pip3.6 --no-cache-dir install 'ipython==5.3.0' && \
-    pip3.6 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.7 --no-cache-dir install 'ipython==5.3.0' && \
+RUN pip3.7 --no-cache-dir install 'ipython==5.3.0' && \
     pip3.7 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip3.8 --no-cache-dir install 'ipython==5.3.0' && \
     pip3.8 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
@@ -179,43 +174,36 @@ RUN pip3.6 --no-cache-dir install 'ipython==5.3.0' && \
     pip --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
 #For docstring checker
-RUN pip3.6 --no-cache-dir install pytest astroid isort && \
-    pip3.7 --no-cache-dir install pytest astroid isort && \
+RUN pip3.7 --no-cache-dir install pytest astroid isort && \
     pip3.8 --no-cache-dir install pytest astroid isort && \
     pip3.9 --no-cache-dir install pytest astroid isort && \
     pip --no-cache-dir install pylint pytest astroid isort
 
 #For pre-commit
-RUN pip3.6 --no-cache-dir install --upgrade pip==20.3.3 && \
-    pip3.7 --no-cache-dir install --upgrade pip && \
+RUN pip3.7 --no-cache-dir install --upgrade pip && \
     pip3.8 --no-cache-dir install --upgrade pip && \
     pip3.9 --no-cache-dir install --upgrade pip
 
-RUN pip3.6 --no-cache-dir install pre-commit==2.1.1 pylint==2.12.0 && \
-    pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
+RUN pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.9 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
-    pip3.6 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.7 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
 
-RUN pip3.6 --no-cache-dir install coverage && \
-    pip3.7 --no-cache-dir install coverage && \
+RUN pip3.7 --no-cache-dir install coverage && \
     pip3.8 --no-cache-dir install coverage && \
     pip3.9 --no-cache-dir install coverage && \
     pip --no-cache-dir install coverage
 
 COPY ./python/requirements.txt /root/
-RUN pip3.6 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.7 --no-cache-dir install -r /root/requirements.txt && \
+RUN pip3.7 --no-cache-dir install -r /root/requirements.txt && \
     pip3.8 --no-cache-dir install -r /root/requirements.txt && \
     pip3.9 --no-cache-dir install -r /root/requirements.txt
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev && apt-get clean -y && \
-    pip3.6 --no-cache-dir install certifi urllib3[secure] && \
     pip3.7 --no-cache-dir install certifi urllib3[secure] && \
     pip3.8 --no-cache-dir install certifi urllib3[secure] && \
     pip3.9 --no-cache-dir install certifi urllib3[secure] && \
