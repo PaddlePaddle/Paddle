@@ -19,17 +19,16 @@
 namespace phi {
 namespace funcs {
 template <typename T>
-class AddOneDNNHandler
-    : public phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::sum> {
+class AddNOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
  public:
-  AddOneDNNHandler(dnnl::engine engine,
-                   const phi::Place& cpu_place,
-                   const std::vector<const TensorBase*>& x,
-                   DenseTensor* z)
+  AddNOneDNNHandler(dnnl::engine engine,
+                    const Place& cpu_place,
+                    const std::vector<const TensorBase*>& x,
+                    DenseTensor* out)
 
-      : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::sum>(engine, cpu_place),
+      : OneDNNHandlerNoCachingT<T, dnnl::sum>(engine, cpu_place),
         num_inputs_(0) {
-    auto dst_tz = phi::vectorize<int64_t>(z->dims());
+    auto dst_tz = vectorize<int64_t>(out->dims());
     auto src_tz = dst_tz;
 
     std::vector<dnnl::memory::desc> srcs_md;
@@ -67,7 +66,7 @@ class AddOneDNNHandler
                                             to_void_cast<T>(input_data));
   }
 
-  using phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::sum>::AcquireDstMemory;
+  using OneDNNHandlerNoCachingT<T, dnnl::sum>::AcquireDstMemory;
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(void) {
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc());
@@ -85,20 +84,20 @@ void AddNKernel(const Context& dev_ctx,
                 const std::vector<const TensorBase*>& x,
                 DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
+      dev_ctx.GetPlace().GetType() == AllocationType::CPU,
       true,
-      phi::errors::PreconditionNotMet("Operator DNNL Sum must use CPUPlace"));
+      errors::PreconditionNotMet("oneDNN AddN kernel must use CPUPlace"));
 
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  PADDLE_ENFORCE_NE(x.empty(),
-                    true,
-                    phi::errors::InvalidArgument("Input variable is empty."));
+  PADDLE_ENFORCE_NE(
+      x.empty(), true, errors::InvalidArgument("Input variable is empty."));
   auto* input0 = (static_cast<const DenseTensor*>(x[0]));
 
   bool in_place = (input0->numel() > 0) && input0->IsSharedBufferWith(*out);
 
-  funcs::AddOneDNNHandler<T> handler(onednn_engine, dev_ctx.GetPlace(), x, out);
+  funcs::AddNOneDNNHandler<T> handler(
+      onednn_engine, dev_ctx.GetPlace(), x, out);
 
   // Create list of SRC MEMs
   std::vector<std::shared_ptr<dnnl::memory>> srcs_mem;
@@ -114,17 +113,13 @@ void AddNKernel(const Context& dev_ctx,
   }
 
   std::unordered_map<int, dnnl::memory> args;
-  std::shared_ptr<dnnl::memory> dst_mem;
 
   for (size_t i = 0; i < srcs_mem.size(); ++i) {
     args.insert({DNNL_ARG_MULTIPLE_SRC + i, *(srcs_mem[i])});
   }
 
-  if (in_place) {
-    dst_mem = srcs_mem[0];
-  } else {
-    dst_mem = handler.AcquireDstMemory(out);
-  }
+  auto dst_mem = in_place ? srcs_mem[0] : handler.AcquireDstMemory(out);
+
   args.insert({DNNL_ARG_DST, *dst_mem});
 
   auto sum_p = handler.AcquireForwardPrimitive();
