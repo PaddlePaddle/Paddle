@@ -389,12 +389,6 @@ def monkey_patch_math_varbase():
         ('ndim', _ndim_),
         ('size', _size_),
         ('T', _T_),
-        # ('__pow__', _binary_creator_('__pow__', 'pow', False, _C_ops.pow,
-        #                              True)),
-        # ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
-        #                               None)),
-        ('__floordiv__',
-         _binary_creator_('__floordiv__', 'floor_divide', False, None, True)),
         ('__mod__', _binary_creator_('__mod__', 'remainder', False, None,
                                      True)),
         ('__matmul__',
@@ -424,6 +418,7 @@ def monkey_patch_math_varbase():
         '__rtruediv__',
         '__pow__',
         '__rpow__',
+        '__floordiv__',
     ]
 
     global _already_patch_varbase
