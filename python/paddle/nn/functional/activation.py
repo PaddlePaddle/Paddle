@@ -232,7 +232,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.hard_shrink(x, threshold)
+        return _C_ops.hardshrink(x, threshold)
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.hard_shrink(x, 'threshold', threshold)
@@ -344,7 +344,7 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.hard_sigmoid(x, slope, offset)
+        return _C_ops.hardsigmoid(x, slope, offset)
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
@@ -404,7 +404,7 @@ def hardswish(x, name=None):
     if _in_legacy_dygraph():
         return _legacy_C_ops.hard_swish(x)
     if in_dygraph_mode():
-        return _C_ops.hard_swish(x, 6, 6, 3)
+        return _C_ops.hardswish(x, 6, 6, 3)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardswish')
@@ -1271,7 +1271,7 @@ def softshrink(x, threshold=0.5, name=None):
                 threshold))
 
     if in_dygraph_mode():
-        return _C_ops.soft_shrink(x, threshold)
+        return _C_ops.softshrink(x, threshold)
     if _in_legacy_dygraph():
         return _legacy_C_ops.softshrink(x, 'lambda', threshold)
 

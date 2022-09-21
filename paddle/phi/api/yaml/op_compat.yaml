@@ -710,7 +710,7 @@
 
 - op : trunc
   inputs :
-    x : X
+    input : X
   outputs :
     out : Out
 
