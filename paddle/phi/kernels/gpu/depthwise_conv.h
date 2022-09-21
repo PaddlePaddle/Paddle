@@ -894,7 +894,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
   }
 
   T val = BlockReduceSum(s);
-  platform::CudaAtomicAdd(&filter_grad_data[gbid], val);
+  if (threadIdx.y == 0 && threadIdx.x == 0) filter_grad_data[gbid] = val;
 }
 
 template <typename T, bool fuse_relu_before_conv>

@@ -36,11 +36,12 @@
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta 
+    func : GeneralBinaryGradInferMeta
     param : [x, y]
   kernel :
     func : add_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
-           add_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
+           add_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr},
+           add_coo_dense_grad{sparse_coo, dense, sparse_coo -> sparse_coo, dense}
 
 - backward_op : addmm_grad
   forward : addmm(Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0) -> Tensor(out)
@@ -104,7 +105,7 @@
   args : (Tensor x, Tensor out_grad, DataType value_dtype)
   output : Tensor(x_grad)
   infer_meta :
-    func : UnchangedInferMeta 
+    func : UnchangedInferMeta
     param: [x]
   kernel :
     func : cast_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
@@ -126,7 +127,7 @@
   args : (Tensor x, Tensor y, Tensor out, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta 
+    func : GeneralBinaryGradInferMeta
     param : [x, y]
   kernel :
     func : divide_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
@@ -209,7 +210,7 @@
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta 
+    func : GeneralBinaryGradInferMeta
     param : [x, y]
   kernel :
     func : multiply_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
@@ -337,7 +338,7 @@
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta 
+    func : GeneralBinaryGradInferMeta
     param : [x, y]
   kernel :
     func : subtract_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
@@ -399,7 +400,7 @@
   args: (Tensor query, Tensor key, Tensor value, Tensor softmax, Tensor out_grad)
   output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad)
   infer_meta :
-    func : sparse::FusedAttentionGradInferMeta 
+    func : sparse::FusedAttentionGradInferMeta
   kernel :
     func : fused_attention_csr_grad{dense, dense, dense, sparse_csr, dense -> dense, dense, dense}
     layout : softmax
