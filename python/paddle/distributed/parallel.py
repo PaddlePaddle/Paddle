@@ -258,12 +258,7 @@ def init_parallel_env():
                                      _default_group_name,
                                      pg_options=None)
         ranks = list(range(world_size))
-        group = Group(rank,
-                      world_size,
-                      id=0,
-                      ranks=ranks,
-                      pg=pg,
-                      name=_default_group_name)
+        group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)
         _set_group_map_by_name(_default_group_name, group)
         _set_group_map(0, group)
         _set_group_map_backend(group, backend)

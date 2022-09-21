@@ -53,52 +53,9 @@ from .fleet.layers.mpu.mp_ops import _linear
 from .fleet.layers.mpu.mp_ops import _parallel_linear
 from .fleet.layers.mpu.mp_ops import _parallel_embedding
 from .communication.comm_utils import ReduceOp
+from .communication.group import Group
 
 __all__ = []
-
-
-class Group():
-    """
-    The abstract representation of group.
-    """
-
-    def __init__(self, rank, rank_num, id=0, ranks=[], pg=None, name=None):
-        self.rank = rank
-        self.nranks = rank_num
-        self.id = id
-        self.ranks = ranks
-        self.pg = pg
-        self.name = name
-
-    def is_member(self):
-        if self.rank < 0:
-            return False
-        if self.nranks < 2:
-            return False
-        return True
-
-    def get_group_rank(self, rank):
-        if self.is_member() and rank in self.ranks:
-            return self.ranks.index(rank)
-        else:
-            return -1
-
-    @property
-    def process_group(self):
-        return self.pg
-
-    @property
-    def world_size(self):
-        return self.nranks if self.rank >= 0 else -1
-
-    def __repr__(self):
-        debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
-            self.rank, self.nranks, self.id)
-        debug_str += ", ".join(map(str, self.ranks))
-        debug_str += "; name: "
-        debug_str += self.name if self.name else "None"
-        return debug_str
-
 
 _global_env = None
 
@@ -147,9 +104,8 @@ def _get_group_map():
     global _group_map
     if _global_env_gid not in _group_map:
         genv = _get_global_env()
-        _group_map[_global_env_gid] = Group(genv.rank,
-                                            genv.world_size,
-                                            ranks=list(range(genv.world_size)))
+        _group_map[_global_env_gid] = Group(genv.rank, 0,
+                                            list(range(genv.world_size)))
     return _group_map
 
 
@@ -451,7 +407,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         else:
             rank = -1
             pg = None
-        group = Group(rank, size, id=gid, ranks=ranks, pg=pg, name=group_name)
+        group = Group(rank, gid, ranks, pg=pg, name=group_name)
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
         _group_map_backend[group] = backend
@@ -476,13 +432,13 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     ring_id = _new_ring_id()
 
     if global_rank not in ranks:
-        gp = Group(-1, -1, ring_id, ranks)
+        gp = Group(-1, ring_id, ranks)
         _group_map[ring_id] = gp
     else:
         ranks = sorted(ranks)
         group_rank = ranks.index(global_rank)
         group_size = len(ranks)
-        gp = Group(group_rank, group_size, ring_id, ranks)
+        gp = Group(group_rank, ring_id, ranks)
         _group_map[ring_id] = gp
 
         if group_size >= 2:
