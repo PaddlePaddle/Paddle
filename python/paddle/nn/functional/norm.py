@@ -189,7 +189,7 @@ def batch_norm(x,
         trainable_statistics = not use_global_stats
 
     if in_dygraph_mode():
-        batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm_(
+        batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
             x, weight, bias, running_mean, running_var, momentum, epsilon,
             data_format, not training, use_global_stats, trainable_statistics,
             False)

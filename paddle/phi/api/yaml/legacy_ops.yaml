@@ -333,7 +333,7 @@
   kernel :
     func : batch_norm
     data_type : x
-  inplace : (mean -> mean_out), (variance -> variance_out)
+  view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
 
 - op : bce_loss
