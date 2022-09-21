@@ -112,7 +112,8 @@ def _broadcast_data_help(data, shape, dtype, hcg):
             input_data._share_buffer_to(data)
         else:
             data.value().get_tensor()._clear()
-            data.value().get_tensor()._share_data_with(input_data)
+            data.value().get_tensor()._share_data_with(
+                input_data.value().get_tensor())
 
 
 def broadcast_input_data(hcg, *inputs, **kwargs):
@@ -122,7 +123,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
             with framework.no_grad():
                 if "gpu" in cur_device and in_dygraph_mode() \
                     and not v.place.is_gpu_place():
-                    v_gpu = v.cuda(cur_device.split(":")[1])
+                    v_gpu = v.cuda(int(cur_device.split(":")[1]))
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
@@ -134,7 +135,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
             with framework.no_grad():
                 if "gpu" in cur_device and in_dygraph_mode() \
                     and not v.place.is_gpu_place():
-                    v_gpu = v.cuda(cur_device.split(":")[1])
+                    v_gpu = v.cuda(int(cur_device.split(":")[1]))
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
