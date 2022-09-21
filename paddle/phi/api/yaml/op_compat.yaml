@@ -241,8 +241,8 @@
   backward : embedding_grad (lookup_table_v2_grad)
   extra :
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
-             int trainer_id = 0, int slot = 0, 'int64_t[] height_sections  = {}', 'str epmap = {}',
-             'str table_names = {}']
+             int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
+             'str[] table_names = {}']
 
 - op : erf
   inputs :
