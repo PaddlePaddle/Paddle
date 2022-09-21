@@ -399,16 +399,6 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
 
 # # Situation 4: NotImplementedError
-class TestErrorInOther(unittest.TestCase):
-    def test(self):
-        paddle.disable_static()
-        prog_trans = paddle.jit.ProgramTranslator()
-        with self.assertRaises(NotImplementedError):
-            prog_trans.get_output(func_decorated_by_other_1)
-
-        with self.assertRaises(NotImplementedError):
-            func_decorated_by_other_2()
-
 
 class TestSuggestionErrorInRuntime(TestErrorBase):
     def set_func(self):

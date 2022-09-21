@@ -25,7 +25,7 @@ import paddle.nn as nn
 import paddle.utils as utils
 import paddle.static as static
 import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 from paddle.distributed import fleet
 from paddle.fluid.initializer import NumpyArrayInitializer
@@ -67,38 +67,18 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         if _global_parallel_strategy == "pp":
-            auto.shard_tensor(self.linear0.weight,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_0,
-                                  "dims_mapping": [-1, -1]
-                              })
-            auto.shard_tensor(self.linear1.weight,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_1,
-                                  "dims_mapping": [-1, -1]
-                              })
+            auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, None])
+            auto.shard_tensor(self.linear1.weight, PP_MESH_1, [None, None])
         elif _global_parallel_strategy == "mp":
-            auto.shard_tensor(self.linear0.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh,
-                                  "dims_mapping": [-1, 0]
-                              })
-            auto.shard_tensor(self.linear1.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh,
-                                  "dims_mapping": [0, -1]
-                              })
+            auto.shard_tensor(self.linear0.weight, _global_process_mesh,
+                              [None, "x"])
+            auto.shard_tensor(self.linear1.weight, _global_process_mesh,
+                              ["x", None])
         elif _global_parallel_strategy == "dp":
-            auto.shard_tensor(self.linear0.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh,
-                                  "dims_mapping": [-1, -1]
-                              })
-            auto.shard_tensor(self.linear1.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh,
-                                  "dims_mapping": [-1, -1]
-                              })
+            auto.shard_tensor(self.linear0.weight, _global_process_mesh,
+                              [None, None])
+            auto.shard_tensor(self.linear1.weight, _global_process_mesh,
+                              [None, None])
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -120,28 +100,12 @@ def mlp_forward(train_program, start_program):
                             dtype='float32')
 
         if _global_parallel_strategy == "pp":
-            auto.shard_tensor(input,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_0,
-                                  "dims_mapping": [-1, -1]
-                              })
-            auto.shard_tensor(label,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_1,
-                                  "dims_mapping": [-1, -1]
-                              })
+            auto.shard_tensor(input, PP_MESH_0, [None, None])
+            auto.shard_tensor(label, PP_MESH_1, [None, None])
         elif _global_parallel_strategy == "dp":
-            auto.shard_tensor(input,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh,
-                                  "dims_mapping": [0, -1]
-                              })
+            auto.shard_tensor(input, _global_process_mesh, ["x", None])
         elif _global_parallel_strategy == "mp":
-            auto.shard_tensor(input,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh,
-                                  "dims_mapping": [-1, -1]
-                              })
+            auto.shard_tensor(input, _global_process_mesh, [None, None])
 
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
@@ -186,7 +150,7 @@ class TestMLPAutoConvert(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "mp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh([0, 1])
+        _global_process_mesh = auto.ProcessMesh([0, 1], dim_names=["x"])
 
         input = np.random.random(size=(80, 64)).astype('float32')
         label = np.random.random(size=(80, 1)).astype('float32')
@@ -212,11 +176,11 @@ class TestMLPAutoConvert(unittest.TestCase):
 
         set_default_distributed_context(None)
         _global_parallel_strategy = "pp"
-        _global_process_mesh = auto.ProcessMesh([0, 1])
+        _global_process_mesh = auto.ProcessMesh([0, 1], dim_names=["x"])
         global PP_MESH_0
-        PP_MESH_0 = auto.ProcessMesh(mesh=[0])
+        PP_MESH_0 = auto.ProcessMesh(mesh=[0], dim_names=["pp0"])
         global PP_MESH_1
-        PP_MESH_1 = auto.ProcessMesh(mesh=[1])
+        PP_MESH_1 = auto.ProcessMesh(mesh=[1], dim_names=["pp1"])
 
         dist_main_prog_load, dist_start_prog_load, loss_load = get_distributed_program(
         )
@@ -268,7 +232,7 @@ class TestMLPAutoConvert2(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "pp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh([0, 1])
+        _global_process_mesh = auto.ProcessMesh([0, 1], dim_names=["x"])
         global PP_MESH_0
         PP_MESH_0 = auto.ProcessMesh(mesh=[0])
         global PP_MESH_1
@@ -303,7 +267,7 @@ class TestMLPAutoConvert2(unittest.TestCase):
 
         set_default_distributed_context(None)
         _global_parallel_strategy = "mp"
-        _global_process_mesh = auto.ProcessMesh([0, 1])
+        _global_process_mesh = auto.ProcessMesh([0, 1], dim_names=["x"])
 
         dist_main_prog_load, dist_start_prog_load, loss_load = get_distributed_program(
         )
@@ -350,7 +314,7 @@ class TestMLPAutoConvertInvalid(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "mp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh([0, 1])
+        _global_process_mesh = auto.ProcessMesh([0, 1], dim_names=["x"])
         dist_main_prog, _, _ = get_distributed_program()
         with self.assertRaises(TypeError):
             save_distributed_checkpoint(dist_main_prog, [""], [""],

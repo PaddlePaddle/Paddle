@@ -47,11 +47,11 @@ class DiagEmbedOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(-1);
 
-    AddComment(R"DOC(Creates a tensor whose diagonals of certain 2D planes 
-              (specified by dim1 and dim2) are filled by input. 
-              To facilitate creating batched diagonal matrices, 
+    AddComment(R"DOC(Creates a tensor whose diagonals of certain 2D planes
+              (specified by dim1 and dim2) are filled by input.
+              To facilitate creating batched diagonal matrices,
               the 2D planes formed by the last two dimensions of the returned tensor
-              are chosen by default. 
+              are chosen by default.
               )DOC");
   }
 };

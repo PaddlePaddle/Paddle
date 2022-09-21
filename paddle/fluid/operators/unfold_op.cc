@@ -54,7 +54,7 @@ class UnfoldOpMaker : public framework::OpProtoAndCheckerMaker {
 This Operator is used to extract sliding local blocks from a batched input tensor, also known
 as im2col when operated on batched 2D image tensor. For each block under the convolution filter,
 all element will be rearranged as a column. While the convolution filter sliding over the input
-feature map, a series of such columns will be formed. 
+feature map, a series of such columns will be formed.
     )DOC");
   }
 };

@@ -30,9 +30,9 @@ class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):
     '''
     conv_input   conv_weight_var(persistable)
       \       /
-         conv_op     
+         conv_op
           |
-      conv_out_var  elementwise_add_y 
+      conv_out_var  elementwise_add_y
           |       /
     elementwise_add
           |
