@@ -50,7 +50,9 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
 }
 
 template class LayerNormDirectCUDAFunctor<float, float>;
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 template class LayerNormDirectCUDAFunctor<half, float>;
+#endif
 
 template <typename T, typename Context>
 void LayerNormKernel(const Context &dev_ctx,

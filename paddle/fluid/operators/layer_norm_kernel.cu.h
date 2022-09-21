@@ -332,23 +332,6 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
 }
 #endif
 
-template <typename T, typename U>
-__inline__ __device__ U data_convert(const T a) {
-  return static_cast<U>(a);
-}
-
-#ifdef PADDLE_WITH_HIP
-template <>
-__inline__ __device__ float data_convert<half, float>(const half a) {
-  return __half2float(a);
-}
-
-template <>
-__inline__ __device__ half data_convert<float, half>(const float a) {
-  return __float2half(a);
-}
-#endif
-
 template <typename T, typename U, bool ScaleBiasWithSameTypeX>
 using LayerNormScaleBiasT =
     typename std::conditional<ScaleBiasWithSameTypeX, T, U>::type;
@@ -387,7 +370,7 @@ __global__ void LayerNormForward(
   U mean_val = 0;
   U var_val = 0;
   for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
-    U tmp = data_convert<T, U>(x[i]);
+    U tmp = static_cast<U>(x[i]);
     mean_val += tmp;
     var_val += (tmp * tmp);
   }
@@ -416,25 +399,18 @@ __global__ void LayerNormForward(
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              data_convert<U, T>(
-                  data_convert<
-                      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                      U>(scale[j]) *
-                      (data_convert<InType, U>(x[i]) - mean_val) * invvar +
-                  data_convert<
-                      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                      U>(bias[j])),
+              static_cast<T>(static_cast<U>(scale[j]) *
+                                 (static_cast<U>(x[i]) - mean_val) * invvar +
+                             static_cast<U>(bias[j])),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
         } else {
-          y[i] = data_convert<U, OutType>(
-              data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                           U>(scale[j]) *
-                  (data_convert<InType, U>(x[i]) - mean_val) * invvar +
-              data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                           U>(bias[j]));
+          y[i] = static_cast<OutType>(static_cast<U>(scale[j]) *
+                                          (static_cast<U>(x[i]) - mean_val) *
+                                          invvar +
+                                      static_cast<U>(bias[j]));
         }
       }
     } else {
@@ -442,20 +418,16 @@ __global__ void LayerNormForward(
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              data_convert<U, T>(
-                  data_convert<
-                      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                      U>(scale[j]) *
-                  (data_convert<InType, U>(x[i]) - mean_val) * invvar),
+              static_cast<T>(static_cast<U>(scale[j]) *
+                             (static_cast<U>(x[i]) - mean_val) * invvar),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
         } else {
-          y[i] = data_convert<U, OutType>(
-              data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                           U>(scale[j]) *
-              (data_convert<InType, U>(x[i]) - mean_val) * invvar);
+          y[i] =
+              static_cast<OutType>(static_cast<U>(scale[j]) *
+                                   (static_cast<U>(x[i]) - mean_val) * invvar);
         }
       }
     }
@@ -465,20 +437,16 @@ __global__ void LayerNormForward(
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              data_convert<U, T>(
-                  (data_convert<InType, U>(x[i]) - mean_val) * invvar +
-                  data_convert<
-                      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                      U>(bias[j])),
+              static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
+                             static_cast<U>(bias[j])),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
         } else {
-          y[i] = data_convert<U, OutType>(
-              (data_convert<InType, U>(x[i]) - mean_val) * invvar +
-              data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                           U>(bias[j]));
+          y[i] =
+              static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar +
+                                   static_cast<U>(bias[j]));
         }
       }
     } else {
@@ -486,15 +454,14 @@ __global__ void LayerNormForward(
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              data_convert<U, T>((data_convert<InType, U>(x[i]) - mean_val) *
-                                 invvar),
+              static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
         } else {
-          y[i] = data_convert<U, OutType>(
-              (data_convert<InType, U>(x[i]) - mean_val) * invvar);
+          y[i] =
+              static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar);
         }
       }
     }
