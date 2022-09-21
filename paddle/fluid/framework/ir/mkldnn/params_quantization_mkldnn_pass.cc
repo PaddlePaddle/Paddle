@@ -52,25 +52,6 @@ bool HasBias(ir::Node* conv_op) {
          conv_op->Op()->Input("Bias").size() > 0;
 }
 
-bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
-  if (!platform::HasOpINT8DataType(conv_op->Op())) {
-    VLOG(4) << "Skipping non-int8 convolution (id: " << conv_op->id() << ").";
-    return true;
-  }
-
-  auto filter_var = scope->GetVar(conv_filter->Name());
-  if (filter_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
-    VLOG(4) << "Skipping convolution (id: " << conv_op->id()
-            << ", name: " << conv_filter->Name()
-            << ") because it is detected again.";
-    conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
-    return true;
-  }
-
-  VLOG(4) << "Not skipping convolution (id: " << conv_op->id() << ")";
-  return false;
-}
-
 template <typename T>
 void QuantizeConvInput(Scope* scope,
                        ir::Graph* g,
@@ -153,16 +134,34 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
-    if (ShouldSkipConv(conv_op, scope, conv_filter)) {
+    // If not a quantized OP
+    if (!platform::HasOpINT8DataType(conv_op->Op())) {
       return;
     }
 
-    QuantizeConvInput<int8_t>(
-        scope, g, conv_op, conv_filter->Name(), "Scale_weights");
+    auto filter_var = scope->GetVar(conv_filter->Name());
+    if (filter_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
+      VLOG(0) << "Skipping convolution filter: " << conv_filter->Name()
+              << " because it is detected again.";
+      conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
+    } else {
+      VLOG(0) << conv_filter->Name();
+      QuantizeConvInput<int8_t>(
+          scope, g, conv_op, conv_filter->Name(), "Scale_weights");
+    }
 
     if (HasBias(conv_op)) {
-      QuantizeConvInput<int32_t>(
-          scope, g, conv_op, conv_op->Op()->Input("Bias")[0], "Bias_scales");
+      auto bias_var = scope->GetVar(conv_op->Op()->Input("Bias")[0]);
+      if (bias_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
+        VLOG(0) << "Skipping convolution bias: "
+                << conv_op->Op()->Input("Bias")[0]
+                << " because it is detected again.";
+        conv_op->Op()->SetAttr("Bias_scales", std::vector<float>(1, 1));
+      } else {
+        VLOG(0) << conv_op->Op()->Input("Bias")[0];
+        QuantizeConvInput<int32_t>(
+            scope, g, conv_op, conv_op->Op()->Input("Bias")[0], "Bias_scales");
+      }
     }
     params_to_int8_conv_found++;
   };
