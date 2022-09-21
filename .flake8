@@ -3,7 +3,7 @@ select = C,E,F,W
 exclude = ./build
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-    E101,E121,E122,E123,E124,E125,E126,E127,E128,E129,E131,
+    E121,E122,E123,E124,E125,E126,E127,E128,E129,E131,
     E201,E202,E203,E221,E225,E226,E228,E231,E241,E251,E261,E262,E265,E266,E271,E272,E275,
     E301,E302,E303,E305,E306,
     E401,E402,
@@ -17,6 +17,9 @@ ignore =
     F811,F821,F823,F841,
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-    W191,
     W503,W504
     W601,W605
+per-file-ignores =
+    # These files need tabs for testing.
+    python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py:E101,W191
+    python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py:E101,W191
