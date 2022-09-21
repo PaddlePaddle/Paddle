@@ -377,18 +377,18 @@ class PipelineParallel(MetaParallelBase):
                 1) if loss.dtype == paddle.float32 else paddle.to_tensor(0)
             paddle.distributed.broadcast(is_fp32,
                                          src=self.global_rank,
-                                         use_calc_stream=True,
+                                         sync_op=True,
                                          group=self.pp_group)
             paddle.distributed.broadcast(loss,
                                          src=self.global_rank,
-                                         use_calc_stream=True,
+                                         sync_op=True,
                                          group=self.pp_group)
         else:
             is_fp32 = paddle.to_tensor(1)
             paddle.distributed.broadcast(
                 is_fp32,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                use_calc_stream=True,
+                sync_op=True,
                 group=self.pp_group)
             loss = paddle.zeros(shape=[
                 1
@@ -397,7 +397,7 @@ class PipelineParallel(MetaParallelBase):
             paddle.distributed.broadcast(
                 loss,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                use_calc_stream=True,
+                sync_op=True,
                 group=self.pp_group)
         return loss
 
