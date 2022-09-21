@@ -3,6 +3,7 @@ list(
   APPEND
   CONVERT_FILES
   matmul_op.cc
+  matmul_v2_op.cc
   conv2d_op.cc
   fc_op.cc
   pool2d_op.cc
@@ -103,13 +104,7 @@ nv_test(
 nv_test(
   test_custom_plugin_creater
   SRCS test_custom_plugin_creater.cc
-  DEPS paddle_framework
-       ${GLOB_OPERATOR_DEPS}
-       tensorrt_engine
-       tensorrt_plugin
-       tensorrt_converter
-       op_meta_info
-       custom_operator)
+  DEPS paddle_framework tensorrt_converter op_meta_info custom_operator)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

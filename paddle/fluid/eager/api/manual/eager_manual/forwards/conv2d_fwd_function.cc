@@ -51,17 +51,17 @@ paddle::experimental::Tensor conv2d_ad_func(
 
     auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
 
-    auto NEW_input =
+    auto new_input =
         egr::EagerAmpAutoCast("input", input, amp_dst_dtype, op_name);
-    auto NEW_filter =
+    auto new_filter =
         egr::EagerAmpAutoCast("filter", filter, amp_dst_dtype, op_name);
 
     {
       paddle::imperative::AutoCastGuard guard(
           egr::Controller::Instance().GetCurrentTracer(),
           paddle::imperative::AmpLevel::O0);
-      return conv2d_ad_func(NEW_input,
-                            NEW_filter,
+      return conv2d_ad_func(new_input,
+                            new_filter,
                             strides,
                             paddings,
                             paddding_algorithm,
@@ -76,7 +76,7 @@ paddle::experimental::Tensor conv2d_ad_func(
 
   // Layout autotune
 
-  if (paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune()) {
+  if (egr::Controller::Instance().UseLayoutAutoTune()) {
     VLOG(5) << "Check and Prepare For LAYOUT";
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          egr::kSlotSmallVectorSize>
@@ -85,11 +85,10 @@ paddle::experimental::Tensor conv2d_ad_func(
     auto op_name = phi::TransToFluidOpName("conv2d");
     auto transformer = egr::EagerLayoutAutotune<std::string>(
         op_name, tensors_vector, &data_format);
-    auto NEW_input = transformer->TransInTensor("input", input);
-    bool is_enable_tune =
-        paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune();
-    paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune();
-    auto out = conv2d_ad_func(NEW_input,
+    auto new_input = transformer->TransInTensor("input", input);
+    bool need_tune = egr::Controller::Instance().UseLayoutAutoTune();
+    egr::Controller::Instance().DisableLayoutAutoTune();
+    auto out = conv2d_ad_func(new_input,
                               filter,
                               strides,
                               paddings,
@@ -101,8 +100,8 @@ paddle::experimental::Tensor conv2d_ad_func(
                               workspace_size_MB,
                               exhaustive_search);
     transformer->SetOutTensorLayout(&out);
-    if (is_enable_tune) {
-      paddle::imperative::LayoutAutoTune::Instance().EnableLayoutAutoTune();
+    if (need_tune) {
+      egr::Controller::Instance().EnableLayoutAutoTune();
     }
     // Returns
     return out;

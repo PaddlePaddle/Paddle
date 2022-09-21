@@ -21,6 +21,8 @@ namespace inference {
 namespace tensorrt {
 
 USE_TRT_DYNAMIC_INFER_META_FN(gather_nd);
+USE_TRT_DYNAMIC_INFER_META_FN(yolo_box);
+USE_TRT_DYNAMIC_INFER_META_FN(instance_norm);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

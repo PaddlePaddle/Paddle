@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 import paddle.distributed.fleet as fleet
 
 from paddle import LazyGuard

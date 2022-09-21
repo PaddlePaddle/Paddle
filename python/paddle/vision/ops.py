@@ -1611,7 +1611,9 @@ def nms(boxes,
     import paddle
     if category_idxs is None:
         sorted_global_indices = paddle.argsort(scores, descending=True)
-        return _nms(boxes[sorted_global_indices], iou_threshold)
+        sorted_keep_boxes_indices = _nms(boxes[sorted_global_indices],
+                                         iou_threshold)
+        return sorted_global_indices[sorted_keep_boxes_indices]
 
     if top_k is not None:
         assert top_k <= scores.shape[

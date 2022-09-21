@@ -100,6 +100,24 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_tensor_layout,
                               default_key.dtype(),
                               arg_type);
+      } else if (arg_type == std::type_index(typeid(
+                                 const std::vector<const SelectedRows*>&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(
+                                 const std::vector<const TensorBase*>&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(
+                                 const std::vector<const TensorArray*>&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type == std::type_index(typeid(const SelectedRows&))) {
         args_def->AppendInput(default_key.backend(),
                               default_tensor_layout,
