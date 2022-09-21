@@ -44,7 +44,7 @@ PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
                             true,
                             "Use new executor in control flow op");
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor_cache,
-                            false,
+                            true,
                             "Cache new executor in control flow op");
 
 DECLARE_bool(check_nan_inf);
@@ -282,8 +282,6 @@ const VariableScope* InterpreterCore::GetVariableScope() const {
 
 void InterpreterCore::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
-  paddle::framework::interpreter::build_variable_scope(
-      block_, &var_scope_, create_local_scope_);
   auto& var_list = var_scope_.MutableVarList();
   for (size_t i = 0; i < var_list.size(); i++) {
     var_list[i] = new_scope->FindVar(var_scope_.GetNameById(i));
@@ -483,8 +481,18 @@ void InterpreterCore::Convert(
     OpInOutInfo info;
     std::set<size_t> gc_check_inputs;
     for (auto& item : instr.Inputs()) {
+      VLOG(10) << "[gc_check_inputs]" << instr.OpBase()->Type() << " "
+               << item.first << ":";
       for (auto id : item.second) {
         if (id == kEmptyVarIndex) {
+          continue;
+        }
+        auto* var_desc = var_scope_.VarDesc(id);
+        VLOG(10) << "[gc_check_inputs]" << var_scope_.GetNameById(id) << " "
+                 << block_.HasVar(var_scope_.GetNameById(id));
+        if (!block_.HasVar(var_scope_.GetNameById(id))) {
+          VLOG(10) << "[gc_check_inputs] skip input: "
+                   << var_scope_.GetNameById(id);
           continue;
         }
         input_var2op_info_.at(id).push_back(op_idx);
@@ -492,7 +500,7 @@ void InterpreterCore::Convert(
         if (!info.IsBuilt()) {
           info.Build(instr.OpBase());
         }
-        auto* var_desc = var_scope_.VarDesc(id);
+
         if (var_desc) {
           if (info.IsInArgBufferNeeded(var_desc->Name())) {
             gc_check_inputs.insert(id);
@@ -520,7 +528,17 @@ void InterpreterCore::Convert(
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     // checkout output
     for (auto& item : vec_instruction_[i].Outputs()) {
+      VLOG(10) << "[gc_check_outputs]" << vec_instruction_[i].OpBase()->Type()
+               << " " << item.first << ":";
       for (auto var_id : item.second) {
+        // auto* var_desc = var_scope_.VarDesc(var_id);
+        VLOG(10) << "[gc_check_outputs]" << var_scope_.GetNameById(var_id)
+                 << " " << block_.HasVar(var_scope_.GetNameById(var_id));
+        if (!block_.HasVar(var_scope_.GetNameById(var_id))) {
+          VLOG(10) << "[gc_check_outputs] skip output: "
+                   << var_scope_.GetNameById(var_id);
+          continue;
+        }
         if (input_var2op_info_.at(var_id).size() == 0) {
           last_live_ops_[var_id].insert(i);
         }
@@ -664,12 +682,35 @@ inline void SetDeviceId(const platform::Place& place) {
   }
 }
 
+std::string print_cpu_tensor(std::string name, Scope* scope) {
+  Variable* var = scope->FindVar(name);
+  std::stringstream ss;
+  ss << "[" << name << "]:";
+  if (var == nullptr) {
+    ss << "no such variable";
+    return ss.str();
+  }
+  framework::LoDTensor* t = var->GetMutable<framework::LoDTensor>();
+  if (!t->initialized()) {
+    ss << "not intialized";
+    return ss.str();
+  }
+  if (!platform::is_cpu_place(t->place())) {
+    ss << "not cpu tensor";
+    return ss.str();
+  }
+
+  float v = t->data<float>()[0];
+  ss << v;
+  return ss.str();
+}
+
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = create_local_scope_ ? var_scope_.GetMutableLocalScope()
                                            : var_scope_.GetMutableScope();
-  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
   SetDeviceId(place);
 
@@ -720,6 +761,14 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     }
   }
 
+  VLOG(4) << "[tmp debug] before " << block_.ID() << ":" << op->Type()
+          << print_cpu_tensor("tmp_0@GRAD", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block0@0", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block0@1", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block1@0", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block1@1", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block2@0", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block2@1", local_scope);
   {
     platform::RecordEvent compute_event(
         "compute",
@@ -747,8 +796,15 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       }
     }
   }
-
-  VLOG(4) << "End run " << place << " " << op->DebugStringEx(local_scope_);
+  VLOG(4) << "[tmp debug] after " << block_.ID() << ":" << op->Type() << ":"
+          << print_cpu_tensor("tmp_0@GRAD", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block0@0", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block0@1", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block1@0", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block1@1", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block2@0", local_scope) << ","
+          << print_cpu_tensor("tmp_0@GRAD@RENAME@block2@1", local_scope);
+  VLOG(4) << "End run " << place << " " << op->DebugStringEx(local_scope);
 
   if (!instr_node.InplaceBackMap().empty()) {
     platform::RecordEvent inplaceback_event(

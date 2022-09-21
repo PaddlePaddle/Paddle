@@ -76,8 +76,10 @@ class ConditionalBlockOp : public ConditionalOp {
               "Expect Scope variable to be set in conditional_block_op, but "
               "got a null Scope variable. Please set the Scope variable."));
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
-      scopes->resize(1);
-      scopes->front() = &scope.NewScope();
+      if (scopes->size() == 0) {
+        scopes->resize(1);
+        scopes->front() = &scope.NewScope();
+      }
       auto &cur_scope = *scopes->front();
 #ifdef PADDLE_WITH_MKLDNN
       // (jczaja) Executor on being destroyed clears oneDNN cache and
@@ -127,7 +129,7 @@ class ConditionalBlockOp : public ConditionalOp {
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core;
         }
-        core->reset_scope(&cur_scope);
+        // core->reset_scope(&cur_scope);
         core->Run({}, false);
 
         FLAGS_new_executor_use_local_scope =
@@ -249,7 +251,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
               dev_place, *block, skip_gc_vars, &cur_scope, false));
           core->SetUsedForControlFlowOp(true);
         }
-        core->reset_scope(&cur_scope);
+        // core->reset_scope(&cur_scope);
         core->Run({}, false);
 
         FLAGS_new_executor_use_local_scope =
@@ -299,7 +301,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
     for (size_t i = 0; i < outside_grads.size(); ++i) {
       const std::string &outside_grad_name = outside_grads[i];
       const std::string &inside_grad_name = inside_grads[i];
-      VLOG(4) << "inside_grad_name = " << inside_grad_name
+      VLOG(4) << "[assign local]"
+              << "inside_grad_name = " << inside_grad_name
               << ", outside_grad_name = " << outside_grad_name;
       framework::Variable *outside_var =
           parent_scope.FindVar(outside_grad_name);
@@ -332,7 +335,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
     for (size_t i = 0; i < outside_grads.size(); ++i) {
       const std::string &outside_grad_name = outside_grads[i];
       const std::string &input_name = inputs[i];
-      VLOG(4) << "input_name = " << input_name
+      VLOG(4) << "[assign zero]"
+              << "input_name = " << input_name
               << ", outside_grad_name = " << outside_grad_name;
       framework::Variable *input_var = scope.FindVar(input_name);
       if (input_var == nullptr) {

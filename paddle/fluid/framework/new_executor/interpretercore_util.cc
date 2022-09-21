@@ -303,7 +303,7 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
       auto* var = local_scope->FindVar(var_name);
 
       if (!var_scope->HasVar(var_name)) {
-        if (allow_var_not_in_program && local_scope->FindVar(var_name)) {
+        if (allow_var_not_in_program && var) {
           VLOG(3) << "Add " << var_name << " to var_scope";
           var_scope->AddVar(var_name, nullptr);
 
@@ -311,7 +311,7 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
           // inputs or outputs in VariableScope of the sub-block, but it's not a
           // control flow op. So allow_var_not_in_scope won't be set, it only
           // works for control flow op in global block.
-        } else if (used_for_control_flow_op && local_scope->FindVar(var_name)) {
+        } else if (used_for_control_flow_op && var) {
           VLOG(4) << "[build_variable_map] insert " << var_name
                   << " for use of control flow op";
           var_scope->AddVar(var_name, nullptr);
@@ -323,7 +323,8 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
       VLOG(4) << "[build_variable_map] local scope find: " << var_name << " "
               << var;
       auto var_id = var_scope->VarId(var_name);
-      VLOG(4) << "[build_variable_map] var scope add: " << var_name;
+      VLOG(4) << "[build_variable_map] var scope add: " << var_name << "("
+              << var_id << ")";
       vars.push_back(var);
       ids.push_back(var_id);
     }
