@@ -445,6 +445,24 @@ static PyObject* tensor_method_copy_(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_clone(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+
+  PADDLE_ENFORCE_EQ(
+      self->tensor.initialized(),
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "We can only support initialized tensor in clone, however we got "
+          "uninitialized tensor %s, please check your code.",
+          self->tensor.name()));
+
+  auto out = assign_ad_func(self->tensor);
+  return ToPyObject(out);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_retain_grads(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
@@ -1852,6 +1870,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"copy_",
      (PyCFunction)(void (*)(void))tensor_method_copy_,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"clone",
+     (PyCFunction)(void (*)(void))tensor_method_clone,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"reconstruct_from_",
