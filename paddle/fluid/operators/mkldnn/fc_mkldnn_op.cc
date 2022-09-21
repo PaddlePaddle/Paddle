@@ -91,7 +91,7 @@ class FCMKLDNNHandler
     }
 
     dnnl::primitive_attr attrs;
-    HandlePostOps(ctx, attrs);
+    HandlePostOps(ctx, &attrs);
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
                                             prop_kind::forward_inference,
@@ -103,7 +103,7 @@ class FCMKLDNNHandler
 
  private:
   void HandlePostOps(const paddle::framework::ExecutionContext& ctx,
-                     dnnl::primitive_attr& attrs) {
+                     dnnl::primitive_attr* attrs) {
     static std::unordered_map<std::string, dnnl::algorithm> algo_map = {
         {"relu", dnnl::algorithm::eltwise_relu},
         {"gelu", dnnl::algorithm::eltwise_gelu},
@@ -119,7 +119,7 @@ class FCMKLDNNHandler
     if (IsInt8<T_w>()) {
       std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
-      attrs.set_output_scales(mask, output_shift_scale);
+      attrs->set_output_scales(mask, output_shift_scale);
     }
 
     dnnl::post_ops post_ops;
@@ -138,7 +138,7 @@ class FCMKLDNNHandler
 
       post_ops.append_eltwise(scale, algo_map[activation_type], alpha, beta);
     }
-    attrs.set_post_ops(post_ops);
+    attrs->set_post_ops(post_ops);
   }
 
   // Compute the bias scales so that its values correspond to the
@@ -147,7 +147,6 @@ class FCMKLDNNHandler
       const float scale_in, const std::vector<float>& scale_weights) {
     std::vector<float> bias_scales(scale_weights.size());
 
-#pragma omp parallel for
     for (size_t i = 0; i < bias_scales.size(); ++i) {
       if (scale_weights[i] == 0.0)
         bias_scales[i] = 1.0f;
@@ -181,7 +180,6 @@ class FCMKLDNNHandler
     const size_t weight_scales_num = scale_weights_data.size();
     std::vector<float> output_shift_scale(weight_scales_num);
 
-    //#pragma omp parallel for
     for (size_t i = 0; i < weight_scales_num; i++) {
       if (scale_weights_data[i] == 0.0)
         output_shift_scale[i] = inner_scale;
