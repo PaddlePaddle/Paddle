@@ -9,9 +9,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
 // #include "paddle/fluid/framework/tensor_util.h"
@@ -19,7 +19,7 @@ limitations under the License. */
 namespace phi {
 
 phi::DDim ValidateShape(const std::vector<int64_t>& shape,
-                                   const phi::DDim& in_dims) {
+                        const phi::DDim& in_dims) {
   const int64_t in_size = phi::product(in_dims);
   auto in_dims_vec = phi::vectorize(in_dims);
   bool all_positive = std::all_of(in_dims_vec.cbegin(),
@@ -172,7 +172,8 @@ void ReshapeKernel(const Context& dev_ctx,
   astream.wait();
 
   out->Resize(out_dims);
-  out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
+  out->set_mem_desc(
+      reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
 }
 
 template <typename T, typename Context>
