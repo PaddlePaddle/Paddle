@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/inference/tensorrt/plugin/merge_layernorm_op_plugin.h"
+#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace paddle {
 namespace inference {
@@ -24,35 +25,6 @@ namespace tensorrt {
 namespace plugin {
 
 #define FINAL_MASK 0xffffffff
-
-template <typename T>
-__inline__ __device__ T warpReduceSum(T val) {
-#pragma unroll
-  for (int mask = 16; mask > 0; mask >>= 1)
-    val += __shfl_xor_sync(FINAL_MASK, val, mask, 32);
-  return val;
-}
-
-/* Calculate the sum of all elements in a block */
-template <typename T>
-__inline__ __device__ T blockReduceSum(T val) {
-  static __shared__ T shared[32];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-
-  val = warpReduceSum<T>(val);
-
-  if (lane == 0) shared[wid] = val;
-
-  __syncthreads();
-
-  // Modify from blockDim.x << 5 to blockDim.x / 32. to prevent
-  // blockDim.x is not divided by 32
-  val = (threadIdx.x < (blockDim.x / 32.f)) ? shared[lane] : (T)(0.0f);
-  val = warpReduceSum<T>(val);
-
-  return val;
-}
 
 template <typename T>
 __global__ void merge_layernorm_v2(T *out,
@@ -99,7 +71,7 @@ __global__ void merge_layernorm_v2(T *out,
     }
   }
 
-  mean = blockReduceSum<float>(sum);
+  mean = phi::funcs::blockReduceSum<float>(sum,FINAL_MASK);
   if (tid == 0) {
     s_mean = mean / n;
   }
@@ -115,7 +87,7 @@ __global__ void merge_layernorm_v2(T *out,
     }
   }
 
-  variance = blockReduceSum<float>(var);
+  variance = phi::funcs::blockReduceSum<float>(var,FINAL_MASK);
   if (tid == 0) {
     s_variance = rsqrtf(variance / n + layernorm_eps);
   }
@@ -146,8 +118,8 @@ void invokeMergeLayernorm(T *output,
                           int n,
                           cudaStream_t stream) {
   if ((W % 2 != 0) || (H % 2 != 0)) {
-    printf("[ERROR][invokeMergeLayernorm] H(W) should be a multiple of 2.\n");
-    return;
+    PADDLE_THROW(platform::errors::InvalidArgument(
+      "H(W) of merge layernorm should be a multiple of 2."));
   }
   dim3 grid(W / 2, H / 2, batch);
   int blockSize = 4 * n;
