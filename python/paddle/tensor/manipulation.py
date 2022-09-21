@@ -1130,10 +1130,10 @@ def concat(x, axis=0, name=None):
 
 def broadcast_tensors(input, name=None):
     """
-    This OP broadcast a list of tensors following broadcast semantics
+    Broadcast a list of tensors following broadcast semantics
 
     .. note::
-        If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        If you want know more about broadcasting, please refer to :ref:`https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor`.
 
     Args:
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
