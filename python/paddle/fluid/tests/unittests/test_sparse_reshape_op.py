@@ -22,8 +22,11 @@ class TestReshape(unittest.TestCase):
     # x: sparse, out: sparse
     def check_result(self, x_shape, new_shape, format):
         with _test_eager_guard():
-            mask = paddle.randint(0, 2, x_shape).astype("float32")
-            origin_x = paddle.rand(x_shape, dtype='float32') * mask
+            # mask = paddle.randint(0, 2, x_shape).astype("float32")
+            # origin_x = paddle.rand(x_shape, dtype='float32') * mask
+            mask = paddle.randint(0, 2, x_shape)
+            origin_x = paddle.randint(-100, 100, x_shape) * mask
+
             dense_x = origin_x.detach()
             dense_x.stop_gradient = False
             # dense_out = paddle.transpose(dense_x, dims)
