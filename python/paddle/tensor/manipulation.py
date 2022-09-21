@@ -4490,7 +4490,7 @@ def index_add(x, index, axis, value, name=None):
 def index_add_(x, index, axis, value, name=None):
     """
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_tensor_index_add`.
+    Please refer to :ref:`api_paddle_index_add`.
 
     Examples:
         .. code-block:: python
