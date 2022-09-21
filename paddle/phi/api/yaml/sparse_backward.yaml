@@ -104,6 +104,9 @@
   forward : batch_norm (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean_out, Tensor variance_out, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x, scale, bias]
   kernel :
     func : batch_norm_coo_grad {sparse_coo, dense, dense, dense, dense, dense, dense, dense, sparse_coo -> sparse_coo, dense, dense}
     data_type : out_grad
