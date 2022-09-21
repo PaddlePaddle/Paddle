@@ -2187,9 +2187,11 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
     unpack L and U matrix from LU, unpack permutation matrix P from Pivtos .
 
     P mat can be get by pivots:
-    # ones = eye(rows) #eye matrix of rank rows
-    # for i in range(cols):
-    #     swap(ones[i], ones[pivots[i]])
+
+    .. code-block:: text
+        ones = eye(rows) #eye matrix of rank rows
+        for i in range(cols):
+            swap(ones[i], ones[pivots[i]])
 
 
     Args:
@@ -2205,11 +2207,11 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        P (Tensor): Permutation matrix P of lu factorization.
+        P (Tensor), Permutation matrix P of lu factorization.
 
-        L (Tensor): The lower triangular matrix tensor of lu factorization.
+        L (Tensor), The lower triangular matrix tensor of lu factorization.
 
-        U (Tensor): The upper triangular matrix tensor of lu factorization.
+        U (Tensor), The upper triangular matrix tensor of lu factorization.
 
 
     Examples:
