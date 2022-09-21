@@ -458,10 +458,11 @@
   backward: mv_grad
 
 - op : transpose
-  args : (Tensor x, int[] dims)
+  args : (Tensor x, int[] perm)
   output : Tensor(out)
   infer_meta :
     func : TransposeInferMeta
+    param: [ x, perm ]
   kernel :
     func : transpose_coo{sparse_coo -> sparse_coo},
            transpose_csr{sparse_csr -> sparse_csr}
