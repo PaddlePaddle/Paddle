@@ -2879,6 +2879,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } break;
       default: {
         if (attr_iter == Attrs().end()) {
+          // TODO(chenweihang): remove this backup searching later
           attr_iter = RuntimeAttrs().find(attr_names[i]);
           PADDLE_ENFORCE_NE(attr_iter,
                             RuntimeAttrs().end(),
@@ -2962,6 +2963,23 @@ void OperatorWithKernel::BuildPhiKernelContext(
     }
   }
   VLOG(4) << "Done attributes";
+
+  // For compatible with Op with extra attrs for specific backend
+  auto& runtime_attrs = RuntimeAttrs();
+  for (const auto& attr : runtime_attrs) {
+    auto& attr_name = attr.first;
+    // auto& attr_val = attr.second;
+    VLOG(4) << "attr name: " << attr_name;
+    if (phi::OneDNNContext::classof(dev_ctx)) {
+      VLOG(4) << "Current DeviceContext is OneDNNContext";
+    } else if (phi::GPUContext::classof(dev_ctx)) {
+      // For GPUDNN, GPUDNN has no DeviceContext, so use GPUContext
+      VLOG(4) << "Current DeviceContext is GPUContext";
+    } else {
+      // skip current attr, do nothing
+    }
+  }
+  VLOG(4) << "Done runtime attributes";
 }
 
 }  // namespace framework

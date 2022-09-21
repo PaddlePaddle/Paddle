@@ -26,7 +26,8 @@ namespace xpu = baidu::xpu::api;
 
 namespace phi {
 
-class XPUContext : public DeviceContext {
+class XPUContext : public DeviceContext,
+                   public TypeInfoTraits<DeviceContext, XPUContext> {
  public:
   XPUContext();
 
@@ -64,6 +65,8 @@ class XPUContext : public DeviceContext {
   void SetXPUStream(XPUStream stream);
 
   XPUStream stream() const;
+
+  static const char* name() { return "XPUContext"; }
 
  private:
   struct Impl;

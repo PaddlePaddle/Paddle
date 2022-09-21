@@ -144,7 +144,9 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 
 // Graphcore IPU
 #ifdef PADDLE_WITH_IPU
-class IPUDeviceContext : public DeviceContext {
+class IPUDeviceContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, IPUDeviceContext> {
  public:
   IPUDeviceContext() = delete;
   explicit IPUDeviceContext(IPUPlace place);
@@ -153,6 +155,8 @@ class IPUDeviceContext : public DeviceContext {
   const Place& GetPlace() const override;
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
+
+  static const char* name() { return "IPUDeviceContext"; }
 
  private:
   IPUPlace place_;
@@ -188,7 +192,9 @@ struct DefaultDeviceContextType<platform::XPUPlace> {
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-class NPUDeviceContext : public DeviceContext {
+class NPUDeviceContext
+    : public DeviceContex,
+      public TypeInfoTraits<DeviceContext, NPUDeviceContext> {
  public:
   explicit NPUDeviceContext(NPUPlace place);
   virtual ~NPUDeviceContext();
@@ -224,6 +230,8 @@ class NPUDeviceContext : public DeviceContext {
 
   // void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
+  static const char* name() { return "NPUDeviceContext"; }
+
  private:
   NPUPlace place_;
   aclrtContext context_;
@@ -248,7 +256,9 @@ struct DefaultDeviceContextType<platform::NPUPlace> {
 };
 
 // Currently, NPUPinnedDeviceContext is only used to data copying.
-class NPUPinnedDeviceContext : public DeviceContext {
+class NPUPinnedDeviceContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, NPUPinnedDeviceContext> {
  public:
   NPUPinnedDeviceContext();
   explicit NPUPinnedDeviceContext(NPUPinnedPlace place);
@@ -256,6 +266,8 @@ class NPUPinnedDeviceContext : public DeviceContext {
   const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
+
+  static const char* name() { return "NPUPinnedDeviceContext"; }
 
  private:
   NPUPinnedPlace place_;
@@ -276,7 +288,9 @@ struct DefaultDeviceContextType<platform::CUDAPlace> {
 };
 
 // Currently, CUDAPinnedDeviceContext is only used to data copying.
-class CUDAPinnedDeviceContext : public DeviceContext {
+class CUDAPinnedDeviceContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, CUDAPinnedDeviceContext> {
  public:
   CUDAPinnedDeviceContext();
   explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
@@ -284,6 +298,8 @@ class CUDAPinnedDeviceContext : public DeviceContext {
   const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
+
+  static const char* name() { return "CUDAPinnedDeviceContext"; }
 
  private:
   CUDAPinnedPlace place_;

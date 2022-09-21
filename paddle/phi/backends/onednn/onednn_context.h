@@ -142,6 +142,8 @@ class OneDNNContext : public CPUContext {
   int8_t DeviceAttrsVersion() const;
   void SetDeviceAttrsVersion(int8_t version);
 
+  static const char* name() { return "OneDNNContext"; }
+
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;

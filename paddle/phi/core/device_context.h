@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/utils/type_registry.h"
 
 namespace phi {
 class TensorBase;
@@ -188,9 +189,21 @@ class PADDLE_API DeviceContext {
    */
   Generator* GetHostGenerator() const;
 
+  /**
+   * @brief Return the type information of the derived class to support
+   *        safely downcast in non-rtti environment.
+   *
+   * @return The type information of the derived class.
+   */
+  TypeInfo<DeviceContext> type_info() const { return type_info_; }
+
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;
+
+  template <typename T, typename U>
+  friend class TypeInfoTraits;
+  TypeInfo<DeviceContext> type_info_{TypeInfo<DeviceContext>::kUnknownType};
 };
 
 }  // namespace phi

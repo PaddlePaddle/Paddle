@@ -74,7 +74,9 @@ class MLUContext {
   DISABLE_COPY_AND_ASSIGN(MLUContext);
 };
 
-class MLUDeviceContext : public DeviceContext {
+class MLUDeviceContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, MLUDeviceContext> {
  public:
   explicit MLUDeviceContext(MLUPlace place);
   virtual ~MLUDeviceContext();
@@ -129,6 +131,8 @@ class MLUDeviceContext : public DeviceContext {
     }
     return thread_ctx_.at(this);
   }
+
+  static const char* name() { return "MLUDeviceContext"; }
 
  private:
   int compute_capability_;
