@@ -82,14 +82,6 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
              "The Tensor which contains the axis that we do gather operation.")
         .AsDispensable();
     AddOutput("Out", "The output of gather op");
-    AddAttr<bool>(
-        "overwrite",
-        "(bool, default: False) "
-        "In backward process, calc the grad when has same index,"
-        "If true, update the grad using the overwrite mode in same index,"
-        "If false, using the accumulate mode in same index.")
-        .SetDefault(true)
-        .AsExtra();
     AddAttr<int>(
         "axis",
         "The Tensor which contains the axis that we do gather operation.")

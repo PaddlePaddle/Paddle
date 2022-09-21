@@ -40,44 +40,21 @@ import paddle.fluid.core as core
 from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid.dygraph_utils as dygraph_utils
 import contextlib
+from .fleet.layers.mpu.mp_ops import split
+from .fleet.layers.mpu.mp_ops import _c_identity
+from .fleet.layers.mpu.mp_ops import _c_concat
+from .fleet.layers.mpu.mp_ops import _c_split
+from .fleet.layers.mpu.mp_ops import _mp_allreduce
+from .fleet.layers.mpu.mp_ops import _c_lookup_table
+from .fleet.layers.mpu.mp_ops import _Linear
+from .fleet.layers.mpu.mp_ops import _set_var_distributed
+from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy
+from .fleet.layers.mpu.mp_ops import _linear
+from .fleet.layers.mpu.mp_ops import _parallel_linear
+from .fleet.layers.mpu.mp_ops import _parallel_embedding
+from .communication.comm_utils import ReduceOp
 
 __all__ = []
-
-
-class ReduceOp:
-    """
-    Specify the type of operation used for element-wise reductions.
-    It should be one of the following values:
-
-        ReduceOp.SUM
-
-        ReduceOp.MAX
-
-        ReduceOp.MIN
-
-        ReduceOp.PROD
-
-    Examples:
-        .. code-block:: python
-
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
-
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            dist.all_reduce(data, op=dist.ReduceOp.SUM)
-            print(data)
-            # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
-    """
-    SUM = 0
-    MAX = 1
-    MIN = 2
-    PROD = 3
-    AVG = 4
 
 
 class Group():
@@ -437,7 +414,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
             paddle.distributed.init_parallel_env()
             tindata = paddle.randn(shape=[2, 3])
             gp = paddle.distributed.new_group([2,4,6])
-            paddle.distributed.all_reduce(tindata, group=gp, use_calc_stream=False)
+            paddle.distributed.all_reduce(tindata, group=gp, sync_op=False)
 
     """
     global _custom_gid
@@ -544,7 +521,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     tmp = paddle.to_tensor(
         [1], dtype="int32") if _non_static_mode() else fill_constant(
             [0], dtype="int32", value="1")
-    paddle.distributed.all_reduce(tmp, use_calc_stream=True)
+    paddle.distributed.all_reduce(tmp, sync_op=True)
     paddle.distributed.wait(tmp)
     return gp
 
@@ -640,7 +617,7 @@ def wait(tensor, group=None, use_calc_stream=True):
 
             paddle.distributed.init_parallel_env()
             tindata = paddle.randn(shape=[2, 3])
-            paddle.distributed.all_reduce(tindata, use_calc_stream=True)
+            paddle.distributed.all_reduce(tindata, sync_op=True)
             paddle.distributed.wait(tindata)
 
     """
@@ -688,7 +665,7 @@ def _sync_comm_stream(tensor, ring_id=0):
     )
 
 
-def broadcast(tensor, src, group=None, use_calc_stream=True):
+def broadcast(tensor, src, group=None, sync_op=True):
     """
 
     Broadcast a tensor from the source to all others.
@@ -704,9 +681,8 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         tensor (Tensor): The Tensor to send if current rank is the source, or the Tensor to receive otherwise. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         src (int): The source rank.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -739,12 +715,13 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         gsrc = group.get_group_rank(src)
         assert gsrc >= 0, ("src rank out of group, need global rank")
         task = group.process_group.broadcast(tensor, gsrc)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     ring_id = ring_id = 0 if group is None else group.id
     gsrc = src if group is None else group.get_group_rank(src)
     assert gsrc >= 0, ("src rank out of group, need global rank")
@@ -771,7 +748,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
                      })
 
 
-def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
+def all_reduce(tensor, op=ReduceOp.SUM, group=None, sync_op=True):
     """
 
     Reduce a tensor over all ranks so that all get the result.
@@ -787,10 +764,9 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     Args:
         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The operation used. Default value is ReduceOp.SUM.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Wether this op is a sync op. Default value is True.
 
     Returns:
         None.
@@ -818,12 +794,13 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         op_type = _get_reduce_op(op, "all_reduce")
         group = _get_default_group() if group is None else group
         task = group.process_group.allreduce(tensor, op_type)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
     if _non_static_mode():
         if op == ReduceOp.SUM:
@@ -869,7 +846,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
                      })
 
 
-def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
+def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
     """
 
     Reduce a tensor to the destination from all others. As shown below, one process is started with a GPU and the data of this process is represented
@@ -885,10 +862,9 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         dst (int): The destination rank id.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The operation used. Default value is ReduceOp.SUM.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -919,12 +895,13 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         gdst = group.get_group_rank(dst)
         assert gdst >= 0, ("dst rank out of group, need global rank")
         task = group.process_group.reduce(tensor, gdst, op_type)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
     gdst = dst if group is None else group.get_group_rank(dst)
     assert gdst >= 0, ("dst rank out of group, need global rank")
@@ -976,7 +953,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
                      })
 
 
-def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
+def all_gather(tensor_list, tensor, group=None, sync_op=True):
     """
 
     Gather tensors from all participators and all get the result. As shown
@@ -994,9 +971,8 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
         tensor (Tensor): The Tensor to send. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -1050,6 +1026,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             tensor_list.extend(list_of_tensor)
         return
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
     nranks = _get_global_group().nranks if group is None else group.nranks
 
@@ -1140,9 +1117,6 @@ def all_gather_object(object_list, obj, group=None):
     ), "all_gather_object doesn't support static graph mode."
 
     tensor, len_of_tensor = _convert_object_to_tensor(obj)
-    if paddle.get_device() != "cpu":
-        len_of_tensor = len_of_tensor._copy_to(
-            paddle.framework._current_expected_place(), False)
 
     # gather len_of_tensor from all ranks
     list_len_of_tensor = []
@@ -1163,7 +1137,7 @@ def all_gather_object(object_list, obj, group=None):
             _convert_tensor_to_object(tensor, list_len_of_tensor[i]))
 
 
-def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
+def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
     """
 
     Scatter a tensor to all participators. As shown below, one process is started with a GPU and the source of the scatter
@@ -1180,9 +1154,8 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         tensor_list (list|tuple): A list/tuple of Tensors to scatter. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool. Default value is None.
         src (int): The source rank id. Default value is 0.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -1232,12 +1205,13 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     temp = paddle.concat(tensor_list, axis=0)
     if in_dygraph_mode():
         task = group.process_group.scatter(temp, tensor, gsrc)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     if _non_static_mode():
         return _legacy_C_ops.c_scatter(temp, tensor, 'use_calc_stream',
                                        use_calc_stream, 'ring_id', ring_id,
@@ -1259,748 +1233,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
                      })
 
 
-def _c_identity(tensor, group=None):
-    """
-    Return a copy of the tensor, mainly used with model parallel.
-
-    Args:
-        tensor (Tensor): The input Tensor. Its data type
-            should be float16, float32, float64, int32 or int64.
-        group (int): The id of the process group to work on.
-
-    Returns:
-        Tensor.
-    """
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-
-    if _non_static_mode():
-        return _legacy_C_ops.c_identity(tensor, 'use_calc_stream', True,
-                                        'ring_id', ring_id,
-                                        'use_model_parallel', True)
-    op_type = 'c_identity'
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        '_c_identity')
-
-    helper.append_op(type=op_type,
-                     inputs={'X': tensor},
-                     outputs={'Out': out},
-                     attrs={
-                         'ring_id': ring_id,
-                         'use_calc_stream': True,
-                         'use_model_parallel': True,
-                     })
-    return out
-
-
-def _c_concat(tensor, group=None):
-    """
-    Return allgather of the tensor, mainly used with model parallel.
-
-    Args:
-        tensor (Tensor): The input Tensor. Its data type
-            should be float16, float32, float64, int32 or int64.
-        group (int): The id of the process group to work on.
-
-    Returns:
-        Tensor.
-    """
-    if group is not None and not group.is_member():
-        return
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
-
-    global_rank = _get_global_env().rank
-    rank = group.rank
-    nranks = group.nranks
-
-    if _non_static_mode():
-        return _legacy_C_ops.c_concat(tensor, 'ring_id', ring_id,
-                                      'use_calc_stream', True, 'rank', rank,
-                                      'nranks', nranks, 'use_model_parallel',
-                                      True)
-
-    op_type = 'c_concat'
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        '_c_concat')
-
-    helper.append_op(type=op_type,
-                     inputs={'X': tensor},
-                     outputs={'Out': out},
-                     attrs={
-                         'ring_id': ring_id,
-                         'use_calc_stream': True,
-                         'use_model_parallel': True,
-                         'nranks': nranks,
-                         'rank': rank
-                     })
-    return out
-
-
-def _c_split(tensor, group=None):
-    """
-    Split tensor evenly among all members, mainly used with model parallel.
-
-    Args:
-        tensor (Tensor): The input Tensor. Its data type
-            should be float16, float32, float64, int32 or int64.
-        rank (int): The rank of the current process.
-        group (int): The id of the process group to work on.
-
-    Returns:
-        Tensor.
-    """
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-
-    global_rank = _get_global_env().rank
-    rank = global_rank if group is None else group.get_group_rank(global_rank)
-    nranks = _get_global_env().world_size if group is None else group.nranks
-
-    if _non_static_mode():
-        return _legacy_C_ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
-                                     ring_id, 'rank', rank, 'nranks', nranks,
-                                     'use_model_parallel', True)
-
-    op_type = 'c_split'
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        '_c_split')
-
-    helper.append_op(type=op_type,
-                     inputs={'X': tensor},
-                     outputs={'Out': out},
-                     attrs={
-                         'ring_id': ring_id,
-                         'use_calc_stream': True,
-                         'rank': rank,
-                         'nranks': nranks,
-                         'use_model_parallel': True,
-                     })
-    return out
-
-
-def _mp_allreduce(tensor,
-                  op=ReduceOp.SUM,
-                  group=None,
-                  use_calc_stream=True,
-                  use_model_parallel=True):
-    """[it is same as allreduce above, but it supports model parallel. And it support inplace startegy]
-    """
-    if group is not None and not group.is_member():
-        return
-
-    if in_dygraph_mode():
-        group = _get_default_group() if group is None else group
-        assert op == ReduceOp.SUM, "Unknown parameter: {}.".format(op)
-
-        from paddle.autograd import PyLayer
-
-        class mp_allreduce_eager(PyLayer):
-
-            @staticmethod
-            def forward(ctx, tensor, group, use_calc_stream,
-                        use_model_parallel):
-                ctx.ring_id = group.id
-
-                if use_calc_stream:
-                    op_type = _get_reduce_op(op, "_mp_allreduce")
-                    group.process_group.allreduce_on_calc_stream(
-                        tensor, op_type)
-                    return tensor
-                else:
-                    return _legacy_C_ops.c_allreduce_sum_(
-                        tensor, 'use_calc_stream', use_calc_stream, 'ring_id',
-                        ring_id, "use_model_parallel", use_model_parallel)
-
-            @staticmethod
-            def backward(ctx, dy):
-                return _legacy_C_ops.c_identity(dy, 'use_calc_stream', True,
-                                                'ring_id', ctx.ring_id,
-                                                'use_model_parallel', True)
-
-        return mp_allreduce_eager.apply(tensor, group, use_calc_stream,
-                                        use_model_parallel)
-
-    ring_id = 0 if group is None else group.id
-    if _in_legacy_dygraph():
-        if op == ReduceOp.SUM:
-            return _legacy_C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
-                                                  use_calc_stream, 'ring_id',
-                                                  ring_id, "use_model_parallel",
-                                                  use_model_parallel)
-        else:
-            raise ValueError("Unknown parameter: {}.".format(op))
-
-    op_type = 'c_allreduce_sum'
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        op_type)
-
-    helper.append_op(type=op_type,
-                     inputs={'X': tensor},
-                     outputs={'Out': out},
-                     attrs={
-                         'ring_id': ring_id,
-                         'use_calc_stream': use_calc_stream,
-                         'use_model_parallel': use_model_parallel,
-                     })
-    return out
-
-
-def _c_lookup_table(table, index, start_index=0, name=None):
-    """
-    Lookup table according to index.
-
-    Args:
-        table (Tensor): The input Tensor. Its data type
-            should be float16, float32, float64.
-        index (Tensor): The index to lookup table.
-        start_index (int): The initial index for table range.
-        name (string): The name of the api
-
-    Returns:
-        Tensor.
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.c_embedding(table, index, "start_index",
-                                         start_index)
-
-    op_type = 'c_embedding'
-    helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype(input_param_name='table')
-    check_variable_and_dtype(index, 'input', ['int32', 'int64'], op_type)
-    tmp = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type='c_embedding',
-                     inputs={
-                         'Ids': index,
-                         'W': table
-                     },
-                     outputs={'Out': tmp},
-                     attrs={"start_index": start_index})
-    return tmp
-
-
-class _Linear(layers.Layer):
-    """
-    Linear
-    """
-
-    def __init__(self,
-                 in_features,
-                 out_features,
-                 weight_attr=None,
-                 bias_attr=None,
-                 name=None):
-        super(_Linear, self).__init__()
-        self._dtype = self._helper.get_default_dtype()
-        self._weight_attr = weight_attr
-        self._bias_attr = bias_attr
-        self.weight = self.create_parameter(shape=[in_features, out_features],
-                                            attr=self._weight_attr,
-                                            dtype=self._dtype,
-                                            is_bias=False)
-        self.bias = self.create_parameter(shape=[out_features],
-                                          attr=self._bias_attr,
-                                          dtype=self._dtype,
-                                          is_bias=True)
-        self.name = name
-
-    def forward(self, input):
-        out = _linear(x=input,
-                      weight=self.weight,
-                      bias=self.bias,
-                      name=self.name)
-        return out
-
-    def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'in_features={}, out_features={}, dtype={}{}'.format(
-            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
-
-
-def _c_softmax_with_cross_entropy(logits,
-                                  label,
-                                  group=None,
-                                  return_softmax=False):
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-    global_rank = _get_global_env().rank
-    rank = global_rank if group is None else group.get_group_rank(global_rank)
-    nranks = _get_global_env().world_size if group is None else group.nranks
-
-    input_dims = len(list(logits.shape))
-    label_dims = len(list(label.shape))
-    if input_dims - 1 != label_dims and input_dims != label_dims:
-        raise ValueError(
-            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
-             (got nput_dims{}, label_dims{})'.format(input_dims, label_dims))
-    if input_dims - 1 == label_dims:
-        label = paddle.unsqueeze(label, axis=-1)
-
-    if _non_static_mode():
-        softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
-            logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks)
-        if not return_softmax:
-            return loss
-        else:
-            return loss, softmax
-
-    attrs = {
-        'ring_id': ring_id,
-        'rank': rank,
-        'nranks': nranks,
-    }
-    helper = LayerHelper('c_softmax_with_cross_entropy', **locals())
-    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
-    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
-    helper.append_op(type='c_softmax_with_cross_entropy',
-                     inputs={
-                         'Logits': logits,
-                         'Label': label
-                     },
-                     outputs={
-                         'Softmax': softmax,
-                         'Loss': loss
-                     },
-                     attrs=attrs)
-
-    if return_softmax:
-        return loss, softmax
-
-    return loss
-
-
-def _linear(x, weight, bias=None, name=None):
-    """
-    Fuction Linear
-    """
-    if _non_static_mode():
-        pre_bias = _varbase_creator(dtype=x.dtype)
-        _legacy_C_ops.matmul(x, weight, pre_bias, 'transpose_X', False,
-                             'transpose_Y', False, "alpha", 1)
-        return dygraph_utils._append_bias_in_dygraph(pre_bias,
-                                                     bias,
-                                                     axis=len(x.shape) - 1)
-    else:
-        helper = LayerHelper('linear', **locals())
-        dtype = x.dtype
-        assert len(
-            x.shape) < 4, "X latitude is not supported greater than 3 now."
-
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'linear')
-        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
-
-        inputs = {'X': [x], 'Y': [weight]}
-        attrs = {
-            'transpose_X': False,
-            'transpose_Y': False,
-            'alpha': 1,
-        }
-        tmp = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(type='matmul_v2',
-                         inputs=inputs,
-                         outputs={'Out': tmp},
-                         attrs=attrs)
-        if bias is not None:
-            res = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(type='elementwise_add',
-                             inputs={
-                                 'X': [tmp],
-                                 'Y': [bias]
-                             },
-                             outputs={'Out': [res]},
-                             attrs={'axis': len(x.shape) - 1})
-        else:
-            res = tmp
-        return res
-
-
-def _set_var_distributed(var):
-    if var is None:
-        return
-
-    var.is_distributed = True
-
-    # NOTE: use current_block and find_var_recursive to support while_loop
-    startup_block = paddle.static.default_startup_program().current_block()
-    main_block = paddle.static.default_main_program().current_block()
-    startup_block._find_var_recursive(var.name).is_distributed = True
-    main_block._find_var_recursive(var.name).is_distributed = True
-
-
-def _parallel_linear(x,
-                     num_rows,
-                     num_cols,
-                     axis,
-                     param_attr,
-                     bias_attr,
-                     gather_out,
-                     inner_rank,
-                     nranks,
-                     split_tensor,
-                     name,
-                     group=None):
-    """
-    Parallel Linear
-
-    axis the dimension of the parameter of linear layer.
-    axis = 0: the row dimension
-    axis = 1: the col dimension
-
-    """
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-
-    if axis == 0:
-        if split_tensor:
-            x = _c_split(x, group=group)
-    else:
-        x = _c_identity(x, group=group)
-
-    linear = paddle.nn.Linear(num_rows,
-                              num_cols,
-                              weight_attr=param_attr,
-                              bias_attr=bias_attr,
-                              name=name)
-
-    # NOTE: npu linear function use matmul_v2 but linear use matmul
-    linear_function = _linear if core.is_compiled_with_npu()\
-        else paddle.nn.functional.linear
-    linear_out = linear_function(
-        x,
-        linear.weight,
-        # NOTE(wangxi): row split, bias need add after allreduce
-        None if axis == 0 else linear.bias,
-        linear.name)
-
-    _set_var_distributed(linear.weight)
-    # set is_distributed for splited bias
-    # if a linear layer is splited by row, each rank would hold a complete bias and they should be the same in each rank.
-    # if a linear layer is splited by col, the bias would also be split into each rank as its weight
-    if axis == 1 and linear._bias_attr != False:
-        _set_var_distributed(linear.bias)
-
-    if not gather_out: return linear_out
-
-    out_shape = list(linear_out.shape)
-    out_shape[0] *= 1 if axis == 0 else nranks
-    main_block = paddle.static.default_main_program().current_block()
-    out = main_block.create_var(
-        shape=out_shape,
-        dtype=linear_out.dtype,
-        type=linear_out.type,
-        lod_level=linear_out.lod_level,
-        persistable=False,
-        is_data=False,
-        need_check_feed=linear_out.desc.need_check_feed())
-    if axis == 0:
-        main_block.append_op(type='c_allreduce_sum',
-                             inputs={'X': linear_out},
-                             outputs={'Out': out},
-                             attrs={
-                                 'ring_id': ring_id,
-                                 'use_calc_stream': True,
-                                 'use_model_parallel': True
-                             })
-        if linear.bias is not None:
-            out = out + linear.bias
-    else:
-        main_block.append_op(type='c_concat',
-                             inputs={'X': linear_out},
-                             outputs={'Out': out},
-                             attrs={
-                                 'rank': inner_rank,
-                                 'ring_id': ring_id,
-                                 'nranks': nranks,
-                                 'use_calc_stream': True,
-                                 'use_model_parallel': True
-                             })
-    return out
-
-
-def _parallel_embedding(x,
-                        per_part_embeddings,
-                        origin_size,
-                        param_attr,
-                        inner_rank,
-                        num_partitions,
-                        name,
-                        group=None):
-    """
-    Parallel Embedding
-    """
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-
-    helper = LayerHelper("_parallel_embedding", **locals())
-
-    per_part_size = per_part_embeddings
-    rank = inner_rank
-
-    vocab_start_index = rank * per_part_size
-    dtype = helper.get_default_dtype()
-    size = [per_part_size, origin_size[1]]
-
-    weight = helper.create_parameter(attr=param_attr,
-                                     shape=size,
-                                     dtype=dtype,
-                                     is_bias=False)
-
-    if num_partitions == 1:
-        return paddle.nn.functional.embedding(x,
-                                              weight=weight,
-                                              padding_idx=None,
-                                              sparse=False,
-                                              name=name)
-
-    startup_block = paddle.static.default_startup_program().global_block()
-    main_block = paddle.static.default_main_program().global_block()
-    startup_block.vars[weight.name].is_distributed = True
-    main_block.vars[weight.name].is_distributed = True
-
-    output_parallel = paddle.distributed.collective._c_lookup_table(
-        weight, x, start_index=vocab_start_index, name=name)
-    out = paddle.distributed.collective._mp_allreduce(output_parallel,
-                                                      group=group,
-                                                      use_calc_stream=True,
-                                                      use_model_parallel=True)
-    return out
-
-
-def split(x,
-          size,
-          operation,
-          axis=0,
-          num_partitions=1,
-          gather_out=True,
-          weight_attr=None,
-          bias_attr=None,
-          name=None):
-    """
-
-    Split the weight of the specified operation into multiple devices
-    and do the computation in parallel.
-
-    Now the following three cases are supported.
-
-    Case 1: Parallel Embedding
-        The weight of the embedding operation is a NxM matrix with N rows and M columns.
-        With parallel embedding, the weight is split into num_partitions partitions, each
-        of which is a matrix with (N/num_partitions + 1) rows and M column where the last
-        row as the padding idx.
-
-        Suppose we split the NxM weight into two partitons on device_0 and device_1
-        respectively. Then, one each device, the final weight has (N/2 + 1) rows with the
-        index range from 0 to N/2. On device_0, all values in the input within [0, N/2 -1]
-        keep unchanged and all other values are changed to N/2 which is the padding index and
-        are mapped to all zeros after embedding. In the same way, on device_1, the value V in the
-        input within [N/2, N-1] will be changed to (V - N/2), and all other values are changed
-        to N/2 and are mapped to all zeros after embedding. Finally, the results on the two
-        devices are sum-reduced.
-
-        The Embedding put on single card is as shown below:
-
-        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_embedding_single.png
-            :width: 800
-            :height: 350
-            :alt: single_embedding
-            :align: center
-
-        Parallel Embedding is shown as below:
-
-        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_embedding_split.png
-            :width: 800
-            :alt: split_embedding
-            :align: center
-
-    Case 2: Row Parallel Linear
-        The weight of the linear operation is a NxM matrix with N rows and M columns.
-        With row parallel linear, the weight is split into num_partitions partitions, each
-        of which is a matrix with N/num_partitions rows and M column.
-
-        The linear layer put on single card is shown as below, the input variable is represented by X,
-        the weight matrix is represented by W and the output vaiable is O. The linear layer on single card is
-        simple matrix multiplication operation, O = X * W.
-
-        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_single.png
-            :width: 800
-            :alt: single_linear
-            :align: center
-
-        Row Parallel Linear is shown as below. As the name suggests, Row Parallel Linear splits the weight matrix W into
-        [[W_row1], [W_row2]] along the row. And accordingly the input is splitted along the column into [X_col1, X_col2] and multiply their
-        respective weight matrices. Finally apply AllReduce on the output from each card to get the final output.
-
-        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_row.png
-            :width: 800
-            :alt: split_row
-            :align: center
-
-    Case 3: Column Parallel Linear
-        The weight of the linear operation is a NxM matrix with N rows and M columns.
-        With column parallel linear, the weight is split into num_paratitions partitions, each
-        of which is a matrix with N rows and M/num_partitions column.
-
-        The linear layer put on single card has been illustrated on case 2 and Column Parallel Linear
-        is shown as below. The Column Parallel Linear splits the weight matrix W into [W_col1, W_col2] along the column and
-        these splitted matrices respectively multiply the input. Finally apply AllGather on the output from each card to get the final output.
-
-        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col.png
-            :width: 800
-            :alt: split_col
-            :align: center
-
-    As observed, the column parallel linear and row parallel linear can be combined to skip one ALLGATHER communication
-    operator. Furthermore the Attention and MLP can be combined to imporve the performance as shown below.
-
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col_row.png
-            :width: 800
-            :alt: split_col_row
-            :align: center
-
-    Args:
-        x (Tensor): Input tensor. It's data type should be float16, float32, float64, int32 or int64.
-        size (list|tuple): A list or tuple with two elements indicating the shape of the weight.
-        operation (str): The name of the operation. The supported operations are 'linear' and 'embedding'.
-        axis (int, Optional): Indicate along which axis to split the weight. Default: 0.
-        num_partitions (int, Optional): How many parts the weight is partitioned. Default: 1.
-        gather_out (bool, Optional): Whether to gather the output after computation. By default, the output
-            on each partitions will be gathered after computation. Default: True.
-        weight_attr (ParamAttr, Optional): The parameter attribute for the learnable
-            weights(Parameter) of the specified operation. Default: None.
-        bias_attr (ParamAttr, Optional): The parameter attribute for the bias
-            of the specified operation. Default: None.
-        name (str, Optional): The default value is None. Normally there is no need for user to set this
-            property. Default: None. For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            # required: distributed
-            import paddle
-            import paddle.distributed.fleet as fleet
-
-            paddle.enable_static()
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            fleet.init(is_collective=True)
-            data = paddle.randint(0, 8, shape=[10,4])
-            emb_out = paddle.distributed.split(
-                data,
-                (8, 8),
-                operation="embedding",
-                num_partitions=2)
-
-    """
-    assert isinstance(
-        size,
-        (list, tuple)), ("The type of size for "
-                         "paddle.distributed.split must be list or tuple.")
-    assert len(size) == 2, ("Number of elements in size of "
-                            "paddle.distributed.split must be two.")
-    assert isinstance(operation, str), ("The type of operation for "
-                                        "paddle.distributed.split must be str.")
-    supported_operations = [
-        'linear',
-        'embedding',
-    ]
-    assert operation in supported_operations, (
-        "The operation for "
-        "paddle.distributed.split must be one of {}.".format(
-            supported_operations))
-    if _non_static_mode():
-        raise ValueError(
-            "paddle.distributed.split cannot be used in dynamic "
-            "graph mode, plese use ParallelEmbedding, ParallelRowLinear, "
-            "ParallelColumnLinear instead.")
-    else:
-        from .fleet import fleet
-        assert fleet._role_maker, ("To use paddle.distributed.split, "
-                                   "you must call fleet.init() firstly.")
-        rank = fleet.worker_index()
-        nranks = fleet.worker_num()
-
-    # rank within a model parallel group
-    inner_rank = rank % num_partitions
-
-    if operation == "embedding":
-        assert axis == 0, ("We only support to split the weight of embedding "
-                           "along the first axis now.")
-        assert size[0] % num_partitions == 0, \
-            "The length of the vocabulary must be divisible by num_partitions " \
-            "but received vocabulary={} num_partitions={}".format(size[0], num_partitions)
-
-        per_part_size = size[0] // num_partitions
-        emb_out = _parallel_embedding(x,
-                                      per_part_size,
-                                      size,
-                                      weight_attr,
-                                      inner_rank,
-                                      num_partitions,
-                                      name,
-                                      group=None)
-        return emb_out
-    else:
-        should_split = False
-        if axis == 0:
-            assert size[0] % num_partitions == 0, (
-                "Number of rows of the weight for linear ({}) must be"
-                " divisible by num_partitions ({})".format(
-                    size[0], num_partitions))
-            per_part_size = size[0] // num_partitions
-            linear_size = (per_part_size, size[1])
-            if x.shape[-1] == size[0]: should_split = True
-
-        elif axis == 1:
-            assert size[1] % num_partitions == 0, (
-                "Number of column of the weight for linear ({}) must be"
-                " divisible by num_partitions ({})".format(
-                    size[1], num_partitions))
-            per_part_size = size[1] // num_partitions
-            linear_size = (size[0], per_part_size)
-        else:
-            raise ValueError("The value of axis must be 0 or 1, but the value "
-                             "given is {}.".format(axis))
-
-        linear_out = _parallel_linear(x,
-                                      linear_size[0],
-                                      linear_size[1],
-                                      axis,
-                                      weight_attr,
-                                      bias_attr,
-                                      gather_out,
-                                      inner_rank,
-                                      num_partitions,
-                                      should_split,
-                                      name=name,
-                                      group=None)
-        return linear_out
-
-
-def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
+def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
     """
     Scatter tensors in in_tensor_list to all participators averagely and gather the result tensors in out_tensor_list.
     As shown below, the in_tensor_list in GPU0 includes 0_0 and 0_1, and GPU1 includes 1_0 and 1_1.
@@ -2018,7 +1251,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         out_tensor_list (list): A list of output Tensors. The data type of its elements should be the same as the
             data type of the input Tensors.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Whether to use calculation stream (True) or communication stream. Default: True.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -2068,6 +1301,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         out_tensor_list.extend(paddle.split(out, nranks, 0))
         return
 
+    use_calc_stream = sync_op
     if _non_static_mode():
         out = _legacy_C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
                                      'ring_id', ring_id)
@@ -2106,7 +1340,7 @@ def alltoall_single(in_tensor,
                     in_split_sizes=None,
                     out_split_sizes=None,
                     group=None,
-                    use_calc_stream=True):
+                    sync_op=True):
     """
     Scatter a single input tensor to all participators and gather the received tensors in out_tensor.
 
@@ -2121,10 +1355,10 @@ def alltoall_single(in_tensor,
         out_split_sizes (list[int], optional): Split sizes of ``out_tensor`` for dim[0]. If not given, dim[0] of ``out_tensor``
             must be divisible by group size and ``out_tensor`` will be gathered averagely from all participators. Default: None.
         group (Group, optional): The group instance return by ``new_group`` or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Whether to use calculation stream (True) or communication stream. Default: True.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
-        None, if ``use_calc_stream`` is set to ``True``; ``Task`` of ``group``, if ``use_calc_stream`` is set to ``False``.
+        None, if ``sync_op`` is set to ``True``; ``Task`` of ``group``, if ``sync_op`` is set to ``False``.
 
     Examples:
         .. code-block:: python
@@ -2163,7 +1397,7 @@ def alltoall_single(in_tensor,
                                         output,
                                         in_split_sizes,
                                         out_split_sizes,
-                                        use_calc_stream=False,
+                                        sync_op=False,
                                         group=group)
             task.wait()
             print(output)
@@ -2186,7 +1420,7 @@ def alltoall_single(in_tensor,
 
     task = group.process_group.alltoall_single(in_tensor, out_tensor,
                                                in_split_sizes, out_split_sizes)
-    if use_calc_stream:
+    if sync_op:
         task.wait()
         return
     else:
@@ -2197,7 +1431,7 @@ def _get_group_rank(global_rank, group=None):
     return global_rank if group is None else group.get_group_rank(global_rank)
 
 
-def send(tensor, dst=0, group=None, use_calc_stream=True):
+def send(tensor, dst=0, group=None, sync_op=True):
     """
     Send a tensor to the receiver.
 
@@ -2206,7 +1440,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         dst (int): The destination rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -2236,12 +1470,13 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         backend = _group_map_backend[group]
         assert backend != 'gloo', ("backend gloo is not supported yet")
         task = group.process_group.send(tensor, dst)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
@@ -2262,7 +1497,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
                      })
 
 
-def recv(tensor, src=0, group=None, use_calc_stream=True):
+def recv(tensor, src=0, group=None, sync_op=True):
     """
     Receive a tensor to the sender.
 
@@ -2271,7 +1506,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -2302,12 +1537,13 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         backend = _group_map_backend[group]
         assert backend != 'gloo', ("backend gloo is not supported yet")
         task = group.process_group.recv(tensor, src)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
@@ -2578,7 +1814,7 @@ def reduce_scatter(tensor,
                    tensor_list,
                    op=ReduceOp.SUM,
                    group=None,
-                   use_calc_stream=True):
+                   sync_op=True):
     """
     Reduces, then scatters a list of tensors to all processes in a group
 
@@ -2589,11 +1825,11 @@ def reduce_scatter(tensor,
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global
             default group. Default: None.
-        use_calc_stream (bool, optional): Whether this op should be an async op.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
-        Async task handle, if use_calc_stream is set to False.
-        None, if use_calc_stream or if not part of the group.
+        Async task handle, if sync_op is set to False.
+        None, if sync_op or if not part of the group.
 
     Warning:
         This API only supports the dygraph mode.
@@ -2633,7 +1869,7 @@ def reduce_scatter(tensor,
 
         temp = paddle.concat(tensor_list, axis=0)
         task = group.process_group._reduce_scatter_base(tensor, temp, op_type)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
@@ -2646,7 +1882,7 @@ def _reduce_scatter_base(output,
                          input,
                          op=ReduceOp.SUM,
                          group=None,
-                         use_calc_stream=True):
+                         sync_op=True):
     """
     Reduces, then scatters a flattened tensor to all processes in a group.
 
@@ -2657,11 +1893,11 @@ def _reduce_scatter_base(output,
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,
             the default process group will be used.
-        use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
+
     Returns:
-        Async task handle, if use_calc_stream is set to False.
-        None, if use_calc_stream or if not part of the group.
+        Async task handle, if sync_op is set to False.
+        None, if sync_op or if not part of the group.
 
     Examples:
         .. code-block:: python
@@ -2692,7 +1928,7 @@ def _reduce_scatter_base(output,
         op_type = _get_reduce_op(op, "_reduce_scatter_base")
         group = _get_default_group() if group is None else group
         task = group.process_group._reduce_scatter_base(output, input, op_type)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:

@@ -28,8 +28,7 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
                      const dnnl::engine onednn_engine,
                      const std::vector<const DenseTensor*>& inputs,
                      DenseTensor* output)
-      : funcs::OneDNNHandlerNoCachingT<T, dnnl::concat>(onednn_engine,
-                                                        cpu_place) {
+      : OneDNNHandlerNoCachingT<T, dnnl::concat>(onednn_engine, cpu_place) {
     int ndims = inputs[0]->dims().size();
 
     if (stack_axis < 0) {
