@@ -90,7 +90,7 @@ class DequeueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "A list of `lod_tensor` to dequeue and assigned.")
         .AsDuplicable();
     AddComment(R"DOC(
-			Dequeue operator.
+      Dequeue operator.
       )DOC");
   }
 };

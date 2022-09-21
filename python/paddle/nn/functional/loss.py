@@ -1159,8 +1159,9 @@ def margin_ranking_loss(input,
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                              'margin_rank_loss')
 
-    out = paddle.subtract(other, input)
-    out = paddle.multiply(out, label)
+    out = paddle.subtract(input, other)
+    neg_label = paddle.neg(label)
+    out = paddle.multiply(neg_label, out)
 
     if margin != 0.0:
         margin_var = out.block.create_var(dtype=out.dtype)
