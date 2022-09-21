@@ -126,7 +126,10 @@ class TestBase(IPUOpTest):
         cpu_outputs = self._test_base(False)
         ipu_outputs = self._test_base(True)
 
-        self.assertTrue(np.allclose(cpu_outputs, ipu_outputs, atol=self.atol))
+        np.testing.assert_allclose(cpu_outputs,
+                                   ipu_outputs,
+                                   rtol=1e-05,
+                                   atol=self.atol)
 
 
 class TestReplicaInference(TestBase):
@@ -255,7 +258,10 @@ class TestReplicaTrain(TestTrainBase):
         cpu_outputs = self._test_base(False)
         ipu_outputs = self._test_base(True)[::2]
 
-        self.assertTrue(np.allclose(cpu_outputs, ipu_outputs, atol=self.atol))
+        np.testing.assert_allclose(cpu_outputs,
+                                   ipu_outputs,
+                                   rtol=1e-05,
+                                   atol=self.atol)
 
 
 class TestReplicaCollectiveTrain(TestTrainBase):
@@ -293,7 +299,10 @@ class TestReplicaCollectiveTrain(TestTrainBase):
         cpu_outputs = self._test_base(False)
         ipu_outputs = self._test_base(True)[::2]
 
-        self.assertTrue(np.allclose(cpu_outputs, ipu_outputs, atol=self.atol))
+        np.testing.assert_allclose(cpu_outputs,
+                                   ipu_outputs,
+                                   rtol=1e-05,
+                                   atol=self.atol)
 
 
 class TestPipelineTrain(TestTrainBase):
@@ -322,7 +331,10 @@ class TestPipelineTrain(TestTrainBase):
         cpu_outputs = self._test_base(False)
         ipu_outputs = self._test_base(True)[::3]
 
-        self.assertTrue(np.allclose(cpu_outputs, ipu_outputs, atol=self.atol))
+        np.testing.assert_allclose(cpu_outputs,
+                                   ipu_outputs,
+                                   rtol=1e-05,
+                                   atol=self.atol)
 
 
 class TestAdamTrain(TestTrainBase):

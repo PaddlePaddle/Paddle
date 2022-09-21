@@ -107,7 +107,7 @@ class TestDropoutBiasFuseOp3(unittest.TestCase):
                                   "mask": mask_in_np
                               },
                               fetch_list=[rst])
-            self.assertTrue(np.allclose(fetches[0], rst_np))
+            np.testing.assert_allclose(fetches[0], rst_np, rtol=1e-05)
 
     def test_dygraph(self):
         with fluid.dygraph.guard(fluid.CUDAPlace(0)):
@@ -119,7 +119,7 @@ class TestDropoutBiasFuseOp3(unittest.TestCase):
             input_mask = fluid.dygraph.to_variable(mask_in_np)
 
             rst = incubate.softmax_mask_fuse(input_x, input_mask)
-            self.assertTrue(np.allclose(rst, rst_np))
+            np.testing.assert_allclose(rst, rst_np, rtol=1e-05)
 
 
 if __name__ == '__main__':

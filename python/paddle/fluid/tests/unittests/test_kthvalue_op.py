@@ -108,8 +108,10 @@ class TestKthvalueOpKernels(unittest.TestCase):
             for axis in self.axises:
                 value_expect, indice_expect = cal_kthvalue(inputs, k, axis)
                 v, inds = paddle.kthvalue(tensor, k, axis)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
-                self.assertTrue(np.allclose(inds.numpy(), indice_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
+                np.testing.assert_allclose(inds.numpy(),
+                                           indice_expect,
+                                           rtol=1e-05)
 
         def test_gpu_kernel():
             shape = (2, 30, 250)
@@ -120,8 +122,10 @@ class TestKthvalueOpKernels(unittest.TestCase):
             for axis in self.axises:
                 value_expect, indice_expect = cal_kthvalue(inputs, k, axis)
                 v, inds = paddle.kthvalue(tensor, k, axis)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
-                self.assertTrue(np.allclose(inds.numpy(), indice_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
+                np.testing.assert_allclose(inds.numpy(),
+                                           indice_expect,
+                                           rtol=1e-05)
 
         test_cpu_kernel()
         if fluid.core.is_compiled_with_cuda():
@@ -200,7 +204,7 @@ class TestModeOpInStatic(unittest.TestCase):
             exe = paddle.static.Executor(paddle.CPUPlace())
             paddle_result = exe.run(feed={"x": self.input_data},
                                     fetch_list=[result])[0]
-            self.assertTrue(np.allclose(paddle_result, expect_value))
+            np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
 
 
 if __name__ == '__main__':

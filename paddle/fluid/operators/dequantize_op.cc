@@ -24,14 +24,13 @@ namespace operators {
 
 framework::OpKernelType DeQuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
-  framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
+  auto input_data_type =
+      framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-      ctx.GetPlace(),
-      layout_,
-      library_);
+  return framework::OpKernelType(input_data_type,
+                                 ctx.GetPlace(),
+                                 framework::DataLayout::kMKLDNN,
+                                 framework::LibraryType::kMKLDNN);
 }
 
 void DeQuantOpMaker::Make() {

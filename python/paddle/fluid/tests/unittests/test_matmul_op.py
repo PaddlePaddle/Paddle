@@ -308,9 +308,13 @@ class API_TestMm(unittest.TestCase):
             expected_result = np.matmul(data1.reshape(1, 2),
                                         data2.reshape(2, 1))
 
-        self.assertTrue(
-            np.allclose(np_res, expected_result, atol=1e-5), "two value is\
-            {}\n{}, check diff!".format(np_res, expected_result))
+        np.testing.assert_allclose(
+            np_res,
+            expected_result,
+            rtol=1e-05,
+            atol=1e-05,
+            err_msg='two value is            {}\n{}, check diff!'.format(
+                np_res, expected_result))
 
     def test_dygraph_without_out(self):
         device = fluid.CPUPlace()
@@ -321,7 +325,7 @@ class API_TestMm(unittest.TestCase):
             data2 = fluid.dygraph.to_variable(input_array2)
             out = paddle.mm(data1, data2)
             expected_result = np.matmul(input_array1, input_array2)
-        self.assertTrue(np.allclose(expected_result, out.numpy()))
+        np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
 
 
 class Test_API_Matmul(unittest.TestCase):
@@ -335,7 +339,7 @@ class Test_API_Matmul(unittest.TestCase):
             data2 = fluid.dygraph.to_variable(input_array2)
             out = paddle.matmul(data1, data2)
             expected_result = np.matmul(input_array1, input_array2)
-        self.assertTrue(np.allclose(expected_result, out.numpy()))
+        np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
 
 
 class API_TestMmError(unittest.TestCase):

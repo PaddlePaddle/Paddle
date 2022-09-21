@@ -214,11 +214,7 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
                 expected_result = np.matmul(data1.reshape(1, 2),
                                             data2.reshape(2, 1))
 
-                np.testing.assert_allclose(np_res,
-                                           expected_result,
-                                           atol=1e-3,
-                                           err_msg="two value is\
-                    {}\n{}, check diff!".format(np_res, expected_result))
+                np.testing.assert_allclose(np_res, expected_result, atol=1e-3)
 
         def test_dygraph_without_out(self):
             device = fluid.XPUPlace(0)

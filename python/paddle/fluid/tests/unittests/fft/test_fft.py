@@ -112,12 +112,13 @@ class TestFft(unittest.TestCase):
         """Test fft with norm condition
         """
         with paddle.fluid.dygraph.guard(self.place):
-            self.assertTrue(
-                np.allclose(scipy.fft.fft(self.x, self.n, self.axis, self.norm),
-                            paddle.fft.fft(paddle.to_tensor(self.x), self.n,
-                                           self.axis, self.norm),
-                            rtol=RTOL.get(str(self.x.dtype)),
-                            atol=ATOL.get(str(self.x.dtype))))
+            np.testing.assert_allclose(scipy.fft.fft(self.x, self.n, self.axis,
+                                                     self.norm),
+                                       paddle.fft.fft(paddle.to_tensor(self.x),
+                                                      self.n, self.axis,
+                                                      self.norm),
+                                       rtol=RTOL.get(str(self.x.dtype)),
+                                       atol=ATOL.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -138,13 +139,13 @@ class TestIfft(unittest.TestCase):
         """Test ifft with norm condition
         """
         with paddle.fluid.dygraph.guard(self.place):
-            self.assertTrue(
-                np.allclose(scipy.fft.ifft(self.x, self.n, self.axis,
-                                           self.norm),
-                            paddle.fft.ifft(paddle.to_tensor(self.x), self.n,
-                                            self.axis, self.norm),
-                            rtol=RTOL.get(str(self.x.dtype)),
-                            atol=ATOL.get(str(self.x.dtype))))
+            np.testing.assert_allclose(scipy.fft.ifft(self.x, self.n, self.axis,
+                                                      self.norm),
+                                       paddle.fft.ifft(paddle.to_tensor(self.x),
+                                                       self.n, self.axis,
+                                                       self.norm),
+                                       rtol=RTOL.get(str(self.x.dtype)),
+                                       atol=ATOL.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -190,13 +191,13 @@ class TestFft2(unittest.TestCase):
         """Test fft2 with norm condition
         """
         with paddle.fluid.dygraph.guard(self.place):
-            self.assertTrue(
-                np.allclose(scipy.fft.fft2(self.x, self.n, self.axis,
-                                           self.norm),
-                            paddle.fft.fft2(paddle.to_tensor(self.x), self.n,
-                                            self.axis, self.norm),
-                            rtol=RTOL.get(str(self.x.dtype)),
-                            atol=ATOL.get(str(self.x.dtype))))
+            np.testing.assert_allclose(scipy.fft.fft2(self.x, self.n, self.axis,
+                                                      self.norm),
+                                       paddle.fft.fft2(paddle.to_tensor(self.x),
+                                                       self.n, self.axis,
+                                                       self.norm),
+                                       rtol=RTOL.get(str(self.x.dtype)),
+                                       atol=ATOL.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -712,13 +713,13 @@ class TestRfft(unittest.TestCase):
         """Test rfft with norm condition
         """
         with paddle.fluid.dygraph.guard(self.place):
-            self.assertTrue(
-                np.allclose(scipy.fft.rfft(self.x, self.n, self.axis,
-                                           self.norm),
-                            paddle.fft.rfft(paddle.to_tensor(self.x), self.n,
-                                            self.axis, self.norm),
-                            rtol=RTOL.get(str(self.x.dtype)),
-                            atol=ATOL.get(str(self.x.dtype))))
+            np.testing.assert_allclose(scipy.fft.rfft(self.x, self.n, self.axis,
+                                                      self.norm),
+                                       paddle.fft.rfft(paddle.to_tensor(self.x),
+                                                       self.n, self.axis,
+                                                       self.norm),
+                                       rtol=RTOL.get(str(self.x.dtype)),
+                                       atol=ATOL.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -764,13 +765,12 @@ class TestRfft2(unittest.TestCase):
         """Test rfft2 with norm condition
         """
         with paddle.fluid.dygraph.guard(self.place):
-            self.assertTrue(
-                np.allclose(scipy.fft.rfft2(self.x, self.n, self.axis,
-                                            self.norm),
-                            paddle.fft.rfft2(paddle.to_tensor(self.x), self.n,
-                                             self.axis, self.norm),
-                            rtol=RTOL.get(str(self.x.dtype)),
-                            atol=ATOL.get(str(self.x.dtype))))
+            np.testing.assert_allclose(
+                scipy.fft.rfft2(self.x, self.n, self.axis, self.norm),
+                paddle.fft.rfft2(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -821,13 +821,12 @@ class TestRfftn(unittest.TestCase):
         """Test rfftn with norm condition
         """
         with paddle.fluid.dygraph.guard(self.place):
-            self.assertTrue(
-                np.allclose(scipy.fft.rfftn(self.x, self.n, self.axis,
-                                            self.norm),
-                            paddle.fft.rfftn(paddle.to_tensor(self.x), self.n,
-                                             self.axis, self.norm),
-                            rtol=RTOL.get(str(self.x.dtype)),
-                            atol=ATOL.get(str(self.x.dtype))))
+            np.testing.assert_allclose(
+                scipy.fft.rfftn(self.x, self.n, self.axis, self.norm),
+                paddle.fft.rfftn(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -980,13 +979,12 @@ class TestIhfftn(unittest.TestCase):
         """Test ihfftn with norm condition
         """
         with paddle.fluid.dygraph.guard(self.place):
-            self.assertTrue(
-                np.allclose(scipy.fft.ihfftn(self.x, self.n, self.axis,
-                                             self.norm),
-                            paddle.fft.ihfftn(paddle.to_tensor(self.x), self.n,
-                                              self.axis, self.norm),
-                            rtol=RTOL.get(str(self.x.dtype)),
-                            atol=ATOL.get(str(self.x.dtype))))
+            np.testing.assert_allclose(
+                scipy.fft.ihfftn(self.x, self.n, self.axis, self.norm),
+                paddle.fft.ihfftn(paddle.to_tensor(self.x), self.n, self.axis,
+                                  self.norm),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)))
 
 
 @place(DEVICES)

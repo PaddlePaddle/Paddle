@@ -107,7 +107,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             out_ref = self.x_np
 
             for out in res:
-                self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+                np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
         for place in self.place:
             run(place)
@@ -125,8 +125,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
                 np.put_along_axis(self.x_np, self.index_np, self.value_np,
                                   self.axis))
             out_ref = self.x_np
-            self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03),
-                             True)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
             # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
             paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
@@ -154,8 +153,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
                                   self.axis))
             out_ref = self.x_np
 
-            self.assertEqual(np.allclose(x_tensor.numpy(), out_ref, rtol=1e-03),
-                             True)
+            np.testing.assert_allclose(x_tensor.numpy(), out_ref, rtol=0.001)
             paddle.enable_static()
 
         for place in self.place:

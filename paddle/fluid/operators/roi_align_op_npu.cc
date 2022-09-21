@@ -157,8 +157,10 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
         "ConcatD", {x_list}, {ROIs_N5}, {{"N", 2}, {"concat_dim", 1}});
     runner_concat.Run(stream);
 
-    //  By analysis, in order to match cpu grad version,
-    //  rois[:,3:5] should substrate 1 before call ascend grad function
+    //  If CANN version code is less than 504, by analysis, in order to match
+    //  cpu grad version, rois[:,3:5] should substrate 1 before call ascend grad
+    //  function
+#if (CANN_VERSION_CODE < 504000)
     std::vector<float> vec_dlt = {0, 0, 0, -1.0f, -1.0f};
     Tensor tsr_dlt;
     tsr_dlt.mutable_data<float>({5}, place);
@@ -167,6 +169,7 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     const auto& runner_add =
         NpuOpRunner("AddV2", {ROIs_N5, tsr_dlt}, {ROIs_N5}, {});
     runner_add.Run(stream);
+#endif
 
     //  Call ascend RoiAlignGrad function
     int roi_end_mode = 0;

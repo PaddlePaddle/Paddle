@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import unittest
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 if fluid.is_compiled_with_cuda():
@@ -117,8 +117,9 @@ class InstanceNorm(fluid.dygraph.Layer):
 
     def forward(self, input):
         if fluid._non_static_mode():
-            out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
-                                             'epsilon', self.epsilon)
+            out, _, _ = _legacy_C_ops.instance_norm(input, self.scale,
+                                                    self.bias, 'epsilon',
+                                                    self.epsilon)
             return out
         else:
             return fluid.layers.instance_norm(

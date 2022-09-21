@@ -30,10 +30,13 @@ from .cost import build_comm_desc, CommContext
 from .cost import AllgatherOpCost, SendOpCost
 from .cost import SliceOpCost, SplitOpCost, ConcatOpCost
 from .cluster import Cluster
-from .utils import print_program_with_dist_attr
+from .utils import print_program_with_dist_attr, is_gradient_clip_op
 
-# NOTE: If op in _g_special_ops, it will not be resharded.
+# NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
+_g_gradient_clip_ops = [
+    "sum", "sqrt", "fill_constant", "elementwise_max", "elementwise_div"
+]
 
 
 def get_var_with_recursion(var_name, block, program):
@@ -267,15 +270,16 @@ class Inserter:
                                dtype=tensor_type,
                                type=tensor.type,
                                lod_level=tensor.lod_level)
-        block._insert_op(idx,
-                         type='cast',
-                         inputs={'X': [tensor]},
-                         outputs={'Out': [out]},
-                         attrs={
-                             'in_dtype': tensor.dtype,
-                             'out_dtype': out.dtype,
-                             'op_role': op_role
-                         })
+        cast_op = block._insert_op(idx,
+                                   type='cast',
+                                   inputs={'X': [tensor]},
+                                   outputs={'Out': [out]},
+                                   attrs={
+                                       'in_dtype': tensor.dtype,
+                                       'out_dtype': out.dtype,
+                                       'op_role': op_role
+                                   })
+        cast_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return out
 
     @staticmethod
@@ -284,16 +288,17 @@ class Inserter:
         op_type = 'send_v2'
         # use pair comm group
         process_group = new_process_group([src, dst])
-        block._insert_op(idx,
-                         type=op_type,
-                         inputs={'X': [tensor]},
-                         attrs={
-                             'ring_id': process_group.id,
-                             'peer': process_group.ranks.index(dst),
-                             'use_calc_stream': True,
-                             'op_role': op_role,
-                             'dynamic_shape': True
-                         })
+        send_op = block._insert_op(idx,
+                                   type=op_type,
+                                   inputs={'X': [tensor]},
+                                   attrs={
+                                       'ring_id': process_group.id,
+                                       'peer': process_group.ranks.index(dst),
+                                       'use_calc_stream': True,
+                                       'op_role': op_role,
+                                       'dynamic_shape': True
+                                   })
+        send_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
     @staticmethod
     def insert_recv_op(block, idx, tensor, src, dst, op_role):
@@ -301,19 +306,20 @@ class Inserter:
         op_type = 'recv_v2'
         # use pair group
         process_group = new_process_group([src, dst])
-        block._insert_op(idx,
-                         type=op_type,
-                         inputs={'X': [tensor]},
-                         outputs={'Out': [tensor]},
-                         attrs={
-                             'ring_id': process_group.id,
-                             'peer': process_group.ranks.index(src),
-                             'out_shape': tensor.shape,
-                             'dtype': tensor.dtype,
-                             'use_calc_stream': True,
-                             'op_role': op_role,
-                             'dynamic_shape': True
-                         })
+        recv_op = block._insert_op(idx,
+                                   type=op_type,
+                                   inputs={'X': [tensor]},
+                                   outputs={'Out': [tensor]},
+                                   attrs={
+                                       'ring_id': process_group.id,
+                                       'peer': process_group.ranks.index(src),
+                                       'out_shape': tensor.shape,
+                                       'dtype': tensor.dtype,
+                                       'use_calc_stream': True,
+                                       'op_role': op_role,
+                                       'dynamic_shape': True
+                                   })
+        recv_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
     @staticmethod
     def insert_reset_lod_op(block, idx, X, Y, op_role):
@@ -327,14 +333,15 @@ class Inserter:
                                          dtype=X.dtype,
                                          lod_level=X.lod_level)
 
-        block._insert_op(idx,
-                         type="lod_reset",
-                         inputs={
-                             'X': X,
-                             'Y': Y
-                         },
-                         outputs={'Out': reset_lod_out},
-                         attrs={'op_role': op_role})
+        reset_op = block._insert_op(idx,
+                                    type="lod_reset",
+                                    inputs={
+                                        'X': X,
+                                        'Y': Y
+                                    },
+                                    outputs={'Out': reset_lod_out},
+                                    attrs={'op_role': op_role})
+        reset_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return reset_lod_out
 
     @staticmethod
@@ -356,11 +363,12 @@ class Inserter:
                 type=tensors[0].type,
                 persistable=False,
                 stop_gradient=False)
-        block._insert_op(idx,
-                         type='concat',
-                         inputs=inputs,
-                         outputs={'Out': [out]},
-                         attrs=attrs)
+        concat_op = block._insert_op(idx,
+                                     type='concat',
+                                     inputs=inputs,
+                                     outputs={'Out': [out]},
+                                     attrs=attrs)
+        concat_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return out
 
     @staticmethod
@@ -388,11 +396,12 @@ class Inserter:
             inputs = {'X': [tensor]}
             outputs = {"Out": [out]}
             attrs = {"in_place": False}
-            block._insert_op(idx,
-                             type="assign",
-                             inputs=inputs,
-                             outputs=outputs,
-                             attrs=attrs)
+            slice_op = block._insert_op(idx,
+                                        type="assign",
+                                        inputs=inputs,
+                                        outputs=outputs,
+                                        attrs=attrs)
+            slice_op._set_attr('op_namescope', "/auto_parallel/reshard")
             return out
 
         # use split once
@@ -424,11 +433,12 @@ class Inserter:
                     for i in range(num_or_sections)
                 ]
                 out = outs[cur_idx]
-            op = block._insert_op(idx,
-                                  type="split",
-                                  inputs=inputs,
-                                  outputs={'Out': outs},
-                                  attrs=attrs)
+            split_op = block._insert_op(idx,
+                                        type="split",
+                                        inputs=inputs,
+                                        outputs={'Out': outs},
+                                        attrs=attrs)
+            split_op._set_attr('op_namescope', "/auto_parallel/reshard")
             return out
 
         # use slice
@@ -446,12 +456,12 @@ class Inserter:
                                    dtype=tensor.dtype,
                                    type=tensor.type,
                                    lod_level=tensor.lod_level)
-            block._insert_op(idx,
-                             type="slice",
-                             inputs=inputs,
-                             outputs={'Out': [out]},
-                             attrs=attrs)
-
+            slice_op = block._insert_op(idx,
+                                        type="slice",
+                                        inputs=inputs,
+                                        outputs={'Out': [out]},
+                                        attrs=attrs)
+            slice_op._set_attr('op_namescope', "/auto_parallel/reshard")
             return out
 
     @staticmethod
@@ -479,11 +489,12 @@ class Inserter:
                     persistable=False,
                     stop_gradient=False) for i in range(num_or_sections)
             ]
-        block._insert_op(idx,
-                         type="split",
-                         inputs=inputs,
-                         outputs={'Out': outs},
-                         attrs=attrs)
+        split_op = block._insert_op(idx,
+                                    type="split",
+                                    inputs=inputs,
+                                    outputs={'Out': outs},
+                                    attrs=attrs)
+        split_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return outs
 
     @staticmethod
@@ -511,12 +522,13 @@ class Inserter:
                                       attrs=attrs,
                                       shape=[0],
                                       op_type='fill_constant')
-        block._insert_op(idx,
-                         type='fill_constant',
-                         inputs=inputs,
-                         outputs={'Out': [out]},
-                         attrs=attrs)
+        fillconstant_op = block._insert_op(idx,
+                                           type='fill_constant',
+                                           inputs=inputs,
+                                           outputs={'Out': [out]},
+                                           attrs=attrs)
         out.stop_gradient = True
+        fillconstant_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return out
 
     @staticmethod
@@ -534,22 +546,25 @@ class Inserter:
             fill_constant_out.stop_gradient = True
 
             # insert c_allreduce_sum op
-            block._insert_op(idx + 1,
-                             type="c_allreduce_sum",
-                             inputs={'X': [fill_constant_out]},
-                             outputs={'Out': [fill_constant_out]},
-                             attrs={
-                                 'ring_id': 0,
-                                 'use_calc_stream': True,
-                                 'op_role': op_role
-                             })
-
+            allreduce_op = block._insert_op(
+                idx + 1,
+                type="c_allreduce_sum",
+                inputs={'X': [fill_constant_out]},
+                outputs={'Out': [fill_constant_out]},
+                attrs={
+                    'ring_id': 0,
+                    'use_calc_stream': True,
+                    'op_role': op_role
+                })
+            allreduce_op._set_attr('op_namescope', "/auto_parallel/reshard")
             # insert c_sync_calc_stream op
-            block._insert_op(idx + 2,
-                             type="c_sync_calc_stream",
-                             inputs={'X': [fill_constant_out]},
-                             outputs={'Out': [fill_constant_out]},
-                             attrs={'op_role': op_role})
+            sync_calc_op = block._insert_op(
+                idx + 2,
+                type="c_sync_calc_stream",
+                inputs={'X': [fill_constant_out]},
+                outputs={'Out': [fill_constant_out]},
+                attrs={'op_role': op_role})
+            sync_calc_op._set_attr('op_namescope', "/auto_parallel/reshard")
             idx_offset = 3
 
         # insert c_allgather op
@@ -566,16 +581,17 @@ class Inserter:
                 type=tensor.type,
                 persistable=False,
                 stop_gradient=False)
-        block._insert_op(idx + idx_offset,
-                         type=op_type,
-                         inputs={'X': [tensor]},
-                         outputs={'Out': [allgather_out]},
-                         attrs={
-                             'ring_id': group.id,
-                             'use_calc_stream': True,
-                             'nranks': group.nranks,
-                             'op_role': op_role
-                         })
+        allgather_op = block._insert_op(idx + idx_offset,
+                                        type=op_type,
+                                        inputs={'X': [tensor]},
+                                        outputs={'Out': [allgather_out]},
+                                        attrs={
+                                            'ring_id': group.id,
+                                            'use_calc_stream': True,
+                                            'nranks': group.nranks,
+                                            'op_role': op_role
+                                        })
+        allgather_op._set_attr('op_namescope', "/auto_parallel/reshard")
         idx_offset += 1
 
         # insert split op
@@ -682,7 +698,8 @@ class Remover:
                 block._remove_op(idx)
 
     @staticmethod
-    def remove_no_need_vars(auto_parallel_main_prog, dist_params_grads):
+    def remove_no_need_vars(auto_parallel_main_prog, dist_params_grads,
+                            feed_var_names):
         """Remove no need vars in the main program"""
         for block_idx, block in enumerate(auto_parallel_main_prog.blocks):
             remove_vars = set()
@@ -728,7 +745,7 @@ class Remover:
                     idx += 1
 
             for var in remove_vars:
-                if block.vars[var].is_data:
+                if var in feed_var_names:
                     continue
                 block._remove_var(var)
 
@@ -740,7 +757,12 @@ class Remover:
                                    rank_id)
         Resharder.change_while_op_input_and_output(auto_parallel_main_prog,
                                                    dist_context)
-        Remover.remove_no_need_vars(auto_parallel_main_prog, dist_params_grads)
+        # 'feed_var_names' cannot be removed from auto_parallel_main_prog
+        feed_var_names = []
+        for var in sum(list(dist_context.serial_feed_vars.values()), []):
+            feed_var_names.append(var.name)
+        Remover.remove_no_need_vars(auto_parallel_main_prog, dist_params_grads,
+                                    feed_var_names)
 
     @staticmethod
     def remove_no_need_in_startup(auto_parallel_main_prog,
@@ -1076,8 +1098,10 @@ class Resharder:
         return True
 
     def is_special_op(self, op):
-        global _g_special_ops
+        global _g_special_ops, _g_gradient_clip_ops
         if op.type in _g_special_ops:
+            return True
+        if is_gradient_clip_op(op) and op.type in _g_gradient_clip_ops:
             return True
         return False
 
@@ -2065,3 +2089,209 @@ class Resharder:
 
         # reset some variable when remove operation ended
         Resharder.while_block_info = {}
+
+    def get_cost(self, op, tensor, cluster):
+        # NOTE: The program should be the serial_program which is not been parted
+        global _g_special_ops
+        not_supported_op_type = _g_special_ops + ["while"]
+        reshard_op_cost = None
+        if op.type in not_supported_op_type:
+            return reshard_op_cost
+        else:
+            tensor_name = tensor.name
+            if tensor_name == "lod_tensor_blocking_queue_0":
+                return reshard_op_cost
+            else:
+                dist_tensor = self.dist_context.get_dist_tensor_for_program(
+                    tensor)
+                # simplified processing: ignore union process mesh and output reshard
+                dist_op = self.dist_context.get_dist_op_for_program(op)
+                dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
+                    tensor.name)
+                process_mesh = dist_op.dist_attr.process_mesh
+                dist_attr = [process_mesh, dims_mapping]
+                if dist_tensor is not None and self.need_reshard(
+                        dist_tensor, dist_attr):
+                    if tensor_name not in self._has_resharded:
+                        self._has_resharded[tensor_name] = [dist_op]
+                    else:
+                        for item in self._has_resharded[tensor_name]:
+                            item_dist_attr = item.dist_attr
+                            item_dims_mapping = item_dist_attr.get_input_dims_mapping(
+                                tensor_name)
+                            item_process_mesh = item_dist_attr.process_mesh
+                            if dims_mapping == item_dims_mapping and item_process_mesh == process_mesh:
+                                return reshard_op_cost
+                        self._has_resharded[tensor_name].append(dist_op)
+
+                    reshard_op_desc = self.find_op_desc_seq(dist_tensor,
+                                                            dist_attr,
+                                                            serial=True)
+                    dtype = dist_tensor.serial_tensor.dtype
+                    reshard_op_cost = self.parse_op_desc_for_cost(
+                        reshard_op_desc, dtype, cluster)
+
+        return reshard_op_cost
+
+    def _concat_partitions_for_cost(self, partition_tensor_list,
+                                    partition_index, dtype, rank_id,
+                                    local_rank_comp_cost, cluster):
+        if not partition_tensor_list:
+            partition_tensor_list.append(partition_index)
+        else:
+            i = 0
+            has_concat = False
+            while i < len(partition_tensor_list):
+                concat_axis, first_order, new_partition = Resharder.compute_concat_info(
+                    partition_tensor_list[i], partition_index)
+                if concat_axis != -1:
+                    has_concat = True
+                    concat_desc = {}
+                    concat_desc["op"] = "concat"
+                    concat_desc["attrs"] = {"axis": concat_axis}
+                    if first_order == 0:
+                        concat_desc["inputs"] = {
+                            "X": [(dtype, partition_tensor_list[i]),
+                                  (dtype, partition_index)]
+                        }
+                    else:
+                        concat_desc["inputs"] = {
+                            "X": [(dtype, partition_index),
+                                  (dtype, partition_tensor_list[i])]
+                        }
+                    partition_tensor_list.pop(i)
+                    if rank_id not in local_rank_comp_cost:
+                        local_rank_comp_cost[rank_id] = []
+                    local_rank_comp_cost[rank_id].append(
+                        ConcatOpCost(op_desc=concat_desc, cluster=cluster))
+                    self._concat_partitions_for_cost(partition_tensor_list,
+                                                     new_partition, dtype,
+                                                     rank_id,
+                                                     local_rank_comp_cost,
+                                                     cluster)
+                    break
+                i += 1
+            if not has_concat:
+                partition_tensor_list.append(partition_index)
+
+    def parse_op_desc_for_cost(self, reshard_op_desc, dtype, cluster):
+
+        def _get_idx(comm_ranks, group_ranks):
+            res, is_the_same = None, False
+            idx = 0
+            while idx < len(comm_ranks):
+                if comm_ranks[idx] == set(group_ranks):
+                    is_the_same = True
+
+                for rank in group_ranks:
+                    if rank in comm_ranks[idx]:
+                        res = idx
+                        comm_ranks[idx].add(rank)
+                if res is None:
+                    idx += 1
+                else:
+                    break
+            return res, is_the_same
+
+        comm_context = CommContext(cluster)
+        # run communication op before computation op
+        # TODO: Communication cost is not calculated when the var has been transfered by the same group in the past
+        comm_costs = []
+        comm_ranks = []
+        local_rank_comp_cost = {}
+        for key in reshard_op_desc:
+            partition_tensor_list = []
+            op_desc_list = reshard_op_desc[key]
+            for op_desc in op_desc_list:
+                if isinstance(op_desc, SendOpDesc):
+                    group_ranks = [key, op_desc.dst]
+                    shape = op_desc.shape
+                    send_desc = build_comm_desc("send_v2", group_ranks, dtype,
+                                                shape)
+                    idx, is_the_same = _get_idx(comm_ranks, group_ranks)
+                    if idx is None:
+                        comm_costs.append([
+                            (group_ranks,
+                             SendOpCost(op_desc=send_desc,
+                                        comm_context=comm_context))
+                        ])
+                        comm_ranks.append(set(group_ranks))
+                    else:
+                        if not is_the_same:
+                            comm_costs[idx].append(
+                                (group_ranks,
+                                 SendOpCost(op_desc=send_desc,
+                                            comm_context=comm_context)))
+                elif isinstance(op_desc, AllGatherOpDesc):
+                    # NOTE: fill_const and other unnecessary op is not calculated because those cost is very small
+                    group_ranks = op_desc.group
+                    shape = op_desc.shape
+                    allgather_desc = build_comm_desc("c_allgather", group_ranks,
+                                                     dtype, shape)
+                    split_inputs_shape = []
+                    for idx, dim in enumerate(shape):
+                        if idx == 0:
+                            split_inputs_shape.append(dim * len(group_ranks))
+                        else:
+                            split_inputs_shape.append(dim)
+                    idx, is_the_same = _get_idx(comm_ranks, group_ranks)
+                    if idx is None:
+                        comm_costs.append([
+                            (group_ranks,
+                             AllgatherOpCost(op_desc=allgather_desc,
+                                             comm_context=comm_context))
+                        ])
+                        comm_ranks.append(set(group_ranks))
+                    else:
+                        if not is_the_same:
+                            comm_costs[idx].append(
+                                (group_ranks,
+                                 AllgatherOpCost(op_desc=allgather_desc,
+                                                 comm_context=comm_context)))
+                    # calc the split op cost
+                    if key not in local_rank_comp_cost:
+                        local_rank_comp_cost[key] = []
+                    split_desc = {}
+                    split_desc["op"] = "split"
+                    split_desc["inputs"] = {
+                        "inputs": [(dtype, split_inputs_shape)]
+                    }
+                    split_desc["attrs"] = {"num": len(group_ranks), "axis": 0}
+                    local_rank_comp_cost[key].append(
+                        SplitOpCost(op_desc=split_desc, cluster=cluster))
+                elif isinstance(op_desc, ConcatOpDesc):
+                    partition_index_list = op_desc._partition_index_list
+                    for idx, partion_idex in enumerate(partition_index_list):
+                        self._concat_partitions_for_cost(
+                            partition_tensor_list, partion_idex, dtype, key,
+                            local_rank_comp_cost, cluster)
+
+                elif isinstance(op_desc, SliceOpDesc):
+                    if key not in local_rank_comp_cost:
+                        local_rank_comp_cost[key] = []
+                    assert len(
+                        partition_tensor_list) == 1 or not partition_tensor_list
+                    to_slice_tensor_shape = []
+                    if len(partition_tensor_list) == 1:
+                        for item in partition_tensor_list[0]:
+                            to_slice_tensor_shape.append(item[1] - item[0])
+                    else:
+                        to_slice_tensor_shape = op_desc.shape
+                    slice_desc = {}
+                    slice_desc["op"] = "slice"
+                    infer_flags = list(1 for i in range(len(op_desc.axes)))
+                    slice_desc["attrs"] = {
+                        "axes": op_desc.axes,
+                        "starts": op_desc.starts,
+                        "ends": op_desc.ends,
+                        "infer_flags": infer_flags
+                    }
+                    slice_desc["inputs"] = {
+                        "Input": [(dtype, to_slice_tensor_shape)]
+                    }
+                    local_rank_comp_cost[key].append(
+                        SliceOpCost(op_desc=slice_desc, cluster=cluster))
+
+        res = (comm_costs, local_rank_comp_cost)
+
+        return res

@@ -196,21 +196,23 @@ class TestClipAPI(unittest.TestCase):
                 out_10, out_11
             ])
 
-        self.assertTrue(np.allclose(res1, data.clip(0.2, 0.8)))
-        self.assertTrue(np.allclose(res2, data.clip(0.2, 0.9)))
-        self.assertTrue(np.allclose(res3, data.clip(min=0.3)))
-        self.assertTrue(np.allclose(res4, data.clip(max=0.7)))
-        self.assertTrue(np.allclose(res5, data.clip(min=0.2)))
-        self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
-        self.assertTrue(np.allclose(res7, data.clip(max=-1)))
-        self.assertTrue(np.allclose(res8, data))
-        self.assertTrue(
-            np.allclose(res9,
-                        data.astype(np.float64).clip(0.2, 0.9)))
-        self.assertTrue(
-            np.allclose(res10, (data * 10).astype(np.int32).clip(2, 8)))
-        self.assertTrue(
-            np.allclose(res11, (data * 10).astype(np.int64).clip(2, 8)))
+        np.testing.assert_allclose(res1, data.clip(0.2, 0.8), rtol=1e-05)
+        np.testing.assert_allclose(res2, data.clip(0.2, 0.9), rtol=1e-05)
+        np.testing.assert_allclose(res3, data.clip(min=0.3), rtol=1e-05)
+        np.testing.assert_allclose(res4, data.clip(max=0.7), rtol=1e-05)
+        np.testing.assert_allclose(res5, data.clip(min=0.2), rtol=1e-05)
+        np.testing.assert_allclose(res6, data.clip(max=0.8), rtol=1e-05)
+        np.testing.assert_allclose(res7, data.clip(max=-1), rtol=1e-05)
+        np.testing.assert_allclose(res8, data, rtol=1e-05)
+        np.testing.assert_allclose(res9,
+                                   data.astype(np.float64).clip(0.2, 0.9),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(res10,
+                                   (data * 10).astype(np.int32).clip(2, 8),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(res11,
+                                   (data * 10).astype(np.int64).clip(2, 8),
+                                   rtol=1e-05)
         paddle.disable_static()
 
     def func_clip_dygraph(self):
@@ -239,14 +241,24 @@ class TestClipAPI(unittest.TestCase):
         # test with numpy.generic
         out_6 = self._executed_api(images, min=np.abs(0.2), max=np.abs(0.8))
 
-        self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
-        self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
-        self.assertTrue(np.allclose(out_3.numpy(), data.clip(0.2, 0.8)))
-        self.assertTrue(
-            np.allclose(out_4.numpy(), (data * 10).astype(np.int32).clip(2, 8)))
-        self.assertTrue(
-            np.allclose(out_5.numpy(), (data * 10).astype(np.int64).clip(2, 8)))
-        self.assertTrue(np.allclose(out_6.numpy(), data.clip(0.2, 0.8)))
+        np.testing.assert_allclose(out_1.numpy(),
+                                   data.clip(0.2, 0.8),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(out_2.numpy(),
+                                   data.clip(0.2, 0.9),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(out_3.numpy(),
+                                   data.clip(0.2, 0.8),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(out_4.numpy(),
+                                   (data * 10).astype(np.int32).clip(2, 8),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(out_5.numpy(),
+                                   (data * 10).astype(np.int64).clip(2, 8),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(out_6.numpy(),
+                                   data.clip(0.2, 0.8),
+                                   rtol=1e-05)
 
     def test_clip_dygraph(self):
         with _test_eager_guard():
@@ -268,9 +280,9 @@ class TestClipAPI(unittest.TestCase):
         out1 = paddle.clip(x_int32, min=1)
         out2 = paddle.clip(x_int64, min=1)
         out3 = paddle.clip(x_f32, min=1)
-        self.assertTrue(np.allclose(out1.numpy(), egr_out1.numpy()))
-        self.assertTrue(np.allclose(out2.numpy(), egr_out2.numpy()))
-        self.assertTrue(np.allclose(out3.numpy(), egr_out3.numpy()))
+        np.testing.assert_allclose(out1.numpy(), egr_out1.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(out2.numpy(), egr_out2.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(out3.numpy(), egr_out3.numpy(), rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()

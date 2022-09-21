@@ -87,6 +87,15 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
                        });
   }
 
+  bool IsSelectedRowsInputs(const std::string& name) const override {
+    auto var_types = ctx_.GetInputsVarType(name);
+    return std::all_of(var_types.begin(),
+                       var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::SELECTED_ROWS;
+                       });
+  }
+
   bool IsSelectedRowsInput(const std::string& name) const override {
     auto var_type = ctx_.GetInputVarType(name);
     return var_type == proto::VarType::SELECTED_ROWS;
@@ -127,7 +136,15 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
   const InferShapeContext& ctx_;
 };
 
+static inline void ValidCheck(const phi::MetaTensor& meta_tensor) {
+  PADDLE_ENFORCE_EQ(meta_tensor.initialized(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The current CompatMetaTensor is not initialized."));
+}
+
 int64_t CompatMetaTensor::numel() const {
+  ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
     return var->Get<Tensor>().numel();
@@ -137,13 +154,44 @@ int64_t CompatMetaTensor::numel() const {
   }
 }
 
+bool CompatMetaTensor::is_selected_rows() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<phi::SelectedRows>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetType() == proto::VarType::SELECTED_ROWS;
+  }
+}
+
+bool CompatMetaTensor::is_dense() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<phi::DenseTensor>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetType() == proto::VarType::LOD_TENSOR;
+  }
+}
+
+bool CompatMetaTensor::is_tensor_array() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<framework::LoDTensorArray>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetType() == proto::VarType::LOD_TENSOR_ARRAY;
+  }
+}
+
 DDim CompatMetaTensor::dims() const {
+  ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
     if (var->IsType<phi::DenseTensor>()) {
       return var->Get<phi::DenseTensor>().dims();
     } else if (var->IsType<phi::SelectedRows>()) {
-      return var->Get<phi::SelectedRows>().dims();
+      return var->Get<phi::SelectedRows>().GetCompleteDims();
     } else if (var->IsType<framework::LoDTensorArray>()) {
       // use tensor array size as dims
       auto& tensor_array = var->Get<framework::LoDTensorArray>();
@@ -162,6 +210,7 @@ DDim CompatMetaTensor::dims() const {
 }
 
 phi::DataType CompatMetaTensor::dtype() const {
+  ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
     if (var->IsType<phi::DenseTensor>()) {
@@ -183,6 +232,7 @@ phi::DataType CompatMetaTensor::dtype() const {
 }
 
 DataLayout CompatMetaTensor::layout() const {
+  ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
     if (var->IsType<phi::DenseTensor>()) {
@@ -206,14 +256,14 @@ DataLayout CompatMetaTensor::layout() const {
 }
 
 void CompatMetaTensor::set_dims(const DDim& dims) {
+  ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
     } else if (var->IsType<phi::SelectedRows>()) {
-      auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
+      var->GetMutable<phi::SelectedRows>()->set_height(dims[0]);
     } else if (var->IsType<framework::LoDTensorArray>()) {
       auto* tensor_array = var->GetMutable<framework::LoDTensorArray>();
       // Note: Here I want enforce `tensor_array->size() == 0UL`, because
@@ -236,6 +286,7 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
 }
 
 void CompatMetaTensor::set_dtype(phi::DataType dtype) {
+  ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
     if (var->IsType<phi::DenseTensor>()) {
@@ -258,6 +309,7 @@ void CompatMetaTensor::set_dtype(phi::DataType dtype) {
 }
 
 void CompatMetaTensor::set_layout(DataLayout layout) {
+  ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
     if (var->IsType<phi::DenseTensor>()) {
@@ -281,9 +333,11 @@ void CompatMetaTensor::set_layout(DataLayout layout) {
 }
 
 void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
+  ValidCheck(*this);
+  ValidCheck(meta_tensor);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
-    if (var->IsType<phi::DenseTensor>()) {
+    if (var->IsType<phi::DenseTensor>() && meta_tensor.is_dense()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->lod =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetRuntimeLoD();
@@ -293,12 +347,18 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
+    if (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array()) {
+      VLOG(3) << "input metatensor is not LoDTensor or LoDTensorArray.";
+      return;
+    }
     var->SetLoDLevel(
         static_cast<const CompatMetaTensor&>(meta_tensor).GetCompileTimeLoD());
   }
 }
 
 void CompatMetaTensor::share_dims(const MetaTensor& meta_tensor) {
+  ValidCheck(*this);
+  ValidCheck(meta_tensor);
   set_dims(meta_tensor.dims());
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
@@ -441,6 +501,9 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         infer_meta_context.EmplaceBackInputs(std::move(inputs));
       }
     } else {
+      // Note: Because the input of InferMetaFn is const MetaTensor&,
+      // so when we prepare input MetaTensor by InferMetaContext->InputAt(),
+      // we need to return a const reference of empty MetaTensor
       infer_meta_context.EmplaceBackInput(
           std::move(CompatMetaTensor(ctx->IsRuntime())));
     }
@@ -464,13 +527,25 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(float, attr)));
               break;
+            case framework::proto::AttrType::FLOAT64:
+              infer_meta_context.EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(double, attr)));
+              break;
             case framework::proto::AttrType::INT:
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(int, attr)));
               break;
+            case framework::proto::AttrType::LONG:
+              infer_meta_context.EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr)));
+              break;
             case framework::proto::AttrType::STRING:
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(std::string, attr)));
+              break;
+            case framework::proto::AttrType::BOOLEAN:
+              infer_meta_context.EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(bool, attr)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -628,6 +703,10 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           switch (attr_defs[i].type_index) {
             case phi::AttributeType::FLOAT32:
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
+              break;
+            case phi::AttributeType::FLOAT64:
+              infer_meta_context.EmplaceBackAttr(
+                  PADDLE_GET_CONST(double, attr));
               break;
             case phi::AttributeType::INT32:
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(int, attr));

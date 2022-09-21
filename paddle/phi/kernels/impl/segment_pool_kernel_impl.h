@@ -97,7 +97,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     out->Resize({dims});
     dev_ctx.template Alloc<T>(out);
 
-    T init_value = 0;
+    T init_value = static_cast<T>(0);
     if (pooltype == "MAX") {
       init_value = static_cast<T>(-FLT_MAX);
     } else if (pooltype == "MIN") {

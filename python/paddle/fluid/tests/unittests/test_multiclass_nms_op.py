@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard, in_dygraph_mode, _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 def multiclass_nms3(bboxes,
@@ -43,7 +43,7 @@ def multiclass_nms3(bboxes,
     if in_dygraph_mode():
         attrs = (score_threshold, nms_top_k, keep_top_k, nms_threshold,
                  normalized, nms_eta, background_label)
-        output, index, nms_rois_num = _C_ops.final_state_multiclass_nms3(
+        output, index, nms_rois_num = _C_ops.multiclass_nms3(
             bboxes, scores, rois_num, *attrs)
         if not return_index:
             index = None
@@ -53,7 +53,7 @@ def multiclass_nms3(bboxes,
                  score_threshold, 'nms_top_k', nms_top_k, 'nms_threshold',
                  nms_threshold, 'keep_top_k', keep_top_k, 'nms_eta', nms_eta,
                  'normalized', normalized)
-        output, index, nms_rois_num = _C_ops.multiclass_nms3(
+        output, index, nms_rois_num = _legacy_C_ops.multiclass_nms3(
             bboxes, scores, rois_num, *attrs)
         if not return_index:
             index = None
@@ -497,7 +497,7 @@ class TestIOU(unittest.TestCase):
 
         expt_output = np.array([2.0 / 16.0]).astype('float32')
         calc_output = np.array([iou(box1, box2, True)]).astype('float32')
-        self.assertTrue(np.allclose(calc_output, expt_output))
+        np.testing.assert_allclose(calc_output, expt_output, rtol=1e-05)
 
 
 class TestMulticlassNMS2Op(TestMulticlassNMSOp):

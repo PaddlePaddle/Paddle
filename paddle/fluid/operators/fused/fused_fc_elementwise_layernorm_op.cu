@@ -395,9 +395,10 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
 
     const T* x_data = x->data<T>();
     const T* w_data = w->data<T>();
-    T* out_data = out->mutable_data<T>(ctx.GetPlace());
 
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+    auto* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     blas.GEMM(false,
               false,
@@ -425,9 +426,12 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
     auto* mean = ctx.Output<framework::Tensor>("Mean");
     auto* variance = ctx.Output<framework::Tensor>("Variance");
 
-    T* mean_data = mean ? mean->mutable_data<T>(ctx.GetPlace()) : nullptr;
-    T* variance_data =
-        variance ? variance->mutable_data<T>(ctx.GetPlace()) : nullptr;
+    T* mean_data =
+        mean ? dev_ctx.template Alloc<T>(mean, mean->numel() * sizeof(T))
+             : nullptr;
+    T* variance_data = variance ? dev_ctx.template Alloc<T>(
+                                      variance, variance->numel() * sizeof(T))
+                                : nullptr;
 
     bool with_relu =
         (ctx.Attr<std::string>("activation_type") == "relu") ? true : false;

@@ -17,7 +17,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 def graph_khop_sampler(row,
@@ -30,22 +30,22 @@ def graph_khop_sampler(row,
     """
     Graph Khop Sampler API.
 
-    This API is mainly used in Graph Learning domain, and the main purpose is to 
+    This API is mainly used in Graph Learning domain, and the main purpose is to
     provide high performance graph khop sampling method with subgraph reindex step.
     For example, we get the CSC(Compressed Sparse Column) format of the input graph
-    edges as `row` and `colptr`, so as to covert graph data into a suitable format 
+    edges as `row` and `colptr`, so as to covert graph data into a suitable format
     for sampling. And the `input_nodes` means the nodes we need to sample neighbors,
     and `sample_sizes` means the number of neighbors and number of layers we want
-    to sample. 
+    to sample.
 
     Args:
-        row (Tensor): One of the components of the CSC format of the input graph, and 
+        row (Tensor): One of the components of the CSC format of the input graph, and
                       the shape should be [num_edges, 1] or [num_edges]. The available
                       data type is int32, int64.
         colptr (Tensor): One of the components of the CSC format of the input graph,
-                         and the shape should be [num_nodes + 1, 1] or [num_nodes]. 
+                         and the shape should be [num_nodes + 1, 1] or [num_nodes].
                          The data type should be the same with `row`.
-        input_nodes (Tensor): The input nodes we need to sample neighbors for, and the 
+        input_nodes (Tensor): The input nodes we need to sample neighbors for, and the
                               data type should be the same with `row`.
         sample_sizes (list|tuple): The number of neighbors and number of layers we want
                                    to sample. The data type should be int, and the shape
@@ -58,7 +58,7 @@ def graph_khop_sampler(row,
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        edge_src (Tensor): The src index of the output edges, also means the first column of 
+        edge_src (Tensor): The src index of the output edges, also means the first column of
                            the edges. The shape is [num_sample_edges, 1] currently.
         edge_dst (Tensor): The dst index of the output edges, also means the second column
                            of the edges. The shape is [num_sample_edges, 1] currently.
@@ -67,7 +67,7 @@ def graph_khop_sampler(row,
         edge_eids (Tensor): Return the id of the sample edges if `return_eids` is True.
 
     Examples:
-        
+
         .. code-block:: python
 
         import paddle
@@ -79,7 +79,7 @@ def graph_khop_sampler(row,
         row = paddle.to_tensor(row, dtype="int64")
         colptr = paddle.to_tensor(colptr, dtype="int64")
         nodes = paddle.to_tensor(nodes, dtype="int64")
-        
+
         edge_src, edge_dst, sample_index, reindex_nodes = \
             paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
 
@@ -91,14 +91,14 @@ def graph_khop_sampler(row,
                 raise ValueError(f"`sorted_eid` should not be None "
                                  f"if return_eids is True.")
             edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
-                _C_ops.graph_khop_sampler(row, sorted_eids,
+                _legacy_C_ops.graph_khop_sampler(row, sorted_eids,
                                               colptr, input_nodes,
                                               "sample_sizes", sample_sizes,
                                               "return_eids", True)
             return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
         else:
             edge_src, edge_dst, sample_index, reindex_nodes, _ = \
-                _C_ops.graph_khop_sampler(row, None,
+                _legacy_C_ops.graph_khop_sampler(row, None,
                                               colptr, input_nodes,
                                               "sample_sizes", sample_sizes,
                                               "return_eids", False)

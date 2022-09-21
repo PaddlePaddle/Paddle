@@ -253,8 +253,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
                 t = lr()
 
-                self.assertTrue(
-                    np.allclose((t.numpy())[0].item(), right_result[i]))
+                np.testing.assert_allclose(t.numpy()[0].item(),
+                                           right_result[i],
+                                           rtol=1e-05)
 
             with self.assertRaises(TypeError):
                 lr = fluid.layers.linear_lr_warmup(learning_rate="fake_lr",

@@ -102,8 +102,10 @@ class TestWeightSharing(IPUOpTest):
         res0 = self.run_model(False)
         res1 = self.run_model(True)
 
-        self.assertTrue(
-            np.allclose(res0.flatten(), res1[0].flatten(), atol=self.atol))
+        np.testing.assert_allclose(res0.flatten(),
+                                   res1[0].flatten(),
+                                   rtol=1e-05,
+                                   atol=self.atol)
 
 
 if __name__ == "__main__":

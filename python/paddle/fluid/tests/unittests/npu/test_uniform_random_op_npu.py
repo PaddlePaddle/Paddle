@@ -71,11 +71,7 @@ class TestNPUUniformRandomOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg="hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
@@ -103,11 +99,7 @@ class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg="hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 if __name__ == "__main__":

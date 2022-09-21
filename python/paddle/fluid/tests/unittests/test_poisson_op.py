@@ -56,8 +56,7 @@ class TestPoissonOp1(OpTest):
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]), self.lam, self.a, self.b)
-        self.assertTrue(np.allclose(hist, prob, rtol=0.01),
-                        "actual: {}, expected: {}".format(hist, prob))
+        np.testing.assert_allclose(hist, prob, rtol=0.01)
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)

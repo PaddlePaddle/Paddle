@@ -116,14 +116,14 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
         print(ret1)
         ret2 = self.check_network_convergence(False, False)
         print(ret2)
-        self.assertTrue(np.allclose(ret1, ret2))
+        np.testing.assert_allclose(ret1, ret2, rtol=1e-05)
 
         if fluid.core.is_compiled_with_cuda():
             ret1 = self.check_network_convergence(True, True)
             print(ret1)
             ret2 = self.check_network_convergence(True, False)
             print(ret2)
-            self.assertTrue(np.allclose(ret1, ret2))
+            np.testing.assert_allclose(ret1, ret2, rtol=1e-05)
 
 
 if __name__ == "__main__":

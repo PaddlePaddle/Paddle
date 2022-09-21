@@ -16,7 +16,7 @@ import math
 import warnings
 
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
@@ -55,7 +55,7 @@ class Normal(distribution.Distribution):
 
     Examples:
         .. code-block:: python
-          
+
           import paddle
           from paddle.distribution import Normal
 
@@ -248,7 +248,7 @@ class Normal(distribution.Distribution):
         .. math::
 
             ratio = \\frac{\sigma_0}{\sigma_1}
-        
+
         .. math::
 
             diff = \mu_1 - \mu_0

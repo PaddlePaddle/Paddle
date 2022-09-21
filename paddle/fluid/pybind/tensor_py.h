@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -439,7 +440,11 @@ void SetTensorFromPyArrayT(
     platform::Place tmp_place = place;
     platform::MLUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
-    paddle::platform::MLUMemcpyH2DSync(dst, array.data(), array.nbytes());
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto dev_ctx = static_cast<platform::MLUDeviceContext *>(pool.Get(place));
+    paddle::platform::MLUMemcpyH2DAsync(
+        dst, array.data(), array.nbytes(), dev_ctx->stream());
+    dev_ctx->Wait();
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use MLUPlace in CPU/GPU version, "

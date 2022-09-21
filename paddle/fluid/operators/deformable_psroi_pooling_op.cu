@@ -266,7 +266,10 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.cuda_device_context();
     int bytes = roi_batch_id_list.numel() * sizeof(int);
-    auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+    auto roi_ptr = memory::Alloc(
+        dev_ctx.GetPlace(),
+        bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     const auto gplace = ctx.GetPlace();
     memory::Copy(gplace,
@@ -577,7 +580,10 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     }
 
     int bytes = roi_batch_id_list.numel() * sizeof(int);
-    auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+    auto roi_ptr = memory::Alloc(
+        dev_ctx.GetPlace(),
+        bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     const auto gplace = ctx.GetPlace();
     memory::Copy(gplace,

@@ -30,6 +30,13 @@ class TestAMPList(unittest.TestCase):
             self.assertTrue(op not in amp_list.black_list)
             self.assertTrue(op not in amp_list.unsupported_list)
 
+        default_black_list = [
+            'linear_interp_v2', 'nearest_interp_v2', 'bilinear_interp_v2',
+            'bicubic_interp_v2', 'trilinear_interp_v2'
+        ]
+        for op in default_black_list:
+            self.assertTrue(op in amp_list.black_list)
+
 
 if __name__ == "__main__":
     unittest.main()

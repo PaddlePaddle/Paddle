@@ -53,33 +53,6 @@ bool IsCommunicationOp(const std::string& op_name) {
   return false;
 }
 
-// check whether exists prior_op -> ... -> posterior_op to avoid building loops
-bool IsDependency(int prior_op_idx,
-                  int posterior_op_idx,
-                  const std::map<int, std::set<int>>& downstream_map) {
-  std::queue<int> q;
-  q.push(prior_op_idx);
-
-  while (!q.empty()) {
-    int op_idx = q.front();
-    q.pop();
-
-    auto it = downstream_map.find(op_idx);
-    if (it != downstream_map.end()) {
-      for (int downstream_op_idx : it->second) {
-        if (downstream_op_idx == posterior_op_idx) {
-          return true;
-        }
-
-        // no need for double enqueue checking since DAG is assumed
-        q.push(downstream_op_idx);
-      }
-    }
-  }
-
-  return false;
-}
-
 const std::string StringizeDownstreamMap(
     const std::map<int, std::set<int>>& downstream_map) {
   std::ostringstream oss;
@@ -273,20 +246,18 @@ void DependencyBuilder::AddDependencyForCommunicationOp() {
 
 // make sure that the random op is scheduled sequentially
 void DependencyBuilder::AddDependencyForRandomOp() {
-  const std::set<std::string> random_op_set = {
-      "bernoulli",
-      "poisson",
-      "multinomial",
-      "gaussian_random",
-      "truncated_gaussian_random",
-      "uniform_random",
-      "randint",
-      "randperm",
-      "exponential",
-      "sampling_id"
-      "dropout",
-      "class_center_sample",
-  };
+  const std::set<std::string> random_op_set = {"bernoulli",
+                                               "poisson",
+                                               "multinomial",
+                                               "gaussian_random",
+                                               "truncated_gaussian_random",
+                                               "uniform_random",
+                                               "randint",
+                                               "randperm",
+                                               "exponential",
+                                               "sampling_id",
+                                               "dropout",
+                                               "class_center_sample"};
 
   int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
@@ -326,8 +297,9 @@ void DependencyBuilder::AddDependencyForReadOp() {
   for (size_t read_op_idx : read_ops) {
     for (size_t downstream_op_idx : startup_ops) {
       if (read_op_idx != downstream_op_idx &&
-          !IsDependency(downstream_op_idx, read_op_idx, op_downstream_map_))
+          !op_happens_before_[downstream_op_idx][read_op_idx]) {
         AddDownstreamOp(read_op_idx, downstream_op_idx);
+      }
     }
   }
 }

@@ -24,7 +24,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import default_main_program
 from paddle.fluid import compiler, Program, program_guard
-import numpy
+import numpy as np
 
 
 def _test_read_write(x):
@@ -70,7 +70,7 @@ class TestArrayReadWrite(unittest.TestCase):
         for each_x in x:
             each_x.stop_gradient = False
 
-        tensor = numpy.random.random(size=(100, 100)).astype('float32')
+        tensor = np.random.random(size=(100, 100)).astype('float32')
         a_sum, x_sum = _test_read_write(x)
 
         place = core.CPUPlace()
@@ -100,7 +100,7 @@ class TestArrayReadWrite(unittest.TestCase):
             },
                                            fetch_list=g_vars)
         ]
-        g_out_sum = numpy.array(g_out).sum()
+        g_out_sum = np.array(g_out).sum()
 
         # since our final gradient is 1 and the neural network are all linear
         # with mean_op.
@@ -125,7 +125,7 @@ class TestArrayReadWrite(unittest.TestCase):
             g_out_dygraph = [
                 item._grad_ivar().numpy().sum() for item in x_dygraph
             ]
-            g_out_sum_dygraph = numpy.array(g_out_dygraph).sum()
+            g_out_sum_dygraph = np.array(g_out_dygraph).sum()
 
             self.assertAlmostEqual(1.0, g_out_sum_dygraph, delta=0.1)
 
@@ -135,11 +135,11 @@ class TestArrayReadWriteOpError(unittest.TestCase):
     def _test_errors(self, use_fluid_api=True):
         if use_fluid_api:
             with program_guard(Program(), Program()):
-                x1 = numpy.random.randn(2, 4).astype('int32')
+                x1 = np.random.randn(2, 4).astype('int32')
                 x2 = fluid.layers.fill_constant(shape=[1],
                                                 dtype='int32',
                                                 value=1)
-                x3 = numpy.random.randn(2, 4).astype('int32')
+                x3 = np.random.randn(2, 4).astype('int32')
 
                 self.assertRaises(TypeError,
                                   fluid.layers.array_read,
@@ -152,9 +152,9 @@ class TestArrayReadWriteOpError(unittest.TestCase):
                                   out=x3)
         else:
             with program_guard(Program(), Program()):
-                x1 = numpy.random.randn(2, 4).astype('int32')
+                x1 = np.random.randn(2, 4).astype('int32')
                 x2 = paddle.ones(shape=[1], dtype='int32')
-                x3 = numpy.random.randn(2, 4).astype('int32')
+                x3 = np.random.randn(2, 4).astype('int32')
 
                 self.assertRaises(TypeError,
                                   paddle.tensor.array_read,
@@ -185,7 +185,7 @@ class TestArrayReadWriteApi(unittest.TestCase):
 
         item = paddle.tensor.array_read(arr, i)
 
-        self.assertTrue(numpy.allclose(x.numpy(), item.numpy()))
+        np.testing.assert_allclose(x.numpy(), item.numpy(), rtol=1e-05)
         paddle.enable_static()
 
 

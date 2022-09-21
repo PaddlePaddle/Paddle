@@ -81,35 +81,19 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input tensors of concat operator.").AsDuplicable();
     AddOutput("Out", "Output tensor of concat operator.");
-    AddAttr<bool>(
-        "use_mkldnn",
-        "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated."
                  "The axis could also be negative numbers. Negative axis is "
                  "interpreted as counting from the end of the rank."
                  "i.e., axis + rank(X) th dimension.")
-        .SetDefault(0);
+        .SetDefault(0)
+        .SupportTensor();
     AddInput("AxisTensor",
              "(Tensor) The axis along which the input tensors will be "
              "concatenated.  "
              "It has higher priority than Attr(axis). "
              "The shape of AxisTensor must be [1].")
         .AsDispensable();
-    AddAttr<bool>(
-        "use_quantizer",
-        "(bool, default false) "
-        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
     AddComment(R"DOC(
 Concat Operator.
 

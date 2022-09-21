@@ -43,17 +43,17 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
-taskkill /f /im eager_op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
 wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
-rem ------initialize common variable------
+rem variable to control building process
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
@@ -67,10 +67,15 @@ if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_ONNXRUNTIME set WITH_ONNXRUNTIME=OFF
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
+if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
+if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
+if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
+if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
+
+rem variable to control pipeline process
 if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_SCCACHE set WITH_SCCACHE=OFF
-if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
@@ -78,9 +83,7 @@ if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
 if not defined retry_times set retry_times=1
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
-if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
-if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
-if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
+if not defined TEST_INFERENCE set TEST_INFERENCE=ON
 
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
@@ -113,7 +116,6 @@ if "%WITH_PYTHON%" == "ON" (
 rem -------Caching strategy 1: keep build directory for incremental compilation-----------
 rmdir %BUILD_DIR%\python /s/q
 rmdir %BUILD_DIR%\paddle\third_party\externalError /s/q
-rem rmdir %BUILD_DIR%\paddle\fluid\pybind /s/q
 rmdir %BUILD_DIR%\paddle_install_dir /s/q
 rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
 rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
@@ -169,14 +171,16 @@ echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
 cd /d %BUILD_DIR%
 dir .
 dir %cache_dir%
-dir paddle\fluid\pybind\Release
 rem -------Caching strategy 1: End --------------------------------
 
 
 rem -------Caching strategy 2: sccache decorate compiler-----------
 if not defined SCCACHE_ROOT set SCCACHE_ROOT=D:\sccache
+set PATH=%SCCACHE_ROOT%;%PATH%
 if "%WITH_SCCACHE%"=="ON" (
     cmd /C sccache -V || call :install_sccache
+    cmd /C sccache -V || echo install sccache failed!
+
     sccache --stop-server 2> NUL
     del %SCCACHE_ROOT%\sccache_log.txt
 
@@ -200,7 +204,7 @@ if "%WITH_SCCACHE%"=="ON" (
     sccache -z
     goto :CASE_%1
 ) else (
-    del %PYTHON_ROOT%\sccache.exe 2> NUL
+    del %SCCACHE_ROOT%\sccache.exe 2> NUL
     goto :CASE_%1
 )
 
@@ -208,7 +212,7 @@ if "%WITH_SCCACHE%"=="ON" (
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
-xcopy sccache.exe %PYTHON_ROOT%\ /Y
+xcopy sccache.exe %SCCACHE_ROOT%\ /Y
 del sccache.exe
 goto:eof
 rem -------Caching strategy 2: End --------------------------------
@@ -228,7 +232,7 @@ set WITH_MKL=ON
 set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
-set ON_INFER=OFF
+set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=OFF
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
@@ -245,7 +249,7 @@ set WITH_MKL=OFF
 set WITH_GPU=OFF
 set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
-set ON_INFER=OFF
+set ON_INFER=ON
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
@@ -278,7 +282,7 @@ goto:success
 rem ------Build windows avx whl package------
 :CASE_build_avx_whl
 set WITH_AVX=ON
-set ON_INFER=OFF
+set ON_INFER=ON
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
@@ -289,7 +293,7 @@ goto:success
 rem ------Build windows no-avx whl package------
 :CASE_build_no_avx_whl
 set WITH_AVX=OFF
-set ON_INFER=OFF
+set ON_INFER=ON
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
@@ -308,9 +312,9 @@ if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_inference
+if "%TEST_INFERENCE%"=="ON" call :test_inference
 if %errorlevel% NEQ 0 set error_code=%errorlevel%
-call :test_inference_ut
+if "%TEST_INFERENCE%"=="ON" call :test_inference_ut
 if %errorlevel% NEQ 0 set error_code=%errorlevel%
 
 call :zip_cc_file || goto zip_cc_file_error
@@ -528,10 +532,10 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
-taskkill /f /im eager_op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
@@ -930,10 +934,10 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
-taskkill /f /im eager_op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL

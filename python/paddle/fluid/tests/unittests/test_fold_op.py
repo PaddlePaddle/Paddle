@@ -120,7 +120,9 @@ class TestFoldAPI(TestFoldOp):
                 m = paddle.nn.Fold(**self.attrs)
                 m.eval()
                 result = m(input)
-                self.assertTrue(np.allclose(result.numpy(), self.outputs['Y']))
+                np.testing.assert_allclose(result.numpy(),
+                                           self.outputs['Y'],
+                                           rtol=1e-05)
 
     def test_info(self):
         str(paddle.nn.Fold(**self.attrs))

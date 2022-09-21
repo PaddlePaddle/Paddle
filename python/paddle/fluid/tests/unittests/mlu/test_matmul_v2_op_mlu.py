@@ -264,6 +264,18 @@ class TestMatMuklOp17(TestMatMulV2Op):
         self.trans_y = False
 
 
+class TestMatMuklOp18(TestMatMulV2Op):
+    """
+    case 18 : to check the gradient for special case
+    """
+
+    def config(self):
+        self.x_shape = (2, 32, 100)
+        self.y_shape = (100, 10)
+        self.trans_x = False
+        self.trans_y = False
+
+
 class TestMatMuklOpBroadcast1(TestMatMulV2Op):
     """
     case 14_3
@@ -328,6 +340,7 @@ create_test_fp16_class(TestMatMuklOp14)
 create_test_fp16_class(TestMatMuklOp15)
 create_test_fp16_class(TestMatMuklOp16)
 create_test_fp16_class(TestMatMuklOp17)
+create_test_fp16_class(TestMatMuklOp18)
 
 
 class TestMatMulV2API(unittest.TestCase):
