@@ -87,7 +87,7 @@ _global_flags_ = core.globals()
 _enable_standalone_executor_ = (os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR',
                                                None))
 _dy2st_enable_standalone_executor_ = (os.environ.get(
-    'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 0))
+    'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 1))
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to

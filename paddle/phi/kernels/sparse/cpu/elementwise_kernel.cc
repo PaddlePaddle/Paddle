@@ -451,3 +451,14 @@ PD_REGISTER_KERNEL(divide_coo_coo,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
+
+PD_REGISTER_KERNEL(add_coo_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ElementWiseAddDenseKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}

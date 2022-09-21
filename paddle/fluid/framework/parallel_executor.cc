@@ -558,6 +558,20 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
 #endif
+    } else if (platform::is_npu_place(place)) {
+#if defined(PADDLE_WITH_ASCEND_CL)
+      if (IsFastEagerDeletionModeEnabled()) {
+        gc.reset(new NPUUnsafeFastGarbageCollector(place, max_memory_size));
+      } else {
+        gc.reset(new NPUUnsafeFastGarbageCollector(place, max_memory_size));
+      }
+      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use NPU device since it's not compiled with "
+          "NPU,"
+          "Please recompile or reinstall Paddle with NPU support."));
+#endif
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (IsFastEagerDeletionModeEnabled()) {
@@ -1344,8 +1358,14 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
     device_name = "CPU";
   } else if (member_->use_device_ == p::kCUDA) {
     device_name = "CUDA";
-  } else {
+  } else if (member_->use_device_ == p::kNPU) {
+    device_name = "NPU";
+  } else if (member_->use_device_ == p::kXPU) {
     device_name = "XPU";
+  } else {
+    PADDLE_THROW(
+        platform::errors::Unavailable("Only CPU/CUDA/NPU/XPU is supportted. "
+                                      "please use CPU/CUDA/NPU/XPU backend."));
   }
 
   VLOG(1) << string::Sprintf(
