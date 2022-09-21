@@ -61,8 +61,6 @@ KernelSignature SparseReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature SparseConv3dOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  std::cout << "is sparse coo tensor : " << ctx.IsSparseCooTensorInput("X")
-            << std::endl;
   if (ctx.IsSparseCooTensorInput("X")) {
     return KernelSignature(
         "conv3d_coo",
@@ -70,12 +68,7 @@ KernelSignature SparseConv3dOpArgumentMapping(
         {"paddings", "dilations", "strides", "groups", "subm", "key"},
         {"Out", "Rulebook", "Counter"});
   } else {
-    /// return KernelSignature("unregistered", {}, {}, {});
-    return KernelSignature(
-        "conv3d_coo",
-        {"X", "Kernel"},
-        {"paddings", "dilations", "strides", "groups", "subm", "key"},
-        {"Out", "Rulebook", "Counter"});
+    return KernelSignature("unregistered", {}, {}, {});
   }
 }
 
