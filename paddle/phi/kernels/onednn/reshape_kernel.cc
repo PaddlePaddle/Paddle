@@ -141,7 +141,7 @@ dnnl::memory::format_tag getPlainFormatTag(const DenseTensor& tensor) {
   }
 }
 
-template <typename Context>
+template <typename T, typename Context>
 void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
@@ -150,8 +150,9 @@ void ReshapeKernel(const Context& dev_ctx,
   phi::DDim out_dims = out->dims();
   out_dims = ValidateShape(shape.GetData(), x_dims);
 
+  auto x_vec_dims = phi::vectorize(x_dims);
   phi::funcs::ReorderOneDNNHandler reorder_handler(
-      phi::vectorize(x_dims),
+      x_vec_dims,
       x.dtype(),
       phi::funcs::ToOneDNNDataType(x.dtype()),
       dev_ctx.GetEngine());
@@ -174,7 +175,7 @@ void ReshapeKernel(const Context& dev_ctx,
   out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
 }
 
-template <typename Context>
+template <typename T, typename Context>
 void ReshapeWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
                        const IntArray& shape,
