@@ -152,12 +152,7 @@ class SelectedRowsImpl {
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& dims() const {
-    PADDLE_THROW(
-        errors::Unavailable("dims() can't be used in SelectedRows. Please use "
-                            "GetCompleteDims() instead."));
-    return value_->dims();
-  }
+  const DDim& dims() const noexcept { return value_->dims(); }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
