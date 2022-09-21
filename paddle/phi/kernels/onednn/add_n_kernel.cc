@@ -19,12 +19,12 @@
 namespace phi {
 namespace funcs {
 template <typename T>
-class AddNOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
+class SumOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
  public:
-  AddNOneDNNHandler(dnnl::engine engine,
-                    const Place& cpu_place,
-                    const std::vector<const TensorBase*>& x,
-                    DenseTensor* out)
+  SumOneDNNHandler(dnnl::engine engine,
+                   const Place& cpu_place,
+                   const std::vector<const TensorBase*>& x,
+                   DenseTensor* out)
 
       : OneDNNHandlerNoCachingT<T, dnnl::sum>(engine, cpu_place),
         num_inputs_(0) {
@@ -96,8 +96,7 @@ void AddNKernel(const Context& dev_ctx,
 
   bool in_place = (input0->numel() > 0) && input0->IsSharedBufferWith(*out);
 
-  funcs::AddNOneDNNHandler<T> handler(
-      onednn_engine, dev_ctx.GetPlace(), x, out);
+  funcs::SumOneDNNHandler<T> handler(onednn_engine, dev_ctx.GetPlace(), x, out);
 
   // Create list of SRC MEMs
   std::vector<std::shared_ptr<dnnl::memory>> srcs_mem;
