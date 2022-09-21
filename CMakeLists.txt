@@ -64,7 +64,6 @@ option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
-include(experimental) # experimental build options
 
 if(WITH_GPU AND WITH_XPU)
   message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
@@ -430,6 +429,7 @@ if(WITH_BRPC_RDMA)
 endif()
 
 if(WITH_GPU)
+  include(experimental) # experimental build options
   include(cuda)
   # lite subgraph compilation depends on CUDNN_ROOT,
   # so include(cudnn) needs to be in front of include(third_party/lite)
