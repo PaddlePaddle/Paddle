@@ -10,11 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/reshape_kernel.h"
+
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-// #include "paddle/fluid/framework/tensor_util.h"
 
 namespace phi {
 
@@ -147,8 +147,7 @@ void ReshapeKernel(const Context& dev_ctx,
                    const IntArray& shape,
                    DenseTensor* out) {
   phi::DDim x_dims = x.dims();
-  phi::DDim out_dims = out->dims();
-  out_dims = ValidateShape(shape.GetData(), x_dims);
+  phi::DDim out_dims = ValidateShape(shape.GetData(), x_dims);
 
   auto x_vec_dims = phi::vectorize(x_dims);
   phi::funcs::ReorderOneDNNHandler reorder_handler(
