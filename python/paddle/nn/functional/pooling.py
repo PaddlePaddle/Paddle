@@ -646,6 +646,9 @@ def max_pool1d(x,
 
 
 def _unpool_output_size(x, kernel_size, stride, padding, output_size):
+    assert output_size is None or isinstance(
+        output_size, (list, tuple)
+    ), "Required output_size is None|list|tuple, but received %s" % output_size
     input_size = x.shape
     default_size = []
     for d in range(len(kernel_size)):
