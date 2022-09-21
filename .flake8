@@ -1,6 +1,10 @@
 [flake8]
 select = C,E,F,W
-exclude = ./build
+exclude =
+    ./build,
+    # A trick to exclude fluid/ but keep fluid/tests/
+    ./python/paddle/fluid/[!t]**,
+    ./python/paddle/fluid/transpiler/
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     E121,E122,E123,E124,E125,E126,E127,E128,E129,E131,
