@@ -18,7 +18,7 @@ import unittest
 import tempfile
 import numpy as np
 from paddle.static import InputSpec
-from paddle.fluid.framework import _enable_legacy_dygraph
+from paddle.fluid.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
@@ -51,8 +51,13 @@ class Net(paddle.nn.Layer):
 
 class TestMultiLoad(unittest.TestCase):
 
-    def test_multi_load(self):
+    def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_multi_load(self):
 
         x = paddle.full([2, 4], 2)
         model = Net()
@@ -74,7 +79,40 @@ class TestMultiLoad(unittest.TestCase):
         np.testing.assert_allclose(forward_out1, forward_out2[0], rtol=1e-05)
         np.testing.assert_allclose(infer_out1, infer_out2[0], rtol=1e-05)
 
+
+class SaveLinear(paddle.nn.Layer):
+
+    def __init__(self):
+        super().__init__()
+        self.linear = paddle.nn.Linear(80, 80)
+
+    @paddle.jit.to_static(
+        input_spec=[InputSpec(shape=[None, 80], dtype='float32')])
+    def forward(self, x):
+        out = self.linear(x)
+        return out
+
+
+class TestMKLOutput(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
         self.temp_dir.cleanup()
+
+    def test_mkl_output(self):
+        with _dygraph_place_guard(place=paddle.CPUPlace()):
+            net = SaveLinear()
+            model_path = os.path.join(self.temp_dir.name, 'save_linear')
+            paddle.jit.save(net, model_path, combine_params=True)
+
+            layer = Layer()
+            layer.load(model_path, paddle.CPUPlace())
+            x = paddle.ones([498, 80])
+            out = layer.forward(x)
+            out = paddle.unsqueeze(out[0], 0)
+            np.testing.assert_equal(out.shape, [1, 498, 80])
 
 
 if __name__ == '__main__':

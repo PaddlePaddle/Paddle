@@ -45,7 +45,7 @@ set_field_default_config(BASE, "gradient_scale", True)
 set_field_default_config(BASE, "use_cache", True)
 set_field_default_config(BASE, "return_numpy", True)
 set_field_default_config(BASE, "all_ranks", False)
-set_field_default_config(BASE, "split_data", False)
+set_field_default_config(BASE, "split_data", True)
 set_field_default_config(BASE, "seed", None)
 set_field_default_config(BASE, "reinit", False)  # Only for debug
 
@@ -81,7 +81,7 @@ set_field_default_config(AMP, "use_optimizer_fp16", False)
 SHARDING = "sharding"
 set_field_default_config(SHARDING, "enable", False)
 set_field_default_config(SHARDING, "stage", 1)
-set_field_default_config(SHARDING, "sharding_degree", 8)
+set_field_default_config(SHARDING, "degree", 8)
 set_field_default_config(SHARDING, "segment_broadcast_MB", 32.0)
 set_field_default_config(SHARDING, "enable_tuning", False)
 set_field_default_config(SHARDING, "tuning_range", [])

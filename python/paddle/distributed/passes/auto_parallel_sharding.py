@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from functools import reduce
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 import numpy as np
 
 import paddle
@@ -22,12 +22,15 @@ from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass
 from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op
 from paddle.distributed.auto_parallel.process_group import new_process_group
-from paddle.distributed.auto_parallel.operators.common import is_parameter_related
+from paddle.distributed.auto_parallel.operators.common import is_parameter_related, is_data_parallel_reduce_op
 from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_dist_op_attr_for_program_by_mesh_and_mapping, set_var_dist_attr
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-_skip_ops = ['create_py_reader', 'create_double_buffer_reader', 'read']
+_skip_ops = [
+    'create_py_reader', 'create_double_buffer_reader', 'read', 'slice', 'split',
+    'assign', "send_v2"
+]
 # update here to support new optimizers
 _supported_optimizer_type = [
     "adam", "adamax", "adamw", "decayed_adagrad", "momentum", "dgc_momentum",
@@ -51,7 +54,8 @@ class ShardingPass(PassBase):
         super(ShardingPass, self).__init__()
         self.set_attr("dist_context", None)
         self.set_attr("stage", None)
-        self.set_attr("sharding_degree", None)
+        self.set_attr("sharding_degree", None)  # for parallelizer
+        self.set_attr("degree", None)  # for parallelizer_v2
         self.set_attr("params_grads", [])
         self.set_attr("global_rank", -1)
         self.dp_groups = set()
@@ -67,8 +71,15 @@ class ShardingPass(PassBase):
 
         if self.get_attr("stage") not in [1, 2, 3]:
             return False
-        if (not isinstance(self.get_attr("sharding_degree"),
-                           int)) or self.get_attr("sharding_degree") <= 1:
+        if self.get_attr("sharding_degree") is not None:
+            if (not isinstance(self.get_attr("sharding_degree"), int)) \
+                or self.get_attr("sharding_degree") <= 1:
+                return False
+        elif self.get_attr("degree") is not None:
+            if (not isinstance(self.get_attr("degree"), int)) \
+                or self.get_attr("degree") <= 1:
+                return False
+        else:
             return False
         if len(self.get_attr("params_grads")) <= 0:
             return False
@@ -83,7 +94,8 @@ class ShardingPass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, context):
         self._dist_context = self.get_attr("dist_context")
-        self.sharding_world_size = int(self.get_attr("sharding_degree"))
+        self.sharding_world_size = int(
+            self.get_attr("sharding_degree") or self.get_attr("degree"))
         self.stage = int(self.get_attr("stage"))
         self.global_rank = int(self.get_attr("global_rank"))
         params_grads = self.get_attr("params_grads")
@@ -384,7 +396,7 @@ class ShardingPass(PassBase):
 
         dp_ring_ids = [group.id for group in self.dp_groups]
         for idx, op in reversed(list(enumerate(main_block.ops))):
-            if _is_param_grad_allreduce_op(op, main_block, dp_ring_ids):
+            if is_data_parallel_reduce_op(op):
                 input_name = op.input_arg_names[0]
                 base_name = _get_base_name_from_grad_name(input_name)
                 sharding_info = self.varname_to_sharding_info[base_name]
@@ -392,7 +404,8 @@ class ShardingPass(PassBase):
                                   sharding_info.group.id,
                                   sharding_info.get_var_rank(base_name),
                                   self._dist_context)
-                if not self.partial_sharding:
+                if not self.partial_sharding or not sharding_info.is_in_local_shard(
+                        base_name):
                     main_block._remove_op(idx + 1, sync=False)
                 else:
                     op._set_attr("ring_id", self.outer_dp_group.id)
@@ -430,7 +443,10 @@ class ShardingPass(PassBase):
                     continue
 
                 for input_name in op.desc.input_arg_names():
-                    if op.type == "cast":
+                    # NOTE hack for embedding op when AMP 02-3
+                    # paddle amp force embedding (lookup table) to be run on fp32
+                    if _is_param_fp16_cast_op(main_block, op,
+                                              sharding_info.param_names):
                         continue
                     if input_name not in need_broadcast_vars:
                         continue
@@ -637,24 +653,6 @@ def _get_base_name_from_grad_name(grad_name):
     return base_name
 
 
-def _is_param_grad_allreduce_op(op, block, dp_ring_ids):
-
-    if not is_backward_op(op):
-        return False
-    if op.type != "c_allreduce_sum":
-        return False
-    if op.attr('ring_id') not in dp_ring_ids:
-        return False
-
-    output_name = op.output_arg_names[0]
-    base_name = _get_base_name_from_grad_name(output_name)
-
-    if not block.has_var(base_name):
-        return False
-
-    return block.var(base_name).is_parameter
-
-
 def _is_param_grad_sum_op(op, block):
 
     if not is_backward_op(op):
@@ -747,9 +745,14 @@ class ShardingInfo(object):
             return self.param_to_rank[varname]
         return -1
 
+    # determine fp32 and fp16 (cast) param
     def is_in_local_shard(self, param_name):
         return self.get_var_rank(param_name) == self.local_rank
 
+    # NOTE the follwo logic is designed for supporting AMP O1 when
+    # the param would be cast to fp16 before used for caculation.
+    # and sharding should only broadcast the casted fp16 param
+    # instead of the origin fp32 version param.
     def get_broadcast_vars_and_param_usage(self, block):
         broadcast_vars = set([])
         fp16_params = set([])

@@ -1,9 +1,17 @@
+exclude: |
+    (?x)^(
+        patches/.+|
+        paddle/fluid/framework/fleet/heter_ps/cudf/.+|
+        paddle/fluid/distributed/ps/thirdparty/round_robin.h
+    )$
 repos:
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
     rev: v1.1.14
     hooks:
     -   id: remove-crlf
-        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
+    -   id: remove-tabs
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
+        args: [--whitespaces-count, '2']
 -   repo: https://github.com/google/yapf
     rev: v0.32.0
     hooks:
@@ -14,6 +22,10 @@ repos:
                 python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py|
                 python/paddle/fluid/tests/unittests/dygraph_to_static/test_origin_info.py
             )$
+-   repo: https://github.com/PyCQA/flake8
+    rev: 4.0.1
+    hooks:
+    -   id: flake8
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.1.0
     hooks:
@@ -21,12 +33,11 @@ repos:
     -   id: check-merge-conflict
     -   id: check-symlinks
     -   id: detect-private-key
-        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
     -   id: sort-simple-yaml
-        files: (api|backward|api_[a-z_]+)\.yaml$
+        files: (op|backward|op_[a-z_]+)\.yaml$
     -   id: trailing-whitespace
-        files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists.txt)$
+        files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
 -   repo: local
     hooks:
     -   id: clang-format
@@ -35,10 +46,6 @@ repos:
         entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
-        exclude: |
-            (?x)^(
-                paddle/fluid/distributed/ps/thirdparty/round_robin.h
-            )$
 -   repo: local
     hooks:
     -   id: cpplint-cpp-source
@@ -47,6 +54,10 @@ repos:
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
+        args:
+            - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
+            - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
+            - --quiet
 -   repo: local
     hooks:
     -   id: pylint-doc-string
