@@ -2505,13 +2505,14 @@ class ReplaceFakeQuantDequantPass(object):
     replace quant-dequant ops with quantize_linear and dequantize_linear ops.
     """
 
-    def __init__(self, scope, place):
+    def __init__(self, scope, place, quant_bits=8):
         r"""
         Args:
             scope(paddle.Scope): The scope is used to initialize these new parameters.
             place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to initialize new
                 parameters described above. If ``place`` is string, it can be It can be ``cpu``
                 or ``gpu:x``, where ``x`` is the index of the GPUs.
+            quant_bits(int, optional): quantization bit number for activation. Default is 8.
 
         Examples:
         .. code-block:: python
@@ -2530,6 +2531,7 @@ class ReplaceFakeQuantDequantPass(object):
         """
         self._place = _get_paddle_place(place)
         self._scope = scope
+        self._quant_bits = quant_bits
         assert self._scope != None, "scope must not be None."
         assert self._place != None, "place must not be None."
 
@@ -2539,7 +2541,8 @@ class ReplaceFakeQuantDequantPass(object):
         fake_quant_dequant_ops = []
 
         for op in graph.all_op_nodes():
-            if op.name() in _fake_quant_dequant_op_list:
+            if op.name() in _fake_quant_dequant_op_list or op.name(
+            ) == "moving_average_abs_max_scale":
                 fake_quant_dequant_ops.append(op)
 
         for _op in fake_quant_dequant_ops:
@@ -2558,7 +2561,7 @@ class ReplaceFakeQuantDequantPass(object):
         quant_axis = op.op().attr("quant_axis") if op.op().has_attr(
             "quant_axis") else -1
         bit_length = op.op().attr("bit_length") if op.op().has_attr(
-            "bit_length") else 8
+            "bit_length") else self._quant_bits
 
         zero_point_node = None
         quanted_node = x_node
