@@ -1138,7 +1138,8 @@ cc_library(
        phi
        phi_api_utils
        op_info
-       shape_inference)
+       shape_inference
+       sparse_coo_tensor)
 cc_test(
   infershape_utils_test
   SRCS infershape_utils_test.cc

@@ -2384,6 +2384,13 @@ void OperatorWithKernel::ParseInputDataType(
       t = &(var->Get<phi::SelectedRows>().value());
     } else if (var->IsType<phi::SparseCooTensor>()) {
       const phi::SparseCooTensor* sp_t = &(var->Get<phi::SparseCooTensor>());
+      PADDLE_ENFORCE_EQ(
+          sp_t->initialized(),
+          true,
+          platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
+                                            "contains uninitialized Tensor.",
+                                            Type(),
+                                            name));
       *data_type = paddle::framework::TransToProtoVarType(sp_t->dtype());
       return;
     } else if (var->IsType<LoDTensorArray>()) {
@@ -2423,6 +2430,29 @@ void OperatorWithKernel::ParseMultiInputDataType(
         t = &var->Get<LoDTensor>();
       } else if (var->IsType<phi::SelectedRows>()) {
         t = &(var->Get<phi::SelectedRows>().value());
+      } else if (var->IsType<phi::SparseCooTensor>()) {
+        const phi::SparseCooTensor* sp_t = &(var->Get<phi::SparseCooTensor>());
+        PADDLE_ENFORCE_EQ(
+            sp_t->initialized(),
+            true,
+            platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
+                                              "contains uninitialized Tensor.",
+                                              Type(),
+                                              name));
+        proto::VarType::Type tmp =
+            paddle::framework::TransToProtoVarType(sp_t->dtype());
+        PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
+                       platform::errors::InvalidArgument(
+                           "The DataType of %s Op's duplicable or different "
+                           "slot Variable %s must be "
+                           "consistent or reigster GetExpectedKernelType. The "
+                           "current variable type is (%s), but the "
+                           "previous variable type is (%s).",
+                           Type(),
+                           name,
+                           DataTypeToString(tmp),
+                           DataTypeToString(*data_type)));
+        *data_type = tmp;
       } else if (var->IsType<LoDTensorArray>()) {
         auto t_arr = &var->Get<LoDTensorArray>();
         for (size_t j = 0; j < t_arr->size(); j++) {

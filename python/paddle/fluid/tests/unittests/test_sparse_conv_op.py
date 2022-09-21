@@ -191,6 +191,7 @@ class TestStatic(unittest.TestCase):
                                           dilation=1,
                                           groups=1,
                                           data_format="NDHWC")
+        out = sparse.nn.functional.relu(out)
         out = out.to_dense()
 
         exe = paddle.static.Executor()

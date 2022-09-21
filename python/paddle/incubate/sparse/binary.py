@@ -261,10 +261,7 @@ def add(x, y, name=None):
     if in_dynamic_mode():
         return _C_ops.sparse_add(x, y)
     else:
-        if x.type == core.VarDesc.VarType.SPARSE_COO:
-            op_type = 'add_coo_coo'
-        else:
-            op_type = 'add_csr_csr'
+        op_type = 'sparse_add'
         inputs = {'X': x, 'Y': y}
         helper = LayerHelper(op_type)
         out = helper.create_sparse_variable_for_type_inference(x.dtype)

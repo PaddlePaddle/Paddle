@@ -87,14 +87,15 @@ def _conv3d(x,
             'subm': subm,
             'key': key
         }
-        helper = LayerHelper('conv3d_coo', **locals())
+        op_type = 'sparse_conv3d'
+        helper = LayerHelper(op_type, **locals())
         rulebook = helper.create_variable_for_type_inference(dtype='int32',
                                                              stop_gradient=True)
         counter = helper.create_variable_for_type_inference(dtype='int32',
                                                             stop_gradient=True)
         pre_bias = helper.create_sparse_variable_for_type_inference(x.dtype)
         outputs = {"Out": pre_bias, "Rulebook": rulebook, "Counter": counter}
-        helper.append_op(type='conv3d_coo',
+        helper.append_op(type=op_type,
                          inputs=inputs,
                          outputs=outputs,
                          attrs=attrs)

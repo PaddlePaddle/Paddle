@@ -204,7 +204,7 @@ class TestSparseConvert(unittest.TestCase):
             crows = [0, 2, 3, 5]
             cols = [1, 3, 2, 0, 1]
             values = [1, 2, 3, 4, 5]
-            dense_x = paddle.to_tensor(x, dtype='float32')
+            dense_x = paddle.to_tensor(x)
             out = dense_x.to_sparse_csr()
             assert np.array_equal(out.crows().numpy(), crows)
             assert np.array_equal(out.cols().numpy(), cols)
@@ -467,36 +467,6 @@ class TestCsrError(unittest.TestCase):
                 shape = [3]
                 sparse_x = paddle.incubate.sparse.sparse_csr_tensor(
                     crows, cols, values, shape)
-
-
-class TestStatic(unittest.TestCase):
-
-    def test_coo(self):
-        paddle.enable_static()
-        indices = paddle.static.data(name='indices',
-                                     shape=[2, 2],
-                                     dtype='int32')
-        values = paddle.static.data(name='values',
-                                    shape=[2, 1],
-                                    dtype='float32')
-        shape = [2, 4, 1]
-        out = sparse.sparse_coo_tensor(indices, values, shape)
-        out = out.to_dense()
-
-        exe = paddle.static.Executor()
-
-        indices_data = [[0, 1], [1, 2]]
-        values_data = [[1.0], [2.0]]
-
-        fetch = exe.run(feed={
-            'indices': indices_data,
-            'values': values_data
-        },
-                        fetch_list=[out],
-                        return_numpy=False)
-        print(out)
-        print(fetch)
-        paddle.disable_static()
 
 
 if __name__ == "__main__":
