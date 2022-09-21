@@ -28,11 +28,17 @@ class TestAudioDatasets(unittest.TestCase):
 
     @parameterize(["dev", "train"], [40, 64])
     def test_tess_dataset(self, mode: str, params: int):
+        """
+        TESS dataset
+        Reference:
+            Toronto emotional speech set (TESS) https://tspace.library.utoronto.ca/handle/1807/24487
+            https://doi.org/10.5683/SP2/E8H2MF
+        """
         archieve = {
             'url':
             'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set_lite.zip',
             'md5': '9ffb5e3adf28d4d6b787fa94bd59b975',
-        }
+        }  #small part of TESS dataset for test.
         tess_dataset = paddle.audio.datasets.TESS(mode=mode,
                                                   feat_type='mfcc',
                                                   n_mfcc=params,

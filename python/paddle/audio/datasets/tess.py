@@ -33,7 +33,7 @@ class TESS(AudioClassificationDataset):
     There are 2800 stimuli in total.
 
     Reference:
-        Toronto emotional speech set (TESS)
+        Toronto emotional speech set (TESS) https://tspace.library.utoronto.ca/handle/1807/24487
         https://doi.org/10.5683/SP2/E8H2MF
     """
 
