@@ -42,7 +42,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import input_specs_compatible
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
-from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable
+from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable, ALREADY_D2S
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec, _hash_spec_names
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import get_buffers, get_parameters
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
@@ -136,8 +136,11 @@ def convert_to_static(function):
     Args:
         function(callable): The function with dygraph layers that will be converted into static layers.
     """
+    if getattr(function, ALREADY_D2S, None):
+        return function
     with _CACHE_LOCK:
         static_func = _FUNCTION_CACHE.convert_with_cache(function)
+        setattr(static_func, ALREADY_D2S, True)
         return static_func
 
 
