@@ -264,7 +264,6 @@ def check_public_api():
         paddle.device,
         paddle.audio,
         paddle.audio.backends,
-        paddle.audio.utils,
         paddle.audio.datasets,
     ]
 
