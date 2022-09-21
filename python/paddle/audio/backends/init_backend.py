@@ -14,16 +14,6 @@
 
 import sys
 import warnings
-try:
-    import paddleaudio
-except ImportError:
-    package = "paddleaudio"
-    warn_msg = ("Failed importing {}. so wave_banckend supportted only"
-                "if want soundfile backend, please"
-                "manually installed (usually with `pip install {}`). ").format(
-                    package, package)
-    warnings.warn(warn_msg)
-
 from . import wave_backend
 from . import backend
 from typing import List
@@ -46,16 +36,14 @@ def list_available_backends() -> List[str]:
     except ImportError:
         package = "paddleaudio"
         warn_msg = (
-            "Failed importing {}. so wave_banckend supportted only"
-            "if want soundfile backend, please"
+            "Failed importing {}. so only wave_banckend supportted. "
+            "if want soundfile_backend, please"
             "manually installed (usually with `pip install {}`). ").format(
                 package, package)
         warnings.warn(warn_msg)
 
     if "paddleaudio" in sys.modules:
         backends = paddleaudio.backends.list_audio_backends()
-    else:
-        package = "paddleaudio"
     backends.append("wave_backend")
     return backends
 
@@ -69,8 +57,8 @@ def get_current_audio_backend() -> str:
     """
     current_backend = None
     if "paddleaudio" in sys.modules:
+        import paddleaudio
         current_backend = paddleaudio.backends.get_audio_backend()
-    if current_backend is not None:
         if backend.load == paddleaudio.load:
             return current_backend
     return "wave_backend"

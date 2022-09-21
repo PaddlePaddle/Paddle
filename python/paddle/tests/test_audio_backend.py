@@ -98,6 +98,22 @@ class TestAudioDatasets(unittest.TestCase):
             pass
 
         try:
+            import paddleaudio
+            backends = paddle.audio.backends.list_available_backends()
+            for backend in backends:
+                self.assertTrue(backend in ["wave_backend", "soundfile"])
+            current_backend = paddle.audio.backends.get_current_audio_backend()
+            self.assertTrue(current_backend, "wave_backend")
+            paddle.audio.backends.set_backend("soundfile")
+            self.assertTrue(current_backend, "soundfile")
+            wav_info = paddle.audio.backends.info(wave_wav_path)
+            self.assertTrue(wav_info.sample_rate, self.sr)
+            self.assertTrue(wav_info.num_channels, self.num_channels)
+            self.assertTrue(wav_info.bits_per_sample, 16)
+        except ImportError:
+            pass
+
+        try:
             paddle.audio.backends.save(wave_wav_path,
                                        paddle.to_tensor(self.waveform),
                                        self.sr,

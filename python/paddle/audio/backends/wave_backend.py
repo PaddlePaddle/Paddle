@@ -26,6 +26,17 @@ from .backend import AudioInfo
 __all__ = ['load', 'info', 'save']
 
 
+def _error_message():
+    package = "paddleaudio"
+    warn_msg = (
+        "only PCM16 WAV supportted. \n"
+        "if want support more other audio types, please "
+        "manually installed (usually with `pip install {}`). \n "
+        "and use paddle.audio.set_backend('soundfile') to set audio backend"
+    ).format(package)
+    return warn_msg
+
+
 def info(filepath: str) -> AudioInfo:
     """Get signal information of input audio file.
     only support WAV with PCM_16 encoding.
@@ -47,7 +58,8 @@ def info(filepath: str) -> AudioInfo:
     except wave.Error:
         file_obj.seek(0)
         file_obj.close()
-        raise NotImplementedError(f"Unsupported wav type")
+        err_msg = _error_message()
+        raise NotImplementedError(err_msg)
 
     channels = file_.getnchannels()
     sample_rate = file_.getframerate()
@@ -90,7 +102,8 @@ def load(filepath: Union[str, Path],
     except wave.Error:
         file_obj.seek(0)
         file_obj.close()
-        raise NotImplementedError(f"Unsupported wav type, only PCM16 support")
+        err_msg = _error_message()
+        raise NotImplementedError(err_msg)
 
     channels = file_.getnchannels()
     sample_rate = file_.getframerate()
