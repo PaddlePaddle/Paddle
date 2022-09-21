@@ -125,7 +125,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             warnings.warn(
                 "When training, we now always track global mean and variance.")
 
-        if self.use_global_stats == None:
+        if self._use_global_stats == None:
             self._use_global_stats = not self.training
             trainable_statistics = False
         else:

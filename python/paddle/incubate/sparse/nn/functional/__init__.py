@@ -20,7 +20,6 @@ from .activation import relu  # noqa: F401
 from .activation import relu6  # noqa: F401
 from .activation import leaky_relu  # noqa: F401
 from .activation import softmax  # noqa: F401
-from .norm import batch_norm  # noqa: F401
 
 __all__ = [
     'conv3d',
@@ -31,5 +30,4 @@ __all__ = [
     'leaky_relu',
     'softmax',
     'attention',
-    'batch_norm',
 ]
