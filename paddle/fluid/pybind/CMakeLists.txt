@@ -41,8 +41,7 @@ set(PYBIND_DEPS
     new_profiler
     auto_parallel
     jit_layer
-    jit_property
-    saved_tensors_hooks)
+    jit_property)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -151,6 +150,9 @@ if(WITH_PYTHON)
   endif()
   if(WITH_GLOO)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)
+  endif()
+  if(WITH_MPI)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_mpi)
   endif()
   if(WITH_ASCEND_CL)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_hccl)
@@ -571,6 +573,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
+    list(APPEND PYBIND_DEPS saved_tensors_hooks)
   endif()
 
   cc_library(
@@ -589,6 +592,10 @@ if(WITH_PYTHON)
 
   if(WITH_ROCM)
     target_link_libraries(libpaddle ${ROCM_HIPRTC_LIB})
+  endif()
+
+  if(WITH_MPI)
+    target_link_libraries(libpaddle ${MPI_CXX_LIBRARIES})
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)

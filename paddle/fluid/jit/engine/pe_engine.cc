@@ -96,12 +96,15 @@ std::vector<Tensor> PEEngine::operator()(const std::vector<Tensor> &inputs) {
 std::vector<DenseTensor> PEEngine::operator()(
     const std::vector<DenseTensor> &inputs) {
   utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
+  const auto out_names = info_->OutputArgNames();
   // need to recreate tmp variables in new scope
   inner_pe_->PrepareVariables(&scope_);
-  inner_pe_->RunWithoutFetch(info_->OutputArgNames());
+  inner_pe_->RunWithoutFetch(out_names);
 
   std::vector<DenseTensor> outputs;
-  utils::FetchOuts(info_->OutputArgNames(), scope_, &outputs);
+  utils::FetchOuts(out_names, scope_, &outputs);
+  // Erase output vars to avoid data rewriting.
+  scope_.EraseVars(out_names);
   scope_.DropKids();
   return outputs;
 }

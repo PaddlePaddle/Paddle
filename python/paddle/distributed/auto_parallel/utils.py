@@ -81,6 +81,8 @@ def convert_to_dims_mapping(shard_spec, process_mesh):
     for shard in shard_spec:
         if shard is None:
             dims_mapping.append(-1)
+        elif process_mesh.topology[process_mesh.dim_names.index(shard)] == 1:
+            dims_mapping.append(-1)
         else:
             dims_mapping.append(process_mesh.dim_names.index(shard))
     return dims_mapping
