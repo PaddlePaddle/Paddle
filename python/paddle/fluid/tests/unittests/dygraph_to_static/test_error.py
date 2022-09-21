@@ -467,7 +467,7 @@ class TestNumpyApiErr(unittest.TestCase):
 
         error_message = str(new_exception)
 
-        self.assertIn("TypeError: Variables created in dy2static process will be an unexpected keyword for numpy API", error_message)
+        self.assertIn("values will be changed to variables by dy2static, numpy api can not handle variables", error_message)
 
 
 class test_set_state_dict_err_layer(paddle.nn.Layer):
@@ -490,7 +490,7 @@ class test_set_state_dict_err_layer(paddle.nn.Layer):
 
 
 class TestSetStateDictErr(unittest.TestCase):
-    def test_numpy_api_err(self):
+    def test_set_state_dict_err(self):
         with self.assertRaises(ValueError) as e:
             layer = test_set_state_dict_err_layer()
             x = paddle.to_tensor([1.,2.,3.,4.,5.])
