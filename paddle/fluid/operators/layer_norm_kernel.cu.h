@@ -416,12 +416,14 @@ __global__ void LayerNormForward(
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                           U>(scale[j]) *
+              data_convert<U, T>(
+                  data_convert<
+                      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                      U>(scale[j]) *
                       (data_convert<InType, U>(x[i]) - mean_val) * invvar +
                   data_convert<
                       LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                      U>(bias[j]),
+                      U>(bias[j])),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
@@ -440,9 +442,11 @@ __global__ void LayerNormForward(
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              data_convert<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                           U>(scale[j]) *
-                  (data_convert<InType, U>(x[i]) - mean_val) * invvar,
+              data_convert<U, T>(
+                  data_convert<
+                      LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                      U>(scale[j]) *
+                  (data_convert<InType, U>(x[i]) - mean_val) * invvar),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
@@ -461,10 +465,11 @@ __global__ void LayerNormForward(
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              (data_convert<InType, U>(x[i]) - mean_val) * invvar +
+              data_convert<U, T>(
+                  (data_convert<InType, U>(x[i]) - mean_val) * invvar +
                   data_convert<
                       LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                      U>(bias[j]),
+                      U>(bias[j])),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
@@ -480,12 +485,13 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] =
-              quant_helper((data_convert<InType, U>(x[i]) - mean_val) * invvar,
-                           quant_in_scale,
-                           quant_round_type,
-                           quant_max_bound,
-                           quant_min_bound);
+          y[i] = quant_helper(
+              data_convert<U, T>((data_convert<InType, U>(x[i]) - mean_val) *
+                                 invvar),
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
         } else {
           y[i] = data_convert<U, OutType>(
               (data_convert<InType, U>(x[i]) - mean_val) * invvar);
