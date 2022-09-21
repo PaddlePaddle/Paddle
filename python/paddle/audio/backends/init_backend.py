@@ -36,8 +36,9 @@ def list_available_backends() -> List[str]:
     except ImportError:
         package = "paddleaudio"
         warn_msg = (
-            "Failed importing {}. so only wave_banckend supportted. "
-            "if want soundfile_backend, please"
+            "Failed importing {}. \n"
+            "only wave_banckend supportted. \n"
+            "if want soundfile_backend, please "
             "manually installed (usually with `pip install {}`). ").format(
                 package, package)
         warnings.warn(warn_msg)
