@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/funcs/matrix_reduce.h"
 
-#include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 namespace phi {
@@ -47,7 +47,7 @@ class MatrixReduceSumFunctor<T, CPUContext> {
         out_reduce_dims.push_back(idx);
       }
     }
-    phi::ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
+    ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
         dev_ctx, in, out, out_reduce_dims, true, false);
   }
 };

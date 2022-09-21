@@ -1,6 +1,8 @@
 exclude: |
     (?x)^(
         patches/.+|
+        paddle/fluid/framework/fleet/heter_ps/cudf/.+|
+        paddle/fluid/distributed/ps/thirdparty/round_robin.h|
         python/paddle/utils/gast/.+
     )$
 repos:
@@ -8,6 +10,9 @@ repos:
     rev: v1.1.14
     hooks:
     -   id: remove-crlf
+    -   id: remove-tabs
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
+        args: [--whitespaces-count, '2']
     -   id: remove-tabs
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
         args: [--whitespaces-count, '4']
@@ -46,10 +51,6 @@ repos:
         entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
-        exclude: |
-            (?x)^(
-                paddle/fluid/distributed/ps/thirdparty/round_robin.h
-            )$
 -   repo: local
     hooks:
     -   id: cpplint-cpp-source
