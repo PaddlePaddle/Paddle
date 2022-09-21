@@ -33,7 +33,7 @@ from types import MethodType
 import paddle
 from paddle import nn
 from paddle.distributed import collective
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 
 from .group_sharded_storage import GradStorage
 from .group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
@@ -287,7 +287,7 @@ class GroupShardedStage2(nn.Layer):
             collective.broadcast(buffer,
                                  self._global_root_rank,
                                  self._group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""

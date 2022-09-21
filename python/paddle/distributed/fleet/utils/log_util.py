@@ -15,30 +15,50 @@
 import logging
 import sys
 
-__all__ = []
+from paddle.distributed.utils.log_utils import get_logger
+
+logger = get_logger("INFO", __name__)
 
 
-class LoggerFactory:
+def set_log_level(level):
+    """
+    Set log level
 
-    @staticmethod
-    def build_logger(name=None, level=logging.INFO):
-        assert name is not None, "name for logger should not be None"
+    Args:
+        level (str|int): a specified level
 
-        formatter = logging.Formatter(
-            "%(asctime)s-%(levelname)s: "
-            "[%(filename)s:%(lineno)d:%(funcName)s] %(message)s")
+    Example 1:
+        import paddle
+        import paddle.distributed.fleet as fleet
+        fleet.init()
+        fleet.setLogLevel("DEBUG")
 
-        _logger = logging.getLogger(name)
-        _logger.setLevel(level)
-        _logger.propagate = False
-        handler = logging.StreamHandler(stream=sys.stderr)
-        handler.setFormatter(formatter)
-        handler.setLevel(level)
-        _logger.addHandler(handler)
-        return _logger
+    Example 2:
+        import paddle
+        import paddle.distributed.fleet as fleet
+        fleet.init()
+        fleet.setLogLevel(1)
+
+    """
+    assert isinstance(level, (str, int)), "level's type must be str or int"
+    if isinstance(level, int):
+        logger.setLevel(level)
+    else:
+        logger.setLevel(level.upper())
 
 
-logger = LoggerFactory.build_logger(name="HybridParallel", level=logging.INFO)
+def get_log_level_code():
+    """
+    Return current log level code
+    """
+    return logger.getEffectiveLevel()
+
+
+def get_log_level_name():
+    """
+    Return current log level name
+    """
+    return logging.getLevelName(get_log_level_code())
 
 
 def layer_to_str(base, *args, **kwargs):
