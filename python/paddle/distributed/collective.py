@@ -1474,7 +1474,7 @@ def send(tensor, dst=0, group=None, sync_op=True):
             task.wait()
             return None
         else:
-            return group.process_group.send(tensor, dst)
+            return task
 
     use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
@@ -1541,7 +1541,7 @@ def recv(tensor, src=0, group=None, sync_op=True):
             task.wait()
             return None
         else:
-            return group.process_group.recv(tensor, src)
+            return task
 
     use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
