@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import math
-import warnings
 
 import numpy as np
-from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
@@ -55,7 +53,7 @@ class Normal(distribution.Distribution):
 
     Examples:
         .. code-block:: python
-          
+
           import paddle
           from paddle.distribution import Normal
 
@@ -128,6 +126,14 @@ class Normal(distribution.Distribution):
                 self.scale = tensor.cast(self.scale, dtype=self.dtype)
         super(Normal, self).__init__(self.loc.shape)
 
+    @property
+    def mean(self):
+        return self.loc
+
+    @property
+    def variance(self):
+        return self.scale.pow(2)
+
     def sample(self, shape, seed=0):
         """Generate samples of the specified shape.
 
@@ -163,12 +169,25 @@ class Normal(distribution.Distribution):
         else:
             output_shape = shape + batch_shape
             output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed, dtype=self.dtype) * \
-                     (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
+                (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
             else:
                 return output
+
+    def rsample(self, shape, seed=0):
+        """Generate reparameterized samples of the specified shape.
+
+        Args:
+          shape (list): 1D `int32`. Shape of the generated samples.
+          seed (int): Python integer number.
+
+        Returns:
+          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+
+        """
+        return self.sample(shape)
 
     def entropy(self):
         r"""Shannon entropy in nats.
@@ -248,7 +267,7 @@ class Normal(distribution.Distribution):
         .. math::
 
             ratio = \\frac{\sigma_0}{\sigma_1}
-        
+
         .. math::
 
             diff = \mu_1 - \mu_0

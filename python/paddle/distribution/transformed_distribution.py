@@ -30,7 +30,7 @@ class TransformedDistribution(distribution.Distribution):
     Examples:
 
         .. code-block:: python
-        
+
             import paddle 
             from paddle.distribution import transformed_distribution
 
@@ -58,7 +58,8 @@ class TransformedDistribution(distribution.Distribution):
                 f"Expected type of 'transforms' is Sequence[Transform] or Chain, but got {type(transforms)}."
             )
         if not all(isinstance(t, transform.Transform) for t in transforms):
-            raise TypeError("All element of transforms must be Transform type.")
+            raise TypeError(
+                "All element of transforms must be Transform type.")
 
         chain = transform.ChainTransform(transforms)
         if len(base.batch_shape + base.event_shape) < chain._domain.event_rank:
@@ -76,8 +77,9 @@ class TransformedDistribution(distribution.Distribution):
         transformed_event_rank = chain._codomain.event_rank + \
             max(len(base.event_shape)-chain._domain.event_rank, 0)
         super(TransformedDistribution, self).__init__(
-            transformed_shape[:len(transformed_shape) - transformed_event_rank],
-            transformed_shape[:len(transformed_shape) - transformed_event_rank])
+            transformed_shape[:len(transformed_shape) -
+                              transformed_event_rank],
+            transformed_shape[len(transformed_shape) - transformed_event_rank:])
 
     def sample(self, shape=()):
         """Sample from ``TransformedDistribution``.
@@ -89,6 +91,20 @@ class TransformedDistribution(distribution.Distribution):
             [Tensor]: The sample result.
         """
         x = self._base.sample(shape)
+        for t in self._transforms:
+            x = t.forward(x)
+        return x
+
+    def rsample(self, shape=()):
+        """Reparameterized sample from ``TransformedDistribution``.
+
+        Args:
+            shape (tuple, optional): The sample shape. Defaults to ().
+
+        Returns:
+            [Tensor]: The sample result.
+        """
+        x = self._base.rsample(shape)
         for t in self._transforms:
             x = t.forward(x)
         return x
@@ -110,11 +126,23 @@ class TransformedDistribution(distribution.Distribution):
             event_rank += t._domain.event_rank - t._codomain.event_rank
             log_prob = log_prob - \
                 _sum_rightmost(t.forward_log_det_jacobian(
-                    x), event_rank-t._domain.event_rank)
+                    x), event_rank - t._domain.event_rank)
             y = x
         log_prob += _sum_rightmost(self._base.log_prob(y),
                                    event_rank - len(self._base.event_shape))
         return log_prob
+
+    def _monotonize_cdf(self, value):
+        """
+        This conditionally flips ``value -> 1-value`` to ensure :meth:`cdf` is
+        monotone increasing.
+        """
+        sign = 1
+        for t in self._transforms:
+            sign = sign * t.sign
+        if isinstance(sign, int) and sign == 1:
+            return value
+        return sign * (value - 0.5) + 0.5
 
 
 def _sum_rightmost(value, n):

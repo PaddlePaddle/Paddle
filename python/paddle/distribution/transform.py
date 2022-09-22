@@ -142,7 +142,7 @@ class Transform(object):
                 input, [self])
         if isinstance(input, Transform):
             return ChainTransform([self, input])
-        return self.forward(x)
+        return self.forward(input)
 
     def forward(self, x):
         """Forward transformation with mapping :math:`y = f(x)`. 
@@ -285,7 +285,7 @@ class Transform(object):
         if hasattr(self, '_forward_log_det_jacobian'):
             return self._forward_log_det_jacobian(x)
         if hasattr(self, '_inverse_log_det_jacobian'):
-            return -self._inverse_log_det_jacobian(self.forward(y))
+            return -self._inverse_log_det_jacobian(self.forward(x))
         raise NotImplementedError(
             'Neither _forward_log_det_jacobian nor _inverse_log_det_jacobian'
             'is implemented. One of them is required.')

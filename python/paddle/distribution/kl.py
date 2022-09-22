@@ -21,8 +21,11 @@ from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.normal import Normal
+from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.uniform import Uniform
 from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+
+
 
 __all__ = ["register_kl", "kl_divergence"]
 
@@ -204,6 +207,11 @@ def _kl_expfamily_expfamily(p, q):
         kl -= _sum_rightmost(term, len(q.event_shape))
 
     return kl
+
+
+@register_kl(LogNormal, LogNormal)
+def _kl_normal_normal(p, q):
+    return p.base_dist.kl_divergence(q.base_dist)
 
 
 def _sum_rightmost(value, n):
