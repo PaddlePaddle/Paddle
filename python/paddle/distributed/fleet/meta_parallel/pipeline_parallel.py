@@ -525,9 +525,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
         steady_steps = num_steps - startup_steps
 
         self.set_virtual_pipeline_rank(0)
-        self.input_tensors[0].append(p2p.recv_forward(
-            self.is_pipeline_first_stage()),
-                                     sync_recv=False)
+        self.input_tensors[0].append(
+            p2p.recv_forward(self.is_pipeline_first_stage(), sync_recv=False))
 
         # run startup steps
         for micro_step in range(startup_steps):
