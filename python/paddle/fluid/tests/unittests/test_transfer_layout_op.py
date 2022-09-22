@@ -87,8 +87,6 @@ class TestTransferLayoutOpGpu(unittest.TestCase):
         assert len(ret) == 1
         assert ret[0].shape == (n, h, w, c)
 
-        paddle.disable_static()
-
 
 if __name__ == '__main__':
     paddle.enable_static()
