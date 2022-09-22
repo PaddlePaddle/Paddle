@@ -577,28 +577,28 @@ if(WITH_PYTHON)
   endif()
 
   cc_library(
-    libpaddle SHARED
+    paddle SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-    add_dependencies(libpaddle legacy_eager_codegen)
-    add_dependencies(libpaddle eager_legacy_op_function_generator_cmd)
+    add_dependencies(paddle legacy_eager_codegen)
+    add_dependencies(paddle eager_legacy_op_function_generator_cmd)
   endif()
 
   if(NOT APPLE AND NOT WIN32)
-    target_link_libraries(libpaddle rt)
+    target_link_libraries(paddle rt)
   endif()
 
   if(WITH_ROCM)
-    target_link_libraries(libpaddle ${ROCM_HIPRTC_LIB})
+    target_link_libraries(paddle ${ROCM_HIPRTC_LIB})
   endif()
 
   if(WITH_MPI)
-    target_link_libraries(libpaddle ${MPI_CXX_LIBRARIES})
+    target_link_libraries(paddle ${MPI_CXX_LIBRARIES})
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-  target_link_libraries(libpaddle ${os_dependency_modules})
-  add_dependencies(libpaddle op_function_generator_cmd)
+  target_link_libraries(paddle ${os_dependency_modules})
+  add_dependencies(paddle op_function_generator_cmd)
 endif()
