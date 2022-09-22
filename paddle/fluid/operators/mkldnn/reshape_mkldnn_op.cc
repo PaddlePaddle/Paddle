@@ -102,6 +102,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     out->set_format(GetMKLDNNFormat(
         reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims))));
   }
+
   void InferInOutShape(const framework::ExecutionContext& ctx,
 
                        framework::DDim& x_dims,            // NOLINT
