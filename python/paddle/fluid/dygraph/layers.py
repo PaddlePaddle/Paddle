@@ -1538,13 +1538,18 @@ class Layer(object):
                     place = core.CUDAPlace(p.gpu_device_id())
                 t.set(ndarray, place)
 
-            executor = Executor(_get_device())._default_executor
-            # restore parameter states
-            core._create_loaded_parameter(
-                [param for param, state in matched_param_state], global_scope(),
-                executor)
-            for param, state in matched_param_state:
-                _set_var(param, state)
+            try:
+                executor = Executor(_get_device())._default_executor
+                # restore parameter states
+                core._create_loaded_parameter(
+                    [param for param, state in matched_param_state],
+                    global_scope(), executor)
+                for param, state in matched_param_state:
+                    _set_var(param, state)
+            except ValueError as e:
+                raise ValueError(
+                    "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
+                )
 
     def to(self, device=None, dtype=None, blocking=None):
         '''
