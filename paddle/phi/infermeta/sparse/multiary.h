@@ -14,19 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/backend.h"
+#include "paddle/phi/core/meta_tensor.h"
 
-namespace paddle {
-namespace experimental {
+namespace phi {
 namespace sparse {
 
-Tensor to_dense_impl(const Tensor& x);
-
-Tensor to_sparse_coo_impl(const Tensor& x, const int64_t sparse_dim);
-
-Tensor to_sparse_csr_impl(const Tensor& x);
+void FusedAttentionInferMeta(const MetaTensor& query,
+                             const MetaTensor& key,
+                             const MetaTensor& value,
+                             const MetaTensor& sparse_mask,
+                             const MetaTensor& key_padding_mask,
+                             const MetaTensor& attn_mask,
+                             MetaTensor* out,
+                             MetaTensor* softmax);
 
 }  // namespace sparse
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace phi

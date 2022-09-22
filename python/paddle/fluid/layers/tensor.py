@@ -1606,7 +1606,8 @@ def linspace(start, stop, num, dtype=None, name=None):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
     if in_dygraph_mode():
-        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, dtype)
+        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, dtype,
+                               _current_expected_place())
     if _in_legacy_dygraph():
         return _legacy_C_ops.linspace(tensor_start, tensor_stop, tensor_num,
                                       'dtype', dtype)

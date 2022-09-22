@@ -47,7 +47,9 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -808,14 +810,14 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                            decrease_axis.end());
 
     if (op_type == "slice") {
-      out = slice_dygraph_function(self->tensor,
-                                   slice_axes_tmp,
-                                   slice_starts,
-                                   slice_ends,
-                                   infer_flags_tmp,
-                                   decrease_axis_tmp);
+      out = slice_ad_func(self->tensor,
+                          slice_axes_tmp,
+                          slice_starts,
+                          slice_ends,
+                          infer_flags_tmp,
+                          decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
-      out = strided_slice_dygraph_function(
+      out = strided_slice_ad_func(
           self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -854,7 +856,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       }
 
       paddle::experimental::Tensor new_out;
-      new_out = unsqueeze_dygraph_function(out, none_axes);
+      new_out = unsqueeze_ad_func(out, none_axes);
       return ToPyObject(new_out);
     }
   }
@@ -870,7 +872,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(
         list_select_idxs, *dev_ctx, idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_dygraph_function(self->tensor, select_index, 0);
+    out = index_select_ad_func(self->tensor, select_index, 0);
   }
 
   return ToPyObject(out);
@@ -1171,6 +1173,17 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // Release gil and do tracing
       py::gil_scoped_release release;
       // use inplace set_value_ operator
+      if (value_tensor.initialized() &&
+          (self->tensor.dtype() != value_tensor.dtype())) {
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            tmps = {{self->tensor}, {value_tensor}};
+        auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
+        self->tensor = egr::EagerAmpAutoCast(
+            self->tensor.name(), self->tensor, amp_dtype, "set_value");
+        value_tensor = egr::EagerAmpAutoCast(
+            value_tensor.name(), value_tensor, amp_dtype, "set_value");
+      }
       self->tensor = set_value__dygraph_function(
           self->tensor, value_tensor, {}, {}, {}, attrs);
     }

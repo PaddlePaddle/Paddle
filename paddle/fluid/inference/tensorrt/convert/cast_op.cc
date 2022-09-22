@@ -43,13 +43,13 @@ class CastOpConverter : public OpConverter {
 
     switch (out_dtype) {
       case 2:  // INT32 = 2
-        layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
+        layer->setOutputType(0, nvinfer1::DataType::kINT32);
         break;
       case 4:  // FP16 = 4
-        layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
+        layer->setOutputType(0, nvinfer1::DataType::kHALF);
         break;
       case 5:  // FP32 = 5
-        layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
+        layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
         break;
       default:
         LOG(ERROR) << "Unable to convert a fluid data type(" << out_dtype

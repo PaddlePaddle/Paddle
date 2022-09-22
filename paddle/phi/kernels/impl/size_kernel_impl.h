@@ -12,33 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/size_kernel.h"
+#pragma once
 
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
-template <typename Context>
+template <typename T, typename Context>
 void SizeKernel(const Context& ctx,
                 const DenseTensor& input,
                 DenseTensor* out) {
-  auto* out_data = ctx.template HostAlloc<int64_t>(out);
-  out_data[0] = input.numel();
+  auto place = ctx.GetPlace();
+  auto out_data = ctx.template Alloc<int64_t>(out);
+  auto cpu_place = phi::CPUPlace();
+  if (place == cpu_place) {
+    out_data[0] = input.numel();
+  } else {
+    DenseTensor cpu_tensor;
+    cpu_tensor.Resize(out->dims());
+    auto cpu_data = ctx.template HostAlloc<int64_t>(&cpu_tensor);
+    cpu_data[0] = input.numel();
+    phi::Copy(ctx, cpu_tensor, place, false, out);
+  }
 }
 
 }  // namespace phi
-
-PD_REGISTER_GENERAL_KERNEL(
-    size, CPU, ALL_LAYOUT, phi::SizeKernel<phi::CPUContext>, ALL_DTYPE) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
-}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(
-    size, GPU, ALL_LAYOUT, phi::SizeKernel<phi::GPUContext>, ALL_DTYPE) {
-  kernel->OutputAt(0)
-      .SetBackend(phi::Backend::CPU)
-      .SetDataType(phi::DataType::INT64);
-}
-#endif
