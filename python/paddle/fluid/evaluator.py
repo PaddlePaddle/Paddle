@@ -127,7 +127,7 @@ class Evaluator(object):
 
 class ChunkEvaluator(Evaluator):
     """
-    Warning: This would be deprecated in the future. Please use fluid.metrics.ChunkEvaluator 
+    Warning: This would be deprecated in the future. Please use fluid.metrics.ChunkEvaluator
     instead.
 
     Accumulate counter numbers output by chunk_eval from mini-batches and

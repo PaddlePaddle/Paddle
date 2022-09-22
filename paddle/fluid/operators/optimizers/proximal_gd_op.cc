@@ -92,7 +92,7 @@ $$
 prox\_param = param - learning\_rate * grad \\
 param = sign(prox\_param) / (1 + learning\_rate * l2) *
         \max(|prox\_param| - learning\_rate * l1, 0)
-$$        
+$$
 
 The paper that proposed Proximal Gradient Descent:
 (http://papers.nips.cc/paper/3793-efficient-learning-using-forward-backward-splitting.pdf)

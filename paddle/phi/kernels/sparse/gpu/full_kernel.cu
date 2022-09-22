@@ -23,11 +23,11 @@ limitations under the License. */
 namespace phi {
 
 template <typename InT, typename OutT = InT>
-struct FullFuctor {
+struct FullFunctor {
   OutT value;
 
   template <typename VType>
-  explicit inline FullFuctor(VType val) {
+  explicit inline FullFunctor(VType val) {
     value = static_cast<OutT>(val);
   }
 
@@ -54,7 +54,7 @@ void CooFullLikeKernel(const Context& dev_ctx,
   int numel = values->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
+        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
   }
   out->set_dims(x.dims());
 }
@@ -80,7 +80,7 @@ void CsrFullLikeKernel(const Context& dev_ctx,
   int numel = values->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
+        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
   }
   out->set_dims(x.dims());
 }

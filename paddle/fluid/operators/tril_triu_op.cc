@@ -41,9 +41,9 @@ class TrilTriuOpMaker : public framework::OpProtoAndCheckerMaker {
 TrilTriu Operator.
 
 The tril operator returns the lower triangular part of the matrix (2-D tensor)
-or batch of matrices $input$. The lower triangular part of the matrix is defined 
+or batch of matrices $input$. The lower triangular part of the matrix is defined
 as the elements on and below the diagonal.
-The triu operator returns the upper triangular part of a matrix (2-D tensor) 
+The triu operator returns the upper triangular part of a matrix (2-D tensor)
 or batch of matrices $input$. The upper triangular part of the matrix is defined
 as the elements on and above the diagonal.
 The other elements of the result tensor out are set to 0.

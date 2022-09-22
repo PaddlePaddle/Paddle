@@ -40,7 +40,7 @@ for each_diff in result:
     if each_diff[0] != ' ':
         diffs.append(each_diff)
 '''
-If you modify/add/delete the API files, including code and comment, 
+If you modify/add/delete the API files, including code and comment,
 please follow these steps in order to pass the CI:
 
   1. cd ${paddle_path}, compile paddle;

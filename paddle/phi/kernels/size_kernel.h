@@ -18,7 +18,7 @@
 
 namespace phi {
 
-template <typename Context>
+template <typename T, typename Context>
 void SizeKernel(const Context& ctx, const DenseTensor& input, DenseTensor* out);
 
 }  // namespace phi
