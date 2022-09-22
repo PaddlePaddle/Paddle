@@ -2901,5 +2901,4 @@ void GraphSendUVInferMeta(const MetaTensor& x,
 
 }  // namespace phi
 
-PD_REGISTER_INFER_META_FN(batch_norm, phi::BatchNormInferMeta);
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);
