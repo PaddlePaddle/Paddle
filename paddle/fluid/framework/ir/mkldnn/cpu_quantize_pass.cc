@@ -333,7 +333,6 @@ bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
 }
 
 void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
-  std::unordered_map<std::string, std::vector<float>> info_map{};
   GetInfoFromTheFirstOp(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales_);
 }
@@ -592,10 +591,12 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
     // during the scale calculation step
     auto inputs = concat_op->inputs;
     for (size_t i = 0; i < inputs.size(); i++) {
-      auto scale_data = GetScaleDataByName(inputs[i]->Name());
-      if (scale_data.first == false) {
-        are_all_inputs_unsigned = false;
-        break;
+      if (AreScalesPresentForVarNames({inputs[i]->Name()})) {
+        auto scale_data = GetScaleDataByName(inputs[i]->Name());
+        if (scale_data.first == false) {
+          are_all_inputs_unsigned = false;
+          break;
+        }
       }
     }
 
