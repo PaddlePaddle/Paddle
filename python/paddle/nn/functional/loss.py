@@ -941,15 +941,18 @@ def hsigmoid_loss(
     """
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
+
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
     For each class(word), there's a unique path from root to itself, hsigmoid calculate the cost for each non-leaf node on
     the path, and sum them to get a total cost.
-    Comparing to softmax, the OP can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
+
+    Comparing to softmax, hsigmoid can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
     represents the number of classes or the size of word dict.
 
-    The OP supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
-    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_. For the custom
-    tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
+    The API supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
+    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_.
+
+    For the custom tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
 
     1. Using a custom word dict to build a binary tree, each leaf node should be an word in the word dict.
     2. Creating a dict map word_id -> path that from the word to the root node, we call it path_table.
@@ -1861,9 +1864,7 @@ def margin_cross_entropy(
 
     .. hint::
         The API supports single GPU and multi GPU, and don't supports CPU.
-
         For data parallel mode, set ``group=False``.
-
         For model parallel mode, set ``group=None`` or the group instance return by paddle.distributed.new_group.
         And logits.shape[-1] can be different at each rank.
 
@@ -1875,7 +1876,7 @@ def margin_cross_entropy(
         margin2 (float, optional): m2 of margin loss, default value is `0.5`.
         margin3 (float, optional): m3 of margin loss, default value is `0.0`.
         scale (float, optional): s of margin loss, default value is `64.0`.
-        group (Group, optional): The group instance return by paddle.distributed.new_group 
+        group (Group, optional): The group instance return by paddle.distributed.new_group
             or ``None`` for global default group or ``False`` for data parallel (do not communication cross ranks).
             Default is ``None``.
         return_softmax (bool, optional): Whether return softmax probability. Default value is `False`.
@@ -1886,12 +1887,12 @@ def margin_cross_entropy(
                     Default value is `'mean'`.
 
     Returns:
-        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
-            `return_softmax` is False, otherwise the tuple \
-            (loss, softmax), softmax is shard_softmax when \
-            using model parallel, otherwise softmax is in \
-            the same shape with input logits. If ``reduction == None``, \
-            the shape of loss is ``[N, 1]``, otherwise the shape is ``[1]``.
+        Tensor|tuple[Tensor, Tensor], return the cross entropy loss if
+            `return_softmax` is False, otherwise the tuple (loss, softmax),
+            softmax is shard_softmax when using model parallel, otherwise
+            softmax is in the same shape with input logits. If
+            ``reduction == None``, the shape of loss is ``[N, 1]``, otherwise
+            the shape is ``[1]``.
 
     Examples:
 
@@ -1931,7 +1932,7 @@ def margin_cross_entropy(
         print(label)
         print(loss)
         print(softmax)
-        
+
         #Tensor(shape=[2, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #       [[ 0.85204151, -0.55557678,  0.04994566,  0.71986042],
         #        [-0.20198586, -0.35270476, -0.55182702,  0.09749021]])
@@ -1992,7 +1993,7 @@ def margin_cross_entropy(
         print(loss)
         print(softmax)
 
-        # python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py 
+        # python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py
         ## for rank0 input
         #Tensor(shape=[4, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #       [[ 0.32888934,  0.02408748, -0.02763289,  0.18173063],
