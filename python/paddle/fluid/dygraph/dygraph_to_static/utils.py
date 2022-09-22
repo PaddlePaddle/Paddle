@@ -324,8 +324,8 @@ def is_numpy_api(node):
             func_str, "numpy"))
         # BUG: np.random.uniform doesn't have module and cannot be analyzed
         # TODO: find a better way
-        if not module_result:
-            return func_str.startswith("numpy.") or func_str.startswith("np.")
+        return module_result or (func_str.startswith("numpy.")
+                                 or func_str.startswith("np."))
     except Exception:
         return False
 
