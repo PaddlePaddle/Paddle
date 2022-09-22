@@ -253,9 +253,11 @@ GraphPatternDetector::DetectPatterns() {
     VLOG(4) << "step " << step << " get records: " << cur_groups.size();
     // for (auto &group : cur_groups) {
     //   for (auto &item : group.roles) {
-    //     LOG(ERROR) << "node " << item.second->id() << " as " << item.first->name();
+    //     LOG(ERROR) << "node " << item.second->id() << " as " <<
+    //     item.first->name();
     //   }
-    //   LOG(ERROR) << "=========================================================";
+    //   LOG(ERROR) <<
+    //   "=========================================================";
     // }
   }
 

@@ -1957,9 +1957,12 @@ struct AddSupportInt8 : public PatternBase {
   b->inputs.push_back(a);
 
 // UnLink 2 ir::Nodes from each other.
-#define IR_NODE_UNLINK(a, b)  \
-  a->outputs.erase(std::remove(std::begin(a->outputs), std::end(a->outputs), b), std::end(a->outputs)); \
-  b->inputs.erase(std::remove(std::begin(b->inputs), std::end(b->inputs), a), std::end(b->inputs));
+#define IR_NODE_UNLINK(a, b)                                                  \
+  a->outputs.erase(                                                           \
+      std::remove(std::begin(a->outputs), std::end(a->outputs), b),           \
+      std::end(a->outputs));                                                  \
+  b->inputs.erase(std::remove(std::begin(b->inputs), std::end(b->inputs), a), \
+                  std::end(b->inputs));
 
 // Set the out_var as the output of the op
 #define IR_OP_VAR_LINK(op, out_var) \

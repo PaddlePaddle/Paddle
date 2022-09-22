@@ -74,24 +74,28 @@ Graph *Pass::Apply(Graph *graph) const {
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
 
   // NOTE: constant_folding_pass cannot read variable in subgraph
-  if(graph->IsMainGraph() and "graph_viz_pass"!= Type() \
-     and "graph_to_program_pass"!=Type() \
-     and "constant_folding_pass" != Type()) {
-    for(size_t i=1; i<graph->SubGraphsSize(); i++) {
-      auto* sub_graph = graph->GetSubGraph(i);
-      if(!sub_graph->Has(framework::ir::kParamScopeAttr)) {
-        sub_graph->SetNotOwned<Scope>(framework::ir::kParamScopeAttr, &graph->Get<Scope>(framework::ir::kParamScopeAttr));
+  if (graph->IsMainGraph() and "graph_viz_pass" != Type() and
+      "graph_to_program_pass" != Type() and "constant_folding_pass" != Type()) {
+    for (size_t i = 1; i < graph->SubGraphsSize(); i++) {
+      auto *sub_graph = graph->GetSubGraph(i);
+      if (!sub_graph->Has(framework::ir::kParamScopeAttr)) {
+        sub_graph->SetNotOwned<Scope>(
+            framework::ir::kParamScopeAttr,
+            &graph->Get<Scope>(framework::ir::kParamScopeAttr));
       }
 
       ApplyImpl(sub_graph);
       PADDLE_ENFORCE_EQ(
-          HasCircle(*sub_graph), false,
+          HasCircle(*sub_graph),
+          false,
           platform::errors::InvalidArgument(
-             "Illegal pass %s. Generated graph shouldn't contain cycle.", Type()));
+              "Illegal pass %s. Generated graph shouldn't contain cycle.",
+              Type()));
       PADDLE_ENFORCE_EQ(
-          VarDescIsConsistency(*sub_graph), true,
+          VarDescIsConsistency(*sub_graph),
+          true,
           platform::errors::InvalidArgument(
-            "The VarDescs of persistable variable are not consistency."));
+              "The VarDescs of persistable variable are not consistency."));
       if (!sub_graph->Has(kPassRecorder)) {
         sub_graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
       }

@@ -26,7 +26,8 @@ namespace ir {
 namespace patterns {
 
 struct FusedMultiTransformerPattern : public PatternBase {
-  FusedMultiTransformerPattern(PDPattern* pattern, const std::string& name_scope)
+  FusedMultiTransformerPattern(PDPattern* pattern,
+                               const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fused_multi_transformer") {}
 
   PDNode* operator()();

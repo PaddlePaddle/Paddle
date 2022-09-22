@@ -26,7 +26,8 @@ namespace ir {
 namespace patterns {
 
 struct FusedMultiTransformerEncoderPattern : public PatternBase {
-  FusedMultiTransformerEncoderPattern(PDPattern* pattern, const std::string& name_scope)
+  FusedMultiTransformerEncoderPattern(PDPattern* pattern,
+                                      const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fused_multi_transformer_encoder") {}
 
   PDNode* operator()();
@@ -136,8 +137,10 @@ struct FusedMultiTransformerEncoderPattern : public PatternBase {
 };
 
 struct FusedMultiTransformerEncoderFuseQKVPattern : public PatternBase {
-  FusedMultiTransformerEncoderFuseQKVPattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "fused_multi_transformer_encoder_fuse_qkv") {}
+  FusedMultiTransformerEncoderFuseQKVPattern(PDPattern* pattern,
+                                             const std::string& name_scope)
+      : PatternBase(
+            pattern, name_scope, "fused_multi_transformer_encoder_fuse_qkv") {}
 
   PDNode* operator()();
 

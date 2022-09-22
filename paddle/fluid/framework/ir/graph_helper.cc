@@ -768,8 +768,8 @@ void GraphToProgram(const Graph &graph,
         block->set_parent_idx(kRootBlockIndex);
       }
 
-      GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind,
-                   graph.GetBlockId());
+      GraphToBlock(
+          *graph.GetSubGraph(idx), block, sort_kind, graph.GetBlockId());
     }
   } else {
     GraphToBlock(graph, block, sort_kind, graph.GetBlockId());

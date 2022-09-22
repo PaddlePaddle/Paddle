@@ -336,9 +336,7 @@ struct Layers {
     return outs;
   }
 
-  std::vector<VarDesc*> split(VarDesc* x,
-                              int num_or_section,
-                              int axis = 0) {
+  std::vector<VarDesc*> split(VarDesc* x, int num_or_section, int axis = 0) {
     std::vector<VarDesc*> outs(num_or_section);
     for (int i = 0; i < num_or_section; i++) {
       outs[i] = lod_tensor(unique_name());
@@ -504,7 +502,7 @@ struct Layers {
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("while");
     std::vector<std::string> xs_names;
-    for (auto& x: xs) xs_names.emplace_back(x->Name());
+    for (auto& x : xs) xs_names.emplace_back(x->Name());
     op->SetInput("X", xs_names);
     op->SetInput("Condition", {cond->Name()});
     op->SetOutput("Out", {out->Name()});
