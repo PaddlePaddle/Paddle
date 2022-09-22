@@ -38,6 +38,13 @@ namespace ir {
 
 static const char kParamScopeAttr[] = "__param_scope__";
 
+static const std::vector<std::string> support_subgraph_passes = {
+    "fused_multi_transformer_encoder_pass",
+    "fused_multi_transformer_decoder_pass",
+    "fused_multi_transformer_encoder_fuse_qkv_pass",
+    "fused_multi_transformer_decoder_fuse_qkv_pass",
+};
+
 Graph *Pass::Apply(Graph *graph) const {
   VLOG(10) << "start to apply pass " << Type() << " to graph";
   CheckPrevPass();
@@ -73,9 +80,11 @@ Graph *Pass::Apply(Graph *graph) const {
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
 
-  // NOTE: constant_folding_pass cannot read variable in subgraph
-  if (graph->IsMainGraph() and "graph_viz_pass" != Type() and
-      "graph_to_program_pass" != Type() and "constant_folding_pass" != Type()) {
+  bool is_pass_support_subgraph =
+      std::find(support_subgraph_passes.begin(),
+                support_subgraph_passes.end(),
+                Type()) != support_subgraph_passes.end();
+  if (graph->IsMainGraph() and is_pass_support_subgraph) {
     for (size_t i = 1; i < graph->SubGraphsSize(); i++) {
       auto *sub_graph = graph->GetSubGraph(i);
       if (!sub_graph->Has(framework::ir::kParamScopeAttr)) {
