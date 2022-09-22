@@ -108,6 +108,9 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
                        framework::DDim& x_dims,            // NOLINT
                        framework::DDim& out_dims) const {  // NOLINT
     switch (op_name) {
+      case ReshapeKernelOpName::reshape:
+        InferShapeReshapeOp(ctx, x_dims, out_dims);
+        break;
       case ReshapeKernelOpName::flatten:
         InferShapeFlattenOp(ctx, x_dims, out_dims);
         break;
@@ -117,6 +120,36 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
       default:
         PADDLE_THROW(paddle::platform::errors::OutOfRange(
             "Reshape kernel doesn not support that operator name"));
+    }
+  }
+
+  void InferShapeReshapeOp(const framework::ExecutionContext& ctx,
+                           framework::DDim& x_dims,            // NOLINT
+                           framework::DDim& out_dims) const {  // NOLINT
+    auto* x = ctx.Input<LoDTensor>("X");
+    auto* out = ctx.Output<LoDTensor>("Out");
+    x_dims = x->dims();
+    out_dims = out->dims();
+    ChangeReshapeOutDimsIfNeeded(ctx, x_dims, out_dims);
+  }
+
+  // in reshape1/2 ops  "ShapeTensor" has highest priority and "Shape" has
+  // second highest priority
+  void ChangeReshapeOutDimsIfNeeded(
+      const framework::ExecutionContext& ctx,
+      framework::DDim& x_dims,            // NOLINT
+      framework::DDim& out_dims) const {  // NOLINT
+    auto list_new_shape_tensor = ctx.MultiInput<Tensor>("ShapeTensor");
+    if (list_new_shape_tensor.size() > 0) {
+      auto new_shape = extract_shape(list_new_shape_tensor);
+      out_dims = ValidateShape(new_shape, x_dims);
+    } else if (ctx.HasInput("Shape")) {
+      auto* shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
+      auto* shape_data = shape_tensor->data<int>();
+
+      auto shape =
+          std::vector<int>(shape_data, shape_data + shape_tensor->numel());
+      out_dims = ValidateShape(shape, x_dims);
     }
   }
 
