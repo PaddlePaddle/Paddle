@@ -877,6 +877,10 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
         CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
 
     if (x->numel() < y->numel()) {
+      if (algo == dnnl::algorithm::binary_sub) {
+        attributes = CreateAttributes(
+            algo, -1.0 * scale_x, -1.0 * scale_y, scale_out, post_ops);
+      }
       this->AcquireForwardPrimitiveDescriptor(
           attributes, algo, src1_md, src0_md, dst_md);
     } else {
