@@ -414,10 +414,10 @@ class LayerHelperBase(object):
                                                   dtype,
                                                   stop_gradient=False,
                                                   shape=None):
-        """Create a temporary variable that should be type inferred layer.
+        """Create a temporary sparse variable that should be type inferred layer.
 
         Note:
-            The default type will be set to LOD_TENSOR. However, when
+            The default type will be set to SPARSE_COO. However, when
             the var is used as operator output, its type will be updated
             based on operator's `VarTypeInference` implementation in
             infer_var_type.
