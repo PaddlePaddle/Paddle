@@ -88,7 +88,9 @@ PD_REGISTER_KERNEL(batch_norm_coo_grad,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
-#else
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(batch_norm_coo_grad,
                    GPU,
                    ALL_LAYOUT,

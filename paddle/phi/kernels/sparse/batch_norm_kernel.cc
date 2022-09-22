@@ -92,7 +92,9 @@ PD_REGISTER_KERNEL(batch_norm_coo,
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
 }
-#else
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(batch_norm_coo,
                    GPU,
                    ALL_LAYOUT,
