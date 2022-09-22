@@ -207,6 +207,7 @@ def _partial_recv_op(tensor, group, use_calc_stream, ring_id, src, nranks,
                      rank_id):
     src_rank_in_group = src if group is None else group.get_group_rank(src)
     if _in_legacy_dygraph():
+        assert use_calc_stream
         return _legacy_C_ops.partial_recv(tensor.detach(), 'use_calc_stream',
                                           use_calc_stream, 'ring_id', ring_id,
                                           'peer', src_rank_in_group, 'num',
