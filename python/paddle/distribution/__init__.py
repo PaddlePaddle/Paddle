@@ -22,6 +22,7 @@ from paddle.distribution.independent import Independent
 from paddle.distribution.kl import kl_divergence, register_kl
 from paddle.distribution.multinomial import Multinomial
 from paddle.distribution.normal import Normal
+from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.transform import *  # noqa: F403
 from paddle.distribution.transformed_distribution import \
     TransformedDistribution
