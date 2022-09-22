@@ -52,8 +52,9 @@ from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy
 from .fleet.layers.mpu.mp_ops import _linear
 from .fleet.layers.mpu.mp_ops import _parallel_linear
 from .fleet.layers.mpu.mp_ops import _parallel_embedding
-from .communication.comm_utils import ReduceOp
-from .communication.group import Group
+from .communication.group import Group, _add_new_group
+from .communication.all_reduce import all_reduce
+from .communication.reduce import _get_reduce_op, ReduceOp
 
 __all__ = []
 
@@ -151,19 +152,6 @@ def _new_ring_id():
         return _start_ring_id + max(_get_global_env().nrings, 9)
     else:
         return len(_get_group_map()) + max(_get_global_env().nrings, 9)
-
-
-def _get_reduce_op(reduce_op, func_name):
-    if reduce_op == ReduceOp.SUM:
-        return core.ReduceOp.SUM
-    elif reduce_op == ReduceOp.MAX:
-        return core.ReduceOp.MAX
-    elif reduce_op == ReduceOp.MIN:
-        return core.ReduceOp.MIN
-    elif reduce_op == ReduceOp.PROD:
-        return core.ReduceOp.PRODUCT
-    else:
-        raise ValueError("Unknown reduce_op type for {}.".format(func_name))
 
 
 def get_group(id=0):
@@ -411,6 +399,9 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
         _group_map_backend[group] = backend
+        #TODO: The method below is a new method for group management, will replace the previous
+        # three in the future.
+        _add_new_group(group)
 
         # TODO(shenliang03): This is a temporary solution to solve the problem of
         # hang caused by tcp
@@ -701,104 +692,6 @@ def broadcast(tensor, src, group=None, sync_op=True):
                          'root': gsrc,
                          'use_calc_stream': use_calc_stream,
                          'ring_id': ring_id,
-                     })
-
-
-def all_reduce(tensor, op=ReduceOp.SUM, group=None, sync_op=True):
-    """
-
-    Reduce a tensor over all ranks so that all get the result.
-    As shown below, one process is started with a GPU and the data of this process is represented
-    by its group rank. The reduce operator is sum. Through all_reduce operator,
-    each GPU will have the sum of the data from all GPUs.
-
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allreduce.png
-        :width: 800
-        :alt: all_reduce
-        :align: center
-
-    Args:
-        tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The operation used. Default value is ReduceOp.SUM.
-        group (Group, optional): The group instance return by new_group or None for global default group.
-        sync_op (bool, optional): Wether this op is a sync op. Default value is True.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
-
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            dist.all_reduce(data)
-            print(data)
-            # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
-    """
-    if group is not None and not group.is_member():
-        return
-
-    if in_dygraph_mode():
-        op_type = _get_reduce_op(op, "all_reduce")
-        group = _get_default_group() if group is None else group
-        task = group.process_group.allreduce(tensor, op_type)
-        if sync_op:
-            task.wait()
-            return None
-        else:
-            return task
-
-    use_calc_stream = sync_op
-    ring_id = 0 if group is None else group.id
-    if _non_static_mode():
-        if op == ReduceOp.SUM:
-            return _legacy_C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
-                                                  use_calc_stream, 'ring_id',
-                                                  ring_id)
-        elif op == ReduceOp.MAX:
-            return _legacy_C_ops.c_allreduce_max_(tensor, 'use_calc_stream',
-                                                  use_calc_stream, 'ring_id',
-                                                  ring_id)
-        elif op == ReduceOp.MIN:
-            return _legacy_C_ops.c_allreduce_min_(tensor, 'use_calc_stream',
-                                                  use_calc_stream, 'ring_id',
-                                                  ring_id)
-        elif op == ReduceOp.PROD:
-            return _legacy_C_ops.c_allreduce_prod_(tensor, 'use_calc_stream',
-                                                   use_calc_stream, 'ring_id',
-                                                   ring_id)
-        else:
-            raise ValueError("Unknown parameter: {}.".format(op))
-
-    check_variable_and_dtype(tensor, 'tensor', [
-        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
-        'bool'
-    ], 'all_reduce')
-    if op == ReduceOp.SUM:
-        op_type = 'c_allreduce_sum'
-    elif op == ReduceOp.MAX:
-        op_type = 'c_allreduce_max'
-    elif op == ReduceOp.MIN:
-        op_type = 'c_allreduce_min'
-    elif op == ReduceOp.PROD:
-        op_type = 'c_allreduce_prod'
-    if not isinstance(ring_id, int):
-        raise ValueError("The type of 'ring_id' for all_reduce should be int.")
-    helper = LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type,
-                     inputs={'X': [tensor]},
-                     outputs={'Out': [tensor]},
-                     attrs={
-                         'ring_id': ring_id,
-                         'use_calc_stream': use_calc_stream
                      })
 
 

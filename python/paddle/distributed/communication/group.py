@@ -18,9 +18,9 @@ class Group():
     The abstract representation of group.
     """
 
-    def __init__(self, group_rank, id, ranks, pg=None, name=None):
-        self._group_rank = group_rank
-        self._world_size = len(ranks) if group_rank >= 0 else -1
+    def __init__(self, rank_in_group, id, ranks, pg=None, name=None):
+        self._rank_in_group = rank_in_group
+        self._world_size = len(ranks) if rank_in_group >= 0 else -1
         self._id = id
         self._ranks = ranks
         self._pg = pg
@@ -28,7 +28,7 @@ class Group():
 
     @property
     def rank(self):
-        return self._group_rank
+        return self._rank_in_group
 
     @property
     def ranks(self):
@@ -74,3 +74,21 @@ class Group():
         debug_str += "; name: "
         debug_str += self.name if self.name else "None"
         return debug_str
+
+
+class _GroupManager():
+    global_group_id = 0
+    group_map_by_id = {}
+
+
+def _get_global_group():
+    if _GroupManager.global_group_id not in _GroupManager.group_map_by_id:
+        raise RuntimeError("The global group is not initialized.")
+    return _GroupManager.group_map_by_id[_GroupManager.global_group_id]
+
+
+def _add_new_group(group):
+    if group.id in _GroupManager.group_map_by_id:
+        raise RuntimeError("The group with id {} already exist.".format(
+            group.id))
+    _GroupManager.group_map_by_id[group.id] = group
