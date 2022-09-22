@@ -129,7 +129,7 @@ class InterpreterCore {
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
-  // last_live_ops_[i] contains the id of operatos that last access var[i]
+  // last_live_ops_[i] contains the id of operators that last access var[i]
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
   std::vector<size_t> dependecy_count_;

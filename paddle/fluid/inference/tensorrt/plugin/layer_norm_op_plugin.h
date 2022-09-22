@@ -31,8 +31,6 @@ namespace plugin {
 class LayerNormPlugin : public PluginTensorRT {
   std::vector<float> bias_;
   std::vector<float> scale_;
-  framework::Tensor scale_t;
-  framework::Tensor bias_t;
   framework::Tensor mean_t;
   framework::Tensor variance_t;
   int begin_norm_axis_;
@@ -40,12 +38,16 @@ class LayerNormPlugin : public PluginTensorRT {
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
 
+  // data on devices
+  float* bias_gpu_{nullptr};
+  float* scale_gpu_{nullptr};
+
  public:
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return getBaseSerializationSize() + SerializedSize(bias_) +
            SerializedSize(scale_) + SerializedSize(begin_norm_axis_) +
            SerializedSize(eps_) + SerializedSize(mean_shape_) +
-           SerializedSize(variance_shape_);
+           SerializedSize(variance_shape_) + SerializedSize(with_fp16_);
   }
 
   // TRT will call this func when we need to serialize the configuration of
@@ -59,6 +61,7 @@ class LayerNormPlugin : public PluginTensorRT {
     SerializeValue(&buffer, eps_);
     SerializeValue(&buffer, mean_shape_);
     SerializeValue(&buffer, variance_shape_);
+    SerializeValue(&buffer, with_fp16_);
   }
 
   LayerNormPlugin(const float* bias,
@@ -68,11 +71,13 @@ class LayerNormPlugin : public PluginTensorRT {
                   int begin_norm_axis,
                   float eps,
                   std::vector<int64_t> mean_shape,
-                  std::vector<int64_t> variance_shape)
+                  std::vector<int64_t> variance_shape,
+                  bool with_fp16)
       : begin_norm_axis_(begin_norm_axis),
         eps_(eps),
         mean_shape_(mean_shape),
         variance_shape_(variance_shape) {
+    with_fp16_ = with_fp16;
     bias_.resize(bias_num);
     scale_.resize(scale_num);
     std::copy(bias, bias + bias_num, bias_.data());
@@ -89,24 +94,33 @@ class LayerNormPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &eps_);
     DeserializeValue(&serialData, &serialLength, &mean_shape_);
     DeserializeValue(&serialData, &serialLength, &variance_shape_);
+    DeserializeValue(&serialData, &serialLength, &with_fp16_);
   }
   ~LayerNormPlugin() {}
   int initialize() TRT_NOEXCEPT override;
+  void terminate() TRT_NOEXCEPT override;
 
   LayerNormPlugin* clone() const TRT_NOEXCEPT override {
-    return new LayerNormPlugin(bias_.data(),
-                               bias_.size(),
-                               scale_.data(),
-                               scale_.size(),
-                               begin_norm_axis_,
-                               eps_,
-                               mean_shape_,
-                               variance_shape_);
+    auto ptr = new LayerNormPlugin(bias_.data(),
+                                   bias_.size(),
+                                   scale_.data(),
+                                   scale_.size(),
+                                   begin_norm_axis_,
+                                   eps_,
+                                   mean_shape_,
+                                   variance_shape_,
+                                   with_fp16_);
+    ptr->bias_gpu_ = bias_gpu_;
+    ptr->scale_gpu_ = scale_gpu_;
+    return ptr;
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "layernorm_plugin";
   }
+  bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
+      const TRT_NOEXCEPT override;
+
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index,
                                      const nvinfer1::Dims* inputs,
@@ -150,11 +164,13 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
                          int begin_norm_axis,
                          float eps,
                          std::vector<int64_t> mean_shape,
-                         std::vector<int64_t> variance_shape)
+                         std::vector<int64_t> variance_shape,
+                         bool with_fp16)
       : begin_norm_axis_(begin_norm_axis),
         eps_(eps),
         mean_shape_(mean_shape),
         variance_shape_(variance_shape) {
+    with_fp16_ = with_fp16;
     bias_.resize(bias_num);
     scale_.resize(scale_num);
     std::copy(bias, bias + bias_num, bias_.data());
@@ -168,28 +184,35 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &eps_);
     DeserializeValue(&serialData, &serialLength, &mean_shape_);
     DeserializeValue(&serialData, &serialLength, &variance_shape_);
+    DeserializeValue(&serialData, &serialLength, &with_fp16_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new LayerNormPluginDynamic(bias_.data(),
-                                      bias_.size(),
-                                      scale_.data(),
-                                      scale_.size(),
-                                      begin_norm_axis_,
-                                      eps_,
-                                      mean_shape_,
-                                      variance_shape_);
+    auto ptr = new LayerNormPluginDynamic(bias_.data(),
+                                          bias_.size(),
+                                          scale_.data(),
+                                          scale_.size(),
+                                          begin_norm_axis_,
+                                          eps_,
+                                          mean_shape_,
+                                          variance_shape_,
+                                          with_fp16_);
+    ptr->bias_gpu_ = bias_gpu_;
+    ptr->scale_gpu_ = scale_gpu_;
+    return ptr;
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "layernorm_plugin_dynamic";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
-  int initialize() TRT_NOEXCEPT override { return 0; }
+  int initialize() TRT_NOEXCEPT override;
+  void terminate() TRT_NOEXCEPT override;
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(bias_) + SerializedSize(scale_) +
            SerializedSize(begin_norm_axis_) + SerializedSize(eps_) +
-           SerializedSize(mean_shape_) + SerializedSize(variance_shape_);
+           SerializedSize(mean_shape_) + SerializedSize(variance_shape_) +
+           SerializedSize(with_fp16_);
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT override {
@@ -199,6 +222,7 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, eps_);
     SerializeValue(&buffer, mean_shape_);
     SerializeValue(&buffer, variance_shape_);
+    SerializeValue(&buffer, with_fp16_);
   }
 
   nvinfer1::DimsExprs getOutputDimensions(int output_index,
@@ -240,14 +264,15 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
  private:
   std::vector<float> bias_;
   std::vector<float> scale_;
-  framework::Tensor scale_t;
-  framework::Tensor bias_t;
   framework::Tensor mean_t;
   framework::Tensor variance_t;
   int begin_norm_axis_;
   float eps_;
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
+  // data on devices
+  float* bias_gpu_{nullptr};
+  float* scale_gpu_{nullptr};
 };
 
 class LayerNormPluginDynamicCreator : public TensorRTPluginCreator {

@@ -27,19 +27,19 @@ def attention(query,
               attn_mask=None,
               name=None):
     """
-    Note:    
+    Note:
         This API is only used from ``CUDA 11.7`` .
 
-    SparseCsrTensor is used to store the intermediate result of Attention matrix 
-    in Transformer module, which can reduce memory usage and improve performance. 
-    ``sparse_mask`` express the sparse layout in CSR format. 
-    The calculation equation is: 
+    SparseCsrTensor is used to store the intermediate result of Attention matrix
+    in Transformer module, which can reduce memory usage and improve performance.
+    ``sparse_mask`` express the sparse layout in CSR format.
+    The calculation equation is:
 
     .. math::
 
         result = softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
 
-    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module. 
+    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
     The shape of the three parameters are: `[batch_size, num_heads, seq_len, head_dim]`, and
     ``d`` represents ``head_dim`` .
 
@@ -47,12 +47,12 @@ def attention(query,
         query(DenseTensor): `query` in the Attention module. 4D Tensor with float32 or float64.
         key(DenseTensor): `key` in the Attention module. 4D Tensor with float32 or float64.
         value(DenseTensor): `value` in the Attention module. 4D Tensor with float32 or float64.
-        sparse_mask(SparseCsrTensor): The sparse layout in the Attention module. Its dense shape 
-            is `[batch_size*num_heads, seq_len, seq_len]` .  `nnz` of each batch must be the same. 
+        sparse_mask(SparseCsrTensor): The sparse layout in the Attention module. Its dense shape
+            is `[batch_size*num_heads, seq_len, seq_len]` .  `nnz` of each batch must be the same.
             dtype of `crows` and `cols` must be int64, dtype of `values` can be float32 or float64.
-        key_padding_mask(DenseTensor, optional): The key padding mask tensor in the Attention module. 
+        key_padding_mask(DenseTensor, optional): The key padding mask tensor in the Attention module.
             2D tensor with shape: [batch_size, seq_len]. dtype can be float32 or float64. Default: None.
-        attn_mask(DenseTensor, optional): The attention mask tensor in the Attention module. 
+        attn_mask(DenseTensor, optional): The attention mask tensor in the Attention module.
             2D tensor with shape: [seq_len, seq_len]. dtype can be float32 or float64. Default: None.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
@@ -63,7 +63,7 @@ def attention(query,
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             batch_size = 16
