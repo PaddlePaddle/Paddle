@@ -54,6 +54,17 @@ void TransposeCsrKernel(const Context& dev_ctx,
                         const std::vector<int>& perm,
                         SparseCsrTensor* out) {
   unsigned int n_dim = perm.size();
+
+  const DenseTensor& x_crows = x.crows();
+  const DenseTensor& x_cols = x.cols();
+  const DenseTensor& x_values = x.non_zero_elements();
+
+  // return a copy of x
+  if (perm[0] == 0 && perm[1] == 1 && (n_dim == 2 || perm[2] == 2)) {
+    out->SetMember(x_crows, x_cols, x_values, x.dims());
+    return;
+  }
+
   // create out sparse tensor
   DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_crows;
@@ -67,17 +78,6 @@ void TransposeCsrKernel(const Context& dev_ctx,
   DenseTensor out_values = EmptyLike<T, Context>(dev_ctx, x.values());
   out->SetMember(out_crows, out_cols, out_values, out_dims);
 
-  const DenseTensor& x_crows = x.crows();
-  const DenseTensor& x_cols = x.cols();
-  const DenseTensor& x_values = x.non_zero_elements();
-
-  // return a copy of x
-  if (perm[0] == 0 && perm[1] == 1 && (n_dim == 2 || perm[2] == 2)) {
-    phi::Copy(dev_ctx, x_crows, dev_ctx.GetPlace(), false, &out_crows);
-    phi::Copy(dev_ctx, x_cols, dev_ctx.GetPlace(), false, &out_cols);
-    phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, &out_values);
-    return;
-  }
   // transpose by two stages
   if (perm[0] == 1 && perm[1] == 2) {  // perm == {1, 2, 0}
     SparseCsrTensor temp;

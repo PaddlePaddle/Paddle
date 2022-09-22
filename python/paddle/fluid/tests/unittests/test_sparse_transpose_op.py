@@ -67,8 +67,8 @@ class TestTranspose(unittest.TestCase):
     def test_transpose_nd(self):
         self.check_result([8, 3, 4, 4, 5, 3], [5, 3, 4, 1, 0, 2], 'coo')
         # Randint now only supports access to dimension 0 to 9.
-        self.check_result([i % 3 + 2 for i in range(9)],
-                          [(i + 2) % 9 for i in range(9)], 'coo')
+        self.check_result([2, 3, 4, 2, 3, 4, 2, 3, 4],
+                          [2, 3, 4, 5, 6, 7, 8, 0, 1], 'coo')
 
 
 if __name__ == "__main__":
