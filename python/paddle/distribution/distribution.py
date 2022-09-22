@@ -19,8 +19,6 @@
 #            'sampling_id',
 #            'Uniform']
 
-from __future__ import print_function
-
 import math
 import warnings
 

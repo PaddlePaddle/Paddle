@@ -14,7 +14,6 @@
 """
 math functions
 """
-from __future__ import print_function
 import numpy as np
 
 from paddle.common_ops_import import VarDesc

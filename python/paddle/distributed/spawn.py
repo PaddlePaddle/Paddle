@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import multiprocessing
 import os
 import signal
@@ -475,8 +473,6 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
 
     Examples:
         .. code-block:: python
-
-            from __future__ import print_function
 
             import paddle
             import paddle.nn as nn
