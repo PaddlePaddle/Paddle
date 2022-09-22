@@ -73,14 +73,29 @@ class ConditionalBlockInferOp : public ConditionalOp {
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
 
-      framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
-      exec.Run(*block->Program(), &cur_scope, block->ID(), false);
+
+      if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
+        auto &pdesc = *block->Program();
+        exec.reset(New framework::Executor(dev_place));
+        if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
+        ctc = exec->Prepare(
+            pdesc, block->ID(), std::vector<std::string>(), false);
+#ifdef PADDLE_WITH_MKLDNN
+        platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
+        platform::RegisterModelLayout(ctx->ops_, dev_place);
+#endif
+      }
+      exec->RunPreparedContext(ctx.get(), &cur_scope, false, true, false);
       scope.DeleteScope(scopes->front());
     }
   }
+
+ private:
+  mutable std::shared_ptr<Executor> exec{nullptr};
+  mutable std::unique_ptr<ExecutorPrepareContext> ctx{nullptr};
 };
 
 }  // namespace operators
