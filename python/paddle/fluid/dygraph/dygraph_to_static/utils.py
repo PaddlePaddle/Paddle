@@ -44,6 +44,7 @@ DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
 DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
 GET_ARGS_FUNC_PREFIX = 'get_args'
 SET_ARGS_FUNC_PREFIX = 'set_args'
+ALREADY_D2S = '__already_d2s'
 ARGS_NAME = '__args'
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
 ORIGI_INFO = "Original information of source code for ast node."
@@ -91,6 +92,9 @@ FOR_ITER_TUPLE_INDEX_PREFIX = '__for_loop_iter_tuple_index'
 FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
 FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
 FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
+
+RE_PYNAME = '[a-zA-Z0-9_]+'
+RE_PYMODULE = '[a-zA-Z0-9_]+\.'
 
 # FullArgSpec is valid from Python3. Defined a Namedtuple to
 # to make it available in Python2.
