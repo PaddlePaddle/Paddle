@@ -54,7 +54,6 @@ requirements:
     - requests>=2.20.0
     - numpy>=1.13
     - protobuf>=3.1.0, <=3.20.0
-    - gast==0.3.3
     - Pillow
     - six
     - decorator
@@ -67,7 +66,6 @@ requirements:
     - requests>=2.20.0
     - numpy>=1.13
     - protobuf>=3.1.0, <=3.20.0
-    - gast==0.3.3
     - Pillow
     - six
     - decorator
