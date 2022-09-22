@@ -1197,7 +1197,7 @@ def margin_ranking_loss(input,
 
 def l1_loss(input, label, reduction='mean', name=None):
     r"""
-    This operator computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
+    Computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
 
     If `reduction` set to ``'none'``, the loss is:
 
@@ -1228,8 +1228,8 @@ def l1_loss(input, label, reduction='mean', name=None):
 
     Returns:
         Tensor, the L1 Loss of Tensor ``input`` and ``label``.
-            If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
-            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+        If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
+        If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
         .. code-block:: python
@@ -1418,7 +1418,7 @@ def nll_loss(input,
 
 def kl_div(input, label, reduction='mean', name=None):
     r"""
-    This operator calculates the Kullback-Leibler divergence loss
+    Calculate the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
     log-probability and Input(Target) is the probability.
 
@@ -1463,31 +1463,26 @@ def kl_div(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn.functional as F
 
             shape = (5, 20)
-            input = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
+            x = paddle.uniform(shape, min=-10, max=10).astype('float32')
+            target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='batchmean')
+            pred_loss = F.kl_div(x, target, reduction='batchmean')
             # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='mean')
+            pred_loss = F.kl_div(x, target, reduction='mean')
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='sum')
+            pred_loss = F.kl_div(x, target, reduction='sum')
             # shape=[1]
 
             # 'none' reduction, loss shape is same with input shape
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='none')
+            pred_loss = F.kl_div(x, target, reduction='none')
             # shape=[5, 20]
 
     """
@@ -2935,21 +2930,34 @@ def multi_label_soft_margin_loss(input,
                                  reduction="mean",
                                  name=None):
     r"""
+    Calculate a multi-class multi-classification
+    hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
+    and output :math:`y` (which is a 2D `Tensor` of target class indices).
+    For each sample in the mini-batch:
 
-        Parameters:
-            input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
-            label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
-            weight (Tensor,optional): a manual rescaling weight given to each class.
-                    If given, has to be a Tensor of size C and the data type is float32, float64.
-                    Default is ``'None'`` .
-            reduction (str, optional): Indicate how to average the loss by batch_size,
-                    the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-                    If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-                    If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-                    If :attr:`reduction` is ``'sum'``, the summed loss is returned.
-                    Default: ``'mean'``
-            name (str, optional): Name for the operation (optional, default is None).
-                    For more information, please refer to :ref:`api_guide_Name`.
+    .. math::
+        \text{loss}(x, y) = \sum_{ij}\frac{\max(0, 1 - (x[y[j]] - x[i]))}{\text{x.size}(0)}
+
+    where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`, \
+    :math:`y \in \left\{0, \; \cdots , \; \text{y.size}(0) - 1\right\}`, \
+    :math:`0 \leq y[j] \leq \text{x.size}(0)-1`, \
+    and :math:`i \neq y[j]` for all :math:`i` and :math:`j`.
+    :math:`y` and :math:`x` must have the same size.
+
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
+        weight (Tensor,optional): a manual rescaling weight given to each class.
+                If given, has to be a Tensor of size C and the data type is float32, float64.
+                Default is ``'None'`` .
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                Default: ``'mean'``
+        name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
 
 	Shape:
             input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
@@ -3011,7 +3019,7 @@ def multi_label_soft_margin_loss(input,
 
 def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
     r"""
-    This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    Calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
     This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
     and is typically used for learning nonlinear embeddings or semi-supervised learning.
 

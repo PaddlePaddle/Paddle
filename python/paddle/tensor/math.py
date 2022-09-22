@@ -4130,7 +4130,7 @@ def erfinv(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+        out (Tensor), an N-D Tensor, the shape and data type is the same with input.
 
     Example:
         .. code-block:: python
