@@ -357,7 +357,7 @@ class TestTensorAxis(unittest.TestCase):
             axis = paddle.full([1], 2, dtype='int64')
             out = paddle.cumsum(relu_out, axis=axis)
             loss = paddle.mean(out)
-            sgd = paddle.optimizer.SGD()
+            sgd = paddle.optimizer.SGD(learning_rate=0.)
             sgd.minimize(paddle.mean(out))
 
             exe = paddle.static.Executor(self.place)
