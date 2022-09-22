@@ -25,8 +25,6 @@ from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.uniform import Uniform
 from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 
-
-
 __all__ = ["register_kl", "kl_divergence"]
 
 _REGISTER_TABLE = {}
@@ -98,7 +96,7 @@ def register_kl(cls_p, cls_q):
 
 
 def _dispatch(cls_p, cls_q):
-    """Multiple dispatch into concrete implement function"""
+    """Multiple dispatch into concrete implement function."""
 
     # find all matched super class pair of p and q
     matchs = [(super_p, super_q) for super_p, super_q in _REGISTER_TABLE
