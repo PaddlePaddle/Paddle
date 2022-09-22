@@ -544,7 +544,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
             linear_out = linear(x)
             out = self.pd_api(linear_out, axis, keepdim=self.keepdim)
 
-            sgd = paddle.optimizer.SGD()
+            sgd = paddle.optimizer.SGD(learning_rate=0.)
             sgd.minimize(paddle.mean(out))
             exe = paddle.static.Executor(self.place)
             exe.run(starup_prog)
