@@ -22,7 +22,7 @@ def _all_gather_in_dygraph(tensor_list, tensor, group, sync_op,
     group = collective._get_default_group() if group is None else group
 
     if len(tensor_list) == 0:
-        tensor_list = [paddle.empty_like(tensor) for _ in range(group.nranks)]
+        tensor_list += [paddle.empty_like(tensor) for _ in range(group.nranks)]
 
     if use_calc_stream:
         return group.process_group.allgather_on_calc_stream(tensor, tensor_list)

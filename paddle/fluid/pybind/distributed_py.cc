@@ -142,15 +142,22 @@ void SplitDenseTensorWithType(const DeviceContext &context,
 
 void SplitDenseTensor(phi::DenseTensor &tensor,          // NOLINT
                       std::vector<Tensor> &tensor_list,  // NOLINT
+                      const distributed::ProcessGroup &pg,
                       const platform::Place &place,
                       bool use_calc_stream) {
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    // TODO(sunyilun): decide which ctx to use when passing `use_calc_stream`
-    auto *default_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
-    SplitDenseTensorWithType(
-        *default_ctx, &tensor, &tensor_list, tensor.dtype());
+    if (use_calc_stream) {
+      auto *default_ctx = static_cast<phi::GPUContext *>(
+          platform::DeviceContextPool::Instance().Get(place));
+      SplitDenseTensorWithType(
+          *default_ctx, &tensor, &tensor_list, tensor.dtype());
+    } else {
+      auto *default_ctx =
+          static_cast<phi::GPUContext *>(pg.GetDeviceContext(place));
+      SplitDenseTensorWithType(
+          *default_ctx, &tensor, &tensor_list, tensor.dtype());
+    }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split tensor since it's not compiled with NCCL,"
@@ -463,7 +470,6 @@ void BindDistributed(py::module *m) {
 
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
-                out_tensor_list[0] = in_tensor;
                 auto concat_out_tensor = paddle::concat(out_tensor_list, 0);
                 if (out_tensor_list.size() == 0) {
                   auto concat_out_dims = phi::vectorize(in_tensor.dims());
@@ -485,7 +491,8 @@ void BindDistributed(py::module *m) {
                           .get();
                   out_dense_list.emplace_back(p_out_tensor);
                 }
-                SplitDenseTensor(out_wrapper[0], out_tensor_list, place, false);
+                SplitDenseTensor(
+                    *out_dense, out_tensor_list, self, place, false);
 
                 return task;
               },
@@ -646,7 +653,6 @@ void BindDistributed(py::module *m) {
 
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
-                out_tensor_list[0] = in_tensor;
                 auto concat_out_tensor = paddle::concat(out_tensor_list, 0);
                 if (out_tensor_list.size() == 0) {
                   auto concat_out_dims = phi::vectorize(in_tensor.dims());
@@ -671,7 +677,8 @@ void BindDistributed(py::module *m) {
                           .get();
                   out_dense_list.emplace_back(p_out_tensor);
                 }
-                SplitDenseTensor(out_wrapper[0], out_tensor_list, place, true);
+                SplitDenseTensor(
+                    *out_dense, out_tensor_list, self, place, true);
 
                 return task;
               },
