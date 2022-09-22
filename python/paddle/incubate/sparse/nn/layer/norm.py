@@ -131,9 +131,11 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         else:
             trainable_statistics = not self._use_global_stats
 
+        data_format = 'NCHW' if self._data_format[1] == 'C' else 'NHWC'
+
         batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm(
             input, self.weight, self.bias, self._mean, self._variance,
-            self._momentum, self._epsilon, self._data_format, not self.training,
+            self._momentum, self._epsilon, data_format, not self.training,
             self._use_global_stats, trainable_statistics, False)
         return batch_norm_out
 
