@@ -19,10 +19,6 @@
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
 using DDim = framework::DDim;
