@@ -288,9 +288,9 @@ def ipu_shard_guard(index=-1, stage=-1):
 
     **Note**:
     Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer
-    to :code:`paddle.static.IpuStrategy` .
+    to :ref:`en-api-fluid-ipustrategy` .
     Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer
-    to :code:`paddle.static.IpuStrategy` .
+    to :ref:`en-api-fluid-ipustrategy` .
     A index is allowed to match none stage or a stage. A stage is only allowed to match a new or
     duplicated index.
 
