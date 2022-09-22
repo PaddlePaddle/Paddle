@@ -240,13 +240,14 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
       if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
         inv_h = inv_w = -2;
       } else {
-        mval += static_cast<MT>(data_col_ptr[col_pos]) *
-                funcs::DmcnIm2colBilinear<T, MT>(data_im_ptr + cnt * height * width,
-                                                 width,
-                                                 height,
-                                                 width,
-                                                 inv_h,
-                                                 inv_w);
+        mval +=
+            static_cast<MT>(data_col_ptr[col_pos]) *
+            funcs::DmcnIm2colBilinear<T, MT>(data_im_ptr + cnt * height * width,
+                                             width,
+                                             height,
+                                             width,
+                                             inv_h,
+                                             inv_w);
       }
       const MT weight =
           DmcnGetCoordinateWeight<T, MT>(inv_h,

@@ -14,13 +14,13 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
-#include "paddle/phi/common/amp_type_traits.h"
 
 namespace phi {
 
@@ -82,38 +82,46 @@ HOSTDEVICE MT DmcnGetCoordinateWeight(MT argmax_h,
   if (bp_dir == 0) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
                   ? -1 * (argmax_w_low + 1 - argmax_w) *
-                        static_cast<MT>(im_data[argmax_h_low * data_width + argmax_w_low])
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_low])
                   : 0;
 
     weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
                   ? -1 * (argmax_w - argmax_w_low) *
-                        static_cast<MT>(im_data[argmax_h_low * data_width + argmax_w_high])
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_high])
                   : 0;
 
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
                   ? (argmax_w_low + 1 - argmax_w) *
-                        static_cast<MT>(im_data[argmax_h_high * data_width + argmax_w_low])
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_low])
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
                   ? (argmax_w - argmax_w_low) *
-                        static_cast<MT>(im_data[argmax_h_high * data_width + argmax_w_high])
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_high])
                   : 0;
   } else if (bp_dir == 1) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
                   ? -1 * (argmax_h_low + 1 - argmax_h) *
-                        static_cast<MT>(im_data[argmax_h_low * data_width + argmax_w_low])
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_low])
                   : 0;
     weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
                   ? (argmax_h_low + 1 - argmax_h) *
-                        static_cast<MT>(im_data[argmax_h_low * data_width + argmax_w_high])
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_high])
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
                   ? -1 * (argmax_h - argmax_h_low) *
-                        static_cast<MT>(im_data[argmax_h_high * data_width + argmax_w_low])
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_low])
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
                   ? (argmax_h - argmax_h_low) *
-                        static_cast<MT>(im_data[argmax_h_high * data_width + argmax_w_high])
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_high])
                   : 0;
   }
 
@@ -263,7 +271,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                   T(1.0),
                   &col_buffer_3d_slice,
                   T(0.0));
-    } // 相信没啥问题
+    }  // 相信没啥问题
     col_buffer.Resize(make_ddim(col_buffer_shape_vec));
 
     T* col_buffer_ptr = col_buffer.data<T>();
@@ -292,9 +300,8 @@ void DeformableConvGradKernel(const Context& dev_ctx,
           deformable_groups,
           offset_grad_ptr + i * im2col_step * input_offset_dim,
           mask_grad_data_ptr);
-    } //check
+    }  // check
     if (dx) {
-
       MT* mt_dx_ptr = dev_ctx.template Alloc<MT>(dx);
 
       ModulatedDeformableCol2im(dev_ctx,
@@ -324,7 +331,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
         strides,
         dilations,
         deformable_groups,
-        col_buffer_ptr); //check
+        col_buffer_ptr);  // check
 
     col_buffer_3d.Resize(col_buffer_3d_shape);
 
