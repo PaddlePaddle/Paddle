@@ -293,7 +293,7 @@ def CUDAExtension(sources, *args, **kwargs):
         **kwargs(dict[option], optional): Specify other arguments same as ``setuptools.Extension`` .
 
     Returns:
-        setuptools.Extension: An instance of setuptools.Extension
+        setuptools.Extension: An instance of setuptools.Extension.
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
