@@ -185,21 +185,23 @@ __global__ void CrossEntropyHardLabel(T* loss,
   // thread ids compute loss[ids] using softmax[idx]
   if (ids < n * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
-    if (lbl < 0) {  // label is negative
-      loss[ids] = static_cast<T>(0.0);
-    } else {  // label is positive of zero
-      int64_t idx = idx_n * dim * d + lbl * d + idx_d;
-      if (IgnoreIndex == true) {
-        // IgnoreIndex is true
-        if (lbl == ignore_idx) {
-          loss[ids] = static_cast<T>(0.0);
-        } else {
-          loss[ids] = -Log(softmax[idx]);
-        }
+    PADDLE_ENFORCE_GE(
+        lbl, 0, errors::OutOfRange("Target {%f} is out of lower bound.", lbl));
+    PADDLE_ENFORCE_LT(
+        lbl,
+        dim,
+        errors::OutOfRange("Target {%f} is out of upper bound.", lbl));
+    int64_t idx = idx_n * dim * d + lbl * d + idx_d;
+    if (IgnoreIndex == true) {
+      // IgnoreIndex is true
+      if (lbl == ignore_idx) {
+        loss[ids] = static_cast<T>(0.0);
       } else {
-        // IgnoreIndex is false
         loss[ids] = -Log(softmax[idx]);
       }
+    } else {
+      // IgnoreIndex is false
+      loss[ids] = -Log(softmax[idx]);
     }
   }
 }
@@ -225,6 +227,12 @@ __global__ void CrossEntropyExpHardLabel(T* loss,
 
   if (idx < n * dim * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
+    PADDLE_ENFORCE_GE(
+        lbl, 0, errors::OutOfRange("Target {%f} is out of lower bound.", lbl));
+    PADDLE_ENFORCE_LT(
+        lbl,
+        dim,
+        errors::OutOfRange("Target {%f} is out of upper bound.", lbl));
     if (IgnoreIndex == true) {
       // IgnoreIndex is true
       if (idx_dim == lbl) {
@@ -236,12 +244,8 @@ __global__ void CrossEntropyExpHardLabel(T* loss,
       }
     } else {
       // IgnoreIndex is false
-      if (lbl >= 0 && lbl < dim) {
-        if (lbl == idx_dim) {
-          loss[ids] = -softmax[idx];
-        }
-      } else {
-        loss[ids] = static_cast<T>(0.0);
+      if (lbl == idx_dim) {
+        loss[ids] = -softmax[idx];
       }
     }
     softmax[idx] = Exp(softmax[idx]);
@@ -556,8 +560,8 @@ The computation includes
   - Compute: sum of - sum_{j}{ label_{i,j} * (src_{i,j} - maxvalue_{i} -
 log(sum[i]))}
 One warp (32 threads) is used to compute 1 or 2 batch (kBatchSize).
-For reduction max (sum), firstly compute max (sum) to one warp, then use shuffle
-api to compute max (sum) in one warp.
+For reduction max (sum), firstly compute max (sum) to one warp, then use
+shuffle api to compute max (sum) in one warp.
 */
 template <typename T, typename VecT, typename AccT, int Log2Elements>
 __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
