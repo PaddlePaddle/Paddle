@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import math
 import unittest
 import scipy.stats
 
 import numpy as np
 import paddle
-
 
 import config
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
@@ -52,14 +50,16 @@ class LogNormalNumpy(DistributionNumpy):
     def log_prob(self, value):
         var = self.scale * self.scale
         log_scale = np.log(self.scale)
-        return -((np.log(value) - self.loc) *
-                 (np.log(value) - self.loc)) / (2. * var) - log_scale - math.log(
-                     math.sqrt(2. * math.pi)) - np.log(value)
+        return -(
+            (np.log(value) - self.loc) *
+            (np.log(value) - self.loc)) / (2. * var) - log_scale - math.log(
+                math.sqrt(2. * math.pi)) - np.log(value)
 
     def probs(self, value):
         var = self.scale * self.scale
-        return np.exp(-1. * ((np.log(value) - self.loc) * (np.log(value) - self.loc)) /
-                      (2. * var)) / (math.sqrt(2 * math.pi) * self.scale * value)
+        return np.exp(
+            -1. * ((np.log(value) - self.loc) * (np.log(value) - self.loc)) /
+            (2. * var)) / (math.sqrt(2 * math.pi) * self.scale * value)
 
     def entropy(self):
         return 0.5 + self.loc + 0.5 * np.log(
@@ -74,18 +74,15 @@ class LogNormalNumpy(DistributionNumpy):
 
 
 @place(config.DEVICES)
-@parameterize_cls(
-    (TEST_CASE_NAME, 'loc', 'scale'), [
-        ('float', xrand(), xrand()),
-        ('one-dim', xrand((3, )), xrand((3, ))),
-        ('multi-dim', xrand((5, 5)), xrand((5, 5)))
-    ])
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
+                  [('float', xrand(), xrand()),
+                   ('one-dim', xrand((3, )), xrand((3, ))),
+                   ('multi-dim', xrand((5, 5)), xrand((5, 5)))])
 class LogNormalTest(unittest.TestCase):
 
     def setUp(self):
-        self._paddle_lognormal = LogNormal(
-            loc=paddle.to_tensor(self.loc),
-            scale=paddle.to_tensor(self.scale))
+        self._paddle_lognormal = LogNormal(loc=paddle.to_tensor(self.loc),
+                                           scale=paddle.to_tensor(self.scale))
         self._np_lognormal = LogNormalNumpy(self.loc, self.scale)
 
     def test_mean(self):
@@ -142,21 +139,17 @@ class LogNormalTest(unittest.TestCase):
 
 
 @place(config.DEVICES)
-@parameterize_cls(
-    (TEST_CASE_NAME, 'loc', 'scale'), [
-        ('sample1', xrand((2, )), xrand((2, ))),
-        ('sample2', xrand((5, )), xrand((5, )))
-    ])
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample1', xrand(
+    (2, )), xrand((2, ))), ('sample2', xrand((5, )), xrand((5, )))])
 class LogNormalTestSample(unittest.TestCase):
+
     def test_sample(self):
-        self._paddle_lognormal = LogNormal(
-            loc=self.loc,
-            scale=self.scale)
+        self._paddle_lognormal = LogNormal(loc=self.loc, scale=self.scale)
         shape = [8000]
         samples = self._paddle_lognormal.sample(shape)
         for i in range(len(self.scale)):
-            self.assertTrue(self._kstest(
-                self.loc[i], self.scale[i], samples[:, i]))
+            self.assertTrue(
+                self._kstest(self.loc[i], self.scale[i], samples[:, i]))
 
     def _kstest(self, loc, scale, samples):
         # Uses the Kolmogorov-Smirnov test for goodness of fit.
@@ -168,19 +161,14 @@ class LogNormalTestSample(unittest.TestCase):
 
 @place(config.DEVICES)
 @parameterize_cls(
-    (TEST_CASE_NAME, 'loc1', 'scale1',
-     'loc2', 'scale2'), [
-        ('one-dim', xrand((2, )), xrand((2, )),
-         xrand((2, )), xrand((2, ))),
-        ('multi-dim', xrand((2, 2)), xrand((2, 2)),
-         xrand((2, 2)), xrand((2, 2)))
-    ])
+    (TEST_CASE_NAME, 'loc1', 'scale1', 'loc2', 'scale2'),
+    [('one-dim', xrand((2, )), xrand((2, )), xrand((2, )), xrand((2, ))),
+     ('multi-dim', xrand((2, 2)), xrand((2, 2)), xrand((2, 2)), xrand((2, 2)))])
 class TestLognormalKL(unittest.TestCase):
 
     def setUp(self):
-        self._paddle_lognormal = LogNormal(
-            loc=paddle.to_tensor(self.loc1),
-            scale=paddle.to_tensor(self.scale1))
+        self._paddle_lognormal = LogNormal(loc=paddle.to_tensor(self.loc1),
+                                           scale=paddle.to_tensor(self.scale1))
         self._paddle_lognormal_other = LogNormal(
             loc=paddle.to_tensor(self.loc2),
             scale=paddle.to_tensor(self.scale2))
@@ -189,11 +177,10 @@ class TestLognormalKL(unittest.TestCase):
         kl1 = kl_divergence(self._paddle_lognormal,
                             self._paddle_lognormal_other)
         kl2 = self._kl(self._paddle_lognormal, self._paddle_lognormal_other)
-        np.testing.assert_allclose(
-            kl1,
-            kl2,
-            rtol=config.RTOL.get(str(self.scale1.dtype)),
-            atol=config.ATOL.get(str(self.scale1.dtype)))
+        np.testing.assert_allclose(kl1,
+                                   kl2,
+                                   rtol=config.RTOL.get(str(self.scale1.dtype)),
+                                   atol=config.ATOL.get(str(self.scale1.dtype)))
 
     def _kl(self, dist1, dist2):
         loc1 = np.array(dist1.loc)

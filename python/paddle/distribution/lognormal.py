@@ -162,5 +162,3 @@ class LogNormal(TransformedDistribution):
 
         """
         return self.base_dist.kl_divergence(other.base_dist)
-
-# print(dist.prob(value_tensor))
