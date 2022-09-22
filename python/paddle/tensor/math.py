@@ -1501,9 +1501,6 @@ def add_n(inputs, name=None):
     if in_dygraph_mode():
         if isinstance(inputs, Variable):
             inputs = [inputs]
-        for x in inputs:
-            if not x.is_dense():
-                return _legacy_C_ops.sum(inputs, 'use_mkldnn', False)
         return _C_ops.add_n(inputs)
     if _in_legacy_dygraph():
         if isinstance(inputs, Variable):
@@ -4122,9 +4119,8 @@ def lerp_(x, y, weight, name=None):
 
 def erfinv(x, name=None):
     r"""
-    The inverse error function of x.
+    The inverse error function of x. Please refer to :ref:`api_paddle_erf`
 
-    Equation:
         .. math::
 
             erfinv(erf(x)) = x.
@@ -4237,7 +4233,6 @@ def deg2rad(x, name=None):
     r"""
     Convert each of the elements of input x from degrees to angles in radians.
 
-    Equation:
         .. math::
 
             deg2rad(x)=\pi * x / 180
@@ -4253,7 +4248,6 @@ def deg2rad(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
             result1 = paddle.deg2rad(x1)
@@ -4679,18 +4673,18 @@ def angle(x, name=None):
     return out
 
 def heaviside(x, y, name=None):
-    """
+    r"""
     Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
 
     .. math::
         heaviside(x, y)=
             \left\{
-                \\begin{array}{lcl}
-                0,& &\\text{if} \ x < 0, \\\\
-                y,& &\\text{if} \ x = 0, \\\\
-                1,& &\\text{if} \ x > 0.
+                \begin{array}{lcl}
+                0,& &\text{if} \ x < 0, \\
+                y,& &\text{if} \ x = 0, \\
+                1,& &\text{if} \ x > 0.
                 \end{array}
-            \\right.
+            \right.
 
     Note:
         ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
@@ -4716,7 +4710,7 @@ def heaviside(x, y, name=None):
             paddle.heaviside(x, y)
             #    [[0.        , 0.20000000, 1.        ],
             #     [0.        , 1.        , 0.30000001]]
-     """
+    """
     op_type = 'elementwise_heaviside'
     axis = -1
     act = None

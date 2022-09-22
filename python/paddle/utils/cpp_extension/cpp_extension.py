@@ -293,7 +293,7 @@ def CUDAExtension(sources, *args, **kwargs):
         **kwargs(dict[option], optional): Specify other arguments same as ``setuptools.Extension`` .
 
     Returns:
-        setuptools.Extension: An instance of setuptools.Extension
+        setuptools.Extension: An instance of setuptools.Extension.
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
@@ -440,7 +440,7 @@ class BuildExtension(build_ext, object):
 
                 # NOTE(Aurelius84): Since Paddle 2.0, we require gcc version > 5.x,
                 # so we add this flag to ensure the symbol names from user compiled
-                # shared library have same ABI suffix with core_(no)avx.so.
+                # shared library have same ABI suffix with libpaddle.so.
                 # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
                 add_compile_flag(cflags, ['-D_GLIBCXX_USE_CXX11_ABI=1'])
                 # Append this macor only when jointly compiling .cc with .cu

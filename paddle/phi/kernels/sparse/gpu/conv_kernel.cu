@@ -148,7 +148,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
   DenseTensor h_counter, h_offsets;
-  h_counter.Resize({kernel_size + 1});
+  h_counter.Resize({kernel_size});
   h_offsets.Resize({kernel_size + 1});
   int* h_counter_ptr = dev_ctx.template HostAlloc<int>(&h_counter);
   int* h_offsets_ptr = dev_ctx.template HostAlloc<int>(&h_offsets);
@@ -156,7 +156,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
-  DenseTensor counter_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size + 1});
+  DenseTensor counter_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
   DenseTensor offsets_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
   DenseTensor out_index = phi::Empty<int>(dev_ctx, {1});
   DenseTensor unique_value = phi::Empty<int>(dev_ctx, {1});
@@ -207,6 +207,26 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   T* out_features_ptr = out_features.data<T>();
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
+
+  if (subm) {
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    unique_value.ResizeAndAllocate(
+        {static_cast<int>(out->nnz() * kernel_size)});
+    out_index.ResizeAndAllocate({static_cast<int>(rulebook_len)});
+    int* out_index_ptr = out_index.data<int>();
+    int* unique_value_ptr = unique_value.data<int>();
+    phi::backends::gpu::GpuMemsetAsync(
+        out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
+    GroupIndexs<<<config.block_per_grid,
+                  config.thread_per_block,
+                  0,
+                  dev_ctx.stream()>>>(rulebook_len,
+                                      kernel_size,
+                                      rulebook_ptr + rulebook_len,
+                                      out_index_ptr,
+                                      unique_value_ptr);
+  }
 
   const T* kernel_ptr = kernel.data<T>();
 
@@ -354,7 +374,6 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                    unique_value.data<int>(),
                                    out->nnz(),
                                    kernel_size,
-                                   h_counter_ptr[kernel_size],
                                    out_channels,
                                    1,
                                    out_values_ptr);

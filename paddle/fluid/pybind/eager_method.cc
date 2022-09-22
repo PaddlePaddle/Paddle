@@ -47,7 +47,9 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -440,6 +442,24 @@ static PyObject* tensor_method_copy_(TensorObject* self,
           << self->tensor.name();
   RETURN_PY_NONE
 
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_clone(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+
+  PADDLE_ENFORCE_EQ(
+      self->tensor.initialized(),
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "We can only support initialized tensor in clone, however we got "
+          "uninitialized tensor %s, please check your code.",
+          self->tensor.name()));
+
+  auto out = assign_ad_func(self->tensor);
+  return ToPyObject(out);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1171,6 +1191,17 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // Release gil and do tracing
       py::gil_scoped_release release;
       // use inplace set_value_ operator
+      if (value_tensor.initialized() &&
+          (self->tensor.dtype() != value_tensor.dtype())) {
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            tmps = {{self->tensor}, {value_tensor}};
+        auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
+        self->tensor = egr::EagerAmpAutoCast(
+            self->tensor.name(), self->tensor, amp_dtype, "set_value");
+        value_tensor = egr::EagerAmpAutoCast(
+            value_tensor.name(), value_tensor, amp_dtype, "set_value");
+      }
       self->tensor = set_value__dygraph_function(
           self->tensor, value_tensor, {}, {}, {}, attrs);
     }
@@ -1839,6 +1870,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"copy_",
      (PyCFunction)(void (*)(void))tensor_method_copy_,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"clone",
+     (PyCFunction)(void (*)(void))tensor_method_clone,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"reconstruct_from_",
