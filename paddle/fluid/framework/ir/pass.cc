@@ -80,7 +80,7 @@ Graph *Pass::Apply(Graph *graph) const {
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
 
-  bool is_pass_support_subgraph =
+  bool is_pass_support_subgraph = \
       std::find(support_subgraph_passes.begin(),
                 support_subgraph_passes.end(),
                 Type()) != support_subgraph_passes.end();
