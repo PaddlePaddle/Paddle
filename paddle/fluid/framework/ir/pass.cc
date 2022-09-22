@@ -73,7 +73,10 @@ Graph *Pass::Apply(Graph *graph) const {
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
 
-  if(graph->IsMainGraph() and "graph_viz_pass"!=Type() and "graph_to_program_pass"!=Type()) {
+  // NOTE: constant_folding_pass cannot read variable in subgraph
+  if(graph->IsMainGraph() and "graph_viz_pass"!= Type() \
+     and "graph_to_program_pass"!=Type() \
+     and "constant_folding_pass" != Type()) {
     for(size_t i=1; i<graph->SubGraphsSize(); i++) {
       auto* sub_graph = graph->GetSubGraph(i);
       if(!sub_graph->Has(framework::ir::kParamScopeAttr)) {
