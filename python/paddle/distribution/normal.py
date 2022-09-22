@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import math
-
 import numpy as np
+
 from paddle.distribution import distribution
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,

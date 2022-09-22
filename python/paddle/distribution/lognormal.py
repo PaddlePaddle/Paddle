@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-
 from paddle.distribution import TransformedDistribution, ExpTransform
 from paddle.distribution.normal import Normal
 

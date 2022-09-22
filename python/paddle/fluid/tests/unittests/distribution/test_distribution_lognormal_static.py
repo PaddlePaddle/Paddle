@@ -17,7 +17,6 @@ import paddle
 import numpy as np
 import scipy.stats
 import config
-
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
 from paddle.distribution import LogNormal
