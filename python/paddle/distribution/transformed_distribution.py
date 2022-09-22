@@ -20,8 +20,8 @@ from paddle.distribution import independent
 
 
 class TransformedDistribution(distribution.Distribution):
-    r"""    
-    Applies a sequence of Transforms to a base distribution. 
+    r"""
+    Applies a sequence of Transforms to a base distribution.
 
     Args:
         base (Distribution): The base distribution.
@@ -31,11 +31,11 @@ class TransformedDistribution(distribution.Distribution):
 
         .. code-block:: python
 
-            import paddle 
+            import paddle
             from paddle.distribution import transformed_distribution
 
             d = transformed_distribution.TransformedDistribution(
-                paddle.distribution.Normal(0., 1.), 
+                paddle.distribution.Normal(0., 1.),
                 [paddle.distribution.AffineTransform(paddle.to_tensor(1.), paddle.to_tensor(2.))]
             )
 
@@ -58,8 +58,7 @@ class TransformedDistribution(distribution.Distribution):
                 f"Expected type of 'transforms' is Sequence[Transform] or Chain, but got {type(transforms)}."
             )
         if not all(isinstance(t, transform.Transform) for t in transforms):
-            raise TypeError(
-                "All element of transforms must be Transform type.")
+            raise TypeError("All element of transforms must be Transform type.")
 
         chain = transform.ChainTransform(transforms)
         if len(base.batch_shape + base.event_shape) < chain._domain.event_rank:

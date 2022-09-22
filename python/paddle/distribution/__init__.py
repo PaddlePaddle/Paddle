@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from paddle.distribution import transform
+
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
