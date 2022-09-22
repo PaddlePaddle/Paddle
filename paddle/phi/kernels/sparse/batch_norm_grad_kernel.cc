@@ -79,7 +79,16 @@ PD_REGISTER_KERNEL(batch_norm_coo_grad,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(batch_norm_coo_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::BatchNormCooGradKernel,
+                   float,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+#else
 PD_REGISTER_KERNEL(batch_norm_coo_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -88,5 +97,10 @@ PD_REGISTER_KERNEL(batch_norm_coo_grad,
                    double,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
+  }
 }
 #endif
