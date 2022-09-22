@@ -19,7 +19,7 @@ import scipy.stats
 import config
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
-from paddle.distribution import LogNormal
+from paddle.distribution.lognormal import LogNormal
 from test_distribution import DistributionNumpy
 from test_distribution_lognormal import LogNormalNumpy
 from paddle.distribution.kl import kl_divergence
