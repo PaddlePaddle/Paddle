@@ -801,7 +801,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("disable_mkldnn_fc_passes",
            &AnalysisConfig::DisableMkldnnFcPasses,
            R"DOC(
-           Disable Mkldnn FC 
+           Disable Mkldnn FC
            Args:
                 None.
            Returns:
@@ -809,7 +809,7 @@ void BindAnalysisConfig(py::module *m) {
            Examples:
                .. code-block:: python
                 from paddle.fluid.core import AnalysisConfig
-                
+
                 config = AnalysisConfig("")
                 config.enable_mkldnn()
                 config.disable_mkldnn_fc_passes()
