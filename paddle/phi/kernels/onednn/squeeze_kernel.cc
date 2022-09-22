@@ -16,14 +16,18 @@
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/unsqueeze.h"
 
+namespace phi {
 template <typename T, typename Context>
 void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& axes,
                    DenseTensor* out) {
+  VLOG(0) << "NOWY RESHAPE\n";
   phi::DDim x_dims = x.dims();
-  phi::DDim out_dims = GetOutputShape(axes, x_dims, true);
+  std::vector<int32_t> tmp(axes.GetData().begin(), axes.GetData().end());
+  phi::DDim out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, true);
 
   auto x_vec_dims = phi::vectorize(x_dims);
   phi::funcs::ReorderOneDNNHandler reorder_handler(
@@ -33,11 +37,13 @@ void SqueezeKernel(const Context& dev_ctx,
       dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), const_cast<void*>(x.data()));
+      x.mem_desc(), funcs::to_void_cast(x.data<T>()));
   out->Resize(x_dims);  // to match x numel, format is changed later
   // reorder is done into a plain tag to allow usage with blocked formats
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-      out, getPlainFormatTag(x), dev_ctx.GetPlace());
+      out,
+      phi::funcs::GetPlainOneDNNFormat(x.dims().size()),
+      dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
 
@@ -60,15 +66,17 @@ void SqueezeWithXShapeKernel(const Context& dev_ctx,
   SqueezeKernel<T, Context>(dev_ctx, x, axes, out);
 }
 
+}  // namespace phi
+
 PD_REGISTER_KERNEL(squeeze,
-                   CPU,
+                   OneDNN,
                    ALL_LAYOUT,
                    phi::SqueezeKernel,
                    float,
-                   phi::dtype::bfloat16, ) {}
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(squeeze_with_xshape,
-                   CPU,
+                   OneDNN,
                    ALL_LAYOUT,
                    phi::SqueezeWithXShapeKernel,
                    float,
