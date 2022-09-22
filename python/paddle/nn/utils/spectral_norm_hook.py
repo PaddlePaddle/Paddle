@@ -141,7 +141,7 @@ def spectral_norm(
     layer, name='weight', n_power_iterations=1, eps=1e-12, dim=None
 ):
     r"""
-    This spectral_norm layer applies spectral normalization to a parameter according to the
+    Applies spectral normalization to a parameter according to the
     following Calculation:
 
     Step 1:
@@ -179,7 +179,7 @@ def spectral_norm(
         dim(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: None.
 
     Returns:
-        The original layer with the spectral norm hook
+        Layer, the original layer with the spectral norm hook.
 
     Examples:
        .. code-block:: python

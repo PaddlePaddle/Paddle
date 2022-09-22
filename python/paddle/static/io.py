@@ -143,11 +143,6 @@ def normalize_program(program, feed_vars, fetch_vars):
     Returns:
         Program: Normalized/Optimized program.
 
-    Raises:
-        TypeError: If `program` is not a Program, an exception is thrown.
-        TypeError: If `feed_vars` is not a Variable or a list of Variable, an exception is thrown.
-        TypeError: If `fetch_vars` is not a Variable or a list of Variable, an exception is thrown.
-
     Examples:
         .. code-block:: python
 
@@ -285,10 +280,6 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
     Returns:
         bytes: serialized program.
 
-    Raises:
-        ValueError: If `feed_vars` is not a Variable or a list of Variable, an exception is thrown.
-        ValueError: If `fetch_vars` is not a Variable or a list of Variable, an exception is thrown.
-
     Examples:
         .. code-block:: python
 
@@ -347,10 +338,6 @@ def serialize_persistables(feed_vars, fetch_vars, executor, **kwargs):
 
     Returns:
         bytes: serialized program.
-
-    Raises:
-        ValueError: If `feed_vars` is not a Variable or a list of Variable, an exception is thrown.
-        ValueError: If `fetch_vars` is not a Variable or a list of Variable, an exception is thrown.
 
     Examples:
         .. code-block:: python
@@ -496,10 +483,6 @@ def save_inference_model(
 
     Returns:
         None
-
-    Raises:
-        ValueError: If `feed_vars` is not a Variable or a list of Variable, an exception is thrown.
-        ValueError: If `fetch_vars` is not a Variable or a list of Variable, an exception is thrown.
 
     Examples:
         .. code-block:: python
@@ -782,9 +765,6 @@ def load_inference_model(path_prefix, executor, **kwargs):
         that need to feed data in the inference program. The `fetch_targets` is a list of
         ``Variable`` (refer to :ref:`api_guide_Program_en`). It contains variables from which
         we can get inference results.
-
-    Raises:
-        ValueError: If `path_prefix.pdmodel` or `path_prefix.pdiparams`  doesn't exist.
 
     Examples:
         .. code-block:: python

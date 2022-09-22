@@ -1622,7 +1622,6 @@ class MultiplicativeDecay(LRScheduler):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
@@ -1937,7 +1936,7 @@ class CyclicLR(LRScheduler):
         verbose: (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-    ``CyclicLR`` instance to schedule learning rate.
+        ``CyclicLR`` instance to schedule learning rate.
 
     Examples:
         .. code-block:: python
