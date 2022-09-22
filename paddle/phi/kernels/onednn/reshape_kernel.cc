@@ -14,8 +14,6 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
-
 namespace phi {
 
 phi::DDim ValidateShape(const std::vector<int64_t>& shape,
@@ -117,30 +115,6 @@ phi::DDim ValidateShape(const std::vector<int64_t>& shape,
   return phi::make_ddim(output_shape);
 }
 
-dnnl::memory::format_tag getPlainFormatTag(const DenseTensor& tensor) {
-  auto tensor_dims_size = tensor.dims().size();
-  PADDLE_ENFORCE_EQ(
-      tensor_dims_size <= 6 && tensor_dims_size >= 1,
-      true,
-      phi::errors::InvalidArgument(
-          "Dims for squeeze_grad oneDNN op must be in range <1, 6>"));
-
-  switch (tensor_dims_size) {
-    case 1:
-      return dnnl::memory::format_tag::a;
-    case 2:
-      return dnnl::memory::format_tag::ab;
-    case 3:
-      return dnnl::memory::format_tag::abc;
-    case 4:
-      return dnnl::memory::format_tag::abcd;
-    case 5:
-      return dnnl::memory::format_tag::abcde;
-    default:
-      return dnnl::memory::format_tag::abcdef;
-  }
-}
-
 template <typename T, typename Context>
 void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
@@ -157,11 +131,13 @@ void ReshapeKernel(const Context& dev_ctx,
       dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), const_cast<void*>(x.data()));
+      x.mem_desc(), funcs::to_void_cast<T>(x.data<T>()));
   out->Resize(x_dims);  // to match x numel, format is changed later
   // reorder is done into a plain tag to allow usage with blocked formats
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-      out, getPlainFormatTag(x), dev_ctx.GetPlace());
+      out,
+      phi::funcs::GetPlainOneDNNFormat(x.dims().size()),
+      dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
 
