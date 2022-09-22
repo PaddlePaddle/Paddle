@@ -978,7 +978,5 @@ class TestIstftException(unittest.TestCase):
                                 self.length, self.return_complex),
 
 
-# yapf: enable
-
 if __name__ == '__main__':
     unittest.main()
