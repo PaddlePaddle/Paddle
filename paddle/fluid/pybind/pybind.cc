@@ -584,7 +584,7 @@ static int GetNCCLVersion() {
 }
 #endif
 
-PYBIND11_MODULE(libpaddle, m) {
+PYBIND11_MODULE(paddle, m) {
   BindImperative(&m);
   BindEager(&m);
   BindEagerStringTensor(&m);

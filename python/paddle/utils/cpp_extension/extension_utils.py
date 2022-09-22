@@ -399,7 +399,7 @@ def _get_core_name():
     """
     import paddle
     ext_name = '.pyd' if IS_WINDOWS else '.so'
-    return 'libpaddle' + ext_name
+    return 'paddle' + ext_name
 
 
 def _get_lib_core_path():
@@ -416,13 +416,13 @@ def _get_dll_core_path():
     Return real path of libcore_(no)avx.dylib on Windows.
     """
     raw_core_name = _get_core_name()
-    dll_core_name = "libpaddle.dll"
+    dll_core_name = "paddle.dll"
     return os.path.join(_get_fluid_path(), dll_core_name)
 
 
 def _reset_so_rpath(so_path):
     """
-    NOTE(Aurelius84): Runtime path of libpaddle.so is modified into `@loader_path/../libs`
+    NOTE(Aurelius84): Runtime path of paddle.so is modified into `@loader_path/../libs`
     in setup.py.in. While loading custom op, `@loader_path` is the dirname of custom op
     instead of `paddle/fluid`. So we modify `@loader_path` from custom dylib into `@rpath`
     to ensure dynamic loader find it correctly.
@@ -552,7 +552,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
 def create_sym_link_if_not_exist():
     """
-    Create soft symbol link of `libpaddle.so`
+    Create soft symbol link of `paddle.so`
     """
     assert OS_NAME.startswith('darwin') or IS_WINDOWS
 
@@ -571,7 +571,7 @@ def create_sym_link_if_not_exist():
                     .format(raw_core_name, new_dll_core_path, core_path,
                             raw_core_name))
                 run_cmd('mklink /H {} {}'.format(new_dll_core_path, core_path))
-        # libpaddle with lib suffix
+        # paddle with lib suffix
         assert os.path.exists(new_dll_core_path)
         return raw_core_name[:-4] + ".lib"
 
@@ -587,7 +587,7 @@ def create_sym_link_if_not_exist():
                     "Failed to create soft symbol link for {}.\n Please execute the following command manually: `ln -s {} {}`"
                     .format(raw_core_name, core_path, new_lib_core_path))
 
-        # libpaddle without suffix
+        # paddle without suffix
         return raw_core_name[:-3]
 
 
@@ -776,7 +776,7 @@ def find_paddle_libraries(use_cuda=False):
             cuda_lib_dir = find_cuda_libraries()
             paddle_lib_dirs.extend(cuda_lib_dir)
 
-    # add `paddle/fluid` to search `libpaddle.so`
+    # add `paddle/fluid` to search `paddle.so`
     paddle_lib_dirs.append(_get_fluid_path())
 
     return paddle_lib_dirs

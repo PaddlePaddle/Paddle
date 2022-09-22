@@ -62,7 +62,7 @@ paddle_custom_kernel_library_dir = list(
     map(lambda path: os.path.join(path, 'paddle', 'fluid'), site_packages_path))
 
 # libs
-libs = [':libpaddle.so']
+libs = [':paddle.so']
 
 custom_kernel_dot_module = Extension(
     'custom_kernel_dot',

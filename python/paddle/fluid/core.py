@@ -26,7 +26,7 @@ if os.name == 'nt':
 
 has_libpaddle_so = False
 current_path = os.path.abspath(os.path.dirname(__file__))
-if os.path.exists(current_path + os.sep + 'libpaddle.' + core_suffix):
+if os.path.exists(current_path + os.sep + 'paddle.' + core_suffix):
     has_libpaddle_so = True
 
 try:
@@ -194,7 +194,7 @@ def load_dso(dso_absolute_path):
 
 def pre_load(dso_name):
     if has_libpaddle_so:
-        core_so = current_path + os.sep + 'libpaddle.' + core_suffix
+        core_so = current_path + os.sep + 'paddle.' + core_suffix
     else:
         core_so = None
     dso_path = get_dso_path(core_so, dso_name)
@@ -232,7 +232,7 @@ def less_than_ver(a, b):
 # (1) the number of dynamic shared librarys (DSO) loaded > 14,
 # (2) after that, load a dynamic shared library (DSO) with static TLS.
 # For paddle, the problem is that 'libgomp' is a DSO with static TLS, and it is loaded after 14 DSOs.
-# So, here is a tricky way to solve the problem by pre load 'libgomp' before 'libpaddle.so'.
+# So, here is a tricky way to solve the problem by pre load 'libgomp' before 'paddle.so'.
 # The final solution is to upgrade glibc to > 2.22 on the target system.
 if platform.system().lower() == 'linux':
     libc_type, libc_ver = get_libc_ver()
@@ -240,12 +240,12 @@ if platform.system().lower() == 'linux':
         try:
             pre_load('libgomp')
         except Exception as e:
-            # NOTE(zhiqiu): do not abort if failed, since it may success when import libpaddle.so
+            # NOTE(zhiqiu): do not abort if failed, since it may success when import paddle.so
             sys.stderr.write('Error: Can not preload libgomp.so')
 
 try:
-    from . import libpaddle
-    if avx_supported() and not libpaddle.is_compiled_with_avx():
+    from . import paddle
+    if avx_supported() and not paddle.is_compiled_with_avx():
         sys.stderr.write(
             "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
             "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
@@ -253,48 +253,48 @@ try:
             "to get better performance.\n")
 
     # assign tensor alias
-    libpaddle.LoDTensor = libpaddle.Tensor
+    paddle.LoDTensor = paddle.Tensor
 
-    from .libpaddle import *
-    from .libpaddle import __doc__, __file__, __name__, __package__
-    from .libpaddle import __unittest_throw_exception__
-    from .libpaddle import _append_python_callable_object_and_return_id
-    from .libpaddle import _cleanup, _Scope
-    from .libpaddle import _get_use_default_grad_op_desc_maker_ops
-    from .libpaddle import _get_all_register_op_kernels
-    from .libpaddle import _is_program_version_supported
-    from .libpaddle import _set_eager_deletion_mode
-    from .libpaddle import _get_eager_deletion_vars
-    from .libpaddle import _set_fuse_parameter_group_size
-    from .libpaddle import _set_fuse_parameter_memory_size
-    from .libpaddle import _is_dygraph_debug_enabled
-    from .libpaddle import _dygraph_debug_level
-    from .libpaddle import _switch_tracer
-    from .libpaddle import _set_paddle_lib_path
-    from .libpaddle import _create_loaded_parameter
-    from .libpaddle import _cuda_synchronize
-    from .libpaddle import _is_compiled_with_heterps
-    from .libpaddle import _promote_types_if_complex_exists
-    from .libpaddle import _set_cached_executor_build_strategy
-    from .libpaddle import _device_synchronize
-    from .libpaddle import _get_current_stream
-    from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
-    from .libpaddle import _set_current_stream
+    from .paddle import *
+    from .paddle import __doc__, __file__, __name__, __package__
+    from .paddle import __unittest_throw_exception__
+    from .paddle import _append_python_callable_object_and_return_id
+    from .paddle import _cleanup, _Scope
+    from .paddle import _get_use_default_grad_op_desc_maker_ops
+    from .paddle import _get_all_register_op_kernels
+    from .paddle import _is_program_version_supported
+    from .paddle import _set_eager_deletion_mode
+    from .paddle import _get_eager_deletion_vars
+    from .paddle import _set_fuse_parameter_group_size
+    from .paddle import _set_fuse_parameter_memory_size
+    from .paddle import _is_dygraph_debug_enabled
+    from .paddle import _dygraph_debug_level
+    from .paddle import _switch_tracer
+    from .paddle import _set_paddle_lib_path
+    from .paddle import _create_loaded_parameter
+    from .paddle import _cuda_synchronize
+    from .paddle import _is_compiled_with_heterps
+    from .paddle import _promote_types_if_complex_exists
+    from .paddle import _set_cached_executor_build_strategy
+    from .paddle import _device_synchronize
+    from .paddle import _get_current_stream
+    from .paddle import _Profiler, _ProfilerResult, _RecordEvent
+    from .paddle import _set_current_stream
     if sys.platform != 'win32':
-        from .libpaddle import _set_process_pids
-        from .libpaddle import _erase_process_pids
-        from .libpaddle import _set_process_signal_handler
-        from .libpaddle import _throw_error_if_process_failed
-        from .libpaddle import _convert_to_tensor_list
-        from .libpaddle import _array_to_share_memory_tensor
-        from .libpaddle import _cleanup_mmap_fds
-        from .libpaddle import _remove_tensor_list_mmap_fds
+        from .paddle import _set_process_pids
+        from .paddle import _erase_process_pids
+        from .paddle import _set_process_signal_handler
+        from .paddle import _throw_error_if_process_failed
+        from .paddle import _convert_to_tensor_list
+        from .paddle import _array_to_share_memory_tensor
+        from .paddle import _cleanup_mmap_fds
+        from .paddle import _remove_tensor_list_mmap_fds
 except Exception as e:
     if has_libpaddle_so:
         sys.stderr.write(
             'Error: Can not import paddle core while this file exists: ' +
-            current_path + os.sep + 'libpaddle.' + core_suffix + '\n')
-    if not avx_supported() and libpaddle.is_compiled_with_avx():
+            current_path + os.sep + 'paddle.' + core_suffix + '\n')
+    if not avx_supported() and paddle.is_compiled_with_avx():
         sys.stderr.write(
             "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "
             "you should reinstall paddlepaddle with no-avx core.\n")
