@@ -213,8 +213,7 @@ class Engine:
             assert isinstance(user_feeds, dict), \
                 "user_feeds must be a dict, but receive {}".format(type(user_feeds).__name__)
         feeds = {}
-        for name, var in self._feed_vars[mode].items():
-            feeds[name] = var
+        # TODO: add inputs and labels feed dict
         for name, var in get_collection(CollectionNames.FEEDS):
             assert name is not None, "No name defined for feed var"
             feeds[name] = var
@@ -541,19 +540,27 @@ class Engine:
         self.inputs_spec = self._validate_spec(self.inputs_spec)
         self.labels_spec = self._validate_spec(self.labels_spec)
 
-    # def __call__(self, inputs, labels, batch_size=1, mode="train", feeds=None, fetches=None):
-    #     self._infer_sample_spec(inputs, labels, batch_size)
-    #     if not self._mode_init_states[mode]:
-    #         self._prepare_program(mode)
-    #     feed_dict = self._prepare_feed(feeds, mode)
-    #     fetch_list, fetch_new_names, fetch_sections = self._prepare_fetch(fetches, mode)
-    #     outs = self._executor.run(
-    #         self.main_program,
-    #         feed=feed_dict,
-    #         fetch_list=fetch_list,
-    #         use_program_cache=self._strategy.use_cache,
-    #         return_numpy=self._strategy.return_numpy)
-    #     return outs
+    def __call__(self,
+                 inputs=None,
+                 labels=None,
+                 feeds=None,
+                 fetches=None,
+                 mode="train"):
+        feed_dict = self._prepare_feed(feeds, mode)
+        fetch_list, fetch_new_names, fetch_sections = self._prepare_fetch(
+            fetches, mode)
+        try:
+            outs = self._executor.run(
+                self.main_program,
+                feed=feed_dict,
+                fetch_list=fetch_list,
+                use_program_cache=self._strategy.use_cache,
+                return_numpy=self._strategy.return_numpy)
+        except core.EOFException:
+            pass
+        self._print_log(outs, self.mode, None, None, None, fetch_new_names,
+                        fetch_sections)
+        return outs
 
     # TODO: need a better to print the log
     def _print_log(self,
@@ -884,6 +891,27 @@ class Engine:
         self.mode = 'train'
         self._infer_sample_spec(tune_data, batch_size, tune_sample_split)
         self._optimization_tuning(self.mode, tune_data, batch_size)
+
+    def dataloader(self,
+                   dataset,
+                   sample_split=1,
+                   batch_size=1,
+                   epochs=1,
+                   steps_per_epoch=None,
+                   collate_fn=None,
+                   mode="train",
+                   from_generator=True):
+        assert from_generator, "Only support from_generator for now"
+        self.mode = mode
+        inputs, labels = self._split_sample_item(dataset, sample_split)
+        self._infer_sample_spec(inputs, labels, batch_size)
+        if not self._mode_init_states[self.mode]:
+            self._prepare_program(self.mode)
+        else:
+            self._switch_mode("train")
+        dataloader = self._prepare_dataloader(dataset, batch_size, epochs,
+                                              steps_per_epoch, collate_fn)
+        return dataloader
 
     def _prepare_dataloader(self,
                             dataset,
