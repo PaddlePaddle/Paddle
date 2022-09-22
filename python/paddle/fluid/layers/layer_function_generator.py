@@ -243,7 +243,8 @@ def generate_layer_fn(op_type):
         return helper.append_activation(out_var)
 
     func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(op_proto)
+    func.__doc__ = _generate_doc_string_(op_proto,
+                                         skip_attrs_set={"with_quant_attr"})
     return func
 
 
@@ -290,7 +291,8 @@ def generate_activation_fn(op_type):
         op_proto,
         additional_args_lines=[
             "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
-        ])
+        ],
+        skip_attrs_set={"with_quant_attr"})
     return func
 
 
@@ -327,7 +329,8 @@ def autodoc(comment=""):
 
     def __impl__(func):
         func.__doc__ = _generate_doc_string_(
-            OpProtoHolder.instance().get_op_proto(func.__name__)) + comment
+            OpProtoHolder.instance().get_op_proto(func.__name__),
+            skip_attrs_set={"with_quant_attr"}) + comment
         return func
 
     return __impl__

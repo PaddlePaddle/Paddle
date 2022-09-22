@@ -38,20 +38,20 @@ static constexpr bool CanInplaceAct() {
          GradFunctor::FwdDeps() == ActBwdOpFwdDeps::kNoDeps;
 }
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)           \
-  class OP_NAME##OpMaker                                            \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {        \
-   public:                                                          \
-    void Make() override {                                          \
-      AddInput("X",                                                 \
-               "Input of " #OP_NAME                                 \
-               " operator, an N-D Tensor, with data type float32, " \
-               "float64 or float16.");                              \
-      AddOutput("Out",                                              \
-                "Output of " #OP_NAME                               \
-                " operator, a Tensor with shape same as input.");   \
-      AddComment(OP_COMMENT);                                       \
-    }                                                               \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                   \
+  class OP_NAME##OpMaker                                                    \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {                \
+   public:                                                                  \
+    void Make() override {                                                  \
+      AddInput("X",                                                         \
+               "Input of " #OP_NAME                                         \
+               " operator, an N-D Tensor, with data type float32, "         \
+               "float64 or float16.");                                      \
+      AddOutput("Out",                                                      \
+                "Output of " #OP_NAME                                       \
+                " operator, a Tensor with same shape and dtype as input."); \
+      AddComment(OP_COMMENT);                                               \
+    }                                                                       \
   }
 
 template <ActBwdOpFwdDeps kDepValue, typename T>
@@ -255,7 +255,7 @@ $$out = \\lceil x \\rceil$$
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator. Computes floor of x element-wise.
 
-$$out = \\lfloor x \\rfloor$$
+$$out = \left \lfloor x \right \rfloor$$
 
 )DOC";
 
@@ -337,7 +337,7 @@ The OP rounds the values in the input to the nearest integer value.
 UNUSED constexpr char ReciprocalDoc[] = R"DOC(
 Reciprocal Activation Operator.
 
-$$out = \\frac{1}{x}$$
+$$out = \frac{1}{x}$$
 
 )DOC";
 

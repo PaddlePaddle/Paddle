@@ -12770,7 +12770,8 @@ for func in [
         ],
         skip_attrs_set={
             "x_data_format", "y_data_format", "axis", "use_quantizer",
-            "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
+            "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out",
+            "with_quant_attr"
         }) + """\n""" + str(func.__doc__)
 
     doc_list = func.__doc__.splitlines()
@@ -12790,7 +12791,8 @@ for func in []:
         additional_args_lines=[
             "act (basestring|None): Activation applied to the output.",
             "name (basestring|None): Name of the output."
-        ])
+        ],
+        skip_attrs_set={"with_quant_attr"})
     func.__doc__ = func.__doc__ + """
 
 Examples:
