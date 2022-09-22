@@ -713,7 +713,6 @@ class TensorRTEngine {
 
 class TRTEngineManager {
   using PredictorID = int;
-  using ThreadID = std::thread::id;
   using AllocationPtr = phi::Allocator::AllocationPtr;
 
  public:
@@ -799,28 +798,32 @@ class TRTEngineManager {
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
     static auto alignment = getAlignmentSize(place);
-    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << std::this_thread::get_id();
+    ss << "_";
+    ss << stream.id();
+    std::string key = ss.str();
 
     std::lock_guard<std::mutex> lock(mutex_);
-    pids_in_tid_[tid].insert(predictor_id);
-    if (context_memorys_.count(tid) == 0) {
+    pids_in_tid_[key].insert(predictor_id);
+    if (context_memorys_.count(key) == 0) {
       auto context_memory =
           memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
-      context_memorys_[tid] = std::move(context_memory);
+      context_memorys_[key] = std::move(context_memory);
     }
-    return getAlignedMemory(context_memorys_[tid]->ptr(), alignment);
+    return getAlignedMemory(context_memorys_[key]->ptr(), alignment);
   }
 
   void releaseContextMemory(PredictorID predictor_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     for (auto& item : pids_in_tid_) {
-      auto& tid = item.first;
+      auto& key = item.first;
       auto& pids = item.second;
       if (pids.count(predictor_id)) {
         pids.erase(predictor_id);
         if (pids.empty()) {
-          context_memorys_[tid].reset(nullptr);
-          context_memorys_.erase(tid);
+          context_memorys_[key].reset(nullptr);
+          context_memorys_.erase(key);
         }
       }
     }
@@ -838,8 +841,8 @@ class TRTEngineManager {
 
   mutable std::mutex mutex_;
   size_t max_ctx_mem_size_{0};
-  std::unordered_map<ThreadID, std::unordered_set<PredictorID>> pids_in_tid_;
-  std::unordered_map<ThreadID, AllocationPtr> context_memorys_;
+  std::unordered_map<std::string, std::unordered_set<PredictorID>> pids_in_tid_;
+  std::unordered_map<std::string, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
 
