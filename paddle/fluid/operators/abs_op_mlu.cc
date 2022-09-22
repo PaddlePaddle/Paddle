@@ -29,10 +29,19 @@ class AbsMLUKernel : public framework::OpKernel<T> {
 
     output->mutable_data<T>(ctx.GetPlace());
 
-    MLUCnnlTensorDesc input_desc(*input);
-    MLUCnnlTensorDesc output_desc(*output);
+    // MLUCnnlTensorDesc input_desc(*input);
+    // MLUCnnlTensorDesc output_desc(*output);
 
-    MLUCnnl::Abs(ctx,
+    // MLUCnnl::Abs(ctx,
+    //              input_desc.get(),
+    //              GetBasePtr(input),
+    //              output_desc.get(),
+    //              GetBasePtr(output));
+
+    MLUOpTensorDesc input_desc(*input);
+    MLUOpTensorDesc output_desc(*output);
+
+    MLUOp::OpAbs(ctx,
                  input_desc.get(),
                  GetBasePtr(input),
                  output_desc.get(),
