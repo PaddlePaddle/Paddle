@@ -21,7 +21,7 @@ import test_communication_api_base as test_base
 import test_collective_api_base as test_collective_base
 
 
-class StreamAllReduceTestCase():
+class StreamAllgatherTestCase():
 
     def __init__(self):
         self._sync_op = eval(os.getenv("sync_op"))
@@ -60,4 +60,4 @@ class StreamAllReduceTestCase():
 
 
 if __name__ == "__main__":
-    StreamAllReduceTestCase().run_test_case()
+    StreamAllgatherTestCase().run_test_case()

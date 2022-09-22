@@ -31,6 +31,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/distributed_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+// #include "paddle/phi/kernels/split_kernel.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
@@ -88,6 +90,92 @@ using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
 #endif
 
 static std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";  // NOLINT
+
+template <typename DeviceContext, typename T>
+struct SplitDenseTensorImpl {
+  void operator()(const DeviceContext &context,
+                  phi::DenseTensor *in,
+                  std::vector<Tensor> *out) {
+    std::vector<phi::DenseTensor *> outs;
+    std::vector<const phi::DenseTensor *> shape_refer;
+
+    outs.reserve(out->size());
+    shape_refer.reserve(out->size());
+
+    for (auto &tensor : *out) {
+      auto p_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()).get();
+      outs.emplace_back(p_tensor);
+      shape_refer.emplace_back(p_tensor);
+    }
+
+    phi::funcs::SplitFunctor<DeviceContext, T> split_functor_;
+    split_functor_(context, *in, shape_refer, 0, &outs);
+  }
+};
+
+template <typename DeviceContext>
+void SplitDenseTensorWithType(const DeviceContext &context,
+                              phi::DenseTensor *p_dense_contents,
+                              std::vector<Tensor> *p_dense_tensors,
+                              phi::DataType type) {
+  switch (type) {
+    case phi::DataType::FLOAT16:
+      SplitDenseTensorImpl<DeviceContext, platform::float16>()(
+          context, p_dense_contents, p_dense_tensors);
+      break;
+    case phi::DataType::FLOAT32:
+      SplitDenseTensorImpl<DeviceContext, float>()(
+          context, p_dense_contents, p_dense_tensors);
+      break;
+    case phi::DataType::FLOAT64:
+      SplitDenseTensorImpl<DeviceContext, double>()(
+          context, p_dense_contents, p_dense_tensors);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when it splits tensors for "
+          "allgather.",
+          type));
+  }
+}
+
+void SplitDenseTensor(phi::DenseTensor &tensor,          // NOLINT
+                      std::vector<Tensor> &tensor_list,  // NOLINT
+                      const platform::Place &place,
+                      bool use_calc_stream) {
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    // TODO(sunyilun): decide which ctx to use when passing `use_calc_stream`
+    auto *default_ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(place));
+    SplitDenseTensorWithType(
+        *default_ctx, &tensor, &tensor_list, tensor.dtype());
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't split tensor since it's not compiled with NCCL,"
+        "Please recompile or reinstall Paddle with NCCL support."));
+#endif
+  } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto *default_ctx = static_cast<platform::CustomDeviceContext *>(
+        platform::DeviceContextPool::Instance().Get(place));
+    SplitTensorWithType(*default_ctx, &tensor, &tensor_list, tensor.dtype());
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't split tensor since it's not compiled with CUSTOM_DEVICE,"
+        "Please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
+#endif
+  } else if (platform::is_cpu_place(place)) {
+    auto *default_ctx = static_cast<phi::CPUContext *>(
+        platform::DeviceContextPool::Instance().Get(place));
+    SplitDenseTensorWithType(
+        *default_ctx, &tensor, &tensor_list, tensor.dtype());
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Split tensor not supported on place (%s)", place));
+  }
+}
 
 void BindDistributed(py::module *m) {
   py::enum_<distributed::ReduceOp>(*m, "ReduceOp")
@@ -367,18 +455,39 @@ void BindDistributed(py::module *m) {
                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
                 auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
                     in_tensor.impl());
-                std::vector<phi::DenseTensor> in_tensors = {*in_dense};
+                std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
+
+                int nranks = self.GetRank();
+                auto dtype = in_tensor.dtype();
+                const auto &place = in_tensor.place();
 
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
-                std::vector<phi::DenseTensor> out_tensors;
-                for (auto &&out_tensor : out_tensor_list) {
-                  out_tensors.emplace_back(
-                      *std::dynamic_pointer_cast<phi::DenseTensor>(
-                          out_tensor.impl()));
+                out_tensor_list[0] = in_tensor;
+                auto concat_out_tensor = paddle::concat(out_tensor_list, 0);
+                if (out_tensor_list.size() == 0) {
+                  auto concat_out_dims = phi::vectorize(in_tensor.dims());
+                  concat_out_dims[0] *= nranks;
+                  concat_out_tensor =
+                      paddle::empty(concat_out_dims, dtype, place);
                 }
+                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    concat_out_tensor.impl());
+                std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
 
-                return self.AllGather(in_tensors, out_tensors, sync_op);
+                auto task = self.AllGather(in_wrapper, out_wrapper, sync_op);
+
+                std::vector<phi::DenseTensor *> out_dense_list;
+                for (const auto &out_tensor : out_tensor_list) {
+                  auto *p_out_tensor =
+                      std::dynamic_pointer_cast<phi::DenseTensor>(
+                          out_tensor.impl())
+                          .get();
+                  out_dense_list.emplace_back(p_out_tensor);
+                }
+                SplitDenseTensor(out_wrapper[0], out_tensor_list, place, false);
+
+                return task;
               },
               py::arg("in"),
               py::arg("out"),
@@ -529,22 +638,42 @@ void BindDistributed(py::module *m) {
                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
                 auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
                     in_tensor.impl());
-                std::vector<phi::DenseTensor> in_tensors = {*in_dense};
+                std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
+
+                int nranks = self.GetRank();
+                auto dtype = in_tensor.dtype();
+                const auto &place = in_tensor.place();
 
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
-                auto concat_out_tensor =
-                    experimental::concat(out_tensor_list, 0);
-                auto dense_concat_out_tensor =
-                    std::dynamic_pointer_cast<phi::DenseTensor>(
-                        concat_out_tensor.impl());
-                std::vector<phi::DenseTensor> out_tensors = {
-                    *dense_concat_out_tensor};
+                out_tensor_list[0] = in_tensor;
+                auto concat_out_tensor = paddle::concat(out_tensor_list, 0);
+                if (out_tensor_list.size() == 0) {
+                  auto concat_out_dims = phi::vectorize(in_tensor.dims());
+                  concat_out_dims[0] *= nranks;
+                  concat_out_tensor =
+                      paddle::empty(concat_out_dims, dtype, place);
+                }
+                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    concat_out_tensor.impl());
+                std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
 
-                return self.AllGather(in_tensors,
-                                      out_tensors,
-                                      /*sync_op*/ true,
-                                      /*use_calc_stream*/ true);
+                auto task = self.AllGather(in_wrapper,
+                                           out_wrapper,
+                                           /*sync_op*/ true,
+                                           /*use_calc_stream*/ true);
+
+                std::vector<phi::DenseTensor *> out_dense_list;
+                for (const auto &out_tensor : out_tensor_list) {
+                  auto *p_out_tensor =
+                      std::dynamic_pointer_cast<phi::DenseTensor>(
+                          out_tensor.impl())
+                          .get();
+                  out_dense_list.emplace_back(p_out_tensor);
+                }
+                SplitDenseTensor(out_wrapper[0], out_tensor_list, place, true);
+
+                return task;
               },
               py::arg("in"),
               py::arg("out"),
