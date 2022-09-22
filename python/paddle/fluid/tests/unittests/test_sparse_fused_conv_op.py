@@ -254,7 +254,7 @@ class TestSparseConv(unittest.TestCase):
                 },
             ]
 
-            i = 6
+            i = 2
             values, indices = generate_data(config[i])
 
             p_shape = [
@@ -264,8 +264,8 @@ class TestSparseConv(unittest.TestCase):
             p_indices = paddle.to_tensor(indices, dtype='int32')
             p_indices = paddle.transpose(p_indices, perm=[1, 0])
             p_values = paddle.to_tensor(values)
-            p_input = pi.sparse.sparse_coo_tensor(p_indices, p_values, p_shape,
-                                                  False)
+            p_input = pi.sparse.sparse_coo_tensor(p_indices, p_values, p_shape)
+
             p_input = paddle.incubate.sparse.coalesce(p_input)
             p_conv = pi.sparse.nn.SubmConv3D(
                 in_channels=config[i]['in_channels'],
@@ -285,8 +285,15 @@ class TestSparseConv(unittest.TestCase):
             s_input = spconv.SparseConvTensor(s_values, s_indices,
                                               spatial_shape,
                                               config[i]['batch_size'])
-            #s_conv = spconv.SparseConv3d(config[i]['in_channels'], config[i]['out_channels'], kernel_size=config[i]['kernel_size'],
-            #stride=config[i]['strides'], padding=config[i]['paddings'], dilation=1, bias=False)
+            #s_conv = spconv.SparseConv3d(config[i]['in_channels'],
+            #config[i]['out_channels'],
+            #kernel_size=config[i]['kernel_size'],
+            #stride=config[i]['strides'],
+            #padding=config[i]['paddings'],
+            #dilation=1,
+            #bias=False,
+            #algo=ConvAlgo.Native,
+            #fp32_accum=True)
             s_conv = spconv.SubMConv3d(config[i]['in_channels'],
                                        config[i]['out_channels'],
                                        kernel_size=config[i]['kernel_size'],
