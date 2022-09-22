@@ -272,6 +272,9 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
       analysis_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(
           FLAGS_batch_size);
     }
+    if (FLAGS_iterations == 0) {
+      analysis_cfg.DisableMkldnnFcPasses();
+    }
     std::vector<double> acc_analysis(3);
     acc_analysis = Lexical_Test(input_slots_all, &outputs, &analysis_cfg, true);
     for (size_t i = 0; i < acc_analysis.size(); i++) {
