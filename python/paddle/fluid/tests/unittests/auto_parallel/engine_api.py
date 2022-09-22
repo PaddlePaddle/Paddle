@@ -97,7 +97,7 @@ class MLPLayer(nn.Layer):
         out = self.dropout(out)
         out = self.linear2(out)
         if is_fetch:
-            auto.fetch(out, "out")
+            auto.fetch(out, "my_out")
         return out
 
 
