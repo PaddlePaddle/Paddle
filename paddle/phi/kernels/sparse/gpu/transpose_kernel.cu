@@ -49,16 +49,17 @@ __global__ void TransposeCsr2DCudaKernel(const int64_t *x_crows_data,
       static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   // compute out_crows_data by x_cols_data
   for (int64_t i = __index__; i <= out_dims[0]; i += blockDim.x * gridDim.x) {
-    int64_t out_crows_value = 0;
-    for (int64_t j = 0; j < x_nnz; ++i) {
-      if (x_cols_data[j] + 2 <= i) {
-        out_crows_value++;
-      }
-    }
-    out_crows_data[i] = out_crows_value;
+    out_crows_data[i] = 0;
   }
   __syncthreads();
   if (__index__ == 0) {
+    for (int64_t i = 0; i < x_nnz; ++i) {
+      int j = x_cols_data[i];
+      out_crows_data[j + 2]++;
+    }
+    for (int64_t i = 0; i < out_dims[0]; i += 1) {
+      out_crows_data[i + 1] += out_crows_data[i];
+    }
     // compute out_cols_data and out_values_data by out_crows_data and x
     for (int i = 0; i < x_dims[0]; ++i) {
       int64_t start = x_crows_data[i];
