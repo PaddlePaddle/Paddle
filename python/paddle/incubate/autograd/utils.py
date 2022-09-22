@@ -35,7 +35,7 @@ prim_option = PrimOption()
 @framework.static_only
 def prim_enabled():
     """
-    .. note::
+    Note:
         **ONLY available in the static mode.**
 
     Shows whether the automatic differentiation mechanism based on
@@ -66,7 +66,7 @@ def prim_enabled():
 @framework.static_only
 def enable_prim():
     """
-    .. note::
+    Note:
         **ONLY available in the static mode.**
 
     Turns ON automatic differentiation mechanism based on automatic
@@ -90,7 +90,7 @@ def enable_prim():
 @framework.static_only
 def disable_prim():
     """
-    .. note::
+    Note:
         **ONLY available in the static mode.**
 
     Turns OFF automatic differentiation mechanism based on automatic
