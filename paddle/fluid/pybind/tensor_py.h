@@ -608,9 +608,10 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
 }
 
 template <typename T>
-void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
-                                 const py::array_t<T> &array,
-                                 int device_id) {
+void SetUVATensorFromPyArrayImpl(
+    framework::LoDTensor *self_tensor,
+    const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
+    int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArrayImpl.";
   std::vector<int64_t> dims;
@@ -647,7 +648,7 @@ void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
 template <typename T>
 void SetUVATensorFromPyArray(
     const std::shared_ptr<paddle::imperative::VarBase> &self,
-    const py::array_t<T> &array,
+    const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
     int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for VarBase.";

@@ -38,11 +38,6 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config = MetaConfig());
 
-void EmbeddingInferMeta(const MetaTensor& input,
-                        const MetaTensor& weight,
-                        int64_t padding_idx,
-                        MetaTensor* out);
-
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
@@ -201,7 +196,6 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
                         int64_t padding_idx,
-                        bool sparse,
                         MetaTensor* out);
 
 void ExpandAsInferMeta(const MetaTensor& x,
