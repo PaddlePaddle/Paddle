@@ -387,8 +387,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   }
   egr::Controller::Instance().ClearFinalBackwardHooks();
   if (!is_general_grad) return {};
-  return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
   VLOG(3) << "Finish Backward";
+  return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }
 
 void Backward(
