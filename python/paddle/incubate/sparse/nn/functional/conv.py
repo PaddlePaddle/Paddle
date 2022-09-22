@@ -72,7 +72,7 @@ def _conv3d(x,
         else:
             return pre_bias
     else:
-        inputs = {'X': x, 'Kernel': weight}
+        inputs = {'x': x, 'kernel': weight}
         attrs = {
             'paddings': padding,
             'dilations': dilation,
@@ -88,7 +88,7 @@ def _conv3d(x,
         counter = helper.create_variable_for_type_inference(dtype='int32',
                                                             stop_gradient=True)
         pre_bias = helper.create_sparse_variable_for_type_inference(x.dtype)
-        outputs = {"Out": pre_bias, "Rulebook": rulebook, "Counter": counter}
+        outputs = {"out": pre_bias, "rulebook": rulebook, "counter": counter}
         helper.append_op(type=op_type,
                          inputs=inputs,
                          outputs=outputs,

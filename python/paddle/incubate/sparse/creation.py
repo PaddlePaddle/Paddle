@@ -172,7 +172,7 @@ def sparse_coo_tensor(indices,
 
     else:
         op_type = 'sparse_sparse_coo_tensor'
-        inputs = {'Values': values, 'Indices': indices}
+        inputs = {'values': values, 'indices': indices}
         if shape[0] is None:
             shape[0] = -1
         attrs = {'dense_shape': shape}
@@ -180,7 +180,7 @@ def sparse_coo_tensor(indices,
         out = helper.create_sparse_variable_for_type_inference(dtype)
         helper.append_op(type=op_type,
                          inputs=inputs,
-                         outputs={'Out': out},
+                         outputs={'out': out},
                          attrs=attrs)
         return out
 

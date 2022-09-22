@@ -429,8 +429,8 @@ def monkey_patch_variable():
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
         block.append_op(type="sparse_values",
-                        inputs={"X": [var]},
-                        outputs={"Out": [out]},
+                        inputs={"x": [var]},
+                        outputs={"out": [out]},
                         attrs={})
         return out
 
@@ -438,8 +438,8 @@ def monkey_patch_variable():
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
         block.append_op(type="sparse_indices",
-                        inputs={"X": [var]},
-                        outputs={"Out": [out]},
+                        inputs={"x": [var]},
+                        outputs={"out": [out]},
                         attrs={})
         return out
 
@@ -447,8 +447,8 @@ def monkey_patch_variable():
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
         block.append_op(type="sparse_to_dense",
-                        inputs={"X": [var]},
-                        outputs={"Out": [out]},
+                        inputs={"x": [var]},
+                        outputs={"out": [out]},
                         attrs={})
         return out
 

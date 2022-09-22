@@ -30,9 +30,9 @@ namespace operators {
 class SparseSparseCooTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Values", "(Tensor), input 0 of sparse_coo_tensor op.");
-    AddInput("Indices", "(Tensor), input 1 of sparse_coo_tensor op.");
-    AddOutput("Out", "(Tensor), output 0 of sparse_coo_tensor op.");
+    AddInput("values", "(Tensor), input 0 of sparse_coo_tensor op.");
+    AddInput("indices", "(Tensor), input 1 of sparse_coo_tensor op.");
+    AddOutput("out", "(Tensor), output 0 of sparse_coo_tensor op.");
     AddAttr<std::vector<int>>(
         "dense_shape", "(vector<int>), attribute 0 for sparse_coo_tensor op.");
     AddComment(R"DOC(
@@ -54,8 +54,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(
 class SparseValuesOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), input 0 of sparse_values op.");
-    AddOutput("Out", "(Tensor), output 0 of sparse_values op.");
+    AddInput("x", "(Tensor), input 0 of sparse_values op.");
+    AddOutput("out", "(Tensor), output 0 of sparse_values op.");
     AddComment(R"DOC(
 TODO: Documentation of sparse_values op.
 )DOC");
@@ -74,8 +74,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(sparse_values,
 class SparseIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), input 0 of sparse_indices op.");
-    AddOutput("Out", "(Tensor), output 0 of sparse_indices op.");
+    AddInput("x", "(Tensor), input 0 of sparse_indices op.");
+    AddOutput("out", "(Tensor), output 0 of sparse_indices op.");
     AddComment(R"DOC(
 TODO: Documentation of sparse_indices op.
 )DOC");
@@ -94,8 +94,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(sparse_indices,
 class SparseToDenseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), input 0 of sparse_to_dense op.");
-    AddOutput("Out", "(Tensor), output 0 of sparse_to_dense op.");
+    AddInput("x", "(Tensor), input 0 of sparse_to_dense op.");
+    AddOutput("out", "(Tensor), output 0 of sparse_to_dense op.");
     AddComment(R"DOC(
 TODO: Documentation of sparse_to_dense op.
 )DOC");
@@ -114,8 +114,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(sparse_to_dense,
 class SparseReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), input 0 of sparse_relu op.");
-    AddOutput("Out", "(Tensor), output 0 of sparse_relu op.");
+    AddInput("x", "(Tensor), input 0 of sparse_relu op.");
+    AddOutput("out", "(Tensor), output 0 of sparse_relu op.");
     AddComment(R"DOC(
 TODO: Documentation of sparse_relu op.
 )DOC");
@@ -134,11 +134,11 @@ DECLARE_INFER_SHAPE_FUNCTOR(sparse_relu,
 class SparseConv3dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), input 0 of sparse_conv3d op.");
-    AddInput("Kernel", "(Tensor), input 1 of sparse_conv3d op.");
-    AddOutput("Out", "(Tensor), output 0 of sparse_conv3d op.");
-    AddOutput("Rulebook", "(Tensor), output 1 of sparse_conv3d op.");
-    AddOutput("Counter", "(Tensor), output 2 of sparse_conv3d op.");
+    AddInput("x", "(Tensor), input 0 of sparse_conv3d op.");
+    AddInput("kernel", "(Tensor), input 1 of sparse_conv3d op.");
+    AddOutput("out", "(Tensor), output 0 of sparse_conv3d op.");
+    AddOutput("rulebook", "(Tensor), output 1 of sparse_conv3d op.");
+    AddOutput("counter", "(Tensor), output 2 of sparse_conv3d op.");
     AddAttr<std::vector<int>>(
         "paddings", "(vector<int>), attribute 0 for sparse_conv3d op.");
     AddAttr<std::vector<int>>(
@@ -167,9 +167,9 @@ DECLARE_INFER_SHAPE_FUNCTOR(sparse_conv3d,
 class SparseAddOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), input 0 of sparse_add op.");
-    AddInput("Y", "(Tensor), input 1 of sparse_add op.");
-    AddOutput("Out", "(Tensor), output 0 of sparse_add op.");
+    AddInput("x", "(Tensor), input 0 of sparse_add op.");
+    AddInput("y", "(Tensor), input 1 of sparse_add op.");
+    AddOutput("out", "(Tensor), output 0 of sparse_add op.");
     AddComment(R"DOC(
 TODO: Documentation of sparse_add op.
 )DOC");

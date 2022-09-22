@@ -21,13 +21,13 @@ namespace phi {
 KernelSignature SparseSparseCooTensorOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "sparse_coo_tensor", {"Values", "Indices"}, {"dense_shape"}, {"Out"});
+      "sparse_coo_tensor", {"values", "indices"}, {"dense_shape"}, {"out"});
 }
 
 KernelSignature SparseValuesOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("X")) {
-    return KernelSignature("values_coo", {"X"}, {}, {"Out"});
+  if (ctx.IsSparseCooTensorInput("x")) {
+    return KernelSignature("values_coo", {"x"}, {}, {"out"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});
   }
@@ -35,8 +35,8 @@ KernelSignature SparseValuesOpArgumentMapping(
 
 KernelSignature SparseIndicesOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("X")) {
-    return KernelSignature("indices_coo", {"X"}, {}, {"Out"});
+  if (ctx.IsSparseCooTensorInput("x")) {
+    return KernelSignature("indices_coo", {"x"}, {}, {"out"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});
   }
@@ -44,16 +44,16 @@ KernelSignature SparseIndicesOpArgumentMapping(
 
 KernelSignature SparseToDenseOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("X")) {
-    return KernelSignature("coo_to_dense", {"X"}, {}, {"Out"});
+  if (ctx.IsSparseCooTensorInput("x")) {
+    return KernelSignature("coo_to_dense", {"x"}, {}, {"out"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});
   }
 }
 
 KernelSignature SparseReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("X")) {
-    return KernelSignature("relu_coo", {"X"}, {}, {"Out"});
+  if (ctx.IsSparseCooTensorInput("x")) {
+    return KernelSignature("relu_coo", {"x"}, {}, {"out"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});
   }
@@ -61,22 +61,22 @@ KernelSignature SparseReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature SparseConv3dOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("X")) {
+  if (ctx.IsSparseCooTensorInput("x")) {
     return KernelSignature(
         "conv3d_coo",
-        {"X", "Kernel"},
+        {"x", "kernel"},
         {"paddings", "dilations", "strides", "groups", "subm", "key"},
-        {"Out", "Rulebook", "Counter"});
+        {"out", "rulebook", "counter"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});
   }
 }
 
 KernelSignature SparseAddOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("X") && ctx.IsSparseCooTensorInput("Y")) {
-    return KernelSignature("add_coo_coo", {"X", "Y"}, {}, {"Out"});
-  } else if (ctx.IsSparseCooTensorInput("X") && ctx.IsDenseTensorInput("Y")) {
-    return KernelSignature("add_coo_dense", {"X", "Y"}, {}, {"Out"});
+  if (ctx.IsSparseCooTensorInput("x") && ctx.IsSparseCooTensorInput("y")) {
+    return KernelSignature("add_coo_coo", {"x", "y"}, {}, {"out"});
+  } else if (ctx.IsSparseCooTensorInput("x") && ctx.IsDenseTensorInput("y")) {
+    return KernelSignature("add_coo_dense", {"x", "y"}, {}, {"out"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});
   }
