@@ -38,7 +38,7 @@ namespace operators {
 using paddle::platform::MKLDNNDeviceContext;
 using phi::CPUContext;
 using platform::to_void_cast;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 using LoDTensor = framework::LoDTensor;
 
@@ -84,7 +84,7 @@ class SumMKLDNNHandler
         new dnnl::sum::primitive_desc(dst_md, scales, srcs_md, this->engine_));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const framework::Tensor& input,
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const phi::DenseTensor& input,
                                                  int i) {
     const T* input_data = input.data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->src_desc(i),

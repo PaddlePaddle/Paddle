@@ -79,13 +79,11 @@ TEST(selected_rows_functor, cpu_add) {
   EXPECT_EQ(out_data[5 * row_numel + 7], 2.0);
   EXPECT_EQ(out_data[6 * row_numel + 9], 2.0);
 
-  std::unique_ptr<paddle::framework::Tensor> tensor1{
-      new paddle::framework::Tensor()};
+  std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
-  std::unique_ptr<paddle::framework::Tensor> tensor2{
-      new paddle::framework::Tensor()};
+  std::unique_ptr<phi::DenseTensor> tensor2{new phi::DenseTensor()};
   tensor2->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
 
   paddle::operators::math::SelectedRowsAddTensor<phi::CPUContext, float>
@@ -174,8 +172,7 @@ TEST(selected_rows_functor, cpu_add_to) {
   EXPECT_EQ(out_data[5 * row_numel + 7], 2.0);
   EXPECT_EQ(out_data[6 * row_numel + 9], 2.0);
 
-  std::unique_ptr<paddle::framework::Tensor> tensor1{
-      new paddle::framework::Tensor()};
+  std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
@@ -475,8 +472,7 @@ TEST(selected_rows_functor, cpu_sum_to) {
   EXPECT_EQ(out_data[4 * row_numel + 4], 2.0);
   EXPECT_EQ(out_data[5 * row_numel + 7], 2.0);
   EXPECT_EQ(out_data[6 * row_numel + 9], 2.0);
-  std::unique_ptr<paddle::framework::Tensor> tensor1{
-      new paddle::framework::Tensor()};
+  std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
   paddle::operators::math::SelectedRowsAddToTensor<phi::CPUContext, float>

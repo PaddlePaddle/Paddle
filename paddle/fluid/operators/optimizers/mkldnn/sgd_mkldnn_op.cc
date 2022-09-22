@@ -28,10 +28,10 @@ class SGDOneDNNKernel : public SGDOpKernel<phi::CPUContext, T> {
   void dense_param_and_grad_kernel(
       const framework::ExecutionContext &ctx) const override {
     VLOG(4) << "[ONEDNN]: sgd_dense_param_kernel<T, LodTensor>";
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    const auto *param = ctx.Input<framework::Tensor>("Param");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<framework::Tensor>("Grad");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    const auto *param = ctx.Input<phi::DenseTensor>("Param");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
 
     auto *out_data = param_out->mutable_data<T>(ctx.GetPlace());
     const T *param_data = param->data<T>();
@@ -46,8 +46,8 @@ class SGDOneDNNKernel : public SGDOpKernel<phi::CPUContext, T> {
   void dense_param_sparse_grad_kernel(
       const framework::ExecutionContext &ctx) const override {
     VLOG(4) << "[ONEDNN]: sgd_dense_param_kernel<T, SelectedRows>";
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
     const auto *grad = ctx.Input<phi::SelectedRows>("Grad");
 
     const auto &grad_value = grad->value();

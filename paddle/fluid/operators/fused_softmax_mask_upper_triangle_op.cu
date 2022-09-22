@@ -51,7 +51,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 #ifdef PADDLE_WITH_HIP
 #define WARP_SIZE 64
@@ -348,8 +347,8 @@ template <typename Place, typename T>
 class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Output<Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* y = context.Output<phi::DenseTensor>("Out");
 
     auto* x_data = x->data<T>();
     auto* y_data = y->mutable_data<T>(context.GetPlace());
@@ -458,9 +457,11 @@ template <typename Place, typename T>
 class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* softmax_rst = context.Input<Tensor>("Softmax");
+    auto* grad_x =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* grad_y =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* softmax_rst = context.Input<phi::DenseTensor>("Softmax");
 
     auto* grad_x_data = grad_x->mutable_data<T>(context.GetPlace());
     auto* grad_y_data = grad_y->data<T>();

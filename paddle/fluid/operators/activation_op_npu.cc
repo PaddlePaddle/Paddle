@@ -24,7 +24,7 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class PowNPUKernel : public framework::OpKernel<T> {

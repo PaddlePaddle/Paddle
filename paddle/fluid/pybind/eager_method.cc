@@ -581,13 +581,11 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
                         "Tensor %s has not been initialized! please initialize "
                         "src tensor before share_buffer_with to other.",
                         self->tensor.name()));
-  auto* src_tensor =
-      static_cast<paddle::framework::Tensor*>(self->tensor.impl().get());
+  auto* src_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   if (!dst_ptr->defined()) {
     dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
   }
-  auto dst_tensor =
-      static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
+  auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
   dst_tensor->ShareBufferWith(*src_tensor);
   dst_tensor->ShareDataTypeWith(*src_tensor);
   RETURN_PY_NONE
@@ -611,10 +609,8 @@ static PyObject* tensor__is_shared_buffer_with(TensorObject* self,
   if (!self->tensor.defined() || !dst_ptr->defined()) {
     return ToPyObject(res);
   }
-  auto* self_ptr =
-      static_cast<paddle::framework::Tensor*>(self->tensor.impl().get());
-  auto dst_tensor =
-      static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
+  auto* self_ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
   res = dst_tensor->IsSharedBufferWith(*self_ptr);
   return ToPyObject(res);
   EAGER_CATCH_AND_THROW_RETURN_NULL

@@ -679,7 +679,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
-    framework::Tensor tensor;
+    phi::DenseTensor tensor;
 
     if (dl.device.device_type == kDLCPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);

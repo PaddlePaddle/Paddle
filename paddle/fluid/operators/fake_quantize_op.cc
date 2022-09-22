@@ -46,7 +46,7 @@ template struct FindAbsMaxFunctor<phi::CPUContext, float>;
 template <typename T>
 struct FindChannelAbsMaxFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const framework::Tensor &in_tensor,
+                  const phi::DenseTensor &in_tensor,
                   const int quant_axis,
                   T *out_abs_max) {
     // At present, channelwise quantization supports conv2d, depthwise_conv2d
@@ -91,11 +91,11 @@ template struct FindChannelAbsMaxFunctor<phi::CPUContext, float>;
 template <typename T>
 struct ClipAndFakeQuantFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const framework::Tensor &in,
-                  const framework::Tensor &scale,
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
                   const int bin_cnt,
                   const int round_type,
-                  framework::Tensor *out) {
+                  phi::DenseTensor *out) {
     T s = scale.data<T>()[0];
     T inv_s = inverse(s);
     platform::Transform<phi::CPUContext> trans;
@@ -122,11 +122,11 @@ template struct ClipAndFakeQuantFunctor<phi::CPUContext, float>;
 template <typename T>
 struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const framework::Tensor &in,
-                  const framework::Tensor &scale,
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
                   const int bin_cnt,
                   const int round_type,
-                  framework::Tensor *out) {
+                  phi::DenseTensor *out) {
     T s = scale.data<T>()[0];
     T inv_s = inverse(s);
 
@@ -156,12 +156,12 @@ template struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, float>;
 template <typename T>
 struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const framework::Tensor &in,
-                  const framework::Tensor &scale,
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
                   const int bin_cnt,
                   const int round_type,
                   const int quant_axis,
-                  framework::Tensor *out) {
+                  phi::DenseTensor *out) {
     // At present, channelwise quantization supports conv2d, depthwise_conv2d
     // conv2d_transpose and mul
     PADDLE_ENFORCE_EQ(
@@ -201,7 +201,7 @@ struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
         for (int64_t i = 0; i < channel; i++) {
           T s = scale_data[i];
           T inv_s = inverse(s);
-          framework::Tensor one_channel_out = out->Slice(i, i + 1);
+          phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
           auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
           out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
         }
@@ -238,12 +238,12 @@ template struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, float>;
 template <typename T>
 struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const framework::Tensor &in,
-                  const framework::Tensor &scale,
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
                   const int bin_cnt,
                   const int round_type,
                   const int quant_axis,
-                  framework::Tensor *out) {
+                  phi::DenseTensor *out) {
     PADDLE_ENFORCE_EQ(
         quant_axis == 0 || quant_axis == 1,
         true,
@@ -280,7 +280,7 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
       }
       for (int i = 0; i < channel; i++) {
         T s = scale_data[i];
-        framework::Tensor one_channel_out = out->Slice(i, i + 1);
+        phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
         auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
         if (round_type == 0) {
           out_e.device(*ctx.eigen_device()) =
@@ -328,12 +328,12 @@ template struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, float>;
 template <typename T>
 struct FindRangeAbsMaxFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const framework::Tensor &cur_scale,
-                  const framework::Tensor &last_scale,
-                  const framework::Tensor &iter,
+                  const phi::DenseTensor &cur_scale,
+                  const phi::DenseTensor &last_scale,
+                  const phi::DenseTensor &iter,
                   const int window_size,
-                  framework::Tensor *scales_arr,
-                  framework::Tensor *out_scale) {
+                  phi::DenseTensor *scales_arr,
+                  phi::DenseTensor *out_scale) {
     T *scale_arr = scales_arr->mutable_data<T>(ctx.GetPlace());
     int64_t it = iter.data<int64_t>()[0];
     int idx = it % window_size;
@@ -357,13 +357,13 @@ template struct FindRangeAbsMaxFunctor<phi::CPUContext, float>;
 template <typename T>
 struct FindMovingAverageAbsMaxFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const framework::Tensor &in_accum,
-                  const framework::Tensor &in_state,
+                  const phi::DenseTensor &in_accum,
+                  const phi::DenseTensor &in_state,
                   const T *cur_scale,
                   const float rate,
-                  framework::Tensor *out_state,
-                  framework::Tensor *out_accum,
-                  framework::Tensor *out_scale) {
+                  phi::DenseTensor *out_state,
+                  phi::DenseTensor *out_accum,
+                  phi::DenseTensor *out_scale) {
     T accum = in_accum.data<T>()[0];
     T state = in_state.data<T>()[0];
     T scale = cur_scale[0];

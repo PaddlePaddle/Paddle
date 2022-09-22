@@ -43,7 +43,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       auto input_image_type = framework::TransToProtoVarType(
-          ctx.Input<framework::Tensor>("Image")->dtype());
+          ctx.Input<phi::DenseTensor>("Image")->dtype());
       int customized_type_value =
           framework::OpKernelType::kDefaultCustomizedTypeValue;
       if (input_image_type == framework::DataTypeTrait<float>::DataType()) {

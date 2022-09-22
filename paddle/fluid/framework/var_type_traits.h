@@ -178,7 +178,7 @@ struct VarTypeRegistryImpl {
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
-    Tensor,
+    phi::DenseTensor,
     phi::SelectedRows,
     std::vector<Scope *>,
     LoDRankTable,

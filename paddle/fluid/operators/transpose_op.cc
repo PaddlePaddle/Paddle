@@ -25,8 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class TransposeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -262,8 +260,8 @@ class Transpose2Op : public TransposeOp {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
-      auto input_data_type =
-          framework::TransToProtoVarType(ctx.Input<Tensor>("X")->dtype());
+      auto input_data_type = framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("X")->dtype());
       customized_type_value = (input_data_type == VarType::INT8 ||
                                input_data_type == VarType::UINT8)
                                   ? kTransposeMKLDNNINT8

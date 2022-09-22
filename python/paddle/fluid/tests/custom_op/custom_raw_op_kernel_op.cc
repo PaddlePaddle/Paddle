@@ -16,17 +16,14 @@
 #include "paddle/fluid/framework/custom_raw_op_kernel_func.h"
 #include "paddle/fluid/platform/enforce.h"
 
-void ReluCPUForward(const paddle::framework::Tensor &x,
-                    paddle::framework::Tensor *y) {
+void ReluCPUForward(const phi::DenseTensor &x, phi::DenseTensor *y) {
   custom_raw_op::ReluForward(x, y);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void ReluGPUForward(const paddle::framework::Tensor &x,
-                    paddle::framework::Tensor *y);
+void ReluGPUForward(const phi::DenseTensor &x, phi::DenseTensor *y);
 #else
-void ReluGPUForward(const paddle::framework::Tensor &x,
-                    paddle::framework::Tensor *y) {
+void ReluGPUForward(const phi::DenseTensor &x, phi::DenseTensor *y) {
   PADDLE_THROW(paddle::platform::errors::Unimplemented(
       "ReluGPUForward is not supported when not compiled with GPU."));
 }

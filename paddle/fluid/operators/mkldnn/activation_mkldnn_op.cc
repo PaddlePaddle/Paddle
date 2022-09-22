@@ -27,7 +27,7 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::stream;
 using framework::DataLayout;
-using framework::Tensor;
+
 using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
@@ -62,8 +62,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const auto &mkldnn_engine = dev_ctx.GetEngine();
 
-  const auto *x = ctx.Input<Tensor>("X");
-  auto *out = ctx.Output<Tensor>("Out");
+  const auto *x = ctx.Input<phi::DenseTensor>("X");
+  auto *out = ctx.Output<phi::DenseTensor>("Out");
 
   bool is_inplaced = x->IsSharedBufferWith(*out);
 
@@ -94,9 +94,9 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const auto &mkldnn_engine = dev_ctx.GetEngine();
 
-  const auto *x = ctx.Input<Tensor>("X");
-  const auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+  const auto *x = ctx.Input<phi::DenseTensor>("X");
+  const auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+  auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
   platform::ActivationMKLDNNHandler<T> handler(
       algorithm, ctx, mkldnn_engine, ctx.GetPlace(), x, dout);
@@ -122,9 +122,9 @@ void eltwise_grad_use_out(const framework::ExecutionContext &ctx,
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const auto &mkldnn_engine = dev_ctx.GetEngine();
 
-  const auto *out = ctx.Input<Tensor>("Out");
-  const auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+  const auto *out = ctx.Input<phi::DenseTensor>("Out");
+  const auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+  auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
   platform::ActivationMKLDNNHandler<T> handler(
       algorithm, ctx, mkldnn_engine, ctx.GetPlace(), out, dout);

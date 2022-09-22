@@ -31,7 +31,6 @@ namespace operators {
 constexpr int kMULMKLDNNINT8 = 1;
 
 using framework::OpKernelType;
-using framework::Tensor;
 
 class AddMMOp : public framework::OperatorWithKernel {
  public:

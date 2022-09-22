@@ -236,7 +236,7 @@ paddle_infer::PlaceType ToPaddleInferPlace(
 }
 
 void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
-                                  framework::Tensor input_tensor) {
+                                  phi::DenseTensor input_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < input_tensor.dims().size(); ++i) {
     shape.push_back(input_tensor.dims()[i]);

@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class CropTensorOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -117,7 +115,7 @@ class CropTensorOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "OffsetsTensor" ||
         var_name == "Shape" || var_name == "Offsets") {
@@ -276,7 +274,7 @@ class CropTensorOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "OffsetsTensor" ||
         var_name == "Shape" || var_name == "Offsets") {

@@ -28,7 +28,7 @@ using dnnl::primitive;
 using dnnl::stream;
 using framework::DataLayout;
 using framework::LoDTensor;
-using framework::Tensor;
+
 using platform::to_void_cast;
 
 template <typename T>
@@ -37,8 +37,8 @@ class ConcatMKLDNNHandler
  public:
   ConcatMKLDNNHandler(const framework::ExecutionContext& ctx,
                       const dnnl::engine mkldnn_engine,
-                      const std::vector<const Tensor*>& inputs,
-                      Tensor* output)
+                      const std::vector<const phi::DenseTensor*>& inputs,
+                      phi::DenseTensor* output)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::concat>(mkldnn_engine,
                                                            ctx.GetPlace()) {
     int concat_axis = ctx.Attr<int>("axis");
@@ -53,7 +53,7 @@ class ConcatMKLDNNHandler
             concat_axis));
 
     if (ctx.HasInput("AxisTensor")) {
-      auto* axis_tensor = ctx.Input<Tensor>("AxisTensor");
+      auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
       concat_axis = GetDataFromTensor(axis_tensor)[0];
       auto out_dims = inputs[0]->dims();
       for (size_t i = 1; i < inputs.size(); ++i) {
@@ -110,14 +110,15 @@ class ConcatMKLDNNHandler
         dst_md, concat_axis, srcs_md, this->engine_));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const Tensor& input, int i) {
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const phi::DenseTensor& input,
+                                                 int i) {
     const T* input_data = input.data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->src_desc(i),
                                             to_void_cast<T>(input_data));
   }
 };
 
-static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
+static void EnforceLayouts(const std::vector<const phi::DenseTensor*> inputs) {
   for (auto* input : inputs) {
     PADDLE_ENFORCE_EQ(
         input->layout(),
@@ -127,13 +128,14 @@ static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
 }
 
 // From a multi-input, gather only nonempty inputs
-static const std::vector<const Tensor*> ReduceMultiInput(
-    const std::vector<const Tensor*>& inputs) {
-  std::vector<const Tensor*> reduced(inputs.size());
-  auto end_it = std::copy_if(
-      inputs.begin(), inputs.end(), reduced.begin(), [](const Tensor* t) {
-        return t->numel() > 0;
-      });
+static const std::vector<const phi::DenseTensor*> ReduceMultiInput(
+    const std::vector<const phi::DenseTensor*>& inputs) {
+  std::vector<const phi::DenseTensor*> reduced(inputs.size());
+  auto end_it =
+      std::copy_if(inputs.begin(),
+                   inputs.end(),
+                   reduced.begin(),
+                   [](const phi::DenseTensor* t) { return t->numel() > 0; });
   reduced.resize(std::distance(reduced.begin(), end_it));
   return reduced;
 }
@@ -147,9 +149,9 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
     // If any of the multiple inputs of concat has an input size of 0, the
     // actual size of the multi_input will change
-    auto multi_input = ReduceMultiInput(ctx.MultiInput<Tensor>("X"));
+    auto multi_input = ReduceMultiInput(ctx.MultiInput<phi::DenseTensor>("X"));
     EnforceLayouts(multi_input);
-    Tensor* output = ctx.Output<Tensor>("Out");
+    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Out");
 
     ConcatMKLDNNHandler<T> handler(ctx, mkldnn_engine, multi_input, output);
 
@@ -187,7 +189,8 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
 
     const auto x = ctx.MultiInput<LoDTensor>("X");
-    const auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    const auto* dout =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto dx = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
 
     for (size_t i = 0; i < dx.size(); ++i) {
@@ -198,7 +201,7 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     int axis = ctx.Attr<int>("axis");
     if (ctx.HasInput("AxisTensor")) {
-      auto* axis_tensor = ctx.Input<Tensor>("AxisTensor");
+      auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
       axis = GetDataFromTensor<int>(axis_tensor)[0];
     }
 

@@ -23,7 +23,7 @@ using dnnl::primitive;
 using dnnl::stream;
 using framework::DataLayout;
 using framework::LoDTensor;
-using framework::Tensor;
+
 using platform::to_void_cast;
 
 template <typename T>
@@ -32,8 +32,8 @@ class StackMKLDNNHandler
  public:
   StackMKLDNNHandler(const framework::ExecutionContext& ctx,
                      const dnnl::engine mkldnn_engine,
-                     const std::vector<const Tensor*>& inputs,
-                     Tensor* output)
+                     const std::vector<const phi::DenseTensor*>& inputs,
+                     phi::DenseTensor* output)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::concat>(mkldnn_engine,
                                                            ctx.GetPlace()) {
     int stack_axis = ctx.Attr<int>("axis");
@@ -93,7 +93,8 @@ class StackMKLDNNHandler
         dst_md, stack_axis, srcs_md, this->engine_));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const Tensor& input, int i) {
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const phi::DenseTensor& input,
+                                                 int i) {
     const T* input_data = input.data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->src_desc(i),
                                             to_void_cast<T>(input_data));
@@ -108,9 +109,9 @@ class StackMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto multi_input = ctx.MultiInput<Tensor>("X");
+    auto multi_input = ctx.MultiInput<phi::DenseTensor>("X");
 
-    Tensor* output = ctx.Output<Tensor>("Y");
+    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Y");
 
     StackMKLDNNHandler<T> handler(ctx, mkldnn_engine, multi_input, output);
 

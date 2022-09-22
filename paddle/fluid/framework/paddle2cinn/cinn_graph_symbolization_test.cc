@@ -24,7 +24,7 @@ namespace paddle2cinn {
 using ::cinn::frontend::NetBuilder;
 using ir::Graph;
 using ir::Node;
-using CinnTensor = ::cinn::hlir::framework::Tensor;
+using CinnTensor = ::cinn::hlir::Tensor;
 using OpMapperContext = CinnGraphSymbolization::OpMapperContext;
 using CinnOpDesc = CinnGraphSymbolization::CinnOpDesc;
 using FeedInfoMap = CinnGraphSymbolization::FeedInfoMap;

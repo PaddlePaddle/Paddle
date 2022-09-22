@@ -38,7 +38,7 @@ static void DeepCopy(const framework::LoDTensor &src_item,
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
     if (src_item.layout() == framework::DataLayout::kMKLDNN) {
-      framework::Tensor out;
+      phi::DenseTensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
       framework::innerTransDataLayoutFromMKLDNN(
@@ -75,7 +75,7 @@ class FetchV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (!tensor.IsInitialized()) {
       return expected_kernel_type;

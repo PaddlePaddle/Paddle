@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
-
 template <typename T>
 class SliceMKLDNNKernel : public framework::OpKernel<T> {
  public:
@@ -32,8 +30,8 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto* x = ctx.Input<Tensor>("Input");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("Input");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto x_vec_dims = phi::vectorize(x->dims());
 
@@ -48,18 +46,21 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     std::vector<int64_t> ends(ctx.Attr<std::vector<int>>("ends").begin(),
                               ctx.Attr<std::vector<int>>("ends").end());
 
-    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    auto starts_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("StartsTensor"));
+      starts = GetDataFromTensor<int64_t>(
+          ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
     }
 
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
 
-    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("EndsTensor"));
+      ends =
+          GetDataFromTensor<int64_t>(ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(ends_tensor_list);
     }
@@ -141,8 +142,8 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
 
     auto dx_vec_dims = phi::vectorize(dx->dims());
     auto dout_vec_dims = phi::vectorize(dout->dims());
@@ -158,16 +159,19 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     std::vector<int64_t> ends(ctx.Attr<std::vector<int>>("ends").begin(),
                               ctx.Attr<std::vector<int>>("ends").end());
 
-    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    auto starts_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("StartsTensor"));
+      starts = GetDataFromTensor<int64_t>(
+          ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
     }
 
-    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("EndsTensor"));
+      ends =
+          GetDataFromTensor<int64_t>(ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(ends_tensor_list);
     }

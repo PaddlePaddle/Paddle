@@ -17,8 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 /*
 Pad3D is done by using up to 7 reorders. Following example is done
 on 2D data for simplicity, but it is straightforward to extend it to 3D case.
@@ -72,9 +70,9 @@ class PadMKLDNNKernel : public framework::OpKernel<T> {
     const auto& onednn_engine = dev_ctx.GetEngine();
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
-    auto* paddings_tensor = ctx.Input<Tensor>("Paddings");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* paddings_tensor = ctx.Input<phi::DenseTensor>("Paddings");
     std::vector<int> paddings(ctx.Attr<std::vector<int>>("paddings"));
     if (paddings_tensor) {
       std::copy(paddings_tensor->data<int>(),

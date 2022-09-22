@@ -19,7 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
 using paddle::platform::MKLDNNDeviceContext;
 using paddle::platform::MKLDNNMemDesc;
 
@@ -39,8 +38,8 @@ class SoftmaxMKLDNNHandler
  public:
   SoftmaxMKLDNNHandler(const dnnl::engine mkldnn_engine,
                        platform::Place cpu_place,
-                       const Tensor* input,
-                       Tensor* output,
+                       const phi::DenseTensor* input,
+                       phi::DenseTensor* output,
                        const int axis)
       : platform::MKLDNNHandlerNoCachingT<T,
                                           dnnl::softmax_forward,
@@ -59,9 +58,9 @@ class SoftmaxMKLDNNHandler
   SoftmaxMKLDNNHandler(const framework::ExecutionContext& ctx,
                        const dnnl::engine mkldnn_engine,
                        platform::Place cpu_place,
-                       const Tensor* out,
-                       const Tensor* out_grad,
-                       Tensor* in_x_grad,
+                       const phi::DenseTensor* out,
+                       const phi::DenseTensor* out_grad,
+                       phi::DenseTensor* in_x_grad,
                        const std::string& unique_name)
       : platform::MKLDNNHandlerNoCachingT<T,
                                           dnnl::softmax_forward,
@@ -94,8 +93,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const Tensor* input = ctx.Input<Tensor>("X");
-    Tensor* output = ctx.Output<Tensor>("Out");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("X");
+    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Out");
     bool is_inplaced = input->IsSharedBufferWith(*output);
 
     const int axis =
@@ -143,9 +142,11 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
                           "Operator DNNL SoftmaxGrad must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
-    const Tensor* output = ctx.Input<Tensor>("Out");
-    auto* out_grad = ctx.template Input<Tensor>(framework::GradVarName("Out"));
-    auto* in_x_grad = ctx.template Output<Tensor>(framework::GradVarName("X"));
+    const phi::DenseTensor* output = ctx.Input<phi::DenseTensor>("Out");
+    auto* out_grad =
+        ctx.template Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* in_x_grad =
+        ctx.template Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     SoftmaxMKLDNNHandler<T> handler(ctx,
                                     mkldnn_engine,

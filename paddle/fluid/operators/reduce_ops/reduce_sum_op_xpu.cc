@@ -36,9 +36,10 @@ class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto dims = context.Attr<std::vector<int>>("dim");
     bool reduce_all = context.Attr<bool>("reduce_all");
-    auto* x = context.Input<Tensor>("X");
-    auto* out = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     int in_dtype = context.Attr<int>("in_dtype");
     PADDLE_ENFORCE_EQ(

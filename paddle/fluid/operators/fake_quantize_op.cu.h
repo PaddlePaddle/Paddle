@@ -81,7 +81,7 @@ struct FindAbsMaxFunctor<phi::GPUContext, T> {
     int grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
 
-    framework::Tensor max;
+    phi::DenseTensor max;
     T *max_data = max.mutable_data<T>(phi::make_ddim({grid}), ctx.GetPlace());
     FindAbsMaxKernel<T>
         <<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(in, num, max_data);
@@ -165,7 +165,7 @@ __global__ void FindChannelAbsMaxKernelQuantAxis1(
 template <typename T>
 struct FindChannelAbsMaxFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &ctx,
-                  const framework::Tensor &in_tensor,
+                  const phi::DenseTensor &in_tensor,
                   const int quant_axis,
                   T *out_abs_max) {
     PADDLE_ENFORCE_EQ(
@@ -290,11 +290,11 @@ __global__ void ClipAndQuantDequantKernel(const T *in,
 template <typename T>
 struct ClipAndFakeQuantFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &ctx,
-                  const framework::Tensor &in,
-                  const framework::Tensor &scale,
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
                   const int bin_cnt,
                   const int round_type,
-                  framework::Tensor *out) {
+                  phi::DenseTensor *out) {
     int num = in.numel();
     int block = 1024;
     int grid = (block - 1 + num) / block;
@@ -313,11 +313,11 @@ template struct ClipAndFakeQuantFunctor<phi::GPUContext, float>;
 template <typename T>
 struct ClipAndFakeQuantDequantFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &ctx,
-                  const framework::Tensor &in,
-                  const framework::Tensor &scale,
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
                   const int bin_cnt,
                   const int round_type,
-                  framework::Tensor *out) {
+                  phi::DenseTensor *out) {
     int num = in.numel();
     int block = 1024;
     int grid = (block - 1 + num) / block;
@@ -409,12 +409,12 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(const T *in,
 template <typename T>
 struct ChannelClipAndFakeQuantFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &ctx,
-                  const framework::Tensor &in,
-                  const framework::Tensor &scale,
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
                   const int bin_cnt,
                   const int round_type,
                   const int quant_axis,
-                  framework::Tensor *out) {
+                  phi::DenseTensor *out) {
     PADDLE_ENFORCE_EQ(
         quant_axis == 0 || quant_axis == 1,
         true,
@@ -491,18 +491,18 @@ __global__ void FindRangeAbsMaxAndFillArray(const T *cur_scale,
 template <typename T>
 struct FindRangeAbsMaxFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &ctx,
-                  const framework::Tensor &cur_scale,
-                  const framework::Tensor &last_scale,
-                  const framework::Tensor &iter,
+                  const phi::DenseTensor &cur_scale,
+                  const phi::DenseTensor &last_scale,
+                  const phi::DenseTensor &iter,
                   const int window_size,
-                  framework::Tensor *scales_arr,
-                  framework::Tensor *out_scale) {
+                  phi::DenseTensor *scales_arr,
+                  phi::DenseTensor *out_scale) {
     const auto gpu_place = ctx.GetPlace();
 
     T *scale_arr = scales_arr->mutable_data<T>(gpu_place);
     T *out_scale_data = out_scale->mutable_data<T>(gpu_place);
 
-    framework::Tensor need_find_max, out_size;
+    phi::DenseTensor need_find_max, out_size;
     int *find_max = need_find_max.mutable_data<int>({1}, gpu_place);
     int *out_size_data = out_size.mutable_data<int>({1}, gpu_place);
 
@@ -559,13 +559,13 @@ template struct FindRangeAbsMaxFunctor<phi::GPUContext, float>;
 template <typename T>
 struct FindMovingAverageAbsMaxFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &ctx,
-                  const framework::Tensor &in_accum,
-                  const framework::Tensor &in_state,
+                  const phi::DenseTensor &in_accum,
+                  const phi::DenseTensor &in_state,
                   const T *cur_scale,
                   const float rate,
-                  framework::Tensor *out_state,
-                  framework::Tensor *out_accum,
-                  framework::Tensor *out_scale) {
+                  phi::DenseTensor *out_state,
+                  phi::DenseTensor *out_accum,
+                  phi::DenseTensor *out_scale) {
     const auto gpu_place = ctx.GetPlace();
 
     T rate_t = static_cast<T>(rate);
@@ -660,12 +660,12 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis1(const T *in,
 template <typename T>
 struct ChannelClipFakeQuantDequantFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &ctx,
-                  const framework::Tensor &in,
-                  const framework::Tensor &scale,
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
                   const int bin_cnt,
                   const int round_type,
                   const int quant_axis,
-                  framework::Tensor *out) {
+                  phi::DenseTensor *out) {
     // At present, channelwise quantization supports conv2d, depthwise_conv2d
     // conv2d_transpose and mul
     PADDLE_ENFORCE_EQ(

@@ -129,8 +129,8 @@ class FasterTokenizerKernel : public framework::OpKernel<T> {
     auto* text = ctx.Input<framework::Strings>("Text");
     auto* vocab = ctx.Input<framework::Vocab>("Vocab");
 
-    auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
-    auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
+    auto* input_ids = ctx.Output<phi::DenseTensor>("InputIds");
+    auto* seg_ids = ctx.Output<phi::DenseTensor>("SegmentIds");
 
     auto do_lower_case = static_cast<bool>(ctx.Attr<bool>("do_lower_case"));
     auto is_split_into_words =

@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
-
 static inline std::vector<std::vector<int64_t>> CalculateOutsDims(
     const framework::DDim& in_dims,
     const size_t num,
@@ -63,8 +61,8 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    const auto* x = ctx.Input<Tensor>("X");
-    auto outs = ctx.MultiOutput<Tensor>("Out");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto outs = ctx.MultiOutput<phi::DenseTensor>("Out");
 
     int num = ctx.Attr<int>("num");
     auto sections = ctx.Attr<std::vector<int>>("sections");
@@ -74,12 +72,13 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
 
     bool need_resize = false;
     if (ctx.HasInput("AxisTensor")) {
-      auto* axis_tensor = ctx.Input<Tensor>("AxisTensor");
+      auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
       axis = GetDataFromTensor(axis_tensor)[0];
       need_resize = true;
     }
 
-    auto sections_tensor_list = ctx.MultiInput<Tensor>("SectionsTensorList");
+    auto sections_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("SectionsTensorList");
     if (sections_tensor_list.size() > 0) {
       sections = GetDataFromTensorList(sections_tensor_list);
       need_resize = true;

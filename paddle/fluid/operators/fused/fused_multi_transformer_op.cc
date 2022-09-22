@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/fused/fused_multi_transformer_op.h"
+
 #include <memory>
 #include <string>
 
@@ -21,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class FusedMultiTransformerOp : public framework::OperatorWithKernel {
  private:

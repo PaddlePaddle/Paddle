@@ -137,8 +137,8 @@ template <typename T>
 struct SelectedRowsAddTensor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& context,
                   const phi::SelectedRows& input1,
-                  const framework::Tensor& input2,
-                  framework::Tensor* output) {
+                  const phi::DenseTensor& input2,
+                  phi::DenseTensor* output) {
     auto in1_height = input1.height();
     auto in2_dims = input2.dims();
     auto out_dims = output->dims();
@@ -289,7 +289,7 @@ template <typename T>
 struct SelectedRowsAddToTensor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& context,
                   const phi::SelectedRows& input1,
-                  framework::Tensor* input2) {
+                  phi::DenseTensor* input2) {
     auto in1_height = input1.height();
     auto in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
@@ -591,7 +591,7 @@ struct UpdateToTensor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& context,
                   const ScatterOps& op,
                   const phi::SelectedRows& input1,
-                  framework::Tensor* input2) {
+                  phi::DenseTensor* input2) {
     // NOTE: Use SelectedRowsAddToTensor for better performance
     //       no additional MergeAdd called.
     MergeAdd<phi::GPUContext, T> merge_func;

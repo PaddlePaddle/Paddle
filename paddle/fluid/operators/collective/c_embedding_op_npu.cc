@@ -51,21 +51,21 @@ void shard_index(const Tensor &table_t,
   auto stream =
       context.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
-  framework::Tensor id_t_d;
+  phi::DenseTensor id_t_d;
   id_t_d.mutable_data<T>(ids_t.dims(), context.GetPlace());
   FillNPU(&id_t_d, static_cast<T>(0.0), context);
   id_t_d.Resize(ids_t.dims());
 
-  framework::Tensor id_t_u;
+  phi::DenseTensor id_t_u;
   id_t_u.mutable_data<T>(ids_t.dims(), context.GetPlace());
   FillNPU(&id_t_u, static_cast<T>(height - 1), context);
   id_t_u.Resize(ids_t.dims());
 
-  framework::Tensor id_matched_d;
+  phi::DenseTensor id_matched_d;
   id_matched_d.mutable_data<bool>(ids_t.dims(), context.GetPlace());
-  framework::Tensor id_matched_u;
+  phi::DenseTensor id_matched_u;
   id_matched_u.mutable_data<bool>(ids_t.dims(), context.GetPlace());
-  framework::Tensor ignore_tensor;
+  phi::DenseTensor ignore_tensor;
   ignore_tensor.mutable_data<T>(ids_t.dims(), context.GetPlace());
   FillNPU(&ignore_tensor, static_cast<T>(height), context);
   ignore_tensor.Resize(ids_t.dims());
@@ -120,7 +120,7 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
       context.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
 
-  framework::Tensor ids_t_local;
+  phi::DenseTensor ids_t_local;
   ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
@@ -185,7 +185,7 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   const int64_t start_idx = context.Attr<int64_t>("start_index");
   auto ids_t = context.Input<LoDTensor>("Ids");
   auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-  auto table_t = context.Input<Tensor>("W");
+  auto table_t = context.Input<phi::DenseTensor>("W");
   auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
 
   VLOG(10) << "ids_t:" << ids_t << ", d_output_t:" << d_output_t
@@ -196,7 +196,7 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
           .stream();
 
   // convert ids_t to local valid
-  framework::Tensor ids_t_local;
+  phi::DenseTensor ids_t_local;
   ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 

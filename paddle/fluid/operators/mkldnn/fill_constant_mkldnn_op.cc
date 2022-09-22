@@ -18,13 +18,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 template <typename T>
 class FillConstantMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
-  FillConstantMKLDNNHandler(Tensor* out,
+  FillConstantMKLDNNHandler(phi::DenseTensor* out,
                             dnnl::engine engine,
                             platform::Place cpu_place)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
@@ -61,7 +59,7 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& dnnl_engine = dev_ctx.GetEngine();
 
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     T fill_value = CalculateFillValue(ctx);
 
     auto shape = GetShape(ctx);
@@ -116,7 +114,7 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("ValueTensor")) {
-      const auto* value_tensor = ctx.Input<Tensor>("ValueTensor");
+      const auto* value_tensor = ctx.Input<phi::DenseTensor>("ValueTensor");
       PADDLE_ENFORCE_EQ(
           value_tensor->numel(),
           1,

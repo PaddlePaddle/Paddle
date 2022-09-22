@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 framework::OpKernelType innerGetKernelTypeForVar(
     const Tensor &tensor, const framework::OpKernelType &expected_kernel_type) {

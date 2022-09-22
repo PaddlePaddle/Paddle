@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = phi::SelectedRows;
 
@@ -43,7 +43,7 @@ class ShapeMKLDNNKernel : public framework::OpKernel<T> {
         in_dims = phi::make_ddim(rdims);
       }
     }
-    auto* out_t = ctx.Output<Tensor>("Out");
+    auto* out_t = ctx.Output<phi::DenseTensor>("Out");
     out_t->Resize({in_dims.size()});
     auto out_data = out_t->mutable_data<int32_t>(platform::CPUPlace());
     for (int i = 0; i < in_dims.size(); ++i) {

@@ -32,7 +32,6 @@ class DenseTensor;
 
 namespace paddle {
 namespace platform {
-using framework::Tensor;
 
 template <typename T>
 inline miopenDataType_t ToCudnnDataType(const T& t) {

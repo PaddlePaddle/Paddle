@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -120,15 +120,15 @@ class FTRLOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* grad_var = ctx.InputVar("Grad");
 
-    auto* lr_in = ctx.Input<Tensor>("LearningRate");
+    auto* lr_in = ctx.Input<phi::DenseTensor>("LearningRate");
 
-    auto* param_in = ctx.Input<Tensor>("Param");
-    auto* sq_accum_in = ctx.Input<Tensor>("SquaredAccumulator");
-    auto* lin_accum_in = ctx.Input<Tensor>("LinearAccumulator");
+    auto* param_in = ctx.Input<phi::DenseTensor>("Param");
+    auto* sq_accum_in = ctx.Input<phi::DenseTensor>("SquaredAccumulator");
+    auto* lin_accum_in = ctx.Input<phi::DenseTensor>("LinearAccumulator");
 
-    auto* param_out = ctx.Output<Tensor>("ParamOut");
-    auto* sq_accum_out = ctx.Output<Tensor>("SquaredAccumOut");
-    auto* lin_accum_out = ctx.Output<Tensor>("LinearAccumOut");
+    auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    auto* sq_accum_out = ctx.Output<phi::DenseTensor>("SquaredAccumOut");
+    auto* lin_accum_out = ctx.Output<phi::DenseTensor>("LinearAccumOut");
 
     param_out->mutable_data<T>(ctx.GetPlace());
     sq_accum_out->mutable_data<T>(ctx.GetPlace());
@@ -139,7 +139,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
     auto lr_power = static_cast<T>(ctx.Attr<float>("lr_power"));
 
     if (grad_var->IsType<framework::LoDTensor>()) {
-      auto grad = ctx.Input<Tensor>("Grad");
+      auto grad = ctx.Input<phi::DenseTensor>("Grad");
       auto g = EigenVector<T>::Flatten(*grad);
 
       auto p = EigenVector<T>::Flatten(*param_in);

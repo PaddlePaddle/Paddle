@@ -26,7 +26,7 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
 using platform::to_void_cast;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using dnnl::stream;
 using framework::DataLayout;
 using platform::GetMKLDNNFormat;
@@ -35,8 +35,8 @@ template <typename T>
 class QuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("Input");
-    auto* out = ctx.Output<Tensor>("Output");
+    auto* x = ctx.Input<phi::DenseTensor>("Input");
+    auto* out = ctx.Output<phi::DenseTensor>("Output");
 
     const auto quantization_scale = ctx.Attr<float>("Scale");
     const auto quantization_shift = ctx.Attr<float>("Shift");

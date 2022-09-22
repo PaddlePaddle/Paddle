@@ -20,7 +20,7 @@ namespace {
 
 using paddle::framework::ExecutionContext;
 using paddle::framework::GradVarName;
-using paddle::framework::Tensor;
+
 using paddle::platform::MKLDNNDeviceContext;
 using phi::vectorize;
 
@@ -35,8 +35,8 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
     const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    const auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto x_vec_dims = vectorize(x->dims());
 
@@ -99,8 +99,8 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto* dout = ctx.Input<Tensor>(GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(GradVarName("X"));
+    auto* dout = ctx.Input<phi::DenseTensor>(GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(GradVarName("X"));
 
     auto dx_vec_dims = vectorize(dx->dims());
     auto dout_vec_dims = vectorize(dout->dims());

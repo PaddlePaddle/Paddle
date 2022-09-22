@@ -85,8 +85,8 @@ static void MoveOrCopyVar(framework::Variable* dst,
 #ifdef PADDLE_WITH_XPU
 template <typename T>
 void XPUTensorAddFunctor(const platform::Place& place,
-                         const framework::Tensor& src,
-                         framework::Tensor* dst) {
+                         const phi::DenseTensor& src,
+                         phi::DenseTensor* dst) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
       platform::DeviceContextPool::Instance().Get(place));

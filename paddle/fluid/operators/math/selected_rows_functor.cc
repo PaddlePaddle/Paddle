@@ -113,8 +113,8 @@ template <typename T>
 struct SelectedRowsAddTensor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const phi::SelectedRows& input1,
-                  const framework::Tensor& input2,
-                  framework::Tensor* output) {
+                  const phi::DenseTensor& input2,
+                  phi::DenseTensor* output) {
     auto in1_height = input1.height();
     const auto& in2_dims = input2.dims();
     const auto& out_dims = output->dims();
@@ -280,7 +280,7 @@ template <typename T>
 struct SelectedRowsAddToTensor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const phi::SelectedRows& input1,
-                  framework::Tensor* input2) {
+                  phi::DenseTensor* input2) {
     if (UNLIKELY(input1.rows().size() == 0)) {
       LOG(WARNING) << "input selected rows is empty!";
       return;
@@ -851,7 +851,7 @@ struct UpdateToTensor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const ScatterOps& op,
                   const phi::SelectedRows& input1,
-                  framework::Tensor* input2) {
+                  phi::DenseTensor* input2) {
     auto in1_height = input1.height();
     const auto& in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
