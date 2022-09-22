@@ -49,24 +49,27 @@ __global__ void TransposeCsr2DCudaKernel(const int64_t *x_crows_data,
       static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   // compute out_crows_data by x_cols_data
   for (int64_t i = __index__; i <= out_dims[0]; i += blockDim.x * gridDim.x) {
-    out_crows_data[i] = 0;
+    int64_t out_crows_value = 0;
     for (int64_t j = 0; j < x_nnz; ++i) {
       if (x_cols_data[j] + 2 <= i) {
-        out_crows_data[i]++;
+        out_crows_value++;
       }
     }
+    out_crows_data[i] = out_crows_value;
   }
   __syncthreads();
-  // compute out_cols_data and out_values_data by out_crows_data and x
-  for (int64_t i = __index__; i < x_dims[0]; i += blockDim.x * gridDim.x) {
-    int64_t start = x_crows_data[i];
-    int64_t end = x_crows_data[i + 1];
-    for (int64_t j = start; j < end; ++j) {
-      int64_t x_cols_j = x_cols_data[j] + 1;
-      int64_t jjj = out_crows_data[x_cols_j];
-      out_cols_data[jjj] = i;
-      out_values_data[jjj] = x_values_data[j];
-      out_crows_data[x_cols_j]++;
+  if (__index__ == 0) {
+    // compute out_cols_data and out_values_data by out_crows_data and x
+    for (int i = 0; i < x_dims[0]; ++i) {
+      int64_t start = x_crows_data[i];
+      int64_t end = x_crows_data[i + 1];
+      for (int64_t j = start; j < end; ++j) {
+        int64_t x_cols_j = x_cols_data[j] + 1;
+        int64_t jjj = out_crows_data[x_cols_j];
+        out_cols_data[jjj] = i;
+        out_values_data[jjj] = x_values_data[j];
+        out_crows_data[x_cols_j]++;
+      }
     }
   }
 }
