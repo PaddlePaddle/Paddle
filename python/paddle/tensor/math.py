@@ -4921,8 +4921,8 @@ def frexp(x, name=None):
     The function used to decompose a floating point number into mantissa and exponent.
 
     Args:
-        x (Tensor): The input tensor, which data type should be float32, float64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        x (Tensor): The input tensor, it's data type should be float32, float64.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
     Returns:
         mantissa (Tensor): A mantissa Tensor. The shape and data type of mantissa tensor and exponential tensor are
             the same as those of input.

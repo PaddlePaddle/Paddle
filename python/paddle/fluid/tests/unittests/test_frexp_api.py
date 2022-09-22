@@ -28,66 +28,66 @@ class TestFrexpAPI(unittest.TestCase):
         self.set_input()
 
     def set_input(self):
-        self.x_np_1 = np.random.uniform(-3, 3, [10, 12]).astype('float32')
+        self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
 
     # 静态图单测
     def test_static_api(self):
         # 开启静态图模式
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            input_data_1 = paddle.fluid.data('X', self.x_np_1.shape,
-                                             self.x_np_1.dtype)
-            out1 = paddle.frexp(input_data_1)
+            input_data = paddle.fluid.data('X', self.x_np.shape,
+                                           self.x_np.dtype)
+            out = paddle.frexp(input_data)
             # 计算静态图结果
             exe = paddle.static.Executor(self.place)
-            res_1 = exe.run(feed={'X': self.x_np_1}, fetch_list=[out1])
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
 
-        out_ref_1 = np.frexp(self.x_np_1)
+        out_ref = np.frexp(self.x_np)
         # 对比静态图与 numpy 实现函数计算结果是否相同
-        for n, p in zip(out_ref_1, res_1):
+        for n, p in zip(out_ref, res):
             np.testing.assert_allclose(n, p, rtol=self.rtol, atol=self.atol)
 
     # 动态图单测
     def test_dygraph_api(self):
         # 关闭静态图模式
         paddle.disable_static(self.place)
-        input_num = paddle.to_tensor(self.x_np_1)
+        input_num = paddle.to_tensor(self.x_np)
         # 测试动态图 tensor.frexp 和 paddle.tensor.math.frexp 计算结果
-        out1 = np.frexp(self.x_np_1)
+        out1 = np.frexp(self.x_np)
         out2 = paddle.frexp(input_num)
         np.testing.assert_allclose(out1, out2, rtol=1e-05)
 
-        out1 = np.frexp(self.x_np_1)
+        out1 = np.frexp(self.x_np)
         out2 = input_num.frexp()
         np.testing.assert_allclose(out1, out2, rtol=1e-05)
         paddle.enable_static()
 
 
-class TestSplitsFloat32Demo01(TestFrexpAPI):
+class TestSplitsFloat32Case1(TestFrexpAPI):
     """
         Test num_or_sections which is an integer and data type is float32.
     """
 
     def set_input(self):
-        self.x_np_1 = np.random.uniform(-1, 1, [4, 5, 2]).astype('float32')
+        self.x_np = np.random.uniform(-1, 1, [4, 5, 2]).astype('float32')
 
 
-class TestSplitsFloat64Demo01(TestFrexpAPI):
+class TestSplitsFloat64Case1(TestFrexpAPI):
     """
         Test num_or_sections which is an integer and data type is float64.
     """
 
     def set_input(self):
-        self.x_np_1 = np.random.uniform(-3, 3, [10, 12]).astype('float64')
+        self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float64')
 
 
-class TestSplitsFloat64Demo02(TestFrexpAPI):
+class TestSplitsFloat64Case2(TestFrexpAPI):
     """
         Test num_or_sections which is an integer and data type is float64.
     """
 
     def set_input(self):
-        self.x_np_1 = np.random.uniform(-1, 1, [4, 5, 2]).astype('float64')
+        self.x_np = np.random.uniform(-1, 1, [4, 5, 2]).astype('float64')
 
 
 if __name__ == "__main__":
