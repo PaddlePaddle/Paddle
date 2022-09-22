@@ -167,6 +167,10 @@ using ReluOneDNNGradFunctor =
     OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
 
 template <typename T>
+using Relu6OneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
+
+template <typename T>
 using SigmoidOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
     T,
     dnnl::algorithm::eltwise_logistic_use_dst_for_bwd>;
@@ -196,6 +200,7 @@ DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhOneDNNGradUseOutFunctor);
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                   ReluOneDNNGradFunctor,
                                                   alpha);
+DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Relu6, Relu6OneDNNGradFunctor, threshold);
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                   MishOneDNNGradFunctor,
                                                   threshold);
@@ -261,6 +266,7 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(gelu_grad, GeluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_swish_grad, HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
