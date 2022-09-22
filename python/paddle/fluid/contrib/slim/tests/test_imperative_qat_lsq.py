@@ -102,7 +102,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
 class TestImperativeQatLSQ(unittest.TestCase):
 
     def set_vars(self):
-        self.weight_quantize_type = 'lsq_weight'
+        self.weight_quantize_type = 'channel_wise_lsq_weight'
         self.activation_quantize_type = 'lsq_act'
         self.onnx_format = False
         self.fuse_conv_bn = False
