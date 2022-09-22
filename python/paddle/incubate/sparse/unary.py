@@ -612,22 +612,22 @@ def expm1(x, name=None):
 @dygraph_only
 def reshape(x, new_shape, name=None):
     """
-    Changes the dims order of ``x`` without changing its data, requiring x to be a SparseCooTensor or SparseCsrTensor.
+    Changes the shape of ``x`` without changing its value, requiring x to be a SparseCooTensor or SparseCsrTensor.
     .. math::
-        out = transpose(x, dims)
+        out = reshape(x, new_shape)
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
-        dims (list[int]): new dims.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, int32, int64 and so on.
+        new_shape (list[int]): new shape.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        A transposed Sparse Tensor with the same data type as ``x``.
+        A reshaped Sparse Tensor with the same data type as ``x``.
     Examples:
         .. code-block:: python
             import paddle
-            dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.incubate.sparse.transpose(sparse_x, [1, 0])
+            dense_x = paddle.to_tensor([[-2., 0., 7.9], [1., 2., 0.]])
+            sparse_x = dense_x.to_sparse_coo(2)
+            out = paddle.incubate.sparse.reshape(sparse_x, [6, ])
     """
     return _C_ops.sparse_reshape(x, new_shape)
     
