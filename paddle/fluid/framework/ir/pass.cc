@@ -80,11 +80,9 @@ Graph *Pass::Apply(Graph *graph) const {
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
 
-  bool is_pass_support_subgraph = \
-      std::find(support_subgraph_passes.begin(),
-                support_subgraph_passes.end(),
-                Type()) != support_subgraph_passes.end();
-  if (graph->IsMainGraph() and is_pass_support_subgraph) {
+  if (graph->IsMainGraph() and std::count(support_subgraph_passes.begin(),
+                                          support_subgraph_passes.end(),
+                                          Type())) {
     for (size_t i = 1; i < graph->SubGraphsSize(); i++) {
       auto *sub_graph = graph->GetSubGraph(i);
       if (!sub_graph->Has(framework::ir::kParamScopeAttr)) {

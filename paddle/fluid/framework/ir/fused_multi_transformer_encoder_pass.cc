@@ -14,12 +14,6 @@
 
 #include "paddle/fluid/framework/ir/fused_multi_transformer_encoder_pass.h"
 
-#include <string>
-
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_version_registry.h"
-
 namespace paddle {
 namespace framework {
 class Scope;
@@ -1127,7 +1121,14 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
 
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
+                     Graph* graph) {
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "fused_multi_transformer_encoder pass in " \
+                      "op compat failed.";
+      return;
+    }
+
+    VLOG(4) << "handle MultiTransformer encoder fuse";
     GET_IR_NODE_FROM_SUBGRAPH(input0, input0, fused_multi_transformer_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -1462,6 +1463,33 @@ void FusedMultiTransformerEncoderPass::ApplyImpl(Graph* graph) const {
 }
 
 FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
+  AddOpCompat(OpCompat("layer_norm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Mean")
+      .IsTensor()
+      .End()
+      .AddOutput("Variance")
+      .IsTensor()
+      .End()
+      .AddAttr("epsilon")
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
+      .End()
+      .AddAttr("begin_norm_axis")
+      .IsNumGT(0)
+      .End();
+
   AddOpCompat(OpCompat("matmul_v2"))
       .AddInput("X")  // the shape shoule be (B, S, N*H)
       .IsTensor()
@@ -1472,11 +1500,11 @@ FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
       .AddOutput("Out")  // the shape shoule be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddAttr("x_num_col_dims")
-      .IsNumEQ(2)
+      .AddAttr("trans_x")
+      .IsType<bool>()
       .End()
-      .AddAttr("y_num_col_dims")
-      .IsNumEQ(1)
+      .AddAttr("trans_y")
+      .IsType<bool>()
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -1539,6 +1567,27 @@ FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
       .IsType<std::vector<int>>()
       .End();
 
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGE(0.0f)
+      .IsNumLE(1.0f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("transpose_Y")
+      .IsType<bool>()
+      .End();
+
   AddOpCompat(OpCompat("softmax"))
       .AddInput("X")
       .IsTensor()
@@ -1548,6 +1597,31 @@ FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
       .End()
       .AddAttr("axis")
       .IsIntIn({-1, 3})  // shape is (B, H, S, S), so axis is -1 or 3
+      .End();
+
+  AddOpCompat(OpCompat("gelu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("approximate")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("while"))
+      .AddInput("X")  // A set of variables, unconstrained
+      .End()
+      .AddInput("Condition")  // An scalar
+      .IsTensor()
+      .End()
+      .AddOutput("Out")  // A set of variables, unconstrained
+      .End()
+      .AddOutput("StepScopes")  // A vector of local scope, unconstrained
+      .End()
+      .AddAttr("sub_block")
+      .IsType<framework::BlockDesc*>()
       .End();
 }
 
@@ -1745,7 +1819,14 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
 
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
+                     Graph* graph) {
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "fused_multi_transformer_encoder_fuse_qkv " \
+                      "pass in op compat failed.";
+      return;
+    }
+
+    VLOG(4) << "handle MultiTransformer encoder(Fuse-QKV) fuse";
     GET_IR_NODE_FROM_SUBGRAPH(
         input0, input0, fused_multi_transformer_fuse_qkv_pattern);
 
@@ -2055,6 +2136,33 @@ void FusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(Graph* graph) const {
 
 FusedMultiTransformerEncoderFuseQKVPass::
     FusedMultiTransformerEncoderFuseQKVPass() {
+  AddOpCompat(OpCompat("layer_norm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Mean")
+      .IsTensor()
+      .End()
+      .AddOutput("Variance")
+      .IsTensor()
+      .End()
+      .AddAttr("epsilon")
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
+      .End()
+      .AddAttr("begin_norm_axis")
+      .IsNumGT(0)
+      .End();
+
   AddOpCompat(OpCompat("matmul_v2"))
       .AddInput("X")  // the shape shoule be (B, S, N*H)
       .IsTensor()
@@ -2065,11 +2173,11 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .AddOutput("Out")  // the shape shoule be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddAttr("x_num_col_dims")
-      .IsNumEQ(2)
+      .AddAttr("trans_x")
+      .IsType<bool>()
       .End()
-      .AddAttr("y_num_col_dims")
-      .IsNumEQ(1)
+      .AddAttr("trans_y")
+      .IsType<bool>()
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -2134,6 +2242,27 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .IsType<std::vector<int>>()
       .End();
 
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGE(0.0f)
+      .IsNumLE(1.0f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("transpose_Y")
+      .IsType<bool>()
+      .End();
+
   AddOpCompat(OpCompat("softmax"))
       .AddInput("X")
       .IsTensor()
@@ -2143,6 +2272,31 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .End()
       .AddAttr("axis")
       .IsIntIn({-1, 3})  // shape is (B, H, S, S), so axis is -1 or 3
+      .End();
+
+  AddOpCompat(OpCompat("gelu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("approximate")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("while"))
+      .AddInput("X")  // A set of variables, unconstrained
+      .End()
+      .AddInput("Condition")  // An scalar
+      .IsTensor()
+      .End()
+      .AddOutput("Out")  // A set of variables, unconstrained
+      .End()
+      .AddOutput("StepScopes")  // A vector of local scope, unconstrained
+      .End()
+      .AddAttr("sub_block")
+      .IsType<framework::BlockDesc*>()
       .End();
 }
 
