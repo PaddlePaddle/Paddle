@@ -425,7 +425,7 @@ cc_library(
 cc_library(
   shape_inference
   SRCS shape_inference.cc
-  DEPS ddim attribute)
+  DEPS ddim attribute selected_rows_utils)
 
 # every source file that includes "dnnl.h" must depends on mkldnn
 # or, the first one should depends on mkldnn
@@ -1127,7 +1127,7 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS selected_rows serialization)
+  DEPS selected_rows serialization device_context)
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
