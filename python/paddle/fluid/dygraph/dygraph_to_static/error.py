@@ -18,6 +18,7 @@ import sys
 import traceback
 import linecache
 import re
+import numpy as np
 
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import Location, OriginInfo, global_origin_info_map
 from paddle.fluid.dygraph.dygraph_to_static.utils import _is_api_in_module_helper, RE_PYMODULE
@@ -188,7 +189,6 @@ class ErrorData(object):
                 func_str = searched_name.group(0)
                 break
         try:
-            import numpy as np
             module_result = eval("_is_api_in_module_helper({}, '{}')".format(
                 func_str, "numpy"))
             is_numpy_api_err = module_result or (func_str.startswith("numpy.")
