@@ -87,7 +87,7 @@ about:
 """
 
         self.build_const = r"""
-pip install paddle_bfloat==0.1.7
+pip install /package/paddle_bfloat-0.1.7.tar.gz
 """
 
         self.blt_const = r""" 
