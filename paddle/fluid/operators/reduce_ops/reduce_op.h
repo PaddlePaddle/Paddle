@@ -637,7 +637,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     // TODO(dev): We should delete Infershape and migrate it into
     // UnchangeInferMeta.In case of 'dim' is Variable, it will
     // not exist in Attrs but in Inputs.
-    if (ctx->Attrs().HasAttr("dim")) {
+    if (ctx->HasAttr("dim")) {
       auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
       for (size_t i = 0; i < dims.size(); ++i) {
         PADDLE_ENFORCE_LT(
