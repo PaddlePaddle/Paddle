@@ -65,6 +65,11 @@ g_disable_legacy_dygraph = (
 )
 
 
+def use_graph_enigne(place=None):
+    return os.getenv('FLAGS_use_graph_engine', None) == 1 and isinstance(
+        place, paddle.CustomPlace)
+
+
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     """
     Determines whether dtype of output tensor is as expected.
@@ -535,6 +540,9 @@ class OpTest(unittest.TestCase):
                 break
 
     def feed_var(self, input_vars, place):
+        if use_graph_enigne(place):
+            place = paddle.CPUPlace()
+
         feed_map = {}
         for var_name in input_vars:
             if isinstance(input_vars[var_name], list):
@@ -1536,6 +1544,11 @@ class OpTest(unittest.TestCase):
         if check_eager:
             check_dygraph = False
 
+        if use_graph_enigne(place):
+            check_dygraph = False
+            check_eager = False
+            check_ge = True
+
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
@@ -2169,6 +2182,10 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         check_eager=False,
     ):
+        if use_graph_engine(place):
+            check_dygraph = False
+            check_eager = False
+            check_ge = True
 
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -2231,7 +2248,8 @@ class OpTest(unittest.TestCase):
                 )
 
         for input_to_check in inputs_to_check:
-            set_input(self.scope, self.op, self.inputs, place)
+            set_input(self.scope, self.op, self.inputs,
+                      place if not check_ge else paddle.CPUPlace())
             tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
             tensor_size = functools.reduce(
                 lambda a, b: a * b, tensor_to_check.shape(), 1
@@ -2246,6 +2264,9 @@ class OpTest(unittest.TestCase):
 
         if numeric_place is None:
             numeric_place = place
+
+        if use_graph_engine(place):
+            numeric_place = paddle.CPUPlace()
 
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
