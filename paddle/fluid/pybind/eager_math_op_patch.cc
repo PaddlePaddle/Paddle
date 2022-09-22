@@ -58,6 +58,23 @@ bool PyCheckTensor(PyObject* obj) {
   return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
 }
 
+static bool PyCheckInteger(PyObject* obj) {
+#if PY_VERSION_HEX < 0x03000000
+  return (PyLong_Check(obj) || PyInt_Check(obj)) && !PyBool_Check(obj);
+#else
+  return PyLong_Check(obj) && !PyBool_Check(obj);
+#endif
+}
+
+static bool IsNumpyType(PyObject* obj) {
+  // It is not a good way to judge the type of obj by its type'name. Maybe using
+  // `PyArray_IsScalar` will be better. However, this interface cannot be used
+  // by including pybind11, and it needs to compile with numpy.
+  auto type_name = std::string(Py_TYPE(obj)->tp_name);
+  return type_name == "numpy.int64" || type_name == "numpy.longlong" ||
+         type_name == "numpy.int32" || type_name == "numpy.int16";
+}
+
 std::set<phi::DataType> _supported_int_dtype_{DataType::UINT8,
                                               DataType::INT8,
                                               DataType::INT16,
@@ -122,7 +139,9 @@ paddle::experimental::Tensor CallScalarFuction(
         _supported_int_dtype_.end()) {
       (*self_tensor) = cast_ad_func(*self_tensor, DataType::FLOAT32);
     }
-  } else if (PyLong_Check(other_obj) && !PyBool_Check(other_obj)) {
+  } else if (PyCheckInteger(other_obj) ||
+             IsNumpyType(other_obj)) {  // PyLong_Check(other_obj) &&
+                                        // !PyBool_Check(other_obj)
     other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     if (op_type == "div" && _supported_int_dtype_.find(self_tensor->dtype()) !=
                                 _supported_int_dtype_.end()) {
@@ -163,8 +182,8 @@ static PyObject* tensor__add__method(TensorObject* self,
     PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
     // 1. scalar exists cases
-    if ((PyFloat_Check(other_obj) || PyLong_Check(other_obj)) &&
-        !PyBool_Check(other_obj)) {
+    if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+        IsNumpyType(other_obj)) {
       ret = CallScalarFuction(&self_tensor, other_obj, "add");
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
@@ -248,8 +267,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
     PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
     // 1. scalar exists cases
-    if ((PyFloat_Check(other_obj) || PyLong_Check(other_obj)) &&
-        !PyBool_Check(other_obj)) {
+    if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+        IsNumpyType(other_obj)) {
       ret = CallScalarFuction(&self_tensor, other_obj, "sub");
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
@@ -331,8 +350,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
     // 1. scalar exists cases
-    if ((PyFloat_Check(other_obj) || PyLong_Check(other_obj)) &&
-        !PyBool_Check(other_obj)) {
+    if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+        IsNumpyType(other_obj)) {
       ret = CallScalarFuction(&self_tensor, other_obj, "rsub");
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
