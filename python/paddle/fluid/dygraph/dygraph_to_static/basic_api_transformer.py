@@ -18,7 +18,7 @@ from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static import utils
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, Dygraph2StaticException
 
 
 class BasicApiTransformer(BaseTransformer):
@@ -40,6 +40,8 @@ class BasicApiTransformer(BaseTransformer):
         to_tensor_transformer.transform()
         attribute_transformer = AttributeJstTransformer(self.root)
         attribute_transformer.transform()
+        super_transformer = SuperTransformer(self.root)
+        super_transformer.transform()
         self.visit(self.root)
 
         return self.wrapper_root
@@ -100,6 +102,32 @@ class BasicApiTransformer(BaseTransformer):
                 return True
             # TODO: node.value is not dygraph class
         return False
+
+
+class SuperTransformer(BaseTransformer):
+    """
+    Class to make sure 'super' is used correctly in py2 style
+    """
+
+    def __init__(self, node):
+        assert isinstance(
+            node, gast.AST
+        ), "Input non-gast.AST node for the initialization of SuperTransformer."
+        self.root = node
+
+    def transform(self):
+        self.visit(self.root)
+        return self.root
+
+    def visit_Call(self, node):
+        if isinstance(node.func,
+                      gast.Name) and node.func.id == 'super' and not node.args:
+            raise Dygraph2StaticException(
+                "'super()' is not supported in dy2static, please use 'super(Class, self)' or 'super(Class, cls)' instead."
+            )
+
+        self.generic_visit(node)
+        return node
 
 
 class ToTensorTransformer(BaseTransformer):

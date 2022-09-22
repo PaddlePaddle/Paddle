@@ -22,7 +22,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import error
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import unwrap
-
+from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 
 def inner_func():
     fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")
@@ -504,6 +504,36 @@ class TestSetStateDictErr(unittest.TestCase):
         error_message = str(new_exception)
 
         self.assertIn("This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'.", error_message)
+
+
+class _super_A(paddle.nn.Layer):
+	def __init__(self):
+		super().__init__()
+		self.linear = paddle.nn.Linear(10, 3)
+
+	def forward(self, x):
+		out = self.linear(x)
+		return out
+
+
+
+class _super_B(_super_A):
+	def forward(self, x):
+		super().forward(x)
+
+
+class TestSuperCallErr(unittest.TestCase):
+    def test_super_call_err(self):
+        with self.assertRaises(Dygraph2StaticException) as e:
+            net = paddle.jit.to_static(_super_B())
+            inp = paddle.rand(shape=[10])
+            loss = net(inp)
+
+        new_exception = e.exception
+        error_message = str(new_exception)
+
+        self.assertIn("'super()' is not supported in dy2static, please use 'super(Class, self)' or 'super(Class, cls)' instead.", error_message)
+
 
 
 if __name__ == '__main__':
