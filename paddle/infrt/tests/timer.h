@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 
 namespace infrt {
