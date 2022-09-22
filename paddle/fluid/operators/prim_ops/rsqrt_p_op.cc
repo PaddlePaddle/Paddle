@@ -34,17 +34,17 @@ class RsqrtPrimOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Prim operator sqrt_p should not be excuted directly"));
+        "Prim operator rsqrt_p should not be excuted directly"));
   }
 };
 
 class RsqrtPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The input tensor of sqrt_p op.");
-    AddOutput("Y", "(Tensor), The output tensor of sqrt_p op.");
+    AddInput("X", "(Tensor), The input tensor of rsqrt_p op.");
+    AddOutput("Y", "(Tensor), The output tensor of rsqrt_p op.");
     AddComment(R"DOC(
-Autograd primitive sqrt_p operator.
+Autograd primitive rsqrt_p operator.
 )DOC");
   }
 };

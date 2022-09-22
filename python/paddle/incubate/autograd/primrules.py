@@ -984,7 +984,7 @@ def rsqrt_jvp(op, x_dot):
     if x_dot is None:
         return None
     y = op_position_output(op)
-    x = op_position_inputs(op)
+    x, _ = op_position_inputs(op)
     c2 = fill_const(value=-2.0, shape=y.shape, dtype=y.dtype)
     y_dot = mul(x_dot, div(div(y, x), c2))
     return y_dot
