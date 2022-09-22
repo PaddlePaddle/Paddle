@@ -35,10 +35,11 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
-    func : ElementwiseInferMeta 
+    func : ElementwiseInferMeta
   kernel :
     func : add_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
            add_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
+           add_coo_dense{sparse_coo, dense -> sparse_coo},
     layout : x
   backward : add_grad
 
@@ -114,7 +115,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
-    func : ElementwiseInferMeta 
+    func : ElementwiseInferMeta
   kernel :
     func : divide_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
            divide_csr_csr{sparse_csr, sparse_csr -> sparse_csr}

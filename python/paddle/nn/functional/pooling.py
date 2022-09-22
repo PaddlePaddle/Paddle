@@ -646,6 +646,9 @@ def max_pool1d(x,
 
 
 def _unpool_output_size(x, kernel_size, stride, padding, output_size):
+    assert output_size is None or isinstance(
+        output_size, (list, tuple)
+    ), "Required output_size is None|list|tuple, but received %s" % output_size
     input_size = x.shape
     default_size = []
     for d in range(len(kernel_size)):
@@ -654,7 +657,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
 
     has_static_var = False
     if output_size is None:
-        ret = default_size
+        return default_size
     elif utils._contain_var(output_size):
         if not _non_static_mode():
             has_static_var = True
@@ -663,27 +666,25 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
             for i, var in enumerate(output_size):
                 if isinstance(var, Variable):
                     output_size[i] = var.numpy()[0]
-        ret = output_size
-    else:
-        if len(output_size) == len(kernel_size) + 2:
-            output_size = output_size[2:]
-        if len(output_size) != len(kernel_size):
-            raise ValueError(
-                "output_size should be a sequence containing "
-                "{} or {} elements, but it has a length of '{}'".format(
-                    len(kernel_size),
-                    len(kernel_size) + 2, len(output_size)))
-        if not has_static_var:
-            for d in range(len(kernel_size)):
-                min_size = default_size[d] - stride[d]
-                max_size = default_size[d] + stride[d]
-                if not (min_size < output_size[d] < max_size):
-                    raise ValueError(
-                        'invalid output_size "{}" (dim {} must be between {} and {})'
-                        .format(output_size, d, min_size, max_size))
 
-        ret = output_size
-    return ret
+    if len(output_size) == len(kernel_size) + 2:
+        output_size = output_size[2:]
+    if len(output_size) != len(kernel_size):
+        raise ValueError(
+            "output_size should be a sequence containing "
+            "{} or {} elements, but it has a length of '{}'".format(
+                len(kernel_size),
+                len(kernel_size) + 2, len(output_size)))
+    if not has_static_var:
+        for d in range(len(kernel_size)):
+            min_size = default_size[d] - stride[d]
+            max_size = default_size[d] + stride[d]
+            if not (min_size < output_size[d] < max_size):
+                raise ValueError(
+                    'invalid output_size "{}" (dim {} must be between {} and {})'
+                    .format(output_size, d, min_size, max_size))
+
+    return output_size
 
 
 def max_unpool1d(x,

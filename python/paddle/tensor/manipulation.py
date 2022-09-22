@@ -1130,10 +1130,12 @@ def concat(x, axis=0, name=None):
 
 def broadcast_tensors(input, name=None):
     """
-    This OP broadcast a list of tensors following broadcast semantics
+    Broadcast a list of tensors following broadcast semantics
 
     .. note::
-        If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
@@ -4490,7 +4492,7 @@ def index_add(x, index, axis, value, name=None):
 def index_add_(x, index, axis, value, name=None):
     """
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_tensor_index_add`.
+    Please refer to :ref:`api_paddle_index_add`.
 
     Examples:
         .. code-block:: python
