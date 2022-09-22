@@ -3471,22 +3471,21 @@ def multi_margin_loss(input,
         Measures a multi-class classification hinge loss (margin-based loss) between input :math:`input` (a 2D mini-batch `Tensor`, in shape (N, C),
         where C is number of classes) and label :math:`label` (which is a 1D tensor of target class indices,:math:`0 \leq label \leq \text{C}-1`):
 
-        For ith mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
+        For i-th mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
         output :math:`label_i` is:
 
         .. math::
-            \text{loss}(input_i, label_i) = \frac{\sum^C_j \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
 
-        where :math:`input_i \in \left\{0, \; \cdots , \; \text{C} - 1\right\}`
-        and :math:`j \neq label_i`.
+        where :math:`0 \leq j \leq \text{C}-1`, :math:`0 \leq i \leq \text{N}-1` and :math:`j \neq label_i`.
 
         Optionally, you can give non-equal weighting on the classes by passing
         a 1D :attr:`weight` tensor into the constructor.
 
-        The loss function for ith mini-batch then becomes:
+        The loss function for i-th sample then becomes:
 
         .. math::
-            \text{loss}(input_i, label_i) = \frac{\sum^C_j \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
 
 
     Parameters:
@@ -3540,8 +3539,9 @@ def multi_margin_loss(input,
                                  'multi_margin_loss')
     if not (input.shape[0] == label.shape[0]):
         raise ValueError(
-            "The label's shape[0] should be equal to input's shape[0], but received input's shape[0] {} and label's shape[0]:{}. "
-            .format(input.shape[0], label.shape[0]))
+            "The label's shape[0] should be equal to input's shape[0], "
+            "but received input's shape[0] {} and label's shape[0]:{}. ".format(
+                input.shape[0], label.shape[0]))
     label = label.reshape((-1, 1))
     index_sample = paddle.index_sample(input, label)
     if weight is not None:
@@ -3553,10 +3553,14 @@ def multi_margin_loss(input,
                 "The weight's shape[0] should be equal to input's shape[1]"
                 "but received weight's shape[0]: {} and input's shape[1]: {}".
                 format(weight.shape[0], input.shape[1]))
-
-        loss = paddle.mean(paddle.pow(
-            paddle.clip(weight * (margin - index_sample + input), min=0.0), p),
-                           axis=1) - margin**p / paddle.shape(input)[1]
+        weight = weight.reshape((-1, weight.shape[0]))
+        weight = paddle.repeat_interleave(weight, label.shape[0], 0)
+        weight = paddle.index_sample(weight, label)
+        loss = paddle.mean(
+            paddle.pow(
+                paddle.clip(weight *
+                            (margin - index_sample + input), min=0.0), p),
+            axis=1) - weight * (margin**p / paddle.shape(input)[1])
     else:
         loss = paddle.mean(paddle.pow(
             paddle.clip(margin - index_sample + input, min=0.0), p),

@@ -194,16 +194,14 @@ def calc_multi_margin_loss(
     weight=None,
     reduction='mean',
 ):
-    label = label.reshape(-1, 1)
-    index_sample = []
-    for i in range(len(label)):
-        index_sample.append(input[i, label[i]])
-    index_sample = np.array(index_sample).reshape(-1, 1)
-
+    index_sample = np.array([input[i, label[i]]
+                             for i in range(label.size)]).reshape(-1, 1)
     if weight is None:
         expected = np.mean(np.maximum(margin + input - index_sample, 0.0)**p,
                            axis=1) - margin**p / input.shape[1]
     else:
+        weight = np.array([weight[label[i]]
+                           for i in range(label.size)]).reshape(-1, 1)
         expected = np.mean(np.maximum(weight * (margin + input - index_sample), 0.0) ** p, axis=1) - margin ** p / \
                    input.shape[1]
 

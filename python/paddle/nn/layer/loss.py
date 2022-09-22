@@ -1693,22 +1693,21 @@ class MultiMarginLoss(Layer):
     r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss) between input :math:`input` (a 2D mini-batch `Tensor`, in shape (N, C),
         where C is number of classes) and label :math:`label` (which is a 1D tensor of target class indices,:math:`0 \leq label \leq \text{C}-1`):
 
-        For ith mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
+        For i-th mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
         output :math:`label_i` is:
 
         .. math::
-            \text{loss}(input_i, label_i) = \frac{\sum^C_j \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
 
-        where :math:`input_i \in \left\{0, \; \cdots , \; \text{C} - 1\right\}`
-        and :math:`j \neq label_i`.
+        where :math:`0 \leq j \leq \text{C}-1`, :math:`0 \leq i \leq \text{N}-1` and :math:`j \neq label_i`.
 
         Optionally, you can give non-equal weighting on the classes by passing
         a 1D :attr:`weight` tensor into the constructor.
 
-        The loss function for ith mini-batch then becomes:
+        The loss function for i-th sample then becomes:
 
         .. math::
-            \text{loss}(input_i, label_i) = \frac{\sum^C_j \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
 
 
         Parameters:
