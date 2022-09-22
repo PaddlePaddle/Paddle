@@ -4916,28 +4916,28 @@ def take(x, index, mode='raise', name=None):
 
     return out
 
-def frexp(x):
+def frexp(x, name=None):
     """
-        The function used to decompose a floating point number into mantissa and exponent.
+    The function used to decompose a floating point number into mantissa and exponent.
 
-        Args:
-            x (Tensor): The input tensor, which data type should be float32, float64.
-
-        Returns:
-            mantissa(Tensor): A mantissa Tensor.The shape and data type of mantissa tensor and exponential tensor are
+    Args:
+        x (Tensor): The input tensor, which data type should be float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Returns:
+        mantissa (Tensor): A mantissa Tensor. The shape and data type of mantissa tensor and exponential tensor are
             the same as those of input.
-            exponent(Tensor): A exponent Tensor.The shape and data type of mantissa tensor and exponential tensor are
+        exponent (Tensor): A exponent Tensor. The shape and data type of mantissa tensor and exponential tensor are
             the same as those of input.
 
-        Examples:
-            .. code-block:: Python
+    Examples:
+        .. code-block:: python
 
-                import paddle
+            import paddle
 
-                x = paddle.to_tensor([[1,2,3,4]])
-                print(paddle.tensor.math.frexp(x))
-                #(Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[0.50000000, 0.50000000, 0.75000000, 0.50000000]]),
-                    Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[1., 2., 2., 3.]]))
+            x = paddle.to_tensor([[1, 2, 3, 4]])
+            print(paddle.tensor.math.frexp(x))
+            # (Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[0.50000000, 0.50000000, 0.75000000, 0.50000000]]),
+            #  Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[1., 2., 2., 3.]]))
         """
     if x.dtype not in [paddle.float32, paddle.float64]:
         raise TypeError(

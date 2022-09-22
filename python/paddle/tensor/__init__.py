@@ -287,7 +287,6 @@ from .array import create_array  # noqa: F401
 from .einsum import einsum  # noqa: F401
 
 # this list used in math_op_patch.py for _binary_creator_
-# this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [  # noqa
     'matmul', 'dot', 'cov', 'corrcoef', 'norm', 'cond', 'transpose', 'lstsq',
     'dist', 't', 'cross', 'cholesky', 'bmm', 'histogram', 'bincount', 'mv',
