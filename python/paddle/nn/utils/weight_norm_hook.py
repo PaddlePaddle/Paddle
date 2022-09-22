@@ -164,7 +164,7 @@ class WeightNorm(object):
 
 def weight_norm(layer, name='weight', dim=0):
     r"""
-    This weight_norm layer applies weight normalization to a parameter according to the
+    Applies weight normalization to a parameter according to the
     following formula:
 
     .. math::
@@ -193,11 +193,9 @@ def weight_norm(layer, name='weight', dim=0):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           from paddle.nn import Conv2D
           from paddle.nn.utils import weight_norm
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
           conv = Conv2D(3, 5, 3)
           wn = weight_norm(conv)
           print(conv.weight_g.shape)
@@ -218,7 +216,7 @@ def remove_weight_norm(layer, name='weight'):
         name(str, optional): Name of the weight parameter. Default: 'weight'.
 
     Returns:
-        Origin layer without weight norm
+        Layer, the origin layer without weight norm
 
     Examples:
         .. code-block:: python

@@ -30,9 +30,9 @@ def wait_server_ready(endpoints):
     ["127.0.0.1:8080", "127.0.0.1:8081"]
 
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
-         wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
+             wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
     """
     assert not isinstance(endpoints, str)
     while True:

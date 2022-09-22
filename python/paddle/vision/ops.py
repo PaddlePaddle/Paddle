@@ -175,16 +175,6 @@ def yolo_loss(
     Returns:
         Tensor: A 1-D tensor with shape [N], the value of yolov3 loss
 
-    Raises:
-        TypeError: Input x of yolov3_loss must be Tensor
-        TypeError: Input gtbox of yolov3_loss must be Tensor
-        TypeError: Input gtlabel of yolov3_loss must be Tensor
-        TypeError: Input gtscore of yolov3_loss must be None or Tensor
-        TypeError: Attr anchors of yolov3_loss must be list or tuple
-        TypeError: Attr class_num of yolov3_loss must be an integer
-        TypeError: Attr ignore_thresh of yolov3_loss must be a float number
-        TypeError: Attr use_label_smooth of yolov3_loss must be a bool value
-
     Examples:
       .. code-block:: python
 
@@ -400,12 +390,6 @@ def yolo_box(
         Tensor: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
         and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification 
         scores of boxes.
-
-    Raises:
-        TypeError: Input x of yolov_box must be Tensor
-        TypeError: Attr anchors of yolo box must be list or tuple
-        TypeError: Attr class_num of yolo box must be an integer
-        TypeError: Attr conf_thresh of yolo box must be a float number
 
     Examples:
 
@@ -965,9 +949,7 @@ def deform_conv2d(
     Returns:
         Tensor: The tensor variable storing the deformable convolution \
                   result. A Tensor with type float32, float64.
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
+
     Examples:
         .. code-block:: python
 
