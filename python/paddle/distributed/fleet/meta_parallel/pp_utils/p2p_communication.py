@@ -241,7 +241,7 @@ def recv_partial(tensor,
         return _partial_recv_op(tensor, group, use_calc_stream, ring_id,
                                 src_rank, nranks, rank_id)
     else:
-        if _in_legacy_dygraph():
+        if _in_legacy_dygraph() or use_calc_stream:
             recv_op = paddle.distributed.recv
         elif in_dygraph_mode():
             recv_op = paddle.distributed.irecv
