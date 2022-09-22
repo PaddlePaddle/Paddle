@@ -16,8 +16,6 @@ import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import dygraph_only, core, convert_np_dtype_to_dtype_
-from paddle import in_dynamic_mode
-from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -361,6 +359,7 @@ def log1p(x, name=None):
     return _C_ops.sparse_log1p(x)
 
 
+@dygraph_only
 def cast(x, index_dtype=None, value_dtype=None, name=None):
     """
     cast non-zero-index of SparseTensor to `index_dtype`, non-zero-element of SparseTensor to
@@ -392,20 +391,7 @@ def cast(x, index_dtype=None, value_dtype=None, name=None):
         index_dtype = convert_np_dtype_to_dtype_(index_dtype)
     if value_dtype and not isinstance(value_dtype, core.VarDesc.VarType):
         value_dtype = convert_np_dtype_to_dtype_(value_dtype)
-
-    if in_dynamic_mode():
-        return _C_ops.sparse_cast(x, index_dtype, value_dtype)
-    else:
-        op_type = 'sparse_cast'
-        helper = LayerHelper(op_type)
-        out = helper.create_sparse_variable_for_type_inference(x.dtype)
-        inputs = {'X': x}
-        attrs = {'index_dtype': index_dtype, 'value_dtype': value_dtype}
-        helper.append_op(type=op_type,
-                         inputs=inputs,
-                         outputs={'Out': out},
-                         attrs=attrs)
-        return out
+    return _C_ops.sparse_cast(x, index_dtype, value_dtype)
 
 
 @dygraph_only
