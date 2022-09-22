@@ -89,7 +89,7 @@ class SparseIndicesOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(sparse_indices,
                             SparseIndicesInferShapeFunctor,
-                            PD_INFER_META(phi::UnchangedInferMeta));
+                            PD_INFER_META(phi::sparse::IndicesInferMeta));
 
 class SparseToDenseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -164,28 +164,6 @@ DECLARE_INFER_SHAPE_FUNCTOR(sparse_conv3d,
                             SparseConv3dInferShapeFunctor,
                             PD_INFER_META(phi::sparse::Conv3dInferMeta));
 
-class SparseCastOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor), input 0 of sparse_cast op.");
-    AddOutput("Out", "(Tensor), output 0 of sparse_cast op.");
-    AddAttr<int>("index_dtype", "(int), attribute 0 for sparse_cast op.");
-    AddAttr<int>("value_dtype", "(int), attribute 0 for sparse_cast op.");
-    AddComment(R"DOC(
-TODO: Documentation of sparse_cast op.
-)DOC");
-  }
-};
-
-class SparseCastOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-};
-
-DECLARE_INFER_SHAPE_FUNCTOR(sparse_cast,
-                            SparseCastInferShapeFunctor,
-                            PD_INFER_META(phi::UnchangedInferMeta));
-
 class SparseAddOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -241,11 +219,6 @@ REGISTER_OPERATOR(sparse_conv3d,
                   ops::SparseConv3dOp,
                   ops::SparseConv3dOpMaker,
                   ops::SparseConv3dInferShapeFunctor);
-
-REGISTER_OPERATOR(sparse_cast,
-                  ops::SparseCastOp,
-                  ops::SparseCastOpMaker,
-                  ops::SparseCastInferShapeFunctor);
 
 REGISTER_OPERATOR(sparse_add,
                   ops::SparseAddOp,

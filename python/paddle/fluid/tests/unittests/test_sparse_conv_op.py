@@ -191,14 +191,15 @@ class TestStatic(unittest.TestCase):
                                           dilation=1,
                                           groups=1,
                                           data_format="NDHWC")
-        out = sparse.nn.functional.relu(out)
-        out = out.to_dense()
+        sp_out = sparse.nn.functional.relu(out)
+        out_indices = sp_out.indices()
+        out_values = sp_out.values()
+        out = sp_out.to_dense()
 
         exe = paddle.static.Executor()
 
         indices_data = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
         values_data = [[1.0], [2.0], [3.0], [4.0]]
-        #weight_data = np.random.random(weight_shape).astype('float32')
         weight_data = np.array([[[[[1], [1], [1]], [[1], [1], [1]],
                                   [[1], [1], [1]]]]]).astype('float32')
         weight_data = weight_data.reshape(weight_shape)
@@ -210,10 +211,13 @@ class TestStatic(unittest.TestCase):
             'weight': weight_data,
             'bias': bias_data
         },
-                        fetch_list=[out],
+                        fetch_list=[out, out_indices, out_values],
                         return_numpy=True)
-        correct_out_values = np.array([[[[[5.0], [11.0]]]]]).astype('float32')
-        assert np.array_equal(correct_out_values, fetch[0])
+        correct_out = np.array([[[[[5.0], [11.0]]]]]).astype('float64')
+        correct_out_values = [[5.0], [11.0]]
+        assert np.array_equal(correct_out, fetch[0])
+        assert np.array_equal(correct_out_values, fetch[2])
+        assert out_indices.dtype == paddle.int32
         paddle.disable_static()
 
 

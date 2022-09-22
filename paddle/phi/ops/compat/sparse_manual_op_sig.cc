@@ -72,15 +72,6 @@ KernelSignature SparseConv3dOpArgumentMapping(
   }
 }
 
-KernelSignature SparseCastOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("X")) {
-    return KernelSignature(
-        "cast_coo", {"X"}, {"index_dtype", "value_dtype"}, {"Out"});
-  } else {
-    return KernelSignature("unregistered", {}, {}, {});
-  }
-}
-
 KernelSignature SparseAddOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsSparseCooTensorInput("X") && ctx.IsSparseCooTensorInput("Y")) {
     return KernelSignature("add_coo_coo", {"X", "Y"}, {}, {"Out"});
@@ -109,9 +100,6 @@ PD_REGISTER_ARG_MAPPING_FN(sparse_to_dense,
 
 PD_REGISTER_BASE_KERNEL_NAME(sparse_relu, relu_coo);
 PD_REGISTER_ARG_MAPPING_FN(sparse_relu, phi::SparseReluOpArgumentMapping);
-
-PD_REGISTER_BASE_KERNEL_NAME(sparse_cast, cast_coo);
-PD_REGISTER_ARG_MAPPING_FN(sparse_cast, phi::SparseCastOpArgumentMapping);
 
 PD_REGISTER_BASE_KERNEL_NAME(sparse_conv3d, conv3d_coo);
 PD_REGISTER_ARG_MAPPING_FN(sparse_conv3d, phi::SparseConv3dOpArgumentMapping);
