@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import math
-import numpy as np
+import warnings
 
+import numpy as np
+from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
