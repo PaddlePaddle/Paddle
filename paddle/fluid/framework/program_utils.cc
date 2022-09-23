@@ -49,9 +49,11 @@ void MergePrograms(ProgramDesc *dst,
       if (dst_block->FindVar(src_new_var->Name())) continue;
       auto *dst_new_var = dst_block->Var(src_new_var->Name());
       *dst_new_var = *src_new_var;
-      VLOG(10) << "Create new variable " << dst_new_var->Name();
+      VLOG(10) << "Create new variable " << dst_new_var->Name()
+               << ", persistable:" << dst_new_var->Persistable();
     }
   };
+
   VisitAllElements(srcs, create_var_visitor, reverse);
 
   auto create_op_visitor = [dst, reverse](const ProgramDesc &src) {

@@ -59,13 +59,13 @@ class GatherNdOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
     Gather_Nd Operator.
 
-    This function is actually a high-dimensional extension of gather 
-    and supports for simultaneous indexing by multiple axes. Out is 
-    obtained by gathering slices from X into a tensor with shape 
+    This function is actually a high-dimensional extension of gather
+    and supports for simultaneous indexing by multiple axes. Out is
+    obtained by gathering slices from X into a tensor with shape
     Index.shape[:-1] + X.shape[Index.shape[-1]:].
 
     Example:
-   
+
     Given:
          X = [[[ 0,  1,  2,  3],
                [ 4,  5,  6,  7],
@@ -73,7 +73,7 @@ class GatherNdOpMaker : public framework::OpProtoAndCheckerMaker {
               [[12, 13, 14, 15],
                [16, 17, 18, 19],
                [20, 21, 22, 23]]]
-       
+
          X.shape = (2, 3, 4)
 
    *Case 1:
@@ -81,7 +81,7 @@ class GatherNdOpMaker : public framework::OpProtoAndCheckerMaker {
        Index = [[1]]
 
     we get:
-       Out = 
+       Out =
             [[12, 13, 14, 15],
              [16, 17, 18, 19],
              [20, 21, 22, 23]]
@@ -91,7 +91,7 @@ class GatherNdOpMaker : public framework::OpProtoAndCheckerMaker {
        Index = [[0,2]]
 
     we get:
-        
+
        Out =  [8, 9, 10, 11]
 
    *Case 3:

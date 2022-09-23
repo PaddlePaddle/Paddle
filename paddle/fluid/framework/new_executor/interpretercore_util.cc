@@ -42,10 +42,12 @@ namespace framework {
 namespace interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
-constexpr size_t kPrepareWorkQueueIdx = 2;
 
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
-    size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
+    size_t host_num_threads,
+    size_t device_num_threads,
+    size_t prepare_num_threads,
+    EventsWaiter* waiter) {
   std::vector<WorkQueueOptions> group_options;
   // for execute host Kernel
   group_options.emplace_back(/*name*/ "HostTasks",
@@ -65,7 +67,7 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
                              /*events_waiter*/ waiter);
   // for prepare deps and others
   group_options.emplace_back(/*name*/ "Prepare",
-                             /*num_threads*/ 1,
+                             /*num_threads*/ prepare_num_threads,
                              /*allow_spinning*/ true,
                              /*always_spinning*/ false,
                              /*track_task*/ false,
@@ -76,10 +78,11 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
 
 AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
                                size_t device_num_threads,
+                               size_t prepare_num_threads,
                                EventsWaiter* waiter)
     : host_num_thread_(host_num_threads) {
-  queue_group_ = CreateWorkQueueGroup(
-      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
+  queue_group_ = CreateWorkQueueGroup(ConstructWorkQueueOptions(
+      host_num_threads, device_num_threads, prepare_num_threads, waiter));
 }
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
@@ -418,7 +421,6 @@ void build_op_func_list(const platform::Place& place,
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
       ops_unique;  // its elements will be moved to vec_func_list
-  bool flag_log_is_printed = false;
   // Step 1: create all ops for current block.
   create_all_ops(block, &ops_unique);
 
@@ -443,6 +445,7 @@ void build_op_func_list(const platform::Place& place,
   }
   auto unused_var_map = get_unused_vars(block, ops);
 
+  bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
     const std::string& op_type = op->Type();
@@ -452,7 +455,7 @@ void build_op_func_list(const platform::Place& place,
     // Print new executor log if grad op is used.
     // It's only for test and will be removed later.
     if (!flag_log_is_printed && op_type.find("_grad") != std::string::npos) {
-      VLOG(0) << "Standalone Executor is Used.";
+      LOG_FIRST_N(INFO, 1) << "Standalone Executor is Used.";
       flag_log_is_printed = true;
     }
 

@@ -1,4 +1,4 @@
-- api : trace
+- op : trace
   version :
     - checkpoint : Upgrade trace add a new attribute [axis2]
       action :
