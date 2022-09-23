@@ -25,6 +25,8 @@
 #include <iostream>
 #include <vector>
 
+#include "cub/cub.cuh"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/framework/tensor_util.h"  // TensorToVector()
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -216,6 +218,7 @@ static void UniqueFlattendCUDATensor(const Context& context,
 
   // 3. Calculate inverse index: 'inverse'
   if (return_inverse) {
+    const auto place = context.GetPlace();
     index->Resize(phi::make_ddim({num_input}));
     auto* inverse_data = context.template Alloc<IndexT>(index);
     DenseTensor inv_loc;
@@ -226,12 +229,19 @@ static void UniqueFlattendCUDATensor(const Context& context,
                                 in_data_hat + num_input,
                                 inv_loc_data_ptr,
                                 not_equal);
-    thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
-    inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
-    thrust::inclusive_scan(thrust::device,
-                           inv_loc_data_ptr,
-                           inv_loc_data_ptr + num_input,
-                           inv_loc_data_ptr);
+    cudaMemset(inv_loc_data_ptr, 0, sizeof(IndexT));
+    size_t temp_storage_bytes = 0;
+    cub::DeviceScan::InclusiveSum(NULL,
+                                  temp_storage_bytes,
+                                  inv_loc_data_ptr,
+                                  inv_loc_data_ptr,
+                                  num_input);
+    auto d_temp_storage = paddle::memory::Alloc(place, temp_storage_bytes);
+    cub::DeviceScan::InclusiveSum(d_temp_storage->ptr(),
+                                  temp_storage_bytes,
+                                  inv_loc_data_ptr,
+                                  inv_loc_data_ptr,
+                                  num_input);
     thrust::scatter(thrust::device,
                     inv_loc_data_ptr,
                     inv_loc_data_ptr + num_input,

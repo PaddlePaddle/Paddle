@@ -498,15 +498,37 @@ std::vector<std::shared_ptr<phi::Allocation>> GraphDataGenerator::SampleNeighbor
 
   int* all_sample_count_ptr =
       reinterpret_cast<int* >(sample_res.actual_sample_size_mem->ptr());
-  thrust::device_vector<int> cumsum_actual_sample_size(len * edge_to_id_len_ + 1, 0);
-  thrust::inclusive_scan(thrust::device_pointer_cast(all_sample_count_ptr),
-                         thrust::device_pointer_cast(all_sample_count_ptr) + len * edge_to_id_len_,
-                         cumsum_actual_sample_size.begin() + 1);
+
+  auto cumsum_actual_sample_size =
+      memory::Alloc(place_, (len * edge_to_id_len_ + 1) * sizeof(int));
+  int* cumsum_actual_sample_size_ptr =
+      reinterpret_cast<int*>(cumsum_actual_sample_size->ptr());
+  cudaMemsetAsync(cumsum_actual_sample_size_ptr, 
+                  0, 
+                  (len * edge_to_id_len_ + 1) * sizeof(int),
+                  stream_);
+
+  size_t temp_storage_bytes = 0;
+  CUDA_CHECK(cub::DeviceScan::InclusiveSum(NULL,
+                                           temp_storage_bytes,
+                                           all_sample_count_ptr,
+                                           cumsum_actual_sample_size_ptr + 1,
+                                           len * edge_to_id_len_,
+                                           stream_));
+  auto d_temp_storage = memory::Alloc(place_, temp_storage_bytes);
+  CUDA_CHECK(cub::DeviceScan::InclusiveSum(d_temp_storage->ptr(),
+                                           temp_storage_bytes,
+                                           all_sample_count_ptr,
+                                           cumsum_actual_sample_size_ptr + 1,
+                                           len * edge_to_id_len_,
+                                           stream_));
+  cudaStreamSynchronize(stream_);
+
   edges_split_num.resize(edge_to_id_len_);
   for (int i = 0; i < edge_to_id_len_; i++) {
     cudaMemcpyAsync(
         edges_split_num.data() + i,
-        thrust::raw_pointer_cast(cumsum_actual_sample_size.data()) + (i + 1) * len,
+        cumsum_actual_sample_size_ptr + (i + 1) * len,
         sizeof(int),
         cudaMemcpyDeviceToHost,
         stream_);
@@ -530,7 +552,7 @@ std::vector<std::shared_ptr<phi::Allocation>> GraphDataGenerator::SampleNeighbor
                                      final_sample_val_ptr,
                                      final_sample_val_dst_ptr,
                                      all_sample_count_ptr,
-                                     thrust::raw_pointer_cast(cumsum_actual_sample_size.data()),
+                                     cumsum_actual_sample_size_ptr,
                                      sample_size,
                                      len * edge_to_id_len_,
                                      len);

@@ -116,13 +116,18 @@ __global__ void get_features_kernel(GpuPsCommGraphFea graph,
 }
 
 template <int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
-__global__ void neighbor_sample_kernel(GpuPsCommGraph graph,
-                                       GpuPsNodeInfo* node_info_list,
-                                       int* actual_size,
-                                       uint64_t* res,
-                                       int sample_len,
-                                       int n,
-                                       int default_value) {
+__global__ void neighbor_sample_kernel_walking(GpuPsCommGraph graph,
+                                               GpuPsNodeInfo* node_info_list,
+                                               int* actual_size,
+                                               uint64_t* res,
+                                               int sample_len,
+                                               int n,
+                                               int default_value) {
+  // graph: The corresponding edge table.
+  // node_info_list: The input node query, duplicate nodes allowed.
+  // actual_size: The actual sample size of the input nodes.
+  // res: The output sample neighbors of the input nodes.
+  // sample_len: The fix sample size.
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -168,62 +173,19 @@ __global__ void neighbor_sample_kernel(GpuPsCommGraph graph,
   }
 }
 
-__global__ void neighbor_sample_kernel2(GpuPsCommGraph graph,
-                                        GpuPsNodeInfo* node_info_list,
-                                        int* actual_size,
-                                        uint64_t* res,
-                                        int sample_len,
-                                        int n,
-                                        int default_value) {
-  curandState rng;
-  curand_init(blockIdx.x, threadIdx.x, 0, &rng);
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) {
-    if (node_info_list[i].neighbor_size == 0) {
-      actual_size[i] = default_value;
-    } else {
-      int neighbor_len = (int)node_info_list[i].neighbor_size;
-      uint32_t data_offset = node_info_list[i].neighbor_offset;
-      int offset = i * sample_len;
-      uint64_t* data = graph.neighbor_list;
-      uint64_t tmp;
-      int split, begin;
-      if (neighbor_len <= sample_len) {
-        actual_size[i] = neighbor_len;
-        for (int j = 0; j < neighbor_len; j++) {
-          res[offset + j] = data[data_offset + j];
-        }
-      } else {
-        actual_size[i] = sample_len;
-        if (neighbor_len < 2 * sample_len) {
-          split = sample_len;
-          begin = 0;
-        } else {
-          split = neighbor_len - sample_len;
-          begin = neighbor_len - sample_len;
-        }
-        for (int idx = split; idx <= neighbor_len - 1; idx++) {
-          const int num = curand(&rng) % (idx + 1);
-          tmp = data[data_offset + num];
-          data[data_offset + num] = data[data_offset + idx];
-          data[data_offset + idx] = tmp;
-        }
-        for (int idx = 0; idx < sample_len; idx++) {
-          res[offset + idx] = data[data_offset + begin + idx];
-        }
-      }
-    }
-  }
-}
-
-__global__ void neighbor_sample_kernel3(GpuPsCommGraph* graphs,
-                                        GpuPsNodeInfo* node_info_base,
-                                        int* actual_size_base,
-                                        uint64_t* sample_array_base,
-                                        int sample_len,
-                                        int n, // edge_type * shard_len
-                                        int default_value,
-                                        int shard_len) {
+__global__ void neighbor_sample_kernel_all_edge_type(GpuPsCommGraph* graphs,
+                                                     GpuPsNodeInfo* node_info_base,
+                                                     int* actual_size_base,
+                                                     uint64_t* sample_array_base,
+                                                     int sample_len,
+                                                     int n, // edge_type * shard_len
+                                                     int default_value,
+                                                     int shard_len) {
+  // graph: All edge tables.
+  // node_info_list: The input node query, must be unique, otherwise the randomness gets worse.
+  // actual_size_base: The begin position of actual sample size of the input nodes.
+  // sample_array_base: The begin position of sample neighbors of the input nodes.
+  // sample_len: The fix sample size.
   curandState rng;
   curand_init(blockIdx.x, threadIdx.x, 0, &rng);
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -260,9 +222,9 @@ __global__ void neighbor_sample_kernel3(GpuPsCommGraph* graphs,
         }
         for (int idx = split; idx <= neighbor_len - 1; idx++) {
           const int num = curand(&rng) % (idx + 1);
-          tmp = data[data_offset + num];
-          data[data_offset + num] = data[data_offset + idx];
-          data[data_offset + idx] = tmp;
+          data[data_offset + idx] =
+              atomicExch(reinterpret_cast<unsigned long long int*>(data + data_offset + num),
+                         static_cast<unsigned long long int>(data[data_offset + idx]));
         }
         for (int idx = 0; idx < sample_len; idx++) {
           sample_array[offset + idx] = data[data_offset + begin + idx];
@@ -1000,7 +962,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     constexpr int TILE_SIZE = BLOCK_WARPS * 16;
     const dim3 block(WARP_SIZE, BLOCK_WARPS);
     const dim3 grid((shard_len + TILE_SIZE - 1) / TILE_SIZE);
-    neighbor_sample_kernel<WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+    neighbor_sample_kernel_walking<WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
         <<<grid, block, 0, resource_->remote_stream(i, gpu_id)>>>(
             graph,
             node_info_list,
@@ -1129,24 +1091,41 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
   }
 
   if (compress) {
-    int total_sample_size = thrust::reduce(
-        thrust::device_pointer_cast(actual_sample_size),
-        thrust::device_pointer_cast(actual_sample_size) + len);
+    size_t temp_storage_bytes = 0;
+    int total_sample_size = 0;
+    auto cumsum_actual_sample_size = memory::Alloc(place, (len + 1) * sizeof(int));
+    int* cumsum_actual_sample_size_ptr =
+        reinterpret_cast<int*>(cumsum_actual_sample_size->ptr());
+    CUDA_CHECK(cudaMemsetAsync(cumsum_actual_sample_size_ptr, 0, sizeof(int), stream));
+    CUDA_CHECK(cub::DeviceScan::InclusiveSum(NULL,
+                                           temp_storage_bytes,
+                                           actual_sample_size,
+                                           cumsum_actual_sample_size_ptr + 1,
+                                           len,
+                                           stream));
+    auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+    CUDA_CHECK(cub::DeviceScan::InclusiveSum(d_temp_storage->ptr(),
+                                             temp_storage_bytes,
+                                             actual_sample_size,
+                                             cumsum_actual_sample_size_ptr + 1,
+                                             len,
+                                             stream));
+    CUDA_CHECK(cudaMemcpyAsync(&total_sample_size,
+                               cumsum_actual_sample_size_ptr + len,
+                               sizeof(int),
+                               cudaMemcpyDeviceToHost,
+                               stream));
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+
     result.set_total_sample_size(total_sample_size);
     result.actual_val_mem =
         memory::AllocShared(place, total_sample_size * sizeof(uint64_t));
     result.actual_val = (uint64_t*)(result.actual_val_mem)->ptr();
-
-    thrust::device_vector<int> cumsum_actual_sample_size(len);
-    thrust::exclusive_scan(thrust::device_pointer_cast(actual_sample_size),
-                           thrust::device_pointer_cast(actual_sample_size) + len,
-                           cumsum_actual_sample_size.begin(),
-                           0);
     fill_actual_vals<<<grid_size, block_size_, 0, stream>>>(
         val,
         result.actual_val,
         actual_sample_size,
-        thrust::raw_pointer_cast(cumsum_actual_sample_size.data()),
+        cumsum_actual_sample_size_ptr,
         sample_size,
         len);
   }
@@ -1266,7 +1245,7 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     uint64_t* sample_array_base = (uint64_t*)(actual_size_base +
         shard_len * edge_type_len + (shard_len * edge_type_len) % 2);
     int grid_size_ = (shard_len * edge_type_len - 1) / block_size_ + 1;
-    neighbor_sample_kernel3<<<
+    neighbor_sample_kernel_all_edge_type<<<
         grid_size_, block_size_, 0, resource_->remote_stream(i, gpu_id)>>>(
             d_commgraph_ptr,
             node_info_base,
