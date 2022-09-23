@@ -420,7 +420,7 @@ class PartialProgramLayer:
             x = 2 * in  # <---- x is a non-leaf node in program.
             y = x + 3
             return x, y
-        
+
         loss = forward(in)[0].sum()
         loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
         """

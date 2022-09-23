@@ -52,9 +52,9 @@ class ChannelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
         while keeping the original tensor shape.
 
     Please refer to the paper:
-        `ShuffleNet: An Extremely Efficient Convolutional Neural Network for 
+        `ShuffleNet: An Extremely Efficient Convolutional Neural Network for
         Mobile Devices <https://arxiv.org/abs/1707.01083>`_
-        by Zhang et. al (2017) for more details. 
+        by Zhang et. al (2017) for more details.
 
         )DOC");
   }

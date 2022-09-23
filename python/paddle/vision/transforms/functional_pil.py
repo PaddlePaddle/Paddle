@@ -62,7 +62,7 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (PIL.Image): Image to be converted to tensor.
-        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -113,13 +113,13 @@ def resize(img, size, interpolation='bilinear'):
     Args:
         input (PIL.Image): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
-        interpolation (int|str, optional): Interpolation method. when use pil backend, 
-            support method are as following: 
-            - "nearest": Image.NEAREST, 
-            - "bilinear": Image.BILINEAR, 
-            - "bicubic": Image.BICUBIC, 
-            - "box": Image.BOX, 
-            - "lanczos": Image.LANCZOS, 
+        interpolation (int|str, optional): Interpolation method. when use pil backend,
+            support method are as following:
+            - "nearest": Image.NEAREST,
+            - "bilinear": Image.BILINEAR,
+            - "bicubic": Image.BICUBIC,
+            - "box": Image.BOX,
+            - "lanczos": Image.LANCZOS,
             - "hamming": Image.HAMMING
 
     Returns:
@@ -160,7 +160,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
-            This value is only used when the padding_mode is constant. Default: 0. 
+            This value is only used when the padding_mode is constant. Default: 0.
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
 
             - constant: pads with a constant value, this value is specified with fill
@@ -246,7 +246,7 @@ def crop(img, top, left, height, width):
     """Crops the given PIL Image.
 
     Args:
-        img (PIL.Image): Image to be cropped. (0,0) denotes the top left 
+        img (PIL.Image): Image to be cropped. (0,0) denotes the top left
             corner of the image.
         top (int): Vertical component of the top left corner of the crop box.
         left (int): Horizontal component of the top left corner of the crop box.
@@ -267,8 +267,8 @@ def center_crop(img, output_size):
             img (PIL.Image): Image to be cropped. (0,0) denotes the top left corner of the image.
             output_size (sequence or int): (height, width) of the crop box. If int,
                 it is used for both directions
-            backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'. 
-        
+            backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'.
+
         Returns:
             PIL.Image: Cropped image.
 
@@ -417,11 +417,11 @@ def affine(img, matrix, interpolation="nearest", fill=0):
     Args:
         img (PIL.Image): Image to be affined.
         matrix (float or int): Affine matrix.
-        interpolation (str, optional): Interpolation method. If omitted, or if the 
-            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
-            support method are as following: 
-            - "nearest": Image.NEAREST, 
-            - "bilinear": Image.BILINEAR, 
+        interpolation (str, optional): Interpolation method. If omitted, or if the
+            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend,
+            support method are as following:
+            - "nearest": Image.NEAREST,
+            - "bilinear": Image.BILINEAR,
             - "bicubic": Image.BICUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
             If int, it is used for all channels respectively.
@@ -448,11 +448,11 @@ def rotate(img,
     Args:
         img (PIL.Image): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
-        interpolation (str, optional): Interpolation method. If omitted, or if the 
-            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
-            support method are as following: 
-            - "nearest": Image.NEAREST, 
-            - "bilinear": Image.BILINEAR, 
+        interpolation (str, optional): Interpolation method. If omitted, or if the
+            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend,
+            support method are as following:
+            - "nearest": Image.NEAREST,
+            - "bilinear": Image.BILINEAR,
             - "bicubic": Image.BICUBIC
         expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
@@ -485,11 +485,11 @@ def perspective(img, coeffs, interpolation="nearest", fill=0):
     Args:
         img (PIL.Image): Image to be perspectived.
         coeffs (list[float]): coefficients (a, b, c, d, e, f, g, h) of the perspective transforms.
-        interpolation (str, optional): Interpolation method. If omitted, or if the 
-            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
-            support method are as following: 
-            - "nearest": Image.NEAREST, 
-            - "bilinear": Image.BILINEAR, 
+        interpolation (str, optional): Interpolation method. If omitted, or if the
+            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend,
+            support method are as following:
+            - "nearest": Image.NEAREST,
+            - "bilinear": Image.BILINEAR,
             - "bicubic": Image.BICUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively.
@@ -511,8 +511,8 @@ def to_grayscale(img, num_output_channels=1):
 
     Args:
         img (PIL.Image): Image to be converted to grayscale.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-                    `cv2`. Default: 'pil'. 
+        backend (str, optional): The image proccess backend type. Options are `pil`,
+                    `cv2`. Default: 'pil'.
 
     Returns:
         PIL.Image: Grayscale version of the image.
@@ -550,7 +550,7 @@ def erase(img, i, j, h, w, v, inplace=False):
 
         Returns:
             PIL.Image: Erased image.
-        
+
     """
     np_img = np.array(img, dtype=np.uint8)
     np_img[i:i + h, j:j + w, ...] = v

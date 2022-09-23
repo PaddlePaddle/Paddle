@@ -44,8 +44,8 @@ def set_printoptions(precision=None,
         edgeitems (int, optional): Number of elements in summary at the beginning and ending of each dimension, default 3.
         sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
         linewidth (int, optional): Number of characters each line, default 80.
-       
-    
+
+
     Returns:
         None.
 
@@ -58,7 +58,7 @@ def set_printoptions(precision=None,
             a = paddle.rand([10, 20])
             paddle.set_printoptions(4, 100, 3)
             print(a)
-            
+
             '''
             Tensor(shape=[10, 20], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                    [[0.0002, 0.8503, 0.0135, ..., 0.9508, 0.2621, 0.6661],

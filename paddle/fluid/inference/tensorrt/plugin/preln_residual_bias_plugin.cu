@@ -44,19 +44,22 @@ int PrelnResidualBiasPluginDynamic::initialize() TRT_NOEXCEPT {
              scale_.data(),
              scale_size_ * sizeof(float),
              cudaMemcpyHostToDevice);
-
-  if (with_fp16_) {
-    cudaMalloc(&ele_bias_gpu_, sizeof(half) * ele_bias_size_);
-    cudaMemcpy(ele_bias_gpu_,
-               fp16_ele_bias_.data(),
-               ele_bias_size_ * sizeof(half),
-               cudaMemcpyHostToDevice);
+  if (ele_bias_size_ > 0) {
+    if (with_fp16_) {
+      cudaMalloc(&ele_bias_gpu_, sizeof(half) * ele_bias_size_);
+      cudaMemcpy(ele_bias_gpu_,
+                 fp16_ele_bias_.data(),
+                 ele_bias_size_ * sizeof(half),
+                 cudaMemcpyHostToDevice);
+    } else {
+      cudaMalloc(&ele_bias_gpu_, sizeof(float) * ele_bias_size_);
+      cudaMemcpy(ele_bias_gpu_,
+                 fp32_ele_bias_.data(),
+                 ele_bias_size_ * sizeof(float),
+                 cudaMemcpyHostToDevice);
+    }
   } else {
-    cudaMalloc(&ele_bias_gpu_, sizeof(float) * ele_bias_size_);
-    cudaMemcpy(ele_bias_gpu_,
-               fp32_ele_bias_.data(),
-               ele_bias_size_ * sizeof(float),
-               cudaMemcpyHostToDevice);
+    ele_bias_gpu_ = nullptr;
   }
 
   return 0;

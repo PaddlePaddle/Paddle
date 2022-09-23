@@ -20,14 +20,13 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 import paddle.distributed.fleet as fleet
 
 from paddle import LazyGuard
 from paddle.io import Dataset
 from paddle.static import InputSpec
 from paddle.fluid.framework import _non_static_mode
-from paddle.distributed.auto_parallel.engine import Engine
 from paddle.distributed.auto_parallel.helper import ProgramHelper
 
 batch_size = 4
@@ -140,23 +139,19 @@ class TestToStatic(unittest.TestCase):
 
         dataset = MyDataset(batch_num * batch_size)
 
-        inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
-        labels = InputSpec([batch_size], 'int64', 'label')
+        # inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
+        # labels = InputSpec([batch_size], 'int64', 'label')
 
-        engine = Engine(model=mlp,
-                        inputs_spec=inputs,
-                        labels_spec=labels,
-                        strategy=None)
         assert _non_static_mode() == True
-
-        engine.prepare(optimizer=optimizer,
-                       loss=loss,
-                       metrics=paddle.metric.Accuracy())
-
-        assert _non_static_mode() == False
+        engine = auto.Engine(model=mlp,
+                             loss=loss,
+                             optimizer=optimizer,
+                             metrics=paddle.metric.Accuracy(),
+                             strategy=None)
         engine.fit(dataset, batch_size=batch_size)
         engine.evaluate(dataset, batch_size=batch_size)
         engine.predict(dataset, batch_size=batch_size)
+        assert _non_static_mode() == False
 
 
 class TestLazyInit(unittest.TestCase):

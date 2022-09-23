@@ -208,6 +208,14 @@ PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
 
+bool IsCompiledWithAVX() {
+#ifndef PADDLE_WITH_AVX
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   return false;
@@ -218,6 +226,23 @@ bool IsCompiledWithCUDA() {
 
 bool IsCompiledWithNCCL() {
 #ifdef PADDLE_WITH_NCCL
+  return true;
+#else
+  return false;
+#endif
+}
+
+bool IsCompiledWithMPI() {
+#ifdef PADDLE_WITH_MPI
+  return true;
+#else
+  return false;
+#endif
+}
+
+// NOTE some mpi lib can support cuda aware, support it in the future.
+bool IsCompiledWithMPIAWARE() {
+#ifdef PADDLE_WITH_MPI_AWARE
   return true;
 #else
   return false;
@@ -579,12 +604,7 @@ static int GetNCCLVersion() {
 }
 #endif
 
-#ifdef PADDLE_WITH_AVX
-PYBIND11_MODULE(core_avx, m) {
-#else
-PYBIND11_MODULE(core_noavx, m) {
-#endif
-
+PYBIND11_MODULE(libpaddle, m) {
   BindImperative(&m);
   BindEager(&m);
   BindEagerStringTensor(&m);
@@ -1041,7 +1061,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("name"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           its parent scope. Return None if not found.
 
            Args:
                name (str): the variable name.
@@ -1056,7 +1076,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           its parent scope. Return None if not found.
 
            Args:
                name (str): the variable names to be erase.
@@ -1251,12 +1271,12 @@ All parameter, weight, gradient are variables in Paddle.
       R"DOC(
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
-              
+
             Args:
                    program (ProgramDesc): The original program.
 
              Returns:
-                   tuple(ProgramDesc, map<int, int>): The first part is 
+                   tuple(ProgramDesc, map<int, int>): The first part is
                    the pruned program desc, and the second part is a map
                    which contains the id pair of pruned block and corresponding
                    origin block.
@@ -1709,6 +1729,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
+  m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
@@ -1717,6 +1738,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_nccl", IsCompiledWithNCCL);
+  m.def("is_compiled_with_mpi", IsCompiledWithMPI);
+  m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("is_compiled_with_mlu", IsCompiledWithMLU);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
@@ -1876,7 +1899,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("tensor"),
           R"DOC(
              Append a LoDensor to LoDTensorArray.
-              
+
              Args:
                    tensor (LoDTensor): The LoDTensor to be appended.
 
@@ -2511,19 +2534,14 @@ All parameter, weight, gradient are variables in Paddle.
     return res;
   });
 
-  m.def("enable_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance()
-        .EnableLayoutAutoTune();
-  });
+  m.def("enable_layout_autotune",
+        [] { return egr::Controller::Instance().EnableLayoutAutoTune(); });
 
-  m.def("disable_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance()
-        .DisableLayoutAutoTune();
-  });
+  m.def("disable_layout_autotune",
+        [] { return egr::Controller::Instance().DisableLayoutAutoTune(); });
 
-  m.def("use_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune();
-  });
+  m.def("use_layout_autotune",
+        [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
 
   BindFleetWrapper(&m);
   BindIO(&m);
@@ -2559,7 +2577,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
-#ifndef PADDLE_ON_INFERENCE
+#ifndef PADDLE_NO_PYTHON
   BindDistributed(&m);
 #endif
 #ifdef PADDLE_WITH_ASCEND

@@ -383,11 +383,11 @@ class MineHardExamplesOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Mine hard examples Operator.
 This operator implements hard example mining to select a subset of negative box indices.
-For each image, selects the box with highest losses. subject to the condition that the 
-box cannot have an Matcht > neg_dist_threshold when mining_type is max_negative. 
-The selected number is min(sample_size, max_negative_box_number) when mining_type is 
-hard_example, or min(neg_pos_ratio * positive_box_number, max_negative_box_number) 
-when mining_type is max_negative, where the max_negative_box_number is the count of 
+For each image, selects the box with highest losses. subject to the condition that the
+box cannot have an Matcht > neg_dist_threshold when mining_type is max_negative.
+The selected number is min(sample_size, max_negative_box_number) when mining_type is
+hard_example, or min(neg_pos_ratio * positive_box_number, max_negative_box_number)
+when mining_type is max_negative, where the max_negative_box_number is the count of
 MatchIndices elements with value -1.
 )DOC");
   }
