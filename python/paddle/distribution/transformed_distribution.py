@@ -130,18 +130,6 @@ class TransformedDistribution(distribution.Distribution):
                                    event_rank - len(self._base.event_shape))
         return log_prob
 
-    def _monotonize_cdf(self, value):
-        """
-        This conditionally flips ``value -> 1-value`` to ensure :meth:`cdf` is
-        monotone increasing.
-        """
-        sign = 1
-        for t in self._transforms:
-            sign = sign * t.sign
-        if isinstance(sign, int) and sign == 1:
-            return value
-        return sign * (value - 0.5) + 0.5
-
 
 def _sum_rightmost(value, n):
     return value.sum(list(range(-n, 0))) if n > 0 else value

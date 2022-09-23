@@ -26,8 +26,7 @@ class LogNormal(TransformedDistribution):
     The probability density function (pdf) is
 
     .. math::
-        pdf(x; \mu, \sigma) = \\frac{1}{\sigma x \sqrt{2\pi}}e^{(-\\frac{(ln(x) - \mu)^2}{2\sigma^2})}
-        pdf(x; \mu, \sigma) = \\frac{1}{Z}e^{\\frac {-0.5 (x - \mu)^2}  {\sigma^2} }
+        pdf(x; \mu, \sigma) = \frac{1}{\sigma x \sqrt{2\pi}}e^{(-\frac{(ln(x) - \mu)^2}{2\sigma^2})}
 
     In the above equation:
 
