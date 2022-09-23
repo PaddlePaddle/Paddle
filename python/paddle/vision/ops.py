@@ -737,12 +737,6 @@ def prior_box(input,
             max_sizes = [max_sizes]
         cur_max_sizes = max_sizes
 
-    if in_dygraph_mode():
-        attrs = (min_sizes, cur_max_sizes, aspect_ratios, variance, flip, clip,
-                 steps, offset, min_max_aspect_ratios_order)
-        box, var = _C_ops.prior_box(input, image, *attrs)
-        return box, var
-
     if _non_static_mode():
         attrs = ('min_sizes', min_sizes, 'aspect_ratios', aspect_ratios,
                  'variances', variance, 'flip', flip, 'clip', clip, 'step_w',
