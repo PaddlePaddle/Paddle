@@ -158,7 +158,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
      AND WITH_GPU)
     set_tests_properties(test_emb_eltwise_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                          120)
-    set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
+    set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 400)
     set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
                          PROPERTIES TIMEOUT 60)
     set_tests_properties(test_adaptive_pool2d_convert_global_pass_autoscan
