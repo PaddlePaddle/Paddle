@@ -19,14 +19,14 @@ PythonFunc = namedtuple("PythonFunc", ["func", "args", "kwargs"])
 """Some Python code interfaces called in C++"""
 
 
-def serialize(obj):
+def _serialize(obj):
     return pickle.dumps(obj)
 
 
-def deserialize(obj):
+def _deserialize(obj):
     return pickle.loads(obj)
 
 
-def run_py_func(python_func):
+def _run_py_func(python_func):
     result = python_func.func(*python_func.args, **python_func.kwargs)
     return result

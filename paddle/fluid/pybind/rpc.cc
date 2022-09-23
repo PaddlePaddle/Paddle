@@ -33,24 +33,6 @@ void BindServiceInfo(py::module* m) {
       .def_readonly("ip", &ServiceInfo::ip_)
       .def_readonly("port", &ServiceInfo::port_);
 }
-// void BindRpcAgent(py::module* m) {
-//   py::class_<RpcAgent, std::shared_ptr<RpcAgent>>(*m, "RpcAgent")
-//       .def(py::init<>([](std::string name, std::vector<ServiceInfo> infos) {
-//              // PythonRpcHandler::GetInstance();
-//              return std::shared_ptr<RpcAgent>(
-//                  new RpcAgent(std::move(name), std::move(infos)));
-//            }),
-//            py::arg("name"),
-//            py::arg("infos"))
-//       .def("start_server",
-//            &RpcAgent::StartServer,
-//            py::call_guard<py::gil_scoped_release>())
-//       .def("start_client",
-//            &RpcAgent::StartClient,
-//            py::call_guard<py::gil_scoped_release>())
-//       .def("stop", &RpcAgent::Stop,
-//       py::call_guard<py::gil_scoped_release>());
-// }
 void BindFuture(py::module* m) {
   py::class_<FutureWrapper, std::shared_ptr<FutureWrapper>>(*m, "Future")
       // .def(py::init<std::future<std::string>>())
@@ -59,18 +41,12 @@ void BindFuture(py::module* m) {
            &FutureWrapper::wait,
            py::call_guard<py::gil_scoped_release>());
 }
-// void SetAgentInstance(py::module* m) {
-//   m->def("set_agent_instance",
-//          &RpcAgent::SetAgentInstance,
-//          py::call_guard<py::gil_scoped_release>(),
-//          py::arg("agent"));
-// }
 void InitAndSetAgentInstance(py::module* m) {
   m->def(
       "init_and_set_agent_instance",
       [](const std::string& name, const std::vector<ServiceInfo>& infos) {
         auto instance = std::make_shared<RpcAgent>(name, infos);
-        instance->SetAgentInstance(intance);
+        instance->SetAgentInstance(instance);
       },
       py::call_guard<py::gil_scoped_release>(),
       py::arg("name"),
@@ -79,15 +55,15 @@ void InitAndSetAgentInstance(py::module* m) {
 void InvokeRpc(py::module* m) {
   m->def(
       "invoke_rpc",
-      [](const std::string& name, const std::string& py_func, int time_out_ms) {
+      [](const std::string& name, const std::string& py_func, int timeout_ms) {
         auto instance = RpcAgent::RpcAgentInstance();
         return std::make_shared<FutureWrapper>(
-            instance->InvokeRpc(py_func, name, time_out_ms));
+            instance->InvokeRpc(py_func, name, timeout_ms));
       },
       py::call_guard<py::gil_scoped_release>(),
       py::arg("to"),
       py::arg("py_func"),
-      py::arg("time_out_ms"));
+      py::arg("timeout_ms"));
 }
 void StartServer(py::module* m) {
   m->def(

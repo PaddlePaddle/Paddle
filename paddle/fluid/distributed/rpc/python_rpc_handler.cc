@@ -27,9 +27,9 @@ PythonRpcHandler::PythonRpcHandler() {
   py::gil_scoped_acquire ag;
   // import python module
   py::object rpcInternal = py::module::import(kInternalModule);
-  pyRunFunction_ = getFunction(rpcInternal, "run_py_func");
-  pySerialize_ = getFunction(rpcInternal, "serialize");
-  pyDeserialize_ = getFunction(rpcInternal, "deserialize");
+  pyRunFunction_ = getFunction(rpcInternal, "_run_py_func");
+  pySerialize_ = getFunction(rpcInternal, "_serialize");
+  pyDeserialize_ = getFunction(rpcInternal, "_deserialize");
 }
 
 py::object PythonRpcHandler::RunPythonFunc(const py::object& pythonFunc) {

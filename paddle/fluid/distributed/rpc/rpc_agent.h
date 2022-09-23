@@ -90,7 +90,7 @@ class RpcAgent {
 
   std::future<std::string> InvokeRpc(const std::string &msg,
                                      const std::string &to,
-                                     int time_out_ms);
+                                     int timeout_ms);
 
  private:
   static std::shared_ptr<RpcAgent> rpcAgentInstance_;

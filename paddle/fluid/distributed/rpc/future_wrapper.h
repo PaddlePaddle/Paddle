@@ -20,6 +20,7 @@
 #include <future>
 #include <string>
 
+#include "paddle/fluid/distributed/rpc/python_rpc_handler.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace py = pybind11;
@@ -29,13 +30,15 @@ class FutureWrapper {
  public:
   FutureWrapper() {}
   explicit FutureWrapper(std::future<std::string> fut) : fut_(std::move(fut)) {}
-  py::bytes wait() {
+  py::object wait() {
     // GIL must be released, otherwise fut_.get() blocking will cause the
     // service to fail to process RPC requests, leading to deadlock
     assert(!PyGILState_Check());
     auto s = fut_.get();
     py::gil_scoped_acquire ag;
-    return py::bytes(s);
+    PythonRpcHandler *python_handler = PythonRpcHandler::GetInstance();
+    py::object obj = python_handler->Deserialize(py::bytes(s));
+    return obj;
   }
 
  private:

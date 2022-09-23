@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/rpc/rpc_agent.h"
-#include "paddle/fluid/platform/enforce.h"
 
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
@@ -109,8 +110,10 @@ std::string RpcAgent::Send(const std::string &msg, const std::string &to) {
   if (it != nameToInfos_.end()) {
     id = it->second.id_;
   } else {
-    // LOG(ERROR) << "Worker " << to << "doesn't exist!";
-    platform::errors::Fatal("Worker %s doesn't exist!", to);
+    PADDLE_ENFORCE_NE(
+        id,
+        channels_.size(),
+        platform::errors::OutOfRange("Worker %s doesn't exist!", to));
   }
   auto channel = channels_[id];
   brpc::Controller cntl;
@@ -130,20 +133,22 @@ std::string RpcAgent::Send(const std::string &msg, const std::string &to) {
 
 std::future<std::string> RpcAgent::InvokeRpc(const std::string &py_func,
                                              const std::string &to,
-                                             int time_out_ms = kTimeoutMs) {
+                                             int timeout_ms = kTimeoutMs) {
   auto it = nameToInfos_.find(to);
   uint32_t id = channels_.size();
   if (it != nameToInfos_.end()) {
     id = it->second.id_;
   } else {
-    // LOG(ERROR) << "Worker " << to << "doesn't exist!";
-    platform::errors::Fatal("Worker %s doesn't exist!", to);
+    PADDLE_ENFORCE_NE(
+        id,
+        channels_.size(),
+        platform::errors::OutOfRange("Worker %s doesn't exist!", to));
   }
   auto channel = channels_[id];
   // `done` must be allocated on the heap because its life cycle is after
   // calling done.Run().
   OnRpcDone *done = new OnRpcDone;
-  done->cntl.set_timeout_ms(time_out_ms);
+  done->cntl_.set_timeout_ms(timeout_ms);
   done->request_.set_message(py_func);
   std::future<std::string> fut = done->GetFuture();
   RpcBaseService_Stub stub(channel.get());

@@ -2582,10 +2582,11 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
   BindServiceInfo(&m);
-  BindRpcAgent(&m);
   BindFuture(&m);
-  SetAgentInstance(&m);
+  InitAndSetAgentInstance(&m);
   InvokeRpc(&m);
+  StartServer(&m);
+  StartClient(&m);
   StopServer(&m);
   GetServiceInfo(&m);
   GetServiceInfoByRank(&m);
