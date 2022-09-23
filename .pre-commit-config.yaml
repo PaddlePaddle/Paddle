@@ -19,7 +19,6 @@ repos:
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
         exclude: |
             (?x)^(
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py|
                 python/paddle/fluid/tests/unittests/dygraph_to_static/test_origin_info.py
             )$
 -   repo: https://github.com/PyCQA/flake8
