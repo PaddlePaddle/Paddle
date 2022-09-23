@@ -33,11 +33,9 @@ std::vector<int> get_gpu_grad_perm(std::vector<int> perm) {
 
 template <typename T, typename Context>
 void TransposeCooGradKernel(const Context& dev_ctx,
-                            const SparseCooTensor& x,
                             const SparseCooTensor& dout,
                             const std::vector<int>& perm,
                             SparseCooTensor* dx) {
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
   std::vector<int> grad_perm = get_gpu_grad_perm(perm);
   TransposeCooKernel<T, Context>(dev_ctx, dout, grad_perm, dx);
 }
@@ -48,7 +46,6 @@ void TransposeCsrGradKernel(const Context& dev_ctx,
                             const SparseCsrTensor& dout,
                             const std::vector<int>& perm,
                             SparseCsrTensor* dx) {
-  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
   std::vector<int> grad_perm = get_gpu_grad_perm(perm);
   TransposeCsrKernel<T, Context>(dev_ctx, dout, grad_perm, dx);
 }

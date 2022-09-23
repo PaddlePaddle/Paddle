@@ -387,7 +387,7 @@
 
 - backward_op : transpose_grad
   forward : transpose(Tensor x, int[] perm) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] perm)
+  args : (Tensor out_grad, int[] perm)
   output : Tensor(x_grad)
   infer_meta :
     func : TransposeGradInferMeta
