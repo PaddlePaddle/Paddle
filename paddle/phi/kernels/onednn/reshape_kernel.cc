@@ -120,7 +120,6 @@ void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
                    DenseTensor* out) {
-  VLOG(0) << "NEW RESHAPE\n";
   phi::DDim x_dims = x.dims();
   phi::DDim out_dims = ValidateShape(shape.GetData(), x_dims);
 
