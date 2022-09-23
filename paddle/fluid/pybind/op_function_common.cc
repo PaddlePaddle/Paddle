@@ -67,10 +67,7 @@ extern PyTypeObject* p_tensor_type;
 bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 
 bool PyObject_CheckLongOrToLong(PyObject** obj) {
-  PyTypeObject* item_type = (*obj)->ob_type;
-  auto item_type_name = std::string(item_type->tp_name);
-  if (item_type_name == "numpy.int32" || item_type_name == "numpy.int64" ||
-      (PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
+  if ((PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
       PyObject_IsInstance(*obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
       PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
       PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
@@ -91,12 +88,7 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
 
 bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   // sometimes users provide PyLong or numpy.int64 but attr is float
-
-  // PyFloat_Check was not performed correctly when *obj is numpy.flost32
-  PyTypeObject* item_type = (*obj)->ob_type;
-  auto item_type_name = std::string(item_type->tp_name);
-  if (item_type_name == "numpy.float32" || PyFloat_Check(*obj) ||
-      PyLong_Check(*obj) ||
+  if (PyFloat_Check(*obj) || PyLong_Check(*obj) ||
       PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
       PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
     return true;
