@@ -42,18 +42,15 @@ class TestLogNormal(unittest.TestCase):
                                        self.scale.dtype)
             self._paddle_lognormal = LogNormal(loc=loc, scale=scale)
             self._np_lognormal = LogNormalNumpy(loc=self.loc, scale=self.scale)
-            self.sample_shape = [8000]
-
             mean = self._paddle_lognormal.mean
             var = self._paddle_lognormal.variance
             entropy = self._paddle_lognormal.entropy()
-            samples = self._paddle_lognormal.sample(self.sample_shape)
-        fetch_list = [mean, var, entropy, samples]
+        fetch_list = [mean, var, entropy]
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
         executor.run(startup_program)
-        [self.mean, self.var, self.entropy,
-         self.samples] = executor.run(main_program,
+        [self.mean, self.var,
+         self.entropy] = executor.run(main_program,
                                       feed=self.feeds,
                                       fetch_list=fetch_list)
 
@@ -84,8 +81,9 @@ class TestLogNormal(unittest.TestCase):
 
 
 @place(config.DEVICES)
-@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample', xrand(
-    (4, )), xrand((4, )))])
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
+                  [('sample', xrand(
+                      (4, ), min=0, max=1), xrand((4, ), min=0.01, max=1))])
 class TestLogNormalSample(unittest.TestCase):
 
     def setUp(self):
@@ -97,21 +95,45 @@ class TestLogNormalSample(unittest.TestCase):
             loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
-            self.sample_shape = [100000]
+            n = 80000
+            self.sample_shape = [n]
+            self.rsample_shape = [n]
             self._paddle_lognormal = LogNormal(loc=loc, scale=scale)
+            self.mean = self._paddle_lognormal.mean
+            self.variance = self._paddle_lognormal.variance
             self.samples = self._paddle_lognormal.sample(self.sample_shape)
-        fetch_list = [self.samples]
+            self.rsamples = self._paddle_lognormal.rsample(self.rsample_shape)
+        fetch_list = [self.mean, self.variance, self.samples, self.rsamples]
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
         executor.run(startup_program)
-        [self.samples] = executor.run(main_program,
-                                      feed=self.feeds,
-                                      fetch_list=fetch_list)
+        [self.mean, self.variance, self.samples,
+         self.rsamples] = executor.run(main_program,
+                                       feed=self.feeds,
+                                       fetch_list=fetch_list)
 
     def test_sample(self):
+        samples_mean = self.samples.mean(axis=0)
+        samples_var = self.samples.var(axis=0)
+        np.testing.assert_allclose(samples_mean, self.mean, rtol=0.1, atol=0)
+        np.testing.assert_allclose(samples_var, self.variance, rtol=0.1, atol=0)
+
+        rsamples_mean = self.rsamples.mean(axis=0)
+        rsamples_var = self.rsamples.var(axis=0)
+        np.testing.assert_allclose(rsamples_mean, self.mean, rtol=0.1, atol=0)
+        np.testing.assert_allclose(rsamples_var,
+                                   self.variance,
+                                   rtol=0.1,
+                                   atol=0)
+
         for i in range(len(self.scale)):
+            self.assertEqual(self.samples[:, i].shape, (self.sample_shape[0], ))
+            self.assertEqual(self.rsamples[:, i].shape,
+                             (self.rsample_shape[0], ))
             self.assertTrue(
                 self._kstest(self.loc[i], self.scale[i], self.samples[:, i]))
+            self.assertTrue(
+                self._kstest(self.loc[i], self.scale[i], self.rsamples[:, i]))
 
     def _kstest(self, loc, scale, samples):
         # Uses the Kolmogorov-Smirnov test for goodness of fit.

@@ -21,6 +21,15 @@ from paddle.distribution.normal import Normal
 class LogNormal(TransformedDistribution):
     r"""The Normal distribution with location `loc` and `scale` parameters.
 
+    .. math::
+
+        X \sim Normal(\mu, \sigma)
+
+        Y = exp(X) \sim LogNormal(\mu, \sigma)
+
+
+    :math:`Normal(\mu, \sigma)` is the underlying distribution of :math:`LogNormal(\mu, \sigma)`
+
     Mathematical details
 
     The probability density function (pdf) is
@@ -148,8 +157,8 @@ class LogNormal(TransformedDistribution):
 
         In the above equation:
 
-        * :math:`loc = \mu_0`: is the mean of underlying Normal distribution.
-        * :math:`scale = \sigma_0`: is the std of underlying Normal distribution.
+        * :math:`loc = \mu_0`: is the mean of current underlying Normal distribution.
+        * :math:`scale = \sigma_0`: is the std of current underlying Normal distribution.
         * :math:`loc = \mu_1`: is the mean of other underlying Normal distribution.
         * :math:`scale = \sigma_1`: is the std of other underlying Normal distribution.
         * :math:`ratio`: is the ratio of scales.

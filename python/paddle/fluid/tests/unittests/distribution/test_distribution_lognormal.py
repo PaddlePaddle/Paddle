@@ -140,21 +140,50 @@ class LogNormalTest(unittest.TestCase):
 
 
 @place(config.DEVICES)
-@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample', xrand(
-    (4, )), xrand((4, )))])
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
+                  [('sample', xrand(
+                      (4, ), min=0, max=1), xrand((4, ), min=0.01, max=1))])
 class TestLogNormalSample(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static()
         self._paddle_lognormal = LogNormal(loc=self.loc, scale=self.scale)
-        self.shape = [100000]
-        self.samples = self._paddle_lognormal.sample(self.shape)
+        n = 80000
+        self.sample_shape = [n]
+        self.rsample_shape = [n]
+        self.samples = self._paddle_lognormal.sample(self.sample_shape)
+        self.rsamples = self._paddle_lognormal.rsample(self.rsample_shape)
 
     def test_sample(self):
+        samples_mean = self.samples.mean(axis=0)
+        samples_var = self.samples.var(axis=0)
+        np.testing.assert_allclose(samples_mean,
+                                   self._paddle_lognormal.mean,
+                                   rtol=0.1,
+                                   atol=0)
+        np.testing.assert_allclose(samples_var,
+                                   self._paddle_lognormal.variance,
+                                   rtol=0.1,
+                                   atol=0)
+
+        rsamples_mean = self.rsamples.mean(axis=0)
+        rsamples_var = self.rsamples.var(axis=0)
+        np.testing.assert_allclose(rsamples_mean,
+                                   self._paddle_lognormal.mean,
+                                   rtol=0.1,
+                                   atol=0)
+        np.testing.assert_allclose(rsamples_var,
+                                   self._paddle_lognormal.variance,
+                                   rtol=0.1,
+                                   atol=0)
 
         for i in range(len(self.scale)):
+            self.assertEqual(self.samples[:, i].shape, self.sample_shape)
+            self.assertEqual(self.rsamples[:, i].shape, self.rsample_shape)
             self.assertTrue(
                 self._kstest(self.loc[i], self.scale[i], self.samples[:, i]))
+            self.assertTrue(
+                self._kstest(self.loc[i], self.scale[i], self.rsamples[:, i]))
 
     def _kstest(self, loc, scale, samples):
         # Uses the Kolmogorov-Smirnov test for goodness of fit.

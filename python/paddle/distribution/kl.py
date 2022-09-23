@@ -214,7 +214,7 @@ def _kl_expfamily_expfamily(p, q):
 
 
 @register_kl(LogNormal, LogNormal)
-def _kl_normal_normal(p, q):
+def _kl_lognormal_lognormal(p, q):
     return p.base_dist.kl_divergence(q.base_dist)
 
 

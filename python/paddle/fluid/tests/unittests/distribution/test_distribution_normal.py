@@ -115,7 +115,7 @@ class NormalTest(unittest.TestCase):
                                              dtype='float32')
 
     def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
-        sample, entropy, log_prob, probs, kl = fetch_list
+        sample, rsample, entropy, log_prob, probs, kl = fetch_list
 
         np_normal = NormalNumpy(self.loc_np, self.scale_np)
         np_sample = np_normal.sample([sample_shape])
@@ -133,6 +133,7 @@ class NormalTest(unittest.TestCase):
         log_tolerance = 1e-4
 
         np.testing.assert_equal(sample.shape, np_sample.shape)
+        np.testing.assert_equal(rsample.shape, np_sample.shape)
         np.testing.assert_allclose(entropy,
                                    np_entropy,
                                    rtol=tolerance,
@@ -155,13 +156,14 @@ class NormalTest(unittest.TestCase):
         normal = Normal(self.dynamic_loc, self.dynamic_scale)
 
         sample = normal.sample([sample_shape]).numpy()
+        rsample = normal.rsample([sample_shape]).numpy()
         entropy = normal.entropy().numpy()
         log_prob = normal.log_prob(self.dynamic_values).numpy()
         probs = normal.probs(self.dynamic_values).numpy()
         other_normal = Normal(self.dynamic_other_loc, self.dynamic_other_scale)
         kl = normal.kl_divergence(other_normal).numpy()
 
-        fetch_list = [sample, entropy, log_prob, probs, kl]
+        fetch_list = [sample, rsample, entropy, log_prob, probs, kl]
         self.compare_with_numpy(fetch_list)
 
     def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
@@ -170,6 +172,7 @@ class NormalTest(unittest.TestCase):
             normal = Normal(self.static_loc, self.static_scale)
 
             sample = normal.sample([sample_shape])
+            rsample = normal.rsample([sample_shape])
             entropy = normal.entropy()
             log_prob = normal.log_prob(self.static_values)
             probs = normal.probs(self.static_values)
@@ -177,7 +180,7 @@ class NormalTest(unittest.TestCase):
                                   self.static_other_scale)
             kl = normal.kl_divergence(other_normal)
 
-            fetch_list = [sample, entropy, log_prob, probs, kl]
+            fetch_list = [sample, rsample, entropy, log_prob, probs, kl]
 
         feed_vars = {
             'loc': self.loc_np,
