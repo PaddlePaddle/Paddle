@@ -4934,7 +4934,7 @@ def frexp(x, name=None):
 
             import paddle
 
-            x = paddle.to_tensor([[1, 2, 3, 4]])
+            x = paddle.to_tensor([[1, 2, 3, 4]], dtype="float32")
             print(paddle.tensor.math.frexp(x))
             # (Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[0.50000000, 0.50000000, 0.75000000, 0.50000000]]),
             #  Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[1., 2., 2., 3.]]))
