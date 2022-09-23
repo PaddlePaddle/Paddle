@@ -85,7 +85,7 @@ class TestLogNormal(unittest.TestCase):
 
 @place(config.DEVICES)
 @parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample', xrand(
-    (5, )), xrand((5, )))])
+    (4, )), xrand((4, )))])
 class TestLogNormalSample(unittest.TestCase):
 
     def setUp(self):
@@ -97,7 +97,7 @@ class TestLogNormalSample(unittest.TestCase):
             loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
-            self.sample_shape = [8000]
+            self.sample_shape = [9000]
             self._paddle_lognormal = LogNormal(loc=loc, scale=scale)
             self.mean = self._paddle_lognormal.mean
             self.samples = self._paddle_lognormal.sample(self.sample_shape)

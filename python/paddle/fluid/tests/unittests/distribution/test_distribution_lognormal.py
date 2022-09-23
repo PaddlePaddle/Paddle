@@ -140,14 +140,14 @@ class LogNormalTest(unittest.TestCase):
 
 
 @place(config.DEVICES)
-@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample1', xrand(
-    (2, )), xrand((2, ))), ('sample2', xrand((5, )), xrand((5, )))])
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample', xrand(
+    (4, )), xrand((4, )))])
 class TestLogNormalSample(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static()
         self._paddle_lognormal = LogNormal(loc=self.loc, scale=self.scale)
-        self.shape = [8000]
+        self.shape = [9000]
         self.samples = self._paddle_lognormal.sample(self.shape)
 
     def test_sample(self):
