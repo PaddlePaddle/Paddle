@@ -115,6 +115,11 @@ class PD_INFER_DECL Tensor {
                          PlaceType place,
                          DataLayout layout = DataLayout::kNCHW);
 
+  void SetTensorBs(int size);
+
+  template <typename T>
+  void SetTensorPtr(T* ptr);
+
   /// \brief Experimental interface.
   /// It's usually used to set the input tensor data with Strings data type.
   /// \param data The pointer of the data, from which the tensor will copy.

@@ -62,6 +62,8 @@ class Allocation {
   // method like `defragmentation` to change `ptr_`.
   void* ptr() const noexcept { return ptr_; }
 
+  void set_ptr(void* ptr) { ptr_ = ptr; }
+
   // Returns the size of this memory buffer, i.e., ptr() + size() - 1 is the
   // last valid element.
   //

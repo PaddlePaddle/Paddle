@@ -196,6 +196,10 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.offset = meta.offset;
 }
 
+void DenseTensor::set_holder_ptr(void* ptr) { holder_->set_ptr(ptr); }
+
+void DenseTensor::set_meta_bs(int bs) { meta_.dims[0] = bs; }
+
 /* @jim19930609: This interface will be further modified util we finalized the
    design for Allocator - Allocation
    For now, we have to temporarily accommodate two independent use cases:

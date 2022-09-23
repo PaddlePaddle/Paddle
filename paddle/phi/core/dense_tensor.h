@@ -112,6 +112,8 @@ class DenseTensor : public TensorBase,
 
   void set_meta(const DenseTensorMeta& meta);
 
+  void set_meta_bs(int size);
+
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return meta_.valid(); }
@@ -162,6 +164,8 @@ class DenseTensor : public TensorBase,
   T* data();
 
   void* data();
+
+  void set_holder_ptr(void* ptr);
 
  private:
   friend class DenseTensorUtils;

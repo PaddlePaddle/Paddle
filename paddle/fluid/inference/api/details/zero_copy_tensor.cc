@@ -346,6 +346,17 @@ void Tensor::ShareExternalData(const T *data,
   }
 }
 
+void Tensor::SetTensorBs(int bs) {
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor)
+  tensor->set_meta_bs(bs);
+}
+
+template <typename T>
+void Tensor::SetTensorPtr(T *ptr) {
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor)
+  tensor->set_holder_ptr(ptr);
+}
+
 void Tensor::CopyStringsFromCpu(const paddle_infer::Strings *data) {
   EAGER_GET_TENSOR(paddle_infer::Strings);
   PADDLE_ENFORCE_GE(tensor->size(),
@@ -545,6 +556,9 @@ template PD_INFER_DECL void Tensor::ShareExternalData<float16>(
     const std::vector<int> &shape,
     PlaceType place,
     DataLayout layout);
+
+template PD_INFER_DECL void Tensor::SetTensorPtr<float>(float *ptr);
+template PD_INFER_DECL void Tensor::SetTensorPtr<float16>(float16 *ptr);
 
 template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data) const;
