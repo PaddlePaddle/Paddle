@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include <gtest/gtest.h>
-#include "paddle/fluid/operators/isfinite_op.h"
-
 #include <cmath>
 
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/isfinite_op.h"
 namespace paddle {
 namespace framework {
 
