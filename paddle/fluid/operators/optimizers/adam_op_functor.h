@@ -16,12 +16,12 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
 
-namespace scatter = paddle::operators::math::scatter;
+namespace scatter = phi::funcs::scatter;
 
 static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
   const float* tensor_data = tensor->data<float>();

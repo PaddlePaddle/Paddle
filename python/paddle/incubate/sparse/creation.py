@@ -95,12 +95,6 @@ def sparse_coo_tensor(indices,
     Returns:
         Tensor: A Tensor constructed from ``indices`` and ``values`` .
 
-    Raises:
-        TypeError: If the data type of ``values`` is not list, tuple, numpy.ndarray, paddle.Tensor
-        ValueError: If ``values`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]. If the ``indices`` is not a 2-D.
-        TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
-        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string.
-
     Examples:
 
     .. code-block:: python
@@ -205,12 +199,6 @@ def sparse_csr_tensor(crows,
 
     Returns:
         Tensor: A Tensor constructed from ``crows``, ``cols`` and ``values`` .
-
-    Raises:
-        TypeError: If the data type of ``values`` is not list, tuple, numpy.ndarray, paddle.Tensor
-        ValueError: If ``values`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]. If the ``crow``, ``cols`` and ``values`` is not a 2-D.
-        TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
-        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string.
 
     Examples:
 

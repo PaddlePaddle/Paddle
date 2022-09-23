@@ -31,7 +31,7 @@ __all__ = []
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     r"""
-    This op normalizes ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
+    Normalize ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
 
     .. math::
 
@@ -45,7 +45,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     Parameters:
         x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
-        p (float|int, optional): The exponent value in the norm formulation. Default: 2
+        p (float|int, optional): The exponent value in the norm formulation. Default: 2.
         axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension.
         epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Default is 1e-12.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -294,11 +294,8 @@ def layer_norm(x,
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
+          x = paddle.rand((2, 2, 2, 3))
           layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
           print(layer_norm_out)
     """
@@ -385,14 +382,14 @@ def instance_norm(x,
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
-        running_mean(Tensor): running mean. Default None.
-        running_var(Tensor): running variance. Default None.
+        running_mean(Tensor, optional): running mean. Default None.
+        running_var(Tensor, optional): running variance. Default None.
         weight(Tensor, optional): The weight tensor of instance_norm. Default: None.
         bias(Tensor, optional): The bias tensor of instance_norm. Default: None.
         eps(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        use_input_stats(bool): Default True.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Default "NCHW".
+        use_input_stats(bool, optional): Default True.
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Defalut "NCHW".
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
@@ -403,11 +400,8 @@ def instance_norm(x,
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
+          x = paddle.rand((2, 2, 2, 3))
           instance_norm_out = paddle.nn.functional.instance_norm(x)
 
           print(instance_norm_out)

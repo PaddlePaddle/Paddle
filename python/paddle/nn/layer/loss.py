@@ -570,15 +570,11 @@ class MSELoss(Layer):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            input_data = np.array([1.5]).astype("float32")
-            label_data = np.array([1.7]).astype("float32")
-
             mse_loss = paddle.nn.loss.MSELoss()
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([1.5])
+            label = paddle.to_tensor([1.7])
             output = mse_loss(input, label)
             print(output)
             # [0.04000002]
@@ -617,10 +613,10 @@ class MSELoss(Layer):
 
 class L1Loss(Layer):
     r"""
-    This interface is used to construct a callable object of the ``L1Loss`` class.
+    Construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of ``input`` and ``label`` as follows.
 
-     If `reduction` set to ``'none'``, the loss is:
+    If `reduction` set to ``'none'``, the loss is:
 
     .. math::
         Out = \lvert input - label\rvert
@@ -656,12 +652,9 @@ class L1Loss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
-            label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([[1.5, 0.8], [0.2, 1.3]])
+            label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
             l1_loss = paddle.nn.L1Loss()
             output = l1_loss(input, label)
@@ -900,9 +893,10 @@ class NLLLoss(Layer):
 
 class KLDivLoss(Layer):
     r"""
-    This interface calculates the Kullback-Leibler divergence loss
-    between Input(X) and Input(Target). Notes that Input(X) is the
-    log-probability and Input(Target) is the probability.
+    Generate a callable object of 'KLDivLoss' to calculate the
+    Kullback-Leibler divergence loss between Input(X) and
+    Input(Target). Notes that Input(X) is the log-probability
+    and Input(Target) is the probability.
 
     KL divergence loss is calculated as follows:
 
@@ -930,35 +924,30 @@ class KLDivLoss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn as nn
 
             shape = (5, 20)
-            x = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
+            x = paddle.uniform(shape, min=-10, max=10).astype('float32')
+            target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='sum')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[1]
 
             # 'none' reduction, loss shape is same with X shape
             kldiv_criterion = nn.KLDivLoss(reduction='none')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[5, 20]
     """
 
@@ -1294,7 +1283,7 @@ class MultiLabelSoftMarginLoss(Layer):
 
 class HingeEmbeddingLoss(Layer):
     r"""
-    This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    Create a callable object of `HingeEmbeddingLoss` to calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
     This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
     and is typically used for learning nonlinear embeddings or semi-supervised learning.
 

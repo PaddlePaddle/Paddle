@@ -448,5 +448,63 @@ class TestKeyError(unittest.TestCase):
             x = paddle.to_tensor([1])
             func_ker_error(x)
 
+
+@paddle.jit.to_static
+def NpApiErr():
+    a = paddle.to_tensor([1,2])
+    b = np.sum(a.numpy())
+    print(b)
+
+class TestNumpyApiErr(unittest.TestCase):
+    def test_numpy_api_err(self):
+        with self.assertRaises(TypeError) as e:
+            NpApiErr()
+
+        new_exception = e.exception
+
+        error_data = getattr(new_exception, error.ERROR_DATA, None)
+        self.assertIsInstance(error_data, error.ErrorData)
+
+        error_message = str(new_exception)
+
+        self.assertIn("values will be changed to variables by dy2static, numpy api can not handle variables", error_message)
+
+
+class test_set_state_dict_err_layer(paddle.nn.Layer):
+    def __init__(self):
+        super(test_set_state_dict_err_layer, self).__init__()
+        self.linear = paddle.nn.Linear(5, 2)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        old_dict = self.state_dict()
+        wgt = old_dict['linear.weight']
+        drop_w = paddle.nn.functional.dropout(wgt)
+        old_dict['linear.weight'] = drop_w
+        # old_dict['linear.weight'][0][0] = 0.01
+        self.set_state_dict(old_dict)
+
+        y = self.linear(x)
+
+        return y
+
+
+class TestSetStateDictErr(unittest.TestCase):
+    def test_set_state_dict_err(self):
+        with self.assertRaises(ValueError) as e:
+            layer = test_set_state_dict_err_layer()
+            x = paddle.to_tensor([1.,2.,3.,4.,5.])
+            y = layer(x)
+
+        new_exception = e.exception
+
+        error_data = getattr(new_exception, error.ERROR_DATA, None)
+        self.assertIsInstance(error_data, error.ErrorData)
+
+        error_message = str(new_exception)
+
+        self.assertIn("This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'.", error_message)
+
+
 if __name__ == '__main__':
     unittest.main()
