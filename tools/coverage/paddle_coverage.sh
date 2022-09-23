@@ -36,7 +36,11 @@ cd /paddle/build
 python3.7 ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID} || exit 101
 
 lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
-
+COVERAGE_DIFF_PATTERN="`python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
+lcov --extract coverage.info \
+        ${COVERAGE_DIFF_PATTERN} \
+        -o coverage_ljd.info \
+        --rc lcov_branch_coverage=0
 # full html report
 
 function gen_full_html_report() {
@@ -124,7 +128,6 @@ function gen_diff_html_report() {
     if [ "${GIT_PR_ID}" != "" ]; then
 
         COVERAGE_DIFF_PATTERN="`python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
-
         python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py diff ${GIT_PR_ID} > git-diff.out
     fi
 
@@ -132,6 +135,13 @@ function gen_diff_html_report() {
         ${COVERAGE_DIFF_PATTERN} \
         -o coverage-diff.info \
         --rc lcov_branch_coverage=0
+    echo 'the following is test code..'
+    diff coverage-diff.info coverage_ljd.info > /dev/null
+    if [ $? == 0 ]; then
+        echo "Both file are same"
+    else
+        echo "Both file are different"
+    fi
 
     python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
