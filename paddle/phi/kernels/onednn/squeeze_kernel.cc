@@ -24,7 +24,7 @@ void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& axes,
                    DenseTensor* out) {
-  VLOG(0) << "NOWY RESHAPE\n";
+  VLOG(0) << "NEW SQUEEZE\n";
   phi::DDim x_dims = x.dims();
   std::vector<int32_t> tmp(axes.GetData().begin(), axes.GetData().end());
   phi::DDim out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, true);
