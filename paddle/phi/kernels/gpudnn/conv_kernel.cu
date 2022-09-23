@@ -43,18 +43,20 @@ void ConvCudnnKernel(const Context& ctx,
                      const std::vector<int>& strides,
                      const std::vector<int>& paddings_t,
                      const std::string& padding_algorithm,
-                     int groups,
                      const std::vector<int>& dilations_t,
+                     int groups,
                      const std::string& data_format,
-                     bool use_addto,
-                     int workspace_size_MB,
-                     bool exhaustive_search_t,
                      DenseTensor* output) {
   ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
 
-  bool exhaustive_search = FLAGS_cudnn_exhaustive_search || exhaustive_search_t;
+  bool exhaustive_search_attr =
+      ctx.HasDnnAttr("exhaustive_search")
+          ? paddle::get<bool>(ctx.GetDnnAttr("exhaustive_search"))
+          : false;
+  bool exhaustive_search =
+      FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;
   bool deterministic = FLAGS_cudnn_deterministic;
   auto exhaustive_deterministic = exhaustive_search && deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_deterministic,
@@ -406,12 +408,9 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
                      strides,
                      paddings,
                      padding_algorithm,
-                     groups,
                      dilations,
+                     groups,
                      data_format,
-                     use_addto,
-                     workspace_size_MB,
-                     exhaustive_search,
                      out);
 }
 
@@ -436,12 +435,9 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
                      strides,
                      paddings,
                      padding_algorithm,
-                     groups,
                      dilations,
+                     groups,
                      data_format,
-                     use_addto,
-                     workspace_size_MB,
-                     exhaustive_search,
                      out);
 }
 

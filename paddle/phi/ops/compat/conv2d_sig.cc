@@ -17,31 +17,15 @@
 namespace phi {
 
 KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (!ctx.HasAttr("use_addto") || !ctx.HasAttr("workspace_size_MB") ||
-      !ctx.HasAttr("exhaustive_search")) {
-    return KernelSignature("conv2d_infer",
-                           {"Input", "Filter"},
-                           {"strides",
-                            "paddings",
-                            "padding_algorithm",
-                            "groups",
-                            "dilations",
-                            "data_format"},
-                           {"Output"});
-  } else {
-    return KernelSignature("conv2d",
-                           {"Input", "Filter"},
-                           {"strides",
-                            "paddings",
-                            "padding_algorithm",
-                            "groups",
-                            "dilations",
-                            "data_format",
-                            "use_addto",
-                            "workspace_size_MB",
-                            "exhaustive_search"},
-                           {"Output"});
-  }
+  return KernelSignature("conv2d",
+                         {"Input", "Filter"},
+                         {"strides",
+                          "paddings",
+                          "padding_algorithm",
+                          "dilations",
+                          "groups",
+                          "data_format"},
+                         {"Output"});
 }
 
 KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {

@@ -25,12 +25,9 @@ void ConvKernel(const Context& dev_ctx,
                 const std::vector<int>& strides,
                 const std::vector<int>& paddings,
                 const std::string& padding_algorithm,
-                int groups,
                 const std::vector<int>& dilations,
+                int groups,
                 const std::string& data_format,
-                bool use_addto,
-                int workspace_size_MB,
-                bool exhaustive_search,
                 DenseTensor* out);
 
 template <typename T, typename Context>
@@ -63,17 +60,5 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          bool exhaustive_search,
                          bool fuse_relu,
                          DenseTensor* out);
-
-template <typename T, typename Context>
-void ConvInferKernel(const Context& dev_ctx,
-                     const DenseTensor& input,
-                     const DenseTensor& filter,
-                     const std::vector<int>& strides,
-                     const std::vector<int>& paddings,
-                     const std::string& paddding_algorithm,
-                     int groups,
-                     const std::vector<int>& dilations,
-                     const std::string& data_format,
-                     DenseTensor* out);
 
 }  // namespace phi
