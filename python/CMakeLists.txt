@@ -20,34 +20,31 @@ endif()
 
 set(SETUP_LOG_FILE "setup.py.log")
 
-set(FLUID_CORE_NAME "libpaddle")
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
                ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
 
 if(WIN32)
-  # Python would use the .pyd by default under Windows series platform
-  set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.pyd)
-  set(FLUID_CORE_LIB ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.lib)
-
+  set(PADDLE_CORE_NAME "paddle")
+  set(FLUID_CORE ${FLUID_DST_DIR}/${PADDLE_CORE_NAME}.pyd)
   add_custom_command(
     OUTPUT ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_FILE:paddle> ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_LINKER_FILE:paddle> ${FLUID_CORE_LIB}
+    COMMAND cmake -E copy $<TARGET_FILE:paddle> ${FLUID_DST_DIR}
+    COMMAND cmake -E copy $<TARGET_LINKER_FILE:paddle> ${FLUID_DST_DIR}
     DEPENDS paddle)
 else()
-  set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.so)
+  set(PADDLE_CORE_NAME "libpaddle")
+  set(FLUID_CORE ${FLUID_DST_DIR}/${PADDLE_CORE_NAME}.so)
   add_custom_command(
     OUTPUT ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_FILE:paddle> ${FLUID_CORE}
+    COMMAND cmake -E copy $<TARGET_FILE:paddle> ${FLUID_DST_DIR}
     DEPENDS paddle)
 endif()
 
 set(FLUID_CORE_DEPS ${FLUID_CORE})
 
-add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
+add_custom_target(copy_paddle ALL DEPENDS ${FLUID_CORE_DEPS})
 
 if(WIN32)
   add_custom_command(
@@ -58,7 +55,7 @@ if(WIN32)
     COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
             bdist_wheel
     COMMENT "Packing whl packages------>>>"
-    DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+    DEPENDS copy_paddle ${FLUID_CORE} framework_py_proto profiler_py_proto
             pass_desc_py_proto ${PY_FILES})
 else()
   add_custom_command(
@@ -67,7 +64,7 @@ else()
     COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMENT "Packing whl packages------>>>"
-    DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+    DEPENDS copy_paddle ${FLUID_CORE} framework_py_proto profiler_py_proto
             pass_desc_py_proto ${PY_FILES})
 endif()
 

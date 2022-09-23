@@ -573,6 +573,10 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS saved_tensors_hooks)
   endif()
 
+  # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
+  # add a prefix `lib` by default, but on Windows, cc_library(paddle SHARED ..)
+  # will not add prefix, so it generate paddle.lib and paddle.pyd,
+  # we need to pay attention to the difference
   cc_library(
     paddle SHARED
     SRCS ${PYBIND_SRCS}
