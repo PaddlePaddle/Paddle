@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
+#include "paddle/phi/core/ddim.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -29,15 +30,12 @@ namespace sparse {
 
 template <typename T, typename Context>
 void ReshapeCooKernel(const Context& dev_ctx,
-                        const SparseCooTensor& x,
-                        const std::vector<int64_t>& new_shape,
-                        SparseCooTensor* out) {
-   /*
-   目前只能针对 sparse part dims 部分进行reshape
-   */                       
-  // create "out" sparse tensor
+                      const SparseCooTensor& x,
+                      const phi::IntArray& shape,
+                      SparseCooTensor* out) {
+  // TODO: Currently, reshape is only applicable to sparse dims                   
   int64_t x_nnz = x.nnz();
-  DDim out_dims = phi::make_ddim(new_shape);
+  DDim out_dims = phi::make_ddim(shape.GetData());
   // get sparse part dimensions of x and out
   std::vector<int64_t> x_sparse_part_dims;
   std::vector<int64_t> out_sparse_part_dims;
@@ -58,34 +56,31 @@ void ReshapeCooKernel(const Context& dev_ctx,
   const auto* x_indices_data = x_indices.data<int64_t>();
   auto* out_indices_data = out_indices.data<int64_t>();
 
-    // 我的更改后的计算逻辑如下
-    const phi::DDim& x_sparse_part_strides = phi::stride(phi::make_ddim(x_sparse_part_dims));
-    const phi::DDim& out_sparse_part_strides = phi::stride(phi::make_ddim(out_sparse_part_dims));
-    int64_t location = 0;
-
-    for (int64_t j = 0; j < x_nnz; ++j) {
-        location = 0;
-        for (int i = 0; i < x.sparse_dim(); ++i) {
-            location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
-        }
-        for (size_t i = 0; i < out_sparse_part_dims.size(); ++i) {
-            out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
-            location %= out_sparse_part_strides[i];
-        }
-    }
-
+  const phi::DDim& x_sparse_part_strides = phi::stride(phi::make_ddim(x_sparse_part_dims));
+  const phi::DDim& out_sparse_part_strides = phi::stride(phi::make_ddim(out_sparse_part_dims));
+  int64_t location = 0;
+  for (int64_t j = 0; j < x_nnz; ++j) {
+      location = 0;
+      for (int i = 0; i < x.sparse_dim(); ++i) {
+          location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
+      }
+      for (size_t i = 0; i < out_sparse_part_dims.size(); ++i) {
+          out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
+          location %= out_sparse_part_strides[i];
+      }
+  }
 }
 
 
 template <typename T, typename Context>
 void ReshapeCsrKernel(const Context& dev_ctx,
-                        const SparseCsrTensor& x,
-                        const std::vector<int64_t>& new_shape,
-                        SparseCsrTensor* out) {
+                      const SparseCsrTensor& x,
+                      const phi::IntArray& shape,
+                      SparseCsrTensor* out) {
     /*将csr格式转化为coo格式后处理*/
     const SparseCooTensor x_coo = CsrToCoo<T, Context>(dev_ctx, x);
     SparseCooTensor out_coo;
-    ReshapeCooKernel<T, Context>(dev_ctx, x_coo, new_shape, &out_coo);
+    ReshapeCooKernel<T, Context>(dev_ctx, x_coo, shape, &out_coo);
     CooToCsrKernel<T, Context>(dev_ctx, out_coo, out);   
 }
 

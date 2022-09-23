@@ -24,9 +24,5 @@ void IndicesInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ValuesInferMeta(const MetaTensor& x, MetaTensor* out);
 
-void ReshapeInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& new_shape,
-                     MetaTensor* out);
-
 }  // namespace sparse
 }  // namespace phi

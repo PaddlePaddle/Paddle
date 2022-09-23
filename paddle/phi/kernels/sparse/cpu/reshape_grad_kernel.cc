@@ -25,32 +25,23 @@ namespace sparse {
 
 template <typename T, typename Context>
 void ReshapeCooGradKernel(const Context& dev_ctx,
-                            const SparseCooTensor& x,
-                            const SparseCooTensor& dout,
-                            // const std::vector<int>& perm,
-                            SparseCooTensor* dx) {
+                          const SparseCooTensor& x,
+                          const SparseCooTensor& dout,
+                          SparseCooTensor* dx) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
-  std::vector<int64_t> x_shape(x.dims().size());
-  for (int i=0; i<x.dims().size(); ++i) {
-    x_shape.push_back(x.dims()[i]);
-  }
+  phi::IntArray x_shape(phi::vectorize(x.dims()));
   ReshapeCooKernel<T, Context>(dev_ctx, dout, x_shape, dx);
 }
 
 template <typename T, typename Context>
 void ReshapeCsrGradKernel(const Context& dev_ctx,
-                            const SparseCsrTensor& x,
-                            const SparseCsrTensor& dout,
-                            // const std::vector<int>& perm,
-                            SparseCsrTensor* dx) {
+                          const SparseCsrTensor& x,
+                          const SparseCsrTensor& dout,
+                          SparseCsrTensor* dx) {
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
-  std::vector<int64_t> x_shape(x.dims().size());
-  for (int i=0; i<x.dims().size(); ++i) {
-    x_shape.push_back(x.dims()[i]);
-  }
+  phi::IntArray x_shape(phi::vectorize(x.dims()));
   ReshapeCsrKernel<T, Context>(dev_ctx, dout, x_shape, dx);
 }
-
 
 }  // namespace sparse
 }  // namespace phi

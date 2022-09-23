@@ -610,14 +610,16 @@ def expm1(x, name=None):
     return _C_ops.sparse_expm1(x)
 
 @dygraph_only
-def reshape(x, new_shape, name=None):
+def reshape(x, shape, name=None):
     """
     Changes the shape of ``x`` without changing its value, requiring x to be a SparseCooTensor or SparseCsrTensor.
+    Currently this function can only reshape the sparse dims of ``x`` , but ``shape`` argument must 
+    include all dims of the reshaped tensor.
     .. math::
-        out = reshape(x, new_shape)
+        out = reshape(x, shape)
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64, int32, int64 and so on.
-        new_shape (list[int]): new shape.
+        shape (list[int]): new shape.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -629,5 +631,5 @@ def reshape(x, new_shape, name=None):
             sparse_x = dense_x.to_sparse_coo(2)
             out = paddle.incubate.sparse.reshape(sparse_x, [6, ])
     """
-    return _C_ops.sparse_reshape(x, new_shape)
+    return _C_ops.sparse_reshape(x, shape)
     

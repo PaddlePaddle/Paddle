@@ -32,13 +32,5 @@ void ValuesInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
-void ReshapeInferMeta(const MetaTensor& x,
-                      const std::vector<int64_t>& new_shape,
-                      MetaTensor* out) {
-  out->set_dtype(x.dtype());
-  out->set_dims(phi::make_ddim(new_shape));
-  out->set_layout(x.layout());
-}
-
 }  // namespace sparse
 }  // namespace phi

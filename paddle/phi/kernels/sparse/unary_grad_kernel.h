@@ -16,6 +16,8 @@
 
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/ddim.h"
+
 
 namespace phi {
 namespace sparse {
@@ -81,14 +83,12 @@ template <typename T, typename Context>
 void ReshapeCooGradKernel(const Context& dev_ctx,
                           const SparseCooTensor& x,
                           const SparseCooTensor& dout,
-                          // const std::vector<int>& perm,
                           SparseCooTensor* dx);
 
 template <typename T, typename Context>
 void ReshapeCsrGradKernel(const Context& dev_ctx,
                           const SparseCsrTensor& x,
                           const SparseCsrTensor& dout,
-                          // const std::vector<int>& perm,
                           SparseCsrTensor* dx);     
 
 }  // namespace sparse

@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/impl/unary_kernel_impl.h"
 
-// #include "paddle/phi/kernels/sparse/gpu/sparse_utils_kernel.cu"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 
@@ -28,19 +27,12 @@ namespace phi {
 namespace sparse {
 
 __global__ void ReshapeCooCudaKernel(const int64_t *x_indices_data,
-                                       const int& num_x_sparse_part_dims,
-                                      //  const int *perm,
-                                       const int& num_out_sparse_part_dims,
-                                       const int64_t& x_nnz,
-                                       const int64_t* x_sparse_part_strides,
-                                       const int64_t* out_sparse_part_strides,
-                                       int64_t *out_indices_data) {
-
-  // for (std::size_t i = 0; i < n_dim; ++i) {
-  //   CUDA_KERNEL_LOOP_TYPE(j, x_nnz, int64_t) {
-  //     out_indices_data[j + i * x_nnz] = x_indices_data[j + perm[i] * x_nnz];
-  //   }
-  // }
+                                     const int& num_x_sparse_part_dims,
+                                     const int& num_out_sparse_part_dims,
+                                     const int64_t& x_nnz,
+                                     const int64_t* x_sparse_part_strides,
+                                     const int64_t* out_sparse_part_strides,
+                                     int64_t *out_indices_data) {
 
     CUDA_KERNEL_LOOP_TYPE(j, x_nnz, int64_t) {
         int64_t location = 0;
@@ -55,18 +47,14 @@ __global__ void ReshapeCooCudaKernel(const int64_t *x_indices_data,
 }
 
 
-
 template <typename T, typename Context>
 void ReshapeCooKernel(const Context &dev_ctx,
-                        const SparseCooTensor &x,
-                        const std::vector<int64_t>& new_shape,
-                        SparseCooTensor *out) {
-  // create "out" sparse tensor
+                      const SparseCooTensor &x,
+                      const phi::IntArray& shape,
+                      SparseCooTensor *out) {
   int64_t x_nnz = x.nnz();
-  // DDim out_dims = x.dims().transpose(perm);
-  DDim out_dims = phi::make_ddim(new_shape);
-
-    ///////  get sparse part dimensions of x and out
+  DDim out_dims = phi::make_ddim(shape.GetData());
+  //  get sparse part dimensions of x and out
   std::vector<int64_t> x_sparse_part_dims;
   std::vector<int64_t> out_sparse_part_dims;
   for (int i = 0; i < x.sparse_dim(); ++i) {
@@ -75,66 +63,44 @@ void ReshapeCooKernel(const Context &dev_ctx,
   for (int i = 0; i < out_dims.size() - x.dense_dim(); ++i) {
     out_sparse_part_dims.push_back(out_dims[i]);
   }
-  // DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
+
   DenseTensor out_indices = Empty<int64_t, Context>(dev_ctx, 
             {static_cast<int64_t>(out_sparse_part_dims.size()), x_nnz}
   );
-
   DenseTensor out_values(x.values());
-
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
-  // compute values of indices
+  // compute values of out indices
   const DenseTensor& x_indices = x.indices();
   const auto *x_indices_data = x_indices.data<int64_t>();
   auto *out_indices_data = out_indices.data<int64_t>();
-
-
-
-
-
-//////////////
-//   int *d_perm;
-// #ifdef PADDLE_WITH_HIP
-//   hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-//   hipMemcpy(
-//       d_perm, perm.data(), sizeof(int) * perm.size(), hipMemcpyHostToDevice);
-// #else
-//   cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-//   cudaMemcpy(
-//       d_perm, perm.data(), sizeof(int) * perm.size(), cudaMemcpyHostToDevice);
-// #endif
-//////////
-
-
-    const phi::DDim& x_sparse_part_strides = phi::stride(phi::make_ddim(x_sparse_part_dims));
-    const phi::DDim& out_sparse_part_strides = phi::stride(phi::make_ddim(out_sparse_part_dims));
+  const phi::DDim& x_sparse_part_strides = phi::stride(phi::make_ddim(x_sparse_part_dims));
+  const phi::DDim& out_sparse_part_strides = phi::stride(phi::make_ddim(out_sparse_part_dims));
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz, 1);
   ReshapeCooCudaKernel<<<config.block_per_grid.x,
-                           config.thread_per_block.x,
-                           0,
-                           dev_ctx.stream()>>>(
-      // x_indices_data, d_perm, perm.size(), x_nnz, out_indices_data
+                         config.thread_per_block.x,
+                         0,
+                         dev_ctx.stream()>>>(
       x_indices_data, 
       x_sparse_part_dims.size(), out_sparse_part_dims.size(), x_nnz,
       x_sparse_part_strides.Get(), out_sparse_part_strides.Get(),
       out_indices_data
-      );
+  );
 }
 
 
 // just copy from paddle\phi\kernels\sparse\cpu\reshape_kernel.cc
 template <typename T, typename Context>
 void ReshapeCsrKernel(const Context& dev_ctx,
-                        const SparseCsrTensor& x,
-                        const std::vector<int64_t>& new_shape,
-                        SparseCsrTensor* out) {
- /*将csr格式转化为coo格式后处理*/
-const SparseCooTensor x_coo = CsrToCoo<T, Context>(dev_ctx, x);
-SparseCooTensor out_coo;
-ReshapeCooKernel<T, Context>(dev_ctx, x_coo, new_shape, &out_coo);
-CooToCsrKernel<T, Context>(dev_ctx, out_coo, out);     
+                      const SparseCsrTensor& x,
+                      const phi::IntArray& shape,
+                      SparseCsrTensor* out) {
+  /*transform csr format to coo format, and then use coo kernel*/
+  const SparseCooTensor x_coo = CsrToCoo<T, Context>(dev_ctx, x);
+  SparseCooTensor out_coo;
+  ReshapeCooKernel<T, Context>(dev_ctx, x_coo, shape, &out_coo);
+  CooToCsrKernel<T, Context>(dev_ctx, out_coo, out);     
 }
 
 }  // namespace sparse

@@ -16,6 +16,9 @@
 
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/core/ddim.h"
+
 
 namespace phi {
 namespace sparse {
@@ -116,45 +119,38 @@ SparseCooTensor ReluCsr(const Context& dev_ctx, const SparseCooTensor& x) {
 template <typename T, typename Context>
 void ReshapeCooKernel(const Context &dev_ctx,
                       const SparseCooTensor &x,
-                      const std::vector<int64_t> & new_shape,
+                      const phi::IntArray& shape,
                       SparseCooTensor *out);
 
 template <typename T, typename Context>
 void ReshapeCsrKernel(const Context &dev_ctx,
                       const SparseCsrTensor &x,
-                      const std::vector<int64_t> & new_shape,
+                      const phi::IntArray& shape,
                       SparseCsrTensor *out);
 
 template <typename T, typename Context>
 SparseCooTensor ReshapeCoo(const Context &dev_ctx,
-                             const SparseCooTensor &x,
-                             const std::vector<int64_t>& new_shape) {
-  //TODO: product(new_shape) must be equal with x.dims().numel()
-  // // PADDLE_ENFORCE_EQ(x.sparse_dim(),
-  // PADDLE_ENFORCE_EQ(x.dims().size(),
-  //                   new_shape.size(),
-  //                   phi::errors::InvalidArgument(
-  //                       "size of perm must be equal with the x.dims().size()"));
-
+                           const SparseCooTensor &x,
+                           const phi::IntArray& shape) {
   SparseCooTensor coo;
-  ReshapeCooKernel<T, Context>(dev_ctx, x, new_shape, &coo);
+  ReshapeCooKernel<T, Context>(dev_ctx, x, shape, &coo);
   return coo;
 }
 
 template <typename T, typename Context>
 SparseCsrTensor ReshapeCsr(const Context &dev_ctx,
-                             const SparseCsrTensor &x,
-                             const std::vector<int64_t> & new_shape) {
+                           const SparseCsrTensor &x,
+                           const phi::IntArray& shape) {
   PADDLE_ENFORCE_LE(
       2,
-      new_shape.size(),
-      phi::errors::InvalidArgument("size of new_shape must be equal to 2 or 3"));
+      shape.size(),
+      phi::errors::InvalidArgument("size of shape must be equal to 2 or 3"));
   PADDLE_ENFORCE_GE(
       3,
-      new_shape.size(),
-      phi::errors::InvalidArgument("size of new_shape must be equal to 2 or 3"));
+      shape.size(),
+      phi::errors::InvalidArgument("size of shape must be equal to 2 or 3"));
   SparseCsrTensor csr;
-  ReshapeCsrKernel<T, Context>(dev_ctx, x, new_shape, &csr);
+  ReshapeCsrKernel<T, Context>(dev_ctx, x, shape, &csr);
   return csr;
 }
 

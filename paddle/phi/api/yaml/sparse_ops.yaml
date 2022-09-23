@@ -459,10 +459,10 @@
   backward: mv_grad
 
 - op : reshape
-  args : (Tensor x, int64_t[] new_shape)
+  args : (Tensor x, IntArray shape)
   output : Tensor(out)
   infer_meta :
-    func : sparse::ReshapeInferMeta
+    func : ReshapeInferMeta
   kernel :
     func : reshape_coo{sparse_coo -> sparse_coo},
            reshape_csr{sparse_csr -> sparse_csr}
