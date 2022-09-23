@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cmath>
-
-#include <gtest/gtest.h>
-
 #include "paddle/fluid/framework/tensor_util.h"
+#include <gtest/gtest.h>
 #include "paddle/fluid/operators/isfinite_op.h"
+
+#include <cmath>
 
 namespace paddle {
 namespace framework {
@@ -256,22 +255,19 @@ TEST(TensorToVector, Tensor) {
 #endif
 }
 
-TEST(TensorToVector, Tensor_bool) {
-  phi::DenseTensor src;
-  bool* src_ptr = src.mutable_data<bool>({3, 3}, paddle::platform::CPUPlace());
-  for (int i = 0; i < 3 * 3; ++i) {
-    src_ptr[i] = static_cast<bool>(i % 2);
-  }
-
-  paddle::platform::CPUPlace place;
-  std::vector<bool> dst;
-  paddle::framework::TensorToVector<bool>(src, &dst);
-
-  for (int i = 0; i < 3 * 3; ++i) {
-    EXPECT_EQ(src_ptr[i], dst[i]);
-  }
+TEST(TensorToVector, Tensor_bool){{phi::DenseTensor src;
+bool* src_ptr = src.mutable_data<bool>({3, 3}, paddle::platform::CPUPlace());
+for (int i = 0; i < 3 * 3; ++i) {
+  src_ptr[i] = static_cast<bool>(i % 2);
 }
 
+paddle::platform::CPUPlace place;
+std::vector<bool> dst;
+paddle::framework::TensorToVector<bool>(src, &dst);
+
+for (int i = 0; i < 3 * 3; ++i) {
+  EXPECT_EQ(src_ptr[i], dst[i]);
+}
 }  // namespace framework
 
 #ifdef PADDLE_WITH_CUDA

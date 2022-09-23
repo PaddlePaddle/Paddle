@@ -176,8 +176,8 @@ __device__ __inline__ void KernelDepthwiseConvNCHW(
         int offset = in_offset + h_in * input_width + w_in;
         T in_data = input_data[offset];
         if (fuse_relu_before_conv) {
-          value +=
-              weight[weight_offset] * static<T>(max(0.0f, double(in_data)));
+          value += weight[weight_offset] *
+                   T(max(0.0f, static_cast<double>(in_data)));  // NOLINT
         } else {
           value += weight[weight_offset] * in_data;
         }
