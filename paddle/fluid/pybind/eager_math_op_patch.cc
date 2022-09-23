@@ -151,7 +151,7 @@ static PyObject* tensor__add__method(TensorObject* self,
       "__add__ or __radd_ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
-
+  PyThreadState* tstate = nullptr;
   EAGER_TRY
 
   VLOG(6) << "Running Eager tensor__add__method";
@@ -177,8 +177,10 @@ static PyObject* tensor__add__method(TensorObject* self,
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     }
-    eager_gil_scoped_release guard;
+    tstate = PyEval_SaveThread();
     ret = CallScalarFuction(self_tensor, other, "add");
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
     return ToPyObject(ret);
   }
 
@@ -186,9 +188,11 @@ static PyObject* tensor__add__method(TensorObject* self,
   paddle::experimental::Tensor other_tensor;
   if (!PyCheckTensor(other_obj)) {
     paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
-    eager_gil_scoped_release guard;
+    tstate = PyEval_SaveThread();
     other_tensor =
         full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
@@ -225,10 +229,12 @@ static PyObject* tensor__add__method(TensorObject* self,
   // 4. calculation
   VLOG(6) << "Calling add_ad_func in tensor__add__method";
 
-  eager_gil_scoped_release guard;
+  tstate = PyEval_SaveThread();
   ret = add_ad_func(self_tensor, other_tensor);
-  return ToPyObject(ret);
+  PyEval_RestoreThread(tstate);
+  tstate = nullptr;
 
+  return ToPyObject(ret);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -240,6 +246,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
       paddle::platform::TracerEventType::UserDefined,
       1);
 
+  PyThreadState* tstate = nullptr;
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__sub__method";
 
@@ -264,8 +271,11 @@ static PyObject* tensor__sub__method(TensorObject* self,
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     }
-    eager_gil_scoped_release guard;
+
+    tstate = PyEval_SaveThread();
     ret = CallScalarFuction(self_tensor, other, "sub");
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
 
     return ToPyObject(ret);
   }
@@ -273,9 +283,11 @@ static PyObject* tensor__sub__method(TensorObject* self,
   paddle::experimental::Tensor other_tensor;
   if (!PyCheckTensor(other_obj)) {
     paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
-    eager_gil_scoped_release guard;
+    tstate = PyEval_SaveThread();
     other_tensor =
         full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
@@ -309,10 +321,12 @@ static PyObject* tensor__sub__method(TensorObject* self,
   // 4. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__sub__method";
 
-  eager_gil_scoped_release guard;
+  tstate = PyEval_SaveThread();
   ret = subtract_ad_func(self_tensor, other_tensor);
-  return ToPyObject(ret);
+  PyEval_RestoreThread(tstate);
+  tstate = nullptr;
 
+  return ToPyObject(ret);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -324,8 +338,9 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       paddle::platform::TracerEventType::UserDefined,
       1);
 
+  PyThreadState* tstate = nullptr;
   EAGER_TRY
-  VLOG(6) << "Running Eager tensor__rsub__method";
+  VLOG(1) << "Running Eager tensor__rsub__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -343,14 +358,19 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       other = CastPyArg2AttrFloat(other_obj, 0);
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
+        tstate = PyEval_SaveThread();
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        PyEval_RestoreThread(tstate);
+        tstate = nullptr;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     }
 
-    eager_gil_scoped_release guard;
+    tstate = PyEval_SaveThread();
     ret = CallScalarFuction(self_tensor, other, "rsub");
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
 
     return ToPyObject(ret);
   }
@@ -360,9 +380,11 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   if (!PyCheckTensor(other_obj)) {
     paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
 
-    eager_gil_scoped_release guard;
+    tstate = PyEval_SaveThread();
     other_tensor =
         full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
@@ -397,10 +419,12 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   // 4. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__rsub__method";
 
-  eager_gil_scoped_release guard;
+  tstate = PyEval_SaveThread();
   ret = subtract_ad_func(other_tensor, self_tensor);
-  return ToPyObject(ret);
+  PyEval_RestoreThread(tstate);
+  tstate = nullptr;
 
+  return ToPyObject(ret);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
