@@ -115,7 +115,7 @@ class PD_INFER_DECL Tensor {
                          PlaceType place,
                          DataLayout layout = DataLayout::kNCHW);
 
-  void SetTensorBs(int size);
+  void SetTensorBs(int bs);
 
   template <typename T>
   void SetTensorPtr(T* ptr);
