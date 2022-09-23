@@ -16,11 +16,10 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-#include "paddle/phi/kernels/sparse/impl/unary_grad_kernel_impl.h"
-#include "paddle/phi/kernels/sparse/impl/unary_kernel_impl.h"
 
 namespace phi {
 namespace sparse {
@@ -54,17 +53,14 @@ void TransposeCsrKernel(const Context& dev_ctx,
                         const std::vector<int>& perm,
                         SparseCsrTensor* out) {
   unsigned int n_dim = perm.size();
-
   const DenseTensor& x_crows = x.crows();
   const DenseTensor& x_cols = x.cols();
-  const DenseTensor& x_values = x.non_zero_elements();
-
+  const DenseTensor& x_values = x.values();
   // return a copy of x
   if (perm[0] == 0 && perm[1] == 1 && (n_dim == 2 || perm[2] == 2)) {
     out->SetMember(x_crows, x_cols, x_values, x.dims());
     return;
   }
-
   // create out sparse tensor
   DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_crows;
@@ -77,7 +73,6 @@ void TransposeCsrKernel(const Context& dev_ctx,
   DenseTensor out_cols = EmptyLike<int64_t, Context>(dev_ctx, x.cols());
   DenseTensor out_values = EmptyLike<T, Context>(dev_ctx, x.values());
   out->SetMember(out_crows, out_cols, out_values, out_dims);
-
   // transpose by two stages
   if (perm[0] == 1 && perm[1] == 2) {  // perm == {1, 2, 0}
     SparseCsrTensor temp;

@@ -393,8 +393,8 @@
     func : TransposeGradInferMeta
     param : [out_grad, perm]
   kernel :
-    func : transpose_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
-           transpose_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
+    func : transpose_coo_grad {sparse_coo -> sparse_coo},
+           transpose_csr_grad {sparse_csr -> sparse_csr}
 
 - backward_op : values_grad
   forward : values_coo(Tensor x) -> Tensor(out)
