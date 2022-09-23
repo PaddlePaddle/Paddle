@@ -302,7 +302,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     PADDLE_THROW(platform::errors::External("%s", ex.what()));
   } catch (...) {
     PADDLE_THROW(platform::errors::Fatal(
-        "Custom operator raises an unknown exception in rumtime."));
+        "Custom operator raises an unknown exception in runtime."));
   }
 }
 
@@ -801,7 +801,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
   // Infer Dtype
   if (infer_dtype_func == nullptr) {
-    // use defalut InferDtype
+    // use default InferDtype
     info.infer_var_type_ = [op_inputs, op_outputs](InferVarTypeContext* ctx) {
       PADDLE_ENFORCE_EQ(
           op_inputs.size(),

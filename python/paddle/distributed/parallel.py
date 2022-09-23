@@ -95,7 +95,7 @@ def init_parallel_env():
     """
     Initialize parallel training environment in dynamic graph mode.
 
-    .. note::
+    Note:
         Now initialize both `NCCL` and `GLOO` contexts for communication.
 
     Args:

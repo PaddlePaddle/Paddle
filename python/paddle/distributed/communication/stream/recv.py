@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.distributed.collective as collective
 import paddle.fluid.framework as framework
+from paddle.distributed import collective
 
 
 def _recv_in_dygraph(tensor, src, group, sync_op, use_calc_stream):
