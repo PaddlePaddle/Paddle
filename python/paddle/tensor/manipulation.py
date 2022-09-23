@@ -416,12 +416,6 @@ def transpose(x, perm, name=None):
 
 def unstack(x, axis=0, num=None):
     """
-    :alias_main: paddle.unstack
-	:alias: paddle.unstack,paddle.tensor.unstack,paddle.tensor.manipulation.unstack
-	:old_api: paddle.fluid.layers.unstack
-
-    **UnStack Layer**
-
     This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
 
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
@@ -1693,12 +1687,12 @@ def stack(x, axis=0, name=None):
             #  [[3., 4.]],
             #  [[5., 6.]]]
 
-	    out = paddle.stack([x1, x2, x3], axis=-2)
-	    print(out.shape)  # [1, 3, 2]
-	    print(out)
-	    # [[[1., 2.],
-	    #   [3., 4.],
-	    #   [5., 6.]]]
+        out = paddle.stack([x1, x2, x3], axis=-2)
+        print(out.shape)  # [1, 3, 2]
+        print(out)
+        # [[[1., 2.],
+        #   [3., 4.],
+        #   [5., 6.]]]
     """
     axis = 0 if axis is None else axis
 
@@ -2663,7 +2657,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
         overwrite (bool): The mode that updating the output when there are same indices.
 
             If True, use the overwrite mode to update the output of the same index,
-	        if False, use the accumulate mode to update the output of the same index.Default value is True.
+            if False, use the accumulate mode to update the output of the same index.Default value is True.
 
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 

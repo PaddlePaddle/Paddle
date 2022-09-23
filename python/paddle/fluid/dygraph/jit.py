@@ -397,7 +397,7 @@ def _parse_save_configs(configs):
     inner_config.output_spec = configs.get('output_spec', None)
     inner_config.with_hook = configs.get('with_hook', False)
     inner_config.combine_params = configs.get("combine_params", False)
-    inner_config.clip_extra = configs.get("clip_extra", False)
+    inner_config.clip_extra = configs.get("clip_extra", True)
     inner_config.skip_forward = configs.get("skip_forward", False)
 
     return inner_config
