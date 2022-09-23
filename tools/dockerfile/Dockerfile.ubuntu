@@ -15,8 +15,9 @@ ENV HOME /root
 # Add bash enhancements
 COPY paddle/scripts/docker/root/ /root/
 
+RUN chmod 777 /tmp
 # Prepare packages for Python
-RUN apt-get update && \
+RUN apt-get update --allow-unauthenticated && \
     apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
     xz-utils tk-dev libffi-dev liblzma-dev
@@ -27,7 +28,7 @@ RUN apt-get update && \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib \
-    automake locales clang-format swig  \
+    automake locales swig  \
     liblapack-dev liblapacke-dev \
     net-tools libtool module-init-tools && \
     apt-get clean -y
@@ -45,7 +46,7 @@ RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && ta
 ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 # Install Python3.6
-RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
+RUN mkdir -p /root/python_build/ && wget -q https://paddle-ci.gz.bcebos.com/sqlite-autoconf-3250300.tar.gz && \
     tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
     ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
     wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
@@ -56,7 +57,7 @@ RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-a
 # Install Python3.7
 RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
     tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/python3.7.0 --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
 
 # Install Python3.8
@@ -65,16 +66,17 @@ RUN wget -q https://www.python.org/ftp/python/3.8.0/Python-3.8.0.tgz && \
     CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
 
-# Install Python3.5
-RUN wget -q https://www.python.org/ftp/python/3.5.1/Python-3.5.1.tgz && \
-    tar -xzf Python-3.5.1.tgz && cd Python-3.5.1 && \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local/python3.5.1 --enable-shared > /dev/null && \
+# Install Python3.9
+RUN wget -q https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tgz && \
+    tar -xzf Python-3.9.0.tgz && cd Python-3.9.0 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
-ENV PATH=/usr/local/python3.5.1/include:${PATH}
-ENV PATH=/usr/local/python3.5.1/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/python3.5.1/lib:${LD_LIBRARY_PATH}
-ENV CPLUS_INCLUDE_PATH=/usr/local/python3.5.1/include/python3.5:$CPLUS_INCLUDE_PATH
-RUN ln -sf /usr/local/python3.5.1/bin/python3.5 /usr/local/bin/python3 && ln -sf /usr/local/python3.5.1/bin/python3.5 /usr/bin/python3
+
+ENV PATH=/usr/local/python3.7.0/include:${PATH}
+ENV PATH=/usr/local/python3.7.0/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/python3.7.0/lib:${LD_LIBRARY_PATH}
+ENV CPLUS_INCLUDE_PATH=/usr/local/python3.7.0/include/python3.7:$CPLUS_INCLUDE_PATH
+RUN ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/local/bin/python3 && ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/bin/python3
 
 RUN rm -r /root/python_build
 
@@ -97,20 +99,32 @@ RUN wget https://files.pythonhosted.org/packages/b0/d1/8acb42f391cba52e35b131e44
 WORKDIR /home/setuptools-40.6.2
 RUN python setup.py build && python setup.py install
 WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/69/81/52b68d0a4de760a2f1979b0931ba7889202f302072cc7a0d614211bc7579/pip-18.0.tar.gz && tar -zxvf pip-18.0.tar.gz
-WORKDIR pip-18.0
+RUN python3.9 -m pip uninstall -y pip setuptools && \
+  python3.8 -m pip uninstall -y pip setuptools && \
+  python3.7 -m pip uninstall -y pip setuptools && \
+  python3.6 -m pip uninstall -y pip setuptools
+RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && apt-get -y install unzip && unzip setuptools-50.3.2.zip
+WORKDIR /home/setuptools-50.3.2
+RUN python3.9 setup.py build && python3.9 setup.py install && \
+  python3.8 setup.py build && python3.8 setup.py install && \
+  python3.7 setup.py build && python3.7 setup.py install && \
+  python3.6 setup.py build && python3.6 setup.py install
+WORKDIR /home
+RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxvf pip-20.0.1.tar.gz
+WORKDIR pip-20.0.1
 RUN python setup.py install && \
+  python3.9 setup.py install && \
   python3.8 setup.py install && \
   python3.7 setup.py install && \
-  python3.6 setup.py install && \
-  python3 setup.py install 
+  python3.6 setup.py install
 
 WORKDIR /home
-RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-18.0.tar.gz && \
-    rm -r Python-$version setuptools-40.6.2 pip-18.0
+RUN rm Python-$version.tgz setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
+    rm -r Python-$version setuptools-40.6.2 setuptools-50.3.2 pip-20.0.1
 
 # Install Go and glide
-RUN wget -qO- https://paddle-ci.cdn.bcebos.com/go1.8.1.linux-amd64.tar.gz | \
+WORKDIR /home
+RUN wget --no-check-certificate -qO- https://paddle-ci.gz.bcebos.com/go1.17.2.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
@@ -129,9 +143,14 @@ RUN curl -s -q https://glide.sh/get | sh
 #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
 
 # Downgrade TensorRT 
+
+# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
+# # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
+# # So install a newer version here.
 COPY tools/dockerfile/build_scripts /build_scripts
 RUN bash /build_scripts/install_trt.sh && \
-    bash /build_scripts/install_nccl2.sh
+    bash /build_scripts/install_nccl2.sh && \
+    bash /build_scripts/install_patchelf.sh
 RUN rm -rf /build_scripts
 
 # git credential to skip password typing
@@ -143,10 +162,7 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
-    pip3 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
+RUN pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.6 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.6 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip3.7 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
@@ -155,48 +171,64 @@ RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.8 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.8 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.8 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
+    pip3.9 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
+    pip3.9 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
+    pip3.9 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
-RUN pip3 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip3 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.6 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+RUN pip3.6 --no-cache-dir install 'ipython==5.3.0' && \
     pip3.6 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.7 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3.7 --no-cache-dir install 'ipython==5.3.0' && \
     pip3.7 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.8 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip3.8 --no-cache-dir install 'ipython==5.3.0' && \
     pip3.8 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip3.9 --no-cache-dir install 'ipython==5.3.0' && \
+    pip3.9 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip --no-cache-dir install 'ipykernel==4.6.0'
+    pip --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
 #For docstring checker
-RUN pip3 --no-cache-dir install pylint pytest astroid isort && \
-    pip3.6 --no-cache-dir install pylint pytest astroid isort && \
-    pip3.7 --no-cache-dir install pylint pytest astroid isort && \
-    pip3.8 --no-cache-dir install pylint pytest astroid isort && \
-    pip --no-cache-dir install pylint pytest astroid isort LinkChecker
+RUN pip3.6 --no-cache-dir install pytest astroid isort && \
+    pip3.7 --no-cache-dir install pytest astroid isort && \
+    pip3.8 --no-cache-dir install pytest astroid isort && \
+    pip3.9 --no-cache-dir install pytest astroid isort && \
+    pip --no-cache-dir install pylint pytest astroid isort
 
-RUN pip3 --no-cache-dir install coverage && \
-    pip3.6 --no-cache-dir install coverage && \
+#For pre-commit
+RUN pip3.6 --no-cache-dir install --upgrade pip==20.3.3 && \
+    pip3.7 --no-cache-dir install --upgrade pip && \
+    pip3.8 --no-cache-dir install --upgrade pip && \
+    pip3.9 --no-cache-dir install --upgrade pip
+
+RUN pip3.6 --no-cache-dir install pre-commit==2.1.1 pylint==2.12.0 && \
+    pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
+    pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
+    pip3.9 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
+    pip3.6 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.7 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
+
+RUN pip3.6 --no-cache-dir install coverage && \
     pip3.7 --no-cache-dir install coverage && \
     pip3.8 --no-cache-dir install coverage && \
+    pip3.9 --no-cache-dir install coverage && \
     pip --no-cache-dir install coverage
 
 COPY ./python/requirements.txt /root/
-RUN pip3 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.6 --no-cache-dir install -r /root/requirements.txt && \
+RUN pip3.6 --no-cache-dir install -r /root/requirements.txt && \
     pip3.7 --no-cache-dir install -r /root/requirements.txt && \
     pip3.8 --no-cache-dir install -r /root/requirements.txt && \
-    pip --no-cache-dir install -r /root/requirements.txt
+    pip3.9 --no-cache-dir install -r /root/requirements.txt
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev && apt-get clean -y && \
-    pip3 --no-cache-dir install certifi urllib3[secure] && \
     pip3.6 --no-cache-dir install certifi urllib3[secure] && \
     pip3.7 --no-cache-dir install certifi urllib3[secure] && \
     pip3.8 --no-cache-dir install certifi urllib3[secure] && \
+    pip3.9 --no-cache-dir install certifi urllib3[secure] && \
     pip --no-cache-dir install certifi urllib3[secure]
 
 # ar mishandles 4GB files
@@ -209,12 +241,6 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
 
 RUN apt-get install libprotobuf-dev -y
 
-# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
-# https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
-# So install a newer version here.
-RUN wget -q https://paddle-ci.cdn.bcebos.com/patchelf_0.10-2_amd64.deb && \
-    dpkg -i patchelf_0.10-2_amd64.deb
-
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 CMD source ~/.bashrc
@@ -224,7 +250,8 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
     ./configure -prefix=/usr/local/ccache-3.7.9 && \
     make -j8 && make install && \
-    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
+    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache && \
+    cd ../ && rm -rf ccache-3.7.9 ccache-3.7.9.tar.gz
 
 
 EXPOSE 22

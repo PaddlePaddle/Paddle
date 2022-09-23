@@ -13,8 +13,9 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -40,7 +41,7 @@ class BoxDecoderAndAssignKernel : public framework::OpKernel<T> {
     output_assign_box->mutable_data<T>({roi_num, 4}, context.GetPlace());
     T* output_box_data = output_box->data<T>();
     T* output_assign_box_data = output_assign_box->data<T>();
-    const T bbox_clip = context.Attr<T>("box_clip");
+    const T bbox_clip = static_cast<T>(context.Attr<float>("box_clip"));
 
     for (int i = 0; i < roi_num; ++i) {
       T prior_box_width = prior_box_data[i * 4 + 2] - prior_box_data[i * 4] + 1;

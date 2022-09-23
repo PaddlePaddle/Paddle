@@ -34,17 +34,18 @@ namespace tensorrt {
 class DropoutOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid dropout op to tensorrt dropout layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     float dropout_prob =
-        BOOST_GET_CONST(float, op_desc.GetAttr("dropout_prob"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("dropout_prob"));
 
     std::string downgrade_in_infer = "";
     if (op_desc.HasAttr("dropout_implementation")) {
-      downgrade_in_infer = BOOST_GET_CONST(
+      downgrade_in_infer = PADDLE_GET_CONST(
           std::string, op_desc.GetAttr("dropout_implementation"));
     }
 
@@ -59,23 +60,27 @@ class DropoutOpConverter : public OpConverter {
     platform::CPUPlace cpu_place;
     std::unique_ptr<framework::LoDTensor> weight_tensor(
         new framework::LoDTensor());
-    weight_tensor->Resize(framework::make_ddim({1}));
+    weight_tensor->Resize(phi::make_ddim({1}));
     auto* weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
     weight_data[0] = 1 - dropout_prob;
 
     TensorRTEngine::Weight scale_weights{
-        nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
+        nvinfer1::DataType::kFLOAT,
+        static_cast<void*>(weight_data),
         weight_tensor->memory_size() / sizeof(float)};
-    TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                         0};
-    TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                         0};
+    TensorRTEngine::Weight shift_weights{
+        nvinfer1::DataType::kFLOAT, nullptr, 0};
+    TensorRTEngine::Weight power_weights{
+        nvinfer1::DataType::kFLOAT, nullptr, 0};
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Scale, *const_cast<nvinfer1::ITensor*>(input1),
-        nvinfer1::ScaleMode::kUNIFORM, shift_weights.get(), scale_weights.get(),
-        power_weights.get());
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                       Scale,
+                                       *const_cast<nvinfer1::ITensor*>(input1),
+                                       nvinfer1::ScaleMode::kUNIFORM,
+                                       shift_weights.get(),
+                                       scale_weights.get(),
+                                       power_weights.get());
 
     engine_->SetWeights(op_desc.Output("Out").front() + "_dropout",
                         std::move(weight_tensor));
@@ -89,5 +94,5 @@ class DropoutOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(dropout);
+USE_OP_ITSELF(dropout);
 REGISTER_TRT_OP_CONVERTER(dropout, DropoutOpConverter);

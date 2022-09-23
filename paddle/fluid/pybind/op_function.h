@@ -25,25 +25,34 @@
 
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/imperative.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 
 namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
 static inline std::shared_ptr<imperative::VarBase> CastPyHandleToVarBase(
-    const std::string& op_type, const std::string& arg_name, int arg_idx,
-    const py::handle& handle, bool dispensable = false) {
+    const std::string& op_type,
+    const std::string& arg_name,
+    int arg_idx,
+    const py::handle& handle,
+    bool dispensable = false) {
   PyObject* py_obj = handle.ptr();  // get underlying PyObject
   if (!py_obj || py_obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be Tensor, but got "
           "%s",
-          op_type, arg_name, arg_idx, Py_TYPE(py_obj)->tp_name));
+          op_type,
+          arg_name,
+          arg_idx,
+          Py_TYPE(py_obj)->tp_name));
     }
     return nullptr;
   }
@@ -53,21 +62,29 @@ static inline std::shared_ptr<imperative::VarBase> CastPyHandleToVarBase(
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be Tensor, but got "
         "%s",
-        op_type, arg_name, arg_idx, Py_TYPE(py_obj)->tp_name));
+        op_type,
+        arg_name,
+        arg_idx,
+        Py_TYPE(py_obj)->tp_name));
   }
 }
 
 static inline std::vector<std::shared_ptr<imperative::VarBase>>
 CastPyHandleToVarBaseList(const std::string& op_type,
-                          const std::string& arg_name, int arg_idx,
-                          const py::handle& handle, bool dispensable = false) {
+                          const std::string& arg_name,
+                          int arg_idx,
+                          const py::handle& handle,
+                          bool dispensable = false) {
   PyObject* py_obj = handle.ptr();  // get underlying PyObject
   if (!py_obj || py_obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be Tensor, but got "
           "%s",
-          op_type, arg_name, arg_idx, Py_TYPE(py_obj)->tp_name));
+          op_type,
+          arg_name,
+          arg_idx,
+          Py_TYPE(py_obj)->tp_name));
     }
     return {};
   }
@@ -90,51 +107,24 @@ CastPyHandleToVarBaseList(const std::string& op_type,
             "%s(): argument '%s' (position %d) must be list of "
             "Tensors, but "
             "got %s in list (item %d)",
-            op_type, arg_name, arg_idx, Py_TYPE(item)->tp_name, i));
+            op_type,
+            arg_name,
+            arg_idx,
+            Py_TYPE(item)->tp_name,
+            i));
       }
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be list of Tensors, but got "
         "%s",
-        op_type, arg_name, arg_idx, Py_TYPE(py_obj)->tp_name));
+        op_type,
+        arg_name,
+        arg_idx,
+        Py_TYPE(py_obj)->tp_name));
   }
   return result;
 }  // namespace pybind
-
-static inline void ConstructAttrMapFromPyArgs(const std::string& op_type,
-                                              int start_idx,
-                                              framework::AttributeMap* attrs,
-                                              const py::args& args) {
-  PADDLE_ENFORCE_EQ(
-      args.size() % 2, 0,
-      platform::errors::InvalidArgument(
-          "The number of arguments for arributes should be even."));
-  for (size_t i = 0; i < args.size(); i += 2) {
-    std::string name;
-    framework::Attribute value;
-    try {
-      name = args[i].cast<std::string>();
-    } catch (std::exception& e) {
-      PyObject* py_obj = args[i].ptr();  // get underlying PyObject
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) must be str, but got "
-          "%s",
-          op_type, start_idx + i, Py_TYPE(py_obj)->tp_name));
-    }
-    try {
-      value = args[i + 1].cast<framework::Attribute>();
-    } catch (std::exception& e) {
-      PyObject* py_obj = args[i + 1].ptr();  // get underlying PyObject
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) must be "
-          "Attribute type (one of str, bool, int, int64, float, or list of "
-          "them), but got %s",
-          op_type, start_idx + i + 1, Py_TYPE(py_obj)->tp_name));
-    }
-    (*attrs)[name] = value;
-  }
-}
 
 static inline std::vector<std::shared_ptr<imperative::VarBase>>
 ConstructDuplicableOutput(const size_t num) {
@@ -152,20 +142,22 @@ static inline void HandleViewBetweenInputAndOutput(
     const std::shared_ptr<imperative::VarBase>& input_var,
     const std::shared_ptr<imperative::VarBase>& view_output_var) {
   PADDLE_ENFORCE_EQ(
-      input_var->Var().IsInitialized(), true,
+      input_var->Var().IsInitialized(),
+      true,
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         input_var->Name()));
 
   if (input_var->Var().IsType<framework::LoDTensor>()) {
     const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(
-        input_tensor.IsInitialized(), true,
+        input_tensor.IsInitialized(),
+        true,
         platform::errors::InvalidArgument(
             "LoDTensor %s has not been initialized!", input_var->Name()));
 
     auto* view_output_tensor =
         view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
-    view_output_tensor->ShareDataWith(input_tensor);
+    view_output_tensor->ShareBufferWith(input_tensor);
     view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
 
     VLOG(3) << "Perform View between Output Var(" << view_output_var->Name()
@@ -173,8 +165,67 @@ static inline void HandleViewBetweenInputAndOutput(
             << "), share allocation and inplace version.";
   }
 }
+
+static inline PyObject* MakeReturnPyObject(
+    const std::shared_ptr<paddle::imperative::VarBase>& out) {
+  return ::pybind11::detail::type_caster_base<imperative::VarBase>::cast_holder(
+             ::pybind11::detail::holder_helper<
+                 std::shared_ptr<imperative::VarBase>>::get(out),
+             &out)
+      .ptr();
+}
+
+static inline PyObject* MakeReturnPyObject(
+    const std::vector<std::shared_ptr<imperative::VarBase>>& out) {
+  PyObject* result = PyList_New((Py_ssize_t)out.size());
+
+  for (size_t i = 0; i < out.size(); i++) {
+    PyList_SET_ITEM(
+        result,
+        (Py_ssize_t)i,
+        ::pybind11::detail::type_caster_base<imperative::VarBase>::cast_holder(
+            ::pybind11::detail::holder_helper<
+                std::shared_ptr<imperative::VarBase>>::get(out[i]),
+            &out[i])
+            .ptr());  // NOLINT
+  }
+
+  return result;
+}
+
+template <typename Tuple, size_t N>
+struct TupleVarBasesResult {
+  static void Run(const Tuple& out, PyObject* result) {
+    TupleVarBasesResult<Tuple, N - 1>::Run(out, result);
+    PyTuple_SET_ITEM(result, N - 1, MakeReturnPyObject(std::get<N - 1>(out)));
+  }
+};
+
+template <typename Tuple>
+struct TupleVarBasesResult<Tuple, 1> {
+  static void Run(const Tuple& out, PyObject* result) {
+    PyTuple_SET_ITEM(result, 0, MakeReturnPyObject(std::get<0>(out)));
+  }
+};
+
+template <typename... Args>
+PyObject* MakeReturnPyObject(const std::tuple<Args...>& out) {
+  auto len = sizeof...(Args);
+  PyObject* result = PyTuple_New(len);
+
+  TupleVarBasesResult<decltype(out), sizeof...(Args)>::Run(out, result);
+
+  return result;
+}
+
+void BindOpFunctions1(pybind11::module* module);
+void BindOpFunctions2(pybind11::module* module);
+void BindOpFunctions3(pybind11::module* module);
+void BindOpFunctions4(pybind11::module* module);
+void BindOpFunctions5(pybind11::module* module);
+void BindOpFunctions6(pybind11::module* module);
+void BindOpFunctions7(pybind11::module* module);
+void BindOpFunctions8(pybind11::module* module);
+
 }  // namespace pybind
 }  // namespace paddle
-
-// This include must be the last line
-#include "paddle/fluid/pybind/op_function_impl.h"

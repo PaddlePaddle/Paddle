@@ -35,13 +35,15 @@ namespace tensorrt {
 class SwishOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid swish op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     int input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE_EQ(input_num, 1,
+    PADDLE_ENFORCE_EQ(input_num,
+                      1,
                       platform::errors::InvalidArgument(
                           "The input X's size must equal to 1 in TRT swish op."
                           " But received X's size %d.",
@@ -50,32 +52,38 @@ class SwishOpConverter : public OpConverter {
     // Get output
     size_t output_num = op_desc.Output("Out").size();
     PADDLE_ENFORCE_EQ(
-        output_num, 1UL,
+        output_num,
+        1UL,
         platform::errors::InvalidArgument(
-            "The ouput Out's size must equal to 1 in TRT swish op. "
+            "The output Out's size must equal to 1 in TRT swish op. "
             "But received Out's size %u.",
             output_num));
     // Get attrs
-    float beta = BOOST_GET_CONST(float, op_desc.GetAttr("beta"));
+    float beta = PADDLE_GET_CONST(float, op_desc.GetAttr("beta"));
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::SwishPluginDynamic* plugin =
-          new plugin::SwishPluginDynamic(beta, with_fp16);
-      layer = engine_->AddPluginV2(&input, input_num, plugin);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
+      int32_t rank = input->getDimensions().nbDims;
+      nvinfer1::Dims constant_shape;
+      constant_shape.nbDims = rank;
+      std::fill(constant_shape.d, constant_shape.d + rank, 1);
+      std::vector<float> weight_data{beta};
+      auto* beta_data = AddConstantLayer(weight_data.data(), constant_shape);
+      auto* input_mul_with_beta = Prod(beta_data, input);
+      auto* sigmoid = TRT_ENGINE_ADD_LAYER(engine_,
+                                           Activation,
+                                           *input_mul_with_beta,
+                                           nvinfer1::ActivationType::kSIGMOID);
+      layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                   ElementWise,
+                                   *input,
+                                   *(sigmoid->getOutput(0)),
+                                   nvinfer1::ElementWiseOperation::kPROD);
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SwishPlugin* plugin = new plugin::SwishPlugin(beta, with_fp16);
-      layer = engine_->AddPlugin(&input, input_num, plugin);
+      layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
     }
 
     auto output_name = op_desc.Output("Out")[0];

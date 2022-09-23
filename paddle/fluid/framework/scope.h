@@ -26,9 +26,9 @@ extern "C" {
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace framework {
@@ -39,7 +39,15 @@ class Variable;
 namespace paddle {
 namespace framework {
 
-class Scope;
+// TODO(zhiqiu): add more function in base class
+class ScopeBase {
+ public:
+  /// Find a variable in the scope or any of its ancestors.  Returns
+  /// nullptr if cannot find.
+  /// Caller doesn't own the returned Variable.
+  virtual Variable* FindVar(const std::string& name) const = 0;
+  virtual ~ScopeBase() {}
+};
 
 /**
  * @brief Scope that manage all variables.
@@ -49,7 +57,7 @@ class Scope;
  * One net can run in different scopes and update different variable in the
  * scope.
  */
-class Scope {
+class Scope : public ScopeBase {
  public:
   Scope() {}
   ~Scope();
@@ -108,15 +116,26 @@ class Scope {
 
   const std::list<Scope*>& kids() const { return kids_; }
 
-  // enumerate all the variables current contains.
+  // enumerate all the variable names which current scope contains.
   std::vector<std::string> LocalVarNames() const;
+
+  // enumerate all the variables which current scope contains.
+  std::vector<Variable*> LocalVars();
 
   // Rename variable to a new name
   void Rename(const std::string& origin_name,
               const std::string& new_name) const;
 
+  // Return the number of variables in scope
+  size_t Size() { return vars_.size(); }
+
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
+
+  // only for dygraph_to_static
+  bool CanReuesd() const { return can_reused_; }
+
+  void SetCanReuesd(bool can_reused) { can_reused_ = can_reused; }
 
  protected:
   struct KeyHasher {
@@ -155,14 +174,14 @@ class Scope {
   mutable std::list<Scope*> kids_;
   const Scope* parent_{nullptr};
 
+  // only for dygraph_to_static
+  bool can_reused_{false};
+
   DISABLE_COPY_AND_ASSIGN(Scope);
 
-#ifndef PADDLE_ON_INFERENCE
-
  private:
-  mutable RWLock kids_lock_;
-  mutable RWLock vars_lock_;
-#endif
+  mutable phi::RWLock kids_lock_;
+  mutable phi::RWLock vars_lock_;
 };
 
 // Generate some debug string about the inherience structure of scope, quite

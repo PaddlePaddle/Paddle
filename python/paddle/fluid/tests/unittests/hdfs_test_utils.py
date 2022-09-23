@@ -25,6 +25,7 @@ java_home = os.environ["JAVA_HOME"]
 
 
 class FSTestBase(unittest.TestCase):
+
     def _test_dirs(self, fs):
         dir_path = os.path.abspath("./test_dir")
         fs.delete(dir_path)
@@ -110,6 +111,24 @@ class FSTestBase(unittest.TestCase):
         fs.delete(dst_file)
         fs.delete(src_file)
 
+    def _test_upload_dir(self, fs):
+        # upload dir
+        src_file = os.path.abspath("./test_upload_dir")
+        dst_file = os.path.abspath("./test_uolpad_dir")
+        file1 = os.path.abspath("./test_upload_dir/file1")
+        file2 = os.path.abspath("./test_upload_dir/file2")
+
+        local = LocalFS()
+        local.mkdirs(src_file)
+        local.touch(file1)
+        local.touch(file2)
+
+        fs.upload(src_file, dst_file)
+
+        self.assertTrue(fs.is_exist(dst_file))
+        fs.delete(dst_file)
+        local.delete(src_file)
+
     def _test_try_download(self, fs):
         src_file = os.path.abspath("./test_try_download.src")
         dst_file = os.path.abspath("./test_try_download.dst")
@@ -152,13 +171,33 @@ class FSTestBase(unittest.TestCase):
             pass
 
         local = LocalFS()
-        local.touch(src_file)
-        fs.delete(dst_file)
+        fs.touch(src_file)
+        local.delete(dst_file)
 
         assert fs.need_upload_download()
 
-        self.assertFalse(fs.is_exist(dst_file))
+        fs.download(src_file, dst_file)
+
+        self.assertTrue(local.is_exist(dst_file))
+        local.delete(dst_file)
+        fs.delete(src_file)
+
+    def _test_download_dir(self, fs):
+        src_file = os.path.abspath("./test_download_dir_src")
+        dst_file = os.path.abspath("./test_download_dir_dst")
+        file1 = os.path.abspath("./test_download_dir_src/file1")
+        file2 = os.path.abspath("./test_download_dir_src/file2")
         fs.delete(dst_file)
+        fs.delete(src_file)
+
+        fs.mkdirs(src_file)
+        fs.touch(file1)
+        fs.touch(file2)
+
+        fs.download(src_file, dst_file)
+        local = LocalFS()
+        self.assertTrue(local.is_exist(file1))
+        local.delete(dst_file)
         fs.delete(src_file)
 
     def _test_mkdirs(self, fs):
@@ -182,11 +221,10 @@ class FSTestBase(unittest.TestCase):
             pass
 
     def _test_list_dir(self, fs):
-        fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/",
-            None,
-            time_out=15 * 1000,
-            sleep_inter=100)
+        fs = HDFSClient("/usr/local/hadoop-2.7.7/",
+                        None,
+                        time_out=15 * 1000,
+                        sleep_inter=100)
         fs.ls_dir("test_not_exists")
 
     def _test_touch(self, fs):
@@ -205,6 +243,15 @@ class FSTestBase(unittest.TestCase):
             pass
 
         self.assertFalse(fs.is_dir(path))
+        fs.delete(path)
+
+    def _test_list_files_info(self, fs):
+        path = []
+        fs.list_files_info(path)
+        path = ["./list_files_info.flag"]
+        fs.list_files_info(path)
+        fs.touch(path, exist_ok=True)
+        fs.list_files_info(path)
         fs.delete(path)
 
 

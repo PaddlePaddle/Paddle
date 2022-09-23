@@ -11,48 +11,22 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <string>
-
-#include "paddle/fluid/framework/op_registry.h"
-namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
+#include "paddle/fluid/operators/collective/c_sync_comm_stream_op.h"
 
 namespace paddle {
 namespace operators {
 
-class CSyncCommStreamOp : public framework::OperatorBase {
+class CSyncCommStreamOp : public framework::OperatorWithKernel {
  public:
-  CSyncCommStreamOp(const std::string& type,
-                    const framework::VariableNameMap& inputs,
-                    const framework::VariableNameMap& outputs,
-                    const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on gpu place only for now."));
+  void InferShape(framework::InferShapeContext* ctx) const override {}
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    int ring_id = Attr<int>("ring_id");
-    auto stream =
-        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
-#ifdef PADDLE_WITH_RCCL
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
-#endif
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
@@ -66,7 +40,6 @@ class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddComment(R"DOC(
 CSyncCommStream Operator
-
 Call communication stream synchronization.
 )DOC");
   }
@@ -77,5 +50,12 @@ Call communication stream synchronization.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_sync_comm_stream, ops::CSyncCommStreamOp,
-                  ops::CSyncCommStreamOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream,
+                             ops::CSyncCommStreamOp,
+                             ops::CSyncCommStreamOpMaker);
+
+REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+
+REGISTER_OP_NPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+
+REGISTER_OP_MLU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);

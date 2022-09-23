@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <thrust/random.h>
-#include <thrust/transform.h>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -36,50 +37,13 @@ struct GaussianGenerator {
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
-    thrust::normal_distribution<T> dist(mean_, std_);
+    using MT = typename details::MPTypeTrait<T>::Type;
+    thrust::normal_distribution<MT> dist(static_cast<MT>(mean_),
+                                         static_cast<MT>(std_));
     unsigned int new_n = n + offset_;
     rng.discard(new_n);
-    return dist(rng);
-  }
-};
-
-template <typename T>
-class GPUGaussianRandomKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* tensor = context.Output<framework::Tensor>("Out");
-    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    bool seed_flag = false;
-    if (seed == 0) {
-      std::random_device rd;
-      seed = rd();
-      seed_flag = true;
-    }
-    T mean = static_cast<T>(context.Attr<float>("mean"));
-    T std = static_cast<T>(context.Attr<float>("std"));
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
-    auto shape = GetShape(context);
-    tensor->Resize(shape);
-    T* data = tensor->mutable_data<T>(context.GetPlace());
-
-    int64_t size = tensor->numel();
-
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()).GetDeviceId();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
-
-    if (gen_cuda->GetIsInitPy() && seed_flag) {
-      auto seed_offset = gen_cuda->IncrementOffset(1);
-      int gen_offset = size * seed_offset.second;
-      thrust::transform(
-          index_sequence_begin, index_sequence_begin + size,
-          thrust::device_ptr<T>(data),
-          GaussianGenerator<T>(mean, std, seed_offset.first, gen_offset));
-    } else {
-      thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                        thrust::device_ptr<T>(data),
-                        GaussianGenerator<T>(mean, std, seed));
-    }
+    MT out = dist(rng);
+    return static_cast<T>(out);
   }
 };
 
@@ -90,42 +54,33 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    bool seed_flag = false;
-    if (seed == 0) {
-      std::random_device rd;
-      seed = rd();
-      seed_flag = true;
-    }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
 
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()).GetDeviceId();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
+    int device_id = context.GetPlace().GetDeviceId();
+    auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
+    auto& dev_cxt = context.template device_context<phi::GPUContext>();
 
-    if (gen_cuda->GetIsInitPy() && seed_flag) {
+    if (seed == 0) {
+      // use global Generator seed
       auto seed_offset = gen_cuda->IncrementOffset(1);
-      int gen_offset = size * seed_offset.second;
-      thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                        thrust::device_ptr<T>(data),
-                        GaussianGenerator<T>(mean, std, seed_offset.first,
-                                             seed_offset.second));
+      uint64_t seed = seed_offset.first;
+      uint64_t offset = seed_offset.second;
+      auto func = GaussianGenerator<T>(mean, std, seed, size * offset);
+      phi::IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
     } else {
-      thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                        thrust::device_ptr<T>(data),
-                        GaussianGenerator<T>(mean, std, seed));
+      auto func = GaussianGenerator<T>(mean, std, seed);
+      phi::IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
     }
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(gaussian_random,
-                        paddle::operators::GPUGaussianRandomKernel<float>,
-                        paddle::operators::GPUGaussianRandomKernel<double>);
 REGISTER_OP_CUDA_KERNEL(
     gaussian_random_batch_size_like,
+    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<
+        paddle::platform::float16>,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<float>,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<double>);

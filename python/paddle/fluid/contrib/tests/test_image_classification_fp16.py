@@ -24,12 +24,14 @@ import unittest
 import os
 import copy
 import numpy as np
+import tempfile
 from paddle.static.amp import decorate
 
 paddle.enable_static()
 
 
 def resnet_cifar10(input, depth=32):
+
     def conv_bn_layer(input,
                       ch_out,
                       filter_size,
@@ -37,14 +39,13 @@ def resnet_cifar10(input, depth=32):
                       padding,
                       act='relu',
                       bias_attr=False):
-        tmp = fluid.layers.conv2d(
-            input=input,
-            filter_size=filter_size,
-            num_filters=ch_out,
-            stride=stride,
-            padding=padding,
-            act=None,
-            bias_attr=bias_attr)
+        tmp = fluid.layers.conv2d(input=input,
+                                  filter_size=filter_size,
+                                  num_filters=ch_out,
+                                  stride=stride,
+                                  padding=padding,
+                                  act=None,
+                                  bias_attr=bias_attr)
         return fluid.layers.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
@@ -67,28 +68,33 @@ def resnet_cifar10(input, depth=32):
 
     assert (depth - 2) % 6 == 0
     n = (depth - 2) // 6
-    conv1 = conv_bn_layer(
-        input=input, ch_out=16, filter_size=3, stride=1, padding=1)
+    conv1 = conv_bn_layer(input=input,
+                          ch_out=16,
+                          filter_size=3,
+                          stride=1,
+                          padding=1)
     res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
     res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
     res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
-    pool = fluid.layers.pool2d(
-        input=res3, pool_size=8, pool_type='avg', pool_stride=1)
+    pool = fluid.layers.pool2d(input=res3,
+                               pool_size=8,
+                               pool_type='avg',
+                               pool_stride=1)
     return pool
 
 
 def vgg16_bn_drop(input):
+
     def conv_block(input, num_filter, groups, dropouts):
-        return fluid.nets.img_conv_group(
-            input=input,
-            pool_size=2,
-            pool_stride=2,
-            conv_num_filter=[num_filter] * groups,
-            conv_filter_size=3,
-            conv_act='relu',
-            conv_with_batchnorm=True,
-            conv_batchnorm_drop_rate=dropouts,
-            pool_type='max')
+        return fluid.nets.img_conv_group(input=input,
+                                         pool_size=2,
+                                         pool_stride=2,
+                                         conv_num_filter=[num_filter] * groups,
+                                         conv_filter_size=3,
+                                         conv_act='relu',
+                                         conv_with_batchnorm=True,
+                                         conv_batchnorm_drop_rate=dropouts,
+                                         pool_type='max')
 
     conv1 = conv_block(input, 64, 2, [0.3, 0])
     conv2 = conv_block(conv1, 128, 2, [0.4, 0])
@@ -113,8 +119,9 @@ def train(net_type, use_cuda, save_dirname, is_local):
     train_program.random_seed = 123
     startup_prog.random_seed = 456
     with fluid.program_guard(train_program, startup_prog):
-        images = fluid.layers.data(
-            name='pixel', shape=data_shape, dtype='float32')
+        images = fluid.layers.data(name='pixel',
+                                   shape=data_shape,
+                                   dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
         if net_type == "vgg":
@@ -129,7 +136,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
         cost, predict = fluid.layers.softmax_with_cross_entropy(
             logits, label, return_softmax=True)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         acc = fluid.layers.accuracy(input=predict, label=label)
 
         # Test program
@@ -139,11 +146,10 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
         amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
             custom_black_varnames={"loss", "conv2d_0.w_0"})
-        mp_optimizer = decorate(
-            optimizer=optimizer,
-            amp_lists=amp_lists,
-            init_loss_scaling=8.0,
-            use_dynamic_loss_scaling=True)
+        mp_optimizer = decorate(optimizer=optimizer,
+                                amp_lists=amp_lists,
+                                init_loss_scaling=8.0,
+                                use_dynamic_loss_scaling=True)
 
         mp_optimizer.minimize(avg_cost)
         loss_scaling = mp_optimizer.get_loss_scaling()
@@ -153,11 +159,11 @@ def train(net_type, use_cuda, save_dirname, is_local):
     PASS_NUM = 1
 
     # no shuffle for unit test
-    train_reader = paddle.batch(
-        paddle.dataset.cifar.train10(), batch_size=BATCH_SIZE)
+    train_reader = paddle.batch(paddle.dataset.cifar.train10(),
+                                batch_size=BATCH_SIZE)
 
-    test_reader = paddle.batch(
-        paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
+    test_reader = paddle.batch(paddle.dataset.cifar.test10(),
+                               batch_size=BATCH_SIZE)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
@@ -173,9 +179,9 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     feed=feeder.feed(data),
                     fetch_list=[scaled_loss, avg_cost])
                 print(
-                    'PassID {0:1}, BatchID {1:04}, train loss {2:2.4}, scaled train closs {3:2.4}'.
-                    format(pass_id, batch_id + 1,
-                           float(loss), float(np_scaled_loss)))
+                    'PassID {0:1}, BatchID {1:04}, train loss {2:2.4}, scaled train closs {3:2.4}'
+                    .format(pass_id, batch_id + 1, float(loss),
+                            float(np_scaled_loss)))
                 if (batch_id % 10) == 0:
                     acc_list = []
                     avg_loss_list = []
@@ -193,15 +199,16 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     avg_loss_value = numpy.array(avg_loss_list).mean()
 
                     print(
-                        'PassID {0:1}, BatchID {1:04}, test loss {2:2.2}, acc {3:2.2}'.
-                        format(pass_id, batch_id + 1,
-                               float(avg_loss_value), float(acc_value)))
+                        'PassID {0:1}, BatchID {1:04}, test loss {2:2.2}, acc {3:2.2}'
+                        .format(pass_id, batch_id + 1, float(avg_loss_value),
+                                float(acc_value)))
 
                     if acc_value > 0.08:  # Low threshold for speeding up CI
                         fluid.io.save_inference_model(
                             save_dirname, ["pixel"], [predict],
                             exe,
-                            main_program=train_program)
+                            main_program=train_program,
+                            clip_extra=True)
                         return
 
     if is_local:
@@ -258,22 +265,34 @@ def infer(use_cuda, save_dirname=None):
 
         print("infer results: ", results[0])
 
-        fluid.io.save_inference_model(save_dirname, feed_target_names,
-                                      fetch_targets, exe, inference_program)
-
-
-def main(net_type, use_cuda, is_local=True):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
-        return
-
-    # Directory for saving the trained model
-    save_dirname = "image_classification_" + net_type + ".inference.model"
-
-    train(net_type, use_cuda, save_dirname, is_local)
-    #infer(use_cuda, save_dirname)
+        fluid.io.save_inference_model(save_dirname,
+                                      feed_target_names,
+                                      fetch_targets,
+                                      exe,
+                                      inference_program,
+                                      clip_extra=True)
 
 
 class TestImageClassification(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def main(self, net_type, use_cuda, is_local=True):
+        if use_cuda and not fluid.core.is_compiled_with_cuda():
+            return
+
+        # Directory for saving the trained model
+        save_dirname = os.path.join(
+            self.temp_dir.name,
+            "image_classification_" + net_type + ".inference.model")
+
+        train(net_type, use_cuda, save_dirname, is_local)
+        #infer(use_cuda, save_dirname)
+
     def test_amp_lists(self):
         white_list = copy.copy(
             fluid.contrib.mixed_precision.fp16_lists.white_list)
@@ -402,11 +421,11 @@ class TestImageClassification(unittest.TestCase):
 
     def test_vgg_cuda(self):
         with self.scope_prog_guard():
-            main('vgg', use_cuda=True)
+            self.main('vgg', use_cuda=True)
 
     def test_resnet_cuda(self):
         with self.scope_prog_guard():
-            main('resnet', use_cuda=True)
+            self.main('resnet', use_cuda=True)
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
@@ -419,15 +438,18 @@ class TestImageClassification(unittest.TestCase):
 
 
 class TestAmpWithNonIterableDataLoader(unittest.TestCase):
+
     def decorate_with_data_loader(self):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
             with paddle.fluid.unique_name.guard():
-                image = fluid.layers.data(
-                    name='image', shape=[3, 224, 224], dtype='float32')
-                label = fluid.layers.data(
-                    name='label', shape=[1], dtype='int64')
+                image = fluid.layers.data(name='image',
+                                          shape=[3, 224, 224],
+                                          dtype='float32')
+                label = fluid.layers.data(name='label',
+                                          shape=[1],
+                                          dtype='int64')
                 py_reader = fluid.io.DataLoader.from_generator(
                     feed_list=[image, label],
                     capacity=4,
@@ -438,16 +460,15 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 logits = fluid.layers.fc(input=net, size=10, act="softmax")
                 cost, predict = fluid.layers.softmax_with_cross_entropy(
                     logits, label, return_softmax=True)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
                 amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
                     custom_black_varnames={"loss", "conv2d_0.w_0"})
-                mp_optimizer = decorate(
-                    optimizer=optimizer,
-                    amp_lists=amp_lists,
-                    init_loss_scaling=8.0,
-                    use_dynamic_loss_scaling=True)
+                mp_optimizer = decorate(optimizer=optimizer,
+                                        amp_lists=amp_lists,
+                                        init_loss_scaling=8.0,
+                                        use_dynamic_loss_scaling=True)
 
                 mp_optimizer.minimize(avg_cost)
 

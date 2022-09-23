@@ -26,15 +26,6 @@ from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
 from . import mode
 
-
-class Mode:
-    """
-    There are various mode for fleet, each of them is designed for different model.
-    """
-    PS = 1
-    COLLECTIVE = 2
-
-
 __all__ = ['Fleet', 'DistributedOptimizer']
 __all__ += mode.__all__
 
@@ -181,7 +172,7 @@ class Fleet(object):
         trainers = self.worker_num()
 
         remainder = len(files) % trainers
-        blocksize = len(files) / trainers
+        blocksize = len(files) // trainers
 
         blocks = [blocksize] * trainers
         for i in range(remainder):

@@ -12,149 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/fluid/inference/tests/api/analyzer_ernie_tester.h"
 
 namespace paddle {
 namespace inference {
 
+/*
+ * this model is unreasonable, it set a middle-tensor persistable, so
+ * ridiculous! so I disable constant_folding_pass
+ */
+
 using paddle::PaddleTensor;
-
-template <typename T>
-void GetValueFromStream(std::stringstream *ss, T *t) {
-  (*ss) >> (*t);
-}
-
-template <>
-void GetValueFromStream<std::string>(std::stringstream *ss, std::string *t) {
-  *t = ss->str();
-}
-
-// Split string to vector
-template <typename T>
-void Split(const std::string &line, char sep, std::vector<T> *v) {
-  std::stringstream ss;
-  T t;
-  for (auto c : line) {
-    if (c != sep) {
-      ss << c;
-    } else {
-      GetValueFromStream<T>(&ss, &t);
-      v->push_back(std::move(t));
-      ss.str({});
-      ss.clear();
-    }
-  }
-
-  if (!ss.str().empty()) {
-    GetValueFromStream<T>(&ss, &t);
-    v->push_back(std::move(t));
-    ss.str({});
-    ss.clear();
-  }
-}
-
-// Parse tensor from string
-template <typename T>
-bool ParseTensor(const std::string &field, paddle::PaddleTensor *tensor) {
-  std::vector<std::string> data;
-  Split(field, ':', &data);
-  if (data.size() < 2) return false;
-
-  std::string shape_str = data[0];
-
-  std::vector<int> shape;
-  Split(shape_str, ' ', &shape);
-
-  std::string mat_str = data[1];
-
-  std::vector<T> mat;
-  Split(mat_str, ' ', &mat);
-
-  tensor->shape = shape;
-  auto size =
-      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()) *
-      sizeof(T);
-  tensor->data.Resize(size);
-  std::copy(mat.begin(), mat.end(), static_cast<T *>(tensor->data.data()));
-  tensor->dtype = GetPaddleDType<T>();
-
-  return true;
-}
-
-// Parse input tensors from string
-bool ParseLine(const std::string &line,
-               std::vector<paddle::PaddleTensor> *tensors) {
-  std::vector<std::string> fields;
-  Split(line, ';', &fields);
-
-  tensors->clear();
-  tensors->reserve(4);
-
-  int i = 0;
-  auto input_name = FLAGS_ernie_large ? "eval_placeholder_" : "placeholder_";
-  for (; i < 3; i++) {
-    paddle::PaddleTensor temp;
-    ParseTensor<int64_t>(fields[i], &temp);
-    temp.name = input_name + std::to_string(i);
-    tensors->push_back(temp);
-  }
-
-  // input_mask
-  paddle::PaddleTensor input_mask;
-  ParseTensor<float>(fields[i], &input_mask);
-  input_mask.name = input_name + std::to_string(i);
-  tensors->push_back(input_mask);
-
-  return true;
-}
-
-bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
-  if (FLAGS_infer_data.empty()) {
-    LOG(ERROR) << "please set input data path";
-    return false;
-  }
-
-  std::ifstream fin(FLAGS_infer_data);
-  std::string line;
-  int sample = 0;
-
-  // The unit-test dataset only have 10 samples, each sample have 5 feeds.
-  while (std::getline(fin, line)) {
-    std::vector<paddle::PaddleTensor> feed_data;
-    ParseLine(line, &feed_data);
-    inputs->push_back(std::move(feed_data));
-    sample++;
-    if (!FLAGS_test_all_data && sample == FLAGS_batch_size) break;
-  }
-  LOG(INFO) << "number of samples: " << sample;
-  return true;
-}
-
-void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false,
-               bool use_gpu = false) {
-  cfg->SetModel(FLAGS_infer_model);
-  if (use_mkldnn) {
-    cfg->EnableMKLDNN();
-  }
-  if (use_gpu) {
-    cfg->EnableUseGpu(100, 0);
-  } else {
-    cfg->DisableGpu();
-  }
-  cfg->SwitchSpecifyInputNames();
-  cfg->SwitchIrOptim();
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
-}
 
 void profile(bool use_mkldnn = false, bool use_gpu = false) {
   AnalysisConfig config;
-  SetConfig(&config, use_mkldnn, use_gpu);
 
+  SetConfig(&config, use_mkldnn, use_gpu);
+  auto pass_builder = config.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
   std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
-                 inputs, &outputs, FLAGS_num_threads);
+                 inputs,
+                 &outputs,
+                 FLAGS_num_threads);
 }
 
 TEST(Analyzer_ernie, profile) { profile(); }
@@ -171,6 +53,9 @@ TEST(Analyzer_ernie, profile_gpu) { profile(false, true); }
 TEST(Analyzer_Ernie, fuse_statis) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+
+  auto pass_builder = cfg.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
 
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
@@ -189,11 +74,13 @@ TEST(Analyzer_Ernie, fuse_statis) {
 
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg, use_mkldnn, false);
-
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
+
+  AnalysisConfig cfg;
+  SetConfig(&cfg, use_mkldnn, false);
+  auto pass_builder = cfg.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
 }
@@ -207,7 +94,8 @@ TEST(Analyzer_ernie, compare_mkldnn) { compare(true /* use_mkldnn */); }
 TEST(Analyzer_Ernie, compare_determine) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-
+  auto pass_builder = cfg.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   LoadInputData(&input_slots_all);
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
@@ -218,6 +106,52 @@ TEST(Analyzer_Ernie, compare_determine) {
 TEST(Analyzer_Ernie, compare_results) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  auto pass_builder = cfg.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  LoadInputData(&input_slots_all);
+
+  std::ifstream fin(FLAGS_refer_result);
+  std::string line;
+  std::vector<float> ref;
+
+  while (std::getline(fin, line)) {
+    Split(line, ' ', &ref);
+  }
+
+  auto predictor = CreateTestPredictor(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+      FLAGS_use_analysis);
+
+  std::vector<PaddleTensor> outputs;
+  for (size_t i = 0; i < input_slots_all.size(); i++) {
+    outputs.clear();
+    predictor->Run(input_slots_all[i], &outputs);
+    auto outputs_size = outputs.front().data.length() / (sizeof(float));
+    for (size_t j = 0; j < outputs_size; ++j) {
+      EXPECT_NEAR(ref[i * outputs_size + j],
+                  static_cast<float *>(outputs[0].data.data())[j],
+                  FLAGS_accuracy);
+    }
+  }
+}
+
+#ifdef PADDLE_WITH_IPU
+// IPU: Compare Deterministic result
+TEST(Analyzer_Ernie_ipu, ipu_compare_determine) {
+  AnalysisConfig cfg;
+  SetIpuConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  LoadInputData(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
+}
+
+// IPU: Compare results
+TEST(Analyzer_Ernie_ipu, ipu_compare_results) {
+  AnalysisConfig cfg;
+  SetIpuConfig(&cfg);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   LoadInputData(&input_slots_all);
@@ -246,6 +180,7 @@ TEST(Analyzer_Ernie, compare_results) {
     }
   }
 }
+#endif
 
 }  // namespace inference
 }  // namespace paddle

@@ -26,7 +26,7 @@ from paddle.io import Dataset
 import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ['Movielens']
+__all__ = []
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
@@ -79,8 +79,8 @@ class UserInfo(object):
 
     def __str__(self):
         return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
-            self.index, "M"
-            if self.is_male else "F", age_table[self.age], self.job_id)
+            self.index, "M" if self.is_male else "F", age_table[self.age],
+            self.job_id)
 
     def __repr__(self):
         return str(self)
@@ -188,8 +188,10 @@ class Movielens(Dataset):
                     for line in user_file:
                         line = cpt.to_text(line, encoding='latin')
                         uid, gender, age, job, _ = line.strip().split("::")
-                        self.user_info[int(uid)] = UserInfo(
-                            index=uid, gender=gender, age=age, job_id=job)
+                        self.user_info[int(uid)] = UserInfo(index=uid,
+                                                            gender=gender,
+                                                            age=age,
+                                                            job_id=job)
 
     def _load_data(self):
         self.data = []

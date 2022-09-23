@@ -33,7 +33,7 @@ def inner_func():
 def func_error_in_compile_time(x):
     x = fluid.dygraph.to_variable(x)
     inner_func()
-    if fluid.layers.mean(x) < 0:
+    if paddle.mean(x) < 0:
         x_v = x - 1
     else:
         x_v = x + 1
@@ -78,7 +78,7 @@ class LayerErrorInCompiletime(fluid.dygraph.Layer):
     def forward(self, x):
         y = self._linear(x)
         z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")
-        out = fluid.layers.mean(y[z])
+        out = paddle.mean(y[z])
         return out
 
 
@@ -96,6 +96,41 @@ class LayerErrorInCompiletime2(fluid.dygraph.Layer):
 	A tab here.
         """
         return
+
+
+@paddle.jit.to_static
+def func_error_in_runtime_with_empty_line(x):
+    x = fluid.dygraph.to_variable(x)
+    two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
+
+    x = fluid.layers.reshape(x, shape=[1, two])
+
+    return x
+
+
+class SuggestionErrorTestNet(paddle.nn.Layer):
+    def __init__(self):
+        super(SuggestionErrorTestNet, self).__init__()
+        self.inner_net = SuggestionErrorTestNet2()
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        return self.inner_net.forward(x)
+
+
+class SuggestionErrorTestNet2():
+    def __init__(self):
+        super(SuggestionErrorTestNet2, self).__init__()
+        self.w = paddle.to_tensor([2.])
+
+    def forward(self, x):
+        out = paddle.matmul(self.w, x)
+        return out
+
+
+def func_suggestion_error_in_runtime(x):
+    net = SuggestionErrorTestNet()
+    net(x)
 
 
 class TestFlags(unittest.TestCase):
@@ -218,7 +253,10 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
             ['File "{}", line 35, in func_error_in_compile_time'.format(self.filepath),
              'inner_func()',
              'File "{}", line 28, in inner_func'.format(self.filepath),
+             'def inner_func():',
              'fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+             '<--- HERE',
+             'return',
              ]
 
     def set_func_call(self):
@@ -242,7 +280,11 @@ class TestErrorStaticLayerCallInCompiletime_2(
         self.expected_message = \
             [
              'File "{}", line 46, in func_error_in_compile_time_2'.format(self.filepath),
-             'x = fluid.layers.reshape(x, shape=[1, 2])'
+             'def func_error_in_compile_time_2(x):',
+             'x = fluid.dygraph.to_variable(x)',
+             'x = fluid.layers.reshape(x, shape=[1, 2])',
+             '<--- HERE',
+             'return x'
              ]
 
 
@@ -261,7 +303,10 @@ class TestErrorStaticLayerCallInCompiletime_3(
     def set_message(self):
         self.expected_message = \
             ['File "{}", line 91, in forward'.format(self.filepath),
+             '@paddle.jit.to_static',
+             'def forward(self):',
              'self.test_func()',
+             '<--- HERE'
              ]
 
     def set_func_call(self):
@@ -283,7 +328,26 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
         self.expected_message = \
             [
                 'File "{}", line 54, in func_error_in_runtime'.format(self.filepath),
-                'x = fluid.layers.reshape(x, shape=[1, two])'
+                'x = fluid.dygraph.to_variable(x)',
+                'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
+                'x = fluid.layers.reshape(x, shape=[1, two])',
+                '<--- HERE',
+                'return x'
+            ]
+
+
+class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
+    def set_func(self):
+        self.func = func_error_in_runtime_with_empty_line
+
+    def set_message(self):
+        self.expected_message = \
+            [
+                'File "{}", line 106, in func_error_in_runtime_with_empty_line'.format(self.filepath),
+                'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
+                'x = fluid.layers.reshape(x, shape=[1, two])',
+                '<--- HERE',
+                'return x'
             ]
 
 
@@ -318,7 +382,12 @@ class TestJitSaveInCompiletime(TestErrorBase):
     def set_message(self):
         self.expected_message = \
             ['File "{}", line 80, in forward'.format(self.filepath),
-             'fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+             'def forward(self, x):',
+             'y = self._linear(x)',
+             'z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+             '<--- HERE',
+             'out = paddle.mean(y[z])',
+             'return out'
              ]
 
     def set_func_call(self):
@@ -329,16 +398,112 @@ class TestJitSaveInCompiletime(TestErrorBase):
         self._test_raise_new_exception()
 
 
-# Situation 4: NotImplementedError
-class TestErrorInOther(unittest.TestCase):
-    def test(self):
-        paddle.disable_static()
-        prog_trans = paddle.jit.ProgramTranslator()
-        with self.assertRaises(NotImplementedError):
-            prog_trans.get_output(func_decorated_by_other_1)
+# # Situation 4: NotImplementedError
 
-        with self.assertRaises(NotImplementedError):
-            func_decorated_by_other_2()
+class TestSuggestionErrorInRuntime(TestErrorBase):
+    def set_func(self):
+        self.func = func_suggestion_error_in_runtime
+
+    def set_input(self):
+        self.input = paddle.to_tensor([2.])
+
+    def set_exception_type(self):
+        self.exception_type = ValueError
+
+    def set_message(self):
+        self.expected_message = \
+            [
+                'File "{}", line 118, in forward'.format(self.filepath),
+                'return self.inner_net.forward(x)',
+                'File "{}", line 127, in forward'.format(self.filepath),
+                'def forward(self, x):',
+                'out = paddle.matmul(self.w, x)',
+                '<--- HERE',
+                'return out',
+                'Revise suggestion:',
+                'Please ensure all your sublayers are inheritted from nn.Layer.',
+                'Please ensure there is no tensor created explicitly depended on external data, we suggest to register it as buffer tensor. See'
+            ]
+
+    def set_func_call(self):
+        # NOTE: self.func(self.input) is the StaticLayer().__call__(self.input)
+        self.func_call = lambda: self.func(self.input)
+
+    def test_error(self):
+        for disable_new_error in [0, 1]:
+            self._test_raise_new_exception(disable_new_error)
+
+@paddle.jit.to_static
+def func_ker_error(x):
+    d = {
+        'x': x
+    }
+    y = d['y'] + x
+    return y
+
+class TestKeyError(unittest.TestCase):
+    def test_key_error(self):
+        paddle.disable_static()
+        with self.assertRaises(error.Dy2StKeyError):
+            x = paddle.to_tensor([1])
+            func_ker_error(x)
+
+
+@paddle.jit.to_static
+def NpApiErr():
+    a = paddle.to_tensor([1,2])
+    b = np.sum(a.numpy())
+    print(b)
+
+class TestNumpyApiErr(unittest.TestCase):
+    def test_numpy_api_err(self):
+        with self.assertRaises(TypeError) as e:
+            NpApiErr()
+
+        new_exception = e.exception
+
+        error_data = getattr(new_exception, error.ERROR_DATA, None)
+        self.assertIsInstance(error_data, error.ErrorData)
+
+        error_message = str(new_exception)
+
+        self.assertIn("values will be changed to variables by dy2static, numpy api can not handle variables", error_message)
+
+
+class test_set_state_dict_err_layer(paddle.nn.Layer):
+    def __init__(self):
+        super(test_set_state_dict_err_layer, self).__init__()
+        self.linear = paddle.nn.Linear(5, 2)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        old_dict = self.state_dict()
+        wgt = old_dict['linear.weight']
+        drop_w = paddle.nn.functional.dropout(wgt)
+        old_dict['linear.weight'] = drop_w
+        # old_dict['linear.weight'][0][0] = 0.01
+        self.set_state_dict(old_dict)
+
+        y = self.linear(x)
+
+        return y
+
+
+class TestSetStateDictErr(unittest.TestCase):
+    def test_set_state_dict_err(self):
+        with self.assertRaises(ValueError) as e:
+            layer = test_set_state_dict_err_layer()
+            x = paddle.to_tensor([1.,2.,3.,4.,5.])
+            y = layer(x)
+
+        new_exception = e.exception
+
+        error_data = getattr(new_exception, error.ERROR_DATA, None)
+        self.assertIsInstance(error_data, error.ErrorData)
+
+        error_message = str(new_exception)
+
+        self.assertIn("This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'.", error_message)
 
 
 if __name__ == '__main__':

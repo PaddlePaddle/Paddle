@@ -11,22 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from ...fluid import framework
-from ...fluid import core
-from ...fluid import unique_name
-from ...fluid.core import VarDesc
+import paddle
 from ...fluid.data_feeder import check_type
 from ...fluid.initializer import NumpyArrayInitializer
 
-__all__ = ['Assign']
+__all__ = []
 
 
 class Assign(NumpyArrayInitializer):
     """Init an parameter with a numpy array, list, or tensor.
 
     Args:
-        value (Tensor|numpy.ndarray|list): numpy array, list, or tensor to initialize the parameter.
+        value (Tensor|numpy.ndarray|list|tuple): numpy array, list, tuple, or tensor to initialize the parameter.
         name(str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -42,7 +38,7 @@ class Assign(NumpyArrayInitializer):
             # numpy array
             data_1 = paddle.ones(shape=[1, 2], dtype='float32')
             weight_attr_1 = paddle.framework.ParamAttr(
-                name="linear_weight_1", 
+                name="linear_weight_1",
                 initializer=paddle.nn.initializer.Assign(np.array([2, 2])))
             bias_attr_1 = paddle.framework.ParamAttr(
                 name="linear_bias_1",
@@ -87,14 +83,15 @@ class Assign(NumpyArrayInitializer):
 
     def __init__(self, value, name=None):
         import numpy
-        check_type(value, 'value', (numpy.ndarray, list, framework.Variable),
+        check_type(value, 'value',
+                   (numpy.ndarray, list, tuple, paddle.static.Variable),
                    'Assign')
 
-        if (isinstance(value, list)):
+        if (isinstance(value, (list, tuple))):
             value = numpy.array(value)
 
         # TODO: value is already is a tensor, accounting efficiency maybe it does not need to convert tensor to numpy data and then initialized.
-        if (isinstance(value, framework.Variable)):
+        if (isinstance(value, paddle.static.Variable)):
             value = value.numpy()
 
         super(Assign, self).__init__(value)

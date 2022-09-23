@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -34,7 +35,8 @@ namespace tensorrt {
 class SoftMaxOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3)
         << "convert a fluid softmax op to tensorrt softmax layer without bias";
     framework::OpDesc op_desc(op, nullptr);
@@ -43,14 +45,15 @@ class SoftMaxOpConverter : public OpConverter {
     nvinfer1::Dims input_shape = input1->getDimensions();
     int input_dims = input_shape.nbDims;
     int axis = op_desc.HasAttr("axis")
-                   ? BOOST_GET_CONST(int, op_desc.GetAttr("axis"))
+                   ? PADDLE_GET_CONST(int, op_desc.GetAttr("axis"))
                    : -1;
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, SoftMax,
-                                       *const_cast<nvinfer1::ITensor*>(input1));
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, SoftMax, *const_cast<nvinfer1::ITensor*>(input1));
     uint32_t axes = std::max(0, input_dims - 3);
     // TODO(cryoco): Poor workaround. Fix padded dims problem when TRT layers
     // support Nd.
+    // Tips: Dynammic shape alreay fixes.
     int padded_dims = 0;
     int explicit_batch = 0;
     if (engine_->with_dynamic_shape()) explicit_batch = 1;
@@ -62,16 +65,16 @@ class SoftMaxOpConverter : public OpConverter {
       }
     }
     if (!engine_->with_dynamic_shape()) {
-      if (axis == -1) {
-        axes = input_dims - 1 - padded_dims;
+      if (axis < 0) {
+        axes = input_dims + axis - padded_dims;
       } else {
-        axes = axis;
+        axes = axis - 1;
       }
     } else {
-      if (axis == -1) {
-        axes = input_dims - 1 - padded_dims;
+      if (axis < 0) {
+        axes = input_dims + axis;
       } else {
-        axes = axis + 1;
+        axes = axis;
       }
     }
     layer->setAxes(1 << axes);
@@ -87,5 +90,5 @@ class SoftMaxOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
 REGISTER_TRT_OP_CONVERTER(softmax, SoftMaxOpConverter);

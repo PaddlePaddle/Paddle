@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/match_matrix_tensor_op.h"
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/operators/match_matrix_tensor_op.h"
 #include "paddle/fluid/operators/search_compute.h"
 
 namespace paddle {
@@ -35,21 +36,24 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasOutput("Tmp"), "Output", "Tmp", "match_matrix_tensor");
 
   auto x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "The dimensions of Input(X) should be equal to 2, "
                         "but received %d.",
                         x_dims.size()));
 
   auto y_dims = ctx->GetInputDim("Y");
-  PADDLE_ENFORCE_EQ(y_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(y_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "The dimensions of Input(Y) should be equal to 2, "
                         "but received %d.",
                         y_dims.size()));
 
   auto w_dims = ctx->GetInputDim("W");
-  PADDLE_ENFORCE_EQ(w_dims.size(), 3,
+  PADDLE_ENFORCE_EQ(w_dims.size(),
+                    3,
                     platform::errors::InvalidArgument(
                         "The dimensions of Input(W) should be equal to 3, "
                         "but received %d.",
@@ -57,78 +61,94 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
 
   int dim_t = ctx->Attrs().Get<int>("dim_t");
   PADDLE_ENFORCE_EQ(
-      w_dims[0], x_dims[1],
+      w_dims[0],
+      x_dims[1],
       platform::errors::InvalidArgument(
           "The first dimension of Input(W) should be equal to the second "
           "dimension of Input(X). But received the first dimension of Input(W) "
           "is %d, the second dimension of Input(X) is %d.",
-          w_dims[0], x_dims[1]));
+          w_dims[0],
+          x_dims[1]));
   PADDLE_ENFORCE_EQ(
-      w_dims[1], dim_t,
+      w_dims[1],
+      dim_t,
       platform::errors::InvalidArgument(
           "The second dimension of Input(W) should be equal to 'dim_t', but "
           "received the second dimension of Input(W) is %d, 'dim_t' is %d.",
-          w_dims[1], dim_t));
+          w_dims[1],
+          dim_t));
   PADDLE_ENFORCE_EQ(
-      w_dims[2], y_dims[1],
+      w_dims[2],
+      y_dims[1],
       platform::errors::InvalidArgument(
           "The last dimension of Input(W) should be equal to "
           "the second dimension of Input(Y). But received the last dimension "
           "of Input(W) is %d, the second dimension of Input(Y) is %d.",
-          w_dims[2], y_dims[1]));
+          w_dims[2],
+          y_dims[1]));
 
   int64_t out_dim_0 = -1;
   int64_t tmp_dim_0 = -1;
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
-        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+        PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
     const auto& x_lod = x_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE_EQ(x_lod.empty(), false,
+    PADDLE_ENFORCE_EQ(x_lod.empty(),
+                      false,
                       platform::errors::InvalidArgument(
                           "The Input(X) should hold LoD information, but "
                           "received Input(X).lod() is empty."));
     const auto& x_lod_0 = x_lod[0];
-    PADDLE_ENFORCE_GE(x_lod_0.size(), 2,
+    PADDLE_ENFORCE_GE(x_lod_0.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The dimensions of Input(X)'s LoD data should be "
                           "equal to 2, but received %d.",
                           x_lod_0.size()));
-    PADDLE_ENFORCE_EQ(x_dims[0], static_cast<int64_t>(x_lod_0.back()),
+    PADDLE_ENFORCE_EQ(x_dims[0],
+                      static_cast<int64_t>(x_lod_0.back()),
                       platform::errors::InvalidArgument(
                           "The last element of Input(X)'s LoD data should be "
                           "equal to the first dimension of Input(X). "
                           "But received the last element of Input(X)'s LoD "
                           "data is %d, the first dimension of Input(X) is %d.",
-                          x_lod_0.back(), x_dims[0]));
+                          x_lod_0.back(),
+                          x_dims[0]));
 
     framework::Variable* y_var =
-        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
+        PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
     const auto& y_lod = y_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE_EQ(y_lod.empty(), false,
+    PADDLE_ENFORCE_EQ(y_lod.empty(),
+                      false,
                       platform::errors::InvalidArgument(
                           "The Input(Y) should hold LoD information, but "
                           "received Input(Y).lod() is empty."));
     const auto& y_lod_0 = y_lod[0];
-    PADDLE_ENFORCE_GE(y_lod_0.size(), 2,
+    PADDLE_ENFORCE_GE(y_lod_0.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The dimensions of Input(Y)'s LoD data should be "
                           "equal to 2, but received %d.",
                           y_lod_0.size()));
-    PADDLE_ENFORCE_EQ(y_dims[0], static_cast<int64_t>(y_lod_0.back()),
+    PADDLE_ENFORCE_EQ(y_dims[0],
+                      static_cast<int64_t>(y_lod_0.back()),
                       platform::errors::InvalidArgument(
                           "The last element of Input(Y)'s LoD data should be "
                           "equal to the first dimension of Input(Y). "
                           "But received the last element of Input(Y)'s LoD "
                           "data is %d, the first dimension of Input(Y) is %d.",
-                          y_lod_0.back(), y_dims[0]));
+                          y_lod_0.back(),
+                          y_dims[0]));
 
-    PADDLE_ENFORCE_EQ(x_lod_0.size(), y_lod_0.size(),
+    PADDLE_ENFORCE_EQ(x_lod_0.size(),
+                      y_lod_0.size(),
                       platform::errors::InvalidArgument(
                           "The dimensions of Input(X)'s and Input(Y)'s LoD "
                           "data should be equal. "
                           "But received the dimensions of Input(X)'s LoD is "
                           "%d, the dimensions of Input(Y)'s LoD is %d.",
-                          x_lod_0.size(), y_lod_0.size()));
+                          x_lod_0.size(),
+                          y_lod_0.size()));
 
     out_dim_0 = 0;
     for (size_t i = 1; i < x_lod_0.size(); i++) {
@@ -142,16 +162,18 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     // compile time
     framework::VarDesc* x_desc =
-        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("X")[0]);
+        PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("X")[0]);
     PADDLE_ENFORCE_GE(
-        x_desc->GetLoDLevel(), 1,
+        x_desc->GetLoDLevel(),
+        1,
         platform::errors::InvalidArgument("The LoD level of Input(X) should be "
                                           "greater than 1, but reviced %d.",
                                           x_desc->GetLoDLevel()));
     framework::VarDesc* y_desc =
-        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Y")[0]);
+        PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Y")[0]);
     PADDLE_ENFORCE_GE(
-        y_desc->GetLoDLevel(), 1,
+        y_desc->GetLoDLevel(),
+        1,
         platform::errors::InvalidArgument("The LoD level of Input(Y) should be "
                                           "greater than 1, but reviced %d.",
                                           y_desc->GetLoDLevel()));
@@ -162,8 +184,8 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   out_dims_vec.push_back(1);
   std::vector<int64_t> tmp_dims_vec{tmp_dim_0};
   tmp_dims_vec.push_back(1);
-  ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
-  ctx->SetOutputDim("Tmp", framework::make_ddim(tmp_dims_vec));
+  ctx->SetOutputDim("Out", phi::make_ddim(out_dims_vec));
+  ctx->SetOutputDim("Tmp", phi::make_ddim(tmp_dims_vec));
 }
 
 void MatchMatrixTensorOpGrad::InferShape(
@@ -171,8 +193,10 @@ void MatchMatrixTensorOpGrad::InferShape(
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "match_matrix_tensor_grad");
   OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "match_matrix_tensor_grad");
   OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "match_matrix_tensor_grad");
-  OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                 "Out@GRAD", "match_matrix_tensor_grad");
+  OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                 "Input",
+                 "Out@GRAD",
+                 "match_matrix_tensor_grad");
 
   if (ctx->HasOutput(framework::GradVarName("X"))) {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
@@ -206,9 +230,9 @@ void MatchMatrixTensorOpMaker::Make() {
       Match Matrix Tensor Operator
 
       This operator calculate X * W * Y, only support 2-D for X and Y.
-      the output is a level-1 LodTensor: 
+      the output is a level-1 LodTensor:
         level_0: dim_t
-      
+
       NOTE: only support 'float32' data type now.
 
     )DOC");
@@ -246,13 +270,22 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     auto* bottom_r_data = y->data<T>();
     auto* t_data = w->data<T>();
     auto* bottom_l_trans_data = tmp->mutable_data<T>(ctx.GetPlace());
-    memset(bottom_l_trans_data, 0.0,
-           tmp->dims()[0] * tmp->dims()[1] * sizeof(T));
+    memset(
+        bottom_l_trans_data, 0.0, tmp->dims()[0] * tmp->dims()[1] * sizeof(T));
 
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
 
-    call_gemm(blas, CblasNoTrans, CblasNoTrans, x->dims()[0], dim_t * dim_in,
-              dim_in, 1.0f, bottom_l_data, t_data, 0.0f, bottom_l_trans_data);
+    call_gemm(blas,
+              CblasNoTrans,
+              CblasNoTrans,
+              x->dims()[0],
+              dim_t * dim_in,
+              dim_in,
+              1.0f,
+              bottom_l_data,
+              t_data,
+              0.0f,
+              bottom_l_trans_data);
 
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
       for (int t = 0; t < dim_t; t++) {
@@ -262,9 +295,18 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
         const auto* l_t_data =
             bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
         const auto* r_data = bottom_r_data + offset_r[b] * dim_in;
-        auto blas_2 = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-        call_gemm_with_lda(blas_2, CblasNoTrans, CblasTrans, len_l, len_r,
-                           dim_in, 1.0f, l_t_data, r_data, 0.0f, top_data,
+        auto blas_2 = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
+        call_gemm_with_lda(blas_2,
+                           CblasNoTrans,
+                           CblasTrans,
+                           len_l,
+                           len_r,
+                           dim_in,
+                           1.0f,
+                           l_t_data,
+                           r_data,
+                           0.0f,
+                           top_data,
                            dim_t * dim_in);
       }
     }
@@ -317,8 +359,8 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* bottom_l_trans_diff = const_cast<T*>(d_tmp_data);
     memset(bottom_l_diff, 0.0, x->dims()[0] * x->dims()[1] * sizeof(T));
     memset(bottom_r_diff, 0.0, y->dims()[0] * y->dims()[1] * sizeof(T));
-    memset(bottom_l_trans_diff, 0.0,
-           tmp->dims()[0] * tmp->dims()[1] * sizeof(T));
+    memset(
+        bottom_l_trans_diff, 0.0, tmp->dims()[0] * tmp->dims()[1] * sizeof(T));
 
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
       for (int t = 0; t < dim_t; t++) {
@@ -346,20 +388,36 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
 
     auto* t_data = w->data<T>();
     auto* d_w = ctx.Output<Tensor>(framework::GradVarName("W"));
     auto* t_diff = d_w->mutable_data<T>(ctx.GetPlace());
     memset(t_diff, 0.0, w->dims()[0] * w->dims()[1] * w->dims()[2] * sizeof(T));
     // bottom_diff
-    call_gemm(blas, CblasNoTrans, CblasTrans, x->dims()[0], dim_in,
-              dim_t * dim_in, 1.0f, bottom_l_trans_diff, t_data, 1.0f,
+    call_gemm(blas,
+              CblasNoTrans,
+              CblasTrans,
+              x->dims()[0],
+              dim_in,
+              dim_t * dim_in,
+              1.0f,
+              bottom_l_trans_diff,
+              t_data,
+              1.0f,
               bottom_l_diff);
 
     // t_diff
-    call_gemm(blas, CblasTrans, CblasNoTrans, dim_in, dim_t * dim_in,
-              x->dims()[0], 1.0f, bottom_l_data, bottom_l_trans_diff, 1.0f,
+    call_gemm(blas,
+              CblasTrans,
+              CblasNoTrans,
+              dim_in,
+              dim_t * dim_in,
+              x->dims()[0],
+              1.0f,
+              bottom_l_data,
+              bottom_l_trans_diff,
+              1.0f,
               t_diff);
   }
 };
@@ -389,16 +447,17 @@ class MatchMatrixTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    match_matrix_tensor, ops::MatchMatrixTensorOP,
+    match_matrix_tensor,
+    ops::MatchMatrixTensorOP,
     ops::MatchMatrixTensorOpMaker,
     ops::MatchMatrixTensorGradOpMaker<paddle::framework::OpDesc>,
     ops::MatchMatrixTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
-REGISTER_OP_CPU_KERNEL(match_matrix_tensor,
-                       ops::CPUMatchMatrixTensorOPKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    match_matrix_tensor,
+    ops::CPUMatchMatrixTensorOPKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CPU_KERNEL(match_matrix_tensor_grad,
-                       ops::CPUMatchMatrixTensorOPGradKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    match_matrix_tensor_grad,
+    ops::CPUMatchMatrixTensorOPGradKernel<phi::CPUContext, float>);

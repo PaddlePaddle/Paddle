@@ -14,12 +14,13 @@
 
 from __future__ import print_function
 
+import paddle
 import unittest
 import numpy as np
-
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from op_test import OpTest
+from paddle.fluid.framework import _test_eager_guard
 
 
 def dmc_bilinear(data_im, height, width, h, w):
@@ -91,8 +92,8 @@ def dconv_im2col_gemm(input, offset, filter, group, conv_param):
                                                    im_h, im_w)
                             val_out = val
 
-                            col_buffer[n, c * f_h * f_w + kh * f_w + kw, h *
-                                       in_w + w] = val_out
+                            col_buffer[n, c * f_h * f_w + kh * f_w + kw,
+                                       h * in_w + w] = val_out
 
     out = np.zeros((in_n, group, int(out_c // group), out_h * out_w))
     weight = filter.reshape(group, int(out_c // group), f_c * f_h * f_w)
@@ -105,10 +106,27 @@ def dconv_im2col_gemm(input, offset, filter, group, conv_param):
     return out
 
 
+def deform_conv2d_wrapper(x,
+                          offset,
+                          weight,
+                          mask=None,
+                          stride=1,
+                          padding=0,
+                          dilation=1,
+                          deformable_groups=1,
+                          groups=1,
+                          im2col_step=1):
+    return paddle.vision.ops.deform_conv2d(x, offset, weight, None, stride,
+                                           padding, dilation, deformable_groups,
+                                           groups, mask)
+
+
 class TestModulatedDeformableConvOp(OpTest):
+
     def setUp(self):
+        self.python_api = deform_conv2d_wrapper
         self.op_type = "deformable_conv_v1"
-        self.dtype = np.float32
+        self.init_type()
         self.init_group()
         self.init_dilation()
         self.init_test_case()
@@ -142,18 +160,20 @@ class TestModulatedDeformableConvOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Input', 'Offset', 'Filter'], 'Output', max_relative_error=0.05)
+        self.check_grad(['Input', 'Offset', 'Filter'],
+                        'Output',
+                        max_relative_error=0.05,
+                        check_eager=True)
 
     def test_check_grad_no_filter(self):
-        self.check_grad(
-            ['Input', 'Offset'],
-            'Output',
-            max_relative_error=0.1,
-            no_grad_set=set(['Filter']))
+        self.check_grad(['Input', 'Offset'],
+                        'Output',
+                        max_relative_error=0.1,
+                        no_grad_set=set(['Filter']),
+                        check_eager=True)
 
     def init_test_case(self):
         self.pad = [1, 1]
@@ -177,8 +197,12 @@ class TestModulatedDeformableConvOp(OpTest):
     def init_group(self):
         self.groups = 1
 
+    def init_type(self):
+        self.dtype = np.float32
+
 
 class TestWithStride(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [3, 3]
         self.stride = [2, 2]
@@ -196,6 +220,7 @@ class TestWithStride(TestModulatedDeformableConvOp):
 
 
 class TestWithDilation(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [1, 1]
@@ -216,6 +241,7 @@ class TestWithDilation(TestModulatedDeformableConvOp):
 
 
 class TestWith1x1(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -233,6 +259,7 @@ class TestWith1x1(TestModulatedDeformableConvOp):
 
 
 class TestWithGroup(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -253,36 +280,49 @@ class TestWithGroup(TestModulatedDeformableConvOp):
         self.groups = 2
 
 
+class TestWithDouble(TestModulatedDeformableConvOp):
+
+    def init_type(self):
+        self.dtype = np.float64
+
+
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
+
     def test_error(self):
+
         def test_invalid_input():
             input = [1, 3, 32, 32]
-            offset = fluid.data(
-                name='offset', shape=[None, 3, 32, 32], dtype='float32')
-            loss = fluid.layers.deformable_conv(
-                input,
-                offset,
-                mask=None,
-                num_filters=4,
-                filter_size=1,
-                modulated=False)
+            offset = fluid.data(name='offset',
+                                shape=[None, 3, 32, 32],
+                                dtype='float32')
+            loss = fluid.layers.deformable_conv(input,
+                                                offset,
+                                                mask=None,
+                                                num_filters=4,
+                                                filter_size=1,
+                                                modulated=False)
 
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_offset():
-            input = fluid.data(
-                name='input', shape=[None, 3, 32, 32], dtype='int32')
-            offset = fluid.data(
-                name='offset', shape=[None, 3, 32, 32], dtype='float32')
-            loss = fluid.layers.deformable_conv(
-                input,
-                offset,
-                mask=None,
-                num_filters=4,
-                filter_size=1,
-                modulated=False)
+            input = fluid.data(name='input',
+                               shape=[None, 3, 32, 32],
+                               dtype='int32')
+            offset = fluid.data(name='offset',
+                                shape=[None, 3, 32, 32],
+                                dtype='float32')
+            loss = fluid.layers.deformable_conv(input,
+                                                offset,
+                                                mask=None,
+                                                num_filters=4,
+                                                filter_size=1,
+                                                modulated=False)
 
         self.assertRaises(TypeError, test_invalid_offset)
+
+    def test_error_with_eager_guard(self):
+        with _test_eager_guard():
+            self.test_error()
 
 
 if __name__ == '__main__':

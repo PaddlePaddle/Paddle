@@ -12,50 +12,124 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-INCLUDE(ExternalProject)
+#NOTE: Logic is from
+# https://github.com/mindspore-ai/graphengine/blob/master/CMakeLists.txt
+if(DEFINED ENV{ASCEND_CUSTOM_PATH})
+  set(ASCEND_DIR $ENV{ASCEND_CUSTOM_PATH})
+else()
+  set(ASCEND_DIR /usr/local/Ascend)
+endif()
 
-SET(ASCEND_PROJECT       "extern_ascend")
-IF((NOT DEFINED ASCEND_VER) OR (NOT DEFINED ASCEND_URL))
-  MESSAGE(STATUS "use pre defined download url")
-  SET(ASCEND_VER "0.1.1" CACHE STRING "" FORCE)
-  SET(ASCEND_NAME "ascend" CACHE STRING "" FORCE)
-  SET(ASCEND_URL "http://paddle-ascend.bj.bcebos.com/ascend.tar.gz" CACHE STRING "" FORCE)
-ENDIF()
-MESSAGE(STATUS "ASCEND_NAME: ${ASCEND_NAME}, ASCEND_URL: ${ASCEND_URL}")
-SET(ASCEND_SOURCE_DIR    "${THIRD_PARTY_PATH}/ascend")
-SET(ASCEND_DOWNLOAD_DIR  "${ASCEND_SOURCE_DIR}/src/${ASCEND_PROJECT}")
-SET(ASCEND_DST_DIR       "ascend")
-SET(ASCEND_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")
-SET(ASCEND_INSTALL_DIR   ${ASCEND_INSTALL_ROOT}/${ASCEND_DST_DIR})
-SET(ASCEND_ROOT          ${ASCEND_INSTALL_DIR})
-SET(ASCEND_INC_DIR       ${ASCEND_ROOT}/include)
-SET(ASCEND_LIB_DIR       ${ASCEND_ROOT}/lib)
-SET(ASCEND_LIB           ${ASCEND_LIB_DIR}/libge_runner.so)
-SET(ASCEND_GRAPH_LIB           ${ASCEND_LIB_DIR}/libgraph.so)
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${ASCEND_ROOT}/lib")
+if(EXISTS
+   ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/include/graph/ascend_string.h)
+  # It means CANN 20.2 +
+  add_definitions(-DPADDLE_WITH_ASCEND_STRING)
+endif()
 
-INCLUDE_DIRECTORIES(${ASCEND_INC_DIR})
-FILE(WRITE ${ASCEND_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(ASCEND)\n"
-  "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${ASCEND_NAME}/include ${ASCEND_NAME}/lib \n"
-  "        DESTINATION ${ASCEND_DST_DIR})\n")
-ExternalProject_Add(
-    ${ASCEND_PROJECT}
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX                ${ASCEND_SOURCE_DIR}
-    DOWNLOAD_DIR          ${ASCEND_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${ASCEND_URL} -c -q -O ${ASCEND_NAME}.tar.gz
-                          && tar zxvf ${ASCEND_NAME}.tar.gz
-    DOWNLOAD_NO_PROGRESS  1
-    UPDATE_COMMAND        ""
-    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${ASCEND_INSTALL_ROOT}
-    CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${ASCEND_INSTALL_ROOT}
-)
-ADD_LIBRARY(ascend SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET ascend PROPERTY IMPORTED_LOCATION ${ASCEND_LIB})
+if(WITH_ASCEND OR WITH_ASCEND_CL)
+  set(ASCEND_DRIVER_DIR ${ASCEND_DIR}/driver/lib64)
+  set(ASCEND_DRIVER_COMMON_DIR ${ASCEND_DIR}/driver/lib64/common)
+  set(ASCEND_DRIVER_SHARE_DIR ${ASCEND_DIR}/driver/lib64/share)
+  set(ASCEND_RUNTIME_DIR ${ASCEND_DIR}/fwkacllib/lib64)
+  set(ASCEND_ATC_DIR ${ASCEND_DIR}/atc/lib64)
+  set(ASCEND_ACL_DIR ${ASCEND_DIR}/acllib/lib64)
+  set(STATIC_ACL_LIB ${ASCEND_ACL_DIR})
 
-ADD_LIBRARY(ascend_graph SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET ascend_graph PROPERTY IMPORTED_LOCATION ${ASCEND_GRAPH_LIB})
-ADD_DEPENDENCIES(ascend ascend_graph ${ASCEND_PROJECT})
+  set(ASCEND_MS_RUNTIME_PATH ${ASCEND_RUNTIME_DIR} ${ASCEND_ACL_DIR}
+                             ${ASCEND_ATC_DIR})
+  set(ASCEND_MS_DRIVER_PATH ${ASCEND_DRIVER_DIR} ${ASCEND_DRIVER_COMMON_DIR})
+  set(ATLAS_RUNTIME_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64)
+  set(ATLAS_RUNTIME_INC_DIR
+      ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/include)
+  set(ATLAS_ACL_DIR ${ASCEND_DIR}/ascend-toolkit/latest/acllib/lib64)
+  set(ATLAS_ATC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/atc/lib64)
+  set(ATLAS_MS_RUNTIME_PATH ${ATLAS_RUNTIME_DIR} ${ATLAS_ACL_DIR}
+                            ${ATLAS_ATC_DIR})
 
+  set(atlas_graph_lib ${ATLAS_RUNTIME_DIR}/libgraph.so)
+  set(atlas_ge_runner_lib ${ATLAS_RUNTIME_DIR}/libge_runner.so)
+  set(atlas_acl_lib ${ATLAS_RUNTIME_DIR}/libascendcl.so)
+  include_directories(${ATLAS_RUNTIME_INC_DIR})
+
+  add_library(ascend_ge SHARED IMPORTED GLOBAL)
+  set_property(TARGET ascend_ge PROPERTY IMPORTED_LOCATION
+                                         ${atlas_ge_runner_lib})
+
+  add_library(ascend_graph SHARED IMPORTED GLOBAL)
+  set_property(TARGET ascend_graph PROPERTY IMPORTED_LOCATION
+                                            ${atlas_graph_lib})
+
+  add_library(atlas_acl SHARED IMPORTED GLOBAL)
+  set_property(TARGET atlas_acl PROPERTY IMPORTED_LOCATION ${atlas_acl_lib})
+
+  add_custom_target(extern_ascend DEPENDS ascend_ge ascend_graph atlas_acl)
+endif()
+
+if(WITH_ASCEND_CL)
+  set(ASCEND_CL_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64)
+
+  set(ascend_hccl_lib ${ASCEND_CL_DIR}/libhccl.so)
+  set(ascendcl_lib ${ASCEND_CL_DIR}/libascendcl.so)
+  set(acl_op_compiler_lib ${ASCEND_CL_DIR}/libacl_op_compiler.so)
+  set(FWKACLLIB_INC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/include)
+  set(ACLLIB_INC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/acllib/include)
+
+  message(STATUS "FWKACLLIB_INC_DIR ${FWKACLLIB_INC_DIR}")
+  message(STATUS "ASCEND_CL_DIR ${ASCEND_CL_DIR}")
+  include_directories(${FWKACLLIB_INC_DIR})
+  include_directories(${ACLLIB_INC_DIR})
+
+  add_library(ascendcl SHARED IMPORTED GLOBAL)
+  set_property(TARGET ascendcl PROPERTY IMPORTED_LOCATION ${ascendcl_lib})
+
+  add_library(ascend_hccl SHARED IMPORTED GLOBAL)
+  set_property(TARGET ascend_hccl PROPERTY IMPORTED_LOCATION ${ascend_hccl_lib})
+
+  add_library(acl_op_compiler SHARED IMPORTED GLOBAL)
+  set_property(TARGET acl_op_compiler PROPERTY IMPORTED_LOCATION
+                                               ${acl_op_compiler_lib})
+  add_custom_target(extern_ascend_cl DEPENDS ascendcl acl_op_compiler)
+endif()
+
+if(WITH_ASCEND_CL)
+  macro(find_ascend_toolkit_version ascend_toolkit_version_info)
+    file(READ ${ascend_toolkit_version_info} ASCEND_TOOLKIT_VERSION_CONTENTS)
+    string(REGEX MATCH "version=([0-9]+\.[0-9]+\.(RC)?[0-9][.a-z0-9]*)"
+                 ASCEND_TOOLKIT_VERSION "${ASCEND_TOOLKIT_VERSION_CONTENTS}")
+    string(REGEX REPLACE "version=([0-9]+\.[0-9]+\.(RC)?[0-9][.a-z0-9]*)" "\\1"
+                         ASCEND_TOOLKIT_VERSION "${ASCEND_TOOLKIT_VERSION}")
+    string(REGEX REPLACE "[A-Z]|[a-z|\.]" "" CANN_VERSION
+                         ${ASCEND_TOOLKIT_VERSION})
+    string(SUBSTRING "${CANN_VERSION}000" 0 6 CANN_VERSION)
+    add_definitions("-DCANN_VERSION_CODE=${CANN_VERSION}")
+    if(NOT ASCEND_TOOLKIT_VERSION)
+      set(ASCEND_TOOLKIT_VERSION "???")
+    else()
+      message(
+        STATUS "Current Ascend Toolkit version is ${ASCEND_TOOLKIT_VERSION}")
+    endif()
+  endmacro()
+
+  macro(find_ascend_driver_version ascend_driver_version_info)
+    file(READ ${ascend_driver_version_info} ASCEND_DRIVER_VERSION_CONTENTS)
+    string(REGEX MATCH "Version=([0-9]+\.[0-9]+\.[0-9]+)" ASCEND_DRIVER_VERSION
+                 "${ASCEND_DRIVER_VERSION_CONTENTS}")
+    string(REGEX REPLACE "Version=([0-9]+\.[0-9]+\.[0-9]+)" "\\1"
+                         ASCEND_DRIVER_VERSION "${ASCEND_DRIVER_VERSION}")
+    if(NOT ASCEND_DRIVER_VERSION)
+      set(ASCEND_DRIVER_VERSION "???")
+    else()
+      message(
+        STATUS "Current Ascend Driver version is ${ASCEND_DRIVER_VERSION}")
+    endif()
+  endmacro()
+
+  if(WITH_ARM)
+    set(ASCEND_TOOLKIT_DIR ${ASCEND_DIR}/ascend-toolkit/latest/arm64-linux)
+  else()
+    set(ASCEND_TOOLKIT_DIR ${ASCEND_DIR}/ascend-toolkit/latest/x86_64-linux)
+  endif()
+
+  find_ascend_toolkit_version(${ASCEND_TOOLKIT_DIR}/ascend_toolkit_install.info)
+  find_ascend_driver_version(${ASCEND_DIR}/driver/version.info)
+endif()

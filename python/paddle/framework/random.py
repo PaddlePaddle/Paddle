@@ -16,7 +16,7 @@
 import paddle.fluid as fluid
 from paddle.fluid import core
 
-__all__ = ['seed', 'get_cuda_rng_state', 'set_cuda_rng_state']
+__all__ = []
 
 
 def seed(seed):
@@ -38,16 +38,14 @@ def seed(seed):
 
     """
     #TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade
-    # 2. support gpu generator by global device 
+    # 2. support gpu generator by global device
 
     seed = int(seed)
 
     if core.is_compiled_with_cuda():
         for i in range(core.get_cuda_device_count()):
-            core.default_cuda_generator(i)._is_init_py = True
             core.default_cuda_generator(i).manual_seed(seed)
 
-    core.default_cpu_generator()._is_init_py = True
     return core.default_cpu_generator().manual_seed(seed)
 
 
@@ -57,7 +55,7 @@ def get_cuda_rng_state():
     Get random state of cuda generators.
 
     Args:
-        None
+        None.
 
     Returns:
         GeneratorState:  object.
@@ -80,13 +78,13 @@ def get_cuda_rng_state():
 def set_cuda_rng_state(state_list):
     """
 
-    Sets generator state for all cuda generators
+    Sets generator state for all cuda generators.
 
     Args:
-        state_list(list): The cuda states to set back to cuda generators. state_list is obtained from get_cuda_rng_state().
+        state_list(list|tuple): The cuda states to set back to cuda generators. state_list is obtained from get_cuda_rng_state().
 
     Returns:
-        None
+        None.
 
     Examples:
         .. code-block:: python
@@ -108,13 +106,13 @@ def set_cuda_rng_state(state_list):
 def _manual_program_seed(seed):
     """
     Sets global seed for generating random numbers.
-  
+
     NOTE(zhiqiu): This is the original implemention of seed. Keeps it temporally
     since CUDA generator is not developed, so we need it in the unittest.
 
     Args:
         seed(int): The random seed to set. It is recommend to set a large int number.
-    
+
     Returns:
         None
     """
@@ -122,3 +120,11 @@ def _manual_program_seed(seed):
     fluid.default_startup_program().random_seed = seed
     program = fluid.Program()
     program.global_seed(seed)
+
+
+def set_random_seed_generator(name, seed):
+    core.set_random_seed_generator(name, seed)
+
+
+def get_random_seed_generator(name):
+    return core.get_random_seed_generator(name)

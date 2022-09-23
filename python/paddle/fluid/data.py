@@ -35,10 +35,10 @@ def data(name, shape, dtype='float32', lod_level=0):
     is a placeholder that could be fed with input, such as Executor can feed
     input into the variable.
 
-    Note: 
+    Note:
         `paddle.fluid.layers.data` is deprecated. It will be removed in a
-        future version. Please use this `paddle.fluid.data`. 
-       
+        future version. Please use this `paddle.fluid.data`.
+
         The `paddle.fluid.layers.data` set shape and dtype at compile time but
         does NOT check the shape or the dtype of fed data, this
         `paddle.fluid.data` checks the shape and the dtype of data fed by
@@ -73,8 +73,10 @@ def data(name, shape, dtype='float32', lod_level=0):
     Examples:
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
           import numpy as np
+          paddle.enable_static()
 
           # Creates a variable with fixed size [3, 2, 1]
           # User can only feed data of the same shape to x
@@ -113,12 +115,11 @@ def data(name, shape, dtype='float32', lod_level=0):
         if shape[i] is None:
             shape[i] = -1
 
-    return helper.create_global_variable(
-        name=name,
-        shape=shape,
-        dtype=dtype,
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        stop_gradient=True,
-        lod_level=lod_level,
-        is_data=True,
-        need_check_feed=True)
+    return helper.create_global_variable(name=name,
+                                         shape=shape,
+                                         dtype=dtype,
+                                         type=core.VarDesc.VarType.LOD_TENSOR,
+                                         stop_gradient=True,
+                                         lod_level=lod_level,
+                                         is_data=True,
+                                         need_check_feed=True)

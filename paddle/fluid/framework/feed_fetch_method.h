@@ -18,17 +18,29 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/string_array.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
 class Scope;
 
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index);
+void SetFeedVariable(Scope* scope,
+                     const LoDTensor& input,
+                     const std::string& var_name,
+                     size_t index);
 
-FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
+void SetFeedVariable(Scope* scope,
+                     const Strings& input,
+                     const std::string& var_name,
+                     size_t index);
+
+FetchType& GetFetchVariable(const Scope& scope,
+                            const std::string& var_name,
                             size_t index);
 
 LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name);

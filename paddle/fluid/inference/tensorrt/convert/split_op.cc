@@ -22,99 +22,142 @@ namespace tensorrt {
 class SplitOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert a fluid split op to tensorrt split layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto input_dims = input->getDimensions();
-    size_t input_num = op_desc.Input("X").size();
     size_t output_num = op_desc.Output("Out").size();
 
     // Get Attrs
-    PADDLE_ENFORCE_EQ(input_num, 1UL,
-                      platform::errors::InvalidArgument(
-                          "Invalid input X's size of split TRT converter. "
-                          "Expected 1, received %d.",
-                          input_num));
-    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
-    // split on batch is not supported in TensorRT
-    PADDLE_ENFORCE_NE(
-        axis, 0,
-        platform::errors::InvalidArgument(
-            "Invalid split axis. Split on batch is not supported in TensorRT"));
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
 
     std::vector<int> output_lengths =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
     int num = 0;
     if (op_desc.HasAttr("num")) {
-      num = BOOST_GET_CONST(int, op_desc.GetAttr("num"));
+      num = PADDLE_GET_CONST(int, op_desc.GetAttr("num"));
     }
-
+    nvinfer1::ITensor* shape_tensor = nullptr;
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
       axis += (axis < 0) ? input_dims.nbDims : 0;
-#endif
+      // only be called in dynamic_shape mode
+      shape_tensor = Shape(input);
     } else {
       axis += (axis < 0) ? input_dims.nbDims : -1;
     }
-
-    PADDLE_ENFORCE_NE(input_dims.d[axis], -1,
-                      platform::errors::InvalidArgument(
-                          "The (%d) dim of input should not be -1", axis));
-    if (num > 0) {
-      int64_t in_axis_dim = input_dims.d[axis];
-      PADDLE_ENFORCE_EQ(
-          in_axis_dim % num, 0,
-          platform::errors::InvalidArgument(
-              "Invalid number to split. Tensor split does not result"
-              " in an equal division of dimensions. Axis dim = %d %% num = %d "
-              "!= 0",
-              in_axis_dim, num));
-      size_t out_axis_dim = in_axis_dim / num;
-      for (int i = 0; i < num; ++i) {
-        output_lengths.push_back(out_axis_dim);
+    bool in_axis_dim_dynamic = false;
+    nvinfer1::ITensor* avg_len_tensor = nullptr;
+    // need infer output_lengths
+    if (num > 0 && output_lengths.empty()) {
+      if (input_dims.d[axis] > 0) {
+        int64_t in_axis_dim = input_dims.d[axis];
+        size_t out_axis_dim = in_axis_dim / num;
+        for (int i = 0; i < num; ++i) {
+          output_lengths.push_back(out_axis_dim);
+        }
+      } else {
+        in_axis_dim_dynamic = true;
+        auto* num_tensor = Add1DConstantLayer(num);
+        avg_len_tensor =
+            Div(GetEleTensorOfShape(shape_tensor, axis), num_tensor);
       }
     }
 
-    PADDLE_ENFORCE_EQ(
-        output_lengths.size(), output_num,
-        platform::errors::InvalidArgument(
-            "The output_length should be equal to the output size."));
-
     nvinfer1::ILayer* layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
+    if (engine_->with_dynamic_shape()) {
+      nvinfer1::Dims trt_step_dims;
+      trt_step_dims.nbDims = input->getDimensions().nbDims;
+      for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
+
+      std::vector<int32_t> gather_indices;
+      gather_indices.resize(trt_step_dims.nbDims);
+      std::iota(gather_indices.begin(), gather_indices.end(), 0);
+      gather_indices[axis] = gather_indices.size();
+      std::vector<int32_t> zeros(trt_step_dims.nbDims, 0);
+      auto* zeros_tensor = Add1DConstantLayer(zeros);
+      // input : [N,C,H,W]
+      int start_point = 0;
+      for (size_t i = 0; i < output_num; i++) {
+        nvinfer1::ITensor* this_len_tensor = nullptr;
+        nvinfer1::ITensor* start_point_tensor = nullptr;
+        if (!in_axis_dim_dynamic) {
+          this_len_tensor = Add1DConstantLayer(output_lengths[i]);
+          start_point_tensor = Add1DConstantLayer(start_point);
+          start_point += output_lengths[i];
+        } else {
+          this_len_tensor = avg_len_tensor;
+          auto* i_tensor = Add1DConstantLayer(static_cast<int>(i));
+          start_point_tensor = Prod(i_tensor, avg_len_tensor);
+        }
+
+        std::vector<nvinfer1::ITensor*> concat_inputs1 = {zeros_tensor,
+                                                          start_point_tensor};
+        std::vector<nvinfer1::ITensor*> concat_inputs2 = {shape_tensor,
+                                                          this_len_tensor};
+        auto* start_tensor = Gather(Concat(concat_inputs1), gather_indices);
+        auto* size_tensor = Gather(Concat(concat_inputs2), gather_indices);
+        layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                     Slice,
+                                     *input,
+                                     trt_step_dims,
+                                     trt_step_dims,
+                                     trt_step_dims);
+        layer->setInput(1, *start_tensor);
+        layer->setInput(2, *size_tensor);
+
+        auto output_name = op_desc.Output("Out")[i];
+        RreplenishLayerAndOutput(layer, "split", {output_name}, test_mode);
+      }
+    } else {
+      auto chw_input_dims = input->getDimensions();
+      nvinfer1::Dims trt_start_dims;
+      trt_start_dims.nbDims = chw_input_dims.nbDims;
+      memset(trt_start_dims.d, 0, sizeof(int32_t) * chw_input_dims.nbDims);
+      nvinfer1::Dims trt_size_dims = chw_input_dims;
+      nvinfer1::Dims trt_step_dims;
+      trt_step_dims.nbDims = chw_input_dims.nbDims;
+      for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
+
+      // input : [C,H,W]
+      for (size_t i = 0; i < output_num; i++) {
+        trt_start_dims.d[axis] = std::accumulate(
+            output_lengths.begin(), output_lengths.begin() + i, 0);
+        trt_size_dims.d[axis] = output_lengths[i];
+        layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                     Slice,
+                                     *input,
+                                     trt_start_dims,
+                                     trt_size_dims,
+                                     trt_step_dims);
+        auto output_name = op_desc.Output("Out")[i];
+        RreplenishLayerAndOutput(layer, "split", {output_name}, test_mode);
+      }
+    }
+#else
+    if (engine_->with_dynamic_shape()) {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SplitPluginDynamic* plugin =
           new plugin::SplitPluginDynamic(axis, output_lengths, with_fp16);
-      layer = engine_->AddPluginV2(&input, input_num, plugin);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
+      layer = engine_->AddDynamicPlugin(&input, 1, plugin);
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SplitPlugin* plugin =
           new plugin::SplitPlugin(axis, output_lengths, with_fp16);
-      layer = engine_->AddPlugin(&input, input_num, plugin);
+      layer = engine_->AddPluginV2Ext(&input, 1, plugin);
     }
-
-    std::string layer_name = "split (Output: ";
+    std::vector<std::string> output_names;
     for (size_t i = 0; i < output_num; i++) {
-      auto output_name = op_desc.Output("Out")[i];
-      layer->getOutput(i)->setName(output_name.c_str());
-      engine_->SetITensor(output_name, layer->getOutput(i));
-      layer_name += output_name;
-      if (test_mode) {
-        engine_->DeclareOutput(output_name);
-      }
+      output_names.push_back(op_desc.Output("Out")[i]);
     }
-    layer->setName((layer_name + ")").c_str());
+    RreplenishLayerAndOutput(layer, "split", output_names, test_mode);
+#endif
   }
 };
 

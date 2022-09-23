@@ -15,18 +15,21 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
 #include <fstream>
 #include <numeric>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 namespace paddle {
 namespace operators {
@@ -46,13 +49,15 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "%s exists! Cannot save_combine to it when overwrite is set to "
           "false.",
-          filename, overwrite));
+          filename,
+          overwrite));
     }
 
     std::ostringstream ss;
     auto inp_var_names = ctx.InputNames("X");
     auto &inp_vars = ctx.MultiInputVar("X");
-    PADDLE_ENFORCE_GT(inp_var_names.size(), 0UL,
+    PADDLE_ENFORCE_GT(inp_var_names.size(),
+                      0UL,
                       platform::errors::InvalidArgument(
                           "The number of variables to be saved is %d, expect "
                           "it to be greater than 0.",
@@ -67,45 +72,62 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
           inp_vars[i],
           platform::errors::InvalidArgument("Cannot find variable %s to save.",
                                             inp_var_names[i]));
-      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<framework::LoDTensor>(), true,
+      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<framework::LoDTensor>() ||
+                            inp_vars[i]->IsType<framework::Vocab>(),
+                        true,
                         platform::errors::InvalidArgument(
                             "SaveCombine operator only supports saving "
-                            "LoDTensor variable, %s has wrong type.",
+                            "LoDTensor or Vocab variable, %s has wrong type.",
                             inp_var_names[i]));
 
-      auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
-      PADDLE_ENFORCE_EQ(
-          tensor.IsInitialized(), true,
-          platform::errors::InvalidArgument(
-              "The Tensor of Variable(%s) to be saved is not initialized.",
-              inp_var_names[i]));
-      // Serialize tensors one by one
-      // Check types to see if a fp16 transformation is required
-      auto in_dtype = tensor.type();
-      auto out_dtype =
-          save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+      if (inp_vars[i]->IsType<framework::LoDTensor>()) {
+        auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
+        PADDLE_ENFORCE_EQ(
+            tensor.IsInitialized(),
+            true,
+            platform::errors::InvalidArgument(
+                "The Tensor of Variable(%s) to be saved is not initialized.",
+                inp_var_names[i]));
+        // Serialize tensors one by one
+        // Check types to see if a fp16 transformation is required
+        auto in_dtype = framework::TransToProtoVarType(tensor.dtype());
+        auto out_dtype =
+            save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
-      if (in_dtype != out_dtype) {
-        auto in_kernel_type = framework::OpKernelType(in_dtype, place);
-        auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-        framework::LoDTensor out;
-        // copy LoD info to the new tensor
-        out.set_lod(tensor.lod());
-        framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
-        framework::SerializeToStream(ss, out, dev_ctx);
+        if (in_dtype != out_dtype) {
+          auto in_kernel_type = framework::OpKernelType(in_dtype, place);
+          auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+          framework::LoDTensor out;
+          // copy LoD info to the new tensor
+          out.set_lod(tensor.lod());
+          framework::TransDataType(
+              in_kernel_type, out_kernel_type, tensor, &out);
+          framework::SerializeToStream(ss, out, dev_ctx);
+        } else {
+          framework::SerializeToStream(ss, tensor, dev_ctx);
+        }
       } else {
-        framework::SerializeToStream(ss, tensor, dev_ctx);
+        auto &tensor = inp_vars[i]->Get<framework::Vocab>();
+        std::unordered_map<std::string, std::int32_t> data;
+        for (auto it = tensor.begin(); it != tensor.end(); ++it) {
+          std::string t;
+          framework::ConvertWstrToStr(it->first, &t);
+          data.emplace(t, it->second);
+        }
+        framework::StringMapToStream(ss, data);
       }
     }
     if (save_to_memory) {
-      PADDLE_ENFORCE_NE(output, nullptr,
+      PADDLE_ENFORCE_NE(output,
+                        nullptr,
                         platform::errors::InvalidArgument(
                             "Cannot find variable Y for save_combine_op"));
       *output = ss.str();
     } else {
       MkDirRecursively(DirName(filename).c_str());
       std::ofstream fout(filename, std::ios::binary);
-      PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+      PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                        true,
                         platform::errors::Unavailable(
                             "Cannot open %s to save variables.", filename));
       fout << ss.str();

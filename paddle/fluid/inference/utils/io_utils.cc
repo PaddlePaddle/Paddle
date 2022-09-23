@@ -13,7 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/utils/io_utils.h"
+
+#include <fcntl.h>
+
+#include <utility>
+
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/text_format.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/utils/shape_range_info.pb.h"
 
 namespace paddle {
 namespace inference {
@@ -150,11 +158,113 @@ void SerializePDTensorsToFile(const std::string &path,
 void DeserializePDTensorsToFile(const std::string &path,
                                 std::vector<PaddleTensor> *tensors) {
   bool is_present = analysis::FileExists(path);
-  PADDLE_ENFORCE_EQ(is_present, true, platform::errors::InvalidArgument(
-                                          "Cannot open %s to read", path));
+  PADDLE_ENFORCE_EQ(
+      is_present,
+      true,
+      platform::errors::InvalidArgument("Cannot open %s to read", path));
   std::ifstream fin(path, std::ios::binary);
   DeserializePDTensorsToStream(fin, tensors);
   fin.close();
+}
+
+void SerializeShapeRangeInfo(
+    const std::string &path,
+    const paddle::inference::proto::ShapeRangeInfos &info) {
+  int out_fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  google::protobuf::io::FileOutputStream *os =
+      new google::protobuf::io::FileOutputStream(out_fd);
+  google::protobuf::TextFormat::Print(info, os);
+  delete os;
+  close(out_fd);
+}
+
+void SerializeShapeRangeInfo(
+    const std::string &path,
+    const std::map<std::string, std::vector<int32_t>> &min_shape,
+    const std::map<std::string, std::vector<int32_t>> &max_shape,
+    const std::map<std::string, std::vector<int32_t>> &opt_shape) {
+  paddle::inference::proto::ShapeRangeInfos shape_range_infos;
+  for (auto it : min_shape) {
+    auto *s = shape_range_infos.add_shape_range_info();
+    s->set_name(it.first);
+    for (size_t i = 0; i < it.second.size(); ++i) {
+      s->add_min_shape(it.second[i]);
+      s->add_max_shape(max_shape.at(it.first)[i]);
+      s->add_opt_shape(opt_shape.at(it.first)[i]);
+    }
+  }
+
+  inference::SerializeShapeRangeInfo(path, shape_range_infos);
+}
+void DeserializeShapeRangeInfo(
+    const std::string &path, paddle::inference::proto::ShapeRangeInfos *info) {
+  int fd = open(path.c_str(), O_RDONLY);
+  if (fd == -1) {
+    PADDLE_THROW(platform::errors::NotFound("File [%s] is not found.", path));
+  }
+  google::protobuf::io::FileInputStream *is =
+      new google::protobuf::io::FileInputStream(fd);
+  google::protobuf::TextFormat::Parse(is, info);
+  delete is;
+  close(fd);
+}
+
+void DeserializeShapeRangeInfo(
+    const std::string &path,
+    std::map<std::string, std::vector<int32_t>> *min_shape,
+    std::map<std::string, std::vector<int32_t>> *max_shape,
+    std::map<std::string, std::vector<int32_t>> *opt_shape) {
+  paddle::inference::proto::ShapeRangeInfos shape_range_infos;
+  DeserializeShapeRangeInfo(path, &shape_range_infos);
+  for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
+    auto info = shape_range_infos.shape_range_info(i);
+    auto name = info.name();
+    if (min_shape->count(name) || max_shape->count(name) ||
+        opt_shape->count(name)) {
+      continue;
+    } else {
+      std::vector<int32_t> tmp(info.min_shape_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_shape(k);
+      min_shape->insert(std::make_pair(name, tmp));
+
+      tmp.resize(info.max_shape_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_shape(k);
+      max_shape->insert(std::make_pair(name, tmp));
+
+      tmp.resize(info.opt_shape_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_shape(k);
+      opt_shape->insert(std::make_pair(name, tmp));
+    }
+  }
+}
+
+void UpdateShapeRangeInfo(
+    const std::string &path,
+    const std::map<std::string, std::vector<int32_t>> &min_shape,
+    const std::map<std::string, std::vector<int32_t>> &max_shape,
+    const std::map<std::string, std::vector<int32_t>> &opt_shape,
+    const std::vector<std::string> &names) {
+  paddle::inference::proto::ShapeRangeInfos shape_range_infos;
+  DeserializeShapeRangeInfo(path, &shape_range_infos);
+
+  for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
+    auto *info = shape_range_infos.mutable_shape_range_info(i);
+    for (const auto &name : names) {
+      if (info->name() == name) {
+        info->clear_min_shape();
+        info->clear_max_shape();
+        info->clear_opt_shape();
+        for (size_t j = 0; j < min_shape.at(name).size(); ++j)
+          info->add_min_shape(min_shape.at(name)[j]);
+        for (size_t j = 0; j < max_shape.at(name).size(); ++j)
+          info->add_max_shape(max_shape.at(name)[j]);
+        for (size_t j = 0; j < opt_shape.at(name).size(); ++j)
+          info->add_opt_shape(opt_shape.at(name)[j]);
+        break;
+      }
+    }
+  }
+  inference::SerializeShapeRangeInfo(path, shape_range_infos);
 }
 
 }  // namespace inference

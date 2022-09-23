@@ -25,12 +25,20 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/variant.h"
+#include "paddle/phi/core/macros.h"
+#include "paddle/utils/any.h"
 
 namespace paddle {
 namespace framework {
+namespace details {
+using ProgramDescs = std::vector<ProgramDesc>;
+constexpr char kProgramDescs[] = "program_descs";
+constexpr char kStartupProgramDescs[] = "startup_program_descs";
+}  // namespace details
+
 namespace ir {
 class Graph;
+
 template <typename PassType>
 struct PassRegistrar;
 
@@ -39,6 +47,8 @@ constexpr char kPassRecorder[] = "pass_recorder";
 constexpr char kEmbEltwiseLayernormPass[] =
     "embedding_eltwise_layernorm_fuse_pass_flag";
 constexpr char kMultiheadMatmulPass[] = "multihead_matmul_fuse_pass_flag";
+constexpr char kPrelnEmbEltwiseLayernormPass[] =
+    "preln_embedding_eltwise_layernorm_fuse_pass_flag";
 
 class Pass {
  public:
@@ -60,12 +70,13 @@ class Pass {
   // Get a reference to the attributed previously set.
   template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
-    PADDLE_ENFORCE_NE(attrs_.find(attr_name), attrs_.end(),
+    PADDLE_ENFORCE_NE(attrs_.find(attr_name),
+                      attrs_.end(),
                       platform::errors::InvalidArgument(
                           "Attribute %s not registered for pass.", attr_name));
     try {
-      return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
-    } catch (boost::bad_any_cast &) {
+      return *paddle::any_cast<AttrType *>(attrs_.at(attr_name));
+    } catch (paddle::bad_any_cast &) {
       auto TypeToString = [](const std::type_info &info) -> std::string {
         if (std::type_index(info) == std::type_index(typeid(bool *))) {
           return "bool";
@@ -82,7 +93,8 @@ class Pass {
       };
 
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid type for attritube %s, expected: %s, actual: %s.", attr_name,
+          "Invalid type for attritube %s, expected: %s, actual: %s.",
+          attr_name,
           TypeToString(typeid(AttrType *)),
           TypeToString(attrs_.at(attr_name).type())));
     }
@@ -108,7 +120,8 @@ class Pass {
   void Set(const std::string &attr_name, AttrType *attr) {
     if (default_pass_attrs_.count(attr_name) == 0) {
       PADDLE_ENFORCE_EQ(
-          attrs_.count(attr_name), 0,
+          attrs_.count(attr_name),
+          0,
           platform::errors::AlreadyExists(
               "Attribute %s already set in the pass.", attr_name));
     } else {
@@ -126,17 +139,31 @@ class Pass {
   // should delete the attribute.
   template <typename AttrType>
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE_EQ(attrs_.count(attr_name), 0,
+    PADDLE_ENFORCE_EQ(attrs_.count(attr_name),
+                      0,
                       platform::errors::AlreadyExists(
                           "Attribute %s already set in the pass.", attr_name));
     attrs_[attr_name] = attr;
   }
+
+  static void ApplyPassesToProgram(const std::vector<const Pass *> &passes,
+                                   ProgramDesc *main_program,
+                                   ProgramDesc *startup_program);
+
+  virtual bool SupportApplyProgramViaGraph() const { return true; }
 
  protected:
   virtual void ApplyImpl(Graph *graph) const {
     PADDLE_THROW(platform::errors::Unimplemented(
         "The virtual pass called is not implemented."));
   }
+
+  virtual void ApplyImpl(ProgramDesc *main_program,
+                         ProgramDesc *startup_program) const;
+
+  static void ConvertToPrograms(ir::Graph *graph,
+                                ProgramDesc *main_program,
+                                ProgramDesc *startup_program);
 
   // Some Pass must be placed before this Pass, and some
   // Pass must be placed after this Pass.
@@ -157,7 +184,7 @@ class Pass {
 
   // Pass doesn't take ownership. PassRegistrar should delete default_attrs
   void RegisterDefaultPassAttrs(
-      std::map<std::string, boost::any> default_attr_values) {
+      std::map<std::string, paddle::any> default_attr_values) {
     for (auto const &attr_name : default_attr_values) {
       default_pass_attrs_.insert(attr_name.first);
     }
@@ -171,7 +198,7 @@ class Pass {
   std::unordered_set<std::string> required_pass_attrs_;
   std::unordered_set<std::string> default_pass_attrs_;
   std::unordered_set<std::string> required_graph_attrs_;
-  std::map<std::string, boost::any> attrs_;
+  std::map<std::string, paddle::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
 };
 
@@ -199,7 +226,8 @@ class PassRegistry {
   }
 
   void Insert(const std::string &pass_type, const PassCreator &pass_creator) {
-    PADDLE_ENFORCE_NE(Has(pass_type), true,
+    PADDLE_ENFORCE_NE(Has(pass_type),
+                      true,
                       platform::errors::AlreadyExists(
                           "Pass %s has been registered.", pass_type));
     map_.insert({pass_type, pass_creator});
@@ -207,7 +235,8 @@ class PassRegistry {
 
   std::unique_ptr<Pass> Get(const std::string &pass_type) const {
     if (pass_type == "tensorrt_subgraph_pass") {
-      PADDLE_ENFORCE_EQ(Has(pass_type), true,
+      PADDLE_ENFORCE_EQ(Has(pass_type),
+                        true,
                         platform::errors::InvalidArgument(
                             "Pass %s has not been registered. Please "
                             "use the paddle inference library "
@@ -215,7 +244,8 @@ class PassRegistry {
                             "the tensorrt engine in inference configuration! ",
                             pass_type));
     } else {
-      PADDLE_ENFORCE_EQ(Has(pass_type), true,
+      PADDLE_ENFORCE_EQ(Has(pass_type),
+                        true,
                         platform::errors::InvalidArgument(
                             "Pass %s has not been registered.", pass_type));
     }
@@ -233,7 +263,8 @@ template <typename PassType>
 struct PassRegistrar : public Registrar {
   explicit PassRegistrar(const char *pass_type) {
     PADDLE_ENFORCE_EQ(
-        PassRegistry::Instance().Has(pass_type), false,
+        PassRegistry::Instance().Has(pass_type),
+        false,
         platform::errors::AlreadyExists(
             "Pass '%s' is registered more than once.", pass_type));
     PassRegistry::Instance().Insert(
@@ -281,7 +312,7 @@ struct PassRegistrar : public Registrar {
  private:
   std::unordered_set<std::string> required_pass_attrs_;
   std::unordered_set<std::string> required_graph_attrs_;
-  std::map<std::string, boost::any> default_attr_values_;
+  std::map<std::string, paddle::any> default_attr_values_;
   std::map<std::string, std::function<void(void)>> default_attr_dels_;
 };
 

@@ -16,6 +16,8 @@ import os
 import paddle
 from paddle.distributed.fleet.launch_utils import get_cluster, logger
 
+__all__ = []
+
 
 def get_cloud_cluster(args_node_ips,
                       device_mode,
@@ -59,8 +61,8 @@ paddlecloud environment.".format(args_node_ips, node_ips))
 
                 if paddle_ports_num >= len(
                         devices_per_proc) and paddle_port != args_port:
-                    logger.warning("Use Cloud specified port:{}.".format(
-                        paddle_port))
+                    logger.warning(
+                        "Use Cloud specified port:{}.".format(paddle_port))
                     started_port = paddle_port
 
             except Exception as e:
@@ -80,12 +82,13 @@ paddlecloud environment.".format(args_node_ips, node_ips))
         trainer_endpoints = []
         assert num_nodes * paddle_ports_num == len(trainer_endpoints_ori)
         for i in range(num_nodes):
-            trainer_endpoints.append(trainer_endpoints_ori[
-                i * paddle_ports_num:(i + 1) * paddle_ports_num])
+            trainer_endpoints.append(
+                trainer_endpoints_ori[i * paddle_ports_num:(i + 1) *
+                                      paddle_ports_num])
 
     logger.debug("parsed from args: node_ips:{} \
-        node_ip:{} node_rank:{} trainer_endpoints:{}"
-                 .format(node_ips, node_ip, node_rank, trainer_endpoints))
+        node_ip:{} node_rank:{} trainer_endpoints:{}".format(
+        node_ips, node_ip, node_rank, trainer_endpoints))
 
     cluster, pod = get_cluster(node_ips, node_ip, trainer_endpoints,
                                device_mode, devices_per_proc)

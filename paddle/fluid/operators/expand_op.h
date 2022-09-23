@@ -16,33 +16,12 @@ limitations under the License. */
 
 #include <vector>
 
-#include <boost/preprocessor/arithmetic/div.hpp>
-#include <boost/preprocessor/arithmetic/mod.hpp>
-#include <boost/preprocessor/comparison/greater.hpp>
-#include <boost/preprocessor/comparison/greater_equal.hpp>
-#include <boost/preprocessor/control/if.hpp>
-#include <boost/preprocessor/repetition/repeat.hpp>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 6
-
-#define EXPAND_TEMPLATE(z, n, data) \
-  case n + 1: {                     \
-    Expand<n + 1>(context);         \
-    break;                          \
-  }
-#define REP_EXPAND_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_TEMPLATE, ~)
-#define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
-#define EXPAND_GRAD_CASE(n)                                        \
-  case n: {                                                        \
-    ExpandBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
-    break;                                                         \
-  }
-#define EXPAND_GRAD_TEMPLATE(z, n, data) \
-  BOOST_PP_IF(COND(n), EXPAND_GRAD_CASE(n), )
-#define REP_EXPAND_GRAD_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_GRAD_TEMPLATE, ~)
 
 namespace paddle {
 namespace operators {
@@ -53,12 +32,21 @@ inline std::vector<int> get_expand_times(
     auto* expand_data = expand_tensor->data<int>();
     framework::Tensor cpu_expand_tensor;
     if (platform::is_gpu_place(expand_tensor->place())) {
-      TensorCopySync(*expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+      paddle::framework::TensorCopySync(
+          *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
+#ifdef PADDLE_WITH_ASCEND_CL
+    if (platform::is_npu_place(expand_tensor->place())) {
+      paddle::framework::TensorCopySync(
+          *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+      expand_data = cpu_expand_tensor.data<int>();
+    }
+#endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(expand_tensor->place())) {
-      TensorCopySync(*expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+      paddle::framework::TensorCopySync(
+          *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
 #endif
@@ -76,13 +64,13 @@ inline std::vector<int> get_expand_times(
       auto tensor = list_expand_times_tensor[i];
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_times.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_XPU
       else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_times.push_back(*temp.data<int32_t>());
       }
 #endif
@@ -98,10 +86,13 @@ inline std::vector<int> get_expand_times(
 }
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using framework::To32BitIndex;
@@ -112,18 +103,40 @@ class ExpandKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1,
+        rank,
+        1,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be greater than or equal to 1, but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
-        rank, MAX_RANK_SUPPORTED,
+        rank,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be less than or equal to %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, rank));
-    switch (rank) { REP_EXPAND_TEMPLATE(MAX_RANK_SUPPORTED) }
+            MAX_RANK_SUPPORTED,
+            rank));
+    switch (rank) {
+      case 1:
+        Expand<1>(context);
+        break;
+      case 2:
+        Expand<2>(context);
+        break;
+      case 3:
+        Expand<3>(context);
+        break;
+      case 4:
+        Expand<4>(context);
+        break;
+      case 5:
+        Expand<5>(context);
+        break;
+      case 6:
+        Expand<6>(context);
+        break;
+    }
   }
 
  protected:
@@ -133,15 +146,16 @@ class ExpandKernel : public framework::OpKernel<T> {
 
     auto in_dims = in0->dims();
     auto expand_times = get_expand_times(context);
-    PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(in_dims.size()), expand_times.size(),
-        platform::errors::InvalidArgument(
-            "The number of elements (%d) of 'expand_times' for "
-            "Op(expand) must be equal to the number "
-            "of dimensions (%d) of the input.",
-            expand_times.size(), static_cast<size_t>(in_dims.size())));
+    PADDLE_ENFORCE_EQ(static_cast<size_t>(in_dims.size()),
+                      expand_times.size(),
+                      platform::errors::InvalidArgument(
+                          "The number of elements (%d) of 'expand_times' for "
+                          "Op(expand) must be equal to the number "
+                          "of dimensions (%d) of the input.",
+                          expand_times.size(),
+                          static_cast<size_t>(in_dims.size())));
     auto* out0 = context.Output<Tensor>("Out");
-    Eigen::DSizes<int, Rank> bcast_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
     for (size_t i = 0; i < expand_times.size(); ++i) {
       bcast_dims[i] = expand_times[i];
     }
@@ -160,9 +174,11 @@ class ExpandKernel : public framework::OpKernel<T> {
     // use 32-bit index to speed up
     bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
     if (use_32bit_index) {
-      To32BitIndex(y).device(place) = To32BitIndex(x).broadcast(bcast_dims);
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+          place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
     } else {
-      y.device(place) = x.broadcast(bcast_dims);
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+          place, y, x, bcast_dims);
     }
   }
 };
@@ -201,22 +217,50 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
       auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
-      framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
-                            out0);
+      framework::TensorCopy(
+          *in0, context.GetPlace(), context.device_context(), out0);
     } else {
-      PADDLE_ENFORCE_GE(dims, 1, platform::errors::InvalidArgument(
-                                     "The number of dimensions of the input "
-                                     "'Out@GRAD' for Op(expand_grad)"
-                                     " must be greater than or equal to 1, but "
-                                     "the value received is %d.",
-                                     dims));
-      PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
+      PADDLE_ENFORCE_GE(dims,
+                        1,
+                        platform::errors::InvalidArgument(
+                            "The number of dimensions of the input "
+                            "'Out@GRAD' for Op(expand_grad)"
+                            " must be greater than or equal to 1, but "
+                            "the value received is %d.",
+                            dims));
+      PADDLE_ENFORCE_LE(dims,
+                        MAX_RANK_SUPPORTED,
                         platform::errors::InvalidArgument(
                             "The number of dimensions of the input 'Out@GRAD' "
                             "for Op(expand_grad) must be less than or equal "
                             "to %d, but the value received is %d.",
-                            MAX_RANK_SUPPORTED, dims));
-      switch (dims) { REP_EXPAND_GRAD_TEMPLATE(MAX_RANK_SUPPORTED) }
+                            MAX_RANK_SUPPORTED,
+                            dims));
+      switch (dims) {
+        case 1:
+          ExpandBackward<1>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 2:
+          ExpandBackward<2>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 3:
+          ExpandBackward<3>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 4:
+          ExpandBackward<4>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 5:
+          ExpandBackward<5>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 6:
+          ExpandBackward<6>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Only support tensor with rank being between 1 and 6. But "
+              "received tensor's rank = %d.",
+              dims));
+      }
     }
   }
 
@@ -227,34 +271,37 @@ class ExpandGradKernel : public framework::OpKernel<T> {
                       const std::vector<int>& reduce_dims_vec) const {
     size_t reshape_size = reshape_dims_vec.size();
     size_t reduce_size = reduce_dims_vec.size();
-    PADDLE_ENFORCE_EQ(reshape_size, reshape_dims_vec.size(),
+    PADDLE_ENFORCE_EQ(reshape_size,
+                      reshape_dims_vec.size(),
                       platform::errors::InvalidArgument(
                           "Inconsistent size between template Dims (%d) and "
                           "reshape dimensions (%d).",
-                          reshape_size, reshape_dims_vec.size()));
-    PADDLE_ENFORCE_EQ(reduce_size, reduce_dims_vec.size(),
+                          reshape_size,
+                          reshape_dims_vec.size()));
+    PADDLE_ENFORCE_EQ(reduce_size,
+                      reduce_dims_vec.size(),
                       platform::errors::InvalidArgument(
                           "Inconsistent size between template Dims (%d) and "
                           "reduce dimensions (%d).",
-                          reduce_size, reduce_dims_vec.size()));
+                          reduce_size,
+                          reduce_dims_vec.size()));
     auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
-    Eigen::DSizes<int, Dims * 2> reshape_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<int, Dims> reduce_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }
     auto out_grad = EigenVector<T>::Flatten(*in0);
-    x_grad.device(
-        *context.template device_context<DeviceContext>().eigen_device()) =
-        out_grad.reshape(reshape_dims)
-            .sum(reduce_dims)
-            .reshape(x_grad.dimensions());
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+        place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 

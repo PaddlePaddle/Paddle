@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -36,8 +37,8 @@ class RankLossKernel : public framework::OpKernel<T> {
     auto right = framework::EigenVector<T>::Flatten(*right_t);
 
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    out.device(dev) =
-        (1.0f + (left - right).exp()).log() - label * (left - right);
+    EigenRankLoss<std::decay_t<decltype(dev)>, T>::Eval(
+        dev, out, label, left, right);
   }
 };
 
@@ -65,15 +66,15 @@ class RankLossGradKernel : public framework::OpKernel<T> {
     if (d_left_t) {
       d_left_t->mutable_data<T>(ctx.GetPlace());
       auto d_left = framework::EigenVector<T>::Flatten(*d_left_t);
-      d_left.device(dev) =
-          d_out * (1.0f / (1.0f + (right - left).exp()) - label);
+      EigenRankLossGrad<std::decay_t<decltype(dev)>, T>::EvalLeft(
+          dev, d_left, d_out, label, left, right);
     }
     // compute d_right
     if (d_right_t) {
       d_right_t->mutable_data<T>(ctx.GetPlace());
       auto d_right = framework::EigenVector<T>::Flatten(*d_right_t);
-      d_right.device(dev) =
-          -d_out * (1.0f / (1.0f + (right - left).exp()) - label);
+      EigenRankLossGrad<std::decay_t<decltype(dev)>, T>::EvalRight(
+          dev, d_right, d_out, label, left, right);
     }
   }
 };

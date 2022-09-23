@@ -19,10 +19,9 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
@@ -36,18 +35,20 @@ class ReaderBase {
         var_types_(var_types),
         need_check_feed_(need_check_feed) {
     PADDLE_ENFORCE_EQ(
-        shapes_.size(), need_check_feed_.size(),
+        shapes_.size(),
+        need_check_feed_.size(),
         platform::errors::InvalidArgument(
             "Construct ReaderBase with mismatched sizes of shapes "
             "and need_check_feed"));
     PADDLE_ENFORCE_EQ(
-        var_types_.size(), need_check_feed_.size(),
+        var_types_.size(),
+        need_check_feed_.size(),
         platform::errors::InvalidArgument(
             "Construct ReaderBase with mismatched sizes of var_types "
             "and need_check_feed"));
   }
 
-  virtual void ReadNext(std::vector<LoDTensor>* out);
+  virtual void ReadNext(paddle::framework::LoDTensorArray* out);
 
   virtual void Shutdown();
 
@@ -72,7 +73,7 @@ class ReaderBase {
   virtual ~ReaderBase();
 
  protected:
-  virtual void ReadNextImpl(std::vector<LoDTensor>* out) {}
+  virtual void ReadNextImpl(paddle::framework::LoDTensorArray* out) {}
 
   virtual void ShutdownImpl() {}
 
@@ -109,8 +110,8 @@ class DecoratedReader : public ReaderBase,
                         public std::enable_shared_from_this<DecoratedReader> {
  public:
   explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
-      : ReaderBase(reader->Shapes(), reader->VarTypes(),
-                   reader->NeedCheckFeed()),
+      : ReaderBase(
+            reader->Shapes(), reader->VarTypes(), reader->NeedCheckFeed()),
         reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
@@ -166,7 +167,7 @@ class ReaderHolder {
 
   const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
-  void ReadNext(std::vector<LoDTensor>* out) {
+  void ReadNext(paddle::framework::LoDTensorArray* out) {
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
         platform::errors::InvalidArgument(

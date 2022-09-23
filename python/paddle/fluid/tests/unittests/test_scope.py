@@ -20,6 +20,7 @@ import six
 
 
 class TestScope(unittest.TestCase):
+
     def test_create_destroy(self):
         paddle_c = paddle.fluid.core
         scope = paddle_c.Scope()
@@ -58,6 +59,13 @@ class TestScope(unittest.TestCase):
                 Exception, "Deleting a nonexistent scope is not allowed*"):
             # It is not allowed to delete a nonexistent scope.
             scope._remove_from_pool()
+
+    def test_size(self):
+        paddle_c = paddle.fluid.core
+        scope = paddle_c.Scope()
+        var_a = scope.var("var_a")
+        self.assertEqual(scope.size(), 1)
+        self.assertIsNotNone(scope.find_var('var_a'))
 
 
 if __name__ == '__main__':

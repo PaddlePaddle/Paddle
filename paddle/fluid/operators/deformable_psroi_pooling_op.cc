@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
+
 #include <iostream>
 #include <memory>
 #include <vector>
-#include "paddle/fluid/operators/math/blas.h"
+
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -102,7 +104,7 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "W is thewidth of output. ");
     AddComment(R"DOC(
 **DeformablePSROIPooling Operator**
-DeformablePSROIPooling is a new method based Region of interest pooling 
+DeformablePSROIPooling is a new method based Region of interest pooling
 (also known as RoI pooling).
 The operator has four steps:
 
@@ -126,33 +128,41 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Input"), "Input", "Input", "deformable_psroi_pooling");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ROIs"), "Input", "ROIs", "deformable_psroi_pooling");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Trans"), "Input", "Trans", "deformable_psroi_pooling");
+    OP_INOUT_CHECK(ctx->HasOutput("Output"),
+                   "Output",
+                   "Output",
                    "deformable_psroi_pooling");
-    OP_INOUT_CHECK(ctx->HasInput("ROIs"), "Input", "ROIs",
-                   "deformable_psroi_pooling");
-    OP_INOUT_CHECK(ctx->HasInput("Trans"), "Input", "Trans",
-                   "deformable_psroi_pooling");
-    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output",
-                   "deformable_psroi_pooling");
-    OP_INOUT_CHECK(ctx->HasOutput("TopCount"), "Output", "TopCount",
+    OP_INOUT_CHECK(ctx->HasOutput("TopCount"),
+                   "Output",
+                   "TopCount",
                    "deformable_psroi_pooling");
     auto input_dims = ctx->GetInputDim("Input");
     auto rois_dims = ctx->GetInputDim("ROIs");
     auto trans_dims = ctx->GetInputDim("Trans");
     PADDLE_ENFORCE_EQ(
-        rois_dims.size(), 2,
+        rois_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(ROIs) should be a 2-D LoDTensor of shape (num_rois, 4) "
             "given as [[ x1, y1, x2, y2], ...]. The rank of Input(ROIs) should "
             "be 2, but received ROIs rank is:%d, ROIs shape is:[%s].",
-            rois_dims.size(), rois_dims));
+            rois_dims.size(),
+            rois_dims));
     PADDLE_ENFORCE_EQ(
-        trans_dims.size(), 4,
+        trans_dims.size(),
+        4,
         platform::errors::InvalidArgument("The rank of Input(Trans) should be "
                                           "4 and the shape of Trans should be "
                                           "(N, 2, H, W), but received Trans "
                                           "rank is:%d and Trans shape is:[%s].",
-                                          trans_dims.size(), trans_dims));
+                                          trans_dims.size(),
+                                          trans_dims));
     auto pooled_height = ctx->Attrs().Get<int>("pooled_height");
     auto pooled_width = ctx->Attrs().Get<int>("pooled_width");
     auto spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
@@ -165,88 +175,106 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
     auto part_width = part_size[1];
     auto sample_per_part = ctx->Attrs().Get<int>("sample_per_part");
     auto trans_std = ctx->Attrs().Get<float>("trans_std");
-    PADDLE_ENFORCE_GE(trans_std, 0., platform::errors::InvalidArgument(
-                                         "Input(trans_std) should not be lower "
-                                         "than 0.0, but received trans_std "
-                                         "is:%f",
-                                         trans_std));
+    PADDLE_ENFORCE_GE(trans_std,
+                      0.,
+                      platform::errors::InvalidArgument(
+                          "Input(trans_std) should not be lower "
+                          "than 0.0, but received trans_std "
+                          "is:%f",
+                          trans_std));
     PADDLE_ENFORCE_GE(
-        input_dims[1], output_channels,
+        input_dims[1],
+        output_channels,
         platform::errors::InvalidArgument(
             "The channel of Input(Input) should not be lower than "
             "Input(output_dim), "
             "but received Input channel is:%d and output_dim is:%d.",
-            input_dims[1], output_channels));
+            input_dims[1],
+            output_channels));
     PADDLE_ENFORCE_GT(
-        pooled_height, 0,
+        pooled_height,
+        0,
         platform::errors::InvalidArgument(
             "Input(pooled_height) should be greater than 0, but received "
             "pooled_height is:%d.",
             pooled_height));
     PADDLE_ENFORCE_GT(
-        pooled_width, 0,
+        pooled_width,
+        0,
         platform::errors::InvalidArgument(
             "Input(pooled_width) should be greater than 0, but received "
             "pooled_width is:%d.",
             pooled_width));
     PADDLE_ENFORCE_GT(
-        spatial_scale, 0.,
+        spatial_scale,
+        0.,
         platform::errors::InvalidArgument(
             "Input(spatial_scale) should be greater than 0., but received "
             "spatial_scale is:%f.",
             spatial_scale));
     PADDLE_ENFORCE_EQ(
-        group_size.size(), 2,
+        group_size.size(),
+        2,
         platform::errors::InvalidArgument(
             "The length of Input(group_size) should be 2, but received "
             "group_size length is:%d.",
             group_size.size()));
     PADDLE_ENFORCE_GT(
-        group_height, 0,
+        group_height,
+        0,
         platform::errors::InvalidArgument(
             "group_height in Input(group_size) should be greater than 0, "
             "but received group_height is:%d.",
             group_height));
     PADDLE_ENFORCE_GT(
-        group_width, 0,
+        group_width,
+        0,
         platform::errors::InvalidArgument(
             "group_width in Input(group_size) should be greater than 0 "
             "but received group_width is:%d.",
             group_width));
     PADDLE_ENFORCE_EQ(
-        part_size.size(), 2,
+        part_size.size(),
+        2,
         platform::errors::InvalidArgument(
             "The length of Input(part_size) should be 2, but received "
             "part_size length is:%d.",
             part_size.size()));
     PADDLE_ENFORCE_GT(
-        part_height, 0,
+        part_height,
+        0,
         platform::errors::InvalidArgument(
             "part_height in Input(part_size) should be greater than 0 "
             "but received part_height is:%d.",
             part_height));
     PADDLE_ENFORCE_GT(
-        part_width, 0,
+        part_width,
+        0,
         platform::errors::InvalidArgument(
             "part_width in Input(part_size) should be greater than 0 "
             "but received part_width is:%d.",
             part_width));
     PADDLE_ENFORCE_LE(
-        part_height, trans_dims[2],
+        part_height,
+        trans_dims[2],
         platform::errors::InvalidArgument(
             "part_height in Input(part_size) should not be greater than "
             "the height of Input(Trans), but received part_height is:%d, "
             "the height of Input(Trans) is:%d.",
-            part_height, trans_dims[2]));
+            part_height,
+            trans_dims[2]));
     PADDLE_ENFORCE_LE(
-        part_width, trans_dims[3],
+        part_width,
+        trans_dims[3],
         platform::errors::InvalidArgument(
             "part_width in Input(part_size) should not be greater than "
             "the width of Input(Trans), but received part_width is:%d, "
             "the width of Input(Trans) is:%d.",
-            part_width, trans_dims[3]));
+            part_width,
+            trans_dims[3]));
     PADDLE_ENFORCE_GT(
-        sample_per_part, 0,
+        sample_per_part,
+        0,
         platform::errors::InvalidArgument(
             "Input(sample_per_part) should be greater than 0, but received "
             "sample_per_part is:%d.",
@@ -294,8 +322,10 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Output")), "Input",
-                   "Output@GRAD", "deformable_psroi_pooling");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Output")),
+                   "Input",
+                   "Output@GRAD",
+                   "deformable_psroi_pooling");
     if (ctx->HasOutput(framework::GradVarName("Input"))) {
       ctx->SetOutputDim(framework::GradVarName("Input"),
                         ctx->GetInputDim("Input"));
@@ -319,9 +349,10 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 REGISTER_OPERATOR(
-    deformable_psroi_pooling, ops::DeformablePSROIPoolOp,
+    deformable_psroi_pooling,
+    ops::DeformablePSROIPoolOp,
     ops::DeformablePSROIPoolOpMaker,
     ops::DeformablePSROIPoolGradOpMaker<paddle::framework::OpDesc>,
     ops::DeformablePSROIPoolGradOpMaker<paddle::imperative::OpBase>);

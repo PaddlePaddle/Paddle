@@ -19,8 +19,11 @@ import numpy as np
 
 import paddle.dataset.image as image
 
+__all__ = []
+
 
 class Image(unittest.TestCase):
+
     def test_resize_flip_chw(self):
         # resize
         im = image.load_image('cat.jpg')

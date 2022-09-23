@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <cmath>
 #include <string>
 
@@ -22,11 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_code.h"
 #include "paddle/fluid/platform/float16.h"
 
-namespace paddle {
-namespace framework {
-class LoDTensor;
-}  // namespace framework
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -92,7 +91,8 @@ inline float elementwise_mul_grad_dy(float x, float y, float out, float dout) {
 void CheckOutput(const std::vector<OperationExpression>& expressions,
                  const std::vector<LoDTensor> cpu_tensors,
                  const std::vector<int> input_ids_of_subgraph,
-                 const std::vector<int> output_ids_of_subgraph, int i,
+                 const std::vector<int> output_ids_of_subgraph,
+                 int i,
                  float eps) {
   std::vector<float> var(cpu_tensors.size());
   for (auto id : input_ids_of_subgraph) {
@@ -172,9 +172,12 @@ void SetupRandomCPUTensor(LoDTensor* tensor) {
 namespace fusion_group = paddle::framework::ir::fusion_group;
 
 template <typename T>
-void TestMainImpl(std::string func_name, std::string code_str,
-                  std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
-                  std::vector<int> input_ids, std::vector<int> output_ids) {
+void TestMainImpl(std::string func_name,
+                  std::string code_str,
+                  std::vector<paddle::framework::LoDTensor> cpu_tensors,
+                  int n,
+                  std::vector<int> input_ids,
+                  std::vector<int> output_ids) {
   bool is_float16 = std::type_index(typeid(T)) ==
                     std::type_index(typeid(paddle::platform::float16));
 
@@ -206,9 +209,11 @@ void TestMainImpl(std::string func_name, std::string code_str,
         for (int64_t i = 0; i < cpu_tensors[id].numel(); ++i) {
           tmp_cpu_ptr[i] = paddle::platform::float16(cpu_ptr[i]);
         }
-        TensorCopySync(tmp_cpu_tensors[id], place, &gpu_tensors[id]);
+        paddle::framework::TensorCopySync(
+            tmp_cpu_tensors[id], place, &gpu_tensors[id]);
       } else {
-        TensorCopySync(cpu_tensors[id], place, &gpu_tensors[id]);
+        paddle::framework::TensorCopySync(
+            cpu_tensors[id], place, &gpu_tensors[id]);
       }
       args.push_back(&gpu_ptrs[id]);
     }
@@ -224,7 +229,7 @@ void TestMainImpl(std::string func_name, std::string code_str,
   device_code.SetWorkloadPerThread(1);
   device_code.Launch(n, &args);
 
-  auto* dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext*>(
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       paddle::platform::DeviceContextPool::Instance().Get(place));
   dev_ctx->Wait();
 
@@ -234,8 +239,8 @@ void TestMainImpl(std::string func_name, std::string code_str,
       paddle::platform::float16* tmp_cpu_ptr =
           tmp_cpu_tensors[id].mutable_data<paddle::platform::float16>(
               cpu_tensors[id].dims(), paddle::platform::CPUPlace());
-      TensorCopySync(gpu_tensors[id], paddle::platform::CPUPlace(),
-                     &tmp_cpu_tensors[id]);
+      paddle::framework::TensorCopySync(
+          gpu_tensors[id], paddle::platform::CPUPlace(), &tmp_cpu_tensors[id]);
 
       float* cpu_ptr = cpu_tensors[id].mutable_data<float>(
           cpu_tensors[id].dims(), paddle::platform::CPUPlace());
@@ -243,16 +248,18 @@ void TestMainImpl(std::string func_name, std::string code_str,
         cpu_ptr[i] = static_cast<float>(tmp_cpu_ptr[i]);
       }
     } else {
-      TensorCopySync(gpu_tensors[id], paddle::platform::CPUPlace(),
-                     &cpu_tensors[id]);
+      paddle::framework::TensorCopySync(
+          gpu_tensors[id], paddle::platform::CPUPlace(), &cpu_tensors[id]);
     }
   }
 }
 
 void TestElementwiseMain(
-    std::string func_name, std::string code_str,
+    std::string func_name,
+    std::string code_str,
     std::vector<fusion_group::OperationExpression> expressions,
-    std::vector<int> input_ids, std::vector<int> output_ids,
+    std::vector<int> input_ids,
+    std::vector<int> output_ids,
     std::string dtype) {
   std::unordered_set<int> ids;
   for (auto id : input_ids) {
@@ -264,32 +271,33 @@ void TestElementwiseMain(
 
   // Prepare CPU tensors which always hold float.
   std::vector<paddle::framework::LoDTensor> cpu_tensors(ids.size());
-  auto dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  auto dims =
+      phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   for (size_t i = 0; i < cpu_tensors.size(); ++i) {
     cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
   }
 
   int n = cpu_tensors[0].numel();
   if (dtype == "__half") {
-    TestMainImpl<paddle::platform::float16>(func_name, code_str, cpu_tensors, n,
-                                            input_ids, output_ids);
+    TestMainImpl<paddle::platform::float16>(
+        func_name, code_str, cpu_tensors, n, input_ids, output_ids);
   } else {
-    TestMainImpl<float>(func_name, code_str, cpu_tensors, n, input_ids,
-                        output_ids);
+    TestMainImpl<float>(
+        func_name, code_str, cpu_tensors, n, input_ids, output_ids);
   }
 
   // Check the results
   float eps = (dtype == "__half") ? 1E-2 : 1E-5;
   for (int i = 0; i < n; i++) {
-    fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
-                              i, eps);
+    fusion_group::CheckOutput(
+        expressions, cpu_tensors, input_ids, output_ids, i, eps);
   }
 }
 
 void TestMain(std::string func_name,
               std::vector<fusion_group::OperationExpression> expressions,
-              std::vector<int> input_ids, std::vector<int> output_ids,
+              std::vector<int> input_ids,
+              std::vector<int> output_ids,
               std::string dtype) {
   fusion_group::OperationMap::Init();
   fusion_group::CodeGenerator code_generator;
@@ -297,12 +305,14 @@ void TestMain(std::string func_name,
   VLOG(3) << code_str;
 
   LOG(INFO) << "dtype: " << dtype;
-  TestElementwiseMain(func_name, code_str, expressions, input_ids, output_ids,
-                      dtype);
+  TestElementwiseMain(
+      func_name, code_str, expressions, input_ids, output_ids, dtype);
 }
 
-void TestMain(fusion_group::SubGraph* subgraph, std::vector<int> input_ids,
-              std::vector<int> output_ids, std::string dtype) {
+void TestMain(fusion_group::SubGraph* subgraph,
+              std::vector<int> input_ids,
+              std::vector<int> output_ids,
+              std::string dtype) {
   fusion_group::OperationMap::Init();
   fusion_group::CodeGenerator code_generator;
   std::string code_str = code_generator.Generate(subgraph);
@@ -312,8 +322,12 @@ void TestMain(fusion_group::SubGraph* subgraph, std::vector<int> input_ids,
   std::vector<fusion_group::OperationExpression> expressions =
       code_generator.ConvertToExpressions(subgraph);
 
-  TestElementwiseMain(subgraph->GetFuncName(), code_str, expressions, input_ids,
-                      output_ids, dtype);
+  TestElementwiseMain(subgraph->GetFuncName(),
+                      code_str,
+                      expressions,
+                      input_ids,
+                      output_ids,
+                      dtype);
 }
 
 TEST(code_generator, elementwise) {
@@ -323,12 +337,12 @@ TEST(code_generator, elementwise) {
     // t6 = t4 - t5
     // t7 = relu(t6)
     // t8 = sigmoid(t7)
-    fusion_group::OperationExpression exp1("elementwise_mul", {0, 1}, {2},
-                                           dtype, dtype);
-    fusion_group::OperationExpression exp2("elementwise_add", {2, 3}, {4},
-                                           dtype, dtype);
-    fusion_group::OperationExpression exp3("elementwise_sub", {4, 5}, {6},
-                                           dtype, dtype);
+    fusion_group::OperationExpression exp1(
+        "elementwise_mul", {0, 1}, {2}, dtype, dtype);
+    fusion_group::OperationExpression exp2(
+        "elementwise_add", {2, 3}, {4}, dtype, dtype);
+    fusion_group::OperationExpression exp3(
+        "elementwise_sub", {4, 5}, {6}, dtype, dtype);
     fusion_group::OperationExpression exp4("relu", {6}, {7}, dtype, dtype);
     fusion_group::OperationExpression exp5("sigmoid", {7}, {8}, dtype, dtype);
     std::vector<fusion_group::OperationExpression> expressions = {
@@ -353,10 +367,10 @@ TEST(code_generator, elementwise_grad) {
     // t3 = relu(t2)
     // t2' = relu_grad(t2, t3, t3')
     // t0', t1' = elementwise_mul_grad(t0, t1, t2, t2')
-    fusion_group::OperationExpression exp1("relu_grad", {-1, 3, 7}, {6}, dtype,
-                                           dtype);
-    fusion_group::OperationExpression exp2("elementwise_mul_grad", {0, 1, 2, 6},
-                                           {4, 5}, dtype, dtype);
+    fusion_group::OperationExpression exp1(
+        "relu_grad", {-1, 3, 7}, {6}, dtype, dtype);
+    fusion_group::OperationExpression exp2(
+        "elementwise_mul_grad", {0, 1, 2, 6}, {4, 5}, dtype, dtype);
     std::vector<fusion_group::OperationExpression> expressions = {exp1, exp2};
 
     // Expressions:
@@ -364,8 +378,8 @@ TEST(code_generator, elementwise_grad) {
     //  Op(elementwise_mul_grad), inputs:{0,1,2,6}, outputs:{4,5}
     std::vector<int> input_ids = {0, 1, 2, 3, 7};
     std::vector<int> output_ids = {4, 5, 6};
-    TestMain("elementwise_grad_kernel_0", expressions, input_ids, output_ids,
-             dtype);
+    TestMain(
+        "elementwise_grad_kernel_0", expressions, input_ids, output_ids, dtype);
   }
 }
 
@@ -420,11 +434,7 @@ std::unique_ptr<paddle::framework::ir::Graph> BuildGraph(bool backward,
       n->Var()->SetDataType(proto_dtype);
     }
   }
-#ifdef __clang__
   return graph;
-#else
-  return std::move(graph);
-#endif
 }
 
 std::unordered_set<paddle::framework::ir::Node*> DistilGradNodes(
@@ -471,8 +481,8 @@ TEST(code_generator, subgraph) {
   for (std::string dtype : {"float", "__half"}) {
     std::unique_ptr<paddle::framework::ir::Graph> graph =
         BuildGraph(false, dtype);
-    fusion_group::SubGraph subgraph(0, "elementwise_kernel_1", true,
-                                    graph->Nodes());
+    fusion_group::SubGraph subgraph(
+        0, "elementwise_kernel_1", true, graph->Nodes());
 
     // Expressions generated by code_generator (they may be different):
     //  Op(sigmoid), inputs:{0}, outputs:{4}
@@ -490,8 +500,8 @@ TEST(code_generator, subgraph_grad) {
   for (std::string dtype : {"float", "__half"}) {
     std::unique_ptr<paddle::framework::ir::Graph> graph =
         BuildGraph(true, dtype);
-    fusion_group::SubGraph subgraph(0, "elementwise_grad_kernel_1", true,
-                                    DistilGradNodes(graph));
+    fusion_group::SubGraph subgraph(
+        0, "elementwise_grad_kernel_1", true, DistilGradNodes(graph));
 
     // Expressions generated by code_generator (they may be different):
     //  Op(elementwise_add_grad), inputs:{1,2,3,0}, outputs:{11,10}

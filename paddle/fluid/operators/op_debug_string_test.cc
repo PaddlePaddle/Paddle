@@ -17,8 +17,10 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(elementwise_add_grad);
+USE_OP_ITSELF(elementwise_add_grad);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace operators {
@@ -39,8 +41,6 @@ TEST(op_debug_str, test_unknown_dtype) {
   desc.SetOutput(framework::GradVarName("Y"), {framework::GradVarName("Y")});
   desc.SetAttr("axis", -1);
   desc.SetAttr("use_mkldnn", false);
-  desc.SetAttr("x_data_format", "");
-  desc.SetAttr("y_data_format", "");
 
   auto x_tensor = scope.Var("X")->GetMutable<framework::LoDTensor>();
   x_tensor->Resize(dim);

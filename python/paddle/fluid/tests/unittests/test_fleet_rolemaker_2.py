@@ -17,6 +17,7 @@ from __future__ import print_function
 import paddle
 import os
 import unittest
+import tempfile
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
@@ -28,7 +29,10 @@ class TestCloudRoleMaker2(unittest.TestCase):
 
     def setUp(self):
         """Set up, set envs."""
-        pass
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_pslib_2(self):
         """Test cases for pslib."""
@@ -36,6 +40,8 @@ class TestCloudRoleMaker2(unittest.TestCase):
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
         from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
+
+        paddle.enable_static()
 
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -155,17 +161,19 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role23 = GeneralRoleMaker(path="./test_gloo_23")
         role23._get_size()
         role23._get_size()
-        with open("test_fleet_gloo_role_maker_1.txt", "w") as f:
+
+        path = os.path.join(self.temp_dir.name,
+                            "test_fleet_gloo_role_maker_1.txt")
+        with open(path, "w") as f:
             data = "1 1 1 1\n"
             f.write(data)
 
         dataset = paddle.distributed.InMemoryDataset()
-        dataset.set_filelist(["test_fleet_gloo_role_maker_1.txt"])
+        dataset.set_filelist([path])
         dataset._set_use_var([show, label])
         dataset.load_into_memory()
         dataset.get_memory_data_size(fleet)
         dataset.get_shuffle_data_size(fleet)
-        os.remove("./test_fleet_gloo_role_maker_1.txt")
 
         class TmpClass():
             """
@@ -199,7 +207,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
             """
 
             def __init__(self):
-                super(Fleet, self).__init__()
+                super(TmpFleet, self).__init__()
                 self._role_maker = None
 
             def init_worker(self):

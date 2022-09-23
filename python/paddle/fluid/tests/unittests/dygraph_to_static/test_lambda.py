@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
+import paddle
 import paddle.fluid as fluid
 
 from paddle.fluid.dygraph import declarative
@@ -25,7 +26,7 @@ def call_lambda_as_func(x):
     x = fluid.dygraph.to_variable(x)
 
     add_func = lambda x, y: x + y
-    mean_func = lambda x: fluid.layers.mean(x)
+    mean_func = lambda x: paddle.mean(x)
 
     y = add_func(x, 1)
     y = add_func(y, add_func(y, -1))
@@ -38,7 +39,7 @@ def call_lambda_directly(x):
     x = fluid.dygraph.to_variable(x)
 
     y = (lambda x, y: x + y)(x, x)
-    out = (lambda x: fluid.layers.mean(x))(y)
+    out = (lambda x: paddle.mean(x))(y)
 
     return out
 
@@ -48,7 +49,7 @@ def call_lambda_in_func(x):
 
     add_func = lambda x: x + 1
 
-    y = fluid.layers.mean((lambda x: fluid.layers.relu(x))(x))
+    y = paddle.mean((lambda x: fluid.layers.relu(x))(x))
     out = add_func(y) if y > 1 and y < 2 else (lambda x: x**2)(y)
 
     return out
@@ -59,7 +60,7 @@ def call_lambda_with_ifExpr(x):
 
     add_func = lambda x: x + 1
 
-    y = fluid.layers.mean(x)
+    y = paddle.mean(x)
     out = add_func(y) if y or y < 2 else (lambda x: x**2)(y)
 
     return out
@@ -70,7 +71,7 @@ def call_lambda_with_ifExpr2(x):
 
     add_func = lambda x: x + 1
 
-    y = fluid.layers.mean(x)
+    y = paddle.mean(x)
 
     # NOTE: y is Variable, but z<2 is python bool value
     z = 0
@@ -80,11 +81,12 @@ def call_lambda_with_ifExpr2(x):
 
 
 class TestLambda(unittest.TestCase):
+
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.x = np.array([1, 3]).astype('float32')
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
         self.init_func()
 
     def init_func(self):
@@ -108,8 +110,8 @@ class TestLambda(unittest.TestCase):
 
     def test_ast_to_func(self):
         for func in self.dyfuncs:
-            self.assertTrue((self.run_dygraph(func) == self.run_static(func)
-                             ).all())
+            self.assertTrue(
+                (self.run_dygraph(func) == self.run_static(func)).all())
 
 
 if __name__ == '__main__':

@@ -15,17 +15,16 @@
 from __future__ import print_function
 
 import astor
-import gast
+from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import slice_is_num
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 
-
-class ListTransformer(gast.NodeTransformer):
+class ListTransformer(BaseTransformer):
     """
     This class transforms python list used in control flow into Static Graph Ast.
     """
@@ -47,7 +46,6 @@ class ListTransformer(gast.NodeTransformer):
         self.scope_var_type_dict = var_env.get_scope_var_type()
 
     def transform(self):
-        SplitAssignTransformer(self.root).transform()
         self.visit(self.root)
         self.replace_list_with_tensor_array(self.root)
 
@@ -93,7 +91,8 @@ class ListTransformer(gast.NodeTransformer):
         for child_node in gast.walk(node):
             if isinstance(child_node, gast.Assign):
                 if self._need_to_create_tensor_array(child_node):
-                    child_node.value = self._create_tensor_array()
+                    child_node.value = self._create_tensor_array(
+                        child_node.value)
 
     def _transform_list_append_in_control_flow(self, node):
         for child_node in gast.walk(node):
@@ -128,7 +127,7 @@ class ListTransformer(gast.NodeTransformer):
         elif slice_is_num(target_node):
             value_code = ast_to_source_code(node.value)
             i = "paddle.cast(" \
-                "x=paddle.jit.dy2static.to_static_variable({})," \
+                "x=_jst.to_static_variable({})," \
                 "dtype='int64')".format(ast_to_source_code(slice_node))
             assign_code = "{} = paddle.tensor.array_write(x={}, i={}, array={})" \
                 .format(target_name, value_code, i, target_name)
@@ -189,9 +188,11 @@ class ListTransformer(gast.NodeTransformer):
             return True
         return False
 
-    def _create_tensor_array(self):
+    def _create_tensor_array(self, value_node):
         # Although `dtype='float32'`, other types such as `int32` can also be supported
-        func_code = "paddle.tensor.create_array(dtype='float32')"
+        init_value = ast_to_source_code(value_node).strip()
+        func_code = "paddle.tensor.create_array('float32', {})".format(
+            init_value)
         func_node = gast.parse(func_code).body[0].value
         return func_node
 
@@ -249,7 +250,7 @@ class ListTransformer(gast.NodeTransformer):
         # 2. pop stmt for a list or dict if len(args_str) == 1
         # 3. pop stmt for a dict if len(args_str) == 2
         if len(args_str) <= 2:
-            new_pop_str = "paddle.jit.dy2static.convert_pop({}, {})"\
+            new_pop_str = "_jst.Pop({}, {})"\
                 .format(target_str, ",".join(args_str))
             new_pop_node = gast.parse(new_pop_str).body[0].value
             return new_pop_node

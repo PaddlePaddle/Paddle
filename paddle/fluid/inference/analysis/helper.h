@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <sys/stat.h>
+
 #include <cstdio>
 #include <fstream>
 #include <memory>
@@ -25,11 +26,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 #ifdef _WIN32
 #include <direct.h>
@@ -48,7 +48,8 @@ namespace inference {
 namespace analysis {
 
 template <typename T>
-void SetAttr(framework::proto::OpDesc *op, const std::string &name,
+void SetAttr(framework::proto::OpDesc *op,
+             const std::string &name,
              const T &data);
 
 template <typename Vec>
@@ -73,13 +74,16 @@ struct DataTypeNamer {
   template <typename T>
   const std::string &repr() const {
     auto x = std::type_index(typeid(T));
-    PADDLE_ENFORCE_GT(dic_.count(x), 0, platform::errors::PreconditionNotMet(
-                                            "unknown type for representation"));
+    PADDLE_ENFORCE_GT(dic_.count(x),
+                      0,
+                      platform::errors::PreconditionNotMet(
+                          "unknown type for representation"));
     return dic_.at(x);
   }
 
   const std::string &repr(const std::type_index &type) const {  // NOLINT
-    PADDLE_ENFORCE_GT(dic_.count(type), 0,
+    PADDLE_ENFORCE_GT(dic_.count(type),
+                      0,
                       platform::errors::PreconditionNotMet(
                           "unknown type for representation"));
     return dic_.at(type);
@@ -119,7 +123,8 @@ template <typename T>
 class OrderedRegistry {
  public:
   T *Register(const std::string &name, T *x) {
-    PADDLE_ENFORCE_EQ(dic_.count(name), 0,
+    PADDLE_ENFORCE_EQ(dic_.count(name),
+                      0,
                       platform::errors::PreconditionNotMet(
                           "There exists duplicate key [%s]", name));
     dic_[name] = elements_.size();
@@ -142,8 +147,9 @@ template <typename T>
 T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   framework::Variable *var = scope.FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::PreconditionNotMet(
-               "The var which name is %s should not be nullptr.", name));
+      var,
+      platform::errors::PreconditionNotMet(
+          "The var which name is %s should not be nullptr.", name));
   return *var->GetMutable<T>();
 }
 
@@ -151,7 +157,8 @@ static framework::proto::ProgramDesc LoadProgramDesc(
     const std::string &model_path) {
   std::ifstream fin(model_path, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(
-      fin.is_open(), true,
+      fin.is_open(),
+      true,
       platform::errors::NotFound(
           "Cannot open file %s, please confirm whether the file exists",
           model_path));
@@ -183,29 +190,35 @@ static bool PathExists(const std::string &path) {
 }
 
 static std::string GetDirRoot(const std::string &path) {
-  char sep = '/';
+  char sep_1 = '/', sep_2 = '\\';
 
-#ifdef _WIN32
-  sep = '\\';
-#endif
-
-  size_t i = path.rfind(sep, path.length());
-  if (i != std::string::npos) {
-    return (path.substr(0, i));
+  size_t i_1 = path.rfind(sep_1, path.length());
+  size_t i_2 = path.rfind(sep_2, path.length());
+  if (i_1 != std::string::npos && i_2 != std::string::npos) {
+    return path.substr(0, std::max(i_1, i_2));
+  } else if (i_1 != std::string::npos) {
+    return path.substr(0, i_1);
+  } else if (i_2 != std::string::npos) {
+    return path.substr(0, i_2);
   }
   return path;
 }
 
-static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
-  std::string opt_cache_dir = model_root + "/_opt_cache/";
-  if (!PathExists(opt_cache_dir)) {
+static void MakeDirIfNotExists(const std::string &path) {
+  if (!PathExists(path)) {
     PADDLE_ENFORCE_NE(
-        MKDIR(opt_cache_dir.c_str()), -1,
+        MKDIR(path.c_str()),
+        -1,
         platform::errors::PreconditionNotMet(
             "Can not create optimize cache directory: %s, Make sure you "
             "have permission to write",
-            opt_cache_dir));
+            path));
   }
+}
+
+static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
+  std::string opt_cache_dir = model_root + "/_opt_cache/";
+  MakeDirIfNotExists(opt_cache_dir);
   return opt_cache_dir;
 }
 

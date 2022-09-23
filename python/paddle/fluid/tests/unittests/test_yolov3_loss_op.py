@@ -53,8 +53,8 @@ def batch_xywh_box_iou(box1, box2):
     left = np.maximum(b1_left[:, :, np.newaxis], b2_left[:, np.newaxis, :])
     right = np.minimum(b1_right[:, :, np.newaxis], b2_right[:, np.newaxis, :])
     top = np.maximum(b1_top[:, :, np.newaxis], b2_top[:, np.newaxis, :])
-    bottom = np.minimum(b1_bottom[:, :, np.newaxis],
-                        b2_bottom[:, np.newaxis, :])
+    bottom = np.minimum(b1_bottom[:, :, np.newaxis], b2_bottom[:,
+                                                               np.newaxis, :])
 
     inter_w = np.clip(right - left, 0., 1.)
     inter_h = np.clip(bottom - top, 0., 1.)
@@ -91,16 +91,18 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     pred_box = x[:, :, :, :, :4].copy()
     grid_x = np.tile(np.arange(w).reshape((1, w)), (h, 1))
     grid_y = np.tile(np.arange(h).reshape((h, 1)), (1, w))
-    pred_box[:, :, :, :, 0] = (
-        grid_x + sigmoid(pred_box[:, :, :, :, 0]) * scale_x_y + bias_x_y) / w
-    pred_box[:, :, :, :, 1] = (
-        grid_y + sigmoid(pred_box[:, :, :, :, 1]) * scale_x_y + bias_x_y) / h
+    pred_box[:, :, :, :,
+             0] = (grid_x + sigmoid(pred_box[:, :, :, :, 0]) * scale_x_y +
+                   bias_x_y) / w
+    pred_box[:, :, :, :,
+             1] = (grid_y + sigmoid(pred_box[:, :, :, :, 1]) * scale_x_y +
+                   bias_x_y) / h
 
     mask_anchors = []
     for m in anchor_mask:
         mask_anchors.append((anchors[2 * m], anchors[2 * m + 1]))
-    anchors_s = np.array(
-        [(an_w / input_size, an_h / input_size) for an_w, an_h in mask_anchors])
+    anchors_s = np.array([(an_w / input_size, an_h / input_size)
+                          for an_w, an_h in mask_anchors])
     anchor_w = anchors_s[:, 0:1].reshape((1, mask_num, 1, 1))
     anchor_h = anchors_s[:, 1:2].reshape((1, mask_num, 1, 1))
     pred_box[:, :, :, :, 2] = np.exp(pred_box[:, :, :, :, 2]) * anchor_w
@@ -119,10 +121,10 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     gtbox_shift[:, :, 1] = 0
 
     anchors = [(anchors[2 * i], anchors[2 * i + 1]) for i in range(0, an_num)]
-    anchors_s = np.array(
-        [(an_w / input_size, an_h / input_size) for an_w, an_h in anchors])
-    anchor_boxes = np.concatenate(
-        [np.zeros_like(anchors_s), anchors_s], axis=-1)
+    anchors_s = np.array([(an_w / input_size, an_h / input_size)
+                          for an_w, an_h in anchors])
+    anchor_boxes = np.concatenate([np.zeros_like(anchors_s), anchors_s],
+                                  axis=-1)
     anchor_boxes = np.tile(anchor_boxes[np.newaxis, :, :], (n, 1, 1))
     ious = batch_xywh_box_iou(gtbox_shift, anchor_boxes)
     iou_matches = np.argmax(ious, axis=-1)
@@ -153,9 +155,9 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
             objness[i, an_idx * h * w + gj * w + gi] = gtscore[i, j]
 
             for label_idx in range(class_num):
-                loss[i] += sce(x[i, an_idx, gj, gi, 5 + label_idx], label_pos
-                               if label_idx == gtlabel[i, j] else
-                               label_neg) * gtscore[i, j]
+                loss[i] += sce(
+                    x[i, an_idx, gj, gi, 5 + label_idx], label_pos if label_idx
+                    == gtlabel[i, j] else label_neg) * gtscore[i, j]
 
         for j in range(mask_num * h * w):
             if objness[i, j] > 0:
@@ -167,10 +169,41 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
             gt_matches.astype('int32'))
 
 
+def yolo_loss_wrapper(x,
+                      gt_box,
+                      gt_label,
+                      gt_score=None,
+                      anchors=[
+                          10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116,
+                          90, 156, 198, 373, 326
+                      ],
+                      anchor_mask=[0, 1, 2],
+                      class_num=5,
+                      ignore_thresh=0.7,
+                      downsample_ratio=32,
+                      use_label_smooth=True,
+                      scale_x_y=1.):
+    loss = paddle.vision.ops.yolo_loss(x,
+                                       gt_box=gt_box,
+                                       gt_label=gt_label,
+                                       anchors=anchors,
+                                       anchor_mask=anchor_mask,
+                                       class_num=class_num,
+                                       ignore_thresh=ignore_thresh,
+                                       downsample_ratio=downsample_ratio,
+                                       gt_score=gt_score,
+                                       use_label_smooth=use_label_smooth,
+                                       scale_x_y=scale_x_y)
+    return loss
+
+
 class TestYolov3LossOp(OpTest):
+
     def setUp(self):
         self.initTestCase()
         self.op_type = 'yolov3_loss'
+        self.python_api = yolo_loss_wrapper
+        self.python_out_sig = ['Loss']
         x = logit(np.random.uniform(0, 1, self.x_shape).astype('float64'))
         gtbox = np.random.random(size=self.gtbox_shape).astype('float64')
         gtlabel = np.random.randint(0, self.class_num, self.gtbox_shape[:2])
@@ -209,11 +242,14 @@ class TestYolov3LossOp(OpTest):
 
     def test_check_output(self):
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=2e-3)
+        self.check_output_with_place(place, atol=2e-3, check_eager=True)
 
     def test_check_grad_ignore_gtbox(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Loss', max_relative_error=0.2)
+        self.check_grad_with_place(place, ['X'],
+                                   'Loss',
+                                   max_relative_error=0.2,
+                                   check_eager=True)
 
     def initTestCase(self):
         self.anchors = [
@@ -232,6 +268,7 @@ class TestYolov3LossOp(OpTest):
 
 
 class TestYolov3LossWithoutLabelSmooth(TestYolov3LossOp):
+
     def initTestCase(self):
         self.anchors = [
             10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198,
@@ -249,6 +286,7 @@ class TestYolov3LossWithoutLabelSmooth(TestYolov3LossOp):
 
 
 class TestYolov3LossNoGTScore(TestYolov3LossOp):
+
     def initTestCase(self):
         self.anchors = [
             10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198,
@@ -266,6 +304,7 @@ class TestYolov3LossNoGTScore(TestYolov3LossOp):
 
 
 class TestYolov3LossWithScaleXY(TestYolov3LossOp):
+
     def initTestCase(self):
         self.anchors = [
             10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198,
@@ -283,6 +322,7 @@ class TestYolov3LossWithScaleXY(TestYolov3LossOp):
 
 
 class TestYolov3LossDygraph(unittest.TestCase):
+
     def test_dygraph(self):
         paddle.disable_static()
         x = np.random.random([2, 14, 8, 8]).astype('float32')
@@ -293,53 +333,52 @@ class TestYolov3LossDygraph(unittest.TestCase):
         gt_box = paddle.to_tensor(gt_box)
         gt_label = paddle.to_tensor(gt_label)
 
-        loss = paddle.vision.ops.yolo_loss(
-            x,
-            gt_box=gt_box,
-            gt_label=gt_label,
-            anchors=[10, 13, 16, 30],
-            anchor_mask=[0, 1],
-            class_num=2,
-            ignore_thresh=0.7,
-            downsample_ratio=8,
-            use_label_smooth=True,
-            scale_x_y=1.)
+        loss = paddle.vision.ops.yolo_loss(x,
+                                           gt_box=gt_box,
+                                           gt_label=gt_label,
+                                           anchors=[10, 13, 16, 30],
+                                           anchor_mask=[0, 1],
+                                           class_num=2,
+                                           ignore_thresh=0.7,
+                                           downsample_ratio=8,
+                                           use_label_smooth=True,
+                                           scale_x_y=1.)
         assert loss is not None
+        assert loss.shape == [2]
         paddle.enable_static()
 
 
 class TestYolov3LossStatic(unittest.TestCase):
+
     def test_static(self):
         x = paddle.static.data('x', [2, 14, 8, 8], 'float32')
         gt_box = paddle.static.data('gt_box', [2, 10, 4], 'float32')
         gt_label = paddle.static.data('gt_label', [2, 10], 'int32')
         gt_score = paddle.static.data('gt_score', [2, 10], 'float32')
 
-        loss = paddle.vision.ops.yolo_loss(
-            x,
-            gt_box=gt_box,
-            gt_label=gt_label,
-            anchors=[10, 13, 16, 30],
-            anchor_mask=[0, 1],
-            class_num=2,
-            ignore_thresh=0.7,
-            downsample_ratio=8,
-            gt_score=gt_score,
-            use_label_smooth=True,
-            scale_x_y=1.)
+        loss = paddle.vision.ops.yolo_loss(x,
+                                           gt_box=gt_box,
+                                           gt_label=gt_label,
+                                           anchors=[10, 13, 16, 30],
+                                           anchor_mask=[0, 1],
+                                           class_num=2,
+                                           ignore_thresh=0.7,
+                                           downsample_ratio=8,
+                                           gt_score=gt_score,
+                                           use_label_smooth=True,
+                                           scale_x_y=1.)
         assert loss is not None
 
-        loss = paddle.vision.ops.yolo_loss(
-            x,
-            gt_box=gt_box,
-            gt_label=gt_label,
-            anchors=[10, 13, 16, 30],
-            anchor_mask=[0, 1],
-            class_num=2,
-            ignore_thresh=0.7,
-            downsample_ratio=8,
-            use_label_smooth=True,
-            scale_x_y=1.)
+        loss = paddle.vision.ops.yolo_loss(x,
+                                           gt_box=gt_box,
+                                           gt_label=gt_label,
+                                           anchors=[10, 13, 16, 30],
+                                           anchor_mask=[0, 1],
+                                           class_num=2,
+                                           ignore_thresh=0.7,
+                                           downsample_ratio=8,
+                                           use_label_smooth=True,
+                                           scale_x_y=1.)
         assert loss is not None
 
 

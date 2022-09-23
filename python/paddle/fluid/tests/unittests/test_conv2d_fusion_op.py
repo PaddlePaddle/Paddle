@@ -24,7 +24,9 @@ from test_conv2d_op import conv2d_forward_naive
 
 
 def create_test_padding_SAME_class(parent):
+
     class TestPaddingSAMECase(parent):
+
         def init_paddings(self):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
@@ -35,7 +37,9 @@ def create_test_padding_SAME_class(parent):
 
 
 def create_test_padding_VALID_class(parent):
+
     class TestPaddingVALIDCase(parent):
+
         def init_paddings(self):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
@@ -46,6 +50,7 @@ def create_test_padding_VALID_class(parent):
 
 
 class TestConv2DFusionOp(OpTest):
+
     def setUp(self):
         self.op_type = "conv2d_fusion"
         self.exhaustive_search = False
@@ -75,9 +80,11 @@ class TestConv2DFusionOp(OpTest):
         filter = np.random.random(self.filter_size).astype(self.dtype)
         bias = np.random.random(self.filter_size[0]).astype(self.dtype)
 
-        self.output, _, _, _, _ = conv2d_forward_naive(
-            input, filter, self.groups, conv2d_param, self.padding_algorithm,
-            self.data_format)
+        self.output, _, _, _, _ = conv2d_forward_naive(input, filter,
+                                                       self.groups,
+                                                       conv2d_param,
+                                                       self.padding_algorithm,
+                                                       self.data_format)
 
         self.output = self.output.astype(self.dtype)
 
@@ -158,27 +165,32 @@ class TestConv2DFusionOp(OpTest):
 
 
 class TestWithoutResidual(TestConv2DFusionOp):
+
     def init_residual(self):
         self.add_residual_data = False
 
 
 class TestIdentityActivation(TestConv2DFusionOp):
+
     def init_activation(self):
         self.activation = 'identity'
 
 
-class TestIdentityActivation(TestConv2DFusionOp):
+class TestIdentityActivation1(TestConv2DFusionOp):
+
     def init_activation(self):
         self.activation = 'identity'
         self.add_residual_data = False
 
 
 class TestWithGroup(TestConv2DFusionOp):
+
     def init_group(self):
         self.groups = 3
 
 
 class TestWithDilation(TestConv2DFusionOp):
+
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -195,11 +207,13 @@ class TestWithDilation(TestConv2DFusionOp):
 
 
 class TestCUDNNExhaustiveSearch(TestConv2DFusionOp):
+
     def set_search_method(self):
         self.exhaustive_search = True
 
 
 class TestMultipleOutputs(TestConv2DFusionOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -216,12 +230,14 @@ class TestMultipleOutputs(TestConv2DFusionOp):
 
 
 class TestAsyPadding(TestConv2DFusionOp):
+
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
 class TestWithPad_AsyPadding(TestConv2DFusionOp):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 10, 10]  # NCHW
@@ -235,6 +251,7 @@ class TestWithPad_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithStride_AsyPadding(TestConv2DFusionOp):
+
     def init_test_case(self):
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
@@ -248,6 +265,7 @@ class TestWithStride_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWith1x1_AsyPadding(TestConv2DFusionOp):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -264,11 +282,13 @@ class TestWith1x1_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithGroup_AsyPadding(TestConv2DFusionOp):
+
     def init_group(self):
         self.groups = 3
 
 
 class TestWithDepthWise3x3_AsyPadding(TestConv2DFusionOp):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [3, 4, 10, 10]  # NCHW
@@ -288,6 +308,7 @@ class TestWithDepthWise3x3_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithDepthWise5x5_AsyPadding(TestConv2DFusionOp):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 4, 10, 10]  # NCHW
@@ -304,6 +325,7 @@ class TestWithDepthWise5x5_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithDepthWise7x7_AsyPadding(TestConv2DFusionOp):
+
     def init_test_case(self):
         self.stride = [2, 2]
         self.input_size = [2, 8, 10, 10]  # NCHW
@@ -320,6 +342,7 @@ class TestWithDepthWise7x7_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithDilation_AsyPadding(TestConv2DFusionOp):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 10, 10]  # NCHW
@@ -339,6 +362,7 @@ class TestWithDilation_AsyPadding(TestConv2DFusionOp):
 
 
 class TestWithInput1x1Filter1x1_AsyPadding(TestConv2DFusionOp):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 1, 1]  # NCHW

@@ -12,5 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .fs import LocalFS, HDFSClient
-from .ps_util import DistributedInfer
+from .fs import LocalFS  # noqa: F401
+from .fs import HDFSClient  # noqa: F401
+from .ps_util import DistributedInfer  # noqa: F401
+import paddle.utils.deprecated as deprecated
+from paddle.distributed import fleet
+
+import paddle
+from . import log_util  # noqa: F401
+from . import hybrid_parallel_util  # noqa: F401
+
+__all__ = [  #noqa
+    "LocalFS", "recompute", "DistributedInfer", "HDFSClient"
+]
+
+
+@deprecated(since="2.4.0",
+            update_to="paddle.distributed.fleet.recompute",
+            level=1,
+            reason="Please use new recompute API(fleet.recompute) ")
+def recompute(function, *args, **kwargs):
+    return fleet.recompute.recompute(function, *args, **kwargs)

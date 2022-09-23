@@ -14,6 +14,7 @@
 import os
 from ..layers import collective
 from ..framework import Parameter
+
 __parallel_ctx__clz__ = None
 
 
@@ -28,11 +29,11 @@ def _is_parallel_ctx_initialized():
     return __parallel_ctx__clz__ is not None
 
 
-def _set_parallel_ctx(nccl_parallel_context):
+def _set_parallel_ctx(ccl_parallel_context):
     global __parallel_ctx__clz__
     assert __parallel_ctx__clz__ is None, \
         "ParallelContext can only be initialized once."
-    __parallel_ctx__clz__ = nccl_parallel_context
+    __parallel_ctx__clz__ = ccl_parallel_context
 
 
 def _init_parallel_ctx():

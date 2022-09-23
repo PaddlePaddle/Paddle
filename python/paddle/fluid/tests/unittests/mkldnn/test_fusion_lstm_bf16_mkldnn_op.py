@@ -26,13 +26,16 @@ from paddle.fluid.tests.unittests.test_fusion_gru_op import fusion_gru
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestFusionLSTMBF16ONEDNNOp(OpTest):
+
     def set_confs(self):
-        self.mkldnn_data_type = False
+        pass
 
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
+            self.check_output(check_dygraph=False,
+                              no_check_set=["Cell"],
+                              atol=2e-2)
 
     def setUp(self):
         self.op_type = 'fusion_lstm'
@@ -47,6 +50,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
         self.use_mkldnn = True
+        self.mkldnn_data_type = "bfloat16"
         self.force_fp32_output = False
         self.weights_dtype = 'fp32'
         self.set_confs()
@@ -129,26 +133,31 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
             'force_fp32_output': self.force_fp32_output,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
+            'mkldnn_data_type': self.mkldnn_data_type,
         }
 
 
 class TestFusionLSTMBF16ONEDNNPeepholesOp(TestFusionLSTMBF16ONEDNNOp):
+
     def set_confs(self):
         self.use_peepholes = True
 
 
 class TestFusionLSTMBF16ONEDNNInitializedStateOp(TestFusionLSTMBF16ONEDNNOp):
+
     def set_confs(self):
         self.has_initial_state = True
 
 
 class TestFusionLSTMBF16ONEDNNReverseOp(TestFusionLSTMBF16ONEDNNOp):
+
     def set_confs(self):
         self.is_reverse = True
 
 
 class TestFusionLSTMBF16ONEDNNBF16WeightsOp(TestFusionLSTMBF16ONEDNNOp):
+
     def set_confs(self):
         self.weights_dtype = 'bf16'
 

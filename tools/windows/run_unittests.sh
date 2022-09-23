@@ -12,11 +12,247 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# /*================Fixed Disabled Windows CUDA10.x MKL(PR-CI-Windows) unittests===========================*/
+# TODO: fix these unittest that is bound to fail
+disable_wingpu_test="^test_model$|\
+^test_dataloader_early_reset$|\
+^test_add_reader_dependency$|\
+^test_add_reader_dependency_for_interpretercore$|\
+^test_decoupled_py_reader$|\
+^test_generator_dataloader$|\
+^test_parallel_dygraph_sync_batch_norm$|\
+^test_py_reader_using_executor$|\
+^test_parallel_executor_seresnext_base_gpu$|\
+^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
+^test_parallel_executor_seresnext_with_reduce_gpu$|\
+^test_program_prune_backward$|\
+^test_decoupled_py_reader_data_check$|\
+^test_fleet_base_single$|\
+^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
+^test_parallel_executor_feed_persistable_var$|\
+^test_parallel_executor_inference_feed_partial_data$|\
+^test_parallel_ssa_graph_inference_feed_partial_data$|\
+^test_py_reader_combination$|\
+^test_py_reader_pin_memory$|\
+^test_py_reader_push_pop$|\
+^test_reader_reset$|\
+^test_imperative_se_resnext$|\
+^test_sync_batch_norm_op$|\
+^test_imperative_static_runner_while$|\
+^test_dataloader_keep_order$|\
+^test_dataloader_unkeep_order$|\
+^test_multiprocess_dataloader_iterable_dataset_static$|\
+^test_fuse_bn_act_pass$|\
+^test_fuse_bn_add_act_pass$|\
+^test_gather_op$|\
+^test_activation_op$|\
+^test_norm_nn_grad$|\
+^test_bilinear_interp_op$|\
+^disable_wingpu_test$"
+
+# /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
+# TODO: fix these unittest that is bound to fail
+disable_win_trt_test="^test_trt_convert_conv2d$|\
+^test_trt_convert_conv2d_fusion$|\
+^test_trt_convert_conv2d_transpose$|\
+^test_trt_convert_depthwise_conv2d$|\
+^test_trt_convert_emb_eltwise_layernorm$|\
+^test_trt_convert_pool2d$|\
+^test_trt_conv3d_op$|\
+^test_trt_subgraph_pass$|\
+^test_trt_convert_dropout$|\
+^test_trt_convert_hard_sigmoid$|\
+^test_trt_convert_reduce_mean$|\
+^test_trt_convert_reduce_sum$|\
+^test_trt_convert_group_norm$|\
+^test_trt_convert_batch_norm$|\
+^test_trt_convert_activation$|\
+^test_trt_convert_depthwise_conv2d_transpose$|\
+^test_trt_convert_elementwise$|\
+^test_trt_convert_matmul$|\
+^test_trt_convert_scale$"
+
+# /*==========Fixed Disabled Windows CUDA11.x inference_api_test(PR-CI-Windows-Inference) unittests=============*/
+disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
+^test_trt_dynamic_shape_ernie$|\
+^test_trt_dynamic_shape_ernie_fp16_ser_deser$|\
+^lite_resnet50_test$|\
+^test_trt_dynamic_shape_transformer_prune$|\
+^lite_mul_model_test$|\
+^trt_split_converter_test$|\
+^paddle_infer_api_copy_tensor_tester$|\
+^test_trt_deformable_conv$|\
+^test_imperative_triple_grad$|\
+^test_full_name_usage$|\
+^test_trt_convert_unary$|\
+^test_eigh_op$|\
+^test_fc_op$|\
+^test_stack_op$|\
+^trt_split_converter_test$|\
+^paddle_infer_api_copy_tensor_tester$|\
+^test_var_base$|\
+^test_einsum_v2$|\
+^test_tensor_scalar_type_promotion_static$|\
+^test_matrix_power_op$|\
+^test_deformable_conv_v1_op$|\
+^test_where_index$|\
+^test_custom_grad_input$|\
+^test_conv3d_transpose_op$|\
+^test_conv_elementwise_add_act_fuse_pass$|\
+^test_conv_eltwiseadd_bn_fuse_pass$|\
+^test_custom_relu_op_setup$|\
+^test_conv3d_transpose_part2_op$|\
+^test_deform_conv2d$|\
+^test_matmul_op$|\
+^test_basic_api_transformation$|\
+^test_deformable_conv_op$|\
+^test_variable$|\
+^test_mkldnn_conv_hard_sigmoid_fuse_pass$|\
+^test_mkldnn_conv_hard_swish_fuse_pass$|\
+^test_conv_act_mkldnn_fuse_pass$|\
+^test_matmul_scale_fuse_pass$|\
+^test_addmm_op$|\
+^test_inverse_op$|\
+^test_set_value_op$|\
+^test_fused_multihead_matmul_op$|\
+^test_cudnn_bn_add_relu$|\
+^test_cond$|\
+^test_conv_bn_fuse_pass$|\
+^test_graph_khop_sampler$|\
+^test_gru_rnn_op$|\
+^test_masked_select_op$|\
+^test_ir_fc_fuse_pass$|\
+^test_fc_elementwise_layernorm_fuse_pass$|\
+^test_linalg_pinv_op$|\
+^test_math_op_patch_var_base$|\
+^test_slice$|\
+^test_conv_elementwise_add_fuse_pass$|\
+^test_executor_and_mul$|\
+^test_analyzer_int8_resnet50$|\
+^test_analyzer_int8_mobilenetv1$|\
+^test_trt_conv_pass$|\
+^test_roll_op$|\
+^test_lcm$|\
+^test_elementwise_floordiv_op$|\
+^test_autograd_functional_dynamic$|\
+^test_corr$|\
+^test_trt_convert_deformable_conv$|\
+^test_conv_elementwise_add2_act_fuse_pass$|\
+^test_tensor_scalar_type_promotion_dynamic$|\
+^test_model$|\
+^test_py_reader_combination$|\
+^test_trt_convert_flatten$|\
+^test_py_reader_push_pop$|\
+^test_parallel_executor_feed_persistable_var$|\
+^test_parallel_executor_inference_feed_partial_data$|\
+^test_parallel_ssa_graph_inference_feed_partial_data$|\
+^test_reader_reset$|\
+^test_parallel_executor_seresnext_base_gpu$|\
+^test_py_reader_pin_memory$|\
+^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
+^test_multiprocess_dataloader_iterable_dataset_static$|\
+^test_add_reader_dependency$|\
+^test_add_reader_dependency_for_interpretercore$|\
+^test_compat$|\
+^test_decoupled_py_reader$|\
+^test_generator_dataloader$|\
+^test_py_reader_using_executor$|\
+^test_imperative_static_runner_while$|\
+^test_dataloader_keep_order$|\
+^test_dataloader_unkeep_order$|\
+^test_sync_batch_norm_op$|\
+^test_fuse_bn_act_pass$|\
+^test_fuse_bn_add_act_pass$|\
+^test_decoupled_py_reader_data_check$|\
+^test_parallel_dygraph_sync_batch_norm$|\
+^test_dataloader_early_reset$|\
+^test_fleet_base_single$|\
+^test_sequence_pool$|\
+^test_simplify_with_basic_ops_pass_autoscan$|\
+^test_trt_activation_pass$|\
+^test_trt_convert_hard_swish$|\
+^test_trt_convert_leaky_relu$|\
+^test_trt_convert_multihead_matmul$|\
+^test_trt_convert_prelu$|\
+^test_trt_fc_fuse_quant_dequant_pass$|\
+^test_unsqueeze2_eltwise_fuse_pass$|\
+^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
+^test_parallel_executor_seresnext_with_reduce_gpu$|\
+^test_api_impl$|\
+^test_tensordot$|\
+^disable_win_inference_test$"
+
+
+# /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
+# TODO: fix these unittest that is bound to fail
+disable_wincpu_test="^jit_kernel_test$|\
+^test_analyzer_transformer$|\
+^test_vision_models$|\
+^test_dygraph_multi_forward$|\
+^test_imperative_transformer_sorted_gradient$|\
+^test_program_prune_backward$|\
+^test_imperative_resnet$|\
+^test_imperative_resnet_sorted_gradient$|\
+^test_imperative_se_resnext$|\
+^test_imperative_static_runner_mnist$|\
+^test_bmn$|\
+^test_mobile_net$|\
+^test_resnet_v2$|\
+^test_build_strategy$|\
+^test_se_resnet$|\
+^disable_wincpu_test$"
+
+# these unittest that cost long time, diabled temporarily, Maybe moved to the night
+long_time_test="^test_gru_op$|\
+^decorator_test$|\
+^test_dataset_imdb$|\
+^test_datasets$|\
+^test_pretrained_model$|\
+^test_gather_op$|\
+^test_gather_nd_op$|\
+^test_sequence_conv$|\
+^test_space_to_depth_op$|\
+^test_activation_nn_grad$|\
+^test_activation_op$|\
+^test_bicubic_interp_v2_op$|\
+^test_bilinear_interp_v2_op$|\
+^test_crop_tensor_op$|\
+^test_cross_entropy2_op$|\
+^test_cross_op$|\
+^test_elementwise_nn_grad$|\
+^test_fused_elemwise_activation_op$|\
+^test_imperative_lod_tensor_to_selected_rows$|\
+^test_imperative_selected_rows_to_lod_tensor$|\
+^test_layer_norm_op$|\
+^test_multiclass_nms_op$|\
+^test_nearest_interp_v2_op$|\
+^test_nn_grad$|\
+^test_norm_nn_grad$|\
+^test_normal$|\
+^test_pool3d_op$|\
+^test_static_save_load$|\
+^test_trilinear_interp_op$|\
+^test_trilinear_interp_v2_op$|\
+^test_bilinear_interp_op$|\
+^test_nearest_interp_op$|\
+^test_sequence_conv$|\
+^test_sgd_op$|\
+^test_transformer$|\
+^test_imperative_auto_mixed_precision$|\
+^test_trt_matmul_quant_dequant$|\
+^test_strided_slice_op$"
+
+
+# /*============================================================================*/
+
 set -e
 set +x
 NIGHTLY_MODE=$1
 PRECISION_TEST=$2
+WITH_GPU=$3
 
+# Step1: Print disable_ut_quickly
 export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
     nightly_label=""
@@ -36,216 +272,39 @@ else
     disable_ut_quickly=''
 fi
 
-# /*==================Fixed Disabled Windows unittests==============================*/
-# TODO: fix these unittest that is bound to fail
-diable_wingpu_test="^lite_mul_model_test$|\
-^test_analyzer_int8_resnet50$|\
-^test_gradient_clip$|\
-^test_translated_layer$|\
-^test_imperative_resnet$|\
-^test_imperative_resnet_sorted_gradient$|\
-^test_model$|\
-^test_decoupled_py_reader$|\
-^test_generator_dataloader$|\
-^test_multiprocess_dataloader_iterable_dataset_static$|\
-^test_py_reader_using_executor$|\
-^test_parallel_executor_feed_persistable_var$|\
-^test_parallel_executor_fetch_isolated_var$|\
-^test_parallel_executor_inference_feed_partial_data$|\
-^test_parallel_executor_seresnext_base_gpu$|\
-^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
-^test_parallel_executor_seresnext_with_reduce_gpu$|\
-^test_parallel_ssa_graph_inference_feed_partial_data$|\
-^test_sync_batch_norm_op$|\
-^test_fuse_relu_depthwise_conv_pass$|\
-^test_buffer_shared_memory_reuse_pass$|\
-^test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass$|\
-^test_dataloader_keep_order$|\
-^test_dataloader_unkeep_order$|\
-^test_add_reader_dependency$|\
-^test_cholesky_op$|\
-^test_dataloader_early_reset$|\
-^test_decoupled_py_reader_data_check$|\
-^test_fleet_base_single$|\
-^test_fuse_optimizer_pass$|\
-^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
-^test_parallel_dygraph_sync_batch_norm$|\
-^test_partial_eager_deletion_transformer$|\
-^test_rnn_nets$|\
-^test_py_reader_combination$|\
-^test_py_reader_pin_memory$|\
-^test_py_reader_push_pop$|\
-^test_reader_reset$|\
-^test_imperative_se_resnext$|\
-^test_imperative_static_runner_while$|\
-^test_fuse_bn_act_pass$|\
-^test_fuse_bn_add_act_pass$|\
-^test_gru_rnn_op$|\
-^test_rnn_op$|\
-^test_simple_rnn_op$|\
-^test_lstm_cudnn_op$|\
-^test_crypto$|\
-^test_program_prune_backward$|\
-^test_imperative_ocr_attention_model$|\
-^test_sentiment$|\
-^test_imperative_basic$|\
-^test_jit_save_load$|\
-^test_imperative_mnist$|\
-^test_imperative_mnist_sorted_gradient$|\
-^test_imperative_static_runner_mnist$|\
-^test_fuse_all_reduce_pass$|\
-^test_bert$|\
-^test_lac$|\
-^test_mnist$|\
-^test_mobile_net$|\
-^test_ptb_lm$|\
-^test_ptb_lm_v2$|\
-^test_se_resnet$|\
-^test_imperative_qat_channelwise$|\
-^test_imperative_qat$|\
-^test_imperative_out_scale$|\
-^diable_wingpu_test$"
-# /*============================================================================*/
-
-# these unittest that cost long time, diabled temporarily, Maybe moved to the night
-long_time_test="^best_fit_allocator_test$|\
-^test_image_classification$|\
-^decorator_test$|\
-^test_dataset_cifar$|\
-^test_dataset_imdb$|\
-^test_dataset_movielens$|\
-^test_datasets$|\
-^test_pretrained_model$|\
-^test_concat_op$|\
-^test_elementwise_add_op$|\
-^test_elementwise_sub_op$|\
-^test_gather_op$|\
-^test_gather_nd_op$|\
-^test_sequence_concat$|\
-^test_sequence_conv$|\
-^test_sequence_pool$|\
-^test_sequence_slice_op$|\
-^test_space_to_depth_op$|\
-^test_activation_nn_grad$|\
-^test_activation_op$|\
-^test_auto_growth_gpu_memory_limit$|\
-^test_bicubic_interp_op$|\
-^test_bicubic_interp_v2_op$|\
-^test_bilinear_interp_v2_op$|\
-^test_conv2d_op$|\
-^test_conv3d_op$|
-^test_conv3d_transpose_part2_op$|\
-^test_conv_nn_grad$|\
-^test_crop_tensor_op$|\
-^test_cross_entropy2_op$|\
-^test_cross_op$|\
-^test_deformable_conv_v1_op$|\
-^test_dropout_op$|\
-^test_dygraph_multi_forward$|\
-^test_elementwise_div_op$|\
-^test_elementwise_nn_grad$|\
-^test_empty_op$|\
-^test_fused_elemwise_activation_op$|\
-^test_group_norm_op$|\
-^test_gru_op$|\
-^test_gru_unit_op$|\
-^test_imperative_lod_tensor_to_selected_rows$|\
-^test_imperative_optimizer$|\
-^test_imperative_ptb_rnn$|\
-^test_imperative_save_load$|\
-^test_imperative_selected_rows_to_lod_tensor$|\
-^test_imperative_star_gan_with_gradient_penalty$|\
-^test_imperative_transformer_sorted_gradient$|\
-^test_layer_norm_op$|\
-^test_masked_select_op$|\
-^test_multiclass_nms_op$|\
-^test_naive_best_fit_gpu_memory_limit$|\
-^test_nearest_interp_v2_op$|\
-^test_nn_grad$|\
-^test_norm_nn_grad$|\
-^test_normal$|\
-^test_pool3d_op$|\
-^test_pool2d_op$|\
-^test_prroi_pool_op$|\
-^test_regularizer$|\
-^test_regularizer_api$|\
-^test_softmax_with_cross_entropy_op$|\
-^test_static_save_load$|\
-^test_trilinear_interp_op$|\
-^test_trilinear_interp_v2_op$|\
-^test_bilinear_interp_op$|\
-^test_nearest_interp_op$|\
-^test_sequence_conv$|\
-^test_sgd_op$|\
-^test_transformer$|\
-^test_beam_search_decoder$|\
-^test_argsort_op$|\
-^test_eager_deletion_gru_net$|\
-^test_lstmp_op$|\
-^test_label_semantic_roles$|\
-^test_machine_translation$|\
-^test_row_conv_op$|\
-^test_deformable_conv_op$|\
-^test_inplace_softmax_with_cross_entropy$|\
-^test_conv2d_transpose_op$|\
-^test_conv3d_transpose_op$|\
-^test_cyclic_cifar_dataset$|\
-^test_deformable_psroi_pooling$|\
-^test_elementwise_mul_op$|\
-^test_imperative_auto_mixed_precision$|\
-^test_imperative_optimizer_v2$|\
-^test_imperative_ptb_rnn_sorted_gradient$|\
-^test_imperative_save_load_v2$|\
-^test_nan_inf$|\
-^test_norm_op$|\
-^test_reduce_op$|\
-^test_sigmoid_cross_entropy_with_logits_op$|\
-^test_stack_op$|\
-^test_strided_slice_op$|\
-^test_transpose_op$"
-
-export FLAGS_call_stack_level=2
-export FLAGS_fraction_of_gpu_memory_to_use=0.92
-export CUDA_VISIBLE_DEVICES=0
-
-UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
-num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
-echo "Windows 1 card TestCases count is $num"
-if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
-    python ${PADDLE_ROOT}/tools/get_pr_ut.py
-    if [[ -f "ut_list" ]]; then
-        set +x
-        echo "PREC length: "`wc -l ut_list`
-        precision_cases=`cat ut_list`
-        set -x
+# Step2: Check added ut
+set +e
+cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
+bash $PADDLE_ROOT/tools/check_added_ut_win.sh
+rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
+if [ -f "$PADDLE_ROOT/added_ut" ];then
+    added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+    ctest -R "(${added_uts})" -E "${disable_win_inference_test}" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+    rm -f $PADDLE_ROOT/added_ut
+    if [ "$added_ut_error" != 0 ];then
+        echo "========================================"
+        echo "Added UT should pass three additional executions"
+        echo "========================================"
+        exit 8;
     fi
 fi
 
-if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
-    UT_list_prec=''
-    re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
-    for case in $UT_list; do
-        flag=$(echo $case|grep -oE $re)
-        if [ -n "$flag" ];then
-            if [ -z "$UT_list_prec" ];then
-                UT_list_prec=$case
-            else
-                UT_list_prec=$UT_list_prec'\n'$case
-            fi
-        else
-            echo $case "won't run in PRECISION_TEST mode."
-        fi
-    done
-    UT_list=$UT_list_prec
+
+# Step3: Get precision UT and intersect with parallel UT, generate tools/*_new file
+set -e
+if [ ${WITH_GPU:-OFF} == "ON" ];then
+    export CUDA_VISIBLE_DEVICES=0
+
+    ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
+    num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
+    echo "Windows 1 card TestCases count is $num"
+    if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+        python ${PADDLE_ROOT}/tools/get_pr_ut.py || echo "Failed to obtain ut_list !"
+    fi
+    
+    python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
+    
 fi
-
-output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
-eight_parallel_job=$(echo $output | cut -d ";" -f 1)
-tetrad_parallel_jog=$(echo $output | cut -d ";" -f 2)
-non_parallel_job=$(echo $output | cut -d ";" -f 3)
-
-non_parallel_job_1=$(echo $non_parallel_job | cut -d "," -f 1)
-non_parallel_job_2=$(echo $non_parallel_job | cut -d "," -f 2)
 
 failed_test_lists=''
 tmp_dir=`mktemp -d`
@@ -265,30 +324,47 @@ function collect_failed_tests() {
     set -e
 }
 
-function run_unittest() {
+function run_unittest_cpu() {
+    tmpfile=$tmp_dir/$RANDOM
+    (ctest -E "$disable_ut_quickly|$disable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
+    wait;
+}
+
+function run_unittest_gpu() {
     test_case=$1
     parallel_job=$2
+    parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
     if [ "$2" == "" ]; then
-        parallel_job=1
+        parallel_job=$parallel_level_base
     else
-        parallel_job=$2
+        # set parallel_job according to CUDA memory and suggested parallel num,
+        # the latter is derived in linux server with 16G CUDA memory.
+        cuda_memory=$(nvidia-smi --query-gpu=memory.total --format=csv | tail -1 | awk -F ' ' '{print $1}')
+        parallel_job=$(($2 * $cuda_memory / 16000))
+        if [ $parallel_job -lt 1 ]; then
+            parallel_job=1
+        fi
     fi
     echo "************************************************************************"
     echo "********These unittests run $parallel_job job each time with 1 GPU**********"
     echo "************************************************************************"
     export CUDA_VISIBLE_DEVICES=0
+
+    if nvcc --version | grep 11.2; then
+        disable_wingpu_test=${disable_win_inference_test}
+    fi
+
     tmpfile=$tmp_dir/$RANDOM
-    (ctest -R "$test_case" -E "$disable_ut_quickly|$diable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
+    (ctest -R "$test_case" -E "$disable_ut_quickly|$disable_wingpu_test|$disable_win_trt_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
     wait;
 }
 
 function unittests_retry(){
-    parallel_job=1
     is_retry_execuate=0
     wintest_error=1
     retry_time=3
     exec_times=0
-    exec_retry_threshold=10
+    exec_retry_threshold=30
     retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
     need_retry_ut_counts=$(echo "$retry_unittests" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
     retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
@@ -303,6 +379,12 @@ function unittests_retry(){
                         cur_order='first'
                     elif ( [[ "$exec_times" == "1" ]] );then
                         cur_order='second'
+                        if [[ "$failed_test_lists" == "" ]]; then
+                            break
+                        else
+                            retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                            retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+                        fi
                     elif ( [[ "$exec_times" == "2" ]] );then
                         cur_order='third'
                     fi
@@ -314,13 +396,13 @@ function unittests_retry(){
                     echo "========================================="
                     rm -f $tmp_dir/*
                     failed_test_lists=''
-                    (ctest -R "($retry_unittests_regular)" --output-on-failure -C Release -j $parallel_job| tee $tmpfile ) &
+                    (ctest -R "($retry_unittests_regular)" --output-on-failure -C Release -j 1 | tee $tmpfile ) &
                     wait;
                     collect_failed_tests
                     exec_times=$(echo $exec_times | awk '{print $0+1}')
                 done
     else
-        # There are more than 10 failed unit tests, so no unit test retry
+        # There are more than 30 failed unit tests, so no unit test retry
         is_retry_execuate=1
     fi
     rm -f $tmp_dir/*
@@ -328,9 +410,9 @@ function unittests_retry(){
 
 function show_ut_retry_result() {
     if [[ "$is_retry_execuate" != "0" ]];then
-        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        failed_test_lists_ult=`echo "${failed_test_lists}"`
         echo "========================================="
-        echo "There are more than 10 failed unit tests, so no unit test retry!!!"
+        echo "There are more than 30 failed unit tests, so no unit test retry!!!"
         echo "========================================="
         echo "${failed_test_lists_ult}"
         exit 8;
@@ -341,7 +423,7 @@ function show_ut_retry_result() {
             echo "========================================"
             echo "There are failed tests, which have been successful after re-run:"
             echo "========================================"
-            echo "The following tests have been re-ran:"
+            echo "The following tests have been re-run:"
             echo "${retry_unittests_record}"
         else
             failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"|"$1}} END{print all_str}')
@@ -356,11 +438,93 @@ function show_ut_retry_result() {
     fi
 }
 
+# Step4: Run UT gpu or cpu
 set +e
-run_unittest $eight_parallel_job 8
-run_unittest $tetrad_parallel_jog 4
-run_unittest $non_parallel_job_1
-run_unittest $non_parallel_job_2
+export FLAGS_call_stack_level=2
+if [ "${WITH_GPU:-OFF}" == "ON" ];then
+
+    single_ut_mem_0_startTime_s=`date +%s`
+    while read line
+    do
+        run_unittest_gpu "$line" 16
+    done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
+    single_ut_mem_0_endTime_s=`date +%s`
+    single_ut_mem_0_Time_s=`expr $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s`
+    echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $single_ut_mem_0_Time_s s" 
+
+    single_ut_startTime_s=`date +%s`
+    while read line
+    do
+        num=`echo $line | awk -F"$" '{print NF-1}'`
+        para_num=`expr $num / 3`
+        if [ $para_num -eq 0 ]; then
+            para_num=4
+        fi
+        run_unittest_gpu "$line" $para_num
+    done < $PADDLE_ROOT/tools/single_card_tests_new
+    single_ut_endTime_s=`date +%s`
+    single_ut_Time_s=`expr $single_ut_endTime_s - $single_ut_startTime_s`
+    echo "ipipe_log_param_1_TestCases_Total_Time: $single_ut_Time_s s" 
+
+    multiple_ut_mem_0_startTime_s=`date +%s`
+    while read line
+    do
+        run_unittest_gpu "$line" 10
+    done < $PADDLE_ROOT/tools/multiple_card_tests_mem0_new
+    multiple_ut_mem_0_endTime_s=`date +%s`
+    multiple_ut_mem_0_Time_s=`expr $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s`
+    echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $multiple_ut_mem_0_Time_s s" 
+    
+    multiple_ut_startTime_s=`date +%s`
+    while read line
+    do
+        num=`echo $line | awk -F"$" '{print NF-1}'`
+        para_num=`expr $num / 3`
+        if [ $para_num -eq 0 ]; then
+            para_num=4
+        fi
+        run_unittest_gpu "$line" $para_num
+
+    done < $PADDLE_ROOT/tools/multiple_card_tests_new
+    multiple_ut_endTime_s=`date +%s`
+    multiple_ut_Time_s=`expr $multiple_ut_endTime_s - $multiple_ut_startTime_s`
+    echo "ipipe_log_param_2_TestCases_Total_Time: $multiple_ut_Time_s s"
+
+
+    exclusive_ut_mem_0_startTime_s=`date +%s`
+    while read line
+    do
+        run_unittest_gpu "$line" 10
+    done < $PADDLE_ROOT/tools/exclusive_card_tests_mem0_new
+    exclusive_ut_mem_0_endTime_s=`date +%s`
+    exclusive_ut_mem_0_Time_s=`expr $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s`
+    echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $exclusive_ut_mem_0_Time_s s" 
+
+    exclusive_ut_startTime_s=`date +%s`
+    while read line
+    do
+        num=`echo $line | awk -F"$" '{print NF-1}'`
+        para_num=`expr $num / 3`
+        if [ $para_num -eq 0 ]; then
+            para_num=4
+        fi
+        run_unittest_gpu "$line" $para_num
+    done < $PADDLE_ROOT/tools/exclusive_card_tests_new
+    exclusive_ut_endTime_s=`date +%s`
+    exclusive_ut_Time_s=`expr $exclusive_ut_endTime_s - $exclusive_ut_startTime_s`
+    echo "ipipe_log_param_-1_TestCases_Total_Time: $exclusive_ut_Time_s s"
+
+    noparallel_ut_startTime_s=`date +%s`
+    while read line
+    do
+        run_unittest_gpu "$line" 3
+    done < $PADDLE_ROOT/tools/no_parallel_case_file
+    noparallel_ut_endTime_s=`date +%s`
+    noparallel_ut_Time_s=`expr $noparallel_ut_endTime_s - $noparallel_ut_startTime_s`
+    echo "ipipe_log_param_noparallel_TestCases_Total_Time: $noparallel_ut_Time_s s"
+else
+    run_unittest_cpu
+fi
 collect_failed_tests
 set -e
 rm -f $tmp_dir/*

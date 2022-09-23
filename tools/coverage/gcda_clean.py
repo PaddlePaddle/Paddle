@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,7 @@
 
 import os
 import sys
+import time
 
 from github import Github
 
@@ -33,7 +34,18 @@ def get_pull(pull_id):
     """
     token = os.getenv('GITHUB_API_TOKEN')
     github = Github(token, timeout=60)
-    repo = github.get_repo('PaddlePaddle/Paddle')
+    idx = 1
+    while idx < 4:
+        try:
+            repo = github.get_repo('PaddlePaddle/Paddle')
+        except Exception as e:
+            print(e)
+            print("get_repo error, retry {} times after {} secs.".format(
+                idx, idx * 10))
+        else:
+            break
+        idx += 1
+        time.sleep(idx * 10)
     pull = repo.get_pull(pull_id)
 
     return pull
@@ -75,12 +87,15 @@ def clean(pull_id):
 
                 # convert paddle/fluid/imperative/CMakeFiles/layer.dir/layer.cc.gcda
                 # to paddle/fluid/imperative/layer.cc.gcda
-
-                if trimmed.endswith('.dir'):
-                    trimmed = os.path.dirname(trimmed)
-
-                if trimmed.endswith('CMakeFiles'):
-                    trimmed = os.path.dirname(trimmed)
+                # modifed to make it more robust
+                # covert /paddle/build/paddle/phi/backends/CMakeFiles/phi_backends.dir/gpu/cuda/cuda_info.cc.gcda
+                # to /paddle/build/paddle/phi/backends/gpu/cuda/cuda_info.cc.gcda
+                trimmed_tmp = []
+                for p in trimmed.split('/'):
+                    if p.endswith('.dir') or p.endswith('CMakeFiles'):
+                        continue
+                    trimmed_tmp.append(p)
+                trimmed = '/'.join(trimmed_tmp)
 
                 # remove no changed gcda
 

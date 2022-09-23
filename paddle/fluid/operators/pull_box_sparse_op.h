@@ -15,8 +15,12 @@
 #pragma once
 #include <memory>
 #include <vector>
+#ifdef PADDLE_WITH_BOX_PS
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
+#endif
+#ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#endif
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 
@@ -44,15 +48,14 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 #ifdef PADDLE_WITH_BOX_PS
   auto hidden_size = ctx.Attr<int>("size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
-  box_ptr->PullSparse(ctx.GetPlace(), all_keys, all_values, slot_lengths,
-                      hidden_size, 0);
+  box_ptr->PullSparse(
+      ctx.GetPlace(), all_keys, all_values, slot_lengths, hidden_size, 0);
 #endif
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
   auto hidden_size = ctx.Attr<int>("size");
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PullSparse(ctx.GetPlace(), 0, all_keys, all_values, slot_lengths,
-                         hidden_size);
+  gpu_ps_ptr->PullSparse(
+      ctx.GetPlace(), 0, all_keys, all_values, slot_lengths, hidden_size);
 #endif
 }
 
@@ -77,7 +80,8 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else {
-      PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
+      PADDLE_ENFORCE_EQ(batch_size,
+                        cur_batch_size,
                         platform::errors::PreconditionNotMet(
                             "The batch size of all input slots should be same, "
                             "please cheack"));
@@ -88,21 +92,30 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 #ifdef PADDLE_WITH_BOX_PS
   auto hidden_size = ctx.Attr<int>("size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
-  box_ptr->PushSparseGrad(ctx.GetPlace(), all_keys, all_grad_values,
-                          slot_lengths, hidden_size, 0, batch_size);
+  box_ptr->PushSparseGrad(ctx.GetPlace(),
+                          all_keys,
+                          all_grad_values,
+                          slot_lengths,
+                          hidden_size,
+                          0,
+                          batch_size);
 #endif
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
   auto hidden_size = ctx.Attr<int>("size");
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(), 0, all_keys, all_grad_values,
-                             slot_lengths, hidden_size, batch_size);
+  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(),
+                             0,
+                             all_keys,
+                             all_grad_values,
+                             slot_lengths,
+                             hidden_size,
+                             batch_size);
 #endif
 }
 
 using LoDTensor = framework::LoDTensor;
 template <typename T>
-class PullBoxSparseCPUKernel : public framework::OpKernel<T> {
+class PullBoxSparseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PullBoxSparseFunctor<T>(ctx);
@@ -110,11 +123,12 @@ class PullBoxSparseCPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class PushBoxSparseCPUKernel : public framework::OpKernel<T> {
+class PushBoxSparseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PushBoxSparseFunctor<T>(ctx);
   }
 };
+
 }  // namespace operators
 }  // namespace paddle

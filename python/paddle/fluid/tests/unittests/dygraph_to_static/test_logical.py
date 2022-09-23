@@ -18,7 +18,7 @@ from __future__ import print_function
 
 import unittest
 
-import gast
+from paddle.utils import gast
 import numpy as np
 
 import paddle
@@ -172,10 +172,11 @@ def test_shape_not_equal(x):
 
 
 class TestLogicalBase(unittest.TestCase):
+
     def setUp(self):
         self.input = np.array([3]).astype('int32')
-        self.place = paddle.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else paddle.CPUPlace()
+        self.place = paddle.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else paddle.CPUPlace()
         self._set_test_func()
 
     def _set_test_func(self):
@@ -196,69 +197,83 @@ class TestLogicalBase(unittest.TestCase):
 
 
 class TestLogicalNot(TestLogicalBase):
+
     def _set_test_func(self):
         self.dygraph_func = test_logical_not
 
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
-        self.assertTrue(
-            np.allclose(dygraph_res, static_res),
-            msg='dygraph result is {}\nstatic_result is {}'.format(dygraph_res,
-                                                                   static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic_result is {}'.format(
+                dygraph_res, static_res))
 
 
 class TestLogicalNot2(TestLogicalBase):
+
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_2
 
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
-        self.assertTrue(
-            np.allclose(dygraph_res, static_res),
-            msg='dygraph result is {}\nstatic_result is {}'.format(dygraph_res,
-                                                                   static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic_result is {}'.format(
+                dygraph_res, static_res))
 
 
 class TestLogicalAnd(TestLogicalNot):
+
     def _set_test_func(self):
         self.dygraph_func = test_logical_and
 
 
 class TestLogicalAnd2(TestLogicalNot):
+
     def _set_test_func(self):
         self.dygraph_func = test_logical_and_2
 
 
 class TestLogicalOr(TestLogicalNot):
+
     def _set_test_func(self):
         self.dygraph_func = test_logical_or
 
 
 class TestLogicalOr2(TestLogicalNot):
+
     def _set_test_func(self):
         self.dygraph_func = test_logical_or_2
 
 
 class TestLogicalNotAndOr(TestLogicalNot):
+
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_and_or
 
 
 class TestShapeEqual(TestLogicalNot):
+
     def _set_test_func(self):
         self.input = np.ones([1, 2, 3]).astype('float32')
         self.dygraph_func = test_shape_equal
 
 
 class TestShapeNotEqual(TestLogicalNot):
+
     def _set_test_func(self):
         self.input = np.ones([1, 2, 3]).astype('float32')
         self.dygraph_func = test_shape_not_equal
 
 
 class TestCmpopNodeToStr(unittest.TestCase):
+
     def test_exception(self):
         with self.assertRaises(KeyError):
             cmpop_node_to_str(gast.Or())

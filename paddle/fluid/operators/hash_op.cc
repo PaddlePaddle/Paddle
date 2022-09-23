@@ -26,9 +26,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -36,7 +33,8 @@ namespace operators {
 
 class HashOp : public framework::OperatorWithKernel {
  public:
-  HashOp(const std::string &type, const framework::VariableNameMap &inputs,
+  HashOp(const std::string &type,
+         const framework::VariableNameMap &inputs,
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -46,14 +44,15 @@ class HashOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Hash");
 
     auto dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(dims.size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "The input of hash_op's dimensions must be 2"));
     std::vector<int64_t> out_dims;
     int num_hash = ctx->Attrs().Get<int>("num_hash");
     HashOutputSize(dims, out_dims, num_hash);
 
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -64,7 +63,7 @@ class HashOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) Input tensor of hash operator.");
     AddOutput("Out", "(Tensor) Output tensor of hash operator.");
     AddComment(R"DOC(
-        Execute `num_hash` times xxHash algorithm on all elements on second dimension of input. 
+        Execute `num_hash` times xxHash algorithm on all elements on second dimension of input.
 )DOC");
     AddAttr<int>("num_hash", "").SetDefault(1);
     AddAttr<int64_t>("mod_by", "").SetDefault(100000);

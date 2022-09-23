@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -53,9 +55,12 @@ inline HOSTDEVICE T RoIArea(const T* box, bool pixel_offset = true) {
  * given proposal boxes and ground-truth boxes.
  */
 template <typename T>
-inline void BoxToDelta(const int box_num, const framework::Tensor& ex_boxes,
-                       const framework::Tensor& gt_boxes, const float* weights,
-                       const bool normalized, framework::Tensor* box_delta) {
+inline void BoxToDelta(const int box_num,
+                       const framework::Tensor& ex_boxes,
+                       const framework::Tensor& gt_boxes,
+                       const float* weights,
+                       const bool normalized,
+                       framework::Tensor* box_delta) {
   auto ex_boxes_et = framework::EigenTensor<T, 2>::From(ex_boxes);
   auto gt_boxes_et = framework::EigenTensor<T, 2>::From(gt_boxes);
   auto trg = framework::EigenTensor<T, 2>::From(*box_delta);
@@ -86,8 +91,8 @@ inline void BoxToDelta(const int box_num, const framework::Tensor& ex_boxes,
 }
 
 template <typename T>
-void Gather(const T* in, const int in_stride, const int* index, const int num,
-            T* out) {
+void Gather(
+    const T* in, const int in_stride, const int* index, const int num, T* out) {
   const int stride_bytes = in_stride * sizeof(T);
   for (int i = 0; i < num; ++i) {
     int id = index[i];
@@ -121,8 +126,9 @@ void BboxOverlaps(const framework::Tensor& r_boxes,
       inter_h = std::max(y_max - y_min + 1, zero);
       inter_area = inter_w * inter_h;
       overlaps_et(i, j) =
-          (inter_area == 0.) ? 0 : inter_area /
-                                       (r_box_area + c_box_area - inter_area);
+          (inter_area == 0.)
+              ? 0
+              : inter_area / (r_box_area + c_box_area - inter_area);
     }
   }
 }
@@ -142,22 +148,25 @@ void MaxIoU(const framework::Tensor& iou, framework::Tensor* max_iou) {
   }
 }
 
-static void AppendProposals(framework::Tensor* dst, int64_t offset,
+static void AppendProposals(framework::Tensor* dst,
+                            int64_t offset,
                             const framework::Tensor& src) {
-  auto* out_data = dst->data<void>();
-  auto* to_add_data = src.data<void>();
-  size_t size_of_t = framework::SizeOfType(src.type());
+  auto* out_data = dst->data();
+  auto* to_add_data = src.data();
+  size_t size_of_t = framework::DataTypeSize(src.dtype());
   offset *= size_of_t;
   std::memcpy(
       reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(out_data) + offset),
-      to_add_data, src.numel() * size_of_t);
+      to_add_data,
+      src.numel() * size_of_t);
 }
 
 template <class T>
 void ClipTiledBoxes(const platform::DeviceContext& ctx,
                     const framework::Tensor& im_info,
                     const framework::Tensor& input_boxes,
-                    framework::Tensor* out, bool is_scale = true,
+                    framework::Tensor* out,
+                    bool is_scale = true,
                     bool pixel_offset = true) {
   T* out_data = out->mutable_data<T>(ctx.GetPlace());
   const T* im_info_data = im_info.data<T>();
@@ -188,9 +197,12 @@ void ClipTiledBoxes(const platform::DeviceContext& ctx,
 // Filter the box with small area
 template <class T>
 void FilterBoxes(const platform::DeviceContext& ctx,
-                 const framework::Tensor* boxes, float min_size,
-                 const framework::Tensor& im_info, bool is_scale,
-                 framework::Tensor* keep, bool pixel_offset = true) {
+                 const framework::Tensor* boxes,
+                 float min_size,
+                 const framework::Tensor& im_info,
+                 bool is_scale,
+                 framework::Tensor* keep,
+                 bool pixel_offset = true) {
   const T* im_info_data = im_info.data<T>();
   const T* boxes_data = boxes->data<T>();
   keep->Resize({boxes->dims()[0]});
@@ -228,7 +240,8 @@ template <class T>
 static void BoxCoder(const platform::DeviceContext& ctx,
                      framework::Tensor* all_anchors,
                      framework::Tensor* bbox_deltas,
-                     framework::Tensor* variances, framework::Tensor* proposals,
+                     framework::Tensor* variances,
+                     framework::Tensor* proposals,
                      const bool pixel_offset = true) {
   T* proposals_data = proposals->mutable_data<T>(ctx.GetPlace());
 

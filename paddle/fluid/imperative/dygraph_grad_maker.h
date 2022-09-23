@@ -45,7 +45,8 @@ class TracedVarList : public std::vector<std::shared_ptr<T>> {
 class GradOpBaseMakerBase {
  public:
   explicit GradOpBaseMakerBase(
-      const std::string& type, const NameVarBaseMap& var_base_map_in,
+      const std::string& type,
+      const NameVarBaseMap& var_base_map_in,
       const NameVarBaseMap& var_base_map_out,
       const framework::AttributeMap& attrs,
       const std::map<std::string, std::string>& inplace_map)
@@ -113,12 +114,22 @@ class GradOpBaseMakerBase {
     return vec_temp;
   }
 
+  // Only for dygraph
+  void SetDygraphDefaultAttrsMap(const framework::AttributeMap& default_attrs) {
+    default_attrs_ = &default_attrs;
+  }
+
+  const framework::AttributeMap& DefaultAttrsMap() const {
+    return *default_attrs_;
+  }
+
   const framework::AttributeMap& Attrs() const { return attrs_; }
 
-  const framework::Attribute& GetAttr(const std::string& name) const {
+  virtual const framework::Attribute& GetAttr(const std::string& name) const {
     auto it = attrs_.find(name);
     PADDLE_ENFORCE_EQ(
-        it != attrs_.end(), true,
+        it != attrs_.end(),
+        true,
         platform::errors::NotFound(
             "Cannot find attribute [%s] in operator [%s]", name, type_));
     return it->second;
@@ -126,7 +137,7 @@ class GradOpBaseMakerBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return BOOST_GET_CONST(T, GetAttr(name));
+    return PADDLE_GET_CONST(T, GetAttr(name));
   }
 
   const std::string& ForwardOpType() const { return type_; }
@@ -199,6 +210,7 @@ class GradOpBaseMakerBase {
   const NameVarBaseMap& var_base_map_in_;
   const NameVarBaseMap& var_base_map_out_;
   const framework::AttributeMap& attrs_;
+  const framework::AttributeMap* default_attrs_;
   const std::map<std::string, std::string>& inplace_map_;
 };
 
@@ -226,6 +238,7 @@ class TracedGradOp {
 
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
+        VLOG(6) << "SetIutput var name: " << var->Name();
         if (var && !var->OverridedStopGradient()) {
           var->SetGraphIsFreed(false);
           auto dirty_grad_node = var->GradNode();
@@ -240,8 +253,8 @@ class TracedGradOp {
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
 
     if (!var_wrappers.empty()) {
-      op_->SetInput(name, std::move(var_wrappers),
-                    kRole == TracedVarRole::kBackward);
+      op_->SetInput(
+          name, std::move(var_wrappers), kRole == TracedVarRole::kBackward);
     }
   }
 
@@ -257,11 +270,22 @@ class TracedGradOp {
         return;
       } else {
         for (auto& var : vars) {
+          VLOG(6) << "SetOutput var name: " << var->Name();
           if (var && !var->OverridedStopGradient() && var->GradNode()) {
             if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
+              // Because inplace var isn't a leaf var, it should have
+              // dirty_grad_node.
               node_->InsertGradPendingNode(map_dirty_grad_node_[var]);
-            } else {
+              VLOG(6) << (*node_.get())[0].Type() << " insertGradPendingNode "
+                      << (*(map_dirty_grad_node_[var].get()))[0].Type();
+            } else if (node_ != var->GradNode()) {
+              // For non-inplace var.
+              // Special case: `set_value` is inplace op, and it can change
+              // the var with `stop_gradient=True` to the var with
+              // `stop_gradient=False`.
               node_->InsertGradPendingNode(var->GradNode());
+              VLOG(6) << (*node_.get())[0].Type() << " insertGradPendingNode "
+                      << (*(var->GradNode().get()))[0].Type();
             }
           }
         }
@@ -270,8 +294,8 @@ class TracedGradOp {
 
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
     if (!var_wrappers.empty()) {
-      op_->SetOutput(name, std::move(var_wrappers),
-                     kRole == TracedVarRole::kBackward);
+      op_->SetOutput(
+          name, std::move(var_wrappers), kRole == TracedVarRole::kBackward);
     }
   }
 
@@ -279,8 +303,14 @@ class TracedGradOp {
 
   void SetType(const std::string& type) { op_->SetType(type); }
 
+  const framework::OperatorBase& InnerOp() const { return op_->InnerOp(); }
+
   void SetAttrMap(const framework::AttributeMap& attrs) {
     return op_->SetAttrMap(attrs);
+  }
+
+  void SetDefaultAttrsMap(const framework::AttributeMap& attrs) {
+    return op_->SetDefaultAttrsMap(attrs);
   }
 
   void SetAttr(const std::string& name, const framework::Attribute& v) {
@@ -331,15 +361,28 @@ class TracedGradOp {
     //  Use original var_wrapper if its inplace_version is not
     //  changed. Otherwise, it will affect the accuracy of the model
     //  results and affect double grad.
-    if (!var_wrapper->MutableVar()->IsInitialized() ||
-        var_wrapper->InplaceVersionSnapshot() ==
-            var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+    if (!var_wrapper->MutableVar()->IsInitialized()) {
       return var_wrapper;
-    } else {
-      VariableWrapper new_var_wrapper = *var_wrapper.get();
-      new_var_wrapper.ResetInplaceVersion();
-      return std::make_shared<VariableWrapper>(new_var_wrapper);
+    } else if (var_wrapper->InplaceVersionSnapshot() ==
+               var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+      return var_wrapper;
+    } else if (var_wrapper->MutableVar()->IsType<framework::LoDTensor>() ||
+               var_wrapper->MutableVar()->IsType<phi::SelectedRows>()) {
+      auto* tensor =
+          var_wrapper->MutableVar()->IsType<framework::LoDTensor>()
+              ? var_wrapper->MutableVar()->GetMutable<framework::LoDTensor>()
+              : var_wrapper->MutableVar()
+                    ->GetMutable<phi::SelectedRows>()
+                    ->mutable_value();
+      if (!tensor->IsInitialized()) {
+        return var_wrapper;
+      }
     }
+
+    auto new_var_wrapper =
+        std::make_shared<VariableWrapper>(*var_wrapper.get());
+    new_var_wrapper->ResetInplaceVersion();
+    return new_var_wrapper;
   }
 
  private:

@@ -1,68 +1,125 @@
 set(LOCAL_DETECTION_LIBS)
 
 function(detection_library TARGET_NAME)
-    set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS)
-    set(options "")
-    set(common_deps op_registry)
-    set(pybind_flag 0)
-    cmake_parse_arguments(detection_library "${options}" "${oneValueArgs}"
-            "${multiValueArgs}" ${ARGN})
-    op_library(${TARGET_NAME} SRCS ${detection_library_SRCS} DEPS ${common_deps} ${detection_library_DEPS})
-    set(LOCAL_DETECTION_LIBS
-            ${TARGET_NAME}
-            ${LOCAL_DETECTION_LIBS}
-        PARENT_SCOPE)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  set(options "")
+  set(common_deps op_registry)
+  set(pybind_flag 0)
+  cmake_parse_arguments(detection_library "${options}" "${oneValueArgs}"
+                        "${multiValueArgs}" ${ARGN})
+  set(srcs)
+  # filter cuda source file when not build with cuda/rocm
+  foreach(src ${detection_library_SRCS})
+    if(NOT WITH_GPU AND NOT WITH_ROCM)
+      if(${src} MATCHES ".*\\.cc$")
+        list(APPEND srcs ${src})
+      endif()
+    else()
+      list(APPEND srcs ${src})
+    endif()
+  endforeach()
+
+  op_library(${TARGET_NAME} SRCS ${srcs} DEPS ${common_deps}
+             ${detection_library_DEPS})
+
+  set(LOCAL_DETECTION_LIBS
+      ${TARGET_NAME} ${LOCAL_DETECTION_LIBS}
+      PARENT_SCOPE)
 endfunction()
 
+if(WITH_ASCEND_CL)
+  detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op_npu.cc)
+  detection_library(density_prior_box_op SRCS density_prior_box_op.cc
+                    density_prior_box_op.cu density_prior_box_op_npu.cc)
+else()
+  detection_library(box_coder_op SRCS box_coder_op.cc)
+  detection_library(density_prior_box_op SRCS density_prior_box_op.cc
+                    density_prior_box_op.cu)
+endif()
+
+if(WITH_XPU)
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
+                    iou_similarity_op_xpu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc)
+  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
+elseif(WITH_MLU)
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
+                    iou_similarity_op_mlu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc)
+elseif(WITH_ASCEND_CL)
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
+                    iou_similarity_op_npu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op_npu.cc)
+else()
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
+                    iou_similarity_op.cu)
+  detection_library(prior_box_op SRCS prior_box_op.cc)
+  # detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
+endif()
+
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
-detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op.cu)
-detection_library(iou_similarity_op SRCS iou_similarity_op.cc
-iou_similarity_op.cu)
 detection_library(mine_hard_examples_op SRCS mine_hard_examples_op.cc)
-detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu)
-detection_library(density_prior_box_op SRCS density_prior_box_op.cc density_prior_box_op.cu)
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
-anchor_generator_op.cu)
-detection_library(target_assign_op SRCS target_assign_op.cc
-target_assign_op.cu)
+                  anchor_generator_op.cu)
+detection_library(target_assign_op SRCS target_assign_op.cc target_assign_op.cu)
 detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
-polygon_box_transform_op.cu)
+                  polygon_box_transform_op.cu)
 detection_library(rpn_target_assign_op SRCS rpn_target_assign_op.cc)
-detection_library(generate_proposal_labels_op SRCS generate_proposal_labels_op.cc)
+detection_library(generate_proposal_labels_op SRCS
+                  generate_proposal_labels_op.cc)
 detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc DEPS gpc)
 detection_library(locality_aware_nms_op SRCS locality_aware_nms_op.cc DEPS gpc)
 detection_library(matrix_nms_op SRCS matrix_nms_op.cc DEPS gpc)
 detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
 detection_library(yolov3_loss_op SRCS yolov3_loss_op.cc)
-detection_library(yolo_box_op SRCS yolo_box_op.cc yolo_box_op.cu)
-detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc box_decoder_and_assign_op.cu)
-detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc sigmoid_focal_loss_op.cu)
-detection_library(retinanet_detection_output_op SRCS retinanet_detection_output_op.cc)
+detection_library(yolo_box_op SRCS yolo_box_op.cc)
+detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc
+                  box_decoder_and_assign_op.cu)
+detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc
+                  sigmoid_focal_loss_op.cu)
+detection_library(retinanet_detection_output_op SRCS
+                  retinanet_detection_output_op.cc)
+detection_library(nms_op SRCS nms_op.cc)
 
 if(WITH_GPU OR WITH_ROCM)
   set(TMPDEPS memory)
   if(WITH_GPU)
-    if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-        set(TMPDEPS memory cub)
+    if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+      set(TMPDEPS memory cub)
     endif()
   endif()
-  detection_library(generate_proposals_op SRCS generate_proposals_op.cc generate_proposals_op.cu DEPS ${TMPDEPS})
-  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc generate_proposals_v2_op.cu DEPS ${TMPDEPS})
-  detection_library(distribute_fpn_proposals_op SRCS distribute_fpn_proposals_op.cc distribute_fpn_proposals_op.cu DEPS ${TMPDEPS})
-  detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc collect_fpn_proposals_op.cu DEPS ${TMPDEPS})
+  detection_library(generate_proposals_op SRCS generate_proposals_op.cc
+                    generate_proposals_op.cu DEPS ${TMPDEPS})
+  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc
+                    DEPS ${TMPDEPS})
+  detection_library(distribute_fpn_proposals_op SRCS
+                    distribute_fpn_proposals_op.cc DEPS ${TMPDEPS})
+  detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc
+                    collect_fpn_proposals_op.cu DEPS ${TMPDEPS})
 else()
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc)
-  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
-  detection_library(distribute_fpn_proposals_op SRCS distribute_fpn_proposals_op.cc)
+  if(NOT WITH_XPU)
+    detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
+  endif()
+  detection_library(distribute_fpn_proposals_op SRCS
+                    distribute_fpn_proposals_op.cc)
   detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc)
 endif()
 
-detection_library(roi_perspective_transform_op SRCS roi_perspective_transform_op.cc roi_perspective_transform_op.cu)
+detection_library(
+  roi_perspective_transform_op SRCS roi_perspective_transform_op.cc
+  roi_perspective_transform_op.cu)
 #Export local libraries to parent
 # set(DETECTION_LIBRARY ${LOCAL_DETECTION_LIBS} PARENT_SCOPE)
 
-cc_library(mask_util SRCS mask_util.cc DEPS memory)
-cc_test(mask_util_test SRCS mask_util_test.cc DEPS memory mask_util)
-cc_library(gpc SRCS gpc.cc DEPS op_registry)
-detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS mask_util)
+cc_library(
+  mask_util
+  SRCS mask_util.cc
+  DEPS memory)
+cc_test(
+  mask_util_test
+  SRCS mask_util_test.cc
+  DEPS memory mask_util)
+detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
+                  mask_util)

@@ -20,21 +20,25 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
 template <typename T>
-void dequant(const unsigned char *in, T *out, float min, float max,
-             int emb_size, int pow_2_bits) {
+void dequant(const unsigned char *in,
+             T *out,
+             float min,
+             float max,
+             int emb_size,
+             int pow_2_bits) {
   float scale = (max - min) / pow_2_bits;
   for (int i = 0; i < emb_size; ++i) {
     T x = scale * static_cast<int>(in[i]) + min;
@@ -61,7 +65,8 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
     int64_t ids_numel = ids_t->numel();
 
     PADDLE_ENFORCE_GE(
-        table_var->Type(), framework::VarTypeTrait<LoDTensor>::kId,
+        table_var->Type(),
+        framework::VarTypeTrait<LoDTensor>::kId,
         platform::errors::InvalidArgument("lookup table must be LodTensor"));
     auto *table_t = context.Input<LoDTensor>("W");
     int64_t row_number = table_t->dims()[0];
@@ -76,25 +81,33 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
         memset(output + i * row_width, 0, row_width * sizeof(T));
       } else {
         PADDLE_ENFORCE_LT(
-            ids[i], row_number,
+            ids[i],
+            row_number,
             platform::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0 and < %ld, but got %ld. Please check input "
                 "value.",
-                row_number, ids[i]));
+                row_number,
+                ids[i]));
         PADDLE_ENFORCE_GE(
-            ids[i], 0,
+            ids[i],
+            0,
             platform::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0 and < %ld, but got %ld. Please check input "
                 "value.",
-                row_number, ids[i]));
+                row_number,
+                ids[i]));
         float min = *(table + ids[i] * quant_number);
         float max = *(table + ids[i] * quant_number + 1);
         int offset = ids[i] * quant_number + 2;
         const unsigned char *tensor_buf =
             reinterpret_cast<const unsigned char *>(table + offset);
-        dequant(tensor_buf, output + i * row_width, min, max, row_width,
+        dequant(tensor_buf,
+                output + i * row_width,
+                min,
+                max,
+                row_width,
                 pow_2_bits);
       }
     }

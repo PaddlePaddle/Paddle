@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection/sigmoid_focal_loss_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,12 +29,12 @@ class SigmoidFocalLossOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "sigmoid_focal_loss");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
-                   "sigmoid_focal_loss");
-    OP_INOUT_CHECK(ctx->HasInput("FgNum"), "Input", "FgNum",
-                   "sigmoid_focal_loss");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "sigmoid_focal_loss");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Label"), "Input", "Label", "sigmoid_focal_loss");
+    OP_INOUT_CHECK(
+        ctx->HasInput("FgNum"), "Input", "FgNum", "sigmoid_focal_loss");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "sigmoid_focal_loss");
 
     auto x_dims = ctx->GetInputDim("X");
     auto labels_dims = ctx->GetInputDim("Label");
@@ -41,37 +42,45 @@ class SigmoidFocalLossOp : public framework::OperatorWithKernel {
 
     int rank = x_dims.size();
     PADDLE_ENFORCE_EQ(
-        rank, labels_dims.size(),
+        rank,
+        labels_dims.size(),
         platform::errors::InvalidArgument(
             "The rank of Input(X) should be equal to the rank of Input(Label), "
             "but received X rank is:%d, X shape is:[%s], "
             "Label rank is:%d, Label shape is:[%s].",
-            rank, x_dims, labels_dims.size(), labels_dims));
+            rank,
+            x_dims,
+            labels_dims.size(),
+            labels_dims));
     PADDLE_ENFORCE_EQ(
-        fg_dims.size(), 1,
+        fg_dims.size(),
+        1,
         platform::errors::InvalidArgument(
             "The rank of Input(FgNum) must be 1, but received FgNum rank is "
             ":%d, FgNum shape is:[%s].",
-            fg_dims.size(), fg_dims));
+            fg_dims.size(),
+            fg_dims));
     bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(labels_dims) <= 0)) {
+    if ((!ctx->IsRuntime()) &&
+        (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
       check = false;
     }
 
     if (check) {
       PADDLE_ENFORCE_EQ(
-          framework::slice_ddim(x_dims, 0, rank - 1),
-          framework::slice_ddim(labels_dims, 0, rank - 1),
+          phi::slice_ddim(x_dims, 0, rank - 1),
+          phi::slice_ddim(labels_dims, 0, rank - 1),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Label) should have the same shape "
               "except the last dimension, but received X shape is:[%s], "
               "Label shape is:[%s].",
-              x_dims, labels_dims));
+              x_dims,
+              labels_dims));
     }
 
     PADDLE_ENFORCE_EQ(
-        labels_dims[rank - 1], 1UL,
+        labels_dims[rank - 1],
+        1UL,
         platform::errors::InvalidArgument(
             "The last dimension of Input(Label) should be 1, but received "
             "Label shape is:[%s].",
@@ -96,14 +105,18 @@ class SigmoidFocalLossGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "sigmoid_focal_loss");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Label"), "Input", "Label", "sigmoid_focal_loss");
+    OP_INOUT_CHECK(
+        ctx->HasInput("FgNum"), "Input", "FgNum", "sigmoid_focal_loss");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
                    "sigmoid_focal_loss");
-    OP_INOUT_CHECK(ctx->HasInput("FgNum"), "Input", "FgNum",
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@GRAD",
                    "sigmoid_focal_loss");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "sigmoid_focal_loss");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@GRAD", "sigmoid_focal_loss");
 
     auto x_dims = ctx->GetInputDim("X");
     auto labels_dims = ctx->GetInputDim("Label");
@@ -112,48 +125,57 @@ class SigmoidFocalLossGradOp : public framework::OperatorWithKernel {
 
     int rank = x_dims.size();
     PADDLE_ENFORCE_EQ(
-        rank, labels_dims.size(),
+        rank,
+        labels_dims.size(),
         platform::errors::InvalidArgument(
             "The rank of Input(X) should be equal to the rank of Input(Label), "
             "but received X rank is:%d, X shape is:[%s], "
             "Label rank is:%d, Label shape is:[%s].",
-            rank, x_dims, labels_dims.size(), labels_dims));
+            rank,
+            x_dims,
+            labels_dims.size(),
+            labels_dims));
     PADDLE_ENFORCE_EQ(
-        fg_dims.size(), 1,
+        fg_dims.size(),
+        1,
         platform::errors::InvalidArgument(
             "The rank of Input(FgNum) must be 1, but received FgNum rank is "
             ":%d, FgNum shape is:[%s].",
-            fg_dims.size(), fg_dims));
+            fg_dims.size(),
+            fg_dims));
     bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(labels_dims) <= 0)) {
+    if ((!ctx->IsRuntime()) &&
+        (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
       check = false;
     }
 
     if (check) {
       PADDLE_ENFORCE_EQ(
-          framework::slice_ddim(x_dims, 0, rank - 1),
-          framework::slice_ddim(labels_dims, 0, rank - 1),
+          phi::slice_ddim(x_dims, 0, rank - 1),
+          phi::slice_ddim(labels_dims, 0, rank - 1),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Label) should have the same shape "
               "except the last dimension, but received X shape is:[%s], "
               "Label shape is:[%s].",
-              x_dims, labels_dims));
+              x_dims,
+              labels_dims));
 
       PADDLE_ENFORCE_EQ(
-          labels_dims[rank - 1], 1UL,
+          labels_dims[rank - 1],
+          1UL,
           platform::errors::InvalidArgument(
               "The last dimension of Input(Label) should be 1, but received "
               "Label shape is:[%s].",
               labels_dims));
 
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank),
-                        framework::slice_ddim(dout_dims, 0, rank),
+      PADDLE_ENFORCE_EQ(phi::slice_ddim(x_dims, 0, rank),
+                        phi::slice_ddim(dout_dims, 0, rank),
                         platform::errors::InvalidArgument(
                             "Input(X) and Input(Out@Grad) should have the same "
                             "shape, but received "
                             "X shape is:[%s], Out@Grad shape is:[%s].",
-                            x_dims, dout_dims));
+                            x_dims,
+                            dout_dims));
     }
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -238,17 +260,16 @@ class SigmoidFocalLossGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sigmoid_focal_loss, ops::SigmoidFocalLossOp,
+REGISTER_OPERATOR(sigmoid_focal_loss,
+                  ops::SigmoidFocalLossOp,
                   ops::SigmoidFocalLossOpMaker,
                   ops::SigmoidFocalLossGradOpMaker<paddle::framework::OpDesc>,
                   ops::SigmoidFocalLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sigmoid_focal_loss_grad, ops::SigmoidFocalLossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    sigmoid_focal_loss,
-    ops::SigmoidFocalLossKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SigmoidFocalLossKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sigmoid_focal_loss,
+                       ops::SigmoidFocalLossKernel<phi::CPUContext, float>,
+                       ops::SigmoidFocalLossKernel<phi::CPUContext, double>);
 REGISTER_OP_CPU_KERNEL(
     sigmoid_focal_loss_grad,
-    ops::SigmoidFocalLossGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SigmoidFocalLossGradKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
+    ops::SigmoidFocalLossGradKernel<phi::CPUContext, float>,
+    ops::SigmoidFocalLossGradKernel<phi::CPUContext, double>);

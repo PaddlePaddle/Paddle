@@ -14,145 +14,312 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
+from ..fluid.dygraph.layers import Layer  # noqa: F401
+from ..fluid.dygraph.container import LayerList  # noqa: F401
+from ..fluid.dygraph.container import ParameterList  # noqa: F401
+from ..fluid.dygraph.container import Sequential  # noqa: F401
 
-from .layer import norm
-from .functional import extension
-from .layer import common
-from .layer import rnn
-from .utils import weight_norm_hook
+from .clip import ClipGradByGlobalNorm  # noqa: F401
+from .clip import ClipGradByNorm  # noqa: F401
+from .clip import ClipGradByValue  # noqa: F401
+from .decode import BeamSearchDecoder  # noqa: F401
+from .decode import dynamic_decode  # noqa: F401
+from .layer.activation import CELU  # noqa: F401
+from .layer.activation import ELU  # noqa: F401
+from .layer.activation import GELU  # noqa: F401
+from .layer.activation import Tanh  # noqa: F401
+from .layer.activation import Hardshrink  # noqa: F401
+from .layer.activation import Hardswish  # noqa: F401
+from .layer.activation import Hardtanh  # noqa: F401
+from .layer.activation import PReLU  # noqa: F401
+from .layer.activation import ReLU  # noqa: F401
+from .layer.activation import ReLU6  # noqa: F401
+from .layer.activation import SELU  # noqa: F401
+from .layer.activation import Silu  # noqa: F401
+from .layer.activation import LeakyReLU  # noqa: F401
+from .layer.activation import Sigmoid  # noqa: F401
+from .layer.activation import Hardsigmoid  # noqa: F401
+from .layer.activation import LogSigmoid  # noqa: F401
+from .layer.activation import Softmax  # noqa: F401
+from .layer.activation import Softmax2D  # noqa: F401
+from .layer.activation import Softplus  # noqa: F401
+from .layer.activation import Softshrink  # noqa: F401
+from .layer.activation import Softsign  # noqa: F401
+from .layer.activation import Swish  # noqa: F401
+from .layer.activation import Mish  # noqa: F401
+from .layer.activation import Tanhshrink  # noqa: F401
+from .layer.activation import ThresholdedReLU  # noqa: F401
+from .layer.activation import LogSoftmax  # noqa: F401
+from .layer.activation import Maxout  # noqa: F401
+from .layer.activation import RReLU  # noqa: F401
+from .layer.common import Pad1D  # noqa: F401
+from .layer.common import Pad2D  # noqa: F401
+from .layer.common import ZeroPad2D  # noqa: F401
+from .layer.common import Pad3D  # noqa: F401
+from .layer.common import CosineSimilarity  # noqa: F401
+from .layer.common import Embedding  # noqa: F401
+from .layer.common import Linear  # noqa: F401
+from .layer.common import Identity  # noqa: F401
+from .layer.common import Flatten  # noqa: F401
+from .layer.common import Upsample  # noqa: F401
+from .layer.common import UpsamplingNearest2D  # noqa: F401
+from .layer.common import UpsamplingBilinear2D  # noqa: F401
+from .layer.common import Bilinear  # noqa: F401
+from .layer.common import Dropout  # noqa: F401
+from .layer.common import Dropout2D  # noqa: F401
+from .layer.common import Dropout3D  # noqa: F401
+from .layer.common import AlphaDropout  # noqa: F401
+from .layer.common import Unfold  # noqa: F401
+from .layer.common import Fold  # noqa: F401
 
-from . import initializer
+from .layer.pooling import AvgPool1D  # noqa: F401
+from .layer.pooling import AvgPool2D  # noqa: F401
+from .layer.pooling import AvgPool3D  # noqa: F401
+from .layer.pooling import MaxPool1D  # noqa: F401
+from .layer.pooling import MaxPool2D  # noqa: F401
+from .layer.pooling import MaxPool3D  # noqa: F401
+from .layer.pooling import MaxUnPool1D  # noqa: F401
+from .layer.pooling import MaxUnPool2D  # noqa: F401
+from .layer.pooling import MaxUnPool3D  # noqa: F401
+from .layer.pooling import AdaptiveAvgPool1D  # noqa: F401
+from .layer.pooling import AdaptiveAvgPool2D  # noqa: F401
+from .layer.pooling import AdaptiveAvgPool3D  # noqa: F401
+from .layer.pooling import AdaptiveMaxPool1D  # noqa: F401
+from .layer.pooling import AdaptiveMaxPool2D  # noqa: F401
+from .layer.pooling import AdaptiveMaxPool3D  # noqa: F401
 
-__all__ = []
-__all__ += norm.__all__
-__all__ += extension.__all__
-__all__ += common.__all__
-__all__ += rnn.__all__
-__all__ += weight_norm_hook.__all__
+from .layer.conv import Conv1D  # noqa: F401
+from .layer.conv import Conv2D  # noqa: F401
+from .layer.conv import Conv3D  # noqa: F401
+from .layer.conv import Conv1DTranspose  # noqa: F401
+from .layer.conv import Conv2DTranspose  # noqa: F401
+from .layer.conv import Conv3DTranspose  # noqa: F401
 
-# TODO: define alias in nn directory
-from .clip import ClipGradByGlobalNorm  #DEFINE_ALIAS
-from .clip import ClipGradByNorm  #DEFINE_ALIAS
-from .clip import ClipGradByValue  #DEFINE_ALIAS
-# from .control_flow import cond  #DEFINE_ALIAS
-# from .control_flow import DynamicRNN        #DEFINE_ALIAS
-# from .control_flow import StaticRNN        #DEFINE_ALIAS
-# from .control_flow import while_loop  #DEFINE_ALIAS
-# from .control_flow import rnn        #DEFINE_ALIAS
-from .decode import BeamSearchDecoder  #DEFINE_ALIAS
-from .decode import dynamic_decode  #DEFINE_ALIAS
-# from .decode import Decoder        #DEFINE_ALIAS
-# from .decode import crf_decoding        #DEFINE_ALIAS
-# from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
-# from .input import Input        #DEFINE_ALIAS
-from .layer.activation import ELU  #DEFINE_ALIAS
-from .layer.activation import GELU  #DEFINE_ALIAS
-from .layer.activation import Tanh  #DEFINE_ALIAS
-from .layer.activation import Hardshrink  #DEFINE_ALIAS
-from .layer.activation import Hardswish  #DEFINE_ALIAS
-from .layer.activation import Hardtanh  #DEFINE_ALIAS
-from .layer.activation import PReLU  #DEFINE_ALIAS
-from .layer.activation import ReLU  #DEFINE_ALIAS
-from .layer.activation import ReLU6  #DEFINE_ALIAS
-from .layer.activation import SELU  #DEFINE_ALIAS
-from .layer.activation import LeakyReLU  #DEFINE_ALIAS
-from .layer.activation import Sigmoid  #DEFINE_ALIAS
-from .layer.activation import Hardsigmoid  #DEFINE_ALIAS
-from .layer.activation import LogSigmoid  #DEFINE_ALIAS
-from .layer.activation import Softmax  #DEFINE_ALIAS
-from .layer.activation import Softplus  #DEFINE_ALIAS
-from .layer.activation import Softshrink  #DEFINE_ALIAS
-from .layer.activation import Softsign  #DEFINE_ALIAS
-from .layer.activation import Swish  #DEFINE_ALIAS
-from .layer.activation import Tanhshrink  #DEFINE_ALIAS
-from .layer.activation import ThresholdedReLU  #DEFINE_ALIAS
-from .layer.activation import LogSoftmax  #DEFINE_ALIAS
-from .layer.activation import Maxout  #DEFINE_ALIAS
-from .layer.common import Pad1D  #DEFINE_ALIAS
-from .layer.common import Pad2D  #DEFINE_ALIAS
-from .layer.common import Pad3D  #DEFINE_ALIAS
-from .layer.common import CosineSimilarity  #DEFINE_ALIAS
-from .layer.common import Embedding  #DEFINE_ALIAS
-from .layer.common import Linear  #DEFINE_ALIAS
-from .layer.common import Flatten  #DEFINE_ALIAS
-from .layer.common import Upsample  #DEFINE_ALIAS
-from .layer.common import UpsamplingNearest2D  #DEFINE_ALIAS
-from .layer.common import UpsamplingBilinear2D  #DEFINE_ALIAS
-from .layer.common import Bilinear  #DEFINE_ALIAS
-from .layer.common import Dropout  #DEFINE_ALIAS
-from .layer.common import Dropout2D  #DEFINE_ALIAS
-from .layer.common import Dropout3D  #DEFINE_ALIAS
-from .layer.common import AlphaDropout  #DEFINE_ALIAS
+from .layer.loss import BCEWithLogitsLoss  # noqa: F401
+from .layer.loss import CrossEntropyLoss  # noqa: F401
+from .layer.loss import HSigmoidLoss  # noqa: F401
+from .layer.loss import MSELoss  # noqa: F401
+from .layer.loss import L1Loss  # noqa: F401
+from .layer.loss import NLLLoss  # noqa: F401
+from .layer.loss import BCELoss  # noqa: F401
+from .layer.loss import KLDivLoss  # noqa: F401
+from .layer.loss import MarginRankingLoss  # noqa: F401
+from .layer.loss import MultiLabelSoftMarginLoss
+from .layer.loss import CTCLoss  # noqa: F401
+from .layer.loss import SmoothL1Loss  # noqa: F401
+from .layer.loss import HingeEmbeddingLoss  # noqa: F401
+from .layer.loss import CosineEmbeddingLoss  # noqa: F401
+from .layer.loss import TripletMarginWithDistanceLoss
+from .layer.loss import TripletMarginLoss
+from .layer.loss import SoftMarginLoss
+from .layer.norm import BatchNorm  # noqa: F401
+from .layer.norm import SyncBatchNorm  # noqa: F401
+from .layer.norm import GroupNorm  # noqa: F401
+from .layer.norm import LayerNorm  # noqa: F401
+from .layer.norm import SpectralNorm  # noqa: F401
+from .layer.norm import InstanceNorm1D  # noqa: F401
+from .layer.norm import InstanceNorm2D  # noqa: F401
+from .layer.norm import InstanceNorm3D  # noqa: F401
+from .layer.norm import BatchNorm1D  # noqa: F401
+from .layer.norm import BatchNorm2D  # noqa: F401
+from .layer.norm import BatchNorm3D  # noqa: F401
+from .layer.norm import LocalResponseNorm  # noqa: F401
 
-from .layer.pooling import AvgPool1D  #DEFINE_ALIAS
-from .layer.pooling import AvgPool2D  #DEFINE_ALIAS
-from .layer.pooling import AvgPool3D  #DEFINE_ALIAS
-from .layer.pooling import MaxPool1D  #DEFINE_ALIAS
-from .layer.pooling import MaxPool2D  #DEFINE_ALIAS
-from .layer.pooling import MaxPool3D  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveAvgPool1D  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveAvgPool2D  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveAvgPool3D  #DEFINE_ALIAS
+from .layer.rnn import RNNCellBase  # noqa: F401
+from .layer.rnn import SimpleRNNCell  # noqa: F401
+from .layer.rnn import LSTMCell  # noqa: F401
+from .layer.rnn import GRUCell  # noqa: F401
+from .layer.rnn import RNN  # noqa: F401
+from .layer.rnn import BiRNN  # noqa: F401
+from .layer.rnn import SimpleRNN  # noqa: F401
+from .layer.rnn import LSTM  # noqa: F401
+from .layer.rnn import GRU  # noqa: F401
 
-from .layer.pooling import AdaptiveMaxPool1D  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveMaxPool2D  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveMaxPool3D  #DEFINE_ALIAS
-from .layer.conv import Conv1D  #DEFINE_ALIAS
-from .layer.conv import Conv2D  #DEFINE_ALIAS
-from .layer.conv import Conv3D  #DEFINE_ALIAS
-from .layer.conv import Conv1DTranspose  #DEFINE_ALIAS
-from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
-from .layer.conv import Conv3DTranspose  #DEFINE_ALIAS
-# from .layer.conv import TreeConv        #DEFINE_ALIAS
-# from .layer.conv import Conv1D        #DEFINE_ALIAS
-from .layer.common import Linear
-# from .layer.loss import NCELoss        #DEFINE_ALIAS
-from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
-from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
-from .layer.loss import HSigmoidLoss  #DEFINE_ALIAS
-from .layer.loss import MSELoss  #DEFINE_ALIAS
-from .layer.loss import L1Loss  #DEFINE_ALIAS
-from .layer.loss import NLLLoss  #DEFINE_ALIAS
-from .layer.loss import BCELoss  #DEFINE_ALIAS
-from .layer.loss import KLDivLoss  #DEFINE_ALIAS
-from .layer.loss import MarginRankingLoss  #DEFINE_ALIAS
-from .layer.loss import CTCLoss  #DEFINE_ALIAS
-from .layer.loss import SmoothL1Loss  #DEFINE_ALIAS
-from .layer.norm import BatchNorm  #DEFINE_ALIAS
-from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
-from .layer.norm import GroupNorm  #DEFINE_ALIAS
-from .layer.norm import LayerNorm  #DEFINE_ALIAS
-from .layer.norm import SpectralNorm  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm1D  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm2D  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm3D  #DEFINE_ALIAS
-from .layer.norm import BatchNorm1D  #DEFINE_ALIAS
-from .layer.norm import BatchNorm2D  #DEFINE_ALIAS
-from .layer.norm import BatchNorm3D  #DEFINE_ALIAS
-from .layer.norm import LocalResponseNorm  #DEFINE_ALIAS
+from .layer.transformer import MultiHeadAttention  # noqa: F401
+from .layer.transformer import TransformerEncoderLayer  # noqa: F401
+from .layer.transformer import TransformerEncoder  # noqa: F401
+from .layer.transformer import TransformerDecoderLayer  # noqa: F401
+from .layer.transformer import TransformerDecoder  # noqa: F401
+from .layer.transformer import Transformer  # noqa: F401
+from .layer.distance import PairwiseDistance  # noqa: F401
 
-from .layer.rnn import RNNCellBase  #DEFINE_ALIAS
-from .layer.rnn import SimpleRNNCell  #DEFINE_ALIAS
-from .layer.rnn import LSTMCell  #DEFINE_ALIAS
-from .layer.rnn import GRUCell  #DEFINE_ALIAS
-from .layer.rnn import RNN  #DEFINE_ALIAS
-from .layer.rnn import BiRNN  #DEFINE_ALIAS
-from .layer.rnn import SimpleRNN  #DEFINE_ALIAS
-from .layer.rnn import LSTM  #DEFINE_ALIAS
-from .layer.rnn import GRU  #DEFINE_ALIAS
+from .layer.vision import PixelShuffle  # noqa: F401
+from .layer.vision import PixelUnshuffle  # noqa: F401
+from .layer.vision import ChannelShuffle  # noqa: F401
+from .layer.container import LayerDict  # noqa: F401
 
-from .layer.transformer import MultiHeadAttention
-from .layer.transformer import TransformerEncoderLayer
-from .layer.transformer import TransformerEncoder
-from .layer.transformer import TransformerDecoderLayer
-from .layer.transformer import TransformerDecoder
-from .layer.transformer import Transformer
-from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
+from .utils.spectral_norm_hook import spectral_norm
 
-from .layer.vision import PixelShuffle
+# TODO: remove loss, keep it for too many used in unitests
+from .layer import loss  # noqa: F401
 
-from .layer import loss  #DEFINE_ALIAS
-from .layer import conv  #DEFINE_ALIAS
-from .layer import vision  #DEFINE_ALIAS
-from ..fluid.dygraph.layers import Layer  #DEFINE_ALIAS
-from ..fluid.dygraph.container import LayerList, ParameterList, Sequential  #DEFINE_ALIAS
+from . import utils  # noqa: F401
+from . import functional  # noqa: F401
+from . import initializer  # noqa: F401
+from . import quant  # noqa: F401
+
+# TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
+import paddle.utils.deprecated as deprecated
+
+
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.funcitional.diag_embed",
+            level=1,
+            reason="diag_embed in paddle.nn will be removed in future")
+def diag_embed(*args):
+    '''
+        alias name of paddle.nn.functional.diag_embed
+    '''
+    return functional.diag_embed(*args)
+
+
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.utils.remove_weight_norm",
+            level=1,
+            reason="remove_weight_norm in paddle.nn will be removed in future")
+def remove_weight_norm(*args):
+    '''
+        alias name of paddle.nn.utils.remove_weight_norm
+    '''
+    return utils.remove_weight_norm(*args)
+
+
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.utils.weight_norm",
+            level=1,
+            reason="weight_norm in paddle.nn will be removed in future")
+def weight_norm(*args):
+    '''
+        alias name of paddle.nn.utils.weight_norm
+    '''
+    return utils.weight_norm(*args)
+
+
+__all__ = [  # noqa
+    'BatchNorm',
+    'CELU',
+    'GroupNorm',
+    'LayerNorm',
+    'SpectralNorm',
+    'BatchNorm1D',
+    'BatchNorm2D',
+    'BatchNorm3D',
+    'InstanceNorm1D',
+    'InstanceNorm2D',
+    'InstanceNorm3D',
+    'SyncBatchNorm',
+    'LocalResponseNorm',
+    'Embedding',
+    'Linear',
+    'Upsample',
+    'UpsamplingNearest2D',
+    'UpsamplingBilinear2D',
+    'Pad1D',
+    'Pad2D',
+    'Pad3D',
+    'CosineSimilarity',
+    'Dropout',
+    'Dropout2D',
+    'Dropout3D',
+    'Bilinear',
+    'AlphaDropout',
+    'Unfold',
+    'Fold',
+    'RNNCellBase',
+    'SimpleRNNCell',
+    'LSTMCell',
+    'GRUCell',
+    'RNN',
+    'BiRNN',
+    'SimpleRNN',
+    'LSTM',
+    'GRU',
+    'dynamic_decode',
+    'MultiHeadAttention',
+    'Maxout',
+    'Softsign',
+    'Transformer',
+    'MSELoss',
+    'LogSigmoid',
+    'BeamSearchDecoder',
+    'ClipGradByNorm',
+    'ReLU',
+    'PairwiseDistance',
+    'BCEWithLogitsLoss',
+    'SmoothL1Loss',
+    'MaxPool3D',
+    'AdaptiveMaxPool2D',
+    'Hardshrink',
+    'Softplus',
+    'KLDivLoss',
+    'AvgPool2D',
+    'L1Loss',
+    'LeakyReLU',
+    'AvgPool1D',
+    'AdaptiveAvgPool3D',
+    'AdaptiveMaxPool3D',
+    'NLLLoss',
+    'Conv1D',
+    'Sequential',
+    'Hardswish',
+    'Conv1DTranspose',
+    'AdaptiveMaxPool1D',
+    'TransformerEncoder',
+    'Softmax',
+    'Softmax2D',
+    'ParameterList',
+    'Conv2D',
+    'Softshrink',
+    'Hardtanh',
+    'TransformerDecoderLayer',
+    'CrossEntropyLoss',
+    'GELU',
+    'SELU',
+    'Silu',
+    'Conv2DTranspose',
+    'CTCLoss',
+    'ThresholdedReLU',
+    'AdaptiveAvgPool2D',
+    'MaxPool1D',
+    'Layer',
+    'TransformerDecoder',
+    'Conv3D',
+    'Tanh',
+    'Conv3DTranspose',
+    'Flatten',
+    'AdaptiveAvgPool1D',
+    'Tanhshrink',
+    'HSigmoidLoss',
+    'PReLU',
+    'TransformerEncoderLayer',
+    'AvgPool3D',
+    'MaxPool2D',
+    'MarginRankingLoss',
+    'LayerList',
+    'ClipGradByValue',
+    'BCELoss',
+    'Hardsigmoid',
+    'ClipGradByGlobalNorm',
+    'LogSoftmax',
+    'Sigmoid',
+    'Swish',
+    'Mish',
+    'PixelShuffle',
+    'PixelUnshuffle',
+    'ChannelShuffle',
+    'ELU',
+    'ReLU6',
+    'LayerDict',
+    'ZeroPad2D',
+    'MaxUnPool1D',
+    'MaxUnPool2D',
+    'MaxUnPool3D',
+    'MultiLabelSoftMarginLoss',
+    'HingeEmbeddingLoss',
+    'Identity',
+    'CosineEmbeddingLoss',
+    'RReLU',
+    'TripletMarginWithDistanceLoss',
+    'TripletMarginLoss',
+    'SoftMarginLoss',
+]

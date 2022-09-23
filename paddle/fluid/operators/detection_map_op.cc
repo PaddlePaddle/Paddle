@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection_map_op.h"
+
 #include <string>
 
 namespace paddle {
@@ -25,38 +26,48 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("DetectRes"), "Input", "DetectRes",
-                   "DetectionMAP");
+    OP_INOUT_CHECK(
+        ctx->HasInput("DetectRes"), "Input", "DetectRes", "DetectionMAP");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "DetectionMAP");
-    OP_INOUT_CHECK(ctx->HasOutput("AccumPosCount"), "Output", "AccumPosCount",
+    OP_INOUT_CHECK(ctx->HasOutput("AccumPosCount"),
+                   "Output",
+                   "AccumPosCount",
                    "DetectionMAP");
-    OP_INOUT_CHECK(ctx->HasOutput("AccumTruePos"), "Output", "AccumTruePos",
+    OP_INOUT_CHECK(ctx->HasOutput("AccumTruePos"),
+                   "Output",
+                   "AccumTruePos",
                    "DetectionMAP");
-    OP_INOUT_CHECK(ctx->HasOutput("AccumFalsePos"), "Output", "AccumFalsePos",
+    OP_INOUT_CHECK(ctx->HasOutput("AccumFalsePos"),
+                   "Output",
+                   "AccumFalsePos",
                    "DetectionMAP");
     OP_INOUT_CHECK(ctx->HasOutput("MAP"), "Output", "MAP", "DetectionMAP");
 
     auto det_dims = ctx->GetInputDim("DetectRes");
     PADDLE_ENFORCE_EQ(
-        det_dims.size(), 2UL,
+        det_dims.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "Input(DetectRes) ndim must be 2, the shape is [N, 6],"
             "but received the ndim is %d",
             det_dims.size()));
     PADDLE_ENFORCE_EQ(
-        det_dims[1], 6UL,
+        det_dims[1],
+        6UL,
         platform::errors::InvalidArgument(
             "The shape is of Input(DetectRes) [N, 6], but received"
             " shape is [N, %d]",
             det_dims[1]));
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(label_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(label_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The ndim of Input(Label) must be 2, but received %d",
                           label_dims.size()));
     if (ctx->IsRuntime() || label_dims[1] > 0) {
       PADDLE_ENFORCE_EQ(
-          (label_dims[1] == 6 || label_dims[1] == 5), true,
+          (label_dims[1] == 6 || label_dims[1] == 5),
+          true,
           platform::errors::InvalidArgument(
               "The shape of Input(Label) is [N, 6] or [N, 5], but received "
               "[N, %d]",
@@ -76,7 +87,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
               "Input(PosCount) is not null."));
     }
 
-    ctx->SetOutputDim("MAP", framework::make_ddim({1}));
+    ctx->SetOutputDim("MAP", phi::make_ddim({1}));
   }
 
  protected:
@@ -181,7 +192,8 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"integral", "11point"})
         .AddCustomChecker([](const std::string& ap_type) {
           PADDLE_ENFORCE_NE(
-              GetAPType(ap_type), APType::kNone,
+              GetAPType(ap_type),
+              APType::kNone,
               platform::errors::InvalidArgument(
                   "The ap_type should be 'integral' or '11point."));
         });
@@ -204,9 +216,12 @@ https://arxiv.org/abs/1512.02325
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    detection_map, ops::DetectionMAPOp, ops::DetectionMAPOpMaker,
+    detection_map,
+    ops::DetectionMAPOp,
+    ops::DetectionMAPOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    detection_map, ops::DetectionMAPOpKernel<paddle::platform::CPUPlace, float>,
+    detection_map,
+    ops::DetectionMAPOpKernel<paddle::platform::CPUPlace, float>,
     ops::DetectionMAPOpKernel<paddle::platform::CPUPlace, double>);

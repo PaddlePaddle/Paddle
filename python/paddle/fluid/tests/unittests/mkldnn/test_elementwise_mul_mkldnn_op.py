@@ -17,9 +17,11 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_elementwise_mul_op import ElementwiseMulOp
+from paddle import enable_static
 
 
 class TestMKLDNNElementwiseMulOp(ElementwiseMulOp):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -28,6 +30,7 @@ class TestMKLDNNElementwiseMulOp(ElementwiseMulOp):
 
 
 class TestMKLDNNElementwiseMulOp2(TestMKLDNNElementwiseMulOp):
+
     def init_input_output(self):
         self.x = np.random.random((100, )).astype(self.dtype)
         self.y = np.random.random((100, )).astype(self.dtype)
@@ -35,6 +38,7 @@ class TestMKLDNNElementwiseMulOp2(TestMKLDNNElementwiseMulOp):
 
 
 class TestMKLDNNElementwiseMulOp3(TestMKLDNNElementwiseMulOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
@@ -42,6 +46,7 @@ class TestMKLDNNElementwiseMulOp3(TestMKLDNNElementwiseMulOp):
 
 
 class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
@@ -51,10 +56,25 @@ class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ingore_y(self):
+        pass
+
+
+class TestMKLDNNElementwiseMulOp5(TestMKLDNNElementwiseMulOp):
+
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+    # TODO(jczaja): Enable when grad is ready
+    def test_check_grad_normal(self):
         pass
 
     def test_check_grad_ingore_y(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
         pass
 
 
@@ -64,6 +84,7 @@ class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
 @skip_check_grad_ci(
     reason="oneDNN's int8 elementwise_ops don't implemend grad kernel.")
 class TestInt8(ElementwiseMulOp):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True
@@ -97,6 +118,7 @@ class TestInt8(ElementwiseMulOp):
 
 
 class TestInt8Scales(TestInt8):
+
     def quantize(self, tensor, dt="int8"):
         max_int = 127.0 if dt == "int8" else 255.0
         scale = max_int / np.abs(np.amax(tensor))
@@ -121,11 +143,12 @@ class TestInt8Scales(TestInt8):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
         int_atol = 1  # different quantization techniques
-        self.check_output(
-            check_dygraph=(self.use_mkldnn == False), atol=int_atol)
+        self.check_output(check_dygraph=(self.use_mkldnn == False),
+                          atol=int_atol)
 
 
 class TestUint8Scales(TestInt8Scales):
+
     def init_input_output(self):
         self.x_f = np.random.random((100, )).astype("float")
         self.y_f = np.random.random((100, )).astype("float")
@@ -140,4 +163,5 @@ class TestUint8Scales(TestInt8Scales):
 
 
 if __name__ == '__main__':
+    enable_static()
     unittest.main()

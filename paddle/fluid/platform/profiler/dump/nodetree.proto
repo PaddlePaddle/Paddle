@@ -1,0 +1,302 @@
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+package paddle.platform;
+
+enum TracerEventTypeProto {
+  // Used to mark operator record
+  Operator = 0;
+  // Used to mark dataloader record
+  Dataloader = 1;
+  // Used to mark profile step record
+  ProfileStep = 2;
+  // Used to mark cuda runtime record returned by cupti
+  CudaRuntime = 3;
+  // Used to mark kernel computation record returned by cupti
+  Kernel = 4;
+  // Used to mark memcpy record returned by cupti
+  Memcpy = 5;
+  // Used to mark memset record returned by cupti
+  Memset = 6;
+  // Used to mark record defined by user
+  UserDefined = 7;
+  // Used to mark operator detail, (such as infer shape, compute)
+  OperatorInner = 8;
+  // Used to mark model training or testing perspective, forward process
+  Forward = 9;
+  // Used to mark model training perspective, backward process
+  Backward = 10;
+  // Used to mark model training perspective, optimization process
+  Optimization = 11;
+  // Used to mark distributed training perspective
+  Communication = 12;
+  // Used to mark python api
+  PythonOp = 13;
+  // Used to mark python level userdefined
+  PythonUserDefined = 14;
+  // Used to mark mlu runtime record returned by cnpapi
+  MluRuntime = 15;
+};
+
+enum TracerMemEventTypeProto {
+  // Used to mark memory allocation which is managed by paddle
+  Allocate = 0;
+  // Used to mark memory free which is managed by paddle
+  Free = 1;
+  // Used to mark reserved memory allocation which is applied from device.
+  ReservedAllocate = 2;
+  // Used to mark reserved memory free which is released to device.
+  ReservedFree = 3;
+};
+
+message KernelEventInfoProto {
+  // The X-dimension block size for the kernel.
+  required uint32 block_x = 1;
+  // The Y-dimension block size for the kernel.
+  required uint32 block_y = 2;
+  // The Z-dimension grid size for the kernel.
+  required uint32 block_z = 3;
+  // X-dimension of a grid.
+  required uint32 grid_x = 4;
+  // Y-dimension of a grid.
+  required uint32 grid_y = 5;
+  // Z-dimension of a grid.
+  required uint32 grid_z = 6;
+  // The dynamic shared memory reserved for the kernel, in bytes.
+  required uint32 dynamic_shared_memory = 7;
+  // The static shared memory allocated for the kernel, in bytes.
+  required uint32 static_shared_memory = 8;
+  // The number of registers required for each thread executing the kernel.
+  required uint32 registers_per_thread = 9;
+  // The amount of local memory reserved for each thread, in bytes.
+  required uint32 local_memory_per_thread = 10;
+  // The total amount of local memory reserved for the kernel, in bytes.
+  required uint32 local_memory_total = 11;
+  // The timestamp when the kernel is queued up in the command buffer, in ns.
+  // This timestamp is not collected by default. Use API
+  // cuptiActivityEnableLatencyTimestamps() to enable collection.
+  required uint64 queued = 12;
+  // The timestamp when the command buffer containing the kernel launch is
+  // submitted to the GPU, in ns.
+  // This timestamp is not collected by default. Use API
+  // cuptiActivityEnableLatencyTimestamps() to enable collection.
+  required uint64 submitted = 13;
+  // The completed timestamp for the kernel execution, in ns.
+  required uint64 completed = 14;
+  // blocks per sm
+  required float blocks_per_sm = 15;
+  // warps per sm
+  required float warps_per_sm = 16;
+  // theoretical achieved occupancy
+  required float occupancy = 17;
+}
+
+message MemcpyEventInfoProto {
+  // The number of bytes transferred by the memory copy.
+  required uint64 num_bytes = 1;
+  // The kind of the memory copy.
+  // Each kind represents the source and destination targets of a memory copy.
+  // Targets are host, device, and array. Refer to CUpti_ActivityMemcpyKind
+  required string copy_kind = 2;
+  // The source memory kind read by the memory copy.
+  // Each kind represents the type of the memory accessed by a memory
+  // operation/copy. Refer to CUpti_ActivityMemoryKind
+  required string src_kind = 3;
+  // The destination memory kind read by the memory copy.
+  required string dst_kind = 4;
+}
+
+message MemsetEventInfoProto {
+  // The number of bytes being set by the memory set.
+  required uint64 num_bytes = 1;
+  // The memory kind of the memory set. Refer to CUpti_ActivityMemoryKind
+  required string memory_kind = 2;
+  // the value being assigned to memory by the memory set.
+  required uint32 value = 3;
+}
+
+message HostTraceEventProto {
+  required string name = 1;
+  required TracerEventTypeProto type = 2;
+  // start timestamp of the record
+  required uint64 start_ns = 3;
+  // end timestamp of the record
+  required uint64 end_ns = 4;
+  // process id of the record
+  required uint64 process_id = 5;
+  // thread id of the record
+  required uint64 thread_id = 6;
+}
+
+message MemTraceEventProto {
+  // timestamp of the record
+  required uint64 timestamp_ns = 1;
+  // memory manipulation type
+  required TracerMemEventTypeProto type = 2;
+  // memory addr of allocation or free
+  required uint64 addr = 3;
+  // process id of the record
+  required uint64 process_id = 4;
+  // thread id of the record
+  required uint64 thread_id = 5;
+  // increase bytes after this manipulation, allocation for sign +, free for
+  // sign -
+  required int64 increase_bytes = 6;
+  // place
+  required string place = 7;
+  // current total allocated memory
+  required uint64 current_allocated = 8;
+  // current total reserved memory
+  required uint64 current_reserved = 9;
+  // current peak allocated memory
+  required uint64 peak_allocated = 10;
+  // current peak reserved memory
+  required uint64 peak_reserved = 11;
+}
+
+message OperatorSupplementEventProto {
+  // timestamp of the record
+  required uint64 timestamp_ns = 1;
+  // op type name
+  required string op_type = 2;
+  // process id of the record
+  required uint64 process_id = 3;
+  // thread id of the record
+  required uint64 thread_id = 4;
+  // input shapes
+  message input_shape_proto {
+    repeated string key = 1;
+    message shape_vector {
+      message shape { repeated uint64 size = 1; }
+      repeated shape shapes = 1;
+    }
+    repeated shape_vector shape_vecs = 2;
+  }
+  required input_shape_proto input_shapes = 5;
+  // dtypes
+  message dtype_proto {
+    repeated string key = 1;
+    message dtype_vector { repeated string dtype = 1; }
+    repeated dtype_vector dtype_vecs = 2;
+  }
+  required dtype_proto dtypes = 6;
+  // call stack
+  required string callstack = 7;
+}
+
+message CudaRuntimeTraceEventProto {
+  // record name
+  required string name = 1;
+  // start timestamp of the record
+  required uint64 start_ns = 2;
+  // end timestamp of the record
+  required uint64 end_ns = 3;
+  // process id of the record
+  required uint64 process_id = 4;
+  // thread id of the record
+  required uint64 thread_id = 5;
+  // correlation id, used for correlating async activities happened on device
+  required uint32 correlation_id = 6;
+  // callback id, used to identify which cuda runtime api is called
+  required uint32 callback_id = 7;
+}
+
+message DeviceTraceEventProto {
+  // record name
+  required string name = 1;
+  // record type, one of TracerEventType
+  required TracerEventTypeProto type = 2;
+  // start timestamp of the record
+  required uint64 start_ns = 3;
+  // end timestamp of the record
+  required uint64 end_ns = 4;
+  // device id
+  required uint64 device_id = 5;
+  // context id
+  required uint64 context_id = 6;
+  // stream id
+  required uint64 stream_id = 7;
+  // correlation id, used for correlating async activities happened on device
+  required uint32 correlation_id = 8;
+  // union, specific device record type has different detail information
+  oneof detail_info {
+    // used for TracerEventType::Kernel
+    KernelEventInfoProto kernel_info = 9;
+    // used for TracerEventType::Memcpy
+    MemcpyEventInfoProto memcpy_info = 10;
+    // used for TracerEventType::Memset
+    MemsetEventInfoProto memset_info = 11;
+  }
+}
+
+message OperatorSupplementEventNodeProto {
+  required OperatorSupplementEventProto op_supplement_event = 1;
+}
+
+message MemTraceEventNodeProto { required MemTraceEventProto mem_event = 1; }
+
+message DeviceTraceEventNodeProto {
+  required DeviceTraceEventProto device_event = 1;
+}
+
+message CudaRuntimeTraceEventNodeProto {
+  required CudaRuntimeTraceEventProto runtime_trace_event = 1;
+  repeated DeviceTraceEventNodeProto device_nodes = 2;
+}
+
+message HostTraceEventNodeProto {
+  required int64 id = 1;
+  required int64 parentid = 2;
+  required HostTraceEventProto host_trace_event = 3;
+  repeated CudaRuntimeTraceEventNodeProto runtime_nodes = 4;
+  // below is added in version 1.0.1
+  repeated MemTraceEventNodeProto mem_nodes = 5;
+  repeated OperatorSupplementEventNodeProto op_supplement_nodes = 6;
+}
+
+message ThreadNodeTreeProto {
+  required uint64 thread_id = 1;
+  repeated HostTraceEventNodeProto host_nodes = 2;
+}
+
+message ExtraInfoMap {
+  required string key = 1;
+  required string value = 2;
+}
+
+message DevicePropertyProto {
+  required uint32 id = 1;
+  required string name = 2;
+  required uint64 total_global_memory = 3;
+  required uint32 compute_major = 4;
+  required uint32 compute_minor = 5;
+  required uint32 max_threads_per_block = 6;
+  required uint32 max_threads_per_multiprocessor = 7;
+  required uint32 regs_per_block = 8;
+  required uint32 regs_per_multiprocessor = 9;
+  required uint32 warp_size = 10;
+  required uint64 shared_memory_per_block = 11;
+  required uint64 shared_memory_per_multiprocessor = 12;
+  required uint32 sm_count = 13;
+  required uint64 shared_memory_per_block_optin = 14;
+}
+
+message NodeTreesProto {
+  required string version = 1;
+  required uint32 span_indx = 2;
+  repeated ThreadNodeTreeProto thread_trees = 3;
+  repeated ExtraInfoMap extra_info = 4;
+  repeated DevicePropertyProto device_property = 5;
+}

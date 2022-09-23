@@ -22,9 +22,11 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
 void BindPSGPUWrapper(py::module* m);
+#ifdef PADDLE_WITH_PSLIB
+void BindAfsWrapper(py::module* m);
+#endif
 #endif
 }  // namespace pybind
 }  // namespace paddle

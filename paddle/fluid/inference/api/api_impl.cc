@@ -12,15 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/inference/api/api_impl.h"
+
 #include <glog/logging.h>
+
 #include <memory>
 #include <sstream>
 #include <string>
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
@@ -40,14 +43,14 @@ std::string num2str(T a) {
 void NativePaddlePredictor::PrepareFeedFetch() {
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
       feeds_[idx] = op;
       feed_names_[op->Output("Out")[0]] = idx;
     } else if (op->Type() == "fetch") {
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetchs_.size() <= static_cast<size_t>(idx)) {
         fetchs_.resize(idx + 1);
       }
@@ -72,12 +75,15 @@ bool NativePaddlePredictor::Init(
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (config_.use_gpu) {
-    PADDLE_ENFORCE_EQ(config_.use_xpu, false,
+    PADDLE_ENFORCE_EQ(config_.use_xpu,
+                      false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else if (config_.use_xpu) {
     place_ = paddle::platform::XPUPlace(config_.device);
+  } else if (config_.use_npu) {
+    place_ = paddle::platform::NPUPlace(config_.device);
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -89,6 +95,7 @@ bool NativePaddlePredictor::Init(
                                 "The sub_scope should not be nullptr."));
   } else {
     paddle::framework::InitDevices();
+    paddle::framework::InitDefaultKernelSignatureMap();
     scope_.reset(new paddle::framework::Scope());
   }
 
@@ -98,8 +105,8 @@ bool NativePaddlePredictor::Init(
   if (!config_.model_dir.empty()) {
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
-    inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
-                                                 config_.model_dir);
+    inference_program_ = paddle::inference::Load(
+        executor_.get(), scope_.get(), config_.model_dir);
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
@@ -112,8 +119,8 @@ bool NativePaddlePredictor::Init(
   }
 
   ctx_ = executor_->Prepare(*inference_program_, 0);
-  executor_->CreateVariables(*inference_program_,
-                             sub_scope_ ? sub_scope_ : scope_.get(), 0);
+  executor_->CreateVariables(
+      *inference_program_, sub_scope_ ? sub_scope_ : scope_.get(), 0);
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
@@ -158,7 +165,8 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Run the inference program
   // if share variables, we need not create variables
   VLOG(4) << "Run prepared context";
-  executor_->RunPreparedContext(ctx_.get(), scope,
+  executor_->RunPreparedContext(ctx_.get(),
+                                scope,
                                 false, /* don't create local scope each time*/
                                 false /* don't create variable each time */);
   VLOG(4) << "Finish prepared context";
@@ -175,7 +183,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   return true;
 }
 
-std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
+std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone(void *stream) {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   VLOG(3) << "Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
@@ -189,14 +197,7 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
-
-#ifdef __clang__
-  // fix clang compile error
   return cls;
-#else
-  // fix manylinux compile error.
-  return std::move(cls);
-#endif
 }
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
@@ -213,7 +214,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 
   for (size_t i = 0; i < inputs.size(); ++i) {
     auto &input = feed_tensors_[i];
-    framework::DDim ddim = framework::make_ddim(inputs[i].shape);
+    framework::DDim ddim = phi::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
       input_ptr = input.mutable_data<int64_t>(ddim, place_);
@@ -235,35 +236,58 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
             "The data of input tensor should not be null."));
     if (platform::is_cpu_place(place_)) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-      std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
+      std::memcpy(static_cast<void *>(input_ptr),
+                  inputs[i].data.data(),
                   inputs[i].data.length());
     } else if (platform::is_gpu_place(place_)) {
       PADDLE_ENFORCE_EQ(
-          platform::is_xpu_place(place_), false,
+          platform::is_xpu_place(place_),
+          false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
-      auto *dev_ctx =
-          static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
-      auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
-      memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
-                   platform::CPUPlace(), inputs[i].data.data(),
-                   inputs[i].data.length(), dev_ctx->stream());
+      auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place_));
+      auto dst_gpu_place = place_;
+      memory::Copy(dst_gpu_place,
+                   static_cast<void *>(input_ptr),
+                   platform::CPUPlace(),
+                   inputs[i].data.data(),
+                   inputs[i].data.length(),
+                   dev_ctx->stream());
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "Not compile with CUDA, should not reach here."));
 #endif
-    } else {
+    } else if (platform::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
-      auto dst_xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
-      memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
-                   platform::CPUPlace(), inputs[i].data.data(),
+      auto dst_xpu_place = place_;
+      memory::Copy(dst_xpu_place,
+                   static_cast<void *>(input_ptr),
+                   platform::CPUPlace(),
+                   inputs[i].data.data(),
                    inputs[i].data.length());
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "Not compile with XPU, should not reach here."));
+#endif
+    } else {
+#ifdef PADDLE_WITH_ASCEND_CL
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx =
+          static_cast<const platform::NPUDeviceContext *>(pool.Get(place_));
+      auto dst_npu_place = place_;
+      memory::Copy(dst_npu_place,
+                   static_cast<void *>(input_ptr),
+                   platform::CPUPlace(),
+                   inputs[i].data.data(),
+                   inputs[i].data.length(),
+                   dev_ctx->stream());
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Not compile with NPU, should not reach here."));
 #endif
     }
 
@@ -277,7 +301,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     if (config_.specify_input_name) {
       idx = feed_names_[inputs[i].name];
     } else {
-      idx = BOOST_GET_CONST(int, feeds_[i]->GetAttr("col"));
+      idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
     framework::SetFeedVariable(scope, input, "feed", idx);
   }
@@ -287,7 +311,7 @@ template <typename T>
 void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
                                         PaddleTensor *output) {
   // set shape.
-  auto shape = framework::vectorize(fetch.dims());
+  auto shape = phi::vectorize(fetch.dims());
   output->shape.assign(shape.begin(), shape.end());
   // set data.
   const T *data = fetch.data<T>();
@@ -308,16 +332,18 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetchs_.size());
   for (size_t i = 0; i < fetchs_.size(); ++i) {
-    int idx = BOOST_GET_CONST(int, fetchs_[i]->GetAttr("col"));
+    int idx = PADDLE_GET_CONST(int, fetchs_[i]->GetAttr("col"));
     PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(idx), i,
+        static_cast<size_t>(idx),
+        i,
         platform::errors::InvalidArgument(
-            "Fetch op's col attr(%d) should be equal to the index(%d)", idx,
+            "Fetch op's col attr(%d) should be equal to the index(%d)",
+            idx,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto fetch = BOOST_GET_CONST(framework::LoDTensor, fetch_var);
-    auto type = fetch.type();
+    auto fetch = PADDLE_GET_CONST(framework::LoDTensor, fetch_var);
+    auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];
     if (type == framework::DataTypeTrait<float>::DataType()) {
@@ -337,18 +363,21 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
+    const NativeConfig &config) {
   // TODO(NHZlX): Should add the link to the doc of
   // paddle_infer::CreatePredictor<paddle_infer::Config>
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memory
-    PADDLE_ENFORCE_GE(config.fraction_of_gpu_memory, 0.f,
+    PADDLE_ENFORCE_GE(config.fraction_of_gpu_memory,
+                      0.f,
                       platform::errors::InvalidArgument(
                           "fraction_of_gpu_memory in the config should be set "
                           "to range (0., 1.]"));
-    PADDLE_ENFORCE_GE(config.device, 0,
+    PADDLE_ENFORCE_GE(config.device,
+                      0,
                       platform::errors::PreconditionNotMet(
                           "Invalid device id %d, the device id should be "
                           "greater than or equal to 0.",
@@ -373,12 +402,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
-#ifdef __clang__
-  // fix clang compile error
   return predictor;
-#else
-  return std::move(predictor);
-#endif
 }
 
 template <>

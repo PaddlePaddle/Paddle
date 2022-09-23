@@ -35,7 +35,12 @@ import itertools
 import functools
 from .common import download
 import tarfile
-from paddle.dataset.image import *
+
+from paddle.dataset.image import load_image_bytes
+from paddle.dataset.image import load_image
+from paddle.dataset.image import simple_transform
+from paddle.dataset.image import batch_images_from_tar
+
 from paddle.reader import map_readers, xmap_readers
 from paddle import compat as cpt
 import paddle.utils.deprecated as deprecated
@@ -45,7 +50,8 @@ from multiprocessing import cpu_count
 import six
 from six.moves import cPickle as pickle
 from paddle.utils import try_import
-__all__ = ['train', 'test', 'valid']
+
+__all__ = []
 
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/flowers/102flowers.tgz'
 LABEL_URL = 'http://paddlemodels.bj.bcebos.com/flowers/imagelabels.mat'
@@ -67,8 +73,11 @@ def default_mapper(is_train, sample):
     '''
     img, label = sample
     img = load_image_bytes(img)
-    img = simple_transform(
-        img, 256, 224, is_train, mean=[103.94, 116.78, 123.68])
+    img = simple_transform(img,
+                           256,
+                           224,
+                           is_train,
+                           mean=[103.94, 116.78, 123.68])
     return img.flatten().astype('float32'), label
 
 
@@ -108,38 +117,26 @@ def reader_creator(data_file,
     :return: data reader
     :rtype: callable
     '''
-    scio = try_import('scipy.io')
-
-    labels = scio.loadmat(label_file)['labels'][0]
-    indexes = scio.loadmat(setid_file)[dataset_name][0]
-
-    img2label = {}
-    for i in indexes:
-        img = "jpg/image_%05d.jpg" % i
-        img2label[img] = labels[i - 1]
-    file_list = batch_images_from_tar(data_file, dataset_name, img2label)
 
     def reader():
-        while True:
-            with open(file_list, 'r') as f_list:
-                for file in f_list:
-                    file = file.strip()
-                    batch = None
-                    with open(file, 'rb') as f:
-                        if six.PY2:
-                            batch = pickle.load(f)
-                        else:
-                            batch = pickle.load(f, encoding='bytes')
+        scio = try_import('scipy.io')
 
-                        if six.PY3:
-                            batch = cpt.to_text(batch)
-                        data_batch = batch['data']
-                        labels_batch = batch['label']
-                        for sample, label in six.moves.zip(data_batch,
-                                                           labels_batch):
-                            yield sample, int(label) - 1
-            if not cycle:
-                break
+        labels = scio.loadmat(label_file)['labels'][0]
+        indexes = scio.loadmat(setid_file)[dataset_name][0]
+
+        img2label = {}
+        for i in indexes:
+            img = "jpg/image_%05d.jpg" % i
+            img2label[img] = labels[i - 1]
+
+        tf = tarfile.open(data_file)
+        mems = tf.getmembers()
+        file_id = 0
+        for mem in mems:
+            if mem.name in img2label:
+                image = tf.extractfile(mem).read()
+                label = img2label[mem.name]
+                yield image, int(label) - 1
 
     if use_xmap:
         return xmap_readers(mapper, reader, min(4, cpu_count()), buffered_size)
@@ -150,6 +147,7 @@ def reader_creator(data_file,
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
@@ -169,20 +167,20 @@ def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     :return: train data reader
     :rtype: callable
     '''
-    return reader_creator(
-        download(DATA_URL, 'flowers', DATA_MD5),
-        download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5),
-        TRAIN_FLAG,
-        mapper,
-        buffered_size,
-        use_xmap,
-        cycle=cycle)
+    return reader_creator(download(DATA_URL, 'flowers', DATA_MD5),
+                          download(LABEL_URL, 'flowers', LABEL_MD5),
+                          download(SETID_URL, 'flowers', SETID_MD5),
+                          TRAIN_FLAG,
+                          mapper,
+                          buffered_size,
+                          use_xmap,
+                          cycle=cycle)
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
@@ -202,20 +200,20 @@ def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     :return: test data reader
     :rtype: callable
     '''
-    return reader_creator(
-        download(DATA_URL, 'flowers', DATA_MD5),
-        download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5),
-        TEST_FLAG,
-        mapper,
-        buffered_size,
-        use_xmap,
-        cycle=cycle)
+    return reader_creator(download(DATA_URL, 'flowers', DATA_MD5),
+                          download(LABEL_URL, 'flowers', LABEL_MD5),
+                          download(SETID_URL, 'flowers', SETID_MD5),
+                          TEST_FLAG,
+                          mapper,
+                          buffered_size,
+                          use_xmap,
+                          cycle=cycle)
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     '''
@@ -233,11 +231,10 @@ def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     :return: test data reader
     :rtype: callable
     '''
-    return reader_creator(
-        download(DATA_URL, 'flowers', DATA_MD5),
-        download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5), VALID_FLAG, mapper,
-        buffered_size, use_xmap)
+    return reader_creator(download(DATA_URL, 'flowers', DATA_MD5),
+                          download(LABEL_URL, 'flowers', LABEL_MD5),
+                          download(SETID_URL, 'flowers', SETID_MD5), VALID_FLAG,
+                          mapper, buffered_size, use_xmap)
 
 
 def fetch():

@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -26,11 +29,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-struct CUDAPlace;
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -38,7 +36,8 @@ namespace operators {
 
 class MemcpyOp : public framework::OperatorWithKernel {
  public:
-  MemcpyOp(const std::string &type, const framework::VariableNameMap &inputs,
+  MemcpyOp(const std::string &type,
+           const framework::VariableNameMap &inputs,
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -56,7 +55,8 @@ class MemcpyOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -86,7 +86,8 @@ class MemcpyKernel {
       return;
     }
     PADDLE_ENFORCE_EQ(
-        ctx.HasOutput("Out"), true,
+        ctx.HasOutput("Out"),
+        true,
         platform::errors::NotFound("Output(Out) of memcpy_op is not found."));
     auto *out = ctx.OutputVar("Out");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -105,16 +106,20 @@ class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
               "is the same as input X.");
     AddAttr<int>("dst_place_type",
                  "Determine the dst place of tensor copy. "
-                 "By Now it ONLY support CUDAPlace and CUDAPinnedPlace. Other "
-                 "place type is Unimplemented and will cause ERROR."
+                 "By Now it ONLY support CUDAPlace <-> CUDAPinnedPlace or "
+                 "NPUPlace <-> CPUPlace. "
+                 "Other place type is Unimplemented and will cause ERROR."
                  "0: dst is on CPUPlace. "
                  "1: dst is on CUDAPlace. "
                  "2: dst is on CUDAPinnedPlace. "
-                 "3: dst is on XPUPlace. ");
+                 "3: dst is on XPUPlace. "
+                 "4: dst is on NPUPlace. "
+                 "5: dst is on NPUPinnerPlace. "
+                 "6: dst is on CustomDevicePlace");
     AddComment(R"DOC(
     Memcpy Operator.
-    By now, it ONLY supports the memcopy between CUDAPinnedPlace and CUDAPlace,
-    and used as an internal op by Recompute-Offload.
+    By now, it ONLY supports the memcopy between CUDAPinnedPlace <-> CUDAPlace or
+    NPUPlace <-> CPUPlace, and used as an internal op by Recompute-Offload.
     You would have to update it if you want other more capacities.
 
 Out = X,  when type in [LoDTensor]
@@ -128,21 +133,32 @@ raise error if the type is not listed above.
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+DECLARE_INFER_SHAPE_FUNCTOR(memcpy,
+                            MemcpyInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 REGISTER_OPERATOR(
-    memcpy, ops::MemcpyOp, ops::MemcpyOpProtoMaker, ops::MemcpyInferVarType,
+    memcpy,
+    ops::MemcpyOp,
+    ops::MemcpyOpProtoMaker,
+    ops::MemcpyInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    MemcpyInferShapeFunctor);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(memcpy, float, ops::MemcpyKernel, double,
-                               ops::MemcpyKernel, int, ops::MemcpyKernel,
-                               int64_t, ops::MemcpyKernel, bool,
-                               ops::MemcpyKernel, plat::float16,
+#ifdef PADDLE_WITH_ASCEND_CL
+REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy,
+                               float,
+                               ops::MemcpyKernel,
+                               double,
+                               ops::MemcpyKernel,
+                               int,
+                               ops::MemcpyKernel,
+                               int64_t,
+                               ops::MemcpyKernel,
+                               bool,
+                               ops::MemcpyKernel,
+                               plat::float16,
                                ops::MemcpyKernel);
-
-#ifdef PADDLE_WITH_CUDA
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(memcpy, float, ops::MemcpyKernel, double,
-                                ops::MemcpyKernel, int, ops::MemcpyKernel,
-                                int64_t, ops::MemcpyKernel, bool,
-                                ops::MemcpyKernel, plat::float16,
-                                ops::MemcpyKernel);
 #endif

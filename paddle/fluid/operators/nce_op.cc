@@ -33,69 +33,85 @@ class NCEOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "nce");
 
     OP_INOUT_CHECK(ctx->HasOutput("Cost"), "Output", "Cost", "nce");
-    OP_INOUT_CHECK(ctx->HasOutput("SampleLogits"), "Output", "SampleLogits",
-                   "nce");
-    OP_INOUT_CHECK(ctx->HasOutput("SampleLabels"), "Output", "SampleLabels",
-                   "nce");
+    bool is_test = ctx->Attrs().Get<bool>("is_test");
+    if (!is_test) {
+      OP_INOUT_CHECK(
+          ctx->HasOutput("SampleLogits"), "Output", "SampleLogits", "nce");
+      OP_INOUT_CHECK(
+          ctx->HasOutput("SampleLabels"), "Output", "SampleLabels", "nce");
+    }
 
     auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
     if (ctx->IsRuntime() || (x_dims[0] > 0 && label_dims[0] > 0)) {
       PADDLE_ENFORCE_EQ(
-          x_dims[0], label_dims[0],
+          x_dims[0],
+          label_dims[0],
           platform::errors::InvalidArgument(
               "The first dimension of Input(Input) and Input(Label) should be "
               "equal in runtime. But received: Input(Input)'s shape = [%s] "
               "with 1st dim =  %d, Input(Label)'s shape = [%s] with 1st dim = "
               "%d.",
-              x_dims, x_dims[0], label_dims, label_dims[0]));
+              x_dims,
+              x_dims[0],
+              label_dims,
+              label_dims[0]));
     }
     int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
     if (ctx->HasInput("Bias")) {
       PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Weight")[0], ctx->GetInputDim("Bias")[0],
+          ctx->GetInputDim("Weight")[0],
+          ctx->GetInputDim("Bias")[0],
           platform::errors::InvalidArgument(
               "The first dimension of Input(Weight) and Input(Bias) "
               "should be equal. But received: Input(Weight)'s shape = [%s] "
               "with 1st dim = %d, and Input(Bias)'s shape = [%s] with 1st dim "
               "= %d.",
-              ctx->GetInputDim("Weight"), ctx->GetInputDim("Weight")[0],
-              ctx->GetInputDim("Bias"), ctx->GetInputDim("Bias")[0]));
+              ctx->GetInputDim("Weight"),
+              ctx->GetInputDim("Weight")[0],
+              ctx->GetInputDim("Bias"),
+              ctx->GetInputDim("Bias")[0]));
     }
     auto num_neg_samples = ctx->Attrs().Get<int>("num_neg_samples");
     auto num_total_classes = ctx->Attrs().Get<int>("num_total_classes");
     std::vector<int> custom_neg_classes =
         ctx->Attrs().Get<std::vector<int>>("custom_neg_classes");
     PADDLE_ENFORCE_EQ(
-        num_total_classes, ctx->GetInputDim("Weight")[0],
+        num_total_classes,
+        ctx->GetInputDim("Weight")[0],
         platform::errors::InvalidArgument(
             "The number of total classes should be equal to the first "
             "dimension of Input(Weight). But received: Attr(num_total_classes) "
             "= %d, Input(Weight)'s shape = [%s] with 1st dim = %d.",
-            num_total_classes, ctx->GetInputDim("Weight"),
+            num_total_classes,
+            ctx->GetInputDim("Weight"),
             ctx->GetInputDim("Weight")[0]));
     if (custom_neg_classes.size() > 0) {
       PADDLE_ENFORCE_EQ(
-          custom_neg_classes.size(), static_cast<size_t>(num_neg_samples),
+          custom_neg_classes.size(),
+          static_cast<size_t>(num_neg_samples),
           platform::errors::InvalidArgument(
               "The size of Attr(custom_neg_classes) should be equal "
               "to the number of negative samples. But received: "
               "custom_neg_classes.size() = %d, num_neg_samples = %d.",
-              custom_neg_classes.size(), num_neg_samples));
+              custom_neg_classes.size(),
+              num_neg_samples));
     }
     // set dims of output(Out)
     std::vector<int64_t> out_dims;
     out_dims.push_back(x_dims[0]);
     out_dims.push_back(1);
-    ctx->SetOutputDim("Cost", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Cost", phi::make_ddim(out_dims));
 
-    // set dims of output(SampleOut)
-    std::vector<int64_t> sample_out_dims;
-    sample_out_dims.push_back(x_dims[0]);
-    sample_out_dims.push_back(
-        (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
-    ctx->SetOutputDim("SampleLogits", framework::make_ddim(sample_out_dims));
-    ctx->SetOutputDim("SampleLabels", framework::make_ddim(sample_out_dims));
+    if (!is_test) {
+      // set dims of output(SampleOut)
+      std::vector<int64_t> sample_out_dims;
+      sample_out_dims.push_back(x_dims[0]);
+      sample_out_dims.push_back(
+          (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
+      ctx->SetOutputDim("SampleLogits", phi::make_ddim(sample_out_dims));
+      ctx->SetOutputDim("SampleLabels", phi::make_ddim(sample_out_dims));
+    }
   }
 
  protected:
@@ -162,14 +178,16 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
               "Given X is  the dot product of input tensor and sampled labels' "
               "weights."
               "Then 'SampleLogits' is sigmoid(X).")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddOutput("SampleLabels",
               "An intermediate tensor of shape[batch_size, num_neg_samples + "
               "num_pos_samples]."
               "This tensor is output of forward kernel and used in backward "
               "kernel to compute grads."
               "")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
 
     AddAttr<int>("num_total_classes",
                  "Total number of classes in all samples.");
@@ -189,28 +207,38 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
 
     // for parameter prefetch
     AddAttr<bool>("remote_prefetch", "").SetDefault(false);
-    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.")
+        .SetDefault(0)
+        .AsExtra();
     AddAttr<std::vector<int64_t>>("height_sections",
                                   "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int64_t>({}));
+        .SetDefault(std::vector<int64_t>({}))
+        .AsExtra();
     AddAttr<std::vector<std::string>>(
         "epmap",
         "(string vector, default 127.0.0.1:6164)"
         "Server endpoints in the order of input variables for mapping")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<std::string>>(
         "table_names",
         "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
 
     AddAttr<std::vector<int>>("custom_neg_classes",
                               "This attribute only be used in unitest. Classes "
                               "in this list wiil be used as negative classes "
                               "for every samples. Under normal conditions, "
                               "user should avoid setting this attribute.")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference "
+                  "only, false for training.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Compute and return the noise-contrastive estimation training loss. See
 `Noise-contrastive estimation: A new estimation principle for unnormalized
@@ -252,12 +280,14 @@ class NCEOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "nce_grad");
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "nce_grad");
-    OP_INOUT_CHECK(ctx->HasInput("SampleLogits"), "Input", "SampleLogits",
+    OP_INOUT_CHECK(
+        ctx->HasInput("SampleLogits"), "Input", "SampleLogits", "nce_grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("SampleLabels"), "Input", "SampleLabels", "nce_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Cost")),
+                   "Input",
+                   framework::GradVarName("Cost"),
                    "nce_grad");
-    OP_INOUT_CHECK(ctx->HasInput("SampleLabels"), "Input", "SampleLabels",
-                   "nce_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Cost")), "Input",
-                   framework::GradVarName("Cost"), "nce_grad");
 
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");
@@ -293,7 +323,7 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
     auto weight_grad = framework::GradVarName("Weight");
 
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = BOOST_GET(bool, attr);
+    bool is_sparse = PADDLE_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "nce_op_grad op " << weight_grad << " and "
               << " is set to SelectedRows";
@@ -313,12 +343,17 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(NCEGradOpNoNeedBufferVarInferer, "Bias");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker,
+REGISTER_OPERATOR(nce,
+                  ops::NCEOp,
+                  ops::NCEOpMaker,
                   ops::NCEGradOpMaker<paddle::framework::OpDesc>,
                   ops::NCEGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference,
+REGISTER_OPERATOR(nce_grad,
+                  ops::NCEOpGrad,
+                  ops::NCEOpGradVarTypeInference,
                   ops::NCEGradOpNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
+REGISTER_OP_CPU_KERNEL(nce,
+                       ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(nce_grad,
                        ops::NCEGradKernel<paddle::platform::CPUPlace, float>,

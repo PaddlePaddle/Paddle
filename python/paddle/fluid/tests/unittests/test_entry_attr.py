@@ -15,14 +15,16 @@
 from __future__ import print_function
 
 import paddle
+
 paddle.enable_static()
 
 import unittest
 import paddle.fluid as fluid
-from paddle.distributed import ProbabilityEntry, CountFilterEntry
+from paddle.distributed import ProbabilityEntry, CountFilterEntry, ShowClickEntry
 
 
 class EntryAttrChecks(unittest.TestCase):
+
     def base(self):
         with self.assertRaises(NotImplementedError):
             from paddle.distributed.entry_attr import EntryAttr
@@ -51,18 +53,22 @@ class EntryAttrChecks(unittest.TestCase):
         with self.assertRaises(ValueError):
             counter2 = CountFilterEntry(-1)
 
+    def showclick_entry(self):
+        showclick = ShowClickEntry("show", "click")
+        ss = showclick._to_attr()
+        self.assertEqual("show_click_entry:show:click", ss)
+
     def spaese_layer(self):
         prog = fluid.Program()
         scope = fluid.core.Scope()
 
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog):
-                input = fluid.layers.data(
-                    name="dnn_data",
-                    shape=[-1, 1],
-                    dtype="int64",
-                    lod_level=1,
-                    append_batch_size=False)
+                input = fluid.layers.data(name="dnn_data",
+                                          shape=[-1, 1],
+                                          dtype="int64",
+                                          lod_level=1,
+                                          append_batch_size=False)
                 prob = ProbabilityEntry(0.5)
                 emb = paddle.static.nn.sparse_embedding(
                     input=input,
@@ -88,6 +94,7 @@ class EntryAttrChecks(unittest.TestCase):
 
 
 class TestEntryAttrs(EntryAttrChecks):
+
     def test_base(self):
         self.base()
 
@@ -96,6 +103,9 @@ class TestEntryAttrs(EntryAttrChecks):
 
     def test_counter(self):
         self.countfilter_entry()
+
+    def test_showclick(self):
+        self.showclick_entry()
 
     def test_spaese_embedding_layer(self):
         self.spaese_layer()

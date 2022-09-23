@@ -15,8 +15,11 @@ from paddle.fluid.optimizer import Momentum, DGCMomentumOptimizer
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
+__all__ = []
+
 
 class DGCOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(DGCOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -27,8 +30,9 @@ class DGCOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(DGCOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        super(DGCOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
 
     def _init_dgc_opt(self):
         if self.dgc_opt is not None:
@@ -100,8 +104,9 @@ class DGCOptimizer(MetaOptimizerBase):
 
     def apply_optimize(self, loss, startup_program, params_grads):
         self._init_dgc_opt()
-        return self.dgc_opt.apply_optimize(
-            loss, startup_program=startup_program, params_grads=params_grads)
+        return self.dgc_opt.apply_optimize(loss,
+                                           startup_program=startup_program,
+                                           params_grads=params_grads)
 
     def minimize_impl(self,
                       loss,

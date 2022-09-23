@@ -12,10 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the basic tensor classes 
-
-__all__ = [
-    #       'Tensor',
-    #       'LoDTensor',
-    #       'LoDTensorArray'
-]
+# TODO: define the basic tensor classes

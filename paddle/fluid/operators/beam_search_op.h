@@ -33,11 +33,13 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
                             platform::errors::NotFound(
                                 "Input(scores) of BeamSearchOp is not found."));
     PADDLE_ENFORCE_NOT_NULL(
-        pre_ids, platform::errors::NotFound(
-                     "Input(pre_ids) of BeamSearchOp is not found."));
+        pre_ids,
+        platform::errors::NotFound(
+            "Input(pre_ids) of BeamSearchOp is not found."));
     PADDLE_ENFORCE_NOT_NULL(
-        pre_scores, platform::errors::NotFound(
-                        "Input(pre_scores) of BeamSearchOp is not found."));
+        pre_scores,
+        platform::errors::NotFound(
+            "Input(pre_scores) of BeamSearchOp is not found."));
 
     size_t level = context.Attr<int>("level");
     size_t beam_size = context.Attr<int>("beam_size");
@@ -51,16 +53,25 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NOT_NULL(
         selected_ids,
         platform::errors::NotFound(
-            "Output(selected_scores) of BeamSearchOp is not found."));
+            "Output(selected_ids) of BeamSearchOp is not found."));
     PADDLE_ENFORCE_NOT_NULL(
         selected_scores,
         platform::errors::NotFound(
-            "Output(parent_idx) of BeamSearchOp is not found."));
+            "Output(selected_scores) of BeamSearchOp is not found."));
 
     math::BeamSearchFunctor<DeviceContext, T> alg;
-    alg(context.template device_context<DeviceContext>(), pre_ids, pre_scores,
-        ids, scores, selected_ids, selected_scores, parent_idx, level,
-        beam_size, end_id, is_accumulated);
+    alg(context.template device_context<DeviceContext>(),
+        pre_ids,
+        pre_scores,
+        ids,
+        scores,
+        selected_ids,
+        selected_scores,
+        parent_idx,
+        level,
+        beam_size,
+        end_id,
+        is_accumulated);
   }
 };
 

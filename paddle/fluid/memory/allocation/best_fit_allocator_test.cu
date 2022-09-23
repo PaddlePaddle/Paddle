@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
@@ -43,7 +44,11 @@ TEST(BestFitAllocator, concurrent_cuda) {
       std::unique_ptr<Allocator>(new BestFitAllocator(cuda_allocation.get())));
 
   platform::CUDAPlace gpu(0);
-  platform::CUDADeviceContext dev_ctx(gpu);
+  phi::GPUContext dev_ctx(gpu);
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu, dev_ctx.stream())
+                           .get());
+  dev_ctx.PartialInitWithAllocator();
 
   auto th_main = [&](std::random_device::result_type seed) {
     std::default_random_engine engine(seed);
@@ -59,12 +64,15 @@ TEST(BestFitAllocator, concurrent_cuda) {
       size_t* data = reinterpret_cast<size_t*>(allocation->ptr());
 
       ForEachFill fill(data);
-      platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
-                                                                allocate_size);
+      platform::ForRange<phi::GPUContext> for_range(dev_ctx, allocate_size);
       for_range(fill);
 
-      memory::Copy(platform::CPUPlace(), buf.data(), gpu, data,
-                   sizeof(size_t) * allocate_size, dev_ctx.stream());
+      memory::Copy(platform::CPUPlace(),
+                   buf.data(),
+                   gpu,
+                   data,
+                   sizeof(size_t) * allocate_size,
+                   dev_ctx.stream());
 
       dev_ctx.Wait();
       for (size_t j = 0; j < allocate_size; ++j) {

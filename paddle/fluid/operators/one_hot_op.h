@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -27,8 +27,10 @@ struct OneHotOpFunctor {
   const DeviceContext& ctx_;
   bool allow_out_of_range_;
 
-  OneHotOpFunctor(const framework::LoDTensor* in, framework::LoDTensor* out,
-                  int depth, const DeviceContext& ctx,
+  OneHotOpFunctor(const framework::LoDTensor* in,
+                  framework::LoDTensor* out,
+                  int depth,
+                  const DeviceContext& ctx,
                   bool allow_out_of_range = false)
       : in_(in),
         out_(out),
@@ -41,7 +43,7 @@ struct OneHotOpFunctor {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
     auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());
-    math::set_constant(ctx_, out_, 0.0);
+    phi::funcs::set_constant(ctx_, out_, 0.0);
 
     if (allow_out_of_range_) {
       for (int i = 0; i < numel; ++i) {
@@ -52,18 +54,21 @@ struct OneHotOpFunctor {
     } else {
       for (int i = 0; i < numel; ++i) {
         PADDLE_ENFORCE_GE(
-            p_in_data[i], 0,
+            p_in_data[i],
+            0,
             platform::errors::InvalidArgument(
                 "Illegal index value, Input(input) value should be at least 0, "
                 "but received input (%d) less than 0",
                 p_in_data[i]));
         PADDLE_ENFORCE_LT(
-            p_in_data[i], depth_,
+            p_in_data[i],
+            depth_,
             platform::errors::InvalidArgument(
                 "Illegal index value, Input(input) value should be less than "
                 "Input(depth), "
                 "but received input (%d) not less than depth (%d)",
-                p_in_data[i], depth_));
+                p_in_data[i],
+                depth_));
 
         *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
       }
@@ -95,7 +100,10 @@ class OneHotKernel : public framework::OpKernel<T> {
         static_cast<framework::proto::VarType::Type>(
             context.Attr<int>("dtype")),
         OneHotOpFunctor<DeviceContext, T>(
-            in, out, depth, context.template device_context<DeviceContext>(),
+            in,
+            out,
+            depth,
+            context.template device_context<DeviceContext>(),
             allow_out_of_range));
   }
 };

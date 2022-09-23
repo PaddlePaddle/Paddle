@@ -14,8 +14,11 @@
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_VAR_KEY
 
+__all__ = []
+
 
 class WeightDecayHelper(object):
+
     def __init__(self):
         pass
 

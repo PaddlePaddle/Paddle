@@ -20,7 +20,7 @@ import paddle
 import numpy as np
 from paddle.fluid.dygraph import base as imperative_base
 
-__all__ = ["LookAhead"]
+__all__ = []
 
 
 class LookAhead(Optimizer):
@@ -29,18 +29,18 @@ class LookAhead(Optimizer):
     paper : https://arxiv.org/abs/1907.08610.
 
     Lookahead keeps two sets of params: the fast_params and
-    the slow_params. inner_optimizer update fast_params every 
-    training step. Lookahead updates the slow_params and fast_params 
+    the slow_params. inner_optimizer update fast_params every
+    training step. Lookahead updates the slow_params and fast_params
     every k training steps as follows:
 
     .. math::
-        
+
         slow\_param_t &= slow\_param_{t-1} + \\alpha * (fast\_param_{t-1} - slow\_param_{t-1})
-	    
+
         fast\_param_t &=  slow\_param_t
 
     Args:
-        inner_optimizer (Optimizer): The optimizer that update fast params step by step. 
+        inner_optimizer (Optimizer): The optimizer that update fast params step by step.
         alpha (float, optinal): The learning rate of Lookahead. The default value is 0.5.
         k (int, optinal): The slow params is updated every k steps. The default value is 5.
         name (str, optional): Normally there is no need for user to set this property.
@@ -50,7 +50,7 @@ class LookAhead(Optimizer):
     Examples:
 
         .. code-block:: python
-        
+
             import numpy as np
             import paddle
             import paddle.nn as nn
@@ -99,7 +99,7 @@ class LookAhead(Optimizer):
             layer = LinearNet()
             loss_fn = nn.CrossEntropyLoss()
             optimizer = paddle.optimizer.SGD(learning_rate=0.1, parameters=layer.parameters())
-            lookahead = paddle.incubate.optimizer.LookAhead(optimizer, alpha=0.2, k=5)
+            lookahead = paddle.incubate.LookAhead(optimizer, alpha=0.2, k=5)
 
             # create data loader
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
@@ -109,7 +109,7 @@ class LookAhead(Optimizer):
                 shuffle=True,
                 drop_last=True,
                 num_workers=2)
-            
+
             train(layer, loader, loss_fn, lookahead)
 
     """
@@ -129,12 +129,11 @@ class LookAhead(Optimizer):
         else:
             parameters = self.inner_optimizer._parameter_list
 
-        super(LookAhead, self).__init__(
-            learning_rate=alpha,
-            parameters=parameters,
-            weight_decay=None,
-            grad_clip=None,
-            name=name)
+        super(LookAhead, self).__init__(learning_rate=alpha,
+                                        parameters=parameters,
+                                        weight_decay=None,
+                                        grad_clip=None,
+                                        name=name)
 
         self.alpha = alpha
         self.k = k
@@ -148,7 +147,7 @@ class LookAhead(Optimizer):
     def step(self):
         """
         Execute the optimizer and update parameters once.
-        
+
         Returns:
             None
 
@@ -163,7 +162,7 @@ class LookAhead(Optimizer):
                 out = linear(inp)
                 loss = paddle.mean(out)
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
-                lookahead = paddle.incubate.optimizer.LookAhead(sgd, alpha=0.2, k=5)
+                lookahead = paddle.incubate.LookAhead(sgd, alpha=0.2, k=5)
                 loss.backward()
                 lookahead.step()
                 lookahead.clear_grad()
@@ -180,8 +179,9 @@ class LookAhead(Optimizer):
                 grad_var = param._grad_ivar()
                 params_grads.append((param, grad_var))
 
-        self._apply_optimize(
-            loss=None, startup_program=None, params_grads=params_grads)
+        self._apply_optimize(loss=None,
+                             startup_program=None,
+                             params_grads=params_grads)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -198,16 +198,16 @@ class LookAhead(Optimizer):
                 dtype='int32',
                 persistable=True)
 
-        self.helper.append_op(
-            type='increment',
-            inputs={'X': [self._global_step_var]},
-            outputs={'Out': [self._global_step_var]},
-            attrs={'step': 1.0})
+        self.helper.append_op(type='increment',
+                              inputs={'X': [self._global_step_var]},
+                              outputs={'Out': [self._global_step_var]},
+                              attrs={'step': 1.0})
 
     def _append_optimize_op(self, block, param_and_grad):
         one_var = paddle.ones(shape=[1], dtype='int32', name='lookahead_ones')
-        zero_var = paddle.zeros(
-            shape=[1], dtype='int32', name='lookahead_zeros')
+        zero_var = paddle.zeros(shape=[1],
+                                dtype='int32',
+                                name='lookahead_zeros')
         k_var = layers.create_global_var(
             name=unique_name.generate("lookahead_k"),
             shape=[1],
@@ -259,8 +259,8 @@ class LookAhead(Optimizer):
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) tensor pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
-            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
-            indicate program pruning. If so, the program will be pruned by ``feed`` and 
+            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
+            indicate program pruning. If so, the program will be pruned by ``feed`` and
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
@@ -274,16 +274,13 @@ class LookAhead(Optimizer):
                 out = linear(inp)
                 loss = paddle.mean(out)
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
-                lookahead = paddle.incubate.optimizer.LookAhead(sgd, alpha=0.2, k=5)
+                lookahead = paddle.incubate.LookAhead(sgd, alpha=0.2, k=5)
                 loss.backward()
                 lookahead.minimize(loss)
                 lookahead.clear_grad()
 
         """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
-
-        parameter_list = parameters if parameters \
-            else self._parameter_list
 
         # Apply inner optimizer to the main_program
         optimize_ops, params_grads = self.inner_optimizer.minimize(
@@ -294,7 +291,8 @@ class LookAhead(Optimizer):
 
         self._increment_global_var()
 
-        _ = self._apply_optimize(
-            loss, startup_program=startup_program, params_grads=params_grads)
+        _ = self._apply_optimize(loss,
+                                 startup_program=startup_program,
+                                 params_grads=params_grads)
 
         return optimize_ops, params_grads

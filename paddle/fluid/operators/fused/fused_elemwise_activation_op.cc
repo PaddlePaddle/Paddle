@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_elemwise_activation_op.h"
+
 #include <memory>
 #include <unordered_set>
 
@@ -21,22 +22,27 @@ namespace operators {
 
 bool IsUnaryCompound(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(
-      functor_list.size(), 2,
+      functor_list.size(),
+      2,
       platform::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
-          functor_list.size(), 2));
-  static std::unordered_set<std::string> binary_fun = {
-      "elementwise_add", "elementwise_mul", "elementwise_add_grad",
-      "elementwise_mul_grad"};
+          functor_list.size(),
+          2));
+  static std::unordered_set<std::string> binary_fun = {"elementwise_add",
+                                                       "elementwise_mul",
+                                                       "elementwise_add_grad",
+                                                       "elementwise_mul_grad"};
   return binary_fun.count(functor_list[1]) != 0;
 }
 
 bool HasInPlaceUnary(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(
-      functor_list.size(), 2,
+      functor_list.size(),
+      2,
       platform::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
-          functor_list.size(), 2));
+          functor_list.size(),
+          2));
   static std::unordered_set<std::string> InplaceOpSet = {"relu", "relu_grad"};
   bool is_in_place = false;
   for (auto &func_name : functor_list) {
@@ -47,10 +53,12 @@ bool HasInPlaceUnary(const std::vector<std::string> &functor_list) {
 
 bool InputXCanBeAbsent(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(
-      functor_list.size(), 2,
+      functor_list.size(),
+      2,
       platform::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
-          functor_list.size(), 2));
+          functor_list.size(),
+          2));
   static std::unordered_set<std::string> binary_fun = {"elementwise_add_grad"};
   return binary_fun.count(functor_list[0]) != 0 ||
          binary_fun.count(functor_list[1]) != 0;
@@ -63,13 +71,15 @@ bool InputXCanBeAbsent(const std::vector<std::string> &functor_list) {
  */
 static bool IsSupportedCompound(const std::vector<std::string> &functors) {
   PADDLE_ENFORCE_EQ(
-      functors.size(), 2UL,
+      functors.size(),
+      2UL,
       platform::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
-          functors.size(), 2));
+          functors.size(),
+          2));
 
-  static std::unordered_set<std::string> unary_fun = {"scale", "relu", "tanh",
-                                                      "sigmoid"};
+  static std::unordered_set<std::string> unary_fun = {
+      "scale", "relu", "tanh", "sigmoid", "gelu"};
   static std::unordered_set<std::string> binary_fun = {"elementwise_add",
                                                        "elementwise_mul"};
 
@@ -82,7 +92,8 @@ static bool IsSupportedCompound(const std::vector<std::string> &functors) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s and %s are not included in fused_list.", functors[0], functors[1]));
   }
-  PADDLE_ENFORCE_EQ(unary_fun.count(unary_fun_str), 1,
+  PADDLE_ENFORCE_EQ(unary_fun.count(unary_fun_str),
+                    1,
                     platform::errors::InvalidArgument(
                         "%s is not included in fused_list.", unary_fun_str));
   return true;
@@ -94,15 +105,18 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::InvalidArgument(
             "Input(X) of FusedElemwiseActivationOp op should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
+        ctx->HasInput("Y"),
+        true,
         platform::errors::InvalidArgument(
             "Input(Y) of FusedElemwiseActivationOp op should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument(
             "Output(Out) of FusedElemwiseActivationOp op should not be null."));
 
@@ -118,7 +132,8 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
 
     if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
       PADDLE_ENFORCE_EQ(
-          ctx->HasOutput("IntermediateOut"), true,
+          ctx->HasOutput("IntermediateOut"),
+          true,
           platform::errors::InvalidArgument(
               "Output(IntermediateOut) of FusedElemwiseActivationOp "
               "should not be null."));
@@ -159,8 +174,8 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.Input<framework::Tensor>("X")->type(),
-                      ctx.Input<framework::Tensor>("Y")->type(),
+    PADDLE_ENFORCE_EQ(ctx.Input<framework::Tensor>("X")->dtype(),
+                      ctx.Input<framework::Tensor>("Y")->dtype(),
                       platform::errors::InvalidArgument(
                           "The element's type of input should be the same."));
     return framework::OpKernelType(
@@ -197,7 +212,8 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
                                       "The functors that should be fused.")
         .AddCustomChecker([&](const std::vector<std::string> &functor_list) {
           PADDLE_ENFORCE_EQ(
-              IsSupportedCompound(functor_list), true,
+              IsSupportedCompound(functor_list),
+              true,
               platform::errors::InvalidArgument(
                   "the input functors should support compounding."));
         });
@@ -267,14 +283,14 @@ class FusedElemwiseActivationGradMaker
 
     grad_op->SetAttrMap(this->Attrs());
 
-    std::vector<std::string> functor_names = BOOST_GET_CONST(
+    std::vector<std::string> functor_names = PADDLE_GET_CONST(
         std::vector<std::string>, grad_op->GetAttr("functor_list"));
 
     functor_names[0] += "_grad";
     functor_names[1] += "_grad";
     grad_op->SetAttr("functor_list", functor_names);
 
-    if (BOOST_GET_CONST(bool, grad_op->GetAttr("save_intermediate_out"))) {
+    if (PADDLE_GET_CONST(bool, grad_op->GetAttr("save_intermediate_out"))) {
       // PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
       grad_op->SetInput("IntermediateOut", this->Output("IntermediateOut"));
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
@@ -301,7 +317,8 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Out@Grad) should not be null."));
 
@@ -309,13 +326,15 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
 
     if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
-      PADDLE_ENFORCE_EQ(ctx->HasInput("IntermediateOut"), true,
+      PADDLE_ENFORCE_EQ(ctx->HasInput("IntermediateOut"),
+                        true,
                         platform::errors::InvalidArgument(
                             "Input(IntermediateOut) should not be null."));
     } else {
       if (!InputXCanBeAbsent(functor_list)) {
         PADDLE_ENFORCE_EQ(
-            ctx->HasInput("X"), true,
+            ctx->HasInput("X"),
+            true,
             platform::errors::InvalidArgument("Input(X) should not be null."));
       }
     }
@@ -332,7 +351,8 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
         // Currently, only when Binary is elementwise_add or elementwise_sub,
         // the "X" could be absent.
         PADDLE_ENFORCE_EQ(
-            InputXCanBeAbsent(functor_list), true,
+            InputXCanBeAbsent(functor_list),
+            true,
             platform::errors::InvalidArgument(
                 "Only when BinaryFunctor is elementwise_add, the 'X' "
                 "could be absent."));
@@ -348,7 +368,8 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
 
     if (ctx->HasOutput(y_grad_name)) {
       PADDLE_ENFORCE_EQ(
-          ctx->HasInput("Y"), true,
+          ctx->HasInput("Y"),
+          true,
           platform::errors::InvalidArgument("Input(Y) should not be null."));
       ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
       ctx->ShareLoD("Y", y_grad_name);
@@ -391,7 +412,8 @@ class FusedElemwiseAddActivationOp : public FusedElemwiseActivationOp {
       }
     }
     PADDLE_ENFORCE_EQ(
-        elemntwise_add_detected, true,
+        elemntwise_add_detected,
+        true,
         platform::errors::InvalidArgument(
             "When the FusedElemwiseAddActivationOp Is used in fused pass, the "
             "elementwise_add Op must be"
@@ -415,7 +437,8 @@ class FusedElemwiseAddActivationOpGrad : public FusedElemwiseActivationOpGrad {
       }
     }
     PADDLE_ENFORCE_EQ(
-        elemntwise_add_grad_detected, true,
+        elemntwise_add_grad_detected,
+        true,
         platform::errors::InvalidArgument(
             "When the FusedElemwiseAddActivationOpGrad Is used in fused pass, "
             "the elementwise_add_grad Op must be"
@@ -430,7 +453,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fused_elemwise_activation, ops::FusedElemwiseActivationOp,
+    fused_elemwise_activation,
+    ops::FusedElemwiseActivationOp,
     ops::FusedElemwiseActivationMaker,
     ops::FusedElemwiseActivationGradMaker<paddle::framework::OpDesc>,
     ops::FusedElemwiseActivationGradMaker<paddle::imperative::OpBase>);
@@ -439,21 +463,18 @@ REGISTER_OPERATOR(fused_elemwise_activation_grad,
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_activation,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       float>,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       double>);
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_activation_grad,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           float>,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           double>);
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, double>);
 
 // for memory optimization, we register the fused_elemwise_add_activation OP
 REGISTER_OPERATOR(
-    fused_elemwise_add_activation, ops::FusedElemwiseAddActivationOp,
+    fused_elemwise_add_activation,
+    ops::FusedElemwiseAddActivationOp,
     ops::FusedElemwiseAddActivationMaker,
     ops::FusedElemwiseAddActivationGradMaker<paddle::framework::OpDesc>,
     ops::FusedElemwiseAddActivationGradMaker<paddle::imperative::OpBase>);
@@ -463,14 +484,10 @@ REGISTER_OPERATOR(fused_elemwise_add_activation_grad,
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_add_activation,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       float>,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       double>);
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_add_activation_grad,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           float>,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           double>);
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, double>);

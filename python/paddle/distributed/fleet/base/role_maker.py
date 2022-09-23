@@ -22,12 +22,15 @@ import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 class Role:
     WORKER = 1
     SERVER = 2
     HETER_WORKER = 3
     ALL = 4
+    COORDINATOR = 5
 
 
 class Gloo(object):
@@ -116,6 +119,7 @@ class Gloo(object):
         self._http_server = http_server
 
     def _init_fs(self, fs_path, prefix):
+
         def init(rank, nodes, role):
             gloo = fluid.core.Gloo()
             gloo.set_rank(rank)
@@ -143,6 +147,7 @@ class Gloo(object):
             self._nodes_comm = gloo
 
     def _init_dfs(self, dfs_name, dfs_ugi, dfs_path, prefix):
+
         def init(rank, nodes, role):
             gloo = fluid.core.Gloo()
             gloo.set_rank(rank)
@@ -170,6 +175,7 @@ class Gloo(object):
             self._nodes_comm = gloo
 
     def _init_http(self, ip, port, prefix, start_http_server, http_server_d):
+
         def __start_kv_server(http_server_d, size_d):
             print("start http_server: {}, {}".format(port, size_d))
             from paddle.distributed.fleet.utils.http_server import KVServer
@@ -183,13 +189,15 @@ class Gloo(object):
 
         def init_kv_server(http_server_d):
             worker_key = prefix + '_' + 'worker'
-            size_d = {worker_key: self._worker_num, }
+            size_d = {
+                worker_key: self._worker_num,
+            }
             print("worker_key:{}, size: {}".format(worker_key, size_d))
 
             http_server_d["running"] = True
             # child process for http server
-            _http_server = Process(
-                target=__start_kv_server, args=(http_server_d, size_d))
+            _http_server = Process(target=__start_kv_server,
+                                   args=(http_server_d, size_d))
             _http_server.daemon = True
             # set running status to True
             # start child process
@@ -222,6 +230,10 @@ class Gloo(object):
             self._worker_comm = gloo
         # TODO (sandyhouse): initialize gloo for server and all
 
+        # the closing of kv server may cause gloo init failure
+        # since it depend on the full mesh connection
+        # e.g. 0 connected with 1,2,3 while 2-3 not connected yet
+        # TODO(kuizhiqing)
         if start_http_server:
             http_server_d["running"] = False
             http_server.join()
@@ -365,14 +377,10 @@ class RoleMakerBase(object):
     def __init__(self):
         self._worker_endpoints = []
         self._server_endpoints = []
+        self._cur_endpoint = ""
         self._role_is_generated = False
         self._role = None
         self._current_id = -1
-
-        # for heter parameter server mode
-        self._heter_trainer_endpoints = []
-        self._heter_trainer_device = "CPU"
-        self._is_heter_parameter_server_mode = False
 
     def _is_worker(self):
         """
@@ -485,58 +493,61 @@ class RoleMakerBase(object):
         """
         print("warning: RoleMakerBase does not have barrier worker.")
 
-    def _is_heter_worker(self):
-        """
-        Return is_heter_worker() of current process
-        """
-        warnings.warn("RoleMakerBase does not have function: _is_heter_worker.")
-        return False
+    #def _is_heter_worker(self):
+    #    """
+    #    Return is_heter_worker() of current process
+    #    """
+    #    raise NotImplementedError("Please implement this method in child class")
 
-    def _heter_worker_num(self):
-        """
-        Get current total heter-worker number.
+    #def _heter_worker_num(self):
+    #    """
+    #    Get current total heter-worker number.
+    #
+    #    Returns:
+    #        int: heter_worker number
+    #    """
+    #    raise NotImplementedError("Please implement this method in child class")
 
-        Returns:
-            int: heter_worker number
-        """
-        warnings.warn(
-            "RoleMakerBase does not have function: _heter_worker_num.")
-        return 0
+    #def _get_heter_worker_endpoints(self):
+    #    """
+    #    Returns:
+    #        string: all heter_trainers'endpoints
+    #    """
+    #    raise NotImplementedError("Please implement this method in child class")
 
-    def _get_heter_worker_endpoints(self):
-        """
-        Returns:
-            string: all heter_trainers'endpoints
-        """
-        assert self._heter_trainer_endpoints != [], "Heter Worker Endpoints Not initialized"
-        return self._heter_trainer_endpoints
-
-    def _get_heter_worker_endpoint(self):
-        """
-        Returns:
-            int: corresponding heter_trainer's endpoint
-
-        e.g: if we have 4 cpu-trainer(default), 2 gpu-trainer(heter)
-             then No.0 and No.2 cpu-trainer will work with No.0 gpu-trainer
-             and No.1 and No.3 cpu-trainer will work with No.1 gpu-trainer
-        """
-        assert self._heter_trainer_endpoints != [], "Heter Worker Endpoints Not initialized"
-        return self._heter_trainer_endpoints[(self._current_id) %
-                                             self._heter_worker_num()]
+    #def _get_heter_worker_endpoint(self):
+    #    """
+    #    Returns:
+    #        int: corresponding heter_trainer's endpoint
+    #    """
+    #    raise NotImplementedError("Please implement this method in child class")
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
+
     def __init__(self, is_collective=False, **kwargs):
         super(PaddleCloudRoleMaker, self).__init__()
         self._is_collective = is_collective
-
         self._non_distributed = False
 
         self._kwargs = kwargs
         self._role_is_generated = False
 
+        # for heterps
+        self._stage_id = 1
+        self._stage_num = 1
+        self._next_heter_trainer_endpoints = []
+        self._previous_heter_trainer_endpoints = []
+        self._heter_trainer_endpoints = []
+        self._heter_trainer_device = "cpu"
+        self._heter_trainer_device_type = "cpu"
+        self._is_heter_parameter_server_mode = False
+        self._stage_trainers = []
+
         self._server_endpoints = []
         self._worker_endpoints = []
+        self._coordinator_endpoints = None
+        self._with_coordinator = False
 
         self._gloo = Gloo()  # gloo instance
 
@@ -548,6 +559,46 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     def _all_reduce(self, input, mode="sum", comm_world="worker"):
         return self._gloo.all_reduce(input, mode, comm_world)
+
+    def _heter_device(self):
+        """
+        return the heter device that current heter worker is using
+        """
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._heter_trainer_device
+
+    def _heter_device_type(self):
+        """
+        return the heter device type that current heter worker is using
+        """
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._heter_trainer_device_type
+
+    def _get_stage_id(self):
+        """
+       return stage id of current heter worker
+       """
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._stage_id
+
+    def _get_stage_trainers(self):
+        """
+       return trainer num of all stages
+       """
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._stage_trainers
+
+    def _get_num_stage(self):
+        """
+       return stage num
+       """
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._stage_num
 
     def _is_worker(self):
         """
@@ -564,6 +615,11 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             self._generate_role()
         return self._role == Role.SERVER
+
+    def _is_coordinator(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._role == Role.COORDINATOR
 
     def _is_first_worker(self):
         """
@@ -611,8 +667,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self._generate_role()
-        return len(self._get_pserver_endpoints(
-        )) if self._get_pserver_endpoints() is not None else 0
+        return len(self._get_pserver_endpoints()
+                   ) if self._get_pserver_endpoints() is not None else 0
 
     def _node_num(self):
         """
@@ -622,6 +678,29 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._generate_role()
         return self._nodes_num
 
+    def _get_node_num(self):
+        """
+        return the training node number
+        """
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._nodes_num
+
+    def _get_local_rank(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._local_rank
+
+    def _get_local_device_ids(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._local_device_ids
+
+    def _get_world_device_ids(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._world_device_ids
+
     def _get_trainer_endpoints(self):
         """
         get endpoint of all trainers
@@ -630,6 +709,32 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._generate_role()
         return self._worker_endpoints
 
+    def _get_trainer_endpoint(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        assert self._role == Role.WORKER, "get_trainer_endpoint should be called by trainer"
+        return self._cur_endpoint
+
+    def _get_heter_worker_endpoints(self):
+        """
+        Returns:
+            string: all heter_trainers'endpoints
+        """
+        if not self._role_is_generated:
+            self._generate_role()
+        assert self._heter_trainer_endpoints != [], "Heter Worker Endpoints Not initialized"
+        return self._heter_trainer_endpoints
+
+    def _get_heter_worker_endpoint(self):
+        """
+        Returns:
+            int: corresponding heter_trainer's endpoint
+        """
+        if not self._role_is_generated:
+            self._generate_role()
+        assert self._role == Role.HETER_WORKER, "_get_heter_worker_endpoint should be invoked by heter worker"
+        return self._cur_endpoint
+
     def _get_pserver_endpoints(self):
         """
         get endpoint of all pservers
@@ -637,6 +742,33 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             self._generate_role()
         return self._server_endpoints
+
+    def _get_coordinator_endpoints(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._coordinator_endpoints
+
+    def _get_previous_trainers(self):
+        """
+        invoked by heter worker
+        """
+        if not self._role_is_generated:
+            self._generate_role()
+        assert self._role in (
+            Role.WORKER, Role.HETER_WORKER
+        ), "_get_previous_trainers should be invoked by trainer or heter worker"
+        return self._previous_heter_trainer_endpoints
+
+    def _get_next_trainers(self):
+        """
+        invoked by heter worker
+        """
+        if not self._role_is_generated:
+            self._generate_role()
+        assert self._role in (
+            Role.WORKER, Role.HETER_WORKER
+        ), "_get_next_trainers should be invoked by trainer or heter worker"
+        return self._next_heter_trainer_endpoints
 
     def _is_non_distributed(self):
         """
@@ -663,7 +795,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._generate_role()
         return self._role == Role.HETER_WORKER
 
-    def _ps_env(self):
+    def _ps_env(self):  # each role will execute it
         # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
         # format: string(ip:port,ip:port), eg. 127.0.0.1:6001,127.0.0.1:6002
         self._server_endpoints = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST", None)
@@ -688,6 +820,14 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         else:
             self._worker_endpoints = []
 
+        self._coordinator_endpoints = os.getenv("PADDLE_COORDINATOR_ENDPOINTS",
+                                                "")
+        if self._coordinator_endpoints == "":
+            print("fl-ps > coordinator address is null!")
+        else:
+            self._with_coordinator = True
+            self._coordinator_endpoints = self._coordinator_endpoints.split(",")
+
         trainers_num = os.getenv("PADDLE_TRAINERS_NUM", None)
         if trainers_num == None:
             raise ValueError(
@@ -700,28 +840,55 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             raise ValueError(
                 "Can not find TRAINING_ROLE, please check your environment.")
 
-        if training_role not in ["TRAINER", "PSERVER", "HETER_TRAINER"]:
+        if training_role not in [
+                "TRAINER", "PSERVER", "HETER_TRAINER", "COORDINATOR"
+        ]:
             raise ValueError(
-                "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER, but get {}, please check your environment.".
-                format(training_role))
+                "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER or COORDINATOR, but get {}, please check your environment."
+                .format(training_role))
 
-        # For heter parameter server env setting
-        heter_trainer_eplist = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST",
-                                         "")
-        if heter_trainer_eplist != "":
-            try:
-                heter_trainer_eplist = os.environ[
-                    "PADDLE_HETER_TRAINER_IP_PORT_LIST"].split(",")
-            except:
-                raise ValueError(
-                    "Can not Find PADDLE_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
-                )
+        # For Heter Parameter Server env setting
+        next_heter_trainer_eplist = os.getenv(
+            "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST", "")
+        previous_heter_trainer_eplist = os.getenv(
+            "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST", "")
+        all_heter_trainer_eplist = os.getenv(
+            "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST", "")
 
+        if all_heter_trainer_eplist != "":
+            self._heter_trainer_endpoints = all_heter_trainer_eplist.split(",")
             self._is_heter_parameter_server_mode = True
-            heter_trainers_num = len(heter_trainer_eplist)
+            self._heter_trainers_num = len(self._heter_trainer_endpoints)
+
+            if previous_heter_trainer_eplist == "":
+                assert training_role in (
+                    "TRAINER",
+                    "PSERVER"), "training_role should be trainer or pserver"
+            else:
+                try:
+                    self._previous_heter_trainer_endpoints = previous_heter_trainer_eplist.split(
+                        ",")
+                except:
+                    raise ValueError(
+                        "Can not Find PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
+                    )
+
+            if next_heter_trainer_eplist == "":
+                assert training_role in (
+                    "HETER_TRAINER", "PSERVER"
+                ), "training_role should be heter trainer or pserver"
+            else:
+                try:
+                    self._next_heter_trainer_endpoints = next_heter_trainer_eplist.split(
+                        ",")
+                except:
+                    raise ValueError(
+                        "Can not Find PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
+                    )
+
         else:
             self._is_heter_parameter_server_mode = False
-            heter_trainers_num = 0
+            self._heter_trainers_num = 0
 
         if training_role == "TRAINER":
             role = Role.WORKER
@@ -731,22 +898,25 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     "Can not find PADDLE_TRAINER_ID, please check your environment."
                 )
             current_id = int(current_id)
-            if len(self._worker_endpoints) > 0:
-                self._cur_endpoint = self._worker_endpoints[current_id]
-        elif training_role == "PSERVER":
-            role = Role.SERVER
-            port = os.getenv("PADDLE_PORT", None)
-            if port == None:
-                raise ValueError(
-                    "Can not find PADDLE_PORT, please check your environment.")
-            ip = os.getenv("POD_IP", None)
-            if ip == None:
-                raise ValueError(
-                    "Can not find POD_IP, please check your environment.")
-            self._cur_endpoint = ip + ":" + port
-            current_id = self._server_endpoints.index(self._cur_endpoint)
-        elif training_role == "HETER_TRAINER":
-            role = Role.HETER_WORKER
+            if self._is_heter_parameter_server_mode:
+                self._stage_id = os.getenv("STAGE_ID", None)
+                if self._stage_id == None:
+                    raise ValueError(
+                        "Can not find STAGE_ID, please check your environment.")
+                self._stage_id = int(self._stage_id)
+                self._stage_num = os.getenv("STAGE_NUM", None)
+                if self._stage_num == None:
+                    raise ValueError(
+                        "Can not find STAGE_NUM, please check your environment."
+                    )
+                self._stage_num = int(self._stage_num)
+                self._stage_trainers = os.getenv("PADDLE_STAGE_TRAINERS_NUM",
+                                                 None)
+                if self._stage_trainers == None:
+                    raise ValueError(
+                        "Can not find PADDLE_STAGE_TRAINERS_NUM, please check your environment."
+                    )
+                self._stage_trainers = eval(self._stage_trainers)
             cur_port = os.getenv("PADDLE_PORT", None)
             if cur_port == None:
                 raise ValueError(
@@ -756,15 +926,80 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 raise ValueError(
                     "Can not find POD_IP, please check your environment.")
             curr_endpoint = ":".join([cur_ip, cur_port])
-            current_id = heter_trainer_eplist.index(curr_endpoint)
+            self._cur_endpoint = curr_endpoint
+        elif training_role == "COORDINATOR":
+            print(">>> curr node is coordinator!")
+            role = Role.COORDINATOR
+            current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+        elif training_role == "PSERVER":
+            role = Role.SERVER
+            cur_port = os.getenv("PADDLE_PORT", None)
+            if cur_port == None:
+                raise ValueError(
+                    "Can not find PADDLE_PORT, please check your environment.")
+            cur_ip = os.getenv("POD_IP", None)
+            if cur_ip == None:
+                raise ValueError(
+                    "Can not find POD_IP, please check your environment.")
+            curr_endpoint = ":".join([cur_ip, cur_port])
+            self._cur_endpoint = curr_endpoint
+            current_id = self._server_endpoints.index(self._cur_endpoint)
+        elif training_role == "HETER_TRAINER":
+            role = Role.HETER_WORKER
+            self._stage_id = os.getenv("STAGE_ID", None)
+            if self._stage_id == None:
+                raise ValueError(
+                    "Can not find STAGE_ID, please check your environment.")
+            self._stage_id = int(self._stage_id)
+            self._stage_num = os.getenv("STAGE_NUM", None)
+            if self._stage_num == None:
+                raise ValueError(
+                    "Can not find STAGE_NUM, please check your environment.")
+            self._stage_num = int(self._stage_num)
+
+            self._stage_trainers = os.getenv("PADDLE_STAGE_TRAINERS_NUM", None)
+            if self._stage_trainers == None:
+                raise ValueError(
+                    "Can not find PADDLE_STAGE_TRAINERS_NUM, please check your environment."
+                )
+            self._stage_trainers = eval(self._stage_trainers)
+
+            self._heter_trainer_device_type = os.getenv("HETER_DEVICE_TYPE",
+                                                        None)
+            if self._heter_trainer_device_type == None:
+                raise ValueError(
+                    "Can not find HETER_DEVICE_TYPE, please check your environment."
+                )
+            assert self._heter_trainer_device_type in (
+                "cpu", "gpu",
+                "xpu"), "HETER_DEVICE_TYPE should be cpu,gpu or xpu"
+            if self._heter_trainer_device_type == "gpu":
+                heter_device_id = os.getenv("FLAGS_selected_gpus", "0")
+                self._heter_trainer_device = ":".join(
+                    (self._heter_trainer_device_type, heter_device_id))
+            if self._heter_trainer_device == "xpu":
+                heter_device_id = os.getenv("FLAGS_selected_xpus", "0")
+                self._heter_trainer_device = ":".join(
+                    (self._heter_trainer_device_type, heter_device_id))
+
+            cur_port = os.getenv("PADDLE_PORT", None)
+            if cur_port == None:
+                raise ValueError(
+                    "Can not find PADDLE_PORT, please check your environment.")
+            cur_ip = os.getenv("POD_IP", None)
+            if cur_ip == None:
+                raise ValueError(
+                    "Can not find POD_IP, please check your environment.")
+            curr_endpoint = ":".join([cur_ip, cur_port])
+            self._cur_endpoint = curr_endpoint
+            current_id = all_heter_trainer_eplist.split(",").index(
+                curr_endpoint) + trainers_num
 
         self._trainers_num = trainers_num
         self._role = role
         self._current_id = current_id
         self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
-        self._heter_trainers_num = heter_trainers_num
-        self._heter_trainer_endpoints = heter_trainer_eplist
 
     def _collective_env(self):
         self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
@@ -782,6 +1017,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._trainers_num = len(self._worker_endpoints)
         self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
+        self._local_rank = os.getenv("PADDLE_RANK_IN_NODE")
+        self._local_device_ids = os.getenv("PADDLE_LOCAL_DEVICE_IDS")
+        self._world_device_ids = os.getenv("PADDLE_WORLD_DEVICE_IDS")
 
     def _gloo_init(self):
         # PADDLE_WITH_GLOO 1: trainer barrier, 2: all barrier
@@ -846,14 +1084,13 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         print("Gloo init with {}: need_init_all: {}, args: {}".format(
             type, need_init_all, kwargs))
 
-        self._gloo.init(
-            rendezvous=rendezvous_type,
-            role=self._role,
-            role_id=self._role_id(),
-            worker_num=self._worker_num(),
-            server_num=self._server_num(),
-            need_init_all=need_init_all,
-            kwargs=kwargs)
+        self._gloo.init(rendezvous=rendezvous_type,
+                        role=self._role,
+                        role_id=self._role_id(),
+                        worker_num=self._worker_num(),
+                        server_num=self._server_num(),
+                        need_init_all=need_init_all,
+                        kwargs=kwargs)
 
         if rendezvous_type == Gloo.RENDEZVOUS.HTTP:
             http_server_d['running'] = False
@@ -868,14 +1105,16 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-            if not paddle.fluid.framework.in_dygraph_mode():
+            if not paddle.fluid.framework._non_static_mode():
                 self._gloo_init()
 
 
 class UserDefinedRoleMaker(PaddleCloudRoleMaker):
+
     def __init__(self, is_collective=False, init_gloo=False, **kwargs):
-        super(UserDefinedRoleMaker, self).__init__(
-            is_collective=is_collective, init_gloo=init_gloo, **kwargs)
+        super(UserDefinedRoleMaker, self).__init__(is_collective=is_collective,
+                                                   init_gloo=init_gloo,
+                                                   **kwargs)
         self._init_gloo = init_gloo
 
     def _user_defined_ps_env(self):

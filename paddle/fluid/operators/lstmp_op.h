@@ -15,15 +15,16 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/operators/math/lstm_compute.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/detail/activation_functions.h"
+#include "paddle/phi/kernels/funcs/lstm_compute.h"
+#include "paddle/phi/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +33,8 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 using platform::Transform;
 
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -71,8 +73,9 @@ template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
                              framework::Vector<size_t> index,
-                             framework::Tensor* dst, bool indexed_src) {
-  math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
+                             framework::Tensor* dst,
+                             bool indexed_src) {
+  phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
   row_shuffle(ctx, src, index, dst, indexed_src);
 }
@@ -81,15 +84,18 @@ template <typename DeviceContext, typename T>
 class LSTMPKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
-  void ActCompute(const math::detail::ActivationType act_type, const Device& d,
-                  X x, Y y, platform::Place place) const {
-    if (act_type == math::detail::ActivationType::kIdentity) {
+  void ActCompute(const phi::funcs::detail::ActivationType act_type,
+                  const Device& d,
+                  X x,
+                  Y y,
+                  platform::Place place) const {
+    if (act_type == phi::funcs::detail::ActivationType::kIdentity) {
       y.device(d) = x;
-    } else if (act_type == math::detail::ActivationType::kSigmoid) {
+    } else if (act_type == phi::funcs::detail::ActivationType::kSigmoid) {
       SigmoidFunctor<T>()(d, x, y);
-    } else if (act_type == math::detail::ActivationType::kTanh) {
+    } else if (act_type == phi::funcs::detail::ActivationType::kTanh) {
       TanhFunctor<T>()(d, x, y);
-    } else if (act_type == math::detail::ActivationType::kReLU) {
+    } else if (act_type == phi::funcs::detail::ActivationType::kReLU) {
       if (place == platform::CPUPlace())
         ReluCPUFunctor<T>()(d, x, y);
       else
@@ -120,7 +126,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     cell_out->mutable_data<T>(ctx.GetPlace());
 
     bool is_reverse = ctx.Attr<bool>("is_reverse");
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& device_ctx = ctx.template device_context<DeviceContext>();
     to_batch(device_ctx, *input, batch_gate, true, is_reverse);
 
@@ -133,11 +139,11 @@ class LSTMPKernel : public framework::OpKernel<T> {
       Tensor b = *bias;
       b.Resize({bias->numel(), 1});
       Tensor gate_bias = b.Slice(0, 4 * frame_size);
-      math::RowwiseAdd<DeviceContext, T> add_bias;
+      phi::funcs::RowwiseAdd<DeviceContext, T> add_bias;
       add_bias(device_ctx, *batch_gate, gate_bias, batch_gate);
     }
 
-    math::LstmMetaValue<T> lstmp_value;
+    phi::funcs::LstmMetaValue<T> lstmp_value;
     if (bias && ctx.Attr<bool>("use_peepholes")) {
       T* bias_data = const_cast<T*>(bias->data<T>());
       // the code style in LstmpMetaValue will be updated later.
@@ -160,8 +166,8 @@ class LSTMPKernel : public framework::OpKernel<T> {
       // Since the batch computing for LSTMP reorders the input sequence
       // according to their length. The initialized cell state also needs
       // to reorder.
-      ReorderInitState<DeviceContext, T>(device_ctx, *cell_t0, order,
-                                         &ordered_c0, true);
+      ReorderInitState<DeviceContext, T>(
+          device_ctx, *cell_t0, order, &ordered_c0, true);
       lstmp_value.prev_state_value = ordered_c0.data<T>();
     }
 
@@ -176,16 +182,16 @@ class LSTMPKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto gate_act = math::detail::GetActivationType(
+    auto gate_act = phi::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("gate_activation"));
-    auto cell_act = math::detail::GetActivationType(
+    auto cell_act = phi::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("cell_activation"));
-    auto cand_act = math::detail::GetActivationType(
+    auto cand_act = phi::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
-    auto proj_act = math::detail::GetActivationType(
+    auto proj_act = phi::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("proj_activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    auto blas = math::GetBlas<DeviceContext, T>(device_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(device_ctx);
     for (size_t n = 0; n < num_batch; n++) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
@@ -202,8 +208,13 @@ class LSTMPKernel : public framework::OpKernel<T> {
         int pre_h_start = static_cast<int>(batch_starts[n - 1]);
         int pre_h_end = pre_h_start + cur_batch_size;
         auto pre_proj_t = batch_proj.Slice(pre_h_start, pre_h_end);
-        blas.MatMul(pre_proj_t, false, *weight, false, static_cast<T>(1.0),
-                    &gate_t, static_cast<T>(1.0));
+        blas.MatMul(pre_proj_t,
+                    false,
+                    *weight,
+                    false,
+                    static_cast<T>(1.0),
+                    &gate_t,
+                    static_cast<T>(1.0));
       } else if (hidden_t0) {
         // If n == 0 and there is no initialized hidden state, that is to say
         // the H0 is zeros, the calculation W_h * H0 will be skiped.
@@ -212,23 +223,38 @@ class LSTMPKernel : public framework::OpKernel<T> {
         // Since the batch computing for LSTMP reorders the input sequence
         // according to their length. The initialized hidden state also needs
         // to reorder.
-        ReorderInitState<DeviceContext, T>(device_ctx, *hidden_t0, order,
-                                           &ordered_h0, true);
-        blas.MatMul(ordered_h0, false, *weight, false, static_cast<T>(1.0),
-                    &gate_t, static_cast<T>(1.0));
+        ReorderInitState<DeviceContext, T>(
+            device_ctx, *hidden_t0, order, &ordered_h0, true);
+        blas.MatMul(ordered_h0,
+                    false,
+                    *weight,
+                    false,
+                    static_cast<T>(1.0),
+                    &gate_t,
+                    static_cast<T>(1.0));
       }
 
       lstmp_value.gate_value = gate_t.data<T>();
       lstmp_value.output_value = hidden_t.data<T>();
       lstmp_value.state_value = cell_t.data<T>();
       lstmp_value.state_active_value = cell_pre_act_t.data<T>();
-      math::LstmUnitFunctor<DeviceContext, T>::compute(
-          device_ctx, lstmp_value, frame_size, cur_batch_size, cell_clip,
-          gate_act, cell_act, cand_act);
+      phi::funcs::LstmUnitFunctor<DeviceContext, T>::compute(device_ctx,
+                                                             lstmp_value,
+                                                             frame_size,
+                                                             cur_batch_size,
+                                                             cell_clip,
+                                                             gate_act,
+                                                             cell_act,
+                                                             cand_act);
       lstmp_value.prev_state_value = lstmp_value.state_value;
-      blas.MatMul(hidden_t, false, *proj_weight, false, static_cast<T>(1.0),
-                  &proj_t, static_cast<T>(0.0));
-      if (proj_act != math::detail::ActivationType::kIdentity) {
+      blas.MatMul(hidden_t,
+                  false,
+                  *proj_weight,
+                  false,
+                  static_cast<T>(1.0),
+                  &proj_t,
+                  static_cast<T>(0.0));
+      if (proj_act != phi::funcs::detail::ActivationType::kIdentity) {
         auto proj_t_dev = EigenMatrix<T>::From(proj_t);
         ActCompute(cell_act, place, proj_t_dev, proj_t_dev, ctx.GetPlace());
       }
@@ -236,13 +262,15 @@ class LSTMPKernel : public framework::OpKernel<T> {
         T* x_data = proj_t.data<T>();
         int64_t numel = proj_t.numel();
         Transform<DeviceContext> trans;
-        trans(ctx.template device_context<DeviceContext>(), x_data,
-              x_data + numel, x_data,
+        trans(ctx.template device_context<DeviceContext>(),
+              x_data,
+              x_data + numel,
+              x_data,
               _ClipFunctor<T>(-1.0 * proj_clip, proj_clip));
       }
     }
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_proj.set_lod(batch_gate->lod());
     // restore the output hidden in LoDTensor from the batch hidden
     to_seq(device_ctx, batch_proj, proj_out);
@@ -257,16 +285,20 @@ template <typename DeviceContext, typename T>
 class LSTMPGradKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y, typename DX, typename DY>
-  void ActGradCompute(const math::detail::ActivationType act_type,
-                      const Device& d, X x, Y y, DX dx, DY dy) const {
+  void ActGradCompute(const phi::funcs::detail::ActivationType act_type,
+                      const Device& d,
+                      X x,
+                      Y y,
+                      DX dx,
+                      DY dy) const {
     // x is dummy and won't be used even in Relu(use y instead)
-    if (act_type == math::detail::ActivationType::kIdentity)
+    if (act_type == phi::funcs::detail::ActivationType::kIdentity)
       dx.device(d) = dy;
-    else if (act_type == math::detail::ActivationType::kSigmoid)
+    else if (act_type == phi::funcs::detail::ActivationType::kSigmoid)
       SigmoidGradFunctor<T>()(d, x, y, dy, dx);
-    else if (act_type == math::detail::ActivationType::kTanh)
+    else if (act_type == phi::funcs::detail::ActivationType::kTanh)
       TanhGradFunctor<T>()(d, x, y, dy, dx);
-    else if (act_type == math::detail::ActivationType::kReLU)
+    else if (act_type == phi::funcs::detail::ActivationType::kReLU)
       ReluGradFunctor<T>()(d, x, y, dy, dx);
     else
       PADDLE_THROW(
@@ -304,7 +336,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     auto* c0_g = ctx.Output<Tensor>(framework::GradVarName("C0"));
 
     auto& device_ctx = ctx.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> zero;
+    phi::funcs::SetConstant<DeviceContext, T> zero;
     if (weight_g) {
       weight_g->mutable_data<T>(ctx.GetPlace());
       zero(device_ctx, weight_g, static_cast<T>(0.0));
@@ -322,8 +354,8 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (c0) {
-      ReorderInitState<DeviceContext, T>(device_ctx, *c0, order, &ordered_c0,
-                                         true);
+      ReorderInitState<DeviceContext, T>(
+          device_ctx, *c0, order, &ordered_c0, true);
     }
     if (c0 && c0_g) {
       ordered_c0_g.mutable_data<T>(c0_g->dims(), ctx.GetPlace());
@@ -334,13 +366,15 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     auto out_dims = cell_out->dims();
     framework::DDim proj_dims({in_dims[0], proj_weight->dims()[1]});
     int frame_size = static_cast<int>(in_dims[1] / 4);
-    PADDLE_ENFORCE_EQ(frame_size, out_dims[1],
+    PADDLE_ENFORCE_EQ(frame_size,
+                      out_dims[1],
                       platform::errors::InvalidArgument(
                           "The second dimension of Input(Cell) should be %d, "
                           "but received %d in LSTMP@Grad operator.",
-                          frame_size, out_dims[1]));
+                          frame_size,
+                          out_dims[1]));
 
-    math::LstmMetaValue<T> lstmp_value;
+    phi::funcs::LstmMetaValue<T> lstmp_value;
     if (bias && ctx.Attr<bool>("use_peepholes")) {
       T* bias_data = const_cast<T*>(bias->data<T>());
       lstmp_value.check_ig = bias_data + 4 * frame_size;
@@ -352,7 +386,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       lstmp_value.check_og = nullptr;
     }
 
-    math::LstmMetaGrad<T> lstmp_grad;
+    phi::funcs::LstmMetaGrad<T> lstmp_grad;
 
     if (bias && bias_g) {
       bias_g->mutable_data<T>(ctx.GetPlace());
@@ -369,11 +403,12 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       lstmp_grad.check_og_grad = nullptr;
     }
 
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
-    auto ToBatch = [&batch_gate, &to_batch](
-        const DeviceContext& ctx, const framework::LoDTensor& src,
-        const framework::DDim& dims, framework::LoDTensor& dst) {
+    auto ToBatch = [&batch_gate, &to_batch](const DeviceContext& ctx,
+                                            const framework::LoDTensor& src,
+                                            const framework::DDim& dims,
+                                            framework::LoDTensor& dst) {
       dst.mutable_data<T>(dims, ctx.GetPlace());
       dst.set_lod(batch_gate->lod());
       to_batch(ctx, src, &dst, false);
@@ -393,19 +428,19 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     batch_gate_g.mutable_data<T>(batch_gate->dims(), ctx.GetPlace());
     batch_gate_g.set_lod(batch_gate->lod());
 
-    auto gate_act = math::detail::GetActivationType(
+    auto gate_act = phi::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("gate_activation"));
-    auto cell_act = math::detail::GetActivationType(
+    auto cell_act = phi::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("cell_activation"));
-    auto cand_act = math::detail::GetActivationType(
+    auto cand_act = phi::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
-    auto proj_act = math::detail::GetActivationType(
+    auto proj_act = phi::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("proj_activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto blas = math::GetBlas<DeviceContext, T>(device_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(device_ctx);
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
@@ -418,26 +453,43 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
         T* x_data = cur_proj.data<T>();
         int64_t numel = proj_g.numel();
         Transform<DeviceContext> trans;
-        trans(ctx.template device_context<DeviceContext>(), dx_data,
-              dx_data + numel, x_data, dx_data,
+        trans(ctx.template device_context<DeviceContext>(),
+              dx_data,
+              dx_data + numel,
+              x_data,
+              dx_data,
               _ClipGradFunctor<T>(-1.0 * proj_clip, proj_clip));
       }
 
-      if (proj_act != math::detail::ActivationType::kIdentity) {
+      if (proj_act != phi::funcs::detail::ActivationType::kIdentity) {
         auto cur_proj_dev = EigenMatrix<T>::From(cur_proj);
         auto proj_g_dev = EigenMatrix<T>::From(proj_g);
-        ActGradCompute(cell_act, place, cur_proj_dev, cur_proj_dev, proj_g_dev,
+        ActGradCompute(cell_act,
+                       place,
+                       cur_proj_dev,
+                       cur_proj_dev,
+                       proj_g_dev,
                        proj_g_dev);
       }
       /* hidden state backwarad */
       Tensor out_g = batch_hidden_g.Slice(bstart, bend);
-      blas.MatMul(proj_g, false, *proj_weight, true, static_cast<T>(1.0),
-                  &out_g, static_cast<T>(0.0));
+      blas.MatMul(proj_g,
+                  false,
+                  *proj_weight,
+                  true,
+                  static_cast<T>(1.0),
+                  &out_g,
+                  static_cast<T>(0.0));
       /* projection weight backward*/
       if (proj_weight_g) {
         Tensor hidden_t = batch_hidden->Slice(bstart, bend);
-        blas.MatMul(hidden_t, true, proj_g, false, static_cast<T>(1.0),
-                    proj_weight_g, static_cast<T>(1.0));
+        blas.MatMul(hidden_t,
+                    true,
+                    proj_g,
+                    false,
+                    static_cast<T>(1.0),
+                    proj_weight_g,
+                    static_cast<T>(1.0));
       }
 
       Tensor gate = batch_gate->Slice(bstart, bend);
@@ -470,40 +522,66 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       lstmp_value.output_value = nullptr;
       lstmp_grad.state_active_grad = nullptr;
 
-      math::LstmUnitGradFunctor<DeviceContext, T>::compute(
-          device_ctx, lstmp_value, lstmp_grad, frame_size, cur_batch_size,
-          cell_clip, gate_act, cell_act, cand_act);
+      phi::funcs::LstmUnitGradFunctor<DeviceContext, T>::compute(device_ctx,
+                                                                 lstmp_value,
+                                                                 lstmp_grad,
+                                                                 frame_size,
+                                                                 cur_batch_size,
+                                                                 cell_clip,
+                                                                 gate_act,
+                                                                 cell_act,
+                                                                 cand_act);
 
       if (n > 0) {
         int pre_h_start = static_cast<int>(batch_starts[n - 1]);
         int pre_h_end = pre_h_start + cur_batch_size;
         auto pre_proj_g = batch_proj_g.Slice(pre_h_start, pre_h_end);
-        blas.MatMul(gate_g, false, *weight, true, static_cast<T>(1.0),
-                    &pre_proj_g, static_cast<T>(1.0));
+        blas.MatMul(gate_g,
+                    false,
+                    *weight,
+                    true,
+                    static_cast<T>(1.0),
+                    &pre_proj_g,
+                    static_cast<T>(1.0));
         if (weight_g) {
           /* weight backward*/
           auto pre_proj = batch_proj.Slice(pre_h_start, pre_h_end);
-          blas.MatMul(pre_proj, true, gate_g, false, static_cast<T>(1.0),
-                      weight_g, static_cast<T>(1.0));
+          blas.MatMul(pre_proj,
+                      true,
+                      gate_g,
+                      false,
+                      static_cast<T>(1.0),
+                      weight_g,
+                      static_cast<T>(1.0));
         }
       } else {
         if (h0 && weight_g) {
-          ReorderInitState<DeviceContext, T>(device_ctx, *h0, order,
-                                             &ordered_h0, true);
+          ReorderInitState<DeviceContext, T>(
+              device_ctx, *h0, order, &ordered_h0, true);
           if (weight_g) {
-            blas.MatMul(ordered_h0, true, gate_g, false, static_cast<T>(1.0),
-                        weight_g, static_cast<T>(1.0));
+            blas.MatMul(ordered_h0,
+                        true,
+                        gate_g,
+                        false,
+                        static_cast<T>(1.0),
+                        weight_g,
+                        static_cast<T>(1.0));
           }
         }
         if (h0 && (h0_g || proj_weight_g)) {
           ordered_h0_g.mutable_data<T>(h0_g->dims(), ctx.GetPlace());
-          blas.MatMul(gate_g, false, *weight, true, static_cast<T>(1.0),
-                      &ordered_h0_g, static_cast<T>(0.0));
+          blas.MatMul(gate_g,
+                      false,
+                      *weight,
+                      true,
+                      static_cast<T>(1.0),
+                      &ordered_h0_g,
+                      static_cast<T>(0.0));
         }
       }
     }
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     if (in_g) {
       /* backward data */
       in_g->mutable_data<T>(ctx.GetPlace());
@@ -514,17 +592,17 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       Tensor b_g = *bias_g;
       b_g.Resize({bias_g->numel(), 1});
       Tensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
-      math::ColwiseSum<DeviceContext, T> col_sum;
+      phi::funcs::ColwiseSum<DeviceContext, T> col_sum;
       col_sum(device_ctx, batch_gate_g, &gate_bias_g);
     }
 
     if (h0 && h0_g) {
-      ReorderInitState<DeviceContext, T>(device_ctx, ordered_h0_g, order, h0_g,
-                                         false);
+      ReorderInitState<DeviceContext, T>(
+          device_ctx, ordered_h0_g, order, h0_g, false);
     }
     if (c0 && c0_g) {
-      ReorderInitState<DeviceContext, T>(device_ctx, ordered_c0_g, order, c0_g,
-                                         false);
+      ReorderInitState<DeviceContext, T>(
+          device_ctx, ordered_c0_g, order, c0_g, false);
     }
   }
 };

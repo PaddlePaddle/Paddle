@@ -13,16 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/cos_sim_functor.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
 template <typename T>
-__global__ void CosSimDyKernel(const T* x_norm, const T* y_norm, const T* x,
-                               const T* y, const T* z, const T* dz,
-                               const size_t rows, const size_t cols, T* dy) {
+__global__ void CosSimDyKernel(const T* x_norm,
+                               const T* y_norm,
+                               const T* x,
+                               const T* y,
+                               const T* z,
+                               const T* dz,
+                               const size_t rows,
+                               const size_t cols,
+                               T* dy) {
   int grid_size = blockDim.x * gridDim.x;
   T y_norm_data = y_norm[0];
   for (int row_id = blockIdx.x * blockDim.x + threadIdx.x; row_id < rows;
@@ -44,10 +50,16 @@ __global__ void CosSimDyKernel(const T* x_norm, const T* y_norm, const T* x,
 }
 
 template <typename T>
-struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx, const T* x_norm,
-                  const T* y_norm, const T* x, const T* y, const T* z,
-                  const T* dz, const size_t rows, const size_t cols,
+struct CosSimDyFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& ctx,
+                  const T* x_norm,
+                  const T* y_norm,
+                  const T* x,
+                  const T* y,
+                  const T* z,
+                  const T* dz,
+                  const size_t rows,
+                  const size_t cols,
                   T* dy) const {
     const int block_size = 512;
     dim3 threads(block_size, 1);
@@ -57,8 +69,8 @@ struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct CosSimDyFunctor<platform::CUDADeviceContext, float>;
-template struct CosSimDyFunctor<platform::CUDADeviceContext, double>;
+template struct CosSimDyFunctor<phi::GPUContext, float>;
+template struct CosSimDyFunctor<phi::GPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

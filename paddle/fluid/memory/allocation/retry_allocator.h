@@ -37,7 +37,8 @@ class RetryAllocator : public Allocator {
         platform::errors::InvalidArgument(
             "Underlying allocator of RetryAllocator is NULL"));
     PADDLE_ENFORCE_EQ(
-        underlying_allocator_->IsAllocThreadSafe(), true,
+        underlying_allocator_->IsAllocThreadSafe(),
+        true,
         platform::errors::PreconditionNotMet(
             "Underlying allocator of RetryAllocator is not thread-safe"));
   }
@@ -45,8 +46,8 @@ class RetryAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  void FreeImpl(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size) override;
+  void FreeImpl(phi::Allocation* allocation) override;
+  phi::Allocation* AllocateImpl(size_t size) override;
   uint64_t ReleaseImpl(const platform::Place& place) override {
     return underlying_allocator_->Release(place);
   }

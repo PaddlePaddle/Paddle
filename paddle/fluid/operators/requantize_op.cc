@@ -13,6 +13,7 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/requantize_op.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -23,12 +24,11 @@ namespace operators {
 
 framework::OpKernelType ReQuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
-  framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
-
   return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      framework::DataLayout::kMKLDNN,
+      framework::LibraryType::kMKLDNN);
 }
 
 void ReQuantOpMaker::Make() {
@@ -53,6 +53,8 @@ REGISTER_OP_VERSION(requantize)
         R"ROC( Add new attributes [Shift_in, Shift_out])ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewAttr("Shift_in",
-                     "Provide quantization shift value for input data", 1.0f)
+                     "Provide quantization shift value for input data",
+                     1.0f)
             .NewAttr("Shift_out",
-                     "Provide quantization shift value for output data", 1.0f));
+                     "Provide quantization shift value for output data",
+                     1.0f));

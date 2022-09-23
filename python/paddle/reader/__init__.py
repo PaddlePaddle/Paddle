@@ -38,7 +38,7 @@ items. It can be any function with no parameter that creates a iterable
 Element produced from the iterable should be a **single** entry of data,
 **not** a mini batch. That entry of data could be a single item, or a tuple of
 items.
-Item should be of supported type (e.g., numpy array or list/tuple of float 
+Item should be of supported type (e.g., numpy array or list/tuple of float
 or int).
 
 An example implementation for single item data reader creator:
@@ -63,7 +63,15 @@ An example implementation for multiple item data reader creator:
 
 """
 
-import paddle.reader.decorator
-from paddle.reader.decorator import *
+from paddle.reader.decorator import map_readers  # noqa: F401
+from paddle.reader.decorator import shuffle  # noqa: F401
+from paddle.reader.decorator import xmap_readers  # noqa: F401
+from paddle.reader.decorator import firstn  # noqa: F401
+from paddle.reader.decorator import buffered  # noqa: F401
+from paddle.reader.decorator import compose  # noqa: F401
+from paddle.reader.decorator import cache  # noqa: F401
+from paddle.reader.decorator import ComposeNotAligned  # noqa: F401
+from paddle.reader.decorator import chain  # noqa: F401
+from paddle.reader.decorator import multiprocess_reader  # noqa: F401
 
 __all__ = []

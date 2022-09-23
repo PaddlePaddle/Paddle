@@ -18,25 +18,27 @@ import unittest
 import paddle.fluid as fluid
 import numpy as np
 from test_imperative_base import new_program_scope
+from paddle.fluid.framework import _test_eager_guard
 
 
 class MLP(fluid.Layer):
+
     def __init__(self, input_size):
         super(MLP, self).__init__()
         self._linear1 = fluid.dygraph.Linear(
             input_size,
             3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)))
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.1)),
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.1)))
         self._linear2 = fluid.dygraph.Linear(
             3,
             4,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)))
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.1)),
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.1)))
 
     def forward(self, inputs):
         x = self._linear1(inputs)
@@ -46,11 +48,14 @@ class MLP(fluid.Layer):
 
 
 class TestDygraphFramework(unittest.TestCase):
-    def test_dygraph_backward(self):
+
+    def func_test_dygraph_backward(self):
         with new_program_scope():
             mlp = MLP(input_size=2)
-            var_inp = fluid.layers.data(
-                "input", shape=[2, 2], dtype="float32", append_batch_size=False)
+            var_inp = fluid.layers.data("input",
+                                        shape=[2, 2],
+                                        dtype="float32",
+                                        append_batch_size=False)
             out = mlp(var_inp)
             try:
                 out.backward()
@@ -59,8 +64,18 @@ class TestDygraphFramework(unittest.TestCase):
             except AssertionError as e:
                 self.assertTrue((e is not None))
 
-    def test_dygraph_to_string(self):
+    def test_dygraph_backward(self):
+        with _test_eager_guard():
+            self.func_test_dygraph_backward()
+        self.func_test_dygraph_backward()
+
+    def func_test_dygraph_to_string(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         with fluid.dygraph.guard():
             var_inp = fluid.dygraph.to_variable(np_inp)
             print(str(var_inp))
+
+    def test_dygraph_to_string(self):
+        with _test_eager_guard():
+            self.func_test_dygraph_to_string()
+        self.func_test_dygraph_to_string()

@@ -42,14 +42,15 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
     auto mem_var_name = Input("X");
     auto *mem_var = scope.FindVar(mem_var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        mem_var, platform::errors::NotFound("Cannot find mem_var: %s in scope.",
-                                            mem_var_name));
+        mem_var,
+        platform::errors::NotFound("Cannot find mem_var: %s in scope.",
+                                   mem_var_name));
 
     auto out_name = this->Output("Out");
     auto *out_var = scope.FindVar(out_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        out_var, platform::errors::NotFound("Cannot find out_var: %s in scope.",
-                                            out_name));
+    PADDLE_ENFORCE_NOT_NULL(out_var,
+                            platform::errors::NotFound(
+                                "Cannot find out_var: %s in scope.", out_name));
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
@@ -109,15 +110,19 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    if (out_grad_var == nullptr) {
+    // NOTE(xiongkun03): In standalone executor, after each run, the
+    // var.tensor.holder will be delete instead of variable. So we need exam the
+    // IsInitialized().
+    if (out_grad_var == nullptr ||
+        !out_grad_var->Get<framework::LoDTensor>().IsInitialized()) {
       VLOG(5) << "Using fill constant 0 as starting gradient";
       auto in_var_name = Input("X");
       auto *in_var = scope.FindVar(in_var_name);
       auto &in_var_tensor = in_var->Get<framework::LoDTensor>();
 
       framework::AttributeMap attrs;
-      attrs["dtype"] = in_var_tensor.type();
-      attrs["shape"] = framework::vectorize<int>(in_var_tensor.dims());
+      attrs["dtype"] = framework::TransToProtoVarType(in_var_tensor.dtype());
+      attrs["shape"] = phi::vectorize<int>(in_var_tensor.dims());
       attrs["value"] = 0.0f;
 
       auto zero_op = framework::OpRegistry::CreateOp(
@@ -126,8 +131,8 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
     } else {
       auto &out_grad_tensor = out_grad_var->Get<framework::LoDTensor>();
       auto *in_grad_tensor = in_grad_var->GetMutable<framework::LoDTensor>();
-      framework::TensorCopy(out_grad_tensor, dev_place, dev_ctx,
-                            in_grad_tensor);
+      framework::TensorCopy(
+          out_grad_tensor, dev_place, dev_ctx, in_grad_tensor);
       in_grad_tensor->set_lod(out_grad_tensor.lod());
     }
   }
@@ -154,7 +159,9 @@ class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "RNNMemoryHelperGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
+    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name),
+                   "Output",
+                   x_grad_name,
                    "RNNMemoryHelperGrad");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ x_grad_name);
@@ -165,7 +172,8 @@ class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    rnn_memory_helper, paddle::operators::RNNMemoryHelperOp,
+    rnn_memory_helper,
+    paddle::operators::RNNMemoryHelperOp,
     paddle::operators::RNNMemoryHelperOpInfoMaker,
     paddle::operators::RNNMemoryHelperOpShapeInference,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,

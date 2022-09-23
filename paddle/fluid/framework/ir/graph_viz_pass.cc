@@ -13,9 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+
+#include <string>
+
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/dot.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 
 namespace paddle {
 namespace framework {
@@ -27,7 +33,7 @@ std::string FormatName(const Node* node) {
       !node->Op()->HasAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName())) {
     return node->Name();
   }
-  const std::string full_scope = BOOST_GET_CONST(
+  const std::string full_scope = PADDLE_GET_CONST(
       std::string,
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName()));
   return string::Sprintf("%s%s", full_scope.c_str(), node->Name().c_str());
@@ -35,14 +41,50 @@ std::string FormatName(const Node* node) {
 }  // namespace
 
 void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
+  std::string optim_cache_dir;
+  if (Has("optim_cache_dir")) {
+    optim_cache_dir = Get<std::string>("optim_cache_dir");
+    if (!optim_cache_dir.empty()) {
+      paddle::inference::analysis::MakeDirIfNotExists(optim_cache_dir);
+    }
+  }
   const std::string& graph_viz_path = Get<std::string>(kGraphvizPath);
   VLOG(3) << "draw IR graph viz to " << graph_viz_path;
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
   PADDLE_ENFORCE_EQ(
-      fout->good(), true,
+      fout->good(),
+      true,
       platform::errors::Unavailable(
           "Can not open file %s for printing the graph.", graph_viz_path));
   std::ostream& sout = *fout;
+
+  // serialize only model file.
+  std::string program_path;
+  std::size_t found1 = graph_viz_path.find("_ir_");
+  std::size_t found2 = graph_viz_path.find(".dot");
+  if (found1 != std::string::npos && found2 != std::string::npos) {
+    ProgramDesc program_desc;
+    GraphToProgram(*graph, &program_desc);
+    // TODO(wilber): GraphToProgram seems have bugs.
+    for (size_t i = 0; i < program_desc.Size(); ++i) {
+      for (size_t j = 0; j < program_desc.Block(i).OpSize(); ++j) {
+        if (program_desc.Block(i).Op(j)->Type() == "tensorrt_engine") {
+          program_desc.Block(i).Op(j)->RemoveAttr("sub_block");
+        }
+      }
+    }
+    std::string program_bytes = program_desc.Proto()->SerializeAsString();
+    // rename from "17_ir_fc_fuse_pass.dot" to "fc_fuse_pass.pdmodel"
+    program_path =
+        graph_viz_path.substr(found1 + 4, found2 - found1 - 4) + ".pdmodel";
+    if (!optim_cache_dir.empty()) {
+      program_path = optim_cache_dir + "/" + program_path;
+    }
+    std::ofstream file(program_path.c_str(), std::ios::binary);
+    file.write(program_bytes.c_str(), program_bytes.size());
+    file.close();
+    VLOG(3) << "serialize program to " << program_path;
+  }
 
   std::unordered_map<const ir::Node*, std::string> node2dot;
 
@@ -74,10 +116,12 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   });
 
   const std::vector<Dot::Attr> marked_op_attrs(
-      {Dot::Attr("style", "rounded,filled,bold"), Dot::Attr("shape", "box"),
+      {Dot::Attr("style", "rounded,filled,bold"),
+       Dot::Attr("shape", "box"),
        Dot::Attr("fillcolor", "yellow")});
   const std::vector<Dot::Attr> marked_var_attrs(
-      {Dot::Attr("style", "filled,rounded"), Dot::Attr("shape", "box"),
+      {Dot::Attr("style", "filled,rounded"),
+       Dot::Attr("shape", "box"),
        Dot::Attr("fillcolor", "yellow")});
 
   auto marked_nodes = ConsumeMarkedNodes(graph);

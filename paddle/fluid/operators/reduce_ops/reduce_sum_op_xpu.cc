@@ -15,8 +15,9 @@
 #ifdef PADDLE_WITH_XPU
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/operators/reduce_ops/reduce_op_xpu.h"
-#include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +42,8 @@ class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
 
     int in_dtype = context.Attr<int>("in_dtype");
     PADDLE_ENFORCE_EQ(
-        in_dtype == -1, true,
+        in_dtype == -1,
+        true,
         platform::errors::InvalidArgument(
             "XPU only support in_dtype == -1 in reduce_sum_grad op."));
 
@@ -72,13 +74,15 @@ class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    int r = xpu::broadcast<T>(dev_ctx.x_context(), out_data, x_grad_data, ydims,
-                              xdims);
+    int r = xpu::broadcast<T>(
+        dev_ctx.x_context(), out_data, x_grad_data, ydims, xdims);
     PADDLE_ENFORCE_EQ(
-        r == xpu::Error_t::SUCCESS, true,
+        r == xpu::Error_t::SUCCESS,
+        true,
         platform::errors::External("XPU broadcast in reduce_sum_grad op return"
                                    " wrong value[%d %s].",
-                                   r, XPUAPIErrorMsg[r]));
+                                   r,
+                                   XPUAPIErrorMsg[r]));
   }
 };
 

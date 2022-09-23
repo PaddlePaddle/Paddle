@@ -14,24 +14,14 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_desc.h"
-#else
-#include "paddle/fluid/platform/cudnn_desc.h"
-#endif
-
-namespace paddle {
-namespace platform {
-struct CUDAPlace;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
 using framework::Tensor;
+using phi::GPUContext;
 using platform::ActivationDescriptor;
 using platform::TensorDescriptor;
-using platform::CUDADeviceContext;
 
 #ifdef PADDLE_WITH_HIP
 #define GPUDNN_ACTIVATION_RELU miopenActivationRELU
@@ -49,11 +39,13 @@ template <typename T>
 struct CudnnActivationFunctor {
   using ELEMENT_TYPE = T;
 #ifdef PADDLE_WITH_HIP
-  CudnnActivationFunctor(const CUDADeviceContext& ctx, const T& c,
+  CudnnActivationFunctor(const phi::GPUContext& ctx,
+                         const T& c,
                          const miopenActivationMode_t& m)
       : ctx_(ctx), coef_(c), mode_(m) {}
 #else
-  CudnnActivationFunctor(const CUDADeviceContext& ctx, const T& c,
+  CudnnActivationFunctor(const phi::GPUContext& ctx,
+                         const T& c,
                          const cudnnActivationMode_t& m)
       : ctx_(ctx), coef_(c), mode_(m) {}
 #endif
@@ -64,20 +56,28 @@ struct CudnnActivationFunctor {
     x_desc.set(x);
     out_desc.set(GET_DATA_SAFELY(out, "Output", "Out", "CudnnActivation"));
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenActivationForward(
-        ctx_.cudnn_handle(), act_desc.desc(),
-        platform::CudnnDataType<T>::kOne(), x_desc.desc(), x.data<T>(),
-        platform::CudnnDataType<T>::kZero(), out_desc.desc(),
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenActivationForward(
+        ctx_.cudnn_handle(),
+        act_desc.desc(),
+        platform::CudnnDataType<T>::kOne(),
+        x_desc.desc(),
+        x.data<T>(),
+        platform::CudnnDataType<T>::kZero(),
+        out_desc.desc(),
         out->mutable_data<T>(ctx_.GetPlace())));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnActivationForward(
-        ctx_.cudnn_handle(), act_desc.desc(),
-        platform::CudnnDataType<T>::kOne(), x_desc.desc(), x.data<T>(),
-        platform::CudnnDataType<T>::kZero(), out_desc.desc(),
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnActivationForward(
+        ctx_.cudnn_handle(),
+        act_desc.desc(),
+        platform::CudnnDataType<T>::kOne(),
+        x_desc.desc(),
+        x.data<T>(),
+        platform::CudnnDataType<T>::kZero(),
+        out_desc.desc(),
         out->mutable_data<T>(ctx_.GetPlace())));
 #endif
   }
-  const CUDADeviceContext& ctx_;
+  const phi::GPUContext& ctx_;
   const T coef_;
 #ifdef PADDLE_WITH_HIP
   const miopenActivationMode_t mode_;
@@ -90,15 +90,19 @@ template <typename T>
 struct CudnnActivationGradFunctor {
   using ELEMENT_TYPE = T;
 #ifdef PADDLE_WITH_HIP
-  CudnnActivationGradFunctor(const CUDADeviceContext& ctx, const T& c,
+  CudnnActivationGradFunctor(const phi::GPUContext& ctx,
+                             const T& c,
                              const miopenActivationMode_t& m)
       : ctx_(ctx), coef_(c), mode_(m) {}
 #else
-  CudnnActivationGradFunctor(const CUDADeviceContext& ctx, const T& c,
+  CudnnActivationGradFunctor(const phi::GPUContext& ctx,
+                             const T& c,
                              const cudnnActivationMode_t& m)
       : ctx_(ctx), coef_(c), mode_(m) {}
 #endif
-  void operator()(const Tensor& x, const Tensor& out, const Tensor dout,
+  void operator()(const Tensor& x,
+                  const Tensor& out,
+                  const Tensor dout,
                   Tensor* dx) {
     ActivationDescriptor act_desc;
     act_desc.set(mode_, coef_);
@@ -108,22 +112,36 @@ struct CudnnActivationGradFunctor {
     dout_desc.set(dout);
     dx_desc.set(GET_DATA_SAFELY(dx, "Output", "X@GRAD", "CudnnActivationGrad"));
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenActivationBackward(
-        ctx_.cudnn_handle(), act_desc.desc(),
-        platform::CudnnDataType<T>::kOne(), out_desc.desc(), out.data<T>(),
-        dout_desc.desc(), dout.data<T>(), x_desc.desc(), x.data<T>(),
-        platform::CudnnDataType<T>::kZero(), dx_desc.desc(),
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenActivationBackward(
+        ctx_.cudnn_handle(),
+        act_desc.desc(),
+        platform::CudnnDataType<T>::kOne(),
+        out_desc.desc(),
+        out.data<T>(),
+        dout_desc.desc(),
+        dout.data<T>(),
+        x_desc.desc(),
+        x.data<T>(),
+        platform::CudnnDataType<T>::kZero(),
+        dx_desc.desc(),
         dx->mutable_data<T>(ctx_.GetPlace())));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnActivationBackward(
-        ctx_.cudnn_handle(), act_desc.desc(),
-        platform::CudnnDataType<T>::kOne(), out_desc.desc(), out.data<T>(),
-        dout_desc.desc(), dout.data<T>(), x_desc.desc(), x.data<T>(),
-        platform::CudnnDataType<T>::kZero(), dx_desc.desc(),
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnActivationBackward(
+        ctx_.cudnn_handle(),
+        act_desc.desc(),
+        platform::CudnnDataType<T>::kOne(),
+        out_desc.desc(),
+        out.data<T>(),
+        dout_desc.desc(),
+        dout.data<T>(),
+        x_desc.desc(),
+        x.data<T>(),
+        platform::CudnnDataType<T>::kZero(),
+        dx_desc.desc(),
         dx->mutable_data<T>(ctx_.GetPlace())));
 #endif
   }
-  const CUDADeviceContext& ctx_;
+  const phi::GPUContext& ctx_;
   const T coef_;
 #ifdef PADDLE_WITH_HIP
   const miopenActivationMode_t mode_;
@@ -134,55 +152,63 @@ struct CudnnActivationGradFunctor {
 
 template <typename T>
 struct CudnnReluFunctor : public CudnnActivationFunctor<T> {
-  explicit CudnnReluFunctor(const CUDADeviceContext& ctx)
+  explicit CudnnReluFunctor(const phi::GPUContext& ctx)
       : CudnnActivationFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_RELU) {}
 };
 template <typename T>
 struct CudnnReluGradFunctor : public CudnnActivationGradFunctor<T> {
-  explicit CudnnReluGradFunctor(const CUDADeviceContext& ctx)
+  explicit CudnnReluGradFunctor(const phi::GPUContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_RELU) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
 struct CudnnRelu6Functor : public CudnnActivationFunctor<T> {
-  explicit CudnnRelu6Functor(const CUDADeviceContext& ctx)
+  explicit CudnnRelu6Functor(const phi::GPUContext& ctx)
       : CudnnActivationFunctor<T>(ctx, 6.0, GPUDNN_ACTIVATION_CLIPPED_RELU) {}
 };
 template <typename T>
 struct CudnnRelu6GradFunctor : public CudnnActivationGradFunctor<T> {
-  explicit CudnnRelu6GradFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationGradFunctor<T>(ctx, 6.0,
-                                      GPUDNN_ACTIVATION_CLIPPED_RELU) {}
+  explicit CudnnRelu6GradFunctor(const phi::GPUContext& ctx)
+      : CudnnActivationGradFunctor<T>(
+            ctx, 6.0, GPUDNN_ACTIVATION_CLIPPED_RELU) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
 struct CudnnSigmoidFunctor : public CudnnActivationFunctor<T> {
-  explicit CudnnSigmoidFunctor(const CUDADeviceContext& ctx)
+  explicit CudnnSigmoidFunctor(const phi::GPUContext& ctx)
       : CudnnActivationFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_SIGMOID) {}
 };
 template <typename T>
 struct CudnnSigmoidGradFunctor : public CudnnActivationGradFunctor<T> {
-  explicit CudnnSigmoidGradFunctor(const CUDADeviceContext& ctx)
+  explicit CudnnSigmoidGradFunctor(const phi::GPUContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_SIGMOID) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
 struct CudnnTanhFunctor : public CudnnActivationFunctor<T> {
-  explicit CudnnTanhFunctor(const CUDADeviceContext& ctx)
+  explicit CudnnTanhFunctor(const phi::GPUContext& ctx)
       : CudnnActivationFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_TANH) {}
 };
 template <typename T>
 struct CudnnTanhGradFunctor : public CudnnActivationGradFunctor<T> {
-  explicit CudnnTanhGradFunctor(const CUDADeviceContext& ctx)
+  explicit CudnnTanhGradFunctor(const phi::GPUContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_TANH) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename Functor>
@@ -195,7 +221,7 @@ class CudnnActivationKernel
     framework::Tensor* Out = nullptr;
     ExtractActivationTensor(context, &X, &Out);
     Out->mutable_data<T>(context.GetPlace());
-    auto& dev_ctx = context.template device_context<CUDADeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::GPUContext>();
     Functor functor(dev_ctx);
     functor(GET_DATA_SAFELY(X, "Input", "X", "CudnnActivation"), Out);
   }
@@ -207,15 +233,16 @@ class CudnnActivationGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
-    static_assert(Functor::FwdDeps() == kDepOut, "Forward deps must be Out.");
+    static_assert(Functor::FwdDeps() == ActBwdOpFwdDeps::kDepOut,
+                  "Forward deps must be Out.");
 
     const framework::Tensor *X, *Out, *dOut;
     X = Out = dOut = nullptr;
     framework::Tensor* dX = nullptr;
-    ExtractActivationGradTensor<Functor::FwdDeps()>(context, &X, &Out, &dOut,
-                                                    &dX);
+    ExtractActivationGradTensor<Functor::FwdDeps()>(
+        context, &X, &Out, &dOut, &dX);
     dX->mutable_data<T>(context.GetPlace());
-    auto& dev_ctx = context.template device_context<CUDADeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::GPUContext>();
     Functor functor(dev_ctx);
     functor(GET_DATA_SAFELY(X, "Input", "X", "CudnnActivationGrad"),
             GET_DATA_SAFELY(Out, "Input", "Out", "CudnnActivationGrad"),
@@ -238,18 +265,26 @@ namespace ops = paddle::operators;
 
 #ifdef PADDLE_WITH_HIP
 #define REGISTER_ACTIVATION_CUDNN_KERNEL(act_type, functor, grad_functor) \
-  REGISTER_OP_KERNEL(act_type, CUDNN, plat::CUDAPlace,                    \
+  REGISTER_OP_KERNEL(act_type,                                            \
+                     CUDNN,                                               \
+                     plat::CUDAPlace,                                     \
                      ops::CudnnActivationKernel<ops::functor<float>>);    \
   REGISTER_OP_KERNEL(                                                     \
-      act_type##_grad, CUDNN, plat::CUDAPlace,                            \
+      act_type##_grad,                                                    \
+      CUDNN,                                                              \
+      plat::CUDAPlace,                                                    \
       ops::CudnnActivationGradKernel<ops::grad_functor<float>>);
 #else
 #define REGISTER_ACTIVATION_CUDNN_KERNEL(act_type, functor, grad_functor) \
-  REGISTER_OP_KERNEL(act_type, CUDNN, plat::CUDAPlace,                    \
+  REGISTER_OP_KERNEL(act_type,                                            \
+                     CUDNN,                                               \
+                     plat::CUDAPlace,                                     \
                      ops::CudnnActivationKernel<ops::functor<float>>,     \
                      ops::CudnnActivationKernel<ops::functor<double>>);   \
   REGISTER_OP_KERNEL(                                                     \
-      act_type##_grad, CUDNN, plat::CUDAPlace,                            \
+      act_type##_grad,                                                    \
+      CUDNN,                                                              \
+      plat::CUDAPlace,                                                    \
       ops::CudnnActivationGradKernel<ops::grad_functor<float>>,           \
       ops::CudnnActivationGradKernel<ops::grad_functor<double>>);
 #endif

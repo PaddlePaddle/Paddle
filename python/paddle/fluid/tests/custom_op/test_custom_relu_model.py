@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,15 +15,17 @@
 import os
 import unittest
 import numpy as np
+import tempfile
 
 import paddle
 from paddle import nn
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
-from utils import paddle_includes, extra_cc_args, extra_nvcc_args
+from utils import paddle_includes, extra_cc_args, extra_nvcc_args, IS_MAC
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
-# Because Windows don't use docker, the shared lib already exists in the 
+# Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\custom_relu_for_model_jit\\custom_relu_for_model_jit.pyd'.format(
     get_build_directory())
@@ -35,9 +37,13 @@ if os.name == 'nt' and os.path.isfile(file):
 # custom_relu_op_dup.cc is only used for multi ops test,
 # not a new op, if you want to test only one op, remove this
 # source file
+source_files = ['custom_relu_op.cc']
+if not IS_MAC:
+    source_files.append('custom_relu_op.cu')
+
 custom_module = load(
     name='custom_relu_for_model_jit',
-    sources=['custom_relu_op.cc', 'custom_relu_op.cu'],
+    sources=source_files,
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
     extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
@@ -67,6 +73,10 @@ class Net(nn.Layer):
 
 
 class TestDygraphModel(unittest.TestCase):
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def setUp(self):
 
         self.seed = 2021
@@ -84,17 +94,22 @@ class TestDygraphModel(unittest.TestCase):
             for i in range(self.batch_num)
         ]
 
-        self.devices = ['cpu', 'gpu']
+        self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
 
         # for saving model
-        self.model_path_template = "infer_model/custom_relu_dygaph_model_{}.pdparams"
-        self.model_dy2stat_path = "infer_model/custom_relu_model_dy2sta"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
+        self.model_path_template = os.path.join(
+            self.model_save_dir, 'custom_relu_dygaph_model_{}.pdparams')
+        self.model_dy2stat_path = os.path.join(
+            self.model_save_dir, 'infer_model/custom_relu_model_dy2sta')
 
         # for dy2stat
-        self.x_spec = paddle.static.InputSpec(
-            shape=[None, self.in_dim], dtype='float32', name='x')
+        self.x_spec = paddle.static.InputSpec(shape=[None, self.in_dim],
+                                              dtype='float32',
+                                              name='x')
 
-    def test_train_eval(self):
+    def func_train_eval(self):
         for device in self.devices:
             # set device
             paddle.set_device(device)
@@ -102,26 +117,32 @@ class TestDygraphModel(unittest.TestCase):
             # for train
             origin_relu_train_out = self.train_model(use_custom_op=False)
             custom_relu_train_out = self.train_model(use_custom_op=True)
-            custom_relu_dy2stat_train_out = self.train_model(
-                use_custom_op=True, dy2stat=True)  # for to_static
+            # open this when dy2stat is ready for eager
+            if _in_legacy_dygraph():
+                custom_relu_dy2stat_train_out = self.train_model(
+                    use_custom_op=True, dy2stat=True)  # for to_static
+                np.testing.assert_array_equal(origin_relu_train_out,
+                                              custom_relu_dy2stat_train_out)
 
-            self.assertTrue(
-                np.array_equal(origin_relu_train_out, custom_relu_train_out))
-            self.assertTrue(
-                np.array_equal(origin_relu_train_out,
-                               custom_relu_dy2stat_train_out))
+            np.testing.assert_array_equal(origin_relu_train_out,
+                                          custom_relu_train_out)
 
             # for eval
             origin_relu_eval_out = self.eval_model(use_custom_op=False)
             custom_relu_eval_out = self.eval_model(use_custom_op=True)
-            custom_relu_dy2stat_eval_out = self.eval_model(
-                use_custom_op=True, dy2stat=True)  # for to_static
+            if _in_legacy_dygraph():
+                custom_relu_dy2stat_eval_out = self.eval_model(
+                    use_custom_op=True, dy2stat=True)  # for to_static
+                np.testing.assert_array_equal(origin_relu_eval_out,
+                                              custom_relu_dy2stat_eval_out)
 
-            self.assertTrue(
-                np.array_equal(origin_relu_eval_out, custom_relu_eval_out))
-            self.assertTrue(
-                np.array_equal(origin_relu_eval_out,
-                               custom_relu_dy2stat_eval_out))
+            np.testing.assert_array_equal(origin_relu_eval_out,
+                                          custom_relu_eval_out)
+
+    def test_train_eval(self):
+        with _test_eager_guard():
+            self.func_train_eval()
+        self.func_train_eval()
 
     def train_model(self, use_custom_op=False, dy2stat=False):
         # reset random seed
@@ -175,6 +196,7 @@ class TestDygraphModel(unittest.TestCase):
 
 
 class TestStaticModel(unittest.TestCase):
+
     def setUp(self):
         self.seed = 2021
         self.in_dim = 10
@@ -191,49 +213,55 @@ class TestStaticModel(unittest.TestCase):
             for i in range(self.batch_num)
         ]
 
-        self.devices = ['cpu', 'gpu']
+        self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
 
         # for saving model
-        self.model_path_template = "infer_model/custom_relu_static_model_{}_{}"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
+        self.model_path_template = os.path.join(
+            self.model_save_dir, 'custom_relu_static_model_{}_{}')
 
         paddle.enable_static()
 
     def tearDown(self):
         paddle.disable_static()
+        self.temp_dir.cleanup()
 
     def test_train_eval(self):
         for device in self.devices:
             # for train
-            original_relu_train_out = self.train_model(
-                device, use_custom_op=False)
+            original_relu_train_out = self.train_model(device,
+                                                       use_custom_op=False)
             custom_relu_train_out = self.train_model(device, use_custom_op=True)
             # using PE
-            original_relu_train_pe_out = self.train_model(
-                device, use_custom_op=False, use_pe=True)
-            custom_relu_train_pe_out = self.train_model(
-                device, use_custom_op=True, use_pe=True)
+            original_relu_train_pe_out = self.train_model(device,
+                                                          use_custom_op=False,
+                                                          use_pe=True)
+            custom_relu_train_pe_out = self.train_model(device,
+                                                        use_custom_op=True,
+                                                        use_pe=True)
 
-            self.assertTrue(
-                np.array_equal(original_relu_train_out, custom_relu_train_out))
-            self.assertTrue(
-                np.array_equal(original_relu_train_pe_out,
-                               custom_relu_train_pe_out))
+            np.testing.assert_array_equal(original_relu_train_out,
+                                          custom_relu_train_out)
+            np.testing.assert_array_equal(original_relu_train_pe_out,
+                                          custom_relu_train_pe_out)
 
             # for eval
-            original_relu_eval_out = self.eval_model(
-                device, use_custom_op=False)
+            original_relu_eval_out = self.eval_model(device,
+                                                     use_custom_op=False)
             custom_relu_eval_out = self.eval_model(device, use_custom_op=True)
             # using PE
-            original_relu_eval_pe_out = self.eval_model(
-                device, use_custom_op=False, use_pe=True)
-            custom_relu_eval_pe_out = self.eval_model(
-                device, use_custom_op=True, use_pe=True)
+            original_relu_eval_pe_out = self.eval_model(device,
+                                                        use_custom_op=False,
+                                                        use_pe=True)
+            custom_relu_eval_pe_out = self.eval_model(device,
+                                                      use_custom_op=True,
+                                                      use_pe=True)
 
-            self.assertTrue(
-                np.array_equal(original_relu_eval_out, custom_relu_eval_out))
-            self.assertTrue(
-                np.array_equal(original_relu_eval_pe_out,
-                               custom_relu_eval_pe_out))
+            np.testing.assert_array_equal(original_relu_eval_out,
+                                          custom_relu_eval_out)
+            np.testing.assert_array_equal(original_relu_eval_pe_out,
+                                          custom_relu_eval_pe_out)
 
     def train_model(self, device, use_custom_op=False, use_pe=False):
         # reset random seed
@@ -243,11 +271,14 @@ class TestStaticModel(unittest.TestCase):
         paddle.set_device(device)
 
         with paddle.static.scope_guard(paddle.static.Scope()):
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(
-                    shape=[None, self.in_dim], name='x', dtype='float32')
-                y = paddle.static.data(
-                    shape=[None, 1], name='y', dtype='float32')
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+                x = paddle.static.data(shape=[None, self.in_dim],
+                                       name='x',
+                                       dtype='float32')
+                y = paddle.static.data(shape=[None, 1],
+                                       name='y',
+                                       dtype='float32')
 
                 net = Net(self.in_dim, self.out_dim, use_custom_op)
                 out = net(x)
@@ -265,8 +296,8 @@ class TestStaticModel(unittest.TestCase):
                     ) if device is 'cpu' else paddle.static.cuda_places()
                     main_program = paddle.static.CompiledProgram(
                         paddle.static.default_main_program(
-                        )).with_data_parallel(
-                            loss_name=loss.name, places=places)
+                        )).with_data_parallel(loss_name=loss.name,
+                                              places=places)
                 else:
                     main_program = paddle.static.default_main_program()
 
@@ -275,14 +306,16 @@ class TestStaticModel(unittest.TestCase):
                     y_data = self.labels[batch_id]
 
                     res = exe.run(main_program,
-                                  feed={'x': x_data,
-                                        'y': y_data},
+                                  feed={
+                                      'x': x_data,
+                                      'y': y_data
+                                  },
                                   fetch_list=[out])
 
                 # save model
                 paddle.static.save_inference_model(
-                    self.model_path_template.format(use_custom_op, use_pe),
-                    [x], [out], exe)
+                    self.model_path_template.format(use_custom_op, use_pe), [x],
+                    [out], exe)
 
                 return res[0]
 

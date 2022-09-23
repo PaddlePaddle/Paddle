@@ -13,18 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fake_dequantize_op.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-struct DequantizeFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* scale,
-                  T max_range, framework::Tensor* out) {
+struct DequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
+                  T max_range,
+                  framework::Tensor* out) {
     auto in_e = framework::EigenVector<T>::Flatten(*in);
     const T* scale_factor = scale->data<T>();
     auto out_e = framework::EigenVector<T>::Flatten(*out);
@@ -35,10 +39,14 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor** scales,
-                  const int scale_num, T max_range, const int quant_axis,
+struct ChannelDequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor** scales,
+                  const int scale_num,
+                  T max_range,
+                  const int quant_axis,
+                  const int x_num_col_dims,
                   framework::Tensor* out) {
     if (scale_num == 1) {
       // Dequant op is before quantized op
@@ -81,33 +89,60 @@ struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
     } else if (scale_num == 2) {
       // Dequant op is after quantized op
       // Dequantize the output tensor of quantized op
-      int batch_size = in->dims()[0];
-      int channel = in->dims()[1];
-      const T* scale_one = scales[0]->data<T>();
-      const T* scale_two = scales[1]->data<T>();
-      for (int i = 0; i < batch_size; i++) {
-        framework::Tensor one_batch_in = in->Slice(i, i + 1).Resize(
-            framework::slice_ddim(in->dims(), 1, in->dims().size()));
-        framework::Tensor one_batch_out = out->Slice(i, i + 1).Resize(
-            framework::slice_ddim(out->dims(), 1, out->dims().size()));
-        for (int j = 0; j < channel; j++) {
-          T s = scale_one[j];
-          framework::Tensor one_channel_in = one_batch_in.Slice(j, j + 1);
-          framework::Tensor one_channel_out = one_batch_out.Slice(j, j + 1);
-          auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
-          auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-          auto& dev = *dev_ctx.eigen_device();
-          out_e.device(dev) = in_e * s * scale_two[0] / max_range;
+      if (x_num_col_dims > 1) {
+        auto in_dims = in->dims();
+        const int64_t channel = in_dims[x_num_col_dims];
+        const T* scale_one = scales[0]->data<T>();
+        const T* scale_two = scales[1]->data<T>();
+        int64_t out_iter = 1;
+        for (int i = 0; i < x_num_col_dims; i++) {
+          out_iter *= in_dims[i];
+        }
+        int64_t step_i = in->numel() / out_iter;
+        int64_t step_j = in->numel() / (out_iter * channel);
+        auto* in_data = in->data<T>();
+        auto* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+        for (int64_t i = 0; i < out_iter; i++) {
+          for (int64_t j = 0; j < channel; j++) {
+            auto* cur_in = in_data + i * step_i + j * step_j;
+            auto* cur_out = out_data + i * step_i + j * step_j;
+            T s = scale_one[j];
+            for (int64_t k = 0; k < step_j; k++) {
+              *cur_out = (*cur_in) * s * scale_two[0] / max_range;
+              ++cur_in;
+              ++cur_out;
+            }
+          }
+        }
+      } else {
+        int batch_size = in->dims()[0];
+        int channel = in->dims()[1];
+        const T* scale_one = scales[0]->data<T>();
+        const T* scale_two = scales[1]->data<T>();
+        for (int i = 0; i < batch_size; i++) {
+          framework::Tensor one_batch_in = in->Slice(i, i + 1).Resize(
+              phi::slice_ddim(in->dims(), 1, in->dims().size()));
+          framework::Tensor one_batch_out = out->Slice(i, i + 1).Resize(
+              phi::slice_ddim(out->dims(), 1, out->dims().size()));
+          for (int j = 0; j < channel; j++) {
+            T s = scale_one[j];
+            framework::Tensor one_channel_in = one_batch_in.Slice(j, j + 1);
+            framework::Tensor one_channel_out = one_batch_out.Slice(j, j + 1);
+            auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
+            auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+            auto& dev = *dev_ctx.eigen_device();
+            out_e.device(dev) = in_e * s * scale_two[0] / max_range;
+          }
         }
       }
     }
   }
 };
 
-template struct DequantizeFunctor<platform::CPUDeviceContext, float>;
-template struct DequantizeFunctor<platform::CPUDeviceContext, double>;
-template struct ChannelDequantizeFunctor<platform::CPUDeviceContext, float>;
-template struct ChannelDequantizeFunctor<platform::CPUDeviceContext, double>;
+template struct DequantizeFunctor<phi::CPUContext, float>;
+template struct DequantizeFunctor<phi::CPUContext, double>;
+template struct ChannelDequantizeFunctor<phi::CPUContext, float>;
+template struct ChannelDequantizeFunctor<phi::CPUContext, double>;
 
 class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
  public:
@@ -119,8 +154,8 @@ class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FakeDequantizeMaxAbs");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "FakeDequantizeMaxAbs");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "FakeDequantizeMaxAbs");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -154,11 +189,15 @@ class FakeChannelWiseDequantizeMaxAbsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "FakeChannelWiseDequantizeMaxAbs");
+    OP_INOUT_CHECK(ctx->HasInputs("Scales"),
+                   "Input",
+                   "Scales",
                    "FakeChannelWiseDequantizeMaxAbs");
-    OP_INOUT_CHECK(ctx->HasInputs("Scales"), "Input", "Scales",
-                   "FakeChannelWiseDequantizeMaxAbs");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+    OP_INOUT_CHECK(ctx->HasOutput("Out"),
+                   "Output",
+                   "Out",
                    "FakeChannelWiseDequantizeMaxAbs");
 
     ctx->ShareDim("X", /*->*/ "Out");
@@ -193,13 +232,24 @@ class FakeChannelWiseDequantizeMaxAbsOpMaker
                  "and mul, the quant_axis is equal to the cout axis.")
         .SetDefault(0)
         .AddCustomChecker([](const int& quant_axis) {
-          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1, true,
+          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'quant_axis' should be 0 or 1, but "
                                 "the received is %d",
                                 quant_axis));
         });
-
+    AddAttr<int>("x_num_col_dims",
+                 "The x_num_col_dims of mul. Only used for mul or matmul.")
+        .SetDefault(1)
+        .AddCustomChecker([](const int& x_num_col_dims) {
+          PADDLE_ENFORCE_EQ(x_num_col_dims == 0,
+                            false,
+                            platform::errors::InvalidArgument(
+                                "'x_num_col_dims' should be larger than 0, but "
+                                "the received is %d",
+                                x_num_col_dims));
+        });
     AddComment(R"DOC(
 FakeChannelWiseDequantizeMaxAbsOp operator.
 
@@ -219,10 +269,11 @@ Notes: In general, the per-channel quantization is only applied to weights and t
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
-    fake_dequantize_max_abs, ops::FakeDequantizeMaxAbsOp,
+    fake_dequantize_max_abs,
+    ops::FakeDequantizeMaxAbsOp,
     ops::FakeDequantizeMaxAbsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
@@ -245,4 +296,9 @@ REGISTER_OP_VERSION(fake_channel_wise_dequantize_max_abs)
         R"ROC(add new attributes [quant_axis] for applying per-channel "
         "dequantization to conv2d_tranpose and mul ops.)ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "quant_axis", "The axis for dequantization.", 0));
+            "quant_axis", "The axis for dequantization.", 0))
+    .AddCheckpoint(
+        R"ROC(add new attributes [x_num_col_dims] for applying per-channel "
+        "dequantization to mul ops.)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "x_num_col_dims", "The x_num_col_dims for dequantization.", 1));

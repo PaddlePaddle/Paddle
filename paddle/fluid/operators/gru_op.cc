@@ -13,11 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gru_op.h"
+
 #include <memory>
 #include <string>
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/detail/gru_cpu_kernel.h"
-#include "paddle/fluid/operators/math/detail/gru_kernel.h"
+
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/detail/gru_cpu_kernel.h"
+#include "paddle/phi/kernels/funcs/detail/gru_kernel.h"
 
 DECLARE_int32(paddle_num_threads);
 
@@ -33,60 +35,80 @@ class GRUOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "GRU");
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "GRU");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate", "GRU");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchResetHiddenPrev"), "Output",
-                   "BatchResetHiddenPrev", "GRU");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchHidden"), "Output", "BatchHidden",
-                   "GRU");
     OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "GRU");
-
+    bool is_test = ctx->Attrs().Get<bool>("is_test");
+    if (!is_test) {
+      OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate", "GRU");
+      OP_INOUT_CHECK(ctx->HasOutput("BatchResetHiddenPrev"),
+                     "Output",
+                     "BatchResetHiddenPrev",
+                     "GRU");
+      OP_INOUT_CHECK(
+          ctx->HasOutput("BatchHidden"), "Output", "BatchHidden", "GRU");
+    }
     auto input_dims = ctx->GetInputDim("Input");
     auto weight_dims = ctx->GetInputDim("Weight");
     int input_size = input_dims[1];
     int frame_size = weight_dims[0];
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(input_size, frame_size * 3,
+      PADDLE_ENFORCE_EQ(input_size,
+                        frame_size * 3,
                         platform::errors::InvalidArgument(
                             "The second dimension of Input(Input) must be 3 "
                             "times of frame_size in GRUOp, but received %d "
                             "(Input) vs %d (frame_size).",
-                            input_size, frame_size));
+                            input_size,
+                            frame_size));
     }
     PADDLE_ENFORCE_EQ(
-        weight_dims[1], frame_size * 3,
+        weight_dims[1],
+        frame_size * 3,
         platform::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
-            weight_dims[0], weight_dims[1], frame_size, frame_size * 3));
+            weight_dims[0],
+            weight_dims[1],
+            frame_size,
+            frame_size * 3));
     if (ctx->HasInput("H0")) {
       auto h0_dims = ctx->GetInputDim("H0");
       PADDLE_ENFORCE_EQ(
-          h0_dims[1], frame_size,
+          h0_dims[1],
+          frame_size,
           platform::errors::InvalidArgument(
               "The width of Input(H0) must be equal to frame_size, but "
               "received %d (width of H0) vs %d (frame_size).",
-              h0_dims[1], frame_size));
+              h0_dims[1],
+              frame_size));
     }
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
       int bias_height = bias_dims[0];
       int bias_width = bias_dims[1];
       PADDLE_ENFORCE_EQ(
-          bias_height, 1,
+          bias_height,
+          1,
           platform::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
-              bias_height, bias_width, frame_size * 3));
+              bias_height,
+              bias_width,
+              frame_size * 3));
       PADDLE_ENFORCE_EQ(
-          bias_width, frame_size * 3,
+          bias_width,
+          frame_size * 3,
           platform::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
-              bias_height, bias_width, frame_size * 3));
+              bias_height,
+              bias_width,
+              frame_size * 3));
     }
-    ctx->SetOutputDim("BatchGate", input_dims);
-    ctx->SetOutputDim("BatchResetHiddenPrev", {input_dims[0], frame_size});
-    ctx->SetOutputDim("BatchHidden", {input_dims[0], frame_size});
+    if (!is_test) {
+      ctx->SetOutputDim("BatchGate", input_dims);
+      ctx->SetOutputDim("BatchResetHiddenPrev", {input_dims[0], frame_size});
+      ctx->SetOutputDim("BatchHidden", {input_dims[0], frame_size});
+    }
     ctx->SetOutputDim("Hidden", {input_dims[0], frame_size});
     ctx->ShareLoD("Input", "Hidden");
   }
@@ -124,19 +146,22 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
               "organized in batches. The LoD size is 2. The first LoD contains "
               "the batch offsets and the second LoD contains the indexes in "
               "the raw sequence data.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddOutput(
         "BatchResetHiddenPrev",
         "(LoDTensor) The reset hidden state LoDTensor organized in batches. "
         "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
         "with `BatchGate`.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddOutput(
         "BatchHidden",
         "(LoDTensor) The hidden state LoDTensor organized in batches.  "
         "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
         "with `BatchGate`.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddOutput(
         "Hidden",
         "(LoDTensor) the hidden state LoDTensor organized in sequences. "
@@ -182,15 +207,19 @@ class GRUGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "GRU@Grad");
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "GRU@Grad");
-    OP_INOUT_CHECK(ctx->HasInput("BatchGate"), "Input", "BatchGate",
+    OP_INOUT_CHECK(
+        ctx->HasInput("BatchGate"), "Input", "BatchGate", "GRU@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("BatchResetHiddenPrev"),
+                   "Input",
+                   "BatchResetHiddenPrev",
                    "GRU@Grad");
-    OP_INOUT_CHECK(ctx->HasInput("BatchResetHiddenPrev"), "Input",
-                   "BatchResetHiddenPrev", "GRU@Grad");
-    OP_INOUT_CHECK(ctx->HasInput("BatchHidden"), "Input", "BatchHidden",
-                   "GRU@Grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("BatchHidden"), "Input", "BatchHidden", "GRU@Grad");
     OP_INOUT_CHECK(ctx->HasInput("Hidden"), "Input", "Hidden", "GRU@Grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Hidden")), "Input",
-                   framework::GradVarName("Hidden"), "GRU@Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Hidden")),
+                   "Input",
+                   framework::GradVarName("Hidden"),
+                   "GRU@Grad");
 
     auto input_dims = ctx->GetInputDim("Input");
     auto weight_dims = ctx->GetInputDim("Weight");
@@ -199,31 +228,43 @@ class GRUGradOp : public framework::OperatorWithKernel {
     int weight_height = weight_dims[0];
     int weight_width = weight_dims[1];
     PADDLE_ENFORCE_EQ(
-        input_size, frame_size * 3,
+        input_size,
+        frame_size * 3,
         platform::errors::InvalidArgument(
             "The second dimension of Input(Input) must be 3 times of "
             "frame_size in GRUOp, but received %d (Input) vs %d (frame_size).",
-            input_size, frame_size));
+            input_size,
+            frame_size));
     PADDLE_ENFORCE_EQ(
-        weight_height, frame_size,
+        weight_height,
+        frame_size,
         platform::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
-            weight_height, weight_width, frame_size, frame_size * 3));
+            weight_height,
+            weight_width,
+            frame_size,
+            frame_size * 3));
     PADDLE_ENFORCE_EQ(
-        weight_width, frame_size * 3,
+        weight_width,
+        frame_size * 3,
         platform::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
-            weight_height, weight_width, frame_size, frame_size * 3));
+            weight_height,
+            weight_width,
+            frame_size,
+            frame_size * 3));
     if (ctx->HasInput("H0")) {
       auto h0_dims = ctx->GetInputDim("H0");
       PADDLE_ENFORCE_EQ(
-          h0_dims[1], frame_size,
+          h0_dims[1],
+          frame_size,
           platform::errors::InvalidArgument(
               "The width of Input(H0) must be equal to frame_size, but "
               "received %d (width of H0) vs %d (frame_size).",
-              h0_dims[1], frame_size));
+              h0_dims[1],
+              frame_size));
       auto h0_grad_name = framework::GradVarName("H0");
       if (ctx->HasOutput(h0_grad_name))
         ctx->SetOutputDim(h0_grad_name, h0_dims);
@@ -233,17 +274,23 @@ class GRUGradOp : public framework::OperatorWithKernel {
       int bias_height = bias_dims[0];
       int bias_width = bias_dims[1];
       PADDLE_ENFORCE_EQ(
-          bias_height, 1,
+          bias_height,
+          1,
           platform::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
-              bias_height, bias_width, frame_size * 3));
+              bias_height,
+              bias_width,
+              frame_size * 3));
       PADDLE_ENFORCE_EQ(
-          bias_width, frame_size * 3,
+          bias_width,
+          frame_size * 3,
           platform::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
-              bias_height, bias_width, frame_size * 3));
+              bias_height,
+              bias_width,
+              frame_size * 3));
       auto bias_grad_name = framework::GradVarName("Bias");
       if (ctx->HasOutput(bias_grad_name))
         ctx->SetOutputDim(bias_grad_name, bias_dims);
@@ -268,37 +315,55 @@ template <typename T>
 class GRUCPUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
+    using LodTensorPtr = LoDTensor*;
+    bool is_test = context.Attr<bool>("is_test");
+
     bool origin_mode = context.Attr<bool>("origin_mode");
     auto* input = context.Input<LoDTensor>("Input");
     auto* h0 = context.Input<Tensor>("H0");
     auto* weight = context.Input<Tensor>("Weight");
     const T* weight_data = weight->data<T>();
     auto* bias = context.Input<Tensor>("Bias");
-    auto* batch_gate = context.Output<LoDTensor>("BatchGate");
-    batch_gate->mutable_data<T>(context.GetPlace());
-    auto* batch_reset_hidden_prev =
-        context.Output<LoDTensor>("BatchResetHiddenPrev");
-    batch_reset_hidden_prev->mutable_data<T>(context.GetPlace());
-    auto* batch_hidden = context.Output<LoDTensor>("BatchHidden");
-    batch_hidden->mutable_data<T>(context.GetPlace());
     auto* hidden = context.Output<LoDTensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 
+    auto input_dims = input->dims();
     auto hidden_dims = hidden->dims();
 
+    LodTensorPtr batch_gate, batch_reset_hidden_prev, batch_hidden;
+    LoDTensor batch_gate_tmp, batch_reset_hidden_prev_tmp, batch_hidden_tmp;
+    if (is_test) {
+      batch_gate = &batch_gate_tmp;
+      batch_gate->Resize(input_dims);
+
+      batch_reset_hidden_prev = &batch_reset_hidden_prev_tmp;
+      batch_reset_hidden_prev->Resize(hidden_dims);
+
+      batch_hidden = &batch_hidden_tmp;
+      batch_hidden->Resize(hidden_dims);
+    } else {
+      batch_gate = context.Output<LoDTensor>("BatchGate");
+      batch_hidden = context.Output<LoDTensor>("BatchHidden");
+      batch_reset_hidden_prev =
+          context.Output<LoDTensor>("BatchResetHiddenPrev");
+    }
+    batch_gate->mutable_data<T>(context.GetPlace());
+    batch_reset_hidden_prev->mutable_data<T>(context.GetPlace());
+    batch_hidden->mutable_data<T>(context.GetPlace());
+
     bool is_reverse = context.Attr<bool>("is_reverse");
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     to_batch(dev_ctx, *input, batch_gate, true, is_reverse);
 
     if (bias) {
-      math::RowwiseAdd<DeviceContext, T> add_bias;
+      phi::funcs::RowwiseAdd<DeviceContext, T> add_bias;
       add_bias(dev_ctx, *batch_gate, *bias, batch_gate);
     }
 
     int frame_size = hidden_dims[1];
-    math::GRUMetaValue<T> gru_value;
+    phi::funcs::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
@@ -311,42 +376,61 @@ class GRUCPUKernel : public framework::OpKernel<T> {
       // according to their length. The initialized cell state also needs
       // to reorder.
       ReorderInitState<DeviceContext, T>(
-          context.template device_context<DeviceContext>(), *h0, order,
-          &ordered_h0, true);
+          context.template device_context<DeviceContext>(),
+          *h0,
+          order,
+          &ordered_h0,
+          true);
       gru_value.prev_out_value = ordered_h0.data<T>();
     } else {
       gru_value.prev_out_value = nullptr;
     }
     auto batch_starts = batch_gate->lod()[0];
     size_t seq_len = batch_starts.size() - 1;
-    auto active_node = math::detail::GetActivationType(
+    auto active_node = phi::funcs::detail::GetActivationType(
         context.Attr<std::string>("activation"));
-    auto active_gate = math::detail::GetActivationType(
+    auto active_gate = phi::funcs::detail::GetActivationType(
         context.Attr<std::string>("gate_activation"));
 
 #ifdef PADDLE_WITH_MKLML
     // use MKL packed to speedup GEMM
     if (FLAGS_paddle_num_threads >= 4) {
-      auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
-      T* packed_gate = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
+      auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+      T* packed_gate = blas.GEMM_ALLOC(CblasBMatrix,
+                                       1 /*height of C*/,
                                        frame_size * 2 /*width of weight*/,
                                        frame_size /*height of height*/);
       PADDLE_ENFORCE_NOT_NULL(
-          packed_gate, platform::errors::NotFound(
-                           "The caculation result of packed_gate by "
-                           "GEMM_ALLOC should not be null when using MKL."));
-      blas.GEMM_PACK(CblasBMatrix, CblasNoTrans, 1 /*cur bs?*/, frame_size * 2,
-                     frame_size, T(1.0), gru_value.gate_weight, frame_size * 2,
+          packed_gate,
+          platform::errors::NotFound(
+              "The caculation result of packed_gate by "
+              "GEMM_ALLOC should not be null when using MKL."));
+      blas.GEMM_PACK(CblasBMatrix,
+                     CblasNoTrans,
+                     1 /*cur bs?*/,
+                     frame_size * 2,
+                     frame_size,
+                     T(1.0),
+                     gru_value.gate_weight,
+                     frame_size * 2,
                      packed_gate);
-      T* packed_state = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
+      T* packed_state = blas.GEMM_ALLOC(CblasBMatrix,
+                                        1 /*height of C*/,
                                         frame_size /*width of weight*/,
                                         frame_size /*height of height*/);
       PADDLE_ENFORCE_NOT_NULL(
-          packed_state, platform::errors::NotFound(
-                            "The caculation result of packed_state by "
-                            "GEMM_ALLOC should not be null when using MKL."));
-      blas.GEMM_PACK(CblasBMatrix, CblasNoTrans, 1 /*cur bs?*/, frame_size,
-                     frame_size, T(1.0), gru_value.state_weight, frame_size,
+          packed_state,
+          platform::errors::NotFound(
+              "The caculation result of packed_state by "
+              "GEMM_ALLOC should not be null when using MKL."));
+      blas.GEMM_PACK(CblasBMatrix,
+                     CblasNoTrans,
+                     1 /*cur bs?*/,
+                     frame_size,
+                     frame_size,
+                     T(1.0),
+                     gru_value.state_weight,
+                     frame_size,
                      packed_state);
       for (size_t n = 0; n < seq_len; n++) {
         int bstart = static_cast<int>(batch_starts[n]);
@@ -362,27 +446,49 @@ class GRUCPUKernel : public framework::OpKernel<T> {
         gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
 
         if (gru_value.prev_out_value) {
-          blas.GEMM_COMPUTE(
-              CblasNoTrans, CblasPacked, cur_batch_size, frame_size * 2,
-              frame_size, gru_value.prev_out_value, frame_size, packed_gate,
-              frame_size * 2, T(1), gru_value.gate_value, frame_size * 3);
+          blas.GEMM_COMPUTE(CblasNoTrans,
+                            CblasPacked,
+                            cur_batch_size,
+                            frame_size * 2,
+                            frame_size,
+                            gru_value.prev_out_value,
+                            frame_size,
+                            packed_gate,
+                            frame_size * 2,
+                            T(1),
+                            gru_value.gate_value,
+                            frame_size * 3);
         }
 
-        math::detail::forward_reset_output(
-            math::detail::forward::gru_resetOutput<T>(), gru_value, frame_size,
-            cur_batch_size, active_gate);
+        phi::funcs::detail::forward_reset_output<DeviceContext>(
+            phi::funcs::detail::forward::gru_resetOutput<T>(),
+            gru_value,
+            frame_size,
+            cur_batch_size,
+            active_gate);
 
         if (gru_value.prev_out_value) {
-          blas.GEMM_COMPUTE(
-              CblasNoTrans, CblasPacked, cur_batch_size, frame_size, frame_size,
-              gru_value.reset_output_value, frame_size, packed_state,
-              frame_size, T(1), gru_value.gate_value + frame_size * 2,
-              frame_size * 3);
+          blas.GEMM_COMPUTE(CblasNoTrans,
+                            CblasPacked,
+                            cur_batch_size,
+                            frame_size,
+                            frame_size,
+                            gru_value.reset_output_value,
+                            frame_size,
+                            packed_state,
+                            frame_size,
+                            T(1),
+                            gru_value.gate_value + frame_size * 2,
+                            frame_size * 3);
         }
 
-        math::detail::forward_final_output(
-            math::detail::forward::gru_finalOutput<T>(), gru_value, frame_size,
-            cur_batch_size, active_node, origin_mode);
+        phi::funcs::detail::forward_final_output<DeviceContext>(
+            phi::funcs::detail::forward::gru_finalOutput<T>(),
+            gru_value,
+            frame_size,
+            cur_batch_size,
+            active_node,
+            origin_mode);
 
         gru_value.prev_out_value = gru_value.output_value;
       }
@@ -404,16 +510,20 @@ class GRUCPUKernel : public framework::OpKernel<T> {
         gru_value.gate_value = gate_t.data<T>();
         gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
 
-        math::GRUUnitFunctor<DeviceContext, T>::compute(
-            dev_ctx, gru_value, frame_size, cur_batch_size, active_node,
-            active_gate, origin_mode);
+        phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(dev_ctx,
+                                                              gru_value,
+                                                              frame_size,
+                                                              cur_batch_size,
+                                                              active_node,
+                                                              active_gate,
+                                                              origin_mode);
 
         gru_value.prev_out_value = gru_value.output_value;
       }
 #ifdef PADDLE_WITH_MKLML
     }
 #endif
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden->set_lod(batch_gate->lod());
     to_seq(dev_ctx, *batch_hidden, hidden);
   }
@@ -456,20 +566,25 @@ class GRUGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(GRUGradOpNoNeedBufferVarInferer, "Input",
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GRUGradOpNoNeedBufferVarInferer,
+                                    "Input",
                                     "Bias");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(gru, ops::GRUOp, ops::GRUOpMaker,
+REGISTER_OPERATOR(gru,
+                  ops::GRUOp,
+                  ops::GRUOpMaker,
                   ops::GRUGradOpMaker<paddle::framework::OpDesc>,
                   ops::GRUGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(gru_grad, ops::GRUGradOp,
+REGISTER_OPERATOR(gru_grad,
+                  ops::GRUGradOp,
                   ops::GRUGradOpNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(gru, ops::GRUCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(gru,
+                       ops::GRUCPUKernel<float>,
                        ops::GRUCPUKernel<double>);
-REGISTER_OP_CPU_KERNEL(
-    gru_grad, ops::GRUGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GRUGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(gru_grad,
+                       ops::GRUGradKernel<phi::CPUContext, float>,
+                       ops::GRUGradKernel<phi::CPUContext, double>);

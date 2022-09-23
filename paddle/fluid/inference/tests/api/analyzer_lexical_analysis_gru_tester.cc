@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -38,10 +39,10 @@ void SetAnalysisConfig(AnalysisConfig *cfg,
   cfg->SwitchSpecifyInputNames(false);
   cfg->SetCpuMathLibraryNumThreads(num_threads);
   cfg->EnableMKLDNN();
-  cfg->pass_builder()->AppendPass("mkldnn_placement_pass");
 }
 
-std::vector<size_t> ReadSentenceLod(std::ifstream &file, size_t offset,
+std::vector<size_t> ReadSentenceLod(std::ifstream &file,
+                                    size_t offset,
                                     int64_t total_sentences_num) {
   std::vector<size_t> sentence_lod(total_sentences_num);
 
@@ -53,6 +54,53 @@ std::vector<size_t> ReadSentenceLod(std::ifstream &file, size_t offset,
   if (file.eof()) LOG(ERROR) << "Reached end of stream";
   if (file.fail()) throw std::runtime_error("Failed reading file.");
   return sentence_lod;
+}
+
+std::shared_ptr<std::vector<PaddleTensor>> WarmupData(
+    const std::vector<std::vector<PaddleTensor>> &test_data,
+    int num_images = 1) {
+  int data_size = test_data.size();
+
+  PADDLE_ENFORCE_LE(static_cast<size_t>(num_images),
+                    data_size,
+                    platform::errors::InvalidArgument(
+                        "The requested quantization warmup data size must be "
+                        "lower or equal to the test data size. But received"
+                        "warmup size is %d and test data size is %d",
+                        num_images,
+                        data_size));
+  int words_shape = test_data[0][0].shape[0];
+  PaddleTensor words;
+  words.name = "words";
+  words.shape = {words_shape, 1};
+  words.dtype = PaddleDType::INT64;
+  words.data.Resize(sizeof(int64_t) * words_shape);
+
+  int target_shape = test_data[0][1].shape[0];
+  PaddleTensor targets;
+  targets.name = "targets";
+  targets.shape = {target_shape, 1};
+  targets.dtype = PaddleDType::INT64;
+  targets.data.Resize(sizeof(int64_t) * target_shape);
+
+  for (int i = 0; i < num_images; i++) {
+    std::copy_n(
+        static_cast<int64_t *>(test_data[i][0].data.data()) + i * words_shape,
+        words_shape,
+        static_cast<int64_t *>(words.data.data()) + i * words_shape);
+    words.lod = test_data[i][0].lod;
+
+    std::copy_n(
+        static_cast<int64_t *>(test_data[i][1].data.data()) + i * target_shape,
+        target_shape,
+        static_cast<int64_t *>(targets.data.data()) + i * target_shape);
+    targets.lod = test_data[i][1].lod;
+  }
+
+  auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(2);
+  (*warmup_data)[0] = std::move(words);
+  (*warmup_data)[1] = std::move(targets);
+  return warmup_data;
 }
 
 template <typename T>
@@ -103,10 +151,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   file.read(reinterpret_cast<char *>(&total_words_num), sizeof(int64_t));
   LOG(INFO) << "Total words in file: " << total_words_num;
   size_t lods_beginning_offset = static_cast<size_t>(file.tellg());
-  auto words_begining_offset =
+  auto words_beginning_offset =
       lods_beginning_offset + sizeof(size_t) * total_sentences_num;
   auto targets_beginning_offset =
-      words_begining_offset + sizeof(int64_t) * total_words_num;
+      words_beginning_offset + sizeof(int64_t) * total_words_num;
 
   std::vector<size_t> lod_full =
       ReadSentenceLod(file, lods_beginning_offset, total_sentences_num);
@@ -114,9 +162,9 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   size_t lods_sum = std::accumulate(lod_full.begin(), lod_full.end(), 0UL);
   EXPECT_EQ(lods_sum, static_cast<size_t>(total_words_num));
 
-  TensorReader<int64_t> words_reader(file, words_begining_offset, "words");
-  TensorReader<int64_t> targets_reader(file, targets_beginning_offset,
-                                       "targets");
+  TensorReader<int64_t> words_reader(file, words_beginning_offset, "words");
+  TensorReader<int64_t> targets_reader(
+      file, targets_beginning_offset, "targets");
   // If FLAGS_iterations is set to 0, run all batches
   auto iterations_max = total_sentences_num / batch_size;
   auto iterations = iterations_max;
@@ -150,11 +198,14 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 
 std::vector<double> Lexical_Test(
     const std::vector<std::vector<PaddleTensor>> &input_slots_all,
-    std::vector<std::vector<PaddleTensor>> *outputs, AnalysisConfig *config,
+    std::vector<std::vector<PaddleTensor>> *outputs,
+    AnalysisConfig *config,
     const bool use_analysis) {
   TestOneThreadPrediction(
       reinterpret_cast<const PaddlePredictor::Config *>(config),
-      input_slots_all, outputs, FLAGS_use_analysis);
+      input_slots_all,
+      outputs,
+      FLAGS_use_analysis);
   std::vector<double> acc_res(3);
   if (FLAGS_with_accuracy_layer) {
     EXPECT_GT(outputs->size(), 0UL);
@@ -167,18 +218,15 @@ std::vector<double> Lexical_Test(
       }
     }
     // nums_infer, nums_label, nums_correct
-    auto precision =
-        acc_sum[0]
-            ? static_cast<double>(acc_sum[2]) / static_cast<double>(acc_sum[0])
-            : 0;
-    auto recall =
-        acc_sum[1]
-            ? static_cast<double>(acc_sum[2]) / static_cast<double>(acc_sum[1])
-            : 0;
-    auto f1_score =
-        acc_sum[2]
-            ? static_cast<float>(2 * precision * recall) / (precision + recall)
-            : 0;
+    auto precision = acc_sum[0] ? static_cast<double>(acc_sum[2]) /
+                                      static_cast<double>(acc_sum[0])
+                                : 0;
+    auto recall = acc_sum[1] ? static_cast<double>(acc_sum[2]) /
+                                   static_cast<double>(acc_sum[1])
+                             : 0;
+    auto f1_score = acc_sum[2] ? static_cast<float>(2 * precision * recall) /
+                                     (precision + recall)
+                               : 0;
 
     LOG(INFO) << "Precision:  " << std::fixed << std::setw(6)
               << std::setprecision(5) << precision;
@@ -211,7 +259,19 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
   if (FLAGS_use_analysis) {
     AnalysisConfig analysis_cfg;
     SetAnalysisConfig(&analysis_cfg, FLAGS_cpu_num_threads);
-    if (FLAGS_enable_bf16) analysis_cfg.EnableMkldnnBfloat16();
+    if (FLAGS_enable_bf16) {
+      analysis_cfg.EnableMkldnnBfloat16();
+    } else if (FLAGS_enable_int8) {
+      if (FLAGS_fuse_multi_gru)
+        analysis_cfg.pass_builder()->AppendPass("multi_gru_fuse_pass");
+
+      std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
+          WarmupData(input_slots_all);
+      analysis_cfg.EnableMkldnnQuantizer();
+      analysis_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
+      analysis_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(
+          FLAGS_batch_size);
+    }
     std::vector<double> acc_analysis(3);
     acc_analysis = Lexical_Test(input_slots_all, &outputs, &analysis_cfg, true);
     for (size_t i = 0; i < acc_analysis.size(); i++) {

@@ -29,7 +29,7 @@ import os
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 
-__all__ = ['train', 'test']
+__all__ = []
 
 URL = 'http://paddlemodels.bj.bcebos.com/uci_housing/housing.data'
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
@@ -73,8 +73,8 @@ def load_data(filename, feature_num=14, ratio=0.8):
 
     data = np.fromfile(filename, sep=' ')
     data = data.reshape(data.shape[0] // feature_num, feature_num)
-    maximums, minimums, avgs = data.max(axis=0), data.min(axis=0), data.sum(
-        axis=0) / data.shape[0]
+    maximums, minimums, avgs = data.max(axis=0), data.min(
+        axis=0), data.sum(axis=0) / data.shape[0]
     # if you want to print the distribution of input data, you could use function of feature_range
     #feature_range(maximums[:-1], minimums[:-1])
     for i in six.moves.range(feature_num - 1):
@@ -87,6 +87,7 @@ def load_data(filename, feature_num=14, ratio=0.8):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train():
     """
@@ -111,6 +112,7 @@ def train():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
     """
@@ -133,8 +135,10 @@ def test():
 
 
 def fluid_model():
-    parameter_tar = paddle.dataset.common.download(
-        FLUID_URL_MODEL, 'uci_housing', FLUID_MD5_MODEL, 'fit_a_line.fluid.tar')
+    parameter_tar = paddle.dataset.common.download(FLUID_URL_MODEL,
+                                                   'uci_housing',
+                                                   FLUID_MD5_MODEL,
+                                                   'fit_a_line.fluid.tar')
 
     tar = tarfile.TarFile(parameter_tar, mode='r')
     dirpath = tempfile.mkdtemp()
@@ -146,6 +150,7 @@ def fluid_model():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def predict_reader():
     """
@@ -162,6 +167,7 @@ def predict_reader():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)

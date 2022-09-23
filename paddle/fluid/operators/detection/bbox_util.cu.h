@@ -18,16 +18,14 @@ limitations under the License. */
 #include <vector>
 #ifdef __NVCC__
 #include "cub/cub.cuh"
-#include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
-#include "paddle/fluid/platform/miopen_helper.h"
 namespace cub = hipcub;
 #endif
-#include "paddle/fluid/operators/gather.cu.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -49,13 +47,14 @@ struct RangeInitFunctor {
 };
 
 template <typename T>
-static void SortDescending(const platform::CUDADeviceContext &ctx,
-                           const Tensor &value, Tensor *value_out,
+static void SortDescending(const phi::GPUContext &ctx,
+                           const Tensor &value,
+                           Tensor *value_out,
                            Tensor *index_out) {
   int num = static_cast<int>(value.numel());
   Tensor index_in_t;
   int *idx_in = index_in_t.mutable_data<int>({num}, ctx.GetPlace());
-  platform::ForRange<platform::CUDADeviceContext> for_range(ctx, num);
+  platform::ForRange<phi::GPUContext> for_range(ctx, num);
   for_range(RangeInitFunctor{0, 1, idx_in});
 
   int *idx_out = index_out->mutable_data<int>({num}, ctx.GetPlace());
@@ -65,16 +64,31 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
 
   // Determine temporary device storage requirements
   size_t temp_storage_bytes = 0;
-  cub::DeviceRadixSort::SortPairsDescending<T, int>(
-      nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num);
+  cub::DeviceRadixSort::SortPairsDescending<T, int>(nullptr,
+                                                    temp_storage_bytes,
+                                                    keys_in,
+                                                    keys_out,
+                                                    idx_in,
+                                                    idx_out,
+                                                    num,
+                                                    0,
+                                                    sizeof(T) * 8,
+                                                    ctx.stream());
   // Allocate temporary storage
-  auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+  auto place = ctx.GetPlace();
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
-  cub::DeviceRadixSort::SortPairsDescending<T, int>(
-      d_temp_storage->ptr(), temp_storage_bytes, keys_in, keys_out, idx_in,
-      idx_out, num);
+  cub::DeviceRadixSort::SortPairsDescending<T, int>(d_temp_storage->ptr(),
+                                                    temp_storage_bytes,
+                                                    keys_in,
+                                                    keys_out,
+                                                    idx_in,
+                                                    idx_out,
+                                                    num,
+                                                    0,
+                                                    sizeof(T) * 8,
+                                                    ctx.stream());
 }
 
 template <typename T>
@@ -88,8 +102,12 @@ struct BoxDecodeAndClipFunctor {
 
   T *proposals;
 
-  BoxDecodeAndClipFunctor(const T *anchor, const T *deltas, const T *var,
-                          const int *index, const T *im_info, T *proposals,
+  BoxDecodeAndClipFunctor(const T *anchor,
+                          const T *deltas,
+                          const T *var,
+                          const int *index,
+                          const T *im_info,
+                          T *proposals,
                           bool pixel_offset = true)
       : anchor(anchor),
         deltas(deltas),
@@ -149,9 +167,12 @@ struct BoxDecodeAndClipFunctor {
 };
 
 template <typename T, int BlockSize>
-static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
-                                    const T min_size, const int num,
-                                    int *keep_num, int *keep,
+static __global__ void FilterBBoxes(const T *bboxes,
+                                    const T *im_info,
+                                    const T min_size,
+                                    const int num,
+                                    int *keep_num,
+                                    int *keep,
                                     bool is_scale = true,
                                     bool pixel_offset = true) {
   T im_h = im_info[0];
@@ -205,7 +226,8 @@ static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
   }
 }
 
-static __device__ float IoU(const float *a, const float *b,
+static __device__ float IoU(const float *a,
+                            const float *b,
                             const bool pixel_offset = true) {
   float offset = pixel_offset ? static_cast<float>(1.0) : 0;
   float left = max(a[0], b[0]), right = min(a[2], b[2]);
@@ -220,7 +242,8 @@ static __device__ float IoU(const float *a, const float *b,
 
 static __global__ void NMSKernel(const int n_boxes,
                                  const float nms_overlap_thresh,
-                                 const float *dev_boxes, uint64_t *dev_mask,
+                                 const float *dev_boxes,
+                                 uint64_t *dev_mask,
                                  bool pixel_offset = true) {
   const int row_start = blockIdx.y;
   const int col_start = blockIdx.x;
@@ -264,9 +287,12 @@ static __global__ void NMSKernel(const int n_boxes,
 }
 
 template <typename T>
-static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
-                const Tensor &sorted_indices, const T nms_threshold,
-                Tensor *keep_out, bool pixel_offset = true) {
+static void NMS(const phi::GPUContext &ctx,
+                const Tensor &proposals,
+                const Tensor &sorted_indices,
+                const T nms_threshold,
+                Tensor *keep_out,
+                bool pixel_offset = true) {
   int boxes_num = proposals.dims()[0];
   const int col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
   dim3 blocks(DIVUP(boxes_num, kThreadsPerBlock),
@@ -274,15 +300,26 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
   dim3 threads(kThreadsPerBlock);
 
   const T *boxes = proposals.data<T>();
-  auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
-  framework::Vector<uint64_t> mask(boxes_num * col_blocks);
-  NMSKernel<<<blocks, threads>>>(boxes_num, nms_threshold, boxes,
-                                 mask.CUDAMutableData(BOOST_GET_CONST(
-                                     platform::CUDAPlace, ctx.GetPlace())),
-                                 pixel_offset);
+  auto place = ctx.GetPlace();
+  auto mask_ptr =
+      memory::Alloc(ctx.GetPlace(),
+                    boxes_num * col_blocks * sizeof(uint64_t),
+                    phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+  uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
+
+  NMSKernel<<<blocks, threads, 0, ctx.stream()>>>(
+      boxes_num, nms_threshold, boxes, mask_dev, pixel_offset);
 
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
+
+  std::vector<uint64_t> mask_host(boxes_num * col_blocks);
+  memory::Copy(platform::CPUPlace(),
+               mask_host.data(),
+               place,
+               mask_dev,
+               boxes_num * col_blocks * sizeof(uint64_t),
+               ctx.stream());
 
   std::vector<int> keep_vec;
   int num_to_keep = 0;
@@ -293,15 +330,19 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
     if (!(remv[nblock] & (1ULL << inblock))) {
       ++num_to_keep;
       keep_vec.push_back(i);
-      uint64_t *p = &mask[0] + i * col_blocks;
+      uint64_t *p = mask_host.data() + i * col_blocks;
       for (int j = nblock; j < col_blocks; j++) {
         remv[j] |= p[j];
       }
     }
   }
   int *keep = keep_out->mutable_data<int>({num_to_keep}, ctx.GetPlace());
-  memory::Copy(place, keep, platform::CPUPlace(), keep_vec.data(),
-               sizeof(int) * num_to_keep, ctx.stream());
+  memory::Copy(place,
+               keep,
+               platform::CPUPlace(),
+               keep_vec.data(),
+               sizeof(int) * num_to_keep,
+               ctx.stream());
   ctx.Wait();
 }
 

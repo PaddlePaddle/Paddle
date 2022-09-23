@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import sys
+import distro
 import platform
 import subprocess
 
@@ -47,8 +48,8 @@ def get_os_info():
         plat = "macOs"
         ver = platform.mac_ver()[0]
     elif platform.system() == "Linux":
-        plat = platform.linux_distribution()[0]
-        ver = platform.linux_distribution()[1]
+        plat = distro.linux_distribution()[0]
+        ver = distro.linux_distribution()[1]
     elif platform.system() == "Windows":
         plat = "Windows"
         ver = platform.win32_ver()[0]
@@ -63,9 +64,10 @@ def get_python_info():
 
 
 def run_shell_command(cmd):
-    out, err = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        shell=True).communicate()
+    out, err = subprocess.Popen(cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                shell=True).communicate()
     if err:
         return None
     else:
@@ -81,6 +83,7 @@ def get_cuda_info():
 
 
 def get_cudnn_info():
+
     def _get_cudnn_ver(cmd):
         out = run_shell_command(cmd)
         if out:
@@ -91,8 +94,8 @@ def get_cudnn_info():
     if platform.system() == "Windows":
         cudnn_dll_path = run_shell_command('where cudnn*')
         if cudnn_dll_path:
-            cudnn_header_path = cudnn_dll_path.split('bin')[
-                0] + r'include\cudnn.h'
+            cudnn_header_path = cudnn_dll_path.split(
+                'bin')[0] + r'include\cudnn.h'
             cmd = 'type "{0}" | findstr "{1}" | findstr /v "CUDNN_VERSION"'
         else:
             envs['cudnn_version'] = None
@@ -118,8 +121,8 @@ def get_cudnn_info():
 def get_driver_info():
     driver_ver = run_shell_command('nvidia-smi')
     if driver_ver:
-        driver_ver = driver_ver.split('Driver Version:')[1].strip().split(' ')[
-            0]
+        driver_ver = driver_ver.split('Driver Version:')[1].strip().split(
+            ' ')[0]
     else:
         driver_ver = None
     envs['nvidia_driver_version'] = driver_ver

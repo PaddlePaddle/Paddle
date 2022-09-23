@@ -14,9 +14,11 @@
 
 #pragma once
 #include <stdio.h>
+
 #include <cassert>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {
@@ -35,30 +37,59 @@ class GeluPlugin : public PluginTensorRT {
   }
 
   ~GeluPlugin() {}
-  GeluPlugin* clone() const override { return new GeluPlugin(with_fp16_); }
+  GeluPlugin* clone() const TRT_NOEXCEPT override {
+    return new GeluPlugin(with_fp16_);
+  }
 
-  const char* getPluginType() const override { return "gelu_plugin"; }
-  int getNbOutputs() const override { return 1; }
-  int initialize() override { return 0; }
-  bool supportsFormat(nvinfer1::DataType type,
-                      nvinfer1::PluginFormat format) const override;
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
-                                     int nb_input_dims) override;
-  int enqueue(int batch_size, const void* const* inputs, void** outputs,
-              void* workspace, cudaStream_t stream) override;
+  const char* getPluginType() const TRT_NOEXCEPT override {
+    return "gelu_plugin";
+  }
+  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
+  int initialize() TRT_NOEXCEPT override { return 0; }
+  bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
+      const TRT_NOEXCEPT override;
+  nvinfer1::Dims getOutputDimensions(int index,
+                                     const nvinfer1::Dims* inputs,
+                                     int nb_input_dims) TRT_NOEXCEPT override;
+#if IS_TRT_VERSION_LT(8000)
+  int enqueue(int batch_size,
+              const void* const* inputs,
+              void** outputs,
+#else
+  int enqueue(int batch_size,
+              const void* const* inputs,
+              void* const* outputs,
+#endif
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
 
- protected:
-  size_t getSerializationSize() override {
-    return getBaseSerializationSize() + SerializedSize(getPluginType());
+  size_t getSerializationSize() const TRT_NOEXCEPT override {
+    return getBaseSerializationSize();
   }
 
   // TRT will call this func  to serialize the configuration of TRT
   // It should not be called by users.
-  void serialize(void* buffer) override {
-    SerializeValue(&buffer, getPluginType());
+  void serialize(void* buffer) const TRT_NOEXCEPT override {
     serializeBase(buffer);
   }
 };
+
+class GeluPluginCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const TRT_NOEXCEPT override {
+    return "gelu_plugin";
+  }
+
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
+    return new GeluPlugin(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(GeluPluginCreator);
 
 #if IS_TRT_VERSION_GE(6000)
 class GeluPluginDynamic : public DynamicPluginTensorRT {
@@ -69,91 +100,77 @@ class GeluPluginDynamic : public DynamicPluginTensorRT {
   }
 
   ~GeluPluginDynamic() {}
-  nvinfer1::IPluginV2DynamicExt* clone() const override {
+  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     return new GeluPluginDynamic(with_fp16_);
   }
 
-  const char* getPluginType() const override { return "gelu_plugin"; }
-  int getNbOutputs() const override { return 1; }
-  int initialize() override { return 0; }
+  const char* getPluginType() const TRT_NOEXCEPT override {
+    return "gelu_plugin_dynamic";
+  }
+  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
+  int initialize() TRT_NOEXCEPT override { return 0; }
 
-  size_t getSerializationSize() const override {
+  size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(with_fp16_);
   }
-  void serialize(void* buffer) const override {
+  void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, with_fp16_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) override;
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* in_out,
-                                 int nb_inputs, int nb_outputs) override;
+                                 int nb_inputs,
+                                 int nb_outputs) TRT_NOEXCEPT override;
 
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nb_inputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nb_outputs) override {}
+                       int nb_outputs) TRT_NOEXCEPT override {}
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nb_inputs,
                           const nvinfer1::PluginTensorDesc* outputs,
-                          int nb_outputs) const override {
+                          int nb_outputs) const TRT_NOEXCEPT override {
     return 0;
   }
 
   int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
               const nvinfer1::PluginTensorDesc* output_desc,
-              const void* const* inputs, void* const* outputs, void* workspace,
-              cudaStream_t stream) override;
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
   nvinfer1::DataType getOutputDataType(int index,
                                        const nvinfer1::DataType* input_types,
-                                       int nb_inputs) const override;
+                                       int nb_inputs) const
+      TRT_NOEXCEPT override;
 
-  void destroy() override { delete this; }
+  void destroy() TRT_NOEXCEPT override { delete this; }
 };
 
-class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
+class GeluPluginDynamicCreator : public TensorRTPluginCreator {
  public:
-  GeluPluginV2Creator() {}
-  const char* getPluginName() const override { return "gelu_plugin"; }
-
-  const char* getPluginVersion() const override { return "1"; }
-
-  const nvinfer1::PluginFieldCollection* getFieldNames() override {
-    return &field_collection_;
+  const char* getPluginName() const TRT_NOEXCEPT override {
+    return "gelu_plugin_dynamic";
   }
 
-  nvinfer1::IPluginV2* createPlugin(
-      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    return nullptr;
-  }
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serial_data,
-                                         size_t serial_length) override {
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     auto plugin = new GeluPluginDynamic(serial_data, serial_length);
     return plugin;
   }
-
-  void setPluginNamespace(const char* lib_namespace) override {
-    plugin_namespace_ = lib_namespace;
-  }
-
-  const char* getPluginNamespace() const override {
-    return plugin_namespace_.c_str();
-  }
-
- private:
-  std::string plugin_namespace_;
-  std::string plugin_name_;
-  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
-  std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
-
-REGISTER_TRT_PLUGIN_V2(GeluPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(GeluPluginDynamicCreator);
 #endif
 
 }  // namespace plugin

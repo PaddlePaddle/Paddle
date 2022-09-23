@@ -17,8 +17,11 @@ from __future__ import print_function
 import paddle.dataset.cifar
 import unittest
 
+__all__ = []
+
 
 class TestCIFAR(unittest.TestCase):
+
     def check_reader(self, reader):
         sum = 0
         label = 0

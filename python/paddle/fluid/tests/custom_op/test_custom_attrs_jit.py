@@ -20,11 +20,12 @@ import paddle
 from paddle.utils.cpp_extension import load, get_build_directory
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.fluid.framework import _test_eager_guard
 
-# Because Windows don't use docker, the shared lib already exists in the 
+# Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_attrs_jit\\custom_attrs_jit.pyd'.format(get_build_directory(
-))
+file = '{}\\custom_attrs_jit\\custom_attrs_jit.pyd'.format(
+    get_build_directory())
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
@@ -40,28 +41,56 @@ custom_attrs = load(
 
 
 class TestJitCustomAttrs(unittest.TestCase):
-    def test_attr_value(self):
+
+    def setUp(self):
         paddle.set_device('cpu')
         # prepare test value
-        bool_attr = True
-        int_attr = 10
-        float_attr = 3.14
-        int64_attr = 10000000000
-        str_attr = "StrAttr"
-        int_vec_attr = [10, 10, 10]
-        float_vec_attr = [3.14, 3.14, 3.14]
-        int64_vec_attr = [10000000000, 10000000000, 10000000000]
-        str_vec_attr = ["StrAttr", "StrAttr", "StrAttr"]
+        self.bool_attr = True
+        self.int_attr = 10
+        self.float_attr = 3.14
+        self.int64_attr = 10000000000
+        self.str_attr = "StrAttr"
+        self.int_vec_attr = [10, 10, 10]
+        self.float_vec_attr = [3.14, 3.14, 3.14]
+        self.int64_vec_attr = [10000000000, 10000000000, 10000000000]
+        self.str_vec_attr = ["StrAttr", "StrAttr", "StrAttr"]
 
+    def func_attr_value(self):
         x = paddle.ones([2, 2], dtype='float32')
         x.stop_gradient = False
-        out = custom_attrs.attr_test(
-            x, bool_attr, int_attr, float_attr, int64_attr, str_attr,
-            int_vec_attr, float_vec_attr, int64_vec_attr, str_vec_attr)
+        out = custom_attrs.attr_test(x, self.bool_attr, self.int_attr,
+                                     self.float_attr, self.int64_attr,
+                                     self.str_attr, self.int_vec_attr,
+                                     self.float_vec_attr, self.int64_vec_attr,
+                                     self.str_vec_attr)
         out.stop_gradient = False
         out.backward()
 
-        self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
+        np.testing.assert_array_equal(x.numpy(), out.numpy())
+
+    def test_attr_value(self):
+        with _test_eager_guard():
+            self.func_attr_value()
+        self.func_attr_value()
+
+    def func_const_attr_value(self):
+        x = paddle.ones([2, 2], dtype='float32')
+        x.stop_gradient = False
+        out = custom_attrs.const_attr_test(x, self.bool_attr, self.int_attr,
+                                           self.float_attr, self.int64_attr,
+                                           self.str_attr, self.int_vec_attr,
+                                           self.float_vec_attr,
+                                           self.int64_vec_attr,
+                                           self.str_vec_attr)
+        out.stop_gradient = False
+        out.backward()
+
+        np.testing.assert_array_equal(x.numpy(), out.numpy())
+
+    def test_const_attr_value(self):
+        with _test_eager_guard():
+            self.func_const_attr_value()
+        self.func_const_attr_value()
 
 
 if __name__ == '__main__':

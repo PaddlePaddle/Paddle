@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import sys
 import signal
 import atexit
@@ -20,10 +19,11 @@ import atexit
 from . import core
 
 # NOTE: queue has a different name in python2 and python3
-if six.PY2:
-    import Queue as queue
-else:
-    import queue
+import queue
+
+# multi-process worker check indices queue interval, avoid
+# hanging in subprocess data loading
+MP_STATUS_CHECK_INTERVAL = 5.
 
 # NOTE: [ mmap files clear ] If there is still data in the multiprocess queue when the main process finishes reading,
 # the data in the queue needs to be popped. Then the LoDTensor read by the main process
@@ -64,6 +64,7 @@ class CleanupFuncRegistrar():
 
     @classmethod
     def register(cls, function, signals=[]):
+
         def _func_exectuor():
             if function not in cls._executed_func_set:
                 try:
@@ -92,8 +93,8 @@ class CleanupFuncRegistrar():
             for sig in signals:
                 orig_handler = signal.signal(sig, _signal_handler)
                 if orig_handler not in (signal.SIG_DFL, signal.SIG_IGN):
-                    if (sig == signal.SIGINT and
-                            orig_handler is signal.default_int_handler):
+                    if (sig == signal.SIGINT
+                            and orig_handler is signal.default_int_handler):
                         continue
                     if orig_handler not in cls._registered_func_set:
                         atexit.register(orig_handler)

@@ -8,26 +8,19 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/platform/float16.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace platform {
 
 TEST(float16, conversion_cpu) {
-  // Explicit conversion from Eigen::half
-  EXPECT_EQ(float16(Eigen::half(1.0f)).x, 0x3c00);
-  EXPECT_EQ(float16(Eigen::half(0.5f)).x, 0x3800);
-  EXPECT_EQ(float16(Eigen::half(0.33333f)).x, 0x3555);
-  EXPECT_EQ(float16(Eigen::half(0.0f)).x, 0x0000);
-  EXPECT_EQ(float16(Eigen::half(-0.0f)).x, 0x8000);
-  EXPECT_EQ(float16(Eigen::half(65504.0f)).x, 0x7bff);
-  EXPECT_EQ(float16(Eigen::half(65536.0f)).x, 0x7c00);
-
   // Conversion from float
   EXPECT_EQ(float16(1.0f).x, 0x3c00);
   EXPECT_EQ(float16(0.5f).x, 0x3800);
@@ -61,8 +54,6 @@ TEST(float16, conversion_cpu) {
   float16 v_assign;
   v_assign = float16(0);
   EXPECT_EQ(v_assign.x, 0x0000);
-  v_assign = Eigen::half(1.0f);
-  EXPECT_EQ(v_assign.x, 0x3c00);
   v_assign = 0.5f;
   EXPECT_EQ(v_assign.x, 0x3800);
   v_assign = 0.33333;
@@ -73,7 +64,6 @@ TEST(float16, conversion_cpu) {
   EXPECT_EQ(v_assign.x, 0x3c00);
 
   // Conversion operator
-  EXPECT_EQ(Eigen::half(float16(1.0f)).x, 0x3c00);
   EXPECT_EQ(static_cast<float>(float16(0.5f)), 0.5f);
   EXPECT_NEAR(static_cast<double>(float16(0.33333)), 0.33333, 0.0001);
   EXPECT_EQ(static_cast<int>(float16(-1)), -1);
@@ -83,15 +73,16 @@ TEST(float16, conversion_cpu) {
 TEST(float16, arithmetic_cpu) {
   EXPECT_EQ(static_cast<float>(float16(1) + float16(1)), 2);
   EXPECT_EQ(static_cast<float>(float16(5) + float16(-5)), 0);
-  EXPECT_NEAR(static_cast<float>(float16(0.33333f) + float16(0.66667f)), 1.0f,
-              0.001);
+  EXPECT_NEAR(
+      static_cast<float>(float16(0.33333f) + float16(0.66667f)), 1.0f, 0.001);
   EXPECT_EQ(static_cast<float>(float16(3) - float16(5)), -2);
   EXPECT_NEAR(static_cast<float>(float16(0.66667f) - float16(0.33333f)),
-              0.33334f, 0.001);
+              0.33334f,
+              0.001);
   EXPECT_NEAR(static_cast<float>(float16(3.3f) * float16(2.0f)), 6.6f, 0.01);
   EXPECT_NEAR(static_cast<float>(float16(-2.1f) * float16(-3.0f)), 6.3f, 0.01);
-  EXPECT_NEAR(static_cast<float>(float16(2.0f) / float16(3.0f)), 0.66667f,
-              0.001);
+  EXPECT_NEAR(
+      static_cast<float>(float16(2.0f) / float16(3.0f)), 0.66667f, 0.001);
   EXPECT_EQ(static_cast<float>(float16(1.0f) / float16(2.0f)), 0.5f);
   EXPECT_EQ(static_cast<float>(-float16(512.0f)), -512.0f);
   EXPECT_EQ(static_cast<float>(-float16(-512.0f)), 512.0f);
@@ -121,8 +112,8 @@ TEST(float16, comparison_cpu) {
 TEST(float16, lod_tensor_cpu) {
   framework::LoDTensor lod_tensor;
 
-  std::vector<float16> input_data = {float16(1.0f), float16(0.5f),
-                                     float16(0.33333f), float16(0.0f)};
+  std::vector<float16> input_data = {
+      float16(1.0f), float16(0.5f), float16(0.33333f), float16(0.0f)};
   EXPECT_EQ(input_data[0].x, 0x3c00);
   EXPECT_EQ(input_data[1].x, 0x3800);
   EXPECT_EQ(input_data[2].x, 0x3555);
@@ -143,7 +134,8 @@ TEST(float16, lod_tensor_cpu) {
 TEST(float16, floating) {
   // compile time assert.
   PADDLE_ENFORCE_EQ(
-      std::is_floating_point<float16>::value, true,
+      std::is_floating_point<float16>::value,
+      true,
       platform::errors::Unavailable("The float16 support in CPU failed."));
 }
 

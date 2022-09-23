@@ -31,18 +31,24 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-static PDNode* create_emb_vars(PDPattern* pattern, const std::string& name,
+static PDNode* create_emb_vars(PDPattern* pattern,
+                               const std::string& name,
                                const std::string& arg,
                                bool is_persist = false) {
+  std::unordered_set<std::string> embedding_ops{"lookup_table",
+                                                "lookup_table_v2"};
   PDNode* node =
-      pattern->NewNode(name)->assert_is_op_input("lookup_table", arg);
+      pattern->NewNode(name)->assert_is_ops_input(embedding_ops, arg);
   if (is_persist) return node->assert_is_persistable_var();
   return node;
 }
-static PDNode* create_emb_out_vars(PDPattern* pattern, const std::string& name,
+static PDNode* create_emb_out_vars(PDPattern* pattern,
+                                   const std::string& name,
                                    const std::string& arg) {
+  std::unordered_set<std::string> embedding_ops{"lookup_table",
+                                                "lookup_table_v2"};
   PDNode* node = pattern->NewNode(name)
-                     ->assert_is_only_output_of_op("lookup_table")
+                     ->assert_is_only_output_of_ops(embedding_ops)
                      ->assert_is_op_input("elementwise_add", arg)
                      ->AsIntermediate();
   return node;
@@ -56,10 +62,12 @@ void Embedding2Eltwise1Pattern::operator()() {
       create_emb_vars(pattern, lookup_table1_w_repr(), "W", true);
   auto* lookup_table2_w =
       create_emb_vars(pattern, lookup_table2_w_repr(), "W", true);
+  std::unordered_set<std::string> embedding_ops{"lookup_table",
+                                                "lookup_table_v2"};
   auto* lookup_table1 =
-      pattern->NewNode(lookup_table1_repr())->assert_is_op("lookup_table");
+      pattern->NewNode(lookup_table1_repr())->assert_is_ops(embedding_ops);
   auto* lookup_table2 =
-      pattern->NewNode(lookup_table2_repr())->assert_is_op("lookup_table");
+      pattern->NewNode(lookup_table2_repr())->assert_is_ops(embedding_ops);
   auto* lookup_table1_out =
       create_emb_out_vars(pattern, lookup_table1_out_repr(), "X");
   auto* lookup_table2_out =
@@ -80,8 +88,10 @@ void Embedding1Eltwise1Pattern::operator()() {
       create_emb_vars(pattern, lookup_table1_x_repr(), "Ids");
   auto* lookup_table1_w =
       create_emb_vars(pattern, lookup_table1_w_repr(), "W", true);
+  std::unordered_set<std::string> embedding_ops{"lookup_table",
+                                                "lookup_table_v2"};
   auto* lookup_table1 =
-      pattern->NewNode(lookup_table1_repr())->assert_is_op("lookup_table");
+      pattern->NewNode(lookup_table1_repr())->assert_is_ops(embedding_ops);
   auto* lookup_table1_out =
       create_emb_out_vars(pattern, lookup_table1_out_repr(), "Y");
   auto* eltwise_add =
@@ -128,8 +138,12 @@ void SkipLayerNorm::operator()() {
       ->LinksFrom({eltwise_add_out, layer_norm_bias_var, layer_norm_scale_var})
       .LinksTo({layer_norm_out, layer_norm_mean_var, layer_norm_variance_var});
 }
-static int BuildFusion(Graph* graph, const std::string& name_scope
-                       /*const Scope* scope*/) {
+
+}  // namespace patterns
+
+int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
+    Graph* graph, const std::string& name_scope
+    /*const Scope* scope*/) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -138,7 +152,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
   std::vector<std::unordered_set<Node*>> start_pattern_remove_nodes;
 
   // Create pattern.
-  Embedding2Eltwise1Pattern start_pattern(pattern, name_scope + "/start");
+  patterns::Embedding2Eltwise1Pattern start_pattern(pattern,
+                                                    name_scope + "/start");
   start_pattern();
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -148,12 +163,16 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table2_w, lookup_table2_w, start_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table1, lookup_table1, start_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table2, lookup_table2, start_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(lookup_table1_out, lookup_table1_out,
-                              start_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(lookup_table2_out, lookup_table2_out,
-                              start_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        lookup_table1_out, lookup_table1_out, start_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        lookup_table2_out, lookup_table2_out, start_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add, eltwise_add, start_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_out, eltwise_add_out, start_pattern);
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "Pass(Embedding2Eltwise1Pattern) in op compat failed.";
+      return;
+    }
     std::vector<std::pair<Node*, Node*>> ins;
     ins.push_back(std::make_pair(lookup_table1_x, lookup_table1_w));
     ins.push_back(std::make_pair(lookup_table2_x, lookup_table2_w));
@@ -161,8 +180,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
     start_pattern_out_node.push_back(eltwise_add_out);
 
     std::unordered_set<Node*> rm_nodes;
-    rm_nodes.insert({lookup_table1, lookup_table2, lookup_table1_out,
-                     lookup_table2_out, eltwise_add, eltwise_add_out});
+    rm_nodes.insert({lookup_table1,
+                     lookup_table2,
+                     lookup_table1_out,
+                     lookup_table2_out,
+                     eltwise_add,
+                     eltwise_add_out});
     start_pattern_remove_nodes.push_back(rm_nodes);
   };
   gpd(graph, handler);
@@ -174,18 +197,23 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
 
   GraphPatternDetector gpd2;
   auto* pattern2 = gpd2.mutable_pattern();
-  Embedding1Eltwise1Pattern second_pattern(pattern2, name_scope + "/second");
+  patterns::Embedding1Eltwise1Pattern second_pattern(pattern2,
+                                                     name_scope + "/second");
   second_pattern();
   auto handler2 = [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table1_x, lookup_table1_x, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table1_w, lookup_table1_w, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table1, lookup_table1, second_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(lookup_table1_out, lookup_table1_out,
-                              second_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        lookup_table1_out, lookup_table1_out, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_in, eltwise_add_in, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add, eltwise_add, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_out, eltwise_add_out, second_pattern);
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "Pass(Embedding1Eltwise1Pattern) in op compat failed.";
+      return;
+    }
     auto in = std::make_pair(lookup_table1_x, lookup_table1_w);
     inner_pattern_ins.push_back(in);
     inner_pattern_tmp_in.push_back(eltwise_add_in);
@@ -206,24 +234,29 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
   std::vector<std::unordered_set<Node*>> end_pattern_remove_nodes;
   GraphPatternDetector gpd3;
   auto* pattern3 = gpd3.mutable_pattern();
-  SkipLayerNorm skip_layernorm_pattern(pattern3, name_scope + "/third");
+  patterns::SkipLayerNorm skip_layernorm_pattern(pattern3,
+                                                 name_scope + "/third");
   skip_layernorm_pattern();
   auto handler3 = [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add, eltwise_add, skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_out, eltwise_add_out,
-                              skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltwise_add_out, eltwise_add_out, skip_layernorm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out,
-                              skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias,
-                              skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean,
-                              skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_out, layer_norm_out, skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_bias, layer_norm_bias, skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_mean, layer_norm_mean, skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, skip_layernorm_pattern);
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "Pass(SkipLayerNorm) in op compat failed.";
+      return;
+    }
     end_pattern_elt_out.push_back(eltwise_add_out);
     std::unordered_set<Node*> rm_nodes;
     rm_nodes.insert({layer_norm, layer_norm_mean, layer_norm_variance});
@@ -282,15 +315,43 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
       ids.push_back(inner_pattern_ins[js[iter]].first->Name());
       embs.push_back(inner_pattern_ins[js[iter]].second->Name());
     }
+
+    // todo: support any inputs with lookup_table_v2
+    if (ids.size() < 3) {
+      VLOG(3) << "embedding_eltwise_layernorm_fuse_pass only support >=3 "
+                 "inputs with lookup_table_v2";
+      return fusion_count;
+    }
+
     OpDesc new_op_desc;
     new_op_desc.SetType("fused_embedding_eltwise_layernorm");
     new_op_desc.SetInput("Ids", ids);
     new_op_desc.SetInput("Embs", embs);
+    new_op_desc.SetInput("WordId", {ids[0]});
+    new_op_desc.SetInput("PosId", {ids[1]});
+    if (ids.size() > 2) {
+      new_op_desc.SetInput("SentId", {ids[2]});
+    }
+
+    new_op_desc.SetInput("WordEmbedding", {embs[0]});
+    new_op_desc.SetInput("PosEmbedding", {embs[1]});
+    if (embs.size() > 2) {
+      new_op_desc.SetInput("SentEmbedding", {embs[2]});
+    }
+
     new_op_desc.SetInput("Bias", {end_pattern_biases[k]->Name()});
     new_op_desc.SetInput("Scale", {end_pattern_scales[k]->Name()});
     new_op_desc.SetOutput("Out", {end_pattern_out[k]->Name()});
     new_op_desc.SetAttr("epsilon",
                         end_patter_layernorms[k]->Op()->GetAttr("epsilon"));
+
+    if (end_patter_layernorms[k]->Op()->HasAttr("out_threshold")) {
+      new_op_desc.SetAttr("enable_int8", true);
+      new_op_desc.SetAttr(
+          "out_threshold",
+          end_patter_layernorms[k]->Op()->GetAttr("out_threshold"));
+    }
+
     auto* embedding_eltwise_layernorm = graph->CreateOpNode(&new_op_desc);
 
     for (size_t iter = 0; iter < start_pattern_in_nodes[i].size(); ++iter) {
@@ -326,11 +387,52 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
   return fusion_count;
 }
 
-}  // namespace patterns
+EmbeddingEltwiseLayerNormFusePass::EmbeddingEltwiseLayerNormFusePass() {
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .End();
+
+  AddOpCompat(OpCompat("layer_norm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Mean")
+      .IsTensor()
+      .End()
+      .AddOutput("Variance")
+      .IsTensor()
+      .End()
+      .AddAttr("epsilon")
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
+      .End()
+      .AddAttr("begin_norm_axis")
+      .IsNumGT(0)
+      .End();
+}
 
 void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
-  int fusion_count = patterns::BuildFusion(graph, name_scope_);
+  int fusion_count =
+      EmbeddingEltwiseLayerNormFusePass::BuildFusion(graph, name_scope_);
   if (fusion_count > 0) {
     graph->Set(kEmbEltwiseLayernormPass, new bool(true));
   }
@@ -346,5 +448,6 @@ REGISTER_PASS(embedding_eltwise_layernorm_fuse_pass,
 REGISTER_PASS_CAPABILITY(embedding_eltwise_layernorm_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("lookup_table", 0)
-            .EQ("elementweise_add", 0));
+            .LE("lookup_table", 1)
+            .LE("lookup_table_v2", 1)
+            .LE("elementweise_add", 1));

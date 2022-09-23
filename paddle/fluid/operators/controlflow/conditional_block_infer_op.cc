@@ -56,16 +56,18 @@ class ConditionalBlockInferOp : public ConditionalOp {
       // vector or tensor, whether need to execute the operators in sub-block
       // depends on the input variables (Input).
       auto xs = InputTensors(scope, "Input");
-      need_run = std::all_of(
-          xs.begin(), xs.end(),
-          [](const framework::LoDTensor *t) { return t->numel() != 0; });
+      need_run =
+          std::all_of(xs.begin(), xs.end(), [](const framework::LoDTensor *t) {
+            return t->numel() != 0;
+          });
     }
 
     if (need_run) {
       auto *scope_var = scope.FindVar(Output("Scope"));
       PADDLE_ENFORCE_NOT_NULL(
-          scope_var, platform::errors::PreconditionNotMet(
-                         "Scope must be set in ConditionalBlockInferOp."));
+          scope_var,
+          platform::errors::PreconditionNotMet(
+              "Scope must be set in ConditionalBlockInferOp."));
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
       scopes->resize(1);
       scopes->front() = &scope.NewScope();
@@ -73,6 +75,8 @@ class ConditionalBlockInferOp : public ConditionalOp {
 
       framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
+      VLOG(3) << "Conditional block.idx = " << block->ID()
+              << ", scope = " << &cur_scope;
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
       scope.DeleteScope(scopes->front());
     }
@@ -84,7 +88,8 @@ class ConditionalBlockInferOp : public ConditionalOp {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    conditional_block_infer, ops::ConditionalBlockInferOp,
+    conditional_block_infer,
+    ops::ConditionalBlockInferOp,
     ops::ConditionalBlockOpProtoMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

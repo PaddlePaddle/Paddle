@@ -80,6 +80,7 @@ def cudnn_step(step_input_np, pre_hidden_np, pre_cell_np, weight_ih, bias_ih,
 
 
 class TestCudnnLSTM(unittest.TestCase):
+
     def setUp(self):
         self.input_size = 100
         self.hidden_size = 200
@@ -114,8 +115,8 @@ class TestCudnnLSTM(unittest.TestCase):
             named_param_list[weight_ih_name].set_value(weight_ih)
 
             bias_ih = param_list[bias_ih_name].numpy()
-            bias_ih = np.random.uniform(
-                -0.1, 0.1, size=bias_ih.shape).astype('float64')
+            bias_ih = np.random.uniform(-0.1, 0.1,
+                                        size=bias_ih.shape).astype('float64')
             param_list[bias_ih_name].set_value(bias_ih)
             named_param_list[bias_ih_name].set_value(bias_ih)
 
@@ -126,17 +127,19 @@ class TestCudnnLSTM(unittest.TestCase):
             named_param_list[weight_hh_name].set_value(weight_hh)
 
             bias_hh = param_list[bias_hh_name].numpy()
-            bias_hh = np.random.uniform(
-                -0.1, 0.1, size=bias_hh.shape).astype('float64')
+            bias_hh = np.random.uniform(-0.1, 0.1,
+                                        size=bias_hh.shape).astype('float64')
             param_list[bias_hh_name].set_value(bias_hh)
             named_param_list[bias_hh_name].set_value(bias_hh)
 
-            step_input_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.input_size)).astype('float64')
-            pre_hidden_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.hidden_size)).astype('float64')
-            pre_cell_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.hidden_size)).astype('float64')
+            step_input_np = np.random.uniform(
+                -0.1, 0.1, (self.batch_size, self.input_size)).astype('float64')
+            pre_hidden_np = np.random.uniform(
+                -0.1, 0.1,
+                (self.batch_size, self.hidden_size)).astype('float64')
+            pre_cell_np = np.random.uniform(
+                -0.1, 0.1,
+                (self.batch_size, self.hidden_size)).astype('float64')
 
             step_input_var = fluid.dygraph.to_variable(step_input_np)
             pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
@@ -150,27 +153,30 @@ class TestCudnnLSTM(unittest.TestCase):
             named_api_hidden_out = named_api_out[0]
             named_api_cell_out = named_api_out[1]
 
-            np_hidden_out, np_cell_out = cudnn_step(
-                step_input_np, pre_hidden_np, pre_cell_np, weight_ih, bias_ih,
-                weight_hh, bias_hh)
-            self.assertTrue(
-                np.allclose(
-                    api_hidden_out.numpy(), np_hidden_out, rtol=1e-5, atol=0))
-            self.assertTrue(
-                np.allclose(
-                    api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
-            self.assertTrue(
-                np.allclose(
-                    named_api_hidden_out.numpy(),
-                    np_hidden_out,
-                    rtol=1e-5,
-                    atol=0))
-            self.assertTrue(
-                np.allclose(
-                    named_api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
+            np_hidden_out, np_cell_out = cudnn_step(step_input_np,
+                                                    pre_hidden_np, pre_cell_np,
+                                                    weight_ih, bias_ih,
+                                                    weight_hh, bias_hh)
+            np.testing.assert_allclose(api_hidden_out.numpy(),
+                                       np_hidden_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(api_cell_out.numpy(),
+                                       np_cell_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(named_api_hidden_out.numpy(),
+                                       np_hidden_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(named_api_cell_out.numpy(),
+                                       np_cell_out,
+                                       rtol=1e-05,
+                                       atol=0)
 
 
 class TestNonCudnnLSTM(unittest.TestCase):
+
     def setUp(self):
         self.input_size = 100
         self.hidden_size = 200
@@ -185,14 +191,14 @@ class TestNonCudnnLSTM(unittest.TestCase):
         with fluid.dygraph.guard(place):
             param_attr = fluid.ParamAttr(name="param_attr")
             bias_attr = fluid.ParamAttr(name="bias_attr")
-            named_cudnn_lstm = LSTMCell(
-                self.hidden_size,
-                self.input_size,
-                param_attr,
-                bias_attr,
-                use_cudnn_impl=False)
-            cudnn_lstm = LSTMCell(
-                self.hidden_size, self.input_size, use_cudnn_impl=False)
+            named_cudnn_lstm = LSTMCell(self.hidden_size,
+                                        self.input_size,
+                                        param_attr,
+                                        bias_attr,
+                                        use_cudnn_impl=False)
+            cudnn_lstm = LSTMCell(self.hidden_size,
+                                  self.input_size,
+                                  use_cudnn_impl=False)
 
             param_list = cudnn_lstm.state_dict()
             named_param_list = named_cudnn_lstm.state_dict()
@@ -203,23 +209,25 @@ class TestNonCudnnLSTM(unittest.TestCase):
             gate_b_name = "_bias"
 
             gate_w = param_list[gate_w_name].numpy()
-            gate_w = np.random.uniform(
-                -0.1, 0.1, size=gate_w.shape).astype('float64')
+            gate_w = np.random.uniform(-0.1, 0.1,
+                                       size=gate_w.shape).astype('float64')
             param_list[gate_w_name].set_value(gate_w)
             named_param_list[gate_w_name].set_value(gate_w)
 
             gate_b = param_list[gate_b_name].numpy()
-            gate_b = np.random.uniform(
-                -0.1, 0.1, size=gate_b.shape).astype('float64')
+            gate_b = np.random.uniform(-0.1, 0.1,
+                                       size=gate_b.shape).astype('float64')
             param_list[gate_b_name].set_value(gate_b)
             named_param_list[gate_b_name].set_value(gate_b)
 
-            step_input_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.input_size)).astype('float64')
-            pre_hidden_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.hidden_size)).astype('float64')
-            pre_cell_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.hidden_size)).astype('float64')
+            step_input_np = np.random.uniform(
+                -0.1, 0.1, (self.batch_size, self.input_size)).astype('float64')
+            pre_hidden_np = np.random.uniform(
+                -0.1, 0.1,
+                (self.batch_size, self.hidden_size)).astype('float64')
+            pre_cell_np = np.random.uniform(
+                -0.1, 0.1,
+                (self.batch_size, self.hidden_size)).astype('float64')
 
             step_input_var = fluid.dygraph.to_variable(step_input_np)
             pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
@@ -233,24 +241,27 @@ class TestNonCudnnLSTM(unittest.TestCase):
             named_api_hidden_out = named_api_out[0]
             named_api_cell_out = named_api_out[1]
 
-            np_hidden_out, np_cell_out = non_cudnn_step(
-                step_input_np, pre_hidden_np, pre_cell_np, gate_w, gate_b)
+            np_hidden_out, np_cell_out = non_cudnn_step(step_input_np,
+                                                        pre_hidden_np,
+                                                        pre_cell_np, gate_w,
+                                                        gate_b)
 
-            self.assertTrue(
-                np.allclose(
-                    api_hidden_out.numpy(), np_hidden_out, rtol=1e-5, atol=0))
-            self.assertTrue(
-                np.allclose(
-                    api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
-            self.assertTrue(
-                np.allclose(
-                    named_api_hidden_out.numpy(),
-                    np_hidden_out,
-                    rtol=1e-5,
-                    atol=0))
-            self.assertTrue(
-                np.allclose(
-                    named_api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
+            np.testing.assert_allclose(api_hidden_out.numpy(),
+                                       np_hidden_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(api_cell_out.numpy(),
+                                       np_cell_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(named_api_hidden_out.numpy(),
+                                       np_hidden_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(named_api_cell_out.numpy(),
+                                       np_cell_out,
+                                       rtol=1e-05,
+                                       atol=0)
 
 
 if __name__ == '__main__':

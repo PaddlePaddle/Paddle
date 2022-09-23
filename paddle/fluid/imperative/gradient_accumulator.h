@@ -18,8 +18,10 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace imperative {
@@ -31,7 +33,7 @@ class GradientAccumulator {
     if (var && var->Var().IsInitialized()) {
       if (var->Var().IsType<framework::LoDTensor>()) {
         var->SetType(framework::proto::VarType::LOD_TENSOR);
-      } else if (var->Var().IsType<framework::SelectedRows>()) {
+      } else if (var->Var().IsType<phi::SelectedRows>()) {
         var->SetType(framework::proto::VarType::SELECTED_ROWS);
       } else {
         PADDLE_THROW(platform::errors::PermissionDenied(
@@ -40,8 +42,8 @@ class GradientAccumulator {
     }
 
     // inner_var_ record the grad of this auto-grad.
-    // Only need to generate inner var for non-empty leaf-tensor.
-    if (var->IsLeafGrad() && !var->IsEmpty()) {
+    // Only need to generate inner var for leaf-tensor.
+    if (var->IsLeafGrad()) {
       inner_var_ = std::make_shared<VariableWrapper>(var->Name());
       inner_var_->SetType(var->Type());
       inner_var_->SetDataType(var->DataType());
@@ -52,15 +54,13 @@ class GradientAccumulator {
               << ") to store result of this Graph";
     }
 
-    // TODO(zhouwei): fix Tensor.clear_gradient() bug, remove this hard flag
-    var->SetIsEmpty(false);
-
     // var_ is the final grad, processed by hooks and grad accumulation
     var_ = var;
   }
 
   // function that Sum Gradient with this Graph
-  virtual void SumGrad(std::shared_ptr<VariableWrapper> var, size_t trace_id,
+  virtual void SumGrad(std::shared_ptr<VariableWrapper> var,
+                       size_t trace_id,
                        bool unchange_input = false) = 0;
 
   virtual ~GradientAccumulator() = default;
@@ -93,42 +93,38 @@ class GradientAccumulator {
 
   inline bool HasInnerVar() const { return inner_var_ != nullptr; }
 
-  /* Hook related methods */
-  inline bool HasPostHooks() const { return !post_hooks_.expired(); }
-
-  void SetPostHooks(const std::shared_ptr<LeafVarHookPipeline>& hooks) {
-    PADDLE_ENFORCE_NOT_NULL(
-        hooks, platform::errors::InvalidArgument(
-                   "The hook set to GradientAccumulator is nullptr."));
-
-    auto shared_hooks = post_hooks_.lock();
-    if (shared_hooks != hooks) {
-      PADDLE_ENFORCE_EQ(
-          shared_hooks, nullptr,
-          platform::errors::PermissionDenied(
-              "Cannot set post hooks twice to GradientAccumulator."));
-      post_hooks_ = hooks;
-    }
-  }
-  // void CallHooks(){}
-  //  ** inner_var_ **
-
   // function that Sum Gradient with Previous Graph
   void AccumulateGrad();
 
-  // call backward post hooks, such as reduce hook
-  void CallBackwardPostHooks() {
-    PADDLE_ENFORCE_NE(
-        post_hooks_.expired(), true,
-        platform::errors::NotFound(
-            "The post hooks of GradientAccumulator for Tensor `%s` expired.",
-            var_->Name()));
-    auto shared_hooks = post_hooks_.lock();
-    for (const auto& hook : shared_hooks->backward_hooks()) {
-      VLOG(3) << "call gradient accumulator backward hooks.";
-      (*hook)(var_);
-    }
-  }
+  /** [ Hook related methods ]
+   *
+   *  [Why need two types of VariableWrapperHook? ]
+   *
+   *    There are two types of gradient accumulation:
+   *    1. Gradient accumulation in same batch
+   *    2. Gradient accumulation across batchs
+   *    The order of execution between Hooks and gradient accumulation:
+
+   *      [ Gradient accumulation in same batch]
+   *                        |
+   *            [ leaf GradVarBase hooks ]
+   *                        |
+   *      [ Gradient accumulation across batchs ]
+   *                        |
+   *          [ Gradient reduce / allreduce hooks ]
+
+   *    Because we currently intend to accumulate these two gradient
+   *    accumulation in one GradientAccumulator, We must distinguish between
+   *    two types of hooks.
+
+   *    And the InplaceVariableWrapperHook does not allow users to register
+   *    directly, and is currently only used to support the reduce strategy of
+   *    parallel multi-card training.
+   */
+
+  void CallGradientHooks();
+
+  void CallReduceHooks();
 
  protected:
   VariableWrapper* var_;
@@ -137,14 +133,14 @@ class GradientAccumulator {
   std::shared_ptr<VariableWrapper> inner_var_;
   size_t ref_cnt_{0};
   size_t cur_cnt_{0};
-  std::weak_ptr<LeafVarHookPipeline> post_hooks_;
 };
 
 class EagerGradientAccumulator : public GradientAccumulator {
  public:
   using GradientAccumulator::GradientAccumulator;
 
-  void SumGrad(std::shared_ptr<VariableWrapper> var, size_t trace_id,
+  void SumGrad(std::shared_ptr<VariableWrapper> var,
+               size_t trace_id,
                bool unchange_input) override;
 };
 
@@ -152,12 +148,14 @@ class SortedGradientAccumulator : public GradientAccumulator {
  public:
   using GradientAccumulator::GradientAccumulator;
 
-  void SumGrad(std::shared_ptr<VariableWrapper> var, size_t trace_id,
+  void SumGrad(std::shared_ptr<VariableWrapper> var,
+               size_t trace_id,
                bool unchange_input) override;
 
  private:
   struct SavedVarInfo {
-    SavedVarInfo(std::shared_ptr<VariableWrapper>&& v, size_t id,
+    SavedVarInfo(std::shared_ptr<VariableWrapper>&& v,
+                 size_t id,
                  bool enable_unchange_input)
         : var(std::move(v)),
           trace_id(id),
@@ -170,6 +168,50 @@ class SortedGradientAccumulator : public GradientAccumulator {
 
   std::vector<SavedVarInfo> tmp_grad_vars_;
 };
+
+template <typename ReturnVarType, typename VarType>
+std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
+                                                 const VarType& src2);
+
+template <typename VarType>
+void SelectedRowsAddToTensor(const VarType& src, VarType* dst);
+
+template <typename VarType>
+void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
+                           const VarType& src_tensor_var,
+                           VarType* dst_tensor_var);
+
+template <typename VarType>
+void TensorAdd(const VarType& src, VarType* dst);
+
+inline void CheckVar(const std::shared_ptr<VariableWrapper>& pre,
+                     const std::shared_ptr<VariableWrapper>& post) {
+  if (pre->IsEmpty() && !post->IsEmpty()) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "The tensor(%s) in before and after hook are not consistent",
+        pre->Name()));
+  }
+  if (!pre->IsEmpty() && !post->IsEmpty()) {
+    VLOG(4) << pre->DataType() << " " << post->DataType();
+    PADDLE_ENFORCE_EQ(
+        pre->DataType(),
+        post->DataType(),
+        platform::errors::PermissionDenied(
+            "The dtype of tensor(%s) before(%s) and after(%s) hook are not "
+            "consistent",
+            pre->Name(),
+            framework::DataTypeToString(pre->DataType()),
+            framework::DataTypeToString(post->DataType())));
+    PADDLE_ENFORCE_EQ(pre->Place(),
+                      post->Place(),
+                      platform::errors::PermissionDenied(
+                          "The place of tensor(%s) before(%s) and after(%s) "
+                          "hook are not consistent",
+                          pre->Name(),
+                          pre->Place(),
+                          post->Place()));
+  }
+}
 
 }  // namespace imperative
 }  // namespace paddle

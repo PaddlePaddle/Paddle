@@ -55,15 +55,17 @@ def corr(x_1,
                         y1_index = j + pad_size
                         x2_index = x1_index + k
                         y2_index = y1_index + l
-                        output[b, l + d + D * (k + d), i, j] = np.mean(
-                            rinput1[b, x1_index:x1_index + K, y1_index:y1_index
-                                    + K] * rinput2[b, x2_index:x2_index + K,
-                                                   y2_index:y2_index + K])
+                        output[b, l + d + D * (k + d), i,
+                               j] = np.mean(rinput1[b, x1_index:x1_index + K,
+                                                    y1_index:y1_index + K] *
+                                            rinput2[b, x2_index:x2_index + K,
+                                                    y2_index:y2_index + K])
 
     return output
 
 
 class TestCorrelationOp(unittest.TestCase):
+
     def test_check_output(self):
         if not fluid.core.is_compiled_with_cuda():
             return
@@ -71,38 +73,34 @@ class TestCorrelationOp(unittest.TestCase):
         np.set_printoptions(threshold=np.inf)
         x_shape = (2, 10, 3, 3)
         x_type = 'float32'
-        x1 = fluid.layers.data(
-            name='x1',
-            shape=x_shape,
-            dtype=x_type,
-            append_batch_size=False,
-            stop_gradient=False)
-        x2 = fluid.layers.data(
-            name='x2',
-            shape=x_shape,
-            dtype=x_type,
-            append_batch_size=False,
-            stop_gradient=False)
+        x1 = fluid.layers.data(name='x1',
+                               shape=x_shape,
+                               dtype=x_type,
+                               append_batch_size=False,
+                               stop_gradient=False)
+        x2 = fluid.layers.data(name='x2',
+                               shape=x_shape,
+                               dtype=x_type,
+                               append_batch_size=False,
+                               stop_gradient=False)
 
         x1_np = np.random.randn(2, 3, 4, 5).astype(x_type)
         x2_np = np.random.randn(2, 3, 4, 5).astype(x_type)
-        out_np = corr(
-            x1_np,
-            x2_np,
-            pad_size=4,
-            kernel_size=1,
-            max_displacement=4,
-            stride1=1,
-            stride2=1)
+        out_np = corr(x1_np,
+                      x2_np,
+                      pad_size=4,
+                      kernel_size=1,
+                      max_displacement=4,
+                      stride1=1,
+                      stride2=1)
 
-        out = fluid.contrib.correlation(
-            x1,
-            x2,
-            pad_size=4,
-            kernel_size=1,
-            max_displacement=4,
-            stride1=1,
-            stride2=1)
+        out = fluid.contrib.correlation(x1,
+                                        x2,
+                                        pad_size=4,
+                                        kernel_size=1,
+                                        max_displacement=4,
+                                        stride1=1,
+                                        stride2=1)
 
         loss = fluid.layers.reduce_mean(out)
         optimizer = fluid.optimizer.Momentum(0.0001, 0.9)
@@ -110,30 +108,33 @@ class TestCorrelationOp(unittest.TestCase):
 
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
-        res = exe.run(feed={'x1': x1_np,
-                            'x2': x2_np},
+        res = exe.run(feed={
+            'x1': x1_np,
+            'x2': x2_np
+        },
                       fetch_list=[out.name, loss.name])
 
-        self.assertTrue(np.allclose(res[0], out_np))
+        np.testing.assert_allclose(res[0], out_np, rtol=1e-05, atol=1e-8)
 
 
 class Net(fluid.dygraph.Layer):
+
     def __init__(self, name_scope):
         super(Net, self).__init__(name_scope)
 
     def forward(self, x1, x2):
-        y = fluid.contrib.correlation(
-            x1,
-            x2,
-            pad_size=4,
-            kernel_size=1,
-            max_displacement=4,
-            stride1=1,
-            stride2=1)
+        y = fluid.contrib.correlation(x1,
+                                      x2,
+                                      pad_size=4,
+                                      kernel_size=1,
+                                      max_displacement=4,
+                                      stride1=1,
+                                      stride2=1)
         return y
 
 
 class TestCorrelationOpDyGraph(unittest.TestCase):
+
     def test_check_output(self):
         if not fluid.core.is_compiled_with_cuda():
             return
@@ -145,21 +146,20 @@ class TestCorrelationOpDyGraph(unittest.TestCase):
         with fluid.dygraph.guard(place):
             x1_np = np.random.randn(2, 3, 4, 5).astype(x_type)
             x2_np = np.random.randn(2, 3, 4, 5).astype(x_type)
-            out_np = corr(
-                x1_np,
-                x2_np,
-                pad_size=4,
-                kernel_size=1,
-                max_displacement=4,
-                stride1=1,
-                stride2=1)
+            out_np = corr(x1_np,
+                          x2_np,
+                          pad_size=4,
+                          kernel_size=1,
+                          max_displacement=4,
+                          stride1=1,
+                          stride2=1)
 
             x1 = to_variable(x1_np)
             x2 = to_variable(x2_np)
             corr_pd = Net('corr_pd')
             y = corr_pd(x1, x2)
             out = y.numpy()
-            self.assertTrue(np.allclose(out, out_np))
+            np.testing.assert_allclose(out, out_np, rtol=1e-05, atol=1e-8)
 
 
 if __name__ == '__main__':

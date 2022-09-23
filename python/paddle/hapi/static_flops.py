@@ -18,8 +18,11 @@ import paddle
 from collections import OrderedDict
 from paddle.static import Program, program_guard, Variable
 
+__all__ = []
+
 
 class VarWrapper(object):
+
     def __init__(self, var, graph):
         assert isinstance(var, Variable)
         assert isinstance(graph, GraphWrapper)
@@ -40,6 +43,7 @@ class VarWrapper(object):
 
 
 class OpWrapper(object):
+
     def __init__(self, op, graph):
         assert isinstance(graph, GraphWrapper)
         self._op = op
@@ -75,7 +79,7 @@ class GraphWrapper(object):
     for paddle slim framework.
 
     Args:
-        program(framework.Program): A program with 
+        program(framework.Program): A program with
         in_nodes(dict): A dict to indicate the input nodes of the graph.
                         The key is user-defined and human-readable name.
                         The value is the name of Variable.
@@ -174,6 +178,7 @@ def count_element_op(op):
 def _graph_flops(graph, detail=False):
     assert isinstance(graph, GraphWrapper)
     flops = 0
+    op_flops = 0
     table = Table(["OP Type", 'Param name', "Flops"])
     for op in graph.ops():
         param_name = ''
@@ -209,6 +214,7 @@ def static_flops(program, print_detail=False):
 
 
 class Table(object):
+
     def __init__(self, table_heads):
         self.table_heads = table_heads
         self.table_len = []
@@ -222,8 +228,8 @@ class Table(object):
             print('The row_str should be a list')
         if len(row_str) != self.col_num:
             print(
-                'The length of row data should be equal the length of table heads, but the data: {} is not equal table heads {}'.
-                format(len(row_str), self.col_num))
+                'The length of row data should be equal the length of table heads, but the data: {} is not equal table heads {}'
+                .format(len(row_str), self.col_num))
         for i in range(self.col_num):
             if len(str(row_str[i])) > self.table_len[i]:
                 self.table_len[i] = len(str(row_str[i]))

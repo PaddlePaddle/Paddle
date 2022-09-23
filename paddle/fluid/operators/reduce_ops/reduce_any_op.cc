@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_any_op.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -23,15 +26,23 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-struct CPUPlace;
-}  // namespace platform
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_any,
+                            ReduceAnyInferShapeFunctor,
+                            PD_INFER_META(phi::ReduceInferMetaBase));
+
+class ReduceAnyOpMaker : public ops::ReduceOpMaker {
+ protected:
+  virtual std::string GetName() const { return "reduce_any"; }
+  virtual std::string GetOpType() const { return "Reduce reduce_any"; }
+};
 // kernel's device type is decided by input tensor place, to be consistent with
 // compare and logical ops
-REGISTER_REDUCE_OP_WITHOUT_GRAD(reduce_any, UseInputPlace);
-REGISTER_OP_CPU_KERNEL(reduce_any,
-                       ops::BoolReduceKernel<paddle::platform::CPUDeviceContext,
-                                             bool, ops::AnyFunctor>);
+REGISTER_OPERATOR(
+    reduce_any,
+    ops::ReduceOpUseInputPlace,
+    ReduceAnyOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ReduceAnyInferShapeFunctor);

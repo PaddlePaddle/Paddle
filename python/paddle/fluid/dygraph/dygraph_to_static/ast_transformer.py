@@ -18,21 +18,28 @@ from __future__ import print_function
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
-import gast
+
+import os
+from paddle.utils import gast
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import EarlyReturnTransformer
 from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import AssertTransformer
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicApiTransformer
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakTransformOptimizer
 from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
 from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import CastTransformer
+from paddle.fluid.dygraph.dygraph_to_static.grad_transformer import GradTransformer
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import LogicalTransformer
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
 from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import ReturnTransformer
+from paddle.fluid.dygraph.dygraph_to_static.create_variable_transformer import CreateVariableTransformer
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
+from paddle.fluid.dygraph.dygraph_to_static.decorator_transformer import DecoratorTransformer
 
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
@@ -40,10 +47,20 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 
 __all__ = ['DygraphToStaticAst']
 
-DECORATOR_NAMES = ['declarative', 'to_static', 'dygraph_to_static_func']
+
+def apply_optimization(transformers):
+    """
+    Judge wheter to apply optimized transformation, such as BreakTransformOptimizer.
+    And not all optimized transformations are applied by default. It's controlled by
+    'export FLAGS_optim_transformation=1'
+    """
+    flag = str(
+        os.environ.get('FLAGS_optim_transformation')) in ['1', 'True', 'true']
+    if flag:
+        transformers.insert(3, BreakTransformOptimizer)
 
 
-class DygraphToStaticAst(gast.NodeTransformer):
+class DygraphToStaticAst(BaseTransformer):
     """
     Main class to transform Dygraph to Static Graph
     """
@@ -73,20 +90,25 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.visit(node_wrapper.node)
 
         transformers = [
+            EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
-            ListTransformer,  # List used in control flow
-            BreakTransformOptimizer,  # optimize transfromation of break in loops
+            #ListTransformer,  # List used in control flow
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not
+            CreateVariableTransformer,  # create undefined var for if / while / for
             LoopTransformer,  # for/while -> while_op
             IfElseTransformer,  # if/else -> cond_op
             AssertTransformer,  # assert statement
             PrintTransformer,  # print statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
+            GradTransformer,  # transform paddle.grad to paddle.gradients
+            DecoratorTransformer,  # transform decorators to function call
         ]
+
+        apply_optimization(transformers)
 
         for index, transformer in enumerate(transformers):
             self._apply(transformer, node_wrapper, log_level=index + 1)
@@ -99,27 +121,6 @@ class DygraphToStaticAst(gast.NodeTransformer):
             self.decorate_func_name = node.name
 
         self.generic_visit(node)
-        # Remove the decorated name of dygraph_to_static
-        if hasattr(node, 'decorator_list'):
-            decorator_list = []
-            for d in node.decorator_list:
-                if isinstance(d, gast.Name) and d.id not in DECORATOR_NAMES:
-                    raise NotImplementedError(
-                        "ProgramTranslator hasn't implemented multiple decorators. Please remove "
-                        + d.id + " in " + self.decorate_func_name)
-                if isinstance(d, gast.Attribute):
-                    full_attribute_name = get_attribute_full_name(d)
-                    has_translate_decorator = False
-                    for deco in DECORATOR_NAMES:
-                        if deco in full_attribute_name:
-                            has_translate_decorator = True
-                            break
-                    if not has_translate_decorator:
-                        raise NotImplementedError(
-                            "ProgramTranslator hasn't implemented multiple decorators. Please remove "
-                            + full_attribute_name + " in " +
-                            self.decorate_func_name)
-            node.decorator_list = decorator_list
         return node
 
     def get_module_name(self):

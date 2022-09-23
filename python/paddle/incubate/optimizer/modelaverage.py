@@ -20,8 +20,10 @@ import paddle
 import numpy as np
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode
 
-__all__ = ["ModelAverage"]
+__all__ = []
 
 
 class ModelAverage(Optimizer):
@@ -129,7 +131,7 @@ class ModelAverage(Optimizer):
         layer = LinearNet()
         loss_fn = nn.CrossEntropyLoss()
         optimizer = opt.Momentum(learning_rate=0.2, momentum=0.1, parameters=layer.parameters())
-        model_average = paddle.incubate.optimizer.ModelAverage(0.15,
+        model_average = paddle.incubate.ModelAverage(0.15,
                                                     parameters=layer.parameters(),
                                                     min_average_window=2,
                                                     max_average_window=10)
@@ -158,7 +160,7 @@ class ModelAverage(Optimizer):
         print("\nEvaluate With Restored Paramters")
         model_average.restore()
         evaluate(layer, eval_loader, loss_fn)
-  
+
     """
 
     def __init__(self,
@@ -167,12 +169,11 @@ class ModelAverage(Optimizer):
                  min_average_window=10000,
                  max_average_window=10000,
                  name=None):
-        super(ModelAverage, self).__init__(
-            learning_rate=0.0,
-            parameters=parameters,
-            weight_decay=None,
-            grad_clip=None,
-            name=name)
+        super(ModelAverage, self).__init__(learning_rate=0.0,
+                                           parameters=parameters,
+                                           weight_decay=None,
+                                           grad_clip=None,
+                                           name=name)
 
         self.helper = LayerHelper(self.__class__.__name__)
         self.average_window = average_window_rate
@@ -180,7 +181,7 @@ class ModelAverage(Optimizer):
         self.max_average_window = max_average_window
         self.type = "average_accumulates"
 
-        if not framework.in_dygraph_mode():
+        if not framework._non_static_mode():
             global_block = framework.default_main_program().global_block()
             all_parameters = parameters if parameters else global_block.all_parameters(
             )
@@ -207,12 +208,18 @@ class ModelAverage(Optimizer):
             self._add_accumulator('sum_2', param)
             self._add_accumulator('sum_3', param)
             self._add_accumulator('restore', param)
-            self._add_accumulator(
-                'num_accumulates', param, dtype='int64', shape=[1])
-            self._add_accumulator(
-                'old_num_accumulates', param, dtype='int64', shape=[1])
-            self._add_accumulator(
-                'num_updates', param, dtype='int64', shape=[1])
+            self._add_accumulator('num_accumulates',
+                                  param,
+                                  dtype='int64',
+                                  shape=[1])
+            self._add_accumulator('old_num_accumulates',
+                                  param,
+                                  dtype='int64',
+                                  shape=[1])
+            self._add_accumulator('num_updates',
+                                  param,
+                                  dtype='int64',
+                                  shape=[1])
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -225,8 +232,15 @@ class ModelAverage(Optimizer):
         old_num_accumulates = self._get_accumulator('old_num_accumulates',
                                                     param_and_grad[0])
         num_updates = self._get_accumulator('num_updates', param_and_grad[0])
-        if framework.in_dygraph_mode():
-            _, _, _, _, _, _ = core.ops.average_accumulates(
+
+        if in_dygraph_mode():
+            _, _, _, _, _, _ = _C_ops.average_accumulates_(
+                param_and_grad[0], sum_1, sum_2, sum_3, num_accumulates,
+                old_num_accumulates, num_updates, self.average_window,
+                self.max_average_window, self.min_average_window)
+            return None
+        elif framework._non_static_mode():
+            _, _, _, _, _, _ = _legacy_C_ops.average_accumulates(
                 param_and_grad[0], sum_1, sum_2, sum_3, num_accumulates,
                 old_num_accumulates, num_updates, sum_1, sum_2, sum_3,
                 num_accumulates, old_num_accumulates, num_updates,
@@ -261,12 +275,11 @@ class ModelAverage(Optimizer):
             "out_num_updates": num_updates,
         }
 
-        average_accumulates_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True)
+        average_accumulates_op = block.append_op(type=self.type,
+                                                 inputs=inputs,
+                                                 outputs=outputs,
+                                                 attrs=attrs,
+                                                 stop_gradient=True)
 
         return average_accumulates_op
 
@@ -278,7 +291,7 @@ class ModelAverage(Optimizer):
                  no_grad_set=None):
         """
         Add operations to minimize ``loss`` by updating ``parameters``.
-        
+
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
             startup_program (Program, optional): :ref:`api_fluid_Program` for
@@ -289,17 +302,17 @@ class ModelAverage(Optimizer):
                 will be updated.
             no_grad_set (set, optional): Set of ``Tensor``  or ``Tensor.name`` that don't need
                 to be updated. The default value is None.
-        
+
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) tensor pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
-            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
-            indicate program pruning. If so, the program will be pruned by ``feed`` and 
+            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
+            indicate program pruning. If so, the program will be pruned by ``feed`` and
             ``fetch_list`` before run, see details in ``Executor``.
-        
+
         Examples:
-        
+
             .. code-block:: python
 
                 import paddle
@@ -313,7 +326,7 @@ class ModelAverage(Optimizer):
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
                 sgd.minimize(loss)
 
-                modelaverage = paddle.incubate.optimizer.ModelAverage(0.15,
+                modelaverage = paddle.incubate.ModelAverage(0.15,
                                                             parameters=linear.parameters(),
                                                             min_average_window=2,
                                                             max_average_window=4)
@@ -322,7 +335,7 @@ class ModelAverage(Optimizer):
                 modelaverage.clear_grad()
 
         """
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             self.step()
 
     @framework.dygraph_only
@@ -330,7 +343,7 @@ class ModelAverage(Optimizer):
     def step(self):
         """
         Execute the optimizer and update parameters once.
-        
+
         Returns:
             None
 
@@ -345,7 +358,7 @@ class ModelAverage(Optimizer):
                 out = linear(inp)
                 loss = paddle.mean(out)
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
-                modelaverage = paddle.incubate.optimizer.ModelAverage(0.15,
+                modelaverage = paddle.incubate.ModelAverage(0.15,
                                                             parameters=linear.parameters(),
                                                             min_average_window=2,
                                                             max_average_window=4)
@@ -395,13 +408,13 @@ class ModelAverage(Optimizer):
 
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
 
-                modelaverage = paddle.incubate.optimizer.ModelAverage(0.15,
+                modelaverage = paddle.incubate.ModelAverage(0.15,
                                                             parameters=linear.parameters(),
                                                             min_average_window=2,
                                                             max_average_window=4)
                 sgd.step()
                 modelaverage.step()
-                
+
                 with modelaverage.apply():
                     for param in linear.parameters():
                         print(param)
@@ -409,13 +422,12 @@ class ModelAverage(Optimizer):
                 for param in linear.parameters():
                     print(param)
         """
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             for param in self._parameter_list:
                 num_accumulates = self._get_accumulator('num_accumulates',
                                                         param)
                 old_num_accumulates = self._get_accumulator(
                     'old_num_accumulates', param)
-                num_updates = self._get_accumulator('num_updates', param)
                 sum_1 = self._get_accumulator('sum_1', param)
                 sum_2 = self._get_accumulator('sum_2', param)
                 sum_3 = self._get_accumulator('sum_3', param)
@@ -425,8 +437,8 @@ class ModelAverage(Optimizer):
                 total_param = sum_1 + sum_2 + sum_3
                 total_accumulates = num_accumulates + old_num_accumulates
                 total_param = paddle.cast(total_param, dtype='float32')
-                total_accumulates = paddle.cast(
-                    total_accumulates, dtype='float32')
+                total_accumulates = paddle.cast(total_accumulates,
+                                                dtype='float32')
                 average_param = total_param / total_accumulates
                 paddle.assign(average_param, param)
             try:
@@ -449,7 +461,7 @@ class ModelAverage(Optimizer):
     def restore(self, executor=None):
         """
         Restore ``Parameter`` values of current model.
-        
+
         Args:
             executor(Executor): The network executor in static-graph mode. The default value is None in dygraph mode
 
@@ -467,13 +479,13 @@ class ModelAverage(Optimizer):
 
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
 
-                modelaverage = paddle.incubate.optimizer.ModelAverage(0.15,
+                modelaverage = paddle.incubate.ModelAverage(0.15,
                                                             parameters=linear.parameters(),
                                                             min_average_window=2,
                                                             max_average_window=4)
                 sgd.step()
                 modelaverage.step()
-                
+
                 with modelaverage.apply(need_restore=False):
                     for param in linear.parameters():
                         print(param)
@@ -486,7 +498,7 @@ class ModelAverage(Optimizer):
                 for param in linear.parameters():
                     print(param)
         """
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             for param in self._parameter_list:
                 param_restore = self._get_accumulator('restore', param)
                 paddle.assign(param_restore, param)
@@ -506,17 +518,15 @@ class ModelAverage(Optimizer):
             self._get_accumulator('num_accumulates', param))
         old_num_accumulates = block._clone_variable(
             self._get_accumulator('old_num_accumulates', param))
-        num_updates = block._clone_variable(
-            self._get_accumulator('num_updates', param))
         # backup param value to grad
         layers.assign(input=param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
         sum = layers.sum(x=[sum_1, sum_2, sum_3])
         tmp = layers.cast(
-            x=tmp, dtype='float32' if self._dtype == None else self._dtype)
+            x=tmp, dtype='float32' if self._dtype is None else self._dtype)
         sum = layers.cast(
-            x=sum, dtype='float32' if self._dtype == None else self._dtype)
+            x=sum, dtype='float32' if self._dtype is None else self._dtype)
         layers.ops._elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param):

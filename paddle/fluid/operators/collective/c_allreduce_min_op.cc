@@ -23,10 +23,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -37,14 +33,21 @@ class CAllReduceMinOpMaker : public CAllReduceOpMaker {
   std::string GetName() const override { return "Min"; }
 };
 
+DECLARE_INPLACE_OP_INFERER(AllreduceMinInplaceInferer, {"X", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_min, ops::CAllReduceOp,
-                             ops::CAllReduceMinOpMaker);
+REGISTER_OPERATOR(
+    c_allreduce_min,
+    ops::CAllReduceOp,
+    ops::CAllReduceMinOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::AllreduceMinInplaceInferer)
 
 REGISTER_OP_CPU_KERNEL(c_allreduce_min,
                        ops::CAllReduceOpCPUKernel<ops::kRedMin, float>,

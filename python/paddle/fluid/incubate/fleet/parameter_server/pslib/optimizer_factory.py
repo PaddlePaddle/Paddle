@@ -24,6 +24,8 @@ from collections import OrderedDict
 import copy
 from .node import DownpourWorker, DownpourServer
 from . import ps_pb2 as pslib
+import os
+import logging
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 # this dict is for store info about pull/push sparse ops.
@@ -39,6 +41,13 @@ FLEET_GLOBAL_DICT = {
     "click_name": "",
     "scale_sparse_grad": None,
 }
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(message)s')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
 class DistributedOptimizerImplBase(object):
@@ -85,7 +94,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
         self.supported_embedding_types = [
-            "lookup_table", "pull_sparse", "pull_sparse_v2", "pull_box_sparse"
+            "lookup_table", "pull_sparse", "pull_sparse_v2", "pull_box_sparse",
+            "pull_gpups_sparse"
         ]
         self.supported_embedding_grad_types = [
             "lookup_table_grad", "push_sparse", "push_sparse_v2"
@@ -193,7 +203,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         return ret_list
 
     def _if_last_block(self, op, _equal_dict):
-        # for conditional_block op 
+        # for conditional_block op
         cond_str = op.input('Cond')[0]
         bool_test = False
         if cond_str.startswith('equal'):
@@ -299,6 +309,89 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
         return dense_tables, cond2denseid, lists_params, lists_grads, root_params_list, root_grads_list
 
+    def _gen_distributed_emb_to_size_dict(self, program):
+        d_size = dict()
+        local_vars = program.current_block().vars
+
+        for op in program.global_block().ops:
+            if op.type in self.supported_embedding_types:
+                if op.attr('is_distributed') is True:
+                    table_name = op.input("W")[0]
+                    emb_size = local_vars[table_name].shape[-1]
+                    if d_size.get(table_name) is None:
+                        d_size[table_name] = emb_size
+                    elif d_size[table_name] != emb_size:
+                        raise ValueError("embedding size error: %s vs %s" %
+                                         (emb_size, d_size[table_name]))
+
+        return d_size
+
+    def _check_config_fleet_with_program_op(self, strategy, table_name,
+                                            emb_to_size):
+        if strategy.get(table_name) is None:
+            strategy[table_name] = dict()
+        st = strategy[table_name]
+
+        accessor = "DownpourCtrAccessor"
+        if st.get("sparse_accessor_class") is not None:
+            accessor = st["sparse_accessor_class"]
+
+        # set sparse_embedx_dim in the strategy according to accessor and use_cvm config
+        if accessor == "DownpourFeatureValueAccessor" \
+                or accessor == "DownpourCtrAccessor" \
+                or accessor == "DownpourCtrDymfAccessor" \
+                or accessor == "DownpourDoubleUnitAccessor" \
+                or accessor == "DownpourUnitAccessor":
+            if st.get("sparse_embedx_dim") is not None \
+                    and strategy.get("use_cvm") == True \
+                    and st["sparse_embedx_dim"] != emb_to_size[table_name] - 3:
+                raise ValueError(
+                    "fleet config sparse_embedx_dim=%s not"
+                    " equal to embedding dim - 3 = %s" %
+                    (st["sparse_embedx_dim"], emb_to_size[table_name] - 3))
+            if st.get("sparse_embedx_dim") is not None \
+                    and strategy.get("use_cvm") == False \
+                    and st["sparse_embedx_dim"] != emb_to_size[table_name] - 1:
+                raise ValueError(
+                    "fleet config sparse_embedx_dim=%s not"
+                    " equal to embedding dim - 1 = %s" %
+                    (st["sparse_embedx_dim"], emb_to_size[table_name] - 1))
+            if st.get("sparse_embedx_dim") is None \
+                    and strategy.get("use_cvm") == True:
+                logger.warning(
+                    "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
+                    "with same sparse table name is not set in config_fleet.py. "
+                    "Hence automatically set sparse_embedx_dim = {} - 3.".
+                    format(table_name, emb_to_size[table_name],
+                           emb_to_size[table_name]))
+                st["sparse_embedx_dim"] = emb_to_size[table_name] - 3
+            if st.get("sparse_embedx_dim") is None \
+                    and strategy.get("use_cvm") == False:
+                logger.warning(
+                    "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
+                    "with same sparse table name is not set in config_fleet.py. "
+                    "Hence automatically set sparse_embedx_dim = {} - 1.".
+                    format(table_name, emb_to_size[table_name],
+                           emb_to_size[table_name]))
+                st["sparse_embedx_dim"] = emb_to_size[table_name] - 1
+        elif accessor == "DownpourSparseValueAccessor":
+            if st.get("sparse_embedx_dim") is not None \
+                    and st["sparse_embedx_dim"] != emb_to_size[table_name]:
+                raise ValueError(
+                    "fleet config sparse_embedx_dim=%s not"
+                    " equal to embedding dim = %s" %
+                    (st["sparse_embedx_dim"], emb_to_size[table_name]))
+            if st.get("sparse_embedx_dim") is None:
+                logger.warning(
+                    "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
+                    "with same sparse table name is not set in config_fleet.py. "
+                    "Hence automatically set sparse_embedx_dim = {}.".format(
+                        table_name, emb_to_size[table_name],
+                        emb_to_size[table_name]))
+                st["sparse_embedx_dim"] = emb_to_size[table_name]
+
+        return strategy
+
     def _minimize(self,
                   losses,
                   startup_program=None,
@@ -341,12 +434,14 @@ class DistributedAdam(DistributedOptimizerImplBase):
         sparse_table_index = 0
         for num in range(len(losses)):
             loss = losses[num]
+            parameters = None
+            if parameter_list != None:
+                parameters = parameter_list[num]
             prog_id = str(id(loss.block.program))
             # param_grads of program
-            params_grads = sorted(
-                fluid.backward.append_backward(loss, parameter_list,
-                                               no_grad_set),
-                key=lambda x: x[0].name)
+            params_grads = sorted(fluid.backward.append_backward(
+                loss, parameters, no_grad_set),
+                                  key=lambda x: x[0].name)
 
             flag_use_ps_gpu = strategy.get("use_ps_gpu", False)
             if flag_use_ps_gpu:
@@ -360,7 +455,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 embedding_table = self._find_multi_distributed_lookup_table(
                     [loss])
                 self._remove_optimize_op_for_embedding(loss, embedding_table)
-            # has condition_block op means multi-task 
+            # has condition_block op means multi-task
             flag_multi_task = self._has_conditional_block(loss)
             if flag_multi_task:
                 self._cond_params = dict()
@@ -395,6 +490,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     if sparse_table_to_index.get(tn) is None:
                         sparse_table_to_index[tn] = sparse_table_index
                         sparse_table_index += 1
+
+                # get {table_name: emb_size} dict from program ops
+                emb_to_size = self._gen_distributed_emb_to_size_dict(
+                    loss.block.program)
 
                 # get inputs_dict
                 inputs_dict = self._find_distributed_lookup_table_inputs(
@@ -488,29 +587,33 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 # set sparse_embedx_dim in strategy,
                 # user do not have to set it in config_fleet
                 if accessor == "DownpourFeatureValueAccessor" \
+                        or accessor == "DownpourCtrDymfAccessor" \
                         or accessor == "DownpourCtrAccessor" \
+                        or accessor == "DownpourDoubleUnitAccessor" \
                         or accessor == "DownpourUnitAccessor":
                     if st.get("sparse_embedx_dim") is not None \
                             and st["sparse_embedx_dim"] != emb_to_size[key] - 3:
-                        raise ValueError("fleet config sparse_embedx_dim=%s not"
-                                         " equal to embedding size - 3 = %s" %
-                                         (st["sparse_embedx_dim"],
-                                          emb_to_size[key] - 3))
+                        raise ValueError(
+                            "fleet config sparse_embedx_dim=%s not"
+                            " equal to embedding size - 3 = %s" %
+                            (st["sparse_embedx_dim"], emb_to_size[key] - 3))
                     st["sparse_embedx_dim"] = emb_to_size[key] - 3
                 elif accessor == "DownpourSparseValueAccessor":
                     if st.get("sparse_embedx_dim") is not None \
                             and st["sparse_embedx_dim"] != emb_to_size[key]:
-                        raise ValueError("fleet config sparse_embedx_dim=%s not"
-                                         " equal to embedding size = %s" %
-                                         (st["sparse_embedx_dim"],
-                                          emb_to_size[key]))
+                        raise ValueError(
+                            "fleet config sparse_embedx_dim=%s not"
+                            " equal to embedding size = %s" %
+                            (st["sparse_embedx_dim"], emb_to_size[key]))
                     st["sparse_embedx_dim"] = emb_to_size[key]
 
         # ServerParameter add all sparse tables
         for tn in sparse_table_to_index:
             sparse_table_index = sparse_table_to_index[tn]
-            if strategy.get(tn) is not None:
-                server.add_sparse_table(sparse_table_index, strategy[tn])
+            st = self._check_config_fleet_with_program_op(
+                strategy, tn, emb_to_size)
+            if st.get(tn) is not None:
+                server.add_sparse_table(sparse_table_index, st[tn])
             else:
                 server.add_sparse_table(sparse_table_index, None)
 
@@ -589,22 +692,25 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         if flag_multi_task:
                             server_dense_table_index = dense_table_index
                             if len(root_params_list) > 0:
-                                server.add_dense_table(
-                                    server_dense_table_index, root_params_list,
-                                    root_grads_list, strategy['dense_table'],
-                                    sparse_table_names)
+                                server.add_dense_table(server_dense_table_index,
+                                                       root_params_list,
+                                                       root_grads_list,
+                                                       strategy['dense_table'],
+                                                       sparse_table_names)
                                 server_dense_table_index += 1
 
                             for i in range(len(lists_params)):
-                                server.add_dense_table(
-                                    server_dense_table_index, lists_params[i],
-                                    lists_grads[i], strategy['dense_table'],
-                                    sparse_table_names)
+                                server.add_dense_table(server_dense_table_index,
+                                                       lists_params[i],
+                                                       lists_grads[i],
+                                                       strategy['dense_table'],
+                                                       sparse_table_names)
                                 server_dense_table_index += 1
                         else:
-                            server.add_dense_table(
-                                dense_table_index, params, grads,
-                                strategy['dense_table'], sparse_table_names)
+                            server.add_dense_table(dense_table_index, params,
+                                                   grads,
+                                                   strategy['dense_table'],
+                                                   sparse_table_names)
 
                     else:
                         server.add_dense_table(dense_table_index, params, grads,
@@ -613,24 +719,29 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     if flag_multi_task:
 
                         if len(root_params_list) > 0:
-                            worker.add_dense_table(
-                                dense_table_index, self._learning_rate,
-                                root_params_list, root_grads_list,
-                                dense_start_table_id, sparse_table_names)
+                            worker.add_dense_table(dense_table_index,
+                                                   self._learning_rate,
+                                                   root_params_list,
+                                                   root_grads_list,
+                                                   dense_start_table_id,
+                                                   sparse_table_names)
                             dense_table_index += 1
 
                         for i in range(len(lists_params)):
-                            worker.add_dense_table(
-                                dense_table_index, self._learning_rate,
-                                lists_params[i], lists_grads[i],
-                                dense_start_table_id, sparse_table_names)
+                            worker.add_dense_table(dense_table_index,
+                                                   self._learning_rate,
+                                                   lists_params[i],
+                                                   lists_grads[i],
+                                                   dense_start_table_id,
+                                                   sparse_table_names)
                             dense_table_index += 1
 
                         dense_table_index -= 1
                     else:
-                        worker.add_dense_table(
-                            dense_table_index, self._learning_rate, params,
-                            grads, dense_start_table_id, sparse_table_names)
+                        worker.add_dense_table(dense_table_index,
+                                               self._learning_rate, params,
+                                               grads, dense_start_table_id,
+                                               sparse_table_names)
 
                     if FLEET_GLOBAL_DICT["enable"]:
                         cur_prog = losses[loss_index].block.program
@@ -646,8 +757,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
                     if "pull_dense" in program_configs[
                             program_id] and "push_dense" in program_configs[
-                                program_id] and len(program_configs[program_id][
-                                    "pull_dense"]) > 0:
+                                program_id] and len(program_configs[program_id]
+                                                    ["pull_dense"]) > 0:
                         if flag_multi_task:
                             program_configs[program_id]["pull_dense"].extend(
                                 multi_task_dense_tables_pull)
@@ -665,10 +776,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
                             program_configs[program_id][
                                 "push_dense"] = multi_task_dense_tables_push
                         else:
-                            program_configs[program_id][
-                                "pull_dense"] = [dense_table_index]
-                            program_configs[program_id][
-                                "push_dense"] = [dense_table_index]
+                            program_configs[program_id]["pull_dense"] = [
+                                dense_table_index
+                            ]
+                            program_configs[program_id]["push_dense"] = [
+                                dense_table_index
+                            ]
 
                     if len(data_norm_params) != 0 and len(data_norm_grads) != 0:
                         dense_table_index += 1
@@ -678,15 +791,18 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                 data_norm_params, data_norm_grads,
                                 strategy['datanorm_table'], sparse_table_names)
                         else:
-                            server.add_data_norm_table(
-                                dense_table_index, self._learning_rate,
-                                data_norm_params, data_norm_grads, None,
-                                sparse_table_names)
+                            server.add_data_norm_table(dense_table_index,
+                                                       self._learning_rate,
+                                                       data_norm_params,
+                                                       data_norm_grads, None,
+                                                       sparse_table_names)
 
-                        worker.add_dense_table(
-                            dense_table_index, self._learning_rate,
-                            data_norm_params, data_norm_grads,
-                            dense_start_table_id, sparse_table_names)
+                        worker.add_dense_table(dense_table_index,
+                                               self._learning_rate,
+                                               data_norm_params,
+                                               data_norm_grads,
+                                               dense_start_table_id,
+                                               sparse_table_names)
 
                         if FLEET_GLOBAL_DICT["enable"]:
                             cur_prog = losses[loss_index].block.program
@@ -696,7 +812,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                 attrs={
                                     "InputNames":
                                     [i.name for i in data_norm_grads],
-                                    "TableId": dense_table_index,
+                                    "TableId":
+                                    dense_table_index,
                                     "ScaleDataNorm":
                                     strategy.get("scale_datanorm", -1)
                                 })
@@ -747,6 +864,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
         opt_info["no_cvm"] = strategy.get("no_cvm", False)
+        opt_info["scale_sparse_gradient_with_batch_size"] = strategy.get(
+            "scale_sparse_gradient_with_batch_size", True)
         opt_info["worker_class"] = strategy.get("worker_class",
                                                 "DownpourWorker")
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
@@ -764,12 +883,14 @@ class DistributedAdam(DistributedOptimizerImplBase):
             "user_define_dump_filename", "")
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
-        opt_info["worker_places"] = strategy.get("worker_places", [])
+        gpus_env = os.getenv("FLAGS_selected_gpus", "0")
+        opt_info["worker_places"] = [int(s) for s in gpus_env.split(",")]
         opt_info["use_ps_gpu"] = strategy.get("use_ps_gpu", False)
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class in [
                     "DownpourCtrAccessor", "DownpourCtrDoubleAccessor",
-                    "DownpourUnitAccessor"
+                    "DownpourUnitAccessor", "DownpourDoubleUnitAccessor",
+                    "DownpourCtrDymfAccessor"
                 ]:
             opt_info["dump_slot"] = True
         elif server._server.downpour_server_param.downpour_table_param[

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
 #include <atomic>
 #include <memory>
 #include <set>
@@ -23,9 +24,9 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/distributed/service/brpc_utils.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
-#include "paddle/fluid/distributed/service/sendrecv.pb.h"
+#include "paddle/fluid/distributed/ps/service/brpc_utils.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -34,7 +35,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace distributed {
-class HeterRequestHandler;
+class ServiceHandlerBase;
 class HeterServer;
 }  // namespace distributed
 }  // namespace paddle
@@ -45,9 +46,6 @@ class Executor;
 class ProgramDesc;
 class Scope;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -60,7 +58,8 @@ template <class TKey, class TValue>
 class DoubleFindMap : public std::unordered_map<TKey, TValue> {
  public:
   typename std::unordered_map<TKey, TValue>::iterator find_value(TValue v) {
-    return std::find_if(this->begin(), this->end(),
+    return std::find_if(this->begin(),
+                        this->end(),
                         [&v](const std::pair<const std::string, int> p) {
                           return p.second == v;
                         });
@@ -77,9 +76,7 @@ class HeterListenAndServOp : public framework::OperatorBase {
                        const framework::AttributeMap& attrs);
   virtual ~HeterListenAndServOp();
 
-  void RunAsyncLoop(framework::Executor* executor,
-                    framework::ProgramDesc* program,
-                    framework::Scope* recv_scope) const;
+  void RunAsyncLoop(framework::ProgramDesc* program) const;
 
   void Stop() override;
 
@@ -87,10 +84,10 @@ class HeterListenAndServOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override;
 
  protected:
-  mutable std::shared_ptr<paddle::distributed::HeterServer> rpc_service_;
+  mutable std::shared_ptr<paddle::distributed::HeterServer> heter_server_;
   mutable std::shared_ptr<std::thread> server_thread_;
-  mutable std::shared_ptr<paddle::distributed::HeterRequestHandler>
-      request_send_and_recv_handler_;
+  mutable std::shared_ptr<paddle::distributed::SendAndRecvVariableHandler>
+      send_and_recv_variable_handler_;
 };
 
 }  // namespace operators

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -30,9 +31,11 @@ class MinusKernel : public framework::OpKernel<T> {
     out_tensor->mutable_data<T>(context.GetPlace());
     auto& dev =
         *context.template device_context<DeviceContext>().eigen_device();
-    framework::EigenVector<T>::Flatten(*out_tensor).device(dev) =
-        framework::EigenVector<T>::Flatten(*left_tensor) -
-        framework::EigenVector<T>::Flatten(*right_tensor);
+    EigenSub<std::decay_t<decltype(dev)>, T>::Eval(
+        dev,
+        framework::EigenVector<T>::Flatten(*out_tensor),
+        framework::EigenVector<T>::Flatten(*left_tensor),
+        framework::EigenVector<T>::Flatten(*right_tensor));
   }
 };
 

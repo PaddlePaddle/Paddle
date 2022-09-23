@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_ops/sequence_mask_op.h"
+
 #include <string>
 
 namespace paddle {
@@ -27,14 +28,14 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "SequenceMask");
 
     int maxlen = ctx->Attrs().Get<int>("maxlen");
-    auto dim = framework::vectorize<int>(ctx->GetInputDim("X"));
+    auto dim = phi::vectorize<int>(ctx->GetInputDim("X"));
 
     if (ctx->HasInputs("MaxLenTensor")) {
       dim.push_back(-1);
     } else {
       dim.push_back(maxlen > 0 ? maxlen : -1);
     }
-    ctx->SetOutputDim("Y", framework::make_ddim(dim));
+    ctx->SetOutputDim("Y", phi::make_ddim(dim));
   }
 
  protected:
@@ -45,13 +46,14 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
         ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -70,7 +72,8 @@ class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1)
         .AddCustomChecker([](const int& v) {
           PADDLE_ENFORCE_EQ(
-              v < 0 || v >= 1, true,
+              v < 0 || v >= 1,
+              true,
               platform::errors::InvalidArgument(
                   "Attr(maxlen) must be less than 0 or larger than 1"));
         });
@@ -82,7 +85,7 @@ This operator outputs a Mask according to Input(X) and Attr(maxlen).
 Supposing Input(X) is a Tensor with shape [d_1, d_2, ..., d_n], the
 Output(Y) is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
 
-Y(i_1, i_2, ..., i_n, j) = (j < X(i_1, i_2, ..., i_n)) 
+Y(i_1, i_2, ..., i_n, j) = (j < X(i_1, i_2, ..., i_n))
 
 If maxlen < 0, maxlen = max(X)
     )DOC");
@@ -92,18 +95,15 @@ If maxlen < 0, maxlen = max(X)
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    sequence_mask, paddle::operators::SequenceMaskOp,
+    sequence_mask,
+    paddle::operators::SequenceMaskOp,
     paddle::operators::SequenceMaskOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     sequence_mask,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
-                                          int>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
-                                          int64_t>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
-                                          float>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
-                                          double>);
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, int>,
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, int64_t>,
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, float>,
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, double>);

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/unused_var_check.h"
 
 #include <glog/logging.h>
+
 #include <string>
 
 #include "gflags/gflags.h"
@@ -23,9 +24,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-DEFINE_bool(enable_unused_var_check, false,
-            "Checking whether operator contains unused inputs, "
-            "especially for grad operator. It should be in unittest.");
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_unused_var_check,
+    false,
+    "Checking whether operator contains unused inputs, "
+    "especially for grad operator. It should be in unittest.");
 
 namespace paddle {
 namespace framework {
@@ -53,27 +56,29 @@ static const std::unordered_set<std::string> &GetOpWithUnusedVarAllowSet() {
   // Use pointer here for safe static deinitialization
   static auto *allow_set = new std::unordered_set<std::string>({
       // called once
-      "batch_norm",                      // 0
-      "batch_norm_grad",                 // 0
-      "sync_batch_norm",                 // 0
-      "sync_batch_norm_grad",            // 0
-      "inplace_abn",                     // 0
-      "inplace_abn_grad",                // 0
-      "dgc_momentum",                    // 0
-      "fake_quantize_range_abs_max",     // 0
-      "rmsprop",                         // 0
-      "sequence_conv_grad",              // 0
-      "roi_perspective_transform_grad",  // 0
-      "fill_zeros_like",                 // 1
-      "fill_any_like",                   // 1
-      "nce_grad",                        // 1
-      "precision_recall",                // 1
-      "fusion_seqpool_cvm_concat",       // 2
-      "fused_batch_norm_act",            // 2
-      "fused_batch_norm_act_grad",       // 2
-      "data_norm",                       // 0
-      "data_norm_grad",                  // 0
-      "update_loss_scaling",             // 0
+      "batch_norm",                         // 0
+      "batch_norm_grad",                    // 0
+      "sync_batch_norm",                    // 0
+      "sync_batch_norm_grad",               // 0
+      "inplace_abn",                        // 0
+      "inplace_abn_grad",                   // 0
+      "dgc_momentum",                       // 0
+      "fake_quantize_range_abs_max",        // 0
+      "rmsprop",                            // 0
+      "sequence_conv_grad",                 // 0
+      "roi_perspective_transform_grad",     // 0
+      "fill_zeros_like",                    // 1
+      "fill_any_like",                      // 1
+      "nce_grad",                           // 1
+      "precision_recall",                   // 1
+      "fusion_seqpool_cvm_concat",          // 2
+      "fused_batch_norm_act",               // 2
+      "fused_batch_norm_act_grad",          // 2
+      "data_norm",                          // 0
+      "data_norm_grad",                     // 0
+      "update_loss_scaling",                // 0
+      "fused_embedding_eltwise_layernorm",  // 0
+      "trunc_grad",                         // 1
   });
   return *allow_set;
 }
@@ -124,7 +129,8 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
         "allow list in unused_var_check.cc. See more details at "
         "[https://github.com/PaddlePaddle/Paddle/wiki/"
         "OP-Should-Not-Have-Unused-Input]";
-    PADDLE_ENFORCE_EQ(unsed_input_var_names.size(), 0,
+    PADDLE_ENFORCE_EQ(unsed_input_var_names.size(),
+                      0,
                       platform::errors::PermissionDenied(
                           "Unused input variables check failed: %s", err_msg));
   }

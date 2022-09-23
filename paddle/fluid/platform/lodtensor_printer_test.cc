@@ -18,5 +18,6 @@
 
 TEST(LodTensorPrinter, PrintVar) {
   paddle::framework::Scope scope;
-  paddle::platform::PrintVar(&scope, "NotAVar", "We don't have var");
+  std::stringstream ss;
+  paddle::platform::PrintVar(&scope, "NotAVar", "We don't have var", &ss);
 }

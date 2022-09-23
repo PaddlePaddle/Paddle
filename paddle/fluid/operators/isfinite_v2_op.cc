@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/isfinite_v2_op.h"
-
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace framework {
@@ -32,11 +34,6 @@ namespace operators {
 template <typename DeviceContext, typename T, typename Functor>
 class OverflowKernel;
 }  // namespace operators
-namespace platform {
-class CPUDeviceContext;
-struct CPUPlace;
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace plat = paddle::platform;
@@ -51,11 +48,6 @@ class OverflowV2Op : public framework::OperatorWithKernel {
                const framework::VariableNameMap &outputs,
                const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "isfinitev2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "isfinitev2");
-    UnaryOpUnchangedInferShape(ctx);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -63,9 +55,11 @@ class OverflowV2Op : public framework::OperatorWithKernel {
     int dtype = -1;
     auto *x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
-      dtype = x_var->Get<framework::LoDTensor>().type();
-    } else if (x_var->IsType<framework::SelectedRows>()) {
-      dtype = x_var->Get<framework::SelectedRows>().value().type();
+      dtype = framework::TransToProtoVarType(
+          x_var->Get<framework::LoDTensor>().dtype());
+    } else if (x_var->IsType<phi::SelectedRows>()) {
+      dtype = framework::TransToProtoVarType(
+          x_var->Get<phi::SelectedRows>().value().dtype());
     } else {
       PADDLE_THROW(plat::errors::InvalidArgument(
           "Cannot find the input data type by all input data"));
@@ -92,7 +86,8 @@ element of X as a tensor.
 
 %s
 )DOC",
-                               GetName(), GetComments()));
+                               GetName(),
+                               GetComments()));
   }
 
  protected:
@@ -104,40 +99,54 @@ element of X as a tensor.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(isinf_v2,
+                            IsinfInferShapeFunctor,
+                            PD_INFER_META(phi::IsfiniteInferMeta));
 
-#define REGISTER_V2OP_MAKER(op_type, comment)                         \
-  namespace paddle {                                                  \
-  namespace operators {                                               \
-  class _##op_type##OverflowV2OpMaker                                 \
-      : public ::paddle::operators::OverflowV2OpMaker {               \
-   protected:                                                         \
-    std::string GetName() const { return #op_type; }                  \
-    std::string GetComments() const { return comment; }               \
-  };                                                                  \
-  }                                                                   \
-  }                                                                   \
-  REGISTER_OPERATOR(                                                  \
-      op_type, ops::OverflowV2Op, ops::_##op_type##OverflowV2OpMaker, \
-      paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
-      paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
+DECLARE_INFER_SHAPE_FUNCTOR(isnan_v2,
+                            IsnanInferShapeFunctor,
+                            PD_INFER_META(phi::IsfiniteInferMeta));
 
-#define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)                       \
-  REGISTER_OP_CPU_KERNEL(                                                    \
-      op_type, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int,  \
-                                   ops::functor>,                            \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, int64_t,       \
-                          ops::functor>,                                     \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,         \
-                          ops::functor>,                                     \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,        \
-                          ops::functor>,                                     \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, plat::float16, \
-                          ops::functor>);
+DECLARE_INFER_SHAPE_FUNCTOR(isfinite_v2,
+                            IsfiniteInferShapeFunctor,
+                            PD_INFER_META(phi::IsfiniteInferMeta));
 
-REGISTER_V2OP_MAKER(isinf_v2, "isinfv2(X)");
-REGISTER_V2OP_MAKER(isnan_v2, "isnanv2(X)");
+#define REGISTER_V2OP_MAKER(op_type, comment)           \
+  namespace paddle {                                    \
+  namespace operators {                                 \
+  class _##op_type##OverflowV2OpMaker                   \
+      : public ::paddle::operators::OverflowV2OpMaker { \
+   protected:                                           \
+    std::string GetName() const { return #op_type; }    \
+    std::string GetComments() const { return comment; } \
+  };                                                    \
+  }                                                     \
+  }
+
+REGISTER_V2OP_MAKER(isinf_v2, "isinfv2(X)")
+REGISTER_V2OP_MAKER(isnan_v2, "isnanv2(X)")
 REGISTER_V2OP_MAKER(isfinite_v2, "isfinitev2(X)");
 
-REGISTER_OVERFLOW_CPU_KERNEL(isinf_v2, InfinityV2Functor);
-REGISTER_OVERFLOW_CPU_KERNEL(isnan_v2, NANV2Functor);
-REGISTER_OVERFLOW_CPU_KERNEL(isfinite_v2, IsfiniteV2Functor);
+REGISTER_OPERATOR(
+    isinf_v2,
+    ops::OverflowV2Op,
+    ops::_isinf_v2OverflowV2OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    IsinfInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    isnan_v2,
+    ops::OverflowV2Op,
+    ops::_isnan_v2OverflowV2OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    IsnanInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    isfinite_v2,
+    ops::OverflowV2Op,
+    ops::_isfinite_v2OverflowV2OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    IsfiniteInferShapeFunctor);

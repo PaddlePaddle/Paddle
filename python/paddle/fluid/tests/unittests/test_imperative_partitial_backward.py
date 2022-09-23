@@ -17,10 +17,12 @@ from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 import numpy as np
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativePartitialBackward(unittest.TestCase):
-    def test_partitial_backward(self):
+
+    def func_partitial_backward(self):
         with fluid.dygraph.guard():
             x = np.random.randn(2, 4, 5).astype("float32")
             x = fluid.dygraph.to_variable(x)
@@ -38,16 +40,20 @@ class TestImperativePartitialBackward(unittest.TestCase):
             for param in linear2.parameters():
                 self.assertIsNone(param._grad_ivar())
 
-            optimizer = fluid.optimizer.AdamOptimizer(parameter_list=(
-                linear1.parameters() + linear2.parameters()))
+            optimizer = fluid.optimizer.AdamOptimizer(
+                parameter_list=(linear1.parameters() + linear2.parameters()))
             _, params_grads = optimizer.minimize(loss)
 
-            self.assertListEqual(
-                sorted([p.name for p in linear1.parameters()]),
-                sorted([p_g[0].name for p_g in params_grads]))
+            self.assertListEqual(sorted([p.name for p in linear1.parameters()]),
+                                 sorted([p_g[0].name for p_g in params_grads]))
 
             linear1.clear_gradients()
             linear2.clear_gradients()
+
+    def test_partitial_backward(self):
+        with _test_eager_guard():
+            self.func_partitial_backward()
+        self.func_partitial_backward()
 
 
 if __name__ == '__main__':

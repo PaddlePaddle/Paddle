@@ -21,6 +21,7 @@ from paddle.hapi.progressbar import ProgressBar
 
 
 class TestProgressBar(unittest.TestCase):
+
     def prog_bar(self, num, epoch, width, verbose=1):
         for epoch in range(epoch):
             progbar = ProgressBar(num, verbose=verbose)
@@ -41,6 +42,7 @@ class TestProgressBar(unittest.TestCase):
         progbar.update(1, [['loss', 1e-4]])
         progbar.update(1, [['loss', np.array([1.])]])
         progbar.update(1, [['loss', np.array([1e-4])]])
+        progbar.update(1, [['loss', np.array([1]).astype(np.uint16)]])
         progbar.start()
 
         progbar.update(0, values)

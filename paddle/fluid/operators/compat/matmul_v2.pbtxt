@@ -1,0 +1,66 @@
+type: "matmul_v2"
+def {
+  inputs {
+    name: "X"
+  }
+  inputs {
+    name: "Y"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "trans_x"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "trans_y"
+    type: BOOLEAN
+  }
+}
+extra {
+  attrs {
+    name: "op_role"
+    type: INT
+  }
+  attrs {
+    name: "op_role_var"
+    type: STRINGS
+  }
+  attrs {
+    name: "op_namescope"
+    type: STRING
+  }
+  attrs {
+    name: "op_callstack"
+    type: STRINGS
+  }
+  attrs {
+    name: "op_device"
+    type: STRING
+  }
+  attrs {
+    name: "fused_reshape_X"
+    type: INTS
+  }
+  attrs {
+    name: "fused_reshape_Y"
+    type: INTS
+  }
+  attrs {
+    name: "fused_transpose_X"
+    type: INTS
+  }
+  attrs {
+    name: "fused_transpose_Y"
+    type: INTS
+  }
+  attrs {
+    name: "fused_reshape_Out"
+    type: INTS
+  }
+  attrs {
+    name: "fused_transpose_Out"
+    type: INTS
+  }
+}

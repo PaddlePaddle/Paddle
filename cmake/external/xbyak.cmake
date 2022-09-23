@@ -14,13 +14,12 @@
 
 include(ExternalProject)
 
-set(XBYAK_PROJECT       extern_xbyak)
-set(XBYAK_PREFIX_DIR    ${THIRD_PARTY_PATH}/xbyak)
-SET(XBYAK_SOURCE_DIR     ${THIRD_PARTY_PATH}/xbyak/src/extern_xbyak)
-set(XBYAK_INSTALL_ROOT  ${THIRD_PARTY_PATH}/install/xbyak)
-set(XBYAK_INC_DIR       ${XBYAK_INSTALL_ROOT}/include)
-set(XBYAK_REPOSITORY    ${GIT_URL}/herumi/xbyak.git)
-set(XBYAK_TAG           v5.81) # Dec 19, 2019
+set(XBYAK_PROJECT extern_xbyak)
+set(XBYAK_PREFIX_DIR ${THIRD_PARTY_PATH}/xbyak)
+set(XBYAK_INSTALL_ROOT ${THIRD_PARTY_PATH}/install/xbyak)
+set(XBYAK_INC_DIR ${XBYAK_INSTALL_ROOT}/include)
+set(XBYAK_REPOSITORY ${GIT_URL}/herumi/xbyak.git)
+set(XBYAK_TAG v5.81) # Dec 19, 2019
 
 include_directories(${XBYAK_INC_DIR})
 include_directories(${XBYAK_INC_DIR}/xbyak)
@@ -31,23 +30,18 @@ add_definitions(-DPADDLE_WITH_XBYAK)
 add_definitions(-DXBYAK64)
 add_definitions(-DXBYAK_NO_OP_NAMES)
 
-cache_third_party(${XBYAK_PROJECT}
-    REPOSITORY    ${XBYAK_REPOSITORY}
-    TAG           ${XBYAK_TAG}
-    DIR           XBYAK_SOURCE_DIR)
-
 ExternalProject_Add(
-    ${XBYAK_PROJECT}
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    ${SHALLOW_CLONE}
-    "${XBYAK_DOWNLOAD_CMD}"
-    DEPENDS             ""
-    PREFIX              ${XBYAK_PREFIX_DIR}
-    SOURCE_DIR          ${XBYAK_SOURCE_DIR}
-    # UPDATE_COMMAND      ""
-    CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${XBYAK_INSTALL_ROOT}
-    CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${XBYAK_INSTALL_ROOT}
-)
+  ${XBYAK_PROJECT}
+  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
+  GIT_REPOSITORY ${XBYAK_REPOSITORY}
+  GIT_TAG ${XBYAK_TAG}
+  DEPENDS ""
+  PREFIX ${XBYAK_PREFIX_DIR}
+  UPDATE_COMMAND ""
+  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XBYAK_INSTALL_ROOT}
+             -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+  CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${XBYAK_INSTALL_ROOT}
+                   -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE})
 
 add_library(xbyak INTERFACE)
 

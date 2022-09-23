@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_mod_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
@@ -27,10 +25,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-struct CPUPlace;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -60,15 +54,10 @@ class ElementwiseModOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(elementwise_mod, ops::ElementwiseOp,
-                             ops::ElementwiseModOpMaker);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_mod,
-    ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseModFPKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseModFPKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_WITHOUT_GRADIENT(elementwise_mod,
+                             ops::ElementwiseOp,
+                             ops::ElementwiseModOpMaker,
+                             ops::ElementwiseOpInplaceInferer);
 
 REGISTER_OP_VERSION(elementwise_mod)
     .AddCheckpoint(

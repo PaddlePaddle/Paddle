@@ -15,14 +15,15 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
@@ -44,10 +45,18 @@ class SparseFTRLFunctor {
   T* l_acc_out_;
 
  public:
-  SparseFTRLFunctor(const T* g, const T* p, const T* s_acc, const T* lr,
-                    const T l1, const T l2, const T lr_power,
-                    const int64_t* rows, int64_t row_numel, T* p_out,
-                    T* s_acc_out, T* l_acc_out)
+  SparseFTRLFunctor(const T* g,
+                    const T* p,
+                    const T* s_acc,
+                    const T* lr,
+                    const T l1,
+                    const T l2,
+                    const T lr_power,
+                    const int64_t* rows,
+                    int64_t row_numel,
+                    T* p_out,
+                    T* s_acc_out,
+                    T* l_acc_out)
       : g_(g),
         p_(p),
         s_acc_(s_acc),
@@ -74,9 +83,8 @@ class SparseFTRLFunctor {
       l_acc_out_[j] += g - (std::sqrt(new_acc) - std::sqrt(s_acc)) / lr * p;
     } else {
       l_acc_out_[j] +=
-          g -
-          (std::pow(new_acc, -lr_power_) - std::pow(s_acc, -lr_power_)) / lr *
-              p;
+          g - (std::pow(new_acc, -lr_power_) - std::pow(s_acc, -lr_power_)) /
+                  lr * p;
     }
 
     auto l_acc = l_acc_out_[j];
@@ -180,16 +188,18 @@ class FTRLOpKernel : public framework::OpKernel<T> {
       }
 
       s_acc_out.device(place) = sq_accum + g * g;
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto grad = ctx.Input<framework::SelectedRows>("Grad");
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
+      auto grad = ctx.Input<phi::SelectedRows>("Grad");
 
-      framework::SelectedRows tmp_merged_grad;
-      framework::SelectedRows* merged_grad = &tmp_merged_grad;
-      math::scatter::MergeAdd<DeviceContext, T> merge_func;
-      merge_func(ctx.template device_context<DeviceContext>(), *grad,
-                 merged_grad);
+      phi::SelectedRows tmp_merged_grad;
+      phi::SelectedRows* merged_grad = &tmp_merged_grad;
+      phi::funcs::scatter::MergeAdd<DeviceContext, T> merge_func;
+      merge_func(
+          ctx.template device_context<DeviceContext>(), *grad, merged_grad);
 
-      const int64_t* rows = merged_grad->rows().Data(ctx.GetPlace());
+      auto* merged_rows = merged_grad->mutable_rows();
+      paddle::framework::MixVector<int64_t> mixv_merged_rows(merged_rows);
+      const int64_t* rows = mixv_merged_rows.Data(ctx.GetPlace());
       auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
       auto row_height = static_cast<int64_t>(merged_grad->rows().size());
 
@@ -198,9 +208,16 @@ class FTRLOpKernel : public framework::OpKernel<T> {
           row_numel * row_height);
 
       SparseFTRLFunctor<T> functor(
-          merged_grad->value().data<T>(), param_in->data<T>(),
-          sq_accum_in->data<T>(), lr_in->data<T>(), l1, l2, lr_power, rows,
-          row_numel, param_out->mutable_data<T>(ctx.GetPlace()),
+          merged_grad->value().data<T>(),
+          param_in->data<T>(),
+          sq_accum_in->data<T>(),
+          lr_in->data<T>(),
+          l1,
+          l2,
+          lr_power,
+          rows,
+          row_numel,
+          param_out->mutable_data<T>(ctx.GetPlace()),
           sq_accum_out->mutable_data<T>(ctx.GetPlace()),
           lin_accum_out->mutable_data<T>(ctx.GetPlace()));
       for_range(functor);

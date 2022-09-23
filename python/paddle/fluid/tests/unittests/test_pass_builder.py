@@ -23,9 +23,11 @@ import unittest
 import os
 import sys
 import math
+import tempfile
 
 
 class TestPassBuilder(unittest.TestCase):
+
     def check_network_convergence(self, use_cuda, build_strategy=None):
         os.environ['CPU_NUM'] = str(4)
         main = fluid.Program()
@@ -58,9 +60,9 @@ class TestPassBuilder(unittest.TestCase):
                 test_loss, = exe.run(test_cp,
                                      fetch_list=[loss.name],
                                      feed=feed_dict)
-                train_loss = exe.run(train_cp,
-                                     fetch_list=[loss.name],
-                                     feed=feed_dict)
+                train_loss, = exe.run(train_cp,
+                                      fetch_list=[loss.name],
+                                      feed=feed_dict)
 
                 avg_test_loss_val = np.array(test_loss).mean()
                 if math.isnan(float(avg_test_loss_val)):
@@ -70,11 +72,13 @@ class TestPassBuilder(unittest.TestCase):
                 if math.isnan(float(avg_train_loss_val)):
                     sys.exit("got NaN loss, training failed.")
 
-                self.assertTrue(
-                    np.allclose(
-                        train_loss, test_loss, atol=1e-8),
-                    "Train loss: " + str(train_loss) + "\n Test loss:" +
-                    str(test_loss))
+                np.testing.assert_allclose(train_loss,
+                                           test_loss,
+                                           rtol=1e-05,
+                                           atol=1e-08,
+                                           err_msg='Train loss: ' +
+                                           str(train_loss) + '\n Test loss:' +
+                                           str(test_loss))
 
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
@@ -92,23 +96,23 @@ class TestPassBuilder(unittest.TestCase):
         viz_pass = pass_builder.append_pass("graph_viz_pass")
         self.assertEqual(origin_len + 1, len(pass_builder.all_passes()))
 
-        pass_builder.insert_pass(
-            len(pass_builder.all_passes()), "graph_viz_pass")
+        pass_builder.insert_pass(len(pass_builder.all_passes()),
+                                 "graph_viz_pass")
         self.assertEqual(origin_len + 2, len(pass_builder.all_passes()))
 
         pass_builder.remove_pass(len(pass_builder.all_passes()) - 1)
         self.assertEqual(origin_len + 1, len(pass_builder.all_passes()))
-        current_path = os.path.abspath(os.path.dirname(__file__))
-        graph_viz_path = current_path + os.sep + 'tmp' + os.sep + 'test_viz_pass'
-        viz_pass.set("graph_viz_path", graph_viz_path)
+        with tempfile.TemporaryDirectory(prefix="dot_path_") as tmpdir:
+            graph_viz_path = os.path.join(tmpdir, 'test_viz_pass.dot')
+            viz_pass.set("graph_viz_path", graph_viz_path)
 
-        self.check_network_convergence(
-            use_cuda=core.is_compiled_with_cuda(),
-            build_strategy=build_strategy)
-        try:
-            os.stat(graph_viz_path)
-        except os.error:
-            self.assertFalse(True)
+            self.check_network_convergence(
+                use_cuda=core.is_compiled_with_cuda(),
+                build_strategy=build_strategy)
+            try:
+                os.stat(graph_viz_path)
+            except os.error:
+                self.assertFalse(True)
 
 
 if __name__ == '__main__':

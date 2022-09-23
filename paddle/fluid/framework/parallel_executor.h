@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -33,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -43,6 +44,7 @@ class ParallelExecutorPrivate;
 
 using details::BuildStrategy;
 using details::ExecutionStrategy;
+using details::VariableInfo;
 namespace p = paddle::platform;
 using DeviceType = paddle::platform::DeviceType;
 
@@ -52,8 +54,16 @@ class ParallelExecutor {
  public:
   explicit ParallelExecutor(const std::vector<platform::Place> &places,
                             const std::vector<std::string> &bcast_vars,
-                            const std::string &loss_var_name, Scope *scope,
+                            const std::string &loss_var_name,
+                            Scope *scope,
                             const std::vector<Scope *> &local_scopes,
+                            const ExecutionStrategy &exec_strategy,
+                            const BuildStrategy &build_strategy,
+                            ir::Graph *graph);
+
+  // NOTE(Aurelius84): Construct a PE running on single device for @to_static
+  explicit ParallelExecutor(const platform::Place &place,
+                            Scope *scope,
                             const ExecutionStrategy &exec_strategy,
                             const BuildStrategy &build_strategy,
                             ir::Graph *graph);
@@ -79,10 +89,19 @@ class ParallelExecutor {
   void FeedAndSplitTensorIntoLocalScopes(
       const std::unordered_map<std::string, LoDTensor> &tensors);
 
-  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
-                      bool return_merged = true);
+  FetchUnmergedList Run(const std::vector<std::string> &fetch_tensors);
+  FetchList RunAndMerge(const std::vector<std::string> &fetch_tensors);
+
+  void RunWithoutFetch(const std::vector<std::string> &skip_eager_vars);
+
+  void ResetOpHandleScopeMapOfGraphs(
+      const std::unordered_map<Scope *, Scope *> &scope_map);
 
   const ir::Graph &Graph() const;
+  void PrepareVariables(Scope *scope);
+
+  void SkipMemoryReuse(size_t scope_idx,
+                       const std::vector<std::string> &skip_vars);
 
  private:
   // broadcast the parameters from the 0th device.
@@ -93,8 +112,49 @@ class ParallelExecutor {
                                     const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy) const;
 
+  void InitExecutorPrivateMemberInfo(const ExecutionStrategy &exec_strategy,
+                                     const BuildStrategy &build_strategy,
+                                     size_t device_count,
+                                     const ir::Graph &graph);
+
+  void CreateLocalScopes(Scope *global_scope,
+                         const std::vector<Scope *> &local_scopes,
+                         bool create_new);
+
+  std::unordered_map<Scope *, Scope *> CreateLocalExecScopes(
+      const std::vector<Scope *> &local_scopes, bool create_new);
+
+  std::vector<ir::Graph *> CloneGraphToMultiDevices(ir::Graph *graph);
+
+  void PreludeToRun(const std::vector<std::string> &fetch_tensors);
+
+  void PrepareNCCLCommunicator(Scope *global_scope);
+
+  std::vector<ir::Graph *> CompileGraphWithBuildStrategy(
+      ir::Graph *graph,
+      std::vector<ir::Graph *> *graphs,
+      const std::string &loss_var_name);
+
+  void CreateVariableInfos(std::vector<VariableInfo> *var_infos,
+                           ir::Graph *graph);
+
+  std::vector<ir::Graph *> CreateSSAGraphExecutor(
+      const ExecutionStrategy &exec_strategy,
+      std::vector<ir::Graph *> *async_graphs,
+      ir::Graph *graph);
+
+  void ResetOpHandleScopeMapOfGraphs(
+      const std::vector<ir::Graph *> &final_graphs,
+      const std::unordered_map<Scope *, Scope *> &scope_map);
+
+  void SetReaderOpDeviceInfoOfGraphs(
+      const std::vector<ir::Graph *> &final_graphs);
+
+  void PrepareForCUDAGraphCapture(ir::Graph *graph);
+
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
+  std::vector<VariableInfo> var_infos_;
 };
 }  // namespace framework
 }  // namespace paddle

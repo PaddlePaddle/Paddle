@@ -12,11 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/histogram_op.h"
-
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -27,27 +29,6 @@ using framework::Tensor;
 class HistogramOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "histogram");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "histogram");
-    const auto &nbins = ctx->Attrs().Get<int64_t>("bins");
-    const auto &minval = ctx->Attrs().Get<int>("min");
-    const auto &maxval = ctx->Attrs().Get<int>("max");
-
-    PADDLE_ENFORCE_GE(nbins, 1,
-                      platform::errors::InvalidArgument(
-                          "The bins should be greater than or equal to 1."
-                          "But received nbins is %d",
-                          nbins));
-    PADDLE_ENFORCE_GE(maxval, minval, platform::errors::InvalidArgument(
-                                          "max must be larger or equal to min."
-                                          "But received max is %d, min is %d",
-                                          maxval, minval));
-
-    ctx->SetOutputDim("Out", framework::make_ddim({nbins}));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const {
@@ -81,12 +62,15 @@ class HistogramOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(histogram,
+                            HistogramInferShapeFunctor,
+                            PD_INFER_META(phi::HistogramInferMeta));
+
 REGISTER_OPERATOR(
-    histogram, ops::HistogramOp, ops::HistogramOpMaker,
+    histogram,
+    ops::HistogramOp,
+    ops::HistogramOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    histogram, ops::HistogramKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::HistogramKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::HistogramKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::HistogramKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    HistogramInferShapeFunctor);

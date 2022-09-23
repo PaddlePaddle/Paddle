@@ -61,12 +61,20 @@ message TrainerDesc {
 
   optional bool use_ps_gpu = 32 [ default = false ];
   optional string user_define_dump_filename = 33;
+  optional bool scale_sparse_gradient_with_batch_size = 34 [ default = true ];
 
+  repeated int32 trainers = 35;
+  optional int32 trainer_id = 36;
+
+  // add for gpu
+  optional string fleet_desc = 37;
+  optional bool is_dump_in_simple_mode = 38 [ default = false ];
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;
   optional PullDenseWorkerParameter pull_dense_param = 102;
   optional SectionWorkerParameter section_param = 104;
+  optional HeterSectionWorkerParameter heter_section_param = 105;
   // datafeed desc
   optional DataFeedDesc data_desc = 201;
 }
@@ -93,6 +101,20 @@ message SectionWorkerParameter {
   optional int32 start_cpu_core_id = 4 [ default = 1 ];
   repeated string param_need_sync = 5;
   optional int32 num_microbatches = 6;
+  optional int32 num_pipeline_stages = 7 [ default = 1 ];
+  optional int32 pipeline_stage = 8 [ default = 1 ];
+  optional int32 schedule_mode = 9 [ default = 0 ];
+}
+
+message HeterSectionWorkerParameter {
+  optional SectionConfig section_config = 1;
+  optional int32 queue_size = 2 [ default = 1 ];
+  optional int64 sync_steps = 3 [ default = 1 ];
+  optional int32 start_cpu_core_id = 4 [ default = 1 ];
+  repeated string param_need_sync = 5;
+  optional int32 num_microbatches = 6;
+  optional int32 num_pipeline_stages = 7 [ default = 1 ];
+  optional int32 pipeline_stage = 8 [ default = 1 ];
 }
 
 message SectionConfig {

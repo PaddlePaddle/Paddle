@@ -34,7 +34,8 @@ namespace tensorrt {
 class PadOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid transpose op to tensorrt tranpose layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -42,36 +43,18 @@ class PadOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
     const std::vector<int> paddings =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
-    const float pad_value =
-        BOOST_GET_CONST(float, op_desc.GetAttr("pad_value"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
 
-    nvinfer1::Dims input_shape = input->getDimensions();
-    int nbDims = input_shape.nbDims;
     int pad_size = static_cast<int>(paddings.size());
-    PADDLE_ENFORCE_GE(
-        nbDims, 2,
-        platform::errors::InvalidArgument(
-            "Input X[0]'s dimension should greater than or equal to 2. "
-            "But received %d.",
-            nbDims));
-    PADDLE_ENFORCE_EQ(
-        (nbDims + 1) * 2, pad_size,
-        platform::errors::InvalidArgument("Input X[0]'s dimension(nbDims for "
-                                          "short) should meet the condition:"
-                                          "(nbDims + 1) * 2 == pad_size. But "
-                                          "received nbDims:%d, pad_size:%d.",
-                                          nbDims, pad_size));
-    PADDLE_ENFORCE_EQ(pad_value, 0.0,
-                      platform::errors::InvalidArgument(
-                          "The pad layer of TRT only support zero."));
 
     nvinfer1::DimsHW pre_pad(paddings[pad_size - 4], paddings[pad_size - 2]);
     nvinfer1::DimsHW post_pad(paddings[pad_size - 3], paddings[pad_size - 1]);
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Padding,
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                       Padding,
                                        *const_cast<nvinfer1::ITensor*>(input),
-                                       pre_pad, post_pad);
+                                       pre_pad,
+                                       post_pad);
 
     PADDLE_ENFORCE_NOT_NULL(layer,
                             platform::errors::External(

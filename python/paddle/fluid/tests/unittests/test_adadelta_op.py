@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 
 
 class TestAdadeltaOp1(OpTest):
+
     def setUp(self):
         self.op_type = "adadelta"
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -47,8 +48,8 @@ class TestAdadeltaOp1(OpTest):
             (1 - rho) * np.square(grad)
         update = -np.multiply(
             np.sqrt(
-                np.divide(avg_squared_update + epsilon, avg_squared_grad_out +
-                          epsilon)), grad)
+                np.divide(avg_squared_update + epsilon,
+                          avg_squared_grad_out + epsilon)), grad)
 
         avg_squared_update_out = rho * avg_squared_update + \
             (1 - rho) * np.square(update)
@@ -92,8 +93,8 @@ class TestAdadeltaOp2(OpTest):
             (1 - rho) * np.square(grad)
         update = -np.multiply(
             np.sqrt(
-                np.divide(avg_squared_update + epsilon, avg_squared_grad_out +
-                          epsilon)), grad)
+                np.divide(avg_squared_update + epsilon,
+                          avg_squared_grad_out + epsilon)), grad)
 
         avg_squared_update_out = rho * avg_squared_update + \
             (1 - rho) * np.square(update)
@@ -111,22 +112,23 @@ class TestAdadeltaOp2(OpTest):
 
 
 class TestAdadeltaV2(unittest.TestCase):
+
     def test_adadelta_dygraph(self):
         paddle.disable_static(paddle.CPUPlace())
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
         # This can be any optimizer supported by dygraph.
-        adam = paddle.optimizer.Adadelta(
-            learning_rate=0.01,
-            parameters=linear.parameters(),
-            weight_decay=0.01)
+        adam = paddle.optimizer.Adadelta(learning_rate=0.01,
+                                         parameters=linear.parameters(),
+                                         weight_decay=0.01)
         out = linear(a)
         out.backward()
         adam.step()
         adam.clear_gradients()
 
     def test_adadelta(self):
+        paddle.enable_static()
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
@@ -134,14 +136,14 @@ class TestAdadeltaV2(unittest.TestCase):
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             rms_optimizer = paddle.optimizer.Adadelta(learning_rate=0.1)
             rms_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
-            train_reader = paddle.batch(
-                paddle.dataset.uci_housing.train(), batch_size=1)
+            train_reader = paddle.batch(paddle.dataset.uci_housing.train(),
+                                        batch_size=1)
             feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -150,13 +152,41 @@ class TestAdadeltaV2(unittest.TestCase):
 
     def test_raise_error(self):
         self.assertRaises(ValueError, paddle.optimizer.Adadelta, None)
-        self.assertRaises(
-            ValueError, paddle.optimizer.Adadelta, learning_rate=0.1, rho=None)
-        self.assertRaises(
-            ValueError,
-            paddle.optimizer.Adadelta,
-            learning_rate=0.1,
-            epsilon=None)
+        self.assertRaises(ValueError,
+                          paddle.optimizer.Adadelta,
+                          learning_rate=0.1,
+                          rho=None)
+        self.assertRaises(ValueError,
+                          paddle.optimizer.Adadelta,
+                          learning_rate=0.1,
+                          epsilon=None)
+
+
+class TestAdadeltaV2Group(TestAdadeltaV2):
+
+    def test_adadelta_dygraph(self):
+        paddle.disable_static(paddle.CPUPlace())
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 5)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.Adadelta(learning_rate=0.01,
+                                         parameters=[{
+                                             'params':
+                                             linear_1.parameters()
+                                         }, {
+                                             'params':
+                                             linear_2.parameters(),
+                                             'weight_decay':
+                                             0.001,
+                                         }],
+                                         weight_decay=0.1)
+        out = linear_1(a)
+        out = linear_2(out)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
 
 
 if __name__ == "__main__":

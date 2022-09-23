@@ -1,44 +1,42 @@
 include(operators)
 if(WITH_UNITY_BUILD)
-    # Load Unity Build rules for operators in paddle/fluid/operators/reduce_ops.
-    include(unity_build_rule.cmake)
+  # Load Unity Build rules for operators in paddle/fluid/operators/reduce_ops.
+  include(unity_build_rule.cmake)
 endif()
 if(WITH_GPU)
-    if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-        register_operators(DEPS cub)
-    else()
-        register_operators()
-    endif()
-else()
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+    register_operators(DEPS cub)
+  else()
     register_operators()
-endif()
-
-if(WITH_GPU OR WITH_ROCM)
-    file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.part.cu")
-    string(REPLACE ".part.cu" "" OPS "${OPS}")
-
-    foreach(src ${OPS})
-        if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.part.cu)
-            set(CUDA_KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${src}.part.cu)
-            file(READ ${CUDA_KERNEL_FILE} TARGET_CONTENT)
-            string(REGEX MATCH "REGISTER_OP_CUDA_KERNEL\\(\\n?([^,]+),.*" MATCHED ${TARGET_CONTENT})
-            if (MATCHED)
-                string(STRIP ${CMAKE_MATCH_1} MATCHED)
-                file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${MATCHED}, CUDA);\n")
-            endif()
-
-        endif()
-    endforeach()
+  endif()
+else()
+  register_operators()
 endif()
 
 if(WITH_GPU)
-    if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-	nv_test(check_reduce_rank_test SRCS check_reduce_rank_test.cu DEPS tensor cub)
-    else()
-	nv_test(check_reduce_rank_test SRCS check_reduce_rank_test.cu DEPS tensor)
-    endif()
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+    nv_test(
+      check_reduce_rank_test
+      SRCS check_reduce_rank_test.cu
+      DEPS tensor cub)
+  else()
+    nv_test(
+      check_reduce_rank_test
+      SRCS check_reduce_rank_test.cu
+      DEPS tensor)
+  endif()
 endif()
 
 if(WITH_ROCM)
-    hip_test(check_reduce_rank_test SRCS check_reduce_rank_test.cu DEPS tensor)
+  hip_test(
+    check_reduce_rank_test
+    SRCS check_reduce_rank_test.cu
+    DEPS tensor)
+endif()
+
+if(WITH_ASCEND_CL)
+  cc_test(
+    reduce_any_op_npu_test
+    SRCS reduce_any_op_npu_test.cc
+    DEPS op_registry reduce_any_op scope device_context enforce executor)
 endif()

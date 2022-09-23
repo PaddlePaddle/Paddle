@@ -19,10 +19,12 @@ import paddle
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 from paddle.nn import Layer, Embedding
+
 paddle.set_default_dtype("float64")
 
 
 class SimpleNet(Layer):
+
     def __init__(self,
                  hidden_size,
                  vocab_size,
@@ -40,9 +42,8 @@ class SimpleNet(Layer):
             self.hidden_size,
             sparse=True,
             weight_attr=paddle.ParamAttr(
-                name='embedding_param',
-                initializer=paddle.nn.initializer.Uniform(
-                    low=-init_scale, high=init_scale)))
+                initializer=paddle.nn.initializer.Uniform(low=-init_scale,
+                                                          high=init_scale)))
         self.softmax_weight = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
@@ -65,8 +66,6 @@ class SimpleNet(Layer):
     def forward(self, input, label):
         x_emb = self.embedding(input)
         fc = paddle.matmul(x_emb, self.softmax_weight)
-        # use detach to stop gradient
-        fc = fc.detach()
         fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, self.vocab_size])
         loss = paddle.nn.functional.softmax_with_cross_entropy(
@@ -88,6 +87,7 @@ init_scale = 0.1
 
 
 def fake_sample_reader():
+
     def __reader__():
         for i in range(batch_num):
             x_data = np.arange(num_steps).astype('int64')
@@ -98,16 +98,17 @@ def fake_sample_reader():
 
 
 class TestSparseEmbeddingFP64(TestParallelDyGraphRunnerBase):
-    def get_model(self):
-        model = SimpleNet(
-            hidden_size=hidden_size,
-            vocab_size=vocab_size,
-            num_steps=num_steps,
-            init_scale=init_scale,
-            is_sparse=True)
 
-        train_reader = paddle.batch(
-            fake_sample_reader(), batch_size=batch_size, drop_last=True)
+    def get_model(self):
+        model = SimpleNet(hidden_size=hidden_size,
+                          vocab_size=vocab_size,
+                          num_steps=num_steps,
+                          init_scale=init_scale,
+                          is_sparse=True)
+
+        train_reader = paddle.batch(fake_sample_reader(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
 
         optimizer = paddle.optimizer.SGD(learning_rate=0.001,
                                          parameters=model.parameters())

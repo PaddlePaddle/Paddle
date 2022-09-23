@@ -14,11 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -26,25 +30,55 @@ class Variable;
 namespace paddle {
 namespace platform {
 
-void PrintVar(framework::Scope* scope, const std::string& var_name,
-              const std::string& print_info) {
+void PrintVar(framework::Scope* scope,
+              const std::string& var_name,
+              const std::string& print_info,
+              std::stringstream* sstream) {
   framework::Variable* var = scope->FindVar(var_name);
   if (var == nullptr) {
-    VLOG(1) << "Variable Name " << var_name << " does not exist in your scope";
+    VLOG(0) << "Variable Name " << var_name << " does not exist in your scope";
     return;
   }
   framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
   if (tensor == nullptr) {
-    VLOG(1) << "tensor of variable " << var_name
+    VLOG(0) << "tensor of variable " << var_name
             << " does not exist in your scope";
     return;
   }
+  if (!tensor->IsInitialized()) {
+    VLOG(0) << "tensor of variable " << var_name
+            << " does not initialized in your scope";
+    return;
+  }
 
-  std::ostringstream sstream;
-  sstream << print_info << "\t";
-  sstream << var_name << "\t";
-  sstream << *tensor << "\t";
-  std::cout << sstream.str() << std::endl;
+  *sstream << print_info;
+
+#define PrintTensorCallback(cpp_type, proto_type)                        \
+  do {                                                                   \
+    if (framework::TransToProtoVarType(tensor->dtype()) == proto_type) { \
+      *sstream << "[";                                                   \
+      const cpp_type* data = nullptr;                                    \
+      framework::LoDTensor cpu_tensor;                                   \
+      if (is_cpu_place(tensor->place())) {                               \
+        data = tensor->data<cpp_type>();                                 \
+      } else {                                                           \
+        platform::CPUPlace cpu_place;                                    \
+        paddle::framework::TensorCopy(*tensor, cpu_place, &cpu_tensor);  \
+        data = cpu_tensor.data<cpp_type>();                              \
+      }                                                                  \
+      auto element_num = tensor->numel();                                \
+      *sstream << element_num << "]:[";                                  \
+      if (element_num > 0) {                                             \
+        *sstream << data[0];                                             \
+        for (int j = 1; j < element_num; ++j) {                          \
+          *sstream << " " << data[j];                                    \
+        }                                                                \
+      }                                                                  \
+      *sstream << "]";                                                   \
+    }                                                                    \
+  } while (0)
+
+  _ForEachDataType_(PrintTensorCallback);
 }
 
 }  // end namespace platform

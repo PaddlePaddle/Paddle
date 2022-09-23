@@ -39,6 +39,27 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+// TODO(zjl): support SelectedRows
+static inline const Tensor &GetTensorFromVar(const Variable *var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable must be type of LoDTensor, but received %s.",
+        framework::ToTypeName(var->Type())));
+  }
+}
+
+static inline Tensor *GetMutableTensorFromVar(Variable *var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->GetMutable<LoDTensor>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable must be type of LoDTensor, but received %s.",
+        framework::ToTypeName(var->Type())));
+  }
+}
+
 // NOTE(paddle-dev): ShareTensorBufferFunctor is responsible for
 // performing memory reuse in run-time. ShareTensorBufferOpHandle
 // is only a wrapper of ShareTensorBufferFunctor.
@@ -49,14 +70,20 @@ namespace details {
 class ShareTensorBufferFunctor {
  public:
   ShareTensorBufferFunctor(
-      Scope *scope, size_t scope_idx, const std::string &op_type,
+      Scope *scope,
+      size_t scope_idx,
+      const std::string &op_type,
       const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-      const std::vector<std::string> &out_var_names, bool share_dims = false);
+      const std::vector<std::string> &out_var_names,
+      const bool &is_variant_scope,
+      bool share_dims_and_dtype = false);
 
   void AddReuseVarPair(const ir::MemOptVarInfo *in_var_info,
                        const std::string &out_var_name);
 
-  void SetShareDims(bool share_dims) { share_dims_ = share_dims; }
+  void SetShareDimsAndDtype(bool share_dims_and_dtype) {
+    share_dims_and_dtype_ = share_dims_and_dtype;
+  }
 
   void operator()(Scope *exec_scope);
 
@@ -80,10 +107,13 @@ class ShareTensorBufferFunctor {
 
   std::vector<std::pair<const Variable *, Variable *>> in_out_vars_;
 
+  // NOTE(Aurelius84): Use const reference to always keep consistant with
+  // share_tensor_buffer_op_handle.
+  const bool &is_variant_scope_;
   // NOTE(zhiqiu): In the case of inplace addto, if the operator of
   // the in_out_vars is skipped during running, we should set the dims of output
   // as the same as input.
-  bool share_dims_{false};
+  bool share_dims_and_dtype_{false};
 };
 
 }  // namespace details

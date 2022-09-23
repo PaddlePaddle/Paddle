@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_ASCEND
+#ifdef PADDLE_WITH_ASCEND_CL
 #include <glog/logging.h>
 
 #include <map>
@@ -22,40 +22,64 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/timer.h"
-
 #include "ge/ge_api.h"
-#include "ge/ge_api_types.h"
 #include "graph/attr_value.h"
 #include "graph/tensor.h"
 #include "graph/types.h"
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace framework {
 
-// typedef std::vector<std::string> AscendGraphDesc;
 typedef ge::Graph AscendGraphDesc;
+
+#ifdef PADDLE_WITH_ASCEND_STRING
+using AscendString = ge::AscendString;
+#else
+using AscendString = std::string;
+#endif
 
 class AscendInstance {
  public:
   virtual ~AscendInstance() {}
   AscendInstance() {}
 
-  std::map<std::string, std::string> GetDefaultInitSessionOptions() {
-    std::map<std::string, std::string> init_options;
-    init_options["a"] = "b";
-    init_options["ge.trainFlag"] = "1";
+  std::map<AscendString, AscendString> _GetDefaultInitOptions() {
+    std::map<AscendString, AscendString> init_options;
+    init_options["ge.exec.deviceId"] = "0";
+    init_options["ge.graphRunMode"] = "1";
     return init_options;
   }
 
-  // add other parameters here to init
+  std::map<AscendString, AscendString> _GetDefaultInitSessionOptions() {
+    std::map<AscendString, AscendString> init_options;
+    // init_options["a"] = "b";
+    // init_options["ge.trainFlag"] = "1";
+    return init_options;
+  }
+
+  ge::Status InitGEForUT() {
+    return ge::GEInitialize(_GetDefaultInitOptions());
+  }
+
   void InitGlobalResouces() {
-    session_.reset(new ge::Session(GetDefaultInitSessionOptions()));
-    VLOG(1) << "InitGlobalResouces Done";
+    LOG(INFO) << "Begin ascend InitGlobalResouces";
+    session_.reset(new ge::Session(_GetDefaultInitSessionOptions()));
+    if (session_ == nullptr) {
+      PADDLE_THROW(platform::errors::Fatal("new session error: nullptr"));
+    }
+    LOG(INFO) << "End ascend InitGlobalResouces";
+  }
+
+  void DestroyGlobalResouces() {
+    LOG(INFO) << "Begin ascend DestroyGlobalResouces";
+    session_ = nullptr;
+    LOG(INFO) << "Begin ascend DestroyGlobalResouces";
   }
 
   static std::shared_ptr<AscendInstance> GetInstance() {
@@ -68,7 +92,8 @@ class AscendInstance {
 
   void AddAscendSubgraph(int graph_idx, const AscendGraphDesc &graph) {
     ge::Status status = session_->AddGraph(graph_idx, graph);
-    PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
+    PADDLE_ENFORCE_EQ(status,
+                      ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling addGraph of graph engine failed, please "
                           "check Ascend Log."));
@@ -122,14 +147,18 @@ class AscendInstance {
     // }
 
     ge::Shape shape(vec_dim);
-    ge::TensorDesc tensor_desc(shape, ge::Format::FORMAT_ND,
-                               VarTypeToGeType(tensor->type()));
+    ge::TensorDesc tensor_desc(
+        shape,
+        ge::Format::FORMAT_ND,
+        VarTypeToGeType(framework::TransToProtoVarType(tensor->dtype())));
     tensor_desc.SetRealDimCnt(vec_dim.size());
 
-    const uint8_t *data =
-        reinterpret_cast<const uint8_t *>(tensor->data<void>());
-    std::vector<uint8_t> dst(numel * GeTypeSize(tensor->type()));
-    memcpy(dst.data(), data, GeTypeSize(tensor->type()) * numel);
+    const uint8_t *data = reinterpret_cast<const uint8_t *>(tensor->data());
+    std::vector<uint8_t> dst(
+        numel * GeTypeSize(framework::TransToProtoVarType(tensor->dtype())));
+    memcpy(dst.data(),
+           data,
+           GeTypeSize(framework::TransToProtoVarType(tensor->dtype())) * numel);
     ge::Tensor ge_tensor(tensor_desc, dst);
     return ge_tensor;
   }
@@ -147,7 +176,8 @@ class AscendInstance {
     // Run Graph
     std::vector<ge::Tensor> ge_outputs;
     ge::Status status = session_->RunGraph(graph_idx, ge_inputs, ge_outputs);
-    PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
+    PADDLE_ENFORCE_EQ(status,
+                      ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling RunGraph of graph engine failed, please "
                           "check Ascend Log."));
@@ -178,6 +208,6 @@ class AscendInstance {
  private:
   static std::shared_ptr<AscendInstance> ascend_instance_;
 };
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

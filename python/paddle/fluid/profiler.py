@@ -18,6 +18,9 @@ from . import core
 from .wrapped_decorator import signature_safe_contextmanager
 import os
 import six
+import sys
+
+from paddle.utils.deprecated import deprecated
 
 __all__ = [
     'cuda_profiler', 'reset_profiler', 'profiler', 'start_profiler',
@@ -35,32 +38,44 @@ NVPROF_CONFIG = [
 ]
 
 
+@deprecated(
+    since="2.3.0",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
 @signature_safe_contextmanager
 def cuda_profiler(output_file, output_mode=None, config=None):
     """
-    The CUDA profiler.
-    
-    This fuctions is used to profile CUDA program by CUDA runtime application
+    API cuda_profiler has been abandoned. If you have relevant requirements, you can use `paddle.utils.profiler.start_profiler` and `paddle.utils.profiler.stop_profiler`.
+    The relevant reference documents are as follows:
+    <https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/utils/profiler/start_profiler_en.html#start-profiler>
+    <https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/utils/profiler/stop_profiler_en.html#stop-profiler>
+    <https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/performance_improving/analysis_tools/timeline_en.html>
+    """
+    raise RuntimeError(
+        "API cuda_profiler has been abandoned. If you have relevant requirements, you can use `paddle.utils.profiler.start_profiler` and `paddle.utils.profiler.stop_profiler`.\nThe relevant reference documents are as follows:\n<https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/utils/profiler/start_profiler_en.html#start-profiler>\n<https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/utils/profiler/stop_profiler_en.html#stop-profiler>\n<https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/performance_improving/analysis_tools/timeline_en.html>"
+    )
+
+
+@signature_safe_contextmanager
+def npu_profiler(output_file, config=None):
+    """
+    The NPU profiler.
+
+    This fuctions is used to profile NPU program by NPU runtime application
     programming interface. The profiling result will be written into
-    `output_file`. The users can set the output mode by `output_mode` argument 
-    and set the nvidia profiling config by `config` argument. 
-    
-    After getting the profiling result file, users can use 
-    `NVIDIA Visual Profiler <https://developer.nvidia.com/nvidia-visual-profiler>`_ 
+    `output_file`. The users can set set the NPU profiling config by `config` argument.
+
+    After getting the profiling result file, users can use
+    `tools provided by Ascend <https://support.huaweicloud.com/tg-Inference-cann/atlasprofiling_16_0006.html>`_
     to load this output file to visualize results.
 
     Args:
         output_file (str) : The output file name, the result will be
-            written into this file.
-        output_mode (str, optional) : The output mode has Key-Value pair format ('kvp') 
-            and Comma separated values format ('csv', default).
-        config (list<str>, optional) : Nvidia profile config. Default config is 
-            ['gpustarttimestamp', 'gpuendtimestamp', 'gridsize3d', 'threadblocksize', 
-            'streamid', 'enableonstart 0', 'conckerneltrace']. For more details, please
-            refer to `Compute Command Line Profiler User Guide <https://developer.download.nvidia.cn/compute/DevZone/docs/html/C/doc/Compute_Command_Line_Profiler_User_Guide.pdf>`_ .
-
-    Raises:
-        ValueError: If `output_mode` is not in ['kvp', 'csv'].
+            written into this file. It should be absolute path.
+        config (list<str>, optional) : NPU profile config. For more details, please
+            refer to `User Guide <https://support.huaweicloud.com/tg-Inference-cann/atlasprofiling_16_0006.html>`_ .
 
     Examples:
 
@@ -75,41 +90,42 @@ def cuda_profiler(output_file, output_mode=None, config=None):
             data = fluid.data(name='data', shape=[None, 3, 28, 28], dtype='float32')
             conv = fluid.layers.conv2d(data, 20, 3, stride=[1, 1], padding=[1, 1])
 
-            place = fluid.CUDAPlace(0)
+            place = fluid.NPUPlace(0)
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
 
-            output_file = 'cuda_profiler.txt'
-            with profiler.cuda_profiler(output_file, 'csv') as nvprof:
+            output_file = 'npu.txt'
+            with profiler.npu_profiler(output_file) as npu_prof:
                 for i in range(epoc):
                     input = np.random.random(dshape).astype('float32')
                     exe.run(fluid.default_main_program(), feed={'data': input})
-            # then use  NVIDIA Visual Profiler (nvvp) to load this output file
+            # then use  NPU profiler tools to load this output file
             # to visualize results.
     """
-    if output_mode is None:
-        output_mode = 'csv'
-    if output_mode not in ['kvp', 'csv']:
-        raise ValueError("The output mode must be 'kvp' or 'csv'.")
-    config = NVPROF_CONFIG if config is None else config
-    config_file = 'nvprof_config_file'
-    with open(config_file, 'wb') as fp:
-        fp.writelines([six.b("%s\n" % item) for item in config])
-    core.nvprof_init(output_file, output_mode, config_file)
-    # Enables profiler collection by the active CUDA profiling tool.
-    core.nvprof_start()
+    # TODO: support config in python.
+    if not config:
+        config = core.npu_prof_create_config()
+
+    core.npu_prof_init(output_file)
+    # Enables profiler collection by the active NPU profiling tool.
+    core.npu_prof_start(config)
     try:
         yield
     # Disables profiler collection.
     finally:
-        core.nvprof_stop()
-        os.remove(config_file)
+        core.npu_prof_stop(config)
+        core.npu_prof_finalize()
 
 
+@deprecated(
+    since="2.3.0",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
 def reset_profiler():
     """
-    Clear the previous time record. This interface does not work for
-    `fluid.profiler.cuda_profiler`, it only works for
+    Clear the previous time record. It works for
     `fluid.profiler.start_profiler`, `fluid.profiler.stop_profiler`,
     and `fluid.profiler.profiler`.
 
@@ -117,6 +133,7 @@ def reset_profiler():
 
         .. code-block:: python
 
+            # required: gpu
             import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
             with profiler.profiler('CPU', 'total', '/tmp/profile'):
@@ -128,31 +145,38 @@ def reset_profiler():
     core.reset_profiler()
 
 
+@deprecated(
+    since="2.3.0",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
 def start_profiler(state, tracer_option='Default'):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
-    `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
+    `fluid.profiler.stop_profiler` to profile, which is equal to the usage
     of `fluid.profiler.profiler` interface.
 
     Args:
         state (str) : The profiling state, which should be one of 'CPU', 'GPU'
             or 'All'. 'CPU' means only profiling CPU; 'GPU' means profiling
-            both CPU and GPU; 'All' means profiling both CPU and GPU, and 
+            both CPU and GPU; 'All' means profiling both CPU and GPU, and
             generates timeline as well.
         tracer_option (str, optional) : tracer_option can be one of ['Default', 'OpDetail', 'AllOpDetail'], it
-            can control the profile level and print the different level profile result. `Default` option print 
-            the different Op type profiling result and the `OpDetail` option print the detail profiling 
-            result of different op types such as compute and data transform, `AllOpDetail` option 
+            can control the profile level and print the different level profile result. `Default` option print
+            the different Op type profiling result and the `OpDetail` option print the detail profiling
+            result of different op types such as compute and data transform, `AllOpDetail` option
             print the detail profiling result of different op name same as `OpDetail`.
 
     Raises:
-        ValueError: If `state` is not in ['CPU', 'GPU', 'All'] or `tracer_option` 
+        ValueError: If `state` is not in ['CPU', 'GPU', 'All'] or `tracer_option`
             is not in ['Default', 'OpDetail', 'AllOpDetail'].
 
     Examples:
 
         .. code-block:: python
 
+            # required: gpu
             import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
 
@@ -162,7 +186,7 @@ def start_profiler(state, tracer_option='Default'):
                     profiler.reset_profiler()
                 # except each iteration
             profiler.stop_profiler('total', '/tmp/profile')
-            
+
             profiler.start_profiler('GPU', "OpDetail")
             for iter in range(10):
                 if iter == 2:
@@ -195,14 +219,20 @@ def start_profiler(state, tracer_option='Default'):
     core.enable_profiler(prof_state)
 
 
+@deprecated(
+    since="2.3.0",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
 def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     """
     Stop the profiler. Uers can use `fluid.profiler.start_profiler` and
-    `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
+    `fluid.profiler.stop_profiler` to profile, which is equal to the usage
     of `fluid.profiler.profiler` interface.
 
     Args:
-        sorted_key (str, optional) : The order of profiling results, which 
+        sorted_key (str, optional) : The order of profiling results, which
             should be one of None, 'calls', 'total', 'max', 'min' or 'ave'.
             Default is None, means the profiling results will be printed
             in the order of first end time of events.
@@ -211,7 +241,7 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
             The `max` means sorting by the maximum execution time.
             The `min` means sorting by the minimum execution time.
             The `ave` means sorting by the average execution time.
-            and write it into `profile_path`. The default profile_path is `/tmp/profile`. 
+            and write it into `profile_path`. The default profile_path is `/tmp/profile`.
         profile_path (str, optional) : If state == 'All', it will generate timeline,
 
     Raises:
@@ -222,6 +252,7 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 
         .. code-block:: python
 
+            # required: gpu
             import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
 
@@ -251,21 +282,26 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     core.disable_profiler(key_map[sorted_key], profile_path)
 
 
+@deprecated(
+    since="2.3.0",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
 @signature_safe_contextmanager
 def profiler(state,
              sorted_key=None,
              profile_path='/tmp/profile',
              tracer_option='Default'):
     """
-    The profiler interface. Different from `fluid.profiler.cuda_profiler`, 
-    this profiler can be used to profile both CPU and GPU program.
+    The profiler interface. This profiler can be used to profile both CPU and GPU program.
 
     Args:
         state (str) : The profiling state, which should be one of 'CPU', 'GPU'
             or 'All'. 'CPU' means only profiling CPU; 'GPU' means profiling
-            both CPU and GPU; 'All' means profiling both CPU and GPU, and 
+            both CPU and GPU; 'All' means profiling both CPU and GPU, and
             generates timeline as well.
-        sorted_key (str, optional) : The order of profiling results, which 
+        sorted_key (str, optional) : The order of profiling results, which
             should be one of None, 'calls', 'total', 'max', 'min' or 'ave'.
             Default is None, means the profiling results will be printed
             in the order of first end time of events.
@@ -275,11 +311,11 @@ def profiler(state,
             The `min` means sorting by the minimum execution time.
             The `ave` means sorting by the average execution time.
         profile_path (str, optional) : If state == 'All', it will generate timeline,
-            and write it into `profile_path`. The default profile_path is `/tmp/profile`. 
+            and write it into `profile_path`. The default profile_path is `/tmp/profile`.
         tracer_option (str, optional) : tracer_option can be one of ['Default', 'OpDetail', 'AllOpDetail'], it
-            can control the profile level and print the different level profile result. `Default` option print 
-            the different Op type profiling result and the `OpDetail` option print the detail profiling 
-            result of different op types such as compute and data transform, `AllOpDetail` option 
+            can control the profile level and print the different level profile result. `Default` option print
+            the different Op type profiling result and the `OpDetail` option print the detail profiling
+            result of different op types such as compute and data transform, `AllOpDetail` option
             print the detail profiling result of different op name same as `OpDetail`.
 
     Raises:
@@ -290,9 +326,12 @@ def profiler(state,
 
         .. code-block:: python
 
+            # required: gpu
             import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
             import numpy as np
+            import paddle
+            paddle.enable_static()
 
             epoc = 8
             dshape = [4, 3, 28, 28]
@@ -314,7 +353,7 @@ def profiler(state,
 
             #### Examples Results ####
             #### 1) sorted_key = 'total', 'calls', 'max', 'min', 'ave' ####
-            # The only difference in 5 sorted_key results is the following sentence: 
+            # The only difference in 5 sorted_key results is the following sentence:
             # "Sorted by number of xxx in descending order in the same thread."
             # The reason is that in this example, above 5 columns are already sorted.
             ------------------------->     Profiling Report     <-------------------------
@@ -334,7 +373,7 @@ def profiler(state,
 
             #### 2) sorted_key = None  ####
             # Since the profiling results are printed in the order of first end time of Ops,
-            # the printed order is feed->conv2d->elementwise_add 
+            # the printed order is feed->conv2d->elementwise_add
             ------------------------->     Profiling Report     <-------------------------
 
             Place: CPU
@@ -351,3 +390,33 @@ def profiler(state,
         yield
     finally:
         stop_profiler(sorted_key, profile_path)
+
+
+@signature_safe_contextmanager
+def _nvprof_range(iter_id, start, end, exit_after_prof=True):
+    '''
+    A range profiler interface (not public yet).
+
+    Examples:
+
+        .. code-block:: python
+
+            model = Model()
+            for i in range(max_iter):
+                paddle.fluid.profiler._nvprof_range(i, 10, 20):
+                    out = model(in)
+    '''
+    try:
+        if iter_id == start:
+            core.nvprof_start()
+            core.nvprof_enable_record_event()
+        if iter_id >= start:
+            core.nvprof_nvtx_push(str(iter_id))
+        yield
+    finally:
+        if iter_id < end:
+            core.nvprof_nvtx_pop()
+        if iter_id == end:
+            core.nvprof_stop()
+            if exit_after_prof:
+                sys.exit()

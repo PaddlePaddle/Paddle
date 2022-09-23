@@ -15,57 +15,48 @@
 from __future__ import print_function
 
 import unittest
-from op_test import OpTest
 
-import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-import warnings
-import paddle
 
 
 class TestStaticDeviceManage(unittest.TestCase):
-    def test_cpu_device(self):
-        paddle.set_device('cpu')
+
+    def _test_device(self, device_name, device_class):
+        paddle.set_device(device_name)
+
         out1 = paddle.zeros(shape=[1, 3], dtype='float32')
         out2 = paddle.ones(shape=[1, 3], dtype='float32')
         out3 = paddle.concat(x=[out1, out2], axis=0)
-        exe = paddle.fluid.Executor()
+
+        exe = paddle.static.Executor()
         exe.run(paddle.fluid.default_startup_program())
         res = exe.run(fetch_list=[out3])
+
         device = paddle.get_device()
-        self.assertEqual(isinstance(exe.place, core.CPUPlace), True)
-        self.assertEqual(device, "cpu")
+        self.assertEqual(isinstance(exe.place, device_class), True)
+        self.assertEqual(device, device_name)
+
+    def test_cpu_device(self):
+        self._test_device("cpu", core.CPUPlace)
 
     def test_gpu_device(self):
         if core.is_compiled_with_cuda():
-            out1 = paddle.zeros(shape=[1, 3], dtype='float32')
-            out2 = paddle.ones(shape=[1, 3], dtype='float32')
-            out3 = paddle.concat(x=[out1, out2], axis=0)
-            paddle.set_device('gpu:0')
-            exe = paddle.fluid.Executor()
-            exe.run(paddle.fluid.default_startup_program())
-            res = exe.run(fetch_list=[out3])
-            device = paddle.get_device()
-            self.assertEqual(isinstance(exe.place, core.CUDAPlace), True)
-            self.assertEqual(device, "gpu:0")
+            self._test_device("gpu:0", core.CUDAPlace)
 
     def test_xpu_device(self):
         if core.is_compiled_with_xpu():
-            out1 = paddle.zeros(shape=[1, 3], dtype='float32')
-            out2 = paddle.ones(shape=[1, 3], dtype='float32')
-            out3 = paddle.concat(x=[out1, out2], axis=0)
-            paddle.set_device('xpu:0')
-            exe = paddle.fluid.Executor()
-            exe.run(paddle.fluid.default_startup_program())
-            res = exe.run(fetch_list=[out3])
-            device = paddle.get_device()
-            self.assertEqual(isinstance(exe.place, core.XPUPlace), True)
-            self.assertEqual(device, "xpu:0")
+            self._test_device("xpu:0", core.XPUPlace)
+
+    def test_npu_device(self):
+        if core.is_compiled_with_npu():
+            self._test_device("npu:0", core.NPUPlace)
 
 
 class TestImperativeDeviceManage(unittest.TestCase):
+
     def test_cpu(self):
         with fluid.dygraph.guard():
             paddle.set_device('cpu')
@@ -101,6 +92,22 @@ class TestImperativeDeviceManage(unittest.TestCase):
                                core.XPUPlace), True)
                 self.assertTrue(out.place.is_xpu_place())
                 self.assertEqual(device, "xpu:0")
+
+    def test_npu(self):
+        if core.is_compiled_with_npu():
+            with fluid.dygraph.guard():
+                paddle.set_device('npu:0')
+                out1 = paddle.zeros(shape=[1, 3], dtype='float32')
+                out2 = paddle.ones(shape=[1, 3], dtype='float32')
+                out3 = paddle.concat(x=[out1, out2], axis=0)
+                device = paddle.get_device()
+                self.assertEqual(
+                    isinstance(framework._current_expected_place(),
+                               core.NPUPlace), True)
+                self.assertTrue(out1.place.is_npu_place())
+                self.assertTrue(out2.place.is_npu_place())
+                self.assertTrue(out3.place.is_npu_place())
+                self.assertEqual(device, "npu:0")
 
 
 if __name__ == '__main__':

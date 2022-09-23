@@ -12,35 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['batch']
+__all__ = []
 
 
 def batch(reader, batch_size, drop_last=False):
     """
-    This operator creates a batched reader which combines the data from the 
+    This operator creates a batched reader which combines the data from the
     input reader to batched data.
-    
+
     Args:
         reader(generator): the data reader to read from.
         batch_size(int): size of each mini-batch.
-        drop_last(bool, optional): If set to True, the last batch is dropped when 
+        drop_last(bool, optional): If set to True, the last batch is dropped when
             the size of last batch is not equal to batch_size, if set to False,
             it will not. Default: False.
     Returns:
-        The batched reader. 
-    
+        The batched reader.
+
     Return Type:
-        generator   
+        generator
 
     Examples:
         .. code-block:: python
-           
-            import paddle.fluid as fluid
+
+            import paddle
             def reader():
                 for i in range(10):
                     yield i
-            batch_reader = fluid.io.batch(reader, batch_size=2)
-            
+            batch_reader = paddle.batch(reader, batch_size=2)
+
             for data in batch_reader():
                 print(data)
 
@@ -60,7 +60,7 @@ def batch(reader, batch_size, drop_last=False):
             if len(b) == batch_size:
                 yield b
                 b = []
-        if drop_last == False and len(b) != 0:
+        if drop_last is False and len(b) != 0:
             yield b
 
     # Batch size check

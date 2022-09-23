@@ -1,25 +1,50 @@
+add_subdirectory(auto_parallel)
+add_subdirectory(collective)
+add_subdirectory(store)
+if(WITH_PYTHON)
+  py_proto_compile(ps_py_proto SRCS the_one_ps.proto)
+  add_custom_target(
+    ps_py_proto_init ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
+  add_dependencies(ps_py_proto ps_py_proto_init)
+  if(NOT WIN32)
+    add_custom_command(
+      TARGET ps_py_proto
+      POST_BUILD
+      COMMAND mv the_one_ps_pb2.py
+              ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/)
+  else()
+    string(
+      REPLACE "/" "\\" fleet_proto_dstpath
+              "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
+    add_custom_command(
+      TARGET ps_py_proto
+      POST_BUILD
+      COMMAND copy /Y the_one_ps_pb2.py ${fleet_proto_dstpath}
+      COMMENT
+        "Copy generated python the_one_ps_pb2 into directory ${fleet_proto_dstpath}."
+    )
+  endif()
+endif()
+
 if(NOT WITH_PSCORE)
-    return()
+  add_subdirectory(fleet_executor)
+  return()
 endif()
 
-proto_library(ps_framework_proto SRCS ps.proto)
+proto_library(ps_framework_proto SRCS the_one_ps.proto)
 
-set(DISTRIBUTE_COMPILE_FLAGS "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
+set(DISTRIBUTE_COMPILE_FLAGS
+    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+)
 
-if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-    set(DISTRIBUTE_COMPILE_FLAGS
-            "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+  set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 endif()
 
-add_subdirectory(table)
-add_subdirectory(service)
+add_subdirectory(common)
+add_subdirectory(ps)
 add_subdirectory(test)
-
-get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
-
-set_source_files_properties(fleet.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_library(fleet
-        SRCS fleet.cc
-        DEPS framework_proto ps_framework_proto ps_service variable_helper scope op_registry fs shell ${RPC_DEPS})
-
-target_link_libraries(fleet z)
+add_subdirectory(index_dataset)
+add_subdirectory(fleet_executor)

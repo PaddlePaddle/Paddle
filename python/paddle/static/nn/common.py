@@ -15,7 +15,7 @@
 import paddle
 from paddle.fluid.framework import static_only
 
-__all__ = ['fc', 'deform_conv2d']
+__all__ = []
 
 
 @static_only
@@ -88,7 +88,7 @@ def fc(x,
         out.shape = (1, 2)
 
     Args:
-        x (Tensor|list of Tensor): A tensor or a list of tensor. The number of dimensions
+        x (Tensor|list[Tensor]|tuple[Tensor]): A tensor or a list/tuple of tensors. The number of dimensions
             of each tensor is at least 2. The data type should be float16, float32 or float64.
         size (int): The number of output units in this layer, which also means the feature
             size of output tensor.
@@ -106,12 +106,13 @@ def fc(x,
         weight_attr (ParamAttr, optional): The attribute for the learnable weight.
             The default value is None, and the weight will be initialized to zero.
             For detailed information, please refer to :attr:`paddle.ParamAttr`.
-        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias. 
+            Warning, if x is a list of tensor, weight_attr should also be a list of same length.
+        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias.
             If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
             to :attr:`paddle.ParamAttr`. The default value is None and the bias will be
-            initialized to zero. 
+            initialized to zero.
         activation (str, optional): Activation to be applied to the output of
             this layer, such as tanh, softmax, sigmoid, relu. For more information,
             please refer to :ref:`api_guide_activations_en` . Default: None.
@@ -120,9 +121,6 @@ def fc(x,
 
     Returns:
         Tensor, its shape is :math:`[batch\_size, *, size]` , and the data type is same with input.
-
-    Raises:
-        ValueError: If dimensions of the input tensor is less than 2.
 
     Examples:
         .. code-block:: python
@@ -234,16 +232,16 @@ def deform_conv2d(x,
             deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
-        filter_size (int|tuple): The filter size. If filter_size is a tuple,
+        filter_size (int|list|tuple): The filter size. If filter_size is a list/tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
-        stride (int|tuple, Optional): The stride size. If stride is a tuple, it must
+        stride (int|list|tuple, Optional): The stride size. If stride is a list/tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|tuple, Optional): The padding size. If padding is a tuple, it must
+        padding (int|list|tuple, Optional): The padding size. If padding is a list/tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|tuple, Optional): The dilation size. If dilation is a tuple, it must
+        dilation (int|list|tuple, Optional): The dilation size. If dilation is a list/tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: dilation = 1.
         groups (int, Optional): The groups number of the deformable conv layer. According to
@@ -274,9 +272,7 @@ def deform_conv2d(x,
     Returns:
         Tensor: The tensor storing the deformable convolution \
                   result. A Tensor with type float32, float64.
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
+
     Examples:
         .. code-block:: python
 

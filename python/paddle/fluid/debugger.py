@@ -68,31 +68,30 @@ def repr_lodtensor(proto):
 
     level = proto.type.lod_tensor.lod_level
     reprs = repr_tensor(proto.type.lod_tensor.tensor)
-    return reprtpl.format(
-        ttype="LoDTensor" if level > 0 else "Tensor",
-        name=proto.name,
-        reprs="level=%d, %s" % (level, reprs) if level > 0 else reprs)
+    return reprtpl.format(ttype="LoDTensor" if level > 0 else "Tensor",
+                          name=proto.name,
+                          reprs="level=%d, %s" %
+                          (level, reprs) if level > 0 else reprs)
 
 
 def repr_selected_rows(proto):
     if proto.type.type != framework_pb2.VarType.SELECTED_ROWS:
         return
 
-    return reprtpl.format(
-        ttype="SelectedRows",
-        name=proto.name,
-        reprs=repr_tensor(proto.type.selected_rows))
+    return reprtpl.format(ttype="SelectedRows",
+                          name=proto.name,
+                          reprs=repr_tensor(proto.type.selected_rows))
 
 
 def repr_tensor_array(proto):
     if proto.type.type != framework_pb2.VarType.LOD_TENSOR_ARRAY:
         return
 
-    return reprtpl.format(
-        ttype="TensorArray",
-        name=proto.name,
-        reprs="level=%d, %s" % (proto.type.tensor_array.lod_level,
-                                repr_tensor(proto.type.lod_tensor.tensor)))
+    return reprtpl.format(ttype="TensorArray",
+                          name=proto.name,
+                          reprs="level=%d, %s" %
+                          (proto.type.tensor_array.lod_level,
+                           repr_tensor(proto.type.lod_tensor.tensor)))
 
 
 type_handlers = [
@@ -119,6 +118,7 @@ def pprint_program_codes(program_desc):
 
 
 def pprint_block_codes(block_desc, show_backward=False):
+
     def is_op_backward(op_desc):
         if op_desc.type.endswith('_grad'): return True
 
@@ -155,7 +155,8 @@ def pprint_block_codes(block_desc, show_backward=False):
         idx=block_desc.idx,
         pidx=block_desc.parent_idx,
         vars='\n'.join(var_reprs),
-        ops='\n'.join(op_reprs), )
+        ops='\n'.join(op_reprs),
+    )
 
 
 def repr_attr(desc):
@@ -187,7 +188,9 @@ def _repr_op_fill_constant(optype, inputs, outputs, attrs):
             shape=str(attrs['shape']))
 
 
-op_repr_handlers = [_repr_op_fill_constant, ]
+op_repr_handlers = [
+    _repr_op_fill_constant,
+]
 
 
 def repr_op(opdesc):
@@ -218,12 +221,11 @@ def repr_op(opdesc):
         res = handler(opdesc.type, inputs, outputs, attr_dict)
         if res: return res
 
-    return tpl.format(
-        outputs=', '.join(outputs),
-        optype=opdesc.type,
-        inputs=', '.join(inputs),
-        attrs="{%s}" % ','.join(attrs),
-        is_target=", is_target" if is_target else "")
+    return tpl.format(outputs=', '.join(outputs),
+                      optype=opdesc.type,
+                      inputs=', '.join(inputs),
+                      attrs="{%s}" % ','.join(attrs),
+                      is_target=", is_target" if is_target else "")
 
 
 def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
@@ -251,10 +253,9 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
         # TODO(gongwb): format the var.type
         # create var
         if var.persistable:
-            varn = graph.add_param(
-                var.name,
-                str(var.type).replace("\n", "<br />", 1),
-                highlight=need_highlight(var.name))
+            varn = graph.add_param(var.name,
+                                   str(var.type).replace("\n", "<br />", 1),
+                                   highlight=need_highlight(var.name))
         else:
             varn = graph.add_arg(var.name, highlight=need_highlight(var.name))
         vars[var.name] = varn
@@ -280,88 +281,3 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
             add_op_link_var(opn, var, True)
 
     graph(path, show=False)
-
-
-def prepare_fast_nan_inf_debug(_program):
-    """
-    Given a program to run, insert a (reduce) sum op for every var in that program.
-    Instead of checking all vars originally defined in the program,
-    only those inserted ops will be checked in the c++ end, to detect if it contains NAN or INF.
-    Thereforce, the speed of nan/inf checking could be improved.
-    Please set ``FLAGS_fast_check_nan_inf" to open the fast nan/inf feature.
-    """
-
-    helper = LayerHelper('reduce_sum', **locals())
-
-    if _program is None:
-        _program = default_main_program()
-
-    for _block in _program.blocks:
-        # fetch vars in the current block
-        _vars_in_prog = []
-        for _var_name in _block.vars:
-            _vars_in_prog.append((_var_name, _block.vars[_var_name]))
-
-        # append sum_op in the current block
-        for _var_name, _var in _vars_in_prog:
-
-            try:
-
-                if _var.dtype == -1:
-                    continue
-
-                ## create a var for holding sum output
-                _output_var = _block.create_var(
-                    name=unique_name.generate("debug_var_" + _var_name),
-                    dtype=_var.dtype,
-                    type=core.VarDesc.VarType.LOD_TENSOR,
-                    persistable=False,
-                    stop_gradient=True)
-
-                ## create a sum op, input each existing var in the block
-                _block.append_op(
-                    type='sum',
-                    outputs={'Out': _output_var},
-                    inputs={'X': [_var]})
-            except Exception as e:
-                pass
-
-
-def run_fast_nan_inf_debug(executor,
-                           program=None,
-                           feed=None,
-                           fetch_list=None,
-                           feed_var_name='feed',
-                           fetch_var_name='fetch',
-                           scope=None,
-                           return_numpy=True,
-                           use_program_cache=False,
-                           dump_core=True):
-    """
-    Run a program by the given executor. Catch the exception of NAN and INF, and save persistables into the dumped core.
-    """
-
-    assert (executor is not None)
-
-    try:
-        output = executor.run(program=program,
-                              feed=feed,
-                              fetch_list=fetch_list,
-                              feed_var_name=feed_var_name,
-                              fetch_var_name=fetch_var_name,
-                              scope=scope,
-                              return_numpy=return_numpy,
-                              use_program_cache=use_program_cache)
-
-        return output
-
-    except Exception as e:
-
-        print("catch an exception:")
-        print(e)
-
-        core_filename = "core" + str(int(random.random() * 10000)) + ".pdckpt"
-        io.save_persistables(
-            executor, "./", main_program=program, filename=core_filename)
-
-        print("dumping a core into ./%s" % core_filename)

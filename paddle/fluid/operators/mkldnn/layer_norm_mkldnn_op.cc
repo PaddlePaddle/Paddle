@@ -12,63 +12,54 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/layer_norm_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
 class LayerNormMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::layer_normalization_forward> {
+    : public platform::
+          MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
  public:
-  LayerNormMKLDNNHandler(const std::vector<int64_t>& dims, const float& epsilon,
+  LayerNormMKLDNNHandler(const std::vector<int64_t>& dims,
+                         const float& epsilon,
                          const dnnl::normalization_flags& flags,
-                         const bool& is_test, const MKLDNNMemoryFormat fmt,
-                         const platform::MKLDNNDeviceContext& dev_ctx,
-                         platform::Place cpu_place,
-                         const std::string& uniq_name)
-      : platform::MKLDNNHandlerT<T, dnnl::layer_normalization_forward>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, dims, uniq_name)) {
-    if (!this->isCached()) {
-      auto md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
-      if (!is_test) {
-        // TODO(grygielski) Delete forcing stats_md after DNNL 1.2 is introduced
-        auto stats_md = dnnl::memory::desc(
-            {begin(dims), end(dims) - 1}, platform::MKLDNNGetDataType<float>(),
-            platform::MKLDNNFormatForSize(dims.size() - 1,
-                                          MKLDNNMemoryFormat::nchw));
-        this->AcquireForwardPrimitiveDescriptor(
-            dnnl::prop_kind::forward_training, md, stats_md, epsilon, flags);
-      } else {
-        this->AcquireForwardPrimitiveDescriptor(
-            dnnl::prop_kind::forward_inference, md, epsilon, flags);
-      }
-    }
+                         const bool& is_test,
+                         const Tensor* x,
+                         const dnnl::engine engine,
+                         platform::Place cpu_place)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
+            engine, cpu_place) {
+    const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
+                                       : dnnl::prop_kind::forward_training;
+    this->AcquireForwardPrimitiveDescriptor(
+        fwd_prop_kind, x->mem_desc(), epsilon, flags);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory() {
-    return this->AcquireMemoryFromPrimitive("@scaleshift_mem_p");
-  }
+  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor* scale,
+                                                        const Tensor* shift) {
+    // OneDNN requires a single piece of memory for scale and shift data
+    const unsigned int C = phi::vectorize(scale->dims())[0];
 
-  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
-      std::vector<float>& scaleshift_data) {
-    // scaleshift_data comes from temporary buffer so we need to copy it into
-    // created memory primitivie
-    auto scaleshift_mem = this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->weights_desc(), "@scaleshift_mem_p");
-    auto data_ptr = scaleshift_mem->get_data_handle();
-    std::size_t num_bytes = scaleshift_data.size() * sizeof(float);
-    std::memcpy(data_ptr, scaleshift_data.data(), num_bytes);
-    return scaleshift_mem;
+    auto scaleshift_memory =
+        this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
+
+    auto mem_data_handle =
+        reinterpret_cast<float*>(scaleshift_memory->get_data_handle());
+    std::copy(scale->data<float>(), scale->data<float>() + C, mem_data_handle);
+    std::copy(
+        shift->data<float>(), shift->data<float>() + C, mem_data_handle + C);
+    return scaleshift_memory;
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(framework::Tensor* mean) {
     T* mean_data = mean->mutable_data<T>(this->place_,
                                          this->fwd_pd_->mean_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
-                                            mean_data, "@mean_mem_p");
+                                            mean_data);
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
@@ -76,7 +67,7 @@ class LayerNormMKLDNNHandler
     T* variance_data = variance->mutable_data<T>(
         this->place_, this->fwd_pd_->variance_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
-                                            variance_data, "@variance_mem_p");
+                                            variance_data);
   }
 };
 
@@ -87,7 +78,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* x = ctx.Input<Tensor>("X");
     auto* scale = ctx.Input<Tensor>("Scale");
     auto* bias = ctx.Input<Tensor>("Bias");
-    auto* y = ctx.Output<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>("Y");
 
     const float epsilon = ctx.Attr<float>("epsilon");
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
@@ -95,15 +86,16 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto src_tz = paddle::framework::vectorize(x->dims());
-    PADDLE_ENFORCE_EQ(begin_norm_axis, (src_tz.size() - 1),
+    auto src_tz = phi::vectorize(x->dims());
+    PADDLE_ENFORCE_EQ(begin_norm_axis,
+                      (src_tz.size() - 1),
                       platform::errors::InvalidArgument(
                           "MKL-DNN Layer Norm supports only last logical "
                           "axis:%d as begin_norm_axis.",
                           (src_tz.size() - 1)));
 
-    y->mutable_data<T>(ctx.GetPlace());
     const bool with_scaleshift = (scale && bias);
     dnnl::normalization_flags flags{};
 
@@ -111,26 +103,21 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       flags |= dnnl::normalization_flags::use_scale_shift;
     }
 
-    LayerNormMKLDNNHandler<T> handler(src_tz, epsilon, flags, is_test,
-                                      x->format(), dev_ctx, ctx.GetPlace(),
-                                      ctx.OutputName("Y"));
+    LayerNormMKLDNNHandler<T> handler(
+        src_tz, epsilon, flags, is_test, x, mkldnn_engine, ctx.GetPlace());
 
     auto src_memory = handler.AcquireSrcMemory(x);
-    auto dst_memory = handler.AcquireDstMemory(y);
+    auto dst_memory = handler.AcquireDstMemory(out);
 
     auto layer_norm_p = handler.AcquireForwardPrimitive();
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    std::unordered_map<int, dnnl::memory> args;
-
-    args.insert({DNNL_ARG_SRC, *src_memory});
-    args.insert({DNNL_ARG_DST, *dst_memory});
+    std::unordered_map<int, dnnl::memory> args = {{DNNL_ARG_SRC, *src_memory},
+                                                  {DNNL_ARG_DST, *dst_memory}};
 
     if (!is_test) {
       auto* mean = ctx.Output<Tensor>("Mean");
       auto* var = ctx.Output<Tensor>("Variance");
-      mean->mutable_data<T>(ctx.GetPlace());
-      var->mutable_data<T>(ctx.GetPlace());
 
       auto mean_memory = handler.AcquireMeanMemory(mean);
       auto variance_memory = handler.AcquireVarianceMemory(var);
@@ -139,32 +126,16 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       args.insert({DNNL_ARG_VARIANCE, *variance_memory});
     }
 
-    auto scaleshift_memory = handler.AcquireScaleShiftMemory();
     if (with_scaleshift) {
-      if (scaleshift_memory == nullptr || !is_test) {
-        auto scale_tz = paddle::framework::vectorize(scale->dims());
-        const unsigned int C = scale_tz[0];
-
-        // MKLDNN requires a single piece of memory for scale and shift/bias
-        // data
-        std::vector<float> scaleshift_data;
-        scaleshift_data.reserve(2 * C);
-        scaleshift_data.insert(scaleshift_data.begin(), scale->data<float>(),
-                               scale->data<float>() + C);
-
-        scaleshift_data.insert(scaleshift_data.end(), bias->data<float>(),
-                               bias->data<float>() + C);
-
-        scaleshift_memory = handler.AcquireScaleShiftMemory(scaleshift_data);
-      }
+      std::shared_ptr<dnnl::memory> scaleshift_memory =
+          handler.AcquireScaleShiftMemory(scale, bias);
       args.insert({DNNL_ARG_SCALE_SHIFT, *scaleshift_memory});
     }
 
     layer_norm_p->execute(astream, args);
     astream.wait();
 
-    y->set_layout(DataLayout::kMKLDNN);
-    y->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    out->set_mem_desc(dst_memory->get_desc());
   }
 };
 
@@ -173,5 +144,8 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
 // TODO(jczaja): Enable FP32 when performance is good
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(layer_norm, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(layer_norm,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::LayerNormMKLDNNOpKernel<float>,
                    ops::LayerNormMKLDNNOpKernel<paddle::platform::bfloat16>);

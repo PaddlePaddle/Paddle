@@ -26,18 +26,27 @@ namespace dynload {
 #endif
 
 void* GetCublasDsoHandle();
+void* GetCublasLtDsoHandle();
 void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
+void* GetNvjpegDsoHandle();
 void* GetCusolverDsoHandle();
+void* GetCusparseDsoHandle();
 void* GetNVRTCDsoHandle();
 void* GetCUDADsoHandle();
 void* GetWarpCTCDsoHandle();
 void* GetNCCLDsoHandle();
+void* GetHCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
+void* GetLAPACKDsoHandle();
 void* GetOpDsoHandle(const std::string& dso_name);
 void* GetNvtxDsoHandle();
+void* GetCUFFTDsoHandle();
+void* GetMKLRTDsoHandle();
+void* GetROCFFTDsoHandle();
+void* GetCusparseLtDsoHandle();
 
 void SetPaddleLibPath(const std::string&);
 }  // namespace dynload

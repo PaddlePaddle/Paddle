@@ -20,27 +20,37 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from op_test import OpTest
+import os
 import random
 
 
-class TestShuffleBatchOp(OpTest):
+class TestShuffleBatchOpBase(OpTest):
+
+    def gen_random_array(self, shape, low=0, high=1):
+        rnd = (high - low) * np.random.random(shape) + low
+        return rnd.astype(self.dtype)
+
+    def get_shape(self):
+        return (10, 10, 5)
+
+    def _get_places(self):
+        # NOTE: shuffle_batch is not supported on Windows
+        if os.name == 'nt':
+            return [fluid.CPUPlace()]
+        return super(TestShuffleBatchOpBase, self)._get_places()
+
     def setUp(self):
         self.op_type = 'shuffle_batch'
         self.dtype = np.float64
-        x = np.array(
-            [np.arange(100), np.arange(100)]).astype(self.dtype).reshape(
-                [2, 100])
-        out = np.array(
-            [np.arange(100), np.arange(100)]).astype(self.dtype).reshape(
-                [2, 100])
-        self.possible_res = [
-            np.array([np.arange(100), np.arange(100)]).astype(self.dtype),
-        ]
-        self.inputs = {'X': x, 'Seed': np.array([1]).astype('int64')}
+        self.shape = self.get_shape()
+        x = self.gen_random_array(self.shape)
+        seed = np.random.random_integers(low=10, high=100,
+                                         size=(1, )).astype('int64')
+        self.inputs = {'X': x, 'Seed': seed}
         self.outputs = {
-            'Out': out,
-            'ShuffleIdx': np.array([1, 0]).astype('int64'),
-            'SeedOut': np.array([1]).astype('int64')
+            'Out': np.array([]).astype(x.dtype),
+            'ShuffleIdx': np.array([]).astype('int64'),
+            'SeedOut': np.array([]).astype(seed.dtype),
         }
         self.attrs = {'startup_seed': 1}
 
@@ -48,15 +58,33 @@ class TestShuffleBatchOp(OpTest):
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
-        for elem in outs:
-            if elem.shape == self.outputs['Out'].shape:
-                out = elem
+        x = np.copy(self.inputs['X'])
+        y = None
+        for out in outs:
+            if out.shape == x.shape:
+                y = np.copy(out)
                 break
-        is_equal = [np.all(out == res) for res in self.possible_res]
-        self.assertIn(True, is_equal)
+
+        assert y is not None
+        sort_x = self.sort_array(x)
+        sort_y = self.sort_array(y)
+        np.testing.assert_array_equal(sort_x, sort_y)
+
+    def sort_array(self, array):
+        shape = array.shape
+        new_shape = [-1, shape[-1]]
+        arr_list = np.reshape(array, new_shape).tolist()
+        arr_list.sort(key=lambda x: x[0])
+        return np.reshape(np.array(arr_list), shape)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestShuffleBatchOp2(TestShuffleBatchOpBase):
+
+    def get_shape(self):
+        return (4, 30)
 
 
 if __name__ == '__main__':

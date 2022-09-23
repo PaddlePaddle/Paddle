@@ -14,88 +14,88 @@
 
 # TODO: define activation functions of neural network
 
-from . import activation
-from . import loss
-from . import conv
-from . import activation
-from . import norm
-from . import rnn
-from . import vision
-from . import distance
-from . import transformer
+from . import rnn  # noqa: F401
+from . import transformer  # noqa: F401
+from . import container  # noqa: F401
 
-from .activation import *
-from .loss import *
-from .conv import *
-from .activation import *
-from .norm import *
-from .rnn import *
-from .vision import *
+from .activation import CELU  # noqa: F401
+from .activation import PReLU  # noqa: F401
+from .activation import ReLU  # noqa: F401
+from .activation import ReLU6  # noqa: F401
+from .activation import LeakyReLU  # noqa: F401
+from .activation import Sigmoid  # noqa: F401
+from .activation import Softmax  # noqa: F401
+from .activation import LogSoftmax  # noqa: F401
+from .activation import RReLU  # noqa: F401
+from .activation import Softmax2D  # noqa: F401
+from .common import Bilinear  # noqa: F401
+from .common import Pad1D  # noqa: F401
+from .common import Pad2D  # noqa: F401
+from .common import ZeroPad2D  # noqa: F401
+from .common import Pad3D  # noqa: F401
+from .common import CosineSimilarity  # noqa: F401
+from .common import Embedding  # noqa: F401
+from .common import Linear  # noqa: F401
+from .common import Identity  # noqa: F401
+from .common import Flatten  # noqa: F401
+from .common import Upsample  # noqa: F401
+from .common import Dropout  # noqa: F401
+from .common import Dropout2D  # noqa: F401
+from .common import Dropout3D  # noqa: F401
+from .common import AlphaDropout  # noqa: F401
+from .common import Upsample  # noqa: F401
+from .common import UpsamplingBilinear2D  # noqa: F401
+from .common import UpsamplingNearest2D  # noqa: F401
+from .common import Fold
+from .pooling import AvgPool1D  # noqa: F401
+from .pooling import AvgPool2D  # noqa: F401
+from .pooling import AvgPool3D  # noqa: F401
+from .pooling import MaxPool1D  # noqa: F401
+from .pooling import MaxPool2D  # noqa: F401
+from .pooling import MaxPool3D  # noqa: F401
+from .pooling import AdaptiveAvgPool1D  # noqa: F401
+from .pooling import AdaptiveAvgPool2D  # noqa: F401
+from .pooling import AdaptiveAvgPool3D  # noqa: F401
+from .pooling import AdaptiveMaxPool1D  # noqa: F401
+from .pooling import AdaptiveMaxPool2D  # noqa: F401
+from .pooling import AdaptiveMaxPool3D  # noqa: F401
+from .pooling import MaxUnPool1D  # noqa: F401
+from .pooling import MaxUnPool2D  # noqa: F401
+from .pooling import MaxUnPool3D  # noqa: F401
+from .conv import Conv1D  # noqa: F401
+from .conv import Conv2D  # noqa: F401
+from .conv import Conv3D  # noqa: F401
+from .conv import Conv1DTranspose  # noqa: F401
+from .conv import Conv2DTranspose  # noqa: F401
+from .conv import Conv3DTranspose  # noqa: F401
+from .loss import BCEWithLogitsLoss  # noqa: F401
+from .loss import CrossEntropyLoss  # noqa: F401
+from .loss import MSELoss  # noqa: F401
+from .loss import L1Loss  # noqa: F401
+from .loss import NLLLoss  # noqa: F401
+from .loss import BCELoss  # noqa: F401
+from .loss import KLDivLoss  # noqa: F401
+from .loss import MarginRankingLoss  # noqa: F401
+from .loss import MultiLabelSoftMarginLoss
+from .loss import CTCLoss  # noqa: F401
+from .loss import SmoothL1Loss  # noqa: F401
+from .loss import HingeEmbeddingLoss  # noqa: F401
+from .loss import TripletMarginWithDistanceLoss
+from .loss import TripletMarginLoss
+from .loss import SoftMarginLoss
+from .norm import BatchNorm1D  # noqa: F401
+from .norm import BatchNorm2D  # noqa: F401
+from .norm import BatchNorm3D  # noqa: F401
+from .norm import SyncBatchNorm  # noqa: F401
+from .norm import GroupNorm  # noqa: F401
+from .norm import LayerNorm  # noqa: F401
+from .norm import SpectralNorm  # noqa: F401
+from .norm import LocalResponseNorm  # noqa: F401
 
-from .transformer import *
-from .activation import PReLU  #DEFINE_ALIAS
-from .activation import ReLU  #DEFINE_ALIAS
-from .activation import LeakyReLU  #DEFINE_ALIAS
-from .activation import Sigmoid  #DEFINE_ALIAS
-from .activation import Softmax  #DEFINE_ALIAS
-from .activation import LogSoftmax  #DEFINE_ALIAS
-from .common import Bilinear  #DEFINE_ALIAS
-from .common import Pad1D  #DEFINE_ALIAS
-from .common import Pad2D  #DEFINE_ALIAS
-from .common import Pad3D  #DEFINE_ALIAS
-from .common import CosineSimilarity  #DEFINE_ALIAS
-from .common import Embedding  #DEFINE_ALIAS
-from .common import Linear  #DEFINE_ALIAS
-from .common import Flatten  #DEFINE_ALIAS
-from .common import Upsample  #DEFINE_ALIAS
-from .common import Dropout  #DEFINE_ALIAS
-from .common import Dropout2D  #DEFINE_ALIAS
-from .common import Dropout3D  #DEFINE_ALIAS
-from .common import AlphaDropout  #DEFINE_ALIAS
-from .common import Upsample  #DEFINE_ALIAS
-from .common import UpsamplingBilinear2D  #DEFINE_ALIAS
-from .common import UpsamplingNearest2D  #DEFINE_ALIAS
-from .pooling import AvgPool1D  #DEFINE_ALIAS
-from .pooling import AvgPool2D  #DEFINE_ALIAS
-from .pooling import AvgPool3D  #DEFINE_ALIAS
-from .pooling import MaxPool1D  #DEFINE_ALIAS
-from .pooling import MaxPool2D  #DEFINE_ALIAS
-from .pooling import MaxPool3D  #DEFINE_ALIAS
-from .pooling import AdaptiveAvgPool1D  #DEFINE_ALIAS
-from .pooling import AdaptiveAvgPool2D  #DEFINE_ALIAS
-from .pooling import AdaptiveAvgPool3D  #DEFINE_ALIAS
-from .pooling import AdaptiveMaxPool1D  #DEFINE_ALIAS
-from .pooling import AdaptiveMaxPool2D  #DEFINE_ALIAS
-from .pooling import AdaptiveMaxPool3D  #DEFINE_ALIAS
-from .conv import Conv1D  #DEFINE_ALIAS
-from .conv import Conv2D  #DEFINE_ALIAS
-from .conv import Conv3D  #DEFINE_ALIAS
-from .conv import Conv1DTranspose  #DEFINE_ALIAS
-from .conv import Conv2DTranspose  #DEFINE_ALIAS
-from .conv import Conv3DTranspose  #DEFINE_ALIAS
-# from .conv import TreeConv        #DEFINE_ALIAS
-# from .conv import Conv1D        #DEFINE_ALIAS
-# from .loss import NCELoss        #DEFINE_ALIAS
-from .loss import BCEWithLogitsLoss  #DEFINE_ALIAS
-from .loss import CrossEntropyLoss  #DEFINE_ALIAS
-from .loss import MSELoss  #DEFINE_ALIAS
-from .loss import L1Loss  #DEFINE_ALIAS
-from .loss import NLLLoss  #DEFINE_ALIAS
-from .loss import BCELoss  #DEFINE_ALIAS
-from .loss import KLDivLoss  #DEFINE_ALIAS
-from .loss import MarginRankingLoss  #DEFINE_ALIAS
-from .loss import CTCLoss  #DEFINE_ALIAS
-from .loss import SmoothL1Loss  #DEFINE_ALIAS
-from .norm import BatchNorm  #DEFINE_ALIAS
-from .norm import SyncBatchNorm  #DEFINE_ALIAS
-from .norm import GroupNorm  #DEFINE_ALIAS
-from .norm import LayerNorm  #DEFINE_ALIAS
-from .norm import SpectralNorm  #DEFINE_ALIAS
-#from .norm import InstanceNorm  #DEFINE_ALIAS
-from .norm import LocalResponseNorm  #DEFINE_ALIAS
-# from .rnn import RNNCell        #DEFINE_ALIAS
-# from .rnn import GRUCell        #DEFINE_ALIAS
-# from .rnn import LSTMCell        #DEFINE_ALIAS
+from .vision import PixelShuffle  # noqa: F401
+from .vision import PixelUnshuffle  # noqa: F401
+from .vision import ChannelShuffle  # noqa: F401
+from .distance import PairwiseDistance  # noqa: F401
+from .container import LayerDict  # noqa: F401
 
-from .vision import PixelShuffle  #DEFINE_ALIAS
-from .distance import PairwiseDistance  #DEFINE_ALIAS
+__all__ = []

@@ -18,9 +18,13 @@ from paddle.fluid import compiler
 from .meta_optimizer_base import MetaOptimizerBase
 from ..base.private_helper_function import wait_server_ready
 import logging
+from paddle.static import BuildStrategy
+
+__all__ = []
 
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(GraphExecutionOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -39,7 +43,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             # update me. currently, if parameter server is used
             # graph execution optimizer can not be applied
             return False
-        return True
+        return not self.user_defined_strategy.without_graph_optimization
 
     def backward(self,
                  loss,
@@ -61,8 +65,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         trainer_endpoints_env = ",".join(trainer_endpoints)
         trainers_num = self.role_maker._worker_num()
 
-        if trainer_id == 0:
+        # NOTE(wangxi): npu don't need to wait server ready
+        if trainer_id == 0 and not paddle.is_compiled_with_npu():
             wait_server_ready(other_trainers)
+
+        if build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy._NoReduce:
+            return
 
         if core.is_compiled_with_cuda():
             comm_id_var = startup_program.global_block().create_var(
@@ -90,9 +98,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 inputs={},
                 outputs={"NCCLID": comm_id_var},
                 attrs={
-                    "trainers": trainer_endpoints,
-                    "trainer_id": trainer_id,
-                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "trainers":
+                    trainer_endpoints,
+                    "trainer_id":
+                    trainer_id,
+                    "nccl_comm_num":
+                    build_strategy.nccl_comm_num,
                     "use_hierarchical_allreduce":
                     build_strategy.use_hierarchical_allreduce,
                     "hierarchical_allreduce_inter_ranks":
@@ -116,9 +127,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 inputs={},
                 outputs={"BKCLID": comm_id_var},
                 attrs={
-                    "trainers": trainer_endpoints,
-                    "trainer_id": trainer_id,
-                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "trainers":
+                    trainer_endpoints,
+                    "trainer_id":
+                    trainer_id,
+                    "nccl_comm_num":
+                    build_strategy.nccl_comm_num,
                     "use_hierarchical_allreduce":
                     build_strategy.use_hierarchical_allreduce,
                     "hierarchical_allreduce_inter_ranks":
@@ -143,6 +157,17 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             dist_strategy.fuse_all_reduce_ops
         local_build_strategy.nccl_comm_num = \
             dist_strategy.nccl_comm_num
+
+        gradient_scale_configs = self.user_defined_strategy.gradient_scale_configs
+        scale_strategys = {
+            'avg': BuildStrategy.GradientScaleStrategy.CoeffNumDevice,
+            'sum': BuildStrategy.GradientScaleStrategy.One,
+            'customized': BuildStrategy.GradientScaleStrategy.Customized,
+        }
+        assert gradient_scale_configs['scale_strategy'] in scale_strategys, \
+            "gradient_scale_configs.scale_strategy must be 'avg', 'sum' or 'customized'"
+        local_build_strategy.gradient_scale_strategy = \
+            scale_strategys[gradient_scale_configs['scale_strategy']]
 
         if self.user_defined_strategy.recompute == True:
             logging.warn(

@@ -25,7 +25,8 @@ from .post_training_quantization import *
 from . import imperative
 from .imperative import *
 
-__all__ = quantization_pass.__all__
+__all__ = []
+__all__ += quantization_pass.__all__
 __all__ += quant_int8_mkldnn_pass.__all__
 __all__ += quant2_int8_mkldnn_pass.__all__
 __all__ += post_training_quantization.__all__

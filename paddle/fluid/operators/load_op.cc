@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/operators/load_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -65,10 +65,3 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(load, ops::LoadOp, ops::LoadOpProtoMaker);
-
-REGISTER_OP_CPU_KERNEL(
-    load, ops::LoadOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

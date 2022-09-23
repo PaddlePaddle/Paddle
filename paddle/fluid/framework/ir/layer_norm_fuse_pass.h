@@ -70,6 +70,7 @@ namespace ir {
  */
 class LayerNormFusePass : public FusePassBase {
  public:
+  LayerNormFusePass();
   virtual ~LayerNormFusePass() {}
 
  protected:

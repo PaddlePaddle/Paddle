@@ -23,12 +23,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 /*
-* Fuse the Conv and Elementwise_add to a ConvBiasOp.
-*/
+ * Fuse the Conv and Elementwise_add to a ConvBiasOp.
+ */
 class Graph;
 
 class ConvBiasFusePass : public FusePassBase {
  public:
+  ConvBiasFusePass();
   virtual ~ConvBiasFusePass() {}
   virtual std::string type() const { return "conv2d"; }
 
@@ -37,15 +38,17 @@ class ConvBiasFusePass : public FusePassBase {
   const std::string name_scope_{"conv_bias_mkldnn_fuse"};
 };
 /*
-* Fuse the Conv3D and Elementwise_add to a Conv3DBiasOp.
-*/
+ * Fuse the Conv3D and Elementwise_add to a Conv3DBiasOp.
+ */
 class Conv2DTransposeBiasFusePass : public ConvBiasFusePass {
  public:
+  Conv2DTransposeBiasFusePass();
   std::string type() const override { return "conv2d_transpose"; }
 };
 
 class Conv3DBiasFusePass : public ConvBiasFusePass {
  public:
+  Conv3DBiasFusePass();
   std::string type() const override { return "conv3d"; }
 };
 }  // namespace ir

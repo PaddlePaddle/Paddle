@@ -1,0 +1,4 @@
+cc_library(
+  accumulation_node
+  SRCS accumulation_node.cc
+  DEPS gradient_accumulator phi_api grad_node_info)

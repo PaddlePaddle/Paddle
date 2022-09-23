@@ -14,11 +14,19 @@
 
 from ..meta_optimizers import *
 
+__all__ = []
+
 meta_optimizer_names = list(
     filter(lambda name: name.endswith("Optimizer"), dir()))
 
+# Because HybridParallelOptimizer is dygraph optimizer, it
+# should be removed
+meta_optimizer_names.remove("HybridParallelOptimizer")
+meta_optimizer_names.remove("HeterParallelOptimizer")
+
 
 class MetaOptimizerFactory(object):
+
     def __init__(self):
         pass
 

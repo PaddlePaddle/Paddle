@@ -21,7 +21,7 @@ import paddle
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ["UCIHousing"]
+__all__ = []
 
 URL = 'http://paddlemodels.bj.bcebos.com/uci_housing/housing.data'
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
@@ -47,7 +47,7 @@ class UCIHousing(Dataset):
         Dataset: instance of UCI housing dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
             import paddle
@@ -94,8 +94,8 @@ class UCIHousing(Dataset):
     def _load_data(self, feature_num=14, ratio=0.8):
         data = np.fromfile(self.data_file, sep=' ')
         data = data.reshape(data.shape[0] // feature_num, feature_num)
-        maximums, minimums, avgs = data.max(axis=0), data.min(axis=0), data.sum(
-            axis=0) / data.shape[0]
+        maximums, minimums, avgs = data.max(axis=0), data.min(
+            axis=0), data.sum(axis=0) / data.shape[0]
         for i in six.moves.range(feature_num - 1):
             data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
         offset = int(data.shape[0] * ratio)

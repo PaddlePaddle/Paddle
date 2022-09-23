@@ -17,7 +17,7 @@
 VERSION=$(nvcc --version | grep release | grep -oEi "release ([0-9]+)\.([0-9])"| sed "s/release //")
 if [ "$VERSION" == "10.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.4.7-ga-cuda10.0_1-1_amd64.deb"
-elif [ "$VERSION" == "10.2" ] || [ "$VERSION" == "10.1" ] || [ "$VERSION" == "11.0" ]; then
+elif [ "$VERSION" == "10.2" ] || [ "$VERSION" == "10.1" ] || [ "$VERSION" == "11.0" ] || [ "$VERSION" == "11.2" ] || [ "$VERSION" == "11.3" ] || [ "$VERSION" == "11.4" ] || [ "$VERSION" == "11.5" ] || [ "$VERSION" == "11.6" ]; then
   if [ -f "/etc/redhat-release" ];then
     rm -f /usr/local/lib/libnccl.so 
     wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-2.7.8-1+cuda10.2.x86_64.rpm

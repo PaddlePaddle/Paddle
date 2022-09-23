@@ -16,14 +16,16 @@
 
 #include <string>
 
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-FetchOpHandle::FetchOpHandle(ir::Node *node, FetchResultType *data,
-                             size_t offset, std::vector<Scope *> *local_scopes,
+FetchOpHandle::FetchOpHandle(ir::Node *node,
+                             FetchResultType *data,
+                             size_t offset,
+                             std::vector<Scope *> *local_scopes,
                              std::vector<Scope *> *local_exec_scopes,
                              bool return_merged)
     : OpHandleBase(node),
@@ -41,9 +43,11 @@ void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 }
 
 static void CheckDims(const framework::DDim &tensor_dims,
-                      const framework::DDim &ele_dims, const size_t offset) {
+                      const framework::DDim &ele_dims,
+                      const size_t offset) {
   PADDLE_ENFORCE_EQ(
-      tensor_dims.size(), ele_dims.size(),
+      tensor_dims.size(),
+      ele_dims.size(),
       platform::errors::Fatal("The dimension sizes of fetched Tensors or "
                               "the items of fetched LoDTensorArray are "
                               "different from each other on different "
@@ -54,7 +58,8 @@ static void CheckDims(const framework::DDim &tensor_dims,
                               offset));
   for (int j = 1; j < tensor_dims.size(); j++) {
     PADDLE_ENFORCE_EQ(
-        tensor_dims[j], ele_dims[j],
+        tensor_dims[j],
+        ele_dims[j],
         platform::errors::Fatal("The dimensions of fetched Tensors or "
                                 "the items of fetched LoDTensorArray are "
                                 "different from each other on different "
@@ -69,22 +74,22 @@ static void CheckDims(const framework::DDim &tensor_dims,
 void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
   if (return_merged_) {
     if (data_is_lod_tensor(tensors_[0])) {
-      const auto &tensor_dims = BOOST_GET_CONST(LoDTensor, tensors_[0]).dims();
+      const auto &tensor_dims = PADDLE_GET_CONST(LoDTensor, tensors_[0]).dims();
       for (size_t i = 1; i < tensors_.size(); i++) {
-        const auto &ele_dims = BOOST_GET_CONST(LoDTensor, tensors_[i]).dims();
+        const auto &ele_dims = PADDLE_GET_CONST(LoDTensor, tensors_[i]).dims();
         CheckDims(tensor_dims, ele_dims, offset_);
       }
       std::vector<const LoDTensor *> tensors_ptr;
       tensors_ptr.reserve(tensors_.size());
       for (auto &t : tensors_) {
-        tensors_ptr.emplace_back(&BOOST_GET_CONST(LoDTensor, t));
+        tensors_ptr.emplace_back(&PADDLE_GET_CONST(LoDTensor, t));
       }
-      auto &val = BOOST_GET(FetchList, *data_);
+      auto &val = PADDLE_GET(FetchList, *data_);
       LoDTensor var;
-      var.MergeLoDTensor(tensors_ptr, platform::CPUPlace());
+      MergeLoDTensor(&var, tensors_ptr, platform::CPUPlace());
       val.at(offset_) = std::move(var);
     } else {
-      auto &array = BOOST_GET_CONST(LoDTensorArray, tensors_[0]);
+      auto &array = PADDLE_GET_CONST(LoDTensorArray, tensors_[0]);
       LoDTensorArray tmp_array;
       tmp_array.reserve(array.size());
       for (size_t i = 0; i < array.size(); ++i) {
@@ -93,19 +98,19 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
         tensors_ptr.reserve(tensors_.size());
         tensors_ptr.push_back(&array[i]);
         for (size_t j = 1; j < tensors_.size(); ++j) {
-          auto &element = BOOST_GET_CONST(LoDTensorArray, tensors_[j]);
+          auto &element = PADDLE_GET_CONST(LoDTensorArray, tensors_[j]);
           const auto &ele_dims = element[i].dims();
           CheckDims(tensor_dims, ele_dims, offset_);
           tensors_ptr.push_back(&element[i]);
         }
         tmp_array.emplace_back();
-        tmp_array.back().MergeLoDTensor(tensors_ptr, platform::CPUPlace());
+        MergeLoDTensor(&(tmp_array.back()), tensors_ptr, platform::CPUPlace());
       }
-      auto &val = BOOST_GET(FetchList, *data_);
+      auto &val = PADDLE_GET(FetchList, *data_);
       val.at(offset_) = std::move(tmp_array);
     }
   } else {
-    auto &val = BOOST_GET(FetchUnmergedList, *data_);
+    auto &val = PADDLE_GET(FetchUnmergedList, *data_);
     val.at(offset_) = std::move(tensors_);
   }
 }
@@ -128,7 +133,8 @@ static void TransData(const framework::LoDTensor &src_item,
 }
 
 void FetchOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Operator, 1);
   WaitInputVarGenerated(platform::CPUPlace());
 
   tensors_.resize(inputs_.size());
@@ -145,13 +151,13 @@ void FetchOpHandle::RunImpl() {
 
     if (var->IsType<LoDTensor>()) {
       auto &t = var->Get<framework::LoDTensor>();
-      auto &item = BOOST_GET(LoDTensor, tensors_[i]);
+      auto &item = PADDLE_GET(LoDTensor, tensors_[i]);
       TransData(t, &item);
     } else {
       auto &t = var->Get<framework::LoDTensorArray>();
       LoDTensorArray tmp(t.size());
       tensors_[i] = tmp;
-      auto &item = BOOST_GET(LoDTensorArray, tensors_[i]);
+      auto &item = PADDLE_GET(LoDTensorArray, tensors_[i]);
       for (size_t j = 0; j < t.size(); ++j) {
         TransData(t[j], &item[j]);
       }

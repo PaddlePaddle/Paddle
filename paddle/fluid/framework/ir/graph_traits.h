@@ -29,6 +29,9 @@ namespace ir {
 class Graph;
 class Node;
 
+bool IsReachable(ir::Graph *graph, Node *from, Node *to);
+Node *FindNode(ir::Graph *graph, const Node *node);
+
 template <typename IteratorT>
 class iterator_range {
   IteratorT begin_, end_;
@@ -110,7 +113,8 @@ struct GraphTraits {
   static iterator_range<NodesTSIterator> TS(const Graph &g) {
     auto start_points = ExtractStartPoints(g);
     PADDLE_ENFORCE_EQ(
-        start_points.empty(), false,
+        start_points.empty(),
+        false,
         platform::errors::InvalidArgument(
             "Start points of topological sorting should not be empty!"));
     NodesTSIterator x(start_points);

@@ -24,7 +24,7 @@ from paddle.io import Dataset
 import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ['Conll05st']
+__all__ = []
 
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'
@@ -106,8 +106,9 @@ class Conll05st(Dataset):
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(
-                data_file, DATA_URL, DATA_MD5, 'conll05st', download)
+            self.data_file = _check_exists_and_download(data_file, DATA_URL,
+                                                        DATA_MD5, 'conll05st',
+                                                        download)
 
         self.word_dict_file = word_dict_file
         if self.word_dict_file is None:
@@ -133,8 +134,9 @@ class Conll05st(Dataset):
         self.emb_file = emb_file
         if self.emb_file is None:
             assert download, "emb_file is not set and downloading automatically is disabled"
-            self.emb_file = _check_exists_and_download(
-                emb_file, EMB_URL, EMB_MD5, 'conll05st', download)
+            self.emb_file = _check_exists_and_download(emb_file, EMB_URL,
+                                                       EMB_MD5, 'conll05st',
+                                                       download)
 
         self.word_dict = self._load_dict(self.word_dict_file)
         self.predicate_dict = self._load_dict(self.verb_dict_file)
@@ -297,12 +299,13 @@ class Conll05st(Dataset):
         Get the word, verb and label dictionary of Wikipedia corpus.
 
         Examples:
-    
+
             .. code-block:: python
-    
-            from paddle.text.datasets import Conll05st
-            conll05st = Conll05st()
-            word_dict, predicate_dict, label_dict = conll05st.get_dict()
+
+            	from paddle.text.datasets import Conll05st
+
+            	conll05st = Conll05st()
+            	word_dict, predicate_dict, label_dict = conll05st.get_dict()
         """
         return self.word_dict, self.predicate_dict, self.label_dict
 
@@ -311,11 +314,12 @@ class Conll05st(Dataset):
         Get the embedding dictionary file.
 
         Examples:
-    
+
             .. code-block:: python
-    
-            from paddle.text.datasets import Conll05st
-            conll05st = Conll05st()
-            emb_file = conll05st.get_embedding()
+
+            	from paddle.text.datasets import Conll05st
+
+            	conll05st = Conll05st()
+            	emb_file = conll05st.get_embedding()
         """
         return self.emb_file

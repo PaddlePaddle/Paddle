@@ -17,10 +17,11 @@ limitations under the License. */
 #include <cstring>  // for memcpy
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/fc.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
+#include "paddle/phi/kernels/funcs/sequence2batch.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -35,10 +36,11 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "multi_gru");
   auto x_dims = ctx->GetInputDim("X");
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                        ? framework::flatten_to_2d(x_dims, 1)
+                        ? phi::flatten_to_2d(x_dims, 1)
                         : x_dims;
   PADDLE_ENFORCE_EQ(
-      x_mat_dims.size(), 2,
+      x_mat_dims.size(),
+      2,
       platform::errors::InvalidArgument("The size of input X dims should be 2, "
                                         "or 3 with second dimension equal to "
                                         "1, but now Input X dim is:[%s] ",
@@ -48,64 +50,88 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   auto wx_dims = ctx->GetInputsDim("WeightX");
   for (int i : {0, 1}) {
     PADDLE_ENFORCE_EQ(
-        wx_dims[i][0], x_mat_dims[1],
+        wx_dims[i][0],
+        x_mat_dims[1],
         platform::errors::InvalidArgument(
             "The first dimension of flattened WeightX #%d"
             "should equal to last dimension of flattened input X, but "
             "received fattened WeightX dimension is:%d, flattened X dimension "
             "is:%d",
-            i, wx_dims[i][0], x_mat_dims[1]));
+            i,
+            wx_dims[i][0],
+            x_mat_dims[1]));
   }
 
   auto wh_dims = ctx->GetInputsDim("WeightH");
   for (int i = 0; i < 2 * layers; ++i) {
-    PADDLE_ENFORCE_EQ(wx_dims[i].size(), 2,
+    PADDLE_ENFORCE_EQ(wx_dims[i].size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of WeightX #%d should be 2, but received "
                           "WeightX dim size is:%d, WeightX dim is:[%s] ",
-                          i, wx_dims[i].size(), wx_dims[i]));
-    PADDLE_ENFORCE_EQ(wh_dims[i].size(), 2,
+                          i,
+                          wx_dims[i].size(),
+                          wx_dims[i]));
+    PADDLE_ENFORCE_EQ(wh_dims[i].size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of WeightH #%d should be 2, but received "
                           "WeightH dim size is:%d, WeightH dim is:[%s] ",
-                          i, wh_dims[i].size(), wh_dims[i]));
+                          i,
+                          wh_dims[i].size(),
+                          wh_dims[i]));
     int frame_size = wh_dims[i][0];
     PADDLE_ENFORCE_EQ(
-        wh_dims[i][1], 3 * frame_size,
+        wh_dims[i][1],
+        3 * frame_size,
         platform::errors::InvalidArgument(
             "The second dimension of WeightH #%d "
             "should equal to 3 * frame_size, but received WeightH's "
             "second dimension is: %d, frame size is:%d",
-            i, wh_dims[1], frame_size));
+            i,
+            wh_dims[1],
+            frame_size));
     PADDLE_ENFORCE_EQ(
-        wx_dims[i][1], 3 * frame_size,
+        wx_dims[i][1],
+        3 * frame_size,
         platform::errors::InvalidArgument(
             "The second dimension of WeightX #%d "
             "should equal to 3 * frame_size, but received WeightX's "
             "second dimension is: %d, frame size is:%d",
-            i, wx_dims[i][1], frame_size));
+            i,
+            wx_dims[i][1],
+            frame_size));
   }
 
   if (ctx->HasInputs("Bias")) {
     auto b_dims = ctx->GetInputsDim("Bias");
     for (int i = 0; i < 2 * layers; ++i) {
       int frame_size = wh_dims[i][0];
-      PADDLE_ENFORCE_EQ(b_dims[i].size(), 2,
+      PADDLE_ENFORCE_EQ(b_dims[i].size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The rank of Bias #%d should be 2, but received "
                             "Bias rank is:%d, Bias dim is:[%s]",
-                            i, b_dims[i].size(), b_dims[i]));
-      PADDLE_ENFORCE_EQ(b_dims[i][0], 1,
+                            i,
+                            b_dims[i].size(),
+                            b_dims[i]));
+      PADDLE_ENFORCE_EQ(b_dims[i][0],
+                        1,
                         platform::errors::InvalidArgument(
                             "The first dimension of Bias #%d should be 1, but "
                             "received Bias first dim is:%d, Bias dim is:[%s]",
-                            i, b_dims[i][0], b_dims[i]));
+                            i,
+                            b_dims[i][0],
+                            b_dims[i]));
       PADDLE_ENFORCE_EQ(
-          b_dims[i][1], frame_size * 3,
+          b_dims[i][1],
+          frame_size * 3,
           platform::errors::InvalidArgument(
               "The shape of Bias #%d must be [1, frame_size * 3], but "
               "received bias dim is:[%s], frame size is:%d",
-              i, b_dims[i], frame_size));
+              i,
+              b_dims[i],
+              frame_size));
     }
   }
 
@@ -117,12 +143,11 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType MultiGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library = framework::LibraryType::kMKLDNN;
-  framework::DataLayout layout = framework::DataLayout::kMKLDNN;
-
   return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(), layout,
-      library);
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+      ctx.GetPlace(),
+      framework::DataLayout::kMKLDNN,
+      framework::LibraryType::kMKLDNN);
 }
 
 void MultiGRUOpMaker::Make() {
@@ -191,7 +216,7 @@ void MultiGRUOpMaker::Make() {
       .SetDefault(false);
   AddComment(R"DOC(
 The Fusion complete GRU Operator.
-This operator fuse the fully-connected operator into GRU, 
+This operator fuse the fully-connected operator into GRU,
 more details can refer to GRU op.
 )DOC");
 }

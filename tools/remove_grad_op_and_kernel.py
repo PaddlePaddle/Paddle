@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This script simply removes all grad ops and kernels. You should use this script 
+This script simply removes all grad ops and kernels. You should use this script
 when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction library.
 """
 
@@ -20,6 +20,7 @@ import os
 import sys
 import re
 import glob
+import io
 
 
 def find_type_files(cur_dir, file_type, file_list=[]):
@@ -54,8 +55,9 @@ def update_operator_cmake(cmake_file):
         content = content.replace(pat1, code1)
 
         match = re.findall(pat2, content, flags=re.DOTALL)
-        content = content.replace(match[0], code2 + '\n' + match[0].replace(
-            'py_func_op', 'py_func_op ${LOSS_OPS}'))
+        content = content.replace(
+            match[0], code2 + '\n' +
+            match[0].replace('py_func_op', 'py_func_op ${LOSS_OPS}'))
 
     with open(cmake_file, 'w') as f:
         f.write(content)
@@ -66,12 +68,12 @@ if __name__ == '__main__':
     tool_dir = os.path.dirname(os.path.abspath(__file__))
 
     if sys.version_info[0] == 3:
-        all_op = glob.glob(
-            os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cc'),
-            recursive=True)
-        all_op += glob.glob(
-            os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cu'),
-            recursive=True)
+        all_op = glob.glob(os.path.join(tool_dir,
+                                        '../paddle/fluid/operators/**/*.cc'),
+                           recursive=True)
+        all_op += glob.glob(os.path.join(tool_dir,
+                                         '../paddle/fluid/operators/**/*.cu'),
+                            recursive=True)
     elif sys.version_info[0] == 2:
         all_op = find_type_files(
             os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cc')
@@ -124,7 +126,7 @@ if __name__ == '__main__':
             custom_pattern2 = custom_pattern2[:-1]
 
         all_matches = []
-        with open(op_file, 'r') as f:
+        with io.open(op_file, 'r', encoding='utf-8') as f:
             content = ''.join(f.readlines())
 
             op, op_count = remove_grad_op_and_kernel(content, op_pattern1,
@@ -157,8 +159,8 @@ if __name__ == '__main__':
         for i in all_matches:
             content = content.replace(i, '')
 
-        with open(op_file, 'w') as f:
-            f.write(content)
+        with io.open(op_file, 'w', encoding='utf-8') as f:
+            f.write(u'{}'.format(content))
 
     # 2. update operators/CMakeLists.txt
     cmake_file = os.path.join(tool_dir,

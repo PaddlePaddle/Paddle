@@ -16,10 +16,13 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
 
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
 class OpDesc;
 class Scope;
 }  // namespace framework
@@ -41,7 +44,8 @@ const char kBoth[] = "BOTH";
 // TODO(ChunweiYan) there should be some other printers for TensorArray
 class PrintOp : public framework::OperatorBase {
  public:
-  PrintOp(const std::string &type, const framework::VariableNameMap &inputs,
+  PrintOp(const std::string &type,
+          const framework::VariableNameMap &inputs,
           const framework::VariableNameMap &outputs,
           const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -53,11 +57,13 @@ class PrintOp : public framework::OperatorBase {
     auto out_var = scope.FindVar(Output("Out"));
 
     PADDLE_ENFORCE_NOT_NULL(
-        in_var, platform::errors::NotFound("The input:%s not found in scope",
-                                           Input("In")));
+        in_var,
+        platform::errors::NotFound("The input:%s not found in scope",
+                                   Input("In")));
     PADDLE_ENFORCE_NOT_NULL(
-        out_var, platform::errors::NotFound("The output:%s not found in scope",
-                                            Output("Out")));
+        out_var,
+        platform::errors::NotFound("The output:%s not found in scope",
+                                   Output("Out")));
 
     auto &in_tensor = in_var->Get<framework::LoDTensor>();
     framework::LoDTensor *out_tensor =
@@ -121,7 +127,8 @@ class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
                          "including 'FORWARD' "
                          "'BACKWARD' and 'BOTH'.")
         .SetDefault(std::string(kBoth))
-        .InEnum({std::string(kForward), std::string(kBackward),
+        .InEnum({std::string(kForward),
+                 std::string(kBackward),
                  std::string(kBoth)});
     AddAttr<bool>("is_forward", "Whether is forward or not").SetDefault(true);
     AddComment(R"DOC(
@@ -170,15 +177,16 @@ class PrintOpGradientMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(print, ops::PrintOp, ops::PrintOpProtoAndCheckMaker,
+REGISTER_OPERATOR(print,
+                  ops::PrintOp,
+                  ops::PrintOpProtoAndCheckMaker,
                   ops::PrintOpGradientMaker<paddle::framework::OpDesc>,
                   ops::PrintOpGradientMaker<paddle::imperative::OpBase>,
-                  ops::PrintOpInferShape, ops::PrintOpVarTypeInference);
+                  ops::PrintOpInferShape,
+                  ops::PrintOpVarTypeInference);
 
-REGISTER_OP_VERSION(print)
-    .AddCheckpoint(
-        R"ROC(Upgrade print add a new attribute [print_tensor_layout] to "
+REGISTER_OP_VERSION(print).AddCheckpoint(
+    R"ROC(Upgrade print add a new attribute [print_tensor_layout] to "
              "contorl whether to print tensor's layout.)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "print_tensor_layout", "Whether to print the tensor's layout.",
-            true));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "print_tensor_layout", "Whether to print the tensor's layout.", true));

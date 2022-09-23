@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/shuffle_channel_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -26,9 +26,13 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void ShuffleChannel(const int nthreads, const int feature_map_size,
-                               T* output, const T* input, int group_row,
-                               int group_column, int len) {
+__global__ void ShuffleChannel(const int nthreads,
+                               const int feature_map_size,
+                               T* output,
+                               const T* input,
+                               int group_row,
+                               int group_column,
+                               int len) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   for (size_t ii = index; ii < nthreads; ii += offset) {
@@ -67,10 +71,15 @@ class ShuffleChannelOpCUDAKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
-    ShuffleChannel<
-        T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-        count, feature_map_size, output_data, input_data, group_row,
-        group_column, sp_sz);
+    ShuffleChannel<T>
+        <<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+            count,
+            feature_map_size,
+            output_data,
+            input_data,
+            group_row,
+            group_column,
+            sp_sz);
   }
 };
 
@@ -103,10 +112,15 @@ class ShuffleChannelGradOpCUDAKernel : public framework::OpKernel<T> {
     int threads = kNumCUDAThreads;
     int count = num * group_column * group_row * sp_sz;
 
-    ShuffleChannel<
-        T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-        count, feature_map_size, input_grad_data, output_grad_data, group_row,
-        group_column, sp_sz);
+    ShuffleChannel<T>
+        <<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+            count,
+            feature_map_size,
+            input_grad_data,
+            output_grad_data,
+            group_row,
+            group_column,
+            sp_sz);
   }
 };
 }  // namespace operators
@@ -115,12 +129,9 @@ class ShuffleChannelGradOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     shuffle_channel,
-    ops::ShuffleChannelOpCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ShuffleChannelOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                    double>);
+    ops::ShuffleChannelOpCUDAKernel<phi::GPUContext, float>,
+    ops::ShuffleChannelOpCUDAKernel<phi::GPUContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     shuffle_channel_grad,
-    ops::ShuffleChannelGradOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        float>,
-    ops::ShuffleChannelGradOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        double>);
+    ops::ShuffleChannelGradOpCUDAKernel<phi::GPUContext, float>,
+    ops::ShuffleChannelGradOpCUDAKernel<phi::GPUContext, double>);

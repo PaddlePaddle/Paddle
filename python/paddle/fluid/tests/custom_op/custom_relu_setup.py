@@ -14,17 +14,22 @@
 
 import os
 
-from utils import paddle_includes, extra_compile_args
-from paddle.utils.cpp_extension import CUDAExtension, setup
+from utils import paddle_includes, extra_compile_args, IS_MAC
+from paddle.utils.cpp_extension import CUDAExtension, setup, CppExtension
+
+# Mac-CI don't support GPU
+Extension = CppExtension if IS_MAC else CUDAExtension
+sources = ['custom_relu_op.cc', 'custom_relu_op_dup.cc']
+if not IS_MAC:
+    sources.append('custom_relu_op.cu')
 
 # custom_relu_op_dup.cc is only used for multi ops test,
 # not a new op, if you want to test only one op, remove this
 # source file
 setup(
     name='custom_relu_module_setup',
-    ext_modules=CUDAExtension(  # test for not specific name here.
-        sources=[
-            'custom_relu_op.cc', 'custom_relu_op.cu', 'custom_relu_op_dup.cc'
-        ],  # test for multi ops
+    ext_modules=Extension(  # test for not specific name here.
+        sources=sources,  # test for multi ops
         include_dirs=paddle_includes,
-        extra_compile_args=extra_compile_args))
+        extra_compile_args=extra_compile_args,
+        verbose=True))

@@ -16,14 +16,9 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/place.h"
-
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -31,7 +26,8 @@ namespace details {
 
 template <typename DeviceContext>
 struct TensorCheckerVisitor {
-  TensorCheckerVisitor(const std::string& op_type, const std::string& var_name,
+  TensorCheckerVisitor(const std::string& op_type,
+                       const std::string& var_name,
                        const framework::Tensor& tensor,
                        const platform::Place& place)
       : op_type_(op_type),
@@ -46,8 +42,12 @@ struct TensorCheckerVisitor {
   }
 
   template <typename T>
-  void apply(typename std::enable_if<std::is_floating_point<T>::value>::type* =
-                 0) const;
+  void apply(
+      typename std::enable_if<
+          std::is_floating_point<T>::value ||
+          std::is_same<T, ::paddle::platform::complex<float>>::value ||
+          std::is_same<T, ::paddle::platform::complex<double>>::value>::type* =
+          0) const;
 
   std::string op_type_;
   std::string var_name_;
@@ -56,7 +56,8 @@ struct TensorCheckerVisitor {
 };
 
 template <typename DeviceContext>
-void tensor_check(const std::string& op_type, const std::string& var_name,
+void tensor_check(const std::string& op_type,
+                  const std::string& var_name,
                   const framework::Tensor& tensor,
                   const platform::Place& place);
 

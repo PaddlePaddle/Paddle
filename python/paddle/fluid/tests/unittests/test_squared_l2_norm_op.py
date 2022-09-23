@@ -18,6 +18,16 @@ import numpy as np
 import unittest
 from numpy import linalg as LA
 from op_test import OpTest
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.framework import in_dygraph_mode
+
+
+def test_squared_l2_norm(x):
+    if in_dygraph_mode():
+        return _C_ops.squared_l2_norm(x)
+    else:
+        return _legacy_C_ops.squared_l2_norm(x)
 
 
 class TestL2LossOp(OpTest):
@@ -25,6 +35,7 @@ class TestL2LossOp(OpTest):
     """
 
     def setUp(self):
+        self.python_api = test_squared_l2_norm
         self.op_type = "squared_l2_norm"
         self.max_relative_error = 0.05
 
@@ -34,12 +45,31 @@ class TestL2LossOp(OpTest):
         self.outputs = {'Out': np.square(LA.norm(X))}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=self.max_relative_error)
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=self.max_relative_error,
+                        check_eager=True)
+
+
+class TestL2LossDeterministic(unittest.TestCase):
+
+    def check_place(self, place):
+        with paddle.fluid.dygraph.guard(place):
+            x_np = np.random.rand(5, 11, 13).astype('float32')
+            x = paddle.to_tensor(x_np)
+            y1 = _legacy_C_ops.squared_l2_norm(x)
+            y2 = _legacy_C_ops.squared_l2_norm(x)
+            np.testing.assert_array_equal(y1.numpy(), y2.numpy())
+
+    def test_main(self):
+        self.check_place(paddle.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            self.check_place(paddle.CUDAPlace(0))
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

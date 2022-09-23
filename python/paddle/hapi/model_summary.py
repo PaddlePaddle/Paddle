@@ -22,20 +22,22 @@ from paddle.static import InputSpec
 
 from collections import OrderedDict
 
-__all__ = ['summary']
+__all__ = []
 
 
-def summary(net, input_size, dtypes=None):
+def summary(net, input_size=None, dtypes=None, input=None):
     """Prints a string summary of the network.
 
     Args:
         net (Layer): the network which must be a subinstance of Layer.
-        input_size (tuple|InputSpec|list[tuple|InputSpec]): size of input tensor. if model only 
+        input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. if model only
                     have one input, input_size can be tuple or InputSpec. if model
-                    have multiple input, input_size must be a list which contain 
+                    have multiple input, input_size must be a list which contain
                     every input's shape. Note that input_size only dim of
-                    batch_size can be None or -1.
+                    batch_size can be None or -1. Default: None. Note that
+                    input_size and input cannot be None at the same time.
         dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
+        input: the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
 
     Returns:
         Dict: a summary of the network including total params and total trainable params.
@@ -80,7 +82,78 @@ def summary(net, input_size, dtypes=None):
             params_info = paddle.summary(lenet, (1, 1, 28, 28))
             print(params_info)
 
+            # multi input demo
+            class LeNetMultiInput(LeNet):
+
+                def forward(self, inputs, y):
+                    x = self.features(inputs)
+
+                    if self.num_classes > 0:
+                        x = paddle.flatten(x, 1)
+                        x = self.fc(x + y)
+                    return x
+
+            lenet_multi_input = LeNetMultiInput()
+
+            params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)],
+                                        dtypes=['float32', 'float32'])
+            print(params_info)
+
+            # list input demo
+            class LeNetListInput(LeNet):
+
+                def forward(self, inputs):
+                    x = self.features(inputs[0])
+
+                    if self.num_classes > 0:
+                        x = paddle.flatten(x, 1)
+                        x = self.fc(x + inputs[1])
+                    return x
+
+            lenet_list_input = LeNetListInput()
+            input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
+            params_info = paddle.summary(lenet_list_input, input=input_data)
+            print(params_info)
+
+            # dict input demo
+            class LeNetDictInput(LeNet):
+
+                def forward(self, inputs):
+                    x = self.features(inputs['x1'])
+
+                    if self.num_classes > 0:
+                        x = paddle.flatten(x, 1)
+                        x = self.fc(x + inputs['x2'])
+                    return x
+
+            lenet_dict_input = LeNetDictInput()
+            input_data = {'x1': paddle.rand([1, 1, 28, 28]),
+                          'x2': paddle.rand([1, 400])}
+            params_info = paddle.summary(lenet_dict_input, input=input_data)
+            print(params_info)
+
     """
+    if input_size is None and input is None:
+        raise ValueError("input_size and input cannot be None at the same time")
+
+    if input_size is None and input is not None:
+        if paddle.is_tensor(input):
+            input_size = tuple(input.shape)
+        elif isinstance(input, (list, tuple)):
+            input_size = []
+            for x in input:
+                input_size.append(tuple(x.shape))
+        elif isinstance(input, dict):
+            input_size = []
+            for key in input.keys():
+                input_size.append(tuple(input[key].shape))
+        elif isinstance(input, paddle.fluid.framework.Variable):
+            input_size = tuple(input.shape)
+        else:
+            raise ValueError(
+                "Input is not tensor, list, tuple and dict, unable to determine input_size, please input input_size."
+            )
+
     if isinstance(input_size, InputSpec):
         _input_size = tuple(input_size.shape)
     elif isinstance(input_size, list):
@@ -134,8 +207,8 @@ def summary(net, input_size, dtypes=None):
             elif isinstance(item, numbers.Number):
                 if item <= 0:
                     raise ValueError(
-                        "Expected element in input size greater than zero, but got {}".
-                        format(item))
+                        "Expected element in input size greater than zero, but got {}"
+                        .format(item))
             new_shape.append(item)
         return tuple(new_shape)
 
@@ -146,7 +219,8 @@ def summary(net, input_size, dtypes=None):
             return [_check_input(i) for i in input_size]
 
     _input_size = _check_input(_input_size)
-    result, params_info = summary_string(net, _input_size, dtypes)
+
+    result, params_info = summary_string(net, _input_size, dtypes, input)
     print(result)
 
     if in_train_mode:
@@ -156,7 +230,8 @@ def summary(net, input_size, dtypes=None):
 
 
 @paddle.no_grad()
-def summary_string(model, input_size, dtypes=None):
+def summary_string(model, input_size=None, dtypes=None, input=None):
+
     def _all_is_numper(items):
         for item in items:
             if not isinstance(item, numbers.Number):
@@ -190,11 +265,14 @@ def summary_string(model, input_size, dtypes=None):
     def _get_output_shape(output):
         if isinstance(output, (list, tuple)):
             output_shape = [_get_output_shape(o) for o in output]
-        else:
+        elif hasattr(output, 'shape'):
             output_shape = list(output.shape)
+        else:
+            output_shape = []
         return output_shape
 
     def register_hook(layer):
+
         def hook(layer, input, output):
             class_name = str(layer.__class__).split(".")[-1].split("'")[0]
 
@@ -225,23 +303,27 @@ def summary_string(model, input_size, dtypes=None):
             else:
                 layer_state_dict = layer.state_dict()
 
+            summary[m_key]["trainable_params"] = 0
+            trainable_flag = False
             for k, v in layer_state_dict.items():
                 params += np.prod(v.shape)
 
                 try:
                     if (getattr(getattr(layer, k), 'trainable')) and (
                             not getattr(getattr(layer, k), 'stop_gradient')):
+                        summary[m_key]["trainable_params"] += np.prod(v.shape)
                         summary[m_key]["trainable"] = True
-                    else:
+                        trainable_flag = True
+                    elif not trainable_flag:
                         summary[m_key]["trainable"] = False
                 except:
                     summary[m_key]["trainable"] = True
 
             summary[m_key]["nb_params"] = params
 
-        if (not isinstance(layer, nn.Sequential) and
-                not isinstance(layer, nn.LayerList) and
-            (not (layer == model) or depth < 1)):
+        if (not isinstance(layer, nn.Sequential)
+                and not isinstance(layer, nn.LayerList)
+                and (not (layer == model) or depth < 1)):
 
             hooks.append(layer.register_forward_post_hook(hook))
         # For rnn, gru and lstm layer
@@ -263,17 +345,18 @@ def summary_string(model, input_size, dtypes=None):
                 build_input(i, dtype) for i, dtype in zip(input_size, dtypes)
             ]
 
-    x = build_input(input_size, dtypes)
-
     # create properties
     summary = OrderedDict()
     hooks = []
-
     # register hook
     model.apply(register_hook)
-
-    # make a forward pass
-    model(*x)
+    if input is not None:
+        x = input
+        model(x)
+    else:
+        x = build_input(input_size, dtypes)
+        # make a forward pass
+        model(*x)
 
     # remove these hooks
     for h in hooks:
@@ -335,20 +418,20 @@ def summary_string(model, input_size, dtypes=None):
             str(summary[layer]["input_shape"]),
             table_width['input_shape_width'],
             str(summary[layer]["output_shape"]),
-            table_width['output_shape_width'],
-            "{0:,}".format(summary[layer]["nb_params"]),
-            table_width['params_width'])
+            table_width['output_shape_width'], "{0:,}".format(
+                summary[layer]["nb_params"]), table_width['params_width'])
         total_params += summary[layer]["nb_params"]
 
         try:
-            total_output += np.prod(summary[layer]["output_shape"])
+            total_output += np.sum(
+                np.prod(summary[layer]["output_shape"], axis=-1))
         except:
             for output_shape in summary[layer]["output_shape"]:
-                total_output += np.prod(output_shape)
+                total_output += np.sum(np.prod(output_shape, axis=-1))
 
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:
-                trainable_params += summary[layer]["nb_params"]
+                trainable_params += summary[layer]["trainable_params"]
         summary_str += line_new + "\n"
 
     def _get_input_size(input_size, size):

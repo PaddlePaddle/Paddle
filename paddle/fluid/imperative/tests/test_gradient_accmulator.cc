@@ -15,11 +15,13 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
+
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -27,10 +29,57 @@ namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 
-void TensorAdd(const framework::Variable& src, framework::Variable* dst);
+TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
+  phi::CPUPlace cpu;
 
-template <typename Place, typename T>
-int TensorddTest(Place place, T t1, T t2) {
+  std::vector<int64_t> rows{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+  int64_t table_size = 10;
+  int64_t embedding_width = 10;
+
+  auto sr1 = std::make_shared<phi::SelectedRows>(rows, table_size);
+  auto sr2 = std::make_shared<phi::SelectedRows>(rows, table_size);
+
+  // initialize a sparse table 1
+  sr1->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
+  auto* data_sr1 = sr1->mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data_sr1[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+
+  // initialize a sparse table 2
+  sr2->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
+  auto* data_sr2 = sr2->mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data_sr2[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+  // new 2 phi::Tensor
+  paddle::experimental::Tensor t1(sr1);
+  paddle::experimental::Tensor t2(sr2);
+
+  // call SelectedRowsMerge
+  auto new_buffer =
+      paddle::imperative::SelectedRowsMerge<paddle::experimental::Tensor>(t1,
+                                                                          t2);
+  auto* new_buffer_tensor =
+      static_cast<phi::SelectedRows*>(new_buffer->impl().get());
+  auto* new_buffer_data_sr1 =
+      new_buffer_tensor->mutable_value()->mutable_data<float>(cpu);
+
+  // verify the MergeAdd result
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      EXPECT_EQ(new_buffer_data_sr1[i * embedding_width + j],
+                (static_cast<float>(i) + static_cast<float>(i)));
+    }
+  }
+}
+
+template <typename Place1, typename Place2, typename T>
+int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   framework::Variable var1;
   framework::Variable var2;
   std::vector<T> src_data(10, t1);
@@ -44,24 +93,45 @@ int TensorddTest(Place place, T t1, T t2) {
   std::vector<int64_t> dims = {2, 5};
   auto* src = var1.GetMutable<framework::LoDTensor>();
   auto* dst = var2.GetMutable<framework::LoDTensor>();
-  src->Resize(framework::make_ddim(dims));
-  dst->Resize(framework::make_ddim(dims));
-  auto* src_mutable = src->mutable_data<T>(place);
-  auto* dst_mutable = dst->mutable_data<T>(place);
-  if (!std::is_same<Place, platform::CUDAPlace>::value) {
-    paddle::memory::Copy(place, src_mutable, src_place, src_data.data(),
+  src->Resize(phi::make_ddim(dims));
+  dst->Resize(phi::make_ddim(dims));
+  auto* src_mutable = src->mutable_data<T>(place1);
+  auto* dst_mutable = dst->mutable_data<T>(place2);
+
+  if (!std::is_same<Place1, platform::CUDAPlace>::value) {
+    paddle::memory::Copy(place1,
+                         src_mutable,
+                         src_place,
+                         src_data.data(),
                          sizeof(T) * src_data.size());
-    paddle::memory::Copy(place, dst_mutable, src_place, dst_data.data(),
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else {
+    paddle::memory::Copy(place1,
+                         src_mutable,
+                         src_place,
+                         src_data.data(),
+                         sizeof(T) * src_data.size(),
+                         0);
+#endif
+  }
+
+  if (!std::is_same<Place2, platform::CUDAPlace>::value) {
+    paddle::memory::Copy(place2,
+                         dst_mutable,
+                         src_place,
+                         dst_data.data(),
                          sizeof(T) * dst_data.size());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else {
-    paddle::memory::Copy(place, src_mutable, src_place, src_data.data(),
-                         sizeof(T) * src_data.size(), 0);
-    paddle::memory::Copy(place, dst_mutable, src_place, dst_data.data(),
-                         sizeof(T) * dst_data.size(), 0);
+    paddle::memory::Copy(place2,
+                         dst_mutable,
+                         src_place,
+                         dst_data.data(),
+                         sizeof(T) * dst_data.size(),
+                         0);
 #endif
   }
-  imperative::TensorAdd(var1, &var2);
+  imperative::TensorAdd<framework::Variable>(var1, &var2);
   framework::LoDTensor rlt;
   platform::CPUPlace rlt_place;
   framework::TensorCopySync(*dst, rlt_place, &rlt);
@@ -80,24 +150,90 @@ TEST(test_add_functor, add_functor) {
   platform::CPUPlace cpu_place;
 
   int cpu_res = 1;
-  cpu_res = TensorddTest(cpu_place, 1.0, 0.0);
+
+  // float32
+  cpu_res = TensorddTest(
+      cpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(cpu_res, 0);
-  cpu_res = TensorddTest(cpu_place, static_cast<double>(1.0),
-                         static_cast<double>(2.0));
-  EXPECT_EQ(cpu_res, 0);
-  cpu_res = TensorddTest(cpu_place, static_cast<platform::float16>(1.0),
+  // float16
+  cpu_res = TensorddTest(cpu_place,
+                         cpu_place,
+                         static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(cpu_res, 0);
+
+#ifndef PADDLE_WITH_XPU
+  // does not support double when compiled using xpu
+  cpu_res = TensorddTest(
+      cpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
+  EXPECT_EQ(cpu_res, 0);
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int gpu_res = 1;
-  gpu_res = TensorddTest(gpu_place, 1.0, 0.0);
+  gpu_res = TensorddTest(gpu_place, gpu_place, 1.0, 0.0);
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(gpu_place, static_cast<double>(1.0),
-                         static_cast<double>(2.0));
+  gpu_res = TensorddTest(
+      gpu_place, gpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(gpu_place, static_cast<platform::float16>(1.0),
+
+  // normal
+  gpu_res = TensorddTest(
+      gpu_place, gpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res = TensorddTest(gpu_place,
+                         gpu_place,
+                         static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
+  // different places
+  gpu_res = TensorddTest(
+      cpu_place, gpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res = TensorddTest(
+      gpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res = TensorddTest(cpu_place,
+                         gpu_place,
+                         static_cast<platform::float16>(1.0),
+                         static_cast<platform::float16>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res = TensorddTest(gpu_place,
+                         cpu_place,
+                         static_cast<platform::float16>(1.0),
+                         static_cast<platform::float16>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  platform::XPUPlace xpu_place(0);
+  int xpu_res = 1;
+  // normal
+  xpu_res = TensorddTest(
+      xpu_place, xpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(xpu_place,
+                         xpu_place,
+                         static_cast<platform::float16>(1.0),
+                         static_cast<platform::float16>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  // different places
+  xpu_res = TensorddTest(
+      cpu_place, xpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(
+      xpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(cpu_place,
+                         xpu_place,
+                         static_cast<platform::float16>(1.0),
+                         static_cast<platform::float16>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(xpu_place,
+                         cpu_place,
+                         static_cast<platform::float16>(1.0),
+                         static_cast<platform::float16>(2.0));
+  EXPECT_EQ(xpu_res, 0);
 #endif
 }
 
@@ -106,10 +242,12 @@ TEST(test_add_functor, execption) {
   platform::CUDAPlace cuda_place(0);
   platform::CPUPlace cpu_place;
 
-  ASSERT_ANY_THROW(TensorddTest(cpu_place, 1, 0));
+  ASSERT_ANY_THROW(TensorddTest(cpu_place, cpu_place, 1, 0));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place, 1.0, 0.0));
+  ASSERT_ANY_THROW(
+      TensorddTest(cuda_pinned_place, cuda_pinned_place, 1.0, 0.0));
   ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place,
+                                cuda_pinned_place,
                                 static_cast<platform::float16>(1.0),
                                 static_cast<platform::float16>(2.0)));
 #endif
@@ -124,8 +262,8 @@ static void CopyVar(const framework::Variable& var,
     auto* dst_tensor = dst.GetMutable<framework::LoDTensor>();
     framework::TensorCopySync(src_tensor, src_tensor.place(), dst_tensor);
   } else {
-    const auto& src_selected_rows = var.Get<framework::SelectedRows>();
-    auto* dst_selected_rows = dst.GetMutable<framework::SelectedRows>();
+    const auto& src_selected_rows = var.Get<phi::SelectedRows>();
+    auto* dst_selected_rows = dst.GetMutable<phi::SelectedRows>();
     dst_selected_rows->set_rows(src_selected_rows.rows());
     dst_selected_rows->set_height(src_selected_rows.height());
     framework::TensorCopySync(src_selected_rows.value(),
@@ -143,13 +281,13 @@ static bool IsEqualVar(const framework::Variable& var1,
   framework::Tensor t1, t2;
 
   if (var1.IsType<framework::LoDTensor>()) {
-    framework::TensorCopySync(var1.Get<framework::LoDTensor>(),
-                              platform::CPUPlace(), &t1);
-    framework::TensorCopySync(var2.Get<framework::LoDTensor>(),
-                              platform::CPUPlace(), &t2);
+    framework::TensorCopySync(
+        var1.Get<framework::LoDTensor>(), platform::CPUPlace(), &t1);
+    framework::TensorCopySync(
+        var2.Get<framework::LoDTensor>(), platform::CPUPlace(), &t2);
   } else {
-    auto& s1 = var1.Get<framework::SelectedRows>();
-    auto& s2 = var2.Get<framework::SelectedRows>();
+    auto& s1 = var1.Get<phi::SelectedRows>();
+    auto& s2 = var2.Get<phi::SelectedRows>();
 
     if (s1.height() != s2.height()) {
       return false;
@@ -161,31 +299,35 @@ static bool IsEqualVar(const framework::Variable& var1,
 
     auto row1_data = s1.rows().data();
     auto row2_data = s2.rows().data();
-    if (std::memcmp(row1_data, row2_data,
-                    s1.rows().size() * sizeof(*row1_data)) != 0) {
+    if (std::memcmp(
+            row1_data, row2_data, s1.rows().size() * sizeof(*row1_data)) != 0) {
       return false;
     }
 
-    framework::TensorCopySync(var1.Get<framework::SelectedRows>().value(),
-                              platform::CPUPlace(), &t1);
-    framework::TensorCopySync(var2.Get<framework::SelectedRows>().value(),
-                              platform::CPUPlace(), &t2);
+    framework::TensorCopySync(
+        var1.Get<phi::SelectedRows>().value(), platform::CPUPlace(), &t1);
+    framework::TensorCopySync(
+        var2.Get<phi::SelectedRows>().value(), platform::CPUPlace(), &t2);
   }
 
   if (t1.type() != t2.type() || t1.dims() != t2.dims()) {
     return false;
   }
 
-  auto* t1_p = t1.data<void>();
-  auto* t2_p = t2.data<void>();
-  return std::memcmp(t1_p, t2_p,
-                     t1.numel() * framework::SizeOfType(t1.type())) == 0;
+  auto* t1_p = t1.data();
+  auto* t2_p = t2.data();
+  return std::memcmp(
+             t1_p,
+             t2_p,
+             t1.numel() * framework::SizeOfType(
+                              framework::TransToProtoVarType(t1.dtype()))) == 0;
 }
 
 template <typename T>
 static framework::Variable RandomTensor(const framework::DDim& dims,
                                         const platform::Place& place,
-                                        int low = -10, int high = 10) {
+                                        int low = -10,
+                                        int high = 10) {
   framework::Tensor cpu_tensor;
   cpu_tensor.Resize(dims);
   auto* ptr = cpu_tensor.mutable_data<T>(platform::CPUPlace());
@@ -197,21 +339,22 @@ static framework::Variable RandomTensor(const framework::DDim& dims,
   }
 
   framework::Variable ret;
-  framework::TensorCopySync(cpu_tensor, place,
-                            ret.GetMutable<framework::LoDTensor>());
+  framework::TensorCopySync(
+      cpu_tensor, place, ret.GetMutable<framework::LoDTensor>());
   return ret;
 }
 
 template <typename T>
 static framework::Variable RandomSelectedRows(framework::DDim dims,
                                               const platform::Place& place,
-                                              int64_t row_number, int low = -10,
+                                              int64_t row_number,
+                                              int low = -10,
                                               int high = 10) {
   auto height = dims[0];
   dims[0] = row_number;
 
   framework::Variable ret;
-  auto* sr = ret.GetMutable<framework::SelectedRows>();
+  auto* sr = ret.GetMutable<phi::SelectedRows>();
   auto tensor_var = RandomTensor<T>(dims, place, low, high);
   sr->mutable_value()->ShareDataWith(
       tensor_var.template Get<framework::LoDTensor>());
@@ -266,7 +409,7 @@ static void TestGradientAccumulatorTestUnchangeInput(
     for (auto use_tensor2 : use_tensors) {
       /** g_accum1 && g_accum2: has not been initialized
        *    test accumulate on this graph
-      */
+       */
       auto g_var1 = std::make_shared<VariableWrapper>("g_var1");
       g_var1->SetOverridedStopGradient(false);
       auto g_accum1 = CreateAccumulator(g_var1, sort_gradient);
@@ -319,7 +462,7 @@ static void TestGradientAccumulatorTestUnchangeInput(
 
       /** g_accum3 && g_accum4: has been initialized
        *    test accumulate on previous graph
-      */
+       */
       auto var3 = create_var(use_tensor1);
       auto var_wrapper3_3 = std::make_shared<VariableWrapper>("tmp1_3");
       auto var_wrapper4_3 = std::make_shared<VariableWrapper>("tmp2_3");

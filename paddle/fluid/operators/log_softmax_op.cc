@@ -12,10 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/log_softmax_op.h"
 #include <string>
 #include <unordered_map>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,16 +28,21 @@ class LogSoftmaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    return UnaryOpUnchangedInferShapeCheckAxis(ctx);
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -71,8 +80,10 @@ class LogSoftmaxGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "log_softmax_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@grad", "log_softmax_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@grad",
+                   "log_softmax_grad");
     PADDLE_ENFORCE_EQ(
         ctx->GetInputDim("Out"),
         ctx->GetInputDim(framework::GradVarName("Out")),
@@ -111,18 +122,14 @@ class LogSoftmaxGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
-REGISTER_OPERATOR(log_softmax, ops::LogSoftmaxOp, ops::LogSoftmaxOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(log_softmax,
+                            LogSoftmaxInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMetaCheckAxis));
+REGISTER_OPERATOR(log_softmax,
+                  ops::LogSoftmaxOp,
+                  ops::LogSoftmaxOpMaker,
                   ops::LogSoftmaxOpInferVarType,
                   ops::LogSoftmaxGradOpMaker<paddle::framework::OpDesc>,
-                  ops::LogSoftmaxGradOpMaker<paddle::imperative::OpBase>);
+                  ops::LogSoftmaxGradOpMaker<paddle::imperative::OpBase>,
+                  LogSoftmaxInferShapeFunctor);
 REGISTER_OPERATOR(log_softmax_grad, ops::LogSoftmaxGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    log_softmax,
-    ops::LogSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LogSoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    log_softmax_grad,
-    ops::LogSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LogSoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);

@@ -16,6 +16,8 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/convert_utils.h"
+
 namespace paddle {
 namespace operators {
 
@@ -90,7 +92,8 @@ std::string TensorFormatter::Format(const framework::LoDTensor& print_tensor,
                << std::endl;
   }
 
-  std::type_index dtype = framework::ToTypeIndex(print_tensor.type());
+  std::type_index dtype = framework::ToTypeIndex(
+      framework::TransToProtoVarType(print_tensor.dtype()));
   if (print_tensor_type_) {
     log_stream << "  - dtype: " << platform::demangle(dtype.name())
                << std::endl;
@@ -119,12 +122,17 @@ void TensorFormatter::FormatData(const framework::LoDTensor& print_tensor,
                            ? print_tensor.numel()
                            : std::min(summarize_, print_tensor.numel());
   const T* data = nullptr;
-  if (is_cpu_place(print_tensor.place())) {
+  framework::LoDTensor cpu_tensor;
+  if (paddle::platform::is_cpu_place(print_tensor.place())) {
     data = print_tensor.data<T>();
   } else {
-    framework::LoDTensor cpu_tensor;
     platform::CPUPlace cpu_place;
-    TensorCopy(print_tensor, cpu_place, &cpu_tensor);
+    paddle::framework::TensorCopy(print_tensor, cpu_place, &cpu_tensor);
+#ifdef PADDLE_WITH_ASCEND_CL
+    if (platform::is_npu_place(print_tensor.place())) {
+      platform::DeviceContextPool::Instance().Get(print_tensor.place())->Wait();
+    }
+#endif
     data = cpu_tensor.data<T>();
   }
 

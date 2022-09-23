@@ -24,41 +24,72 @@ import paddle
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ["MNIST", "FashionMNIST"]
+__all__ = []
 
 
 class MNIST(Dataset):
     """
-    Implementation of `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset
+    Implementation of `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset.
 
     Args:
-        image_path(str): path to image file, can be set None if
-            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/mnist
-        label_path(str): path to label file, can be set None if
-            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/mnist
-        mode(str): 'train' or 'test' mode. Default 'train'.
-        download(bool): download dataset automatically if
-            :attr:`image_path` :attr:`label_path` is not set. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
-            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+        image_path (str, optional): Path to image file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/mnist.
+        label_path (str, optional): Path to label file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/mnist.
+        mode (str, optional): Either train or test mode. Default 'train'.
+        transform (Callable, optional): Transform to perform on image, None for no transform. Default: None.
+        download (bool, optional): Download dataset automatically if
+            :attr:`image_path` :attr:`label_path` is not set. Default: True.
+        backend (str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
-            
+
     Returns:
-        Dataset: MNIST Dataset.
+        :ref:`api_paddle_io_Dataset`. An instance of MNIST dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
+            import itertools
+            import paddle.vision.transforms as T
             from paddle.vision.datasets import MNIST
 
-            mnist = MNIST(mode='test')
 
-            for i in range(len(mnist)):
-                sample = mnist[i]
-                print(sample[0].size, sample[1])
+            mnist = MNIST()
+            print(len(mnist))
+            # 60000
 
+            for i in range(5):  # only show first 5 images
+                img, label = mnist[i]
+                # do something with img and label
+                print(type(img), img.size, label)
+                # <class 'PIL.Image.Image'> (28, 28) [5]
+
+
+            transform = T.Compose(
+                [
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[127.5],
+                        std=[127.5],
+                    ),
+                ]
+            )
+
+            mnist_test = MNIST(
+                mode="test",
+                transform=transform,  # apply transform to every image
+                backend="cv2",  # use OpenCV as image transform backend
+            )
+            print(len(mnist_test))
+            # 10000
+
+            for img, label in itertools.islice(iter(mnist_test), 5):  # only show first 5 images
+                # do something with img and label
+                print(type(img), img.shape, label)
+                # <class 'paddle.Tensor'> [1, 28, 28] [7]
     """
     NAME = 'mnist'
     URL_PREFIX = 'https://dataset.bj.bcebos.com/mnist/'
@@ -85,8 +116,8 @@ class MNIST(Dataset):
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
-                "Expected backend are one of ['pil', 'cv2'], but got {}"
-                .format(backend))
+                "Expected backend are one of ['pil', 'cv2'], but got {}".format(
+                    backend))
         self.backend = backend
 
         self.mode = mode.lower()
@@ -134,8 +165,8 @@ class MNIST(Dataset):
                 offset_lab = 0
                 # label file : 8B
                 magic_byte_lab = '>II'
-                magic_lab, label_num = struct.unpack_from(magic_byte_lab,
-                                                          lab_buf, offset_lab)
+                magic_lab, label_num = struct.unpack_from(
+                    magic_byte_lab, lab_buf, offset_lab)
                 offset_lab += struct.calcsize(magic_byte_lab)
 
                 while True:
@@ -149,8 +180,9 @@ class MNIST(Dataset):
                     fmt_images = '>' + str(buffer_size * rows * cols) + 'B'
                     images_temp = struct.unpack_from(fmt_images, img_buf,
                                                      offset_img)
-                    images = np.reshape(images_temp, (buffer_size, rows *
-                                                      cols)).astype('float32')
+                    images = np.reshape(
+                        images_temp,
+                        (buffer_size, rows * cols)).astype('float32')
                     offset_img += struct.calcsize(fmt_images)
 
                     for i in range(buffer_size):
@@ -179,35 +211,67 @@ class MNIST(Dataset):
 
 class FashionMNIST(MNIST):
     """
-    Implementation `Fashion-MNIST <https://github.com/zalandoresearch/fashion-mnist>`_ dataset.
+    Implementation of `Fashion-MNIST <https://github.com/zalandoresearch/fashion-mnist>`_ dataset.
 
     Args:
-        image_path(str): path to image file, can be set None if
-            :attr:`download` is True. Default None
-        label_path(str): path to label file, can be set None if
-            :attr:`download` is True. Default None
-        mode(str): 'train' or 'test' mode. Default 'train'.
-        download(bool): whether to download dataset automatically if
-            :attr:`image_path` :attr:`label_path` is not set. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
-            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+        image_path (str, optional): Path to image file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/fashion-mnist.
+        label_path (str, optional): Path to label file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/fashion-mnist.
+        mode (str, optional): Either train or test mode. Default 'train'.
+        transform (Callable, optional): Transform to perform on image, None for no transform. Default: None.
+        download (bool, optional): Whether to download dataset automatically if
+            :attr:`image_path` :attr:`label_path` is not set. Default: True.
+        backend (str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
-            
+
     Returns:
-        Dataset: Fashion-MNIST Dataset.
+        :ref:`api_paddle_io_Dataset`. An instance of FashionMNIST dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
+            import itertools
+            import paddle.vision.transforms as T
             from paddle.vision.datasets import FashionMNIST
 
-            mnist = FashionMNIST(mode='test')
 
-            for i in range(len(mnist)):
-                sample = mnist[i]
-                print(sample[0].size, sample[1])
+            fashion_mnist = FashionMNIST()
+            print(len(fashion_mnist))
+            # 60000
+
+            for i in range(5):  # only show first 5 images
+                img, label = fashion_mnist[i]
+                # do something with img and label
+                print(type(img), img.size, label)
+                # <class 'PIL.Image.Image'> (28, 28) [9]
+
+
+            transform = T.Compose(
+                [
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[127.5],
+                        std=[127.5],
+                    ),
+                ]
+            )
+
+            fashion_mnist_test = FashionMNIST(
+                mode="test",
+                transform=transform,  # apply transform to every image
+                backend="cv2",  # use OpenCV as image transform backend
+            )
+            print(len(fashion_mnist_test))
+            # 10000
+
+            for img, label in itertools.islice(iter(fashion_mnist_test), 5):  # only show first 5 images
+                # do something with img and label
+                print(type(img), img.shape, label)
+                # <class 'paddle.Tensor'> [1, 28, 28] [9]
     """
 
     NAME = 'fashion-mnist'

@@ -15,6 +15,7 @@
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 
 #include <thread>  // NOLINT
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
@@ -86,7 +87,8 @@ TEST(RetryAllocator, RetryAllocator) {
     }
 
     void *val = cpu_allocation->ptr();
-    bool is_all_equal = std::all_of(addresses.begin(), addresses.end(),
+    bool is_all_equal = std::all_of(addresses.begin(),
+                                    addresses.end(),
                                     [val](void *p) { return p == val; });
     ASSERT_TRUE(is_all_equal);
     allocator->Release(platform::CPUPlace());
@@ -98,12 +100,12 @@ class DummyAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  phi::Allocation *AllocateImpl(size_t size) override {
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "Here is a test exception, always BadAlloc."));
   }
 
-  void FreeImpl(Allocation *) override {}
+  void FreeImpl(phi::Allocation *) override {}
 };
 
 TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {

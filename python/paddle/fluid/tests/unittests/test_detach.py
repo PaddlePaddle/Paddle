@@ -25,9 +25,10 @@ import unittest
 
 
 class Test_Detach(unittest.TestCase):
+
     def generate_Data(self):
-        data = np.array(
-            [[1, 8, 3, 9], [7, 20, 9, 6], [4, 6, 8, 10]]).astype('float32')
+        data = np.array([[1, 8, 3, 9], [7, 20, 9, 6], [4, 6, 8,
+                                                       10]]).astype('float32')
         return data
 
     def no_detach_multi(self):
@@ -37,29 +38,26 @@ class Test_Detach(unittest.TestCase):
                 initializer=fluid.initializer.Constant(5.0))
             linear_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            linear = Linear(
-                4,
-                10,
-                param_attr=linear_w_param_attrs,
-                bias_attr=linear_b_param_attrs)
+            linear = Linear(4,
+                            10,
+                            param_attr=linear_w_param_attrs,
+                            bias_attr=linear_b_param_attrs)
             linear1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
             linear1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            linear1 = Linear(
-                10,
-                1,
-                param_attr=linear1_w_param_attrs,
-                bias_attr=linear1_b_param_attrs)
+            linear1 = Linear(10,
+                             1,
+                             param_attr=linear1_w_param_attrs,
+                             bias_attr=linear1_b_param_attrs)
             linear2_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(9.0))
             linear2_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(10.0))
-            linear2 = Linear(
-                10,
-                1,
-                param_attr=linear2_w_param_attrs,
-                bias_attr=linear2_b_param_attrs)
+            linear2 = Linear(10,
+                             1,
+                             param_attr=linear2_w_param_attrs,
+                             bias_attr=linear2_b_param_attrs)
             data = to_variable(data)
             x = linear(data)
             x1 = linear1(x)
@@ -76,20 +74,18 @@ class Test_Detach(unittest.TestCase):
                 initializer=fluid.initializer.Constant(5.0))
             linear_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            linear = Linear(
-                4,
-                10,
-                param_attr=linear_w_param_attrs,
-                bias_attr=linear_b_param_attrs)
+            linear = Linear(4,
+                            10,
+                            param_attr=linear_w_param_attrs,
+                            bias_attr=linear_b_param_attrs)
             linear1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
             linear1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            linear1 = Linear(
-                10,
-                1,
-                param_attr=linear1_w_param_attrs,
-                bias_attr=linear1_b_param_attrs)
+            linear1 = Linear(10,
+                             1,
+                             param_attr=linear1_w_param_attrs,
+                             bias_attr=linear1_b_param_attrs)
             data = to_variable(data)
             x = linear(data)
             x1 = linear1(x)
@@ -105,29 +101,26 @@ class Test_Detach(unittest.TestCase):
                 initializer=fluid.initializer.Constant(5.0))
             linear_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            linear = Linear(
-                4,
-                10,
-                param_attr=linear_w_param_attrs,
-                bias_attr=linear_b_param_attrs)
+            linear = Linear(4,
+                            10,
+                            param_attr=linear_w_param_attrs,
+                            bias_attr=linear_b_param_attrs)
             linear1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
             linear1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            linear1 = Linear(
-                10,
-                1,
-                param_attr=linear1_w_param_attrs,
-                bias_attr=linear1_b_param_attrs)
+            linear1 = Linear(10,
+                             1,
+                             param_attr=linear1_w_param_attrs,
+                             bias_attr=linear1_b_param_attrs)
             linear2_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(9.0))
             linear2_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(10.0))
-            linear2 = Linear(
-                10,
-                1,
-                param_attr=linear2_w_param_attrs,
-                bias_attr=linear2_b_param_attrs)
+            linear2 = Linear(10,
+                             1,
+                             param_attr=linear2_w_param_attrs,
+                             bias_attr=linear2_b_param_attrs)
             data = to_variable(data)
             x = linear(data)
             x_detach = x.detach()
@@ -139,34 +132,21 @@ class Test_Detach(unittest.TestCase):
             return x.gradient()
 
     def test_NoDetachMulti_DetachMulti(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         array_no_detach_multi = self.no_detach_multi()
         array_detach_multi = self.detach_multi()
 
         assert not np.array_equal(array_no_detach_multi, array_detach_multi)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_NoDetachSingle_DetachMulti(self):
         array_no_detach_single = self.no_detach_single()
         array_detach_multi = self.detach_multi()
         assert np.array_equal(array_no_detach_single, array_detach_multi)
 
-    def test_detach_exception(self):
-        x = fluid.layers.data(name="a", shape=[3, 4], dtype='float32')
-        y = fluid.layers.fc(input=x, size=10, bias_attr=True)
-        try:
-            y_detach = y.detach()
-        except Exception as e:
-            # Here is to check
-            assert type(e) == AssertionError
-            assert str(e) == (
-                "'detach' should be called by imperative Varible "
-                "in imperative mode, please run it in dygraph mode. You can "
-                "turn off paddle.enable_static() if you are in static mode, "
-                "or turn off ProgramTranslator if you are using "
-                "@paddle.jit.to_static. If you have to run ProgramTranslator, "
-                "please use other API to replace 'detach'")
-
 
 class TestInplace(unittest.TestCase):
+
     def test_forward_version(self):
         with paddle.fluid.dygraph.guard():
             var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))

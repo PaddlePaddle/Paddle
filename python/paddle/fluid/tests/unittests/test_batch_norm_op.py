@@ -36,6 +36,11 @@ def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
             x = np.reshape(x, (x.shape[0], x.shape[1], 1, 1))
         else:
             x = np.reshape(x, (x.shape[0], 1, 1, x.shape[1]))
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
 
     if data_format == "NCHW":
         n, c, h, w = x.shape
@@ -55,13 +60,19 @@ def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
     else:
         raise ValueError("Unknown data order.")
 
-    if len(x_shape) == 2:
+    if len(x_shape) == 2 or len(x_shape) == 3:
         y = np.reshape(y, x_shape)
     return y
 
 
 def _cal_mean_variance(x, epsilon, data_format):
     assert data_format in ['NCHW', 'NHWC']
+    x_shape = x.shape
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
     x_square = x * x
     axis = (0, 2, 3) if data_format == 'NCHW' else (0, 1, 2)
     C = x.shape[1] if data_format == 'NCHW' else x.shape[-1]
@@ -75,6 +86,12 @@ def _cal_mean_variance(x, epsilon, data_format):
 
 def _reference_training(x, scale, offset, epsilon, data_format):
     x_shape = x.shape
+
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
 
     if data_format == "NCHW":
         n, c, h, w = x.shape
@@ -94,7 +111,6 @@ def _reference_training(x, scale, offset, epsilon, data_format):
         offset_tile = np.reshape(offset, (1, c, 1, 1))
         offset_tile = np.reshape(offset_tile, (1, c, 1, 1))
         y = normalized * scale_tile + offset_tile
-        return y, mean, var
     elif data_format == "NHWC":
         x_square = x * x
         x_square_sum = np.sum(x_square, (0, 1, 2))
@@ -104,9 +120,12 @@ def _reference_training(x, scale, offset, epsilon, data_format):
         var = x_square_sum / element_count - mean * mean
         normalized = (x - mean) / np.sqrt(var + epsilon)
         y = normalized * scale + offset
-        return y, mean, var
     else:
         raise ValueError("Unknown data order.")
+
+    if len(x_shape) == 3:
+        y = np.reshape(y, x_shape)
+    return y, mean, var
 
 
 def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
@@ -124,13 +143,22 @@ def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
     if data_format != "NCHW" and data_format != "NHWC":
         raise ValueError("Unknown data order.")
 
+    x_shape = x.shape
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+            y_grad = np.reshape(y_grad, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
+            y_grad = np.reshape(y_grad, (x_shape[0], x_shape[1], 1, x_shape[2]))
+
     if data_format == "NCHW":
         x = np.transpose(x, (0, 2, 3, 1))
         y_grad = np.transpose(y_grad, (0, 2, 3, 1))
 
-    x_grad = scale * (y_grad - np.mean(
-        y_grad, axis=(0, 1, 2)) - (x - mean) * np.mean(
-            y_grad * (x - mean), axis=(0, 1, 2)) /
+    x_grad = scale * (y_grad - np.mean(y_grad, axis=(0, 1, 2)) -
+                      (x - mean) * np.mean(y_grad *
+                                           (x - mean), axis=(0, 1, 2)) /
                       (var + epsilon)) / np.sqrt(var + epsilon)
     grad_scale = np.sum(y_grad * (x - mean) / np.sqrt(var + epsilon),
                         axis=(0, 1, 2))
@@ -141,6 +169,9 @@ def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
         x_grad = np.transpose(x_grad, (0, 3, 1, 2))
         x = np.transpose(x, (0, 3, 1, 2))
         y_grad = np.transpose(y_grad, (0, 3, 1, 2))
+
+    if len(x_shape) == 3:
+        x_grad = np.reshape(x_grad, x_shape)
 
     return x_grad, grad_scale, grad_offset
 
@@ -155,6 +186,7 @@ def create_or_get_tensor(scope, var_name, var, place):
 
 
 def set_output_grad(scope, outputs, place, feed_dict=None):
+
     def __set_tensor__(name, data=None):
         out_tensor = scope.find_var(name).get_tensor()
         grad_tensor = scope.var(grad_var_name(name)).get_tensor()
@@ -176,6 +208,7 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
 
 
 class TestBatchNormOpInference(unittest.TestCase):
+
     def setUp(self):
         self.dtype = np.float32
         self.use_mkldnn = False
@@ -183,7 +216,11 @@ class TestBatchNormOpInference(unittest.TestCase):
         self.init_kernel_type()
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=1e-05,
+                                   atol=atol,
+                                   err_msg=msg)
 
     def check_with_place(self, place, data_layout, dtype, shape):
         epsilon = 0.00001
@@ -221,8 +258,8 @@ class TestBatchNormOpInference(unittest.TestCase):
                                         OpTest.np_dtype_to_fluid_dtype(x_val),
                                         place)
         scale_tensor = create_or_get_tensor(
-            scope, "scale_val",
-            OpTest.np_dtype_to_fluid_dtype(scale_val), place)
+            scope, "scale_val", OpTest.np_dtype_to_fluid_dtype(scale_val),
+            place)
         bias_tensor = create_or_get_tensor(
             scope, "bias_val", OpTest.np_dtype_to_fluid_dtype(bias_val), place)
         mean_tensor = create_or_get_tensor(scope, "mean",
@@ -269,7 +306,7 @@ class TestBatchNormOpInference(unittest.TestCase):
         # of memory descripting. So we need to convert NCHW
         # dims into NHWC.
         if data_layout == "NHWC" and self.use_mkldnn == True:
-            # Create executor to have MKL-DNN cache 
+            # Create executor to have MKL-DNN cache
             # cleared after NHWC unit test
             place = core.CPUPlace()
             exe = fluid.Executor(place)
@@ -279,17 +316,16 @@ class TestBatchNormOpInference(unittest.TestCase):
             y_tensor._set_dims(dims)
 
         # check inference result
-        self.__assert_close(
-            y_tensor,
-            y_out,
-            "inference output are different at " + str(place) + ", " +
-            data_layout + ", " + str(np.dtype(dtype)) +
-            str(np.array(y_tensor)) + str(y_out),
-            atol=1e-3)
+        self.__assert_close(y_tensor,
+                            y_out,
+                            "inference output are different at " + str(place) +
+                            ", " + data_layout + ", " + str(np.dtype(dtype)) +
+                            str(np.array(y_tensor)) + str(y_out),
+                            atol=1e-3)
 
     def test_check_output(self):
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
         for place in places:
@@ -303,6 +339,7 @@ class TestBatchNormOpInference(unittest.TestCase):
 
 
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
+
     def setUp(self):
         self.dtype = np.float16
         self.use_mkldnn = False
@@ -311,19 +348,20 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 
     def test_check_output(self):
         places = []
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 places.append(place)
-
         for place in places:
-            for data_format in ["NCHW", "NHWC"]:
+            #for data_format in ["NCHW", "NHWC"]:
+            for data_format in ["NCHW"]:
                 self.check_with_place(place, data_format, self.dtype,
                                       [2, 3, 4, 5])
                 self.check_with_place(place, data_format, self.dtype, [2, 3])
 
 
 class TestBatchNormOpTraining(unittest.TestCase):
+
     def setUp(self):
         self.use_mkldnn = False
         self.fuse_with_relu = False
@@ -354,8 +392,9 @@ class TestBatchNormOpTraining(unittest.TestCase):
         variance_out = var_ref * (1. - momentum) + momentum * variance
         saved_variance = 1. / np.sqrt(var_ref + epsilon)
         # run backward
-        x_grad, scale_grad, bias_grad = _reference_grad(
-            x, y_grad, scale, saved_mean, var_ref, epsilon, data_layout)
+        x_grad, scale_grad, bias_grad = _reference_grad(x, y_grad, scale,
+                                                        saved_mean, var_ref,
+                                                        epsilon, data_layout)
 
         return y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad
 
@@ -371,6 +410,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
         return mean, variance
 
     def test_forward_backward(self):
+
         def test_with_place(place, data_layout, shape):
             # attr
             epsilon = self.epsilon
@@ -409,10 +449,9 @@ class TestBatchNormOpTraining(unittest.TestCase):
             with fluid.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
-                    block.create_var(
-                        name=name,
-                        dtype='float32',
-                        shape=ground_truth[name].shape)
+                    block.create_var(name=name,
+                                     dtype='float32',
+                                     shape=ground_truth[name].shape)
                 inputs = {
                     "X": block.var('x'),
                     "Scale": block.var('scale'),
@@ -442,11 +481,10 @@ class TestBatchNormOpTraining(unittest.TestCase):
                 }
                 block.create_var(name="reserve_space", dtype='float32')
                 outputs["ReserveSpace"] = block.var('reserve_space')
-                bn_op = block.append_op(
-                    type="batch_norm",
-                    inputs=inputs,
-                    outputs=outputs,
-                    attrs=attrs)
+                bn_op = block.append_op(type="batch_norm",
+                                        inputs=inputs,
+                                        outputs=outputs,
+                                        attrs=attrs)
                 block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
                 # generate backward op_desc
@@ -478,15 +516,17 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
             for id, name in enumerate(self.fetch_list):
                 if name == 'variance':
-                    self.__assert_close(
-                        var_dict[name], out[id], name, atol=1e-3)
+                    self.__assert_close(var_dict[name],
+                                        out[id],
+                                        name,
+                                        atol=1e-3)
                     continue
                 self.__assert_close(var_dict[name], out[id], name)
             print("op test forward passed: ", str(place), data_layout)
 
         places = [core.CPUPlace()]
 
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
         for place in places:
@@ -498,6 +538,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
 
 class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
+
     def init_test_case(self):
         self.use_global_stats = False
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
@@ -505,6 +546,7 @@ class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
 
 
 class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
+
     def init_test_case(self):
         self.use_global_stats = False
         self.no_grad_set = set()
@@ -515,7 +557,16 @@ class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
         os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = "1"
 
 
+class TestBatchNormOpTrainingCase3(TestBatchNormOpTraining):
+
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.no_grad_set = set(['x@GRAD'])
+        self.fetch_list = ['y', 'mean', 'variance', 'scale@GRAD', 'bias@GRAD']
+
+
 class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
+
     def init_test_case(self):
         self.use_momentum_variable = True
         self.use_global_stats = False
@@ -527,6 +578,7 @@ class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
 
 
 class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
+
     def init_test_case(self):
         self.use_global_stats = True
         self.no_grad_set = set()
@@ -581,6 +633,7 @@ class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
 
 class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
         TestBatchNormOpFreezeStatsTraining):
+
     def init_test_case(self):
         self.use_global_stats = True
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
@@ -588,11 +641,12 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
 
 
 class TestBatchNormOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of batch_norm must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.batch_norm, x1)
 
             # the input dtype of batch_norm must be float16 or float32 or float64
@@ -602,12 +656,13 @@ class TestBatchNormOpError(unittest.TestCase):
 
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             batch_norm = fluid.dygraph.BatchNorm(10)
             # the input of BatchNorm must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
             self.assertRaises(TypeError, batch_norm, x1)
 
             # the input dtype of BatchNorm must be float16 or float32 or float64
@@ -617,9 +672,10 @@ class TestDygraphBatchNormAPIError(unittest.TestCase):
 
 
 class TestDygraphBatchNormTrainableStats(unittest.TestCase):
+
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
@@ -636,11 +692,11 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute(x, False, False)
             y2 = compute(x, True, True)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_static(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
             exe = fluid.Executor(p)
@@ -661,10 +717,11 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute(x, False, False)
             y2 = compute(x, True, True)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
 
 class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
+
     def test_reservespace(self):
         with program_guard(Program(), Program()):
             paddle.enable_static()
@@ -678,4 +735,6 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
     unittest.main()

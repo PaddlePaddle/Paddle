@@ -13,13 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/float16.h"
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+
 using paddle::platform::float16;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 namespace paddle {
 namespace operators {
@@ -56,8 +57,8 @@ __device__ T min(T a, T b) {
 }
 
 /*
-* check if (x, y) is in the boundary of roi
-*/
+ * check if (x, y) is in the boundary of roi
+ */
 template <typename T>
 __device__ bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
   for (int i = 0; i < 4; i++) {
@@ -110,10 +111,17 @@ __device__ bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
  * Perform bilinear interpolation in the input feature map.
  */
 template <typename T>
-__device__ void bilinear_interpolate(const T* in_data, const int channels,
-                                     const int width, const int height,
-                                     int in_n, int in_c, T in_w, T in_h, T* val,
-                                     int out_idx, int* out2in_idx,
+__device__ void bilinear_interpolate(const T* in_data,
+                                     const int channels,
+                                     const int width,
+                                     const int height,
+                                     int in_n,
+                                     int in_c,
+                                     T in_w,
+                                     T in_h,
+                                     T* val,
+                                     int out_idx,
+                                     int* out2in_idx,
                                      T* out2in_w) {
   // Deal with cases that source coords are out of feature map boundary
   if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, width - 0.5) ||
@@ -185,8 +193,8 @@ __device__ void bilinear_interpolate(const T* in_data, const int channels,
  *
  */
 template <typename T>
-__device__ void get_source_coords(T matrix[], int out_w, int out_h, T* in_w,
-                                  T* in_h) {
+__device__ void get_source_coords(
+    T matrix[], int out_w, int out_h, T* in_w, T* in_h) {
   T u = matrix[0] * out_w + matrix[1] * out_h + matrix[2];
   T v = matrix[3] * out_w + matrix[4] * out_h + matrix[5];
   T w = matrix[6] * out_w + matrix[7] * out_h + matrix[8];
@@ -218,8 +226,10 @@ __device__ void get_source_coords(T matrix[], int out_w, int out_h, T* in_w,
  */
 template <typename T>
 __device__ void get_transform_matrix(const int transformed_width,
-                                     const int transformed_height, T roi_x[],
-                                     T roi_y[], T matrix[]) {
+                                     const int transformed_height,
+                                     T roi_x[],
+                                     T roi_y[],
+                                     T matrix[]) {
   T x0 = roi_x[0];
   T x1 = roi_x[1];
   T x2 = roi_x[2];
@@ -272,24 +282,31 @@ __device__ void get_transform_matrix(const int transformed_width,
 template <typename T>
 __global__ void RoiTransformKernel(const float* input_data,
                                    const float* rois_data,
-                                   const int* roi2image_data, int num_rois,
-                                   int in_height, int in_width, int channels,
+                                   const int* roi2image_data,
+                                   int num_rois,
+                                   int in_height,
+                                   int in_width,
+                                   int channels,
                                    int transformed_height,
-                                   int transformed_width, float spatial_scale,
-                                   T* output_data, int* out2in_idx, T* out2in_w,
-                                   int* mask, T* transform_matrix) {
+                                   int transformed_width,
+                                   float spatial_scale,
+                                   T* output_data,
+                                   int* out2in_idx,
+                                   T* out2in_w,
+                                   int* mask,
+                                   T* transform_matrix) {
   int output_size =
       num_rois * transformed_height * transformed_width * channels;
   CUDA_KERNEL_LOOP(index, output_size) {
     // (n, c, out_h, out_w) is an element in the transformed output
-    int out_w = idx4_4(index, num_rois, channels, transformed_height,
-                       transformed_width);
-    int out_h = idx4_3(index, num_rois, channels, transformed_height,
-                       transformed_width);
-    int c = idx4_2(index, num_rois, channels, transformed_height,
-                   transformed_width);
-    int n = idx4_1(index, num_rois, channels, transformed_height,
-                   transformed_width);
+    int out_w = idx4_4(
+        index, num_rois, channels, transformed_height, transformed_width);
+    int out_h = idx4_3(
+        index, num_rois, channels, transformed_height, transformed_width);
+    int c = idx4_2(
+        index, num_rois, channels, transformed_height, transformed_width);
+    int n = idx4_1(
+        index, num_rois, channels, transformed_height, transformed_width);
 
     auto bottom_rois = rois_data + n * 8;
     int roi_batch_ind = bottom_rois[0];
@@ -302,8 +319,8 @@ __global__ void RoiTransformKernel(const float* input_data,
 
     // Get transform matrix
     T matrix[9];
-    get_transform_matrix<T>(transformed_width, transformed_height, roi_x, roi_y,
-                            matrix);
+    get_transform_matrix<T>(
+        transformed_width, transformed_height, roi_x, roi_y, matrix);
     for (int i = 0; i < 9; i++) {
       transform_matrix[n * 9 + i] = matrix[i];
     }
@@ -323,9 +340,18 @@ __global__ void RoiTransformKernel(const float* input_data,
       } else {
         // Perform bilinear interpolation
         int in_n = roi2image_data[n];
-        bilinear_interpolate<T>(input_data, channels, in_width, in_height, in_n,
-                                c, in_w, in_h, output_data + index, index,
-                                out2in_idx, out2in_w);
+        bilinear_interpolate<T>(input_data,
+                                channels,
+                                in_width,
+                                in_height,
+                                in_n,
+                                c,
+                                in_w,
+                                in_h,
+                                output_data + index,
+                                index,
+                                out2in_idx,
+                                out2in_w);
         mask[(n * transformed_height + out_h) * transformed_width + out_w] = 1;
       }
 
@@ -356,7 +382,7 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     T* out2in_w_data =
         out2in_w->mutable_data<T>({out->numel(), 4}, ctx.GetPlace());
 
-    math::SetConstant<platform::CUDADeviceContext, int> init;
+    phi::funcs::SetConstant<phi::GPUContext, int> init;
     init(ctx.cuda_device_context(), out2in_idx, static_cast<int>(-1));
 
     auto transformed_height = ctx.Attr<int>("transformed_height");
@@ -384,7 +410,8 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
         roi2image_data[j] = i;
       }
     }
-    TensorCopySync(roi2image, ctx.GetPlace(), &roi2image_dev);
+    paddle::framework::TensorCopySync(
+        roi2image, ctx.GetPlace(), &roi2image_dev);
 
     int out_size = rois_num * transformed_height * transformed_width * channels;
     auto stream = ctx.cuda_device_context().stream();
@@ -395,17 +422,27 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     T* matrix =
         out_transform_matrix->mutable_data<T>({rois_num, 9}, ctx.GetPlace());
 
-    RoiTransformKernel<T><<<grid, block, 0, stream>>>(
-        input_data, rois_data, roi2image_dev.data<int>(), rois_num, in_height,
-        in_width, channels, transformed_height, transformed_width,
-        spatial_scale, output_data, out2in_idx_data, out2in_w_data, mask_data,
-        matrix);
+    RoiTransformKernel<T><<<grid, block, 0, stream>>>(input_data,
+                                                      rois_data,
+                                                      roi2image_dev.data<int>(),
+                                                      rois_num,
+                                                      in_height,
+                                                      in_width,
+                                                      channels,
+                                                      transformed_height,
+                                                      transformed_width,
+                                                      spatial_scale,
+                                                      output_data,
+                                                      out2in_idx_data,
+                                                      out2in_w_data,
+                                                      mask_data,
+                                                      matrix);
   }
 };
 
 template <typename T>
-__device__ T get_feature_gradient(T xs, T ys, int w, int h, const int width,
-                                  const int height) {
+__device__ T get_feature_gradient(
+    T xs, T ys, int w, int h, const int width, const int height) {
   if (GT_E<T>(-0.5, xs) || GT_E<T>(xs, width - 0.5) || GT_E<T>(-0.5, ys) ||
       GT_E<T>(ys, height - 0.5)) {
     return 0;
@@ -455,7 +492,8 @@ __device__ T get_feature_gradient(T xs, T ys, int w, int h, const int width,
 }
 
 template <typename T>
-__global__ void RoiTransformGradKernel(int out_size, const int* out2in_idx_data,
+__global__ void RoiTransformGradKernel(int out_size,
+                                       const int* out2in_idx_data,
                                        const T* out2in_w_data,
                                        const T* out_grad_data,
                                        T* in_grad_data) {
@@ -481,7 +519,7 @@ class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
 
     T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
 
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     set_zero(ctx.cuda_device_context(), in_grad, static_cast<T>(0));
 
     const T* out_grad_data = out_grad->data<T>();

@@ -15,12 +15,33 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+extern __global__ void GenAnchors(T* out,
+                                  const T* aspect_ratios,
+                                  const int ar_num,
+                                  const T* anchor_sizes,
+                                  const int as_num,
+                                  const T* stride,
+                                  const int sd_num,
+                                  const int height,
+                                  const int width,
+                                  const T offset);
+
+template <typename T>
+extern __global__ void SetVariance(T* out,
+                                   const T* var,
+                                   const int vnum,
+                                   const int num);
+#endif
 
 template <typename T>
 class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
@@ -87,7 +108,7 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
 
     framework::Tensor var_t;
     var_t.mutable_data<T>(
-        framework::make_ddim({1, static_cast<int>(variances.size())}),
+        phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
     auto var_et = framework::EigenTensor<T, 2>::From(var_t);
     for (size_t i = 0; i < variances.size(); ++i) {

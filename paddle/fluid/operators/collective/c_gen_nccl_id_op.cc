@@ -20,16 +20,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
-
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
   for (size_t i = 0; i < nccl_ids->size(); ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::ncclGetUniqueId(&(*nccl_ids)[i]));
   }
 }
@@ -41,8 +41,9 @@ static void CopyNCCLIDToVar(const std::vector<ncclUniqueId>& nccl_ids,
     std::string var_name = func(i);
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        var_name.c_str()));
+        var,
+        platform::errors::NotFound("Variable with name %s is not found",
+                                   var_name.c_str()));
     auto nccl_id = var->GetMutable<ncclUniqueId>();
     memcpy(nccl_id, &nccl_ids[i], sizeof(ncclUniqueId));
   }
@@ -59,11 +60,14 @@ class CGenNCCLIdOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
     int rank = Attr<int>("rank");
-    framework::Scope& local_scope = scope.NewScope();
+    int ring_id = Attr<int>("ring_id");
 
     std::function<std::string(size_t)> func = [&](size_t i) -> std::string {
       return Output("Out");
     };
+
+    std::string endpoint = Attr<std::string>("endpoint");
+    int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
 
     std::vector<ncclUniqueId> nccl_ids;
     nccl_ids.resize(1);
@@ -72,16 +76,29 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       GenNCCLID(&nccl_ids);
       std::vector<std::string> endpoint_list =
           Attr<std::vector<std::string>>("other_endpoints");
-      platform::SendBroadCastCommID(endpoint_list, &nccl_ids);
+      platform::SendBroadCastCommID(endpoint_list, &nccl_ids, ring_id);
     } else {
-      std::string endpoint = Attr<std::string>("endpoint");
-      platform::RecvBroadCastCommID(endpoint, &nccl_ids);
+      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids, ring_id);
     }
 
     CopyNCCLIDToVar(nccl_ids, func, scope);
-    scope.DeleteScope(&local_scope);
   }
 };
+
+#else
+class CGenNCCLIdOp : public framework::OperatorBase {
+ public:
+  CGenNCCLIdOp(const std::string& type,
+               const framework::VariableNameMap& inputs,
+               const framework::VariableNameMap& outputs,
+               const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {}
+};
+
+#endif
 
 class CGenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -104,6 +121,8 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
     AddAttr<int>("rank",
                  "(int default 0) "
                  "The rank of the trainer in distributed training.")
+        .SetDefault(0);
+    AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
   }
 };

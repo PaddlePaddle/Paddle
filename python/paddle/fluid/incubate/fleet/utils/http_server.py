@@ -14,8 +14,9 @@
 """Http Server."""
 
 import logging
-import BaseHTTPServer
-import SimpleHTTPServer
+# NOTE: HTTPServer has a different name in python2 and python3
+from http.server import HTTPServer
+import http.server as SimpleHTTPServer
 import time
 import threading
 import socket
@@ -31,8 +32,9 @@ def get_logger(name, level, fmt):
     return logger
 
 
-_http_server_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_http_server_logger = get_logger(__name__,
+                                 logging.INFO,
+                                 fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -123,7 +125,7 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.end_headers()
 
 
-class KVHTTPServer(BaseHTTPServer.HTTPServer, object):
+class KVHTTPServer(HTTPServer, object):
     """
     it is a http server storing kv pairs.
     """

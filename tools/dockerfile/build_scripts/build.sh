@@ -24,15 +24,13 @@ set -ex
 # remove others to expedite build and reduce docker image size. The original
 # manylinux docker image project builds many python versions.
 # NOTE We added back 3.5.1, since auditwheel requires python 3.3+
-CPYTHON_VERSIONS="3.8.0 3.7.0 3.6.0 3.5.1 2.7.15"
+CPYTHON_VERSIONS="3.9.0 3.8.0 3.7.0 3.6.0"
 
 # openssl version to build, with expected sha256 hash of .tar.gz
 # archive
 OPENSSL_ROOT=openssl-1.0.2g
 OPENSSL_HASH=b784b1b3907ce39abf4098702dade6365522a253ad1552e267a9a0e89594aa33
 PATCHELF_HASH=f2aa40a6148cb3b0ca807a1bf836b081793e55ec9e5540a5356d800132be7e0a
-CURL_ROOT=curl-7.49.1
-CURL_HASH=eb63cec4bef692eab9db459033f409533e6d10e20942f4b060b32819e81885f1
 AUTOCONF_ROOT=autoconf-2.69
 AUTOCONF_HASH=954bd69b391edc12d6a4a51a2dd1476543da5c6bbf05a95b59dc0dd6fd4c2969
 
@@ -79,33 +77,27 @@ build_openssl $OPENSSL_ROOT $OPENSSL_HASH
 mkdir -p /opt/python
 build_cpythons $CPYTHON_VERSIONS
 
-PY35_BIN=/opt/python/cp35-cp35m/bin
 PY36_BIN=/opt/python/cp36-cp36m/bin
 PY37_BIN=/opt/python/cp37-cp37m/bin
 PY38_BIN=/opt/python/cp38-cp38m/bin
+PY39_BIN=/opt/python/cp39-cp39m/bin
 # NOTE Since our custom manylinux image builds pythons with shared
 # libpython, we need to add libpython's dir to LD_LIBRARY_PATH before running
 # python.
 ORIGINAL_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
-LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY35_BIN})/lib:$(dirname ${PY36_BIN})/lib:$(dirname ${PY37_BIN})/lib:$(dirname ${PY38_BIN})/lib"
+LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY36_BIN})/lib:$(dirname ${PY37_BIN})/lib:$(dirname ${PY38_BIN})/lib:$(dirname ${PY39_BIN})/lib"
 
 # Our openssl doesn't know how to find the system CA trust store
 #   (https://github.com/pypa/manylinux/issues/53)
 # And it's not clear how up-to-date that is anyway
 # So let's just use the same one pip and everyone uses
-LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY35_BIN})/lib" $PY35_BIN/pip install certifi
-ln -s $($PY35_BIN/python -c 'import certifi; print(certifi.where())') \
+LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY37_BIN})/lib" $PY37_BIN/pip install certifi
+ln -s $($PY37_BIN/python -c 'import certifi; print(certifi.where())') \
       /opt/_internal/certs.pem
 # If you modify this line you also have to modify the versions in the
 # Dockerfiles:
 export SSL_CERT_FILE=/opt/_internal/certs.pem
 
-# Install newest curl
-build_curl $CURL_ROOT $CURL_HASH
-rm -rf /usr/local/include/curl /usr/local/lib/libcurl* /usr/local/lib/pkgconfig/libcurl.pc
-hash -r
-curl --version
-curl-config --features
 
 # Install patchelf (latest with unreleased bug fixes)
 # FIXME(typhoonzero): restore this when the link is fixed.
@@ -114,11 +106,11 @@ curl-config --features
 # tar -xzf patchelf-0.9njs2.tar.gz
 # (cd patchelf-0.9njs2 && ./configure && make && make install)
 # rm -rf patchelf-0.9njs2.tar.gz patchelf-0.9njs2
-yum install -y patchelf
+sh "$MY_DIR/install_patchelf.sh"
 
 # Install latest pypi release of auditwheel
-LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY35_BIN})/lib" $PY35_BIN/pip install auditwheel
-ln -s $PY35_BIN/auditwheel /usr/local/bin/auditwheel
+#LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY35_BIN})/lib" $PY35_BIN/pip install auditwheel
+#ln -s $PY35_BIN/auditwheel /usr/local/bin/auditwheel
 
 # Clean up development headers and other unnecessary stuff for
 # final image
@@ -157,7 +149,7 @@ LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}"
 
 # According to ar issues: https://lists.gnu.org/archive/html/bug-binutils/2016-05/msg00211.html
 # we should install new version ar with 64-bit supported here
-wget https://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.gz
+wget --no-check-certificate https://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.gz
 tar xzf binutils-2.27.tar.gz && cd binutils-2.27
 ./configure --prefix=/opt/rh/devtoolset-2/root/usr/ --enable-64-bit-archive && make -j `nproc` && make install
 cd .. && rm binutils-2.27.tar.gz && rm -rf binutils-2.27

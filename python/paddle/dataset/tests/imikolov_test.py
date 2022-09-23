@@ -19,8 +19,11 @@ import unittest
 
 WORD_DICT = paddle.dataset.imikolov.build_dict()
 
+__all__ = []
+
 
 class TestMikolov(unittest.TestCase):
+
     def check_reader(self, reader, n):
         for l in reader():
             self.assertEqual(len(l), n)

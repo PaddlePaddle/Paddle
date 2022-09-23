@@ -10,11 +10,11 @@ In **Release 1.7**, a support for [Ernie (NLP) Quant trained model](https://gith
 
 In **Release 2.0**, further optimizations were added to the Quant2: INT8 `matmul` kernel, inplace execution of activation and `elementwise_add` operators, and broader support for quantization aware strategy from PaddleSlim.
 
-In this document we focus on the Quant2 approach only. 
+In this document we focus on the Quant2 approach only.
 
 ## 0. Prerequisites
 * PaddlePaddle in version 2.0 or higher is required. For instructions on how to install it see the [installation document](https://www.paddlepaddle.org.cn/install/quick).
-  
+
 * MKL-DNN and MKL are required. The highest performance gain can be observed using CPU servers supporting AVX512 instructions.
 * INT8 accuracy is best on CPU servers supporting AVX512 VNNI extension (e.g. CLX class Intel processors). A linux server supports AVX512 VNNI instructions if the output of the command `lscpu` contains the `avx512_vnni` entry in the `Flags` section. AVX512 VNNI support on Windows can be checked using the [`coreinfo`]( https://docs.microsoft.com/en-us/sysinternals/downloads/coreinfo) tool.
 
@@ -54,7 +54,7 @@ Notes:
    and the quantization scales have to be collected for the `input1` and `outpu3` tensors in the Quant model.
 2. Quantization of the following operators is supported: `conv2d`, `depthwise_conv2d`, `mul`, `fc`, `matmul`, `pool2d`, `reshape2`, `transpose2`, `concat`.
 3. The longest sequence of consecutive quantizable operators in the model, the biggest performance boost can be achieved through quantization:
-   ```... → conv2d → conv2d → pool2d → conv2d → conv2d → ...``` 
+   ```... → conv2d → conv2d → pool2d → conv2d → conv2d → ...```
    Quantizing single operator separated from other quantizable operators can give no performance benefits or even slow down the inference:
    ```... → swish → fc → softmax → ...`
 
@@ -94,8 +94,8 @@ The code snipped shows how the `Quant2Int8MkldnnPass` can be applied to a model 
     import paddle.fluid as fluid
     from paddle.fluid.contrib.slim.quantization import Quant2Int8MkldnnPass
     from paddle.fluid.framework import IrGraph
-    from paddle.fluid import core	
-    
+    from paddle.fluid import core
+
     # Create the IrGraph by Program
     graph = IrGraph(core.Graph(fluid.Program().desc), for_test=False)
     place = fluid.CPUPlace()
@@ -187,7 +187,7 @@ Notes:
 
 ## 6. How to reproduce the results
 
-The steps below show, taking ResNet50 as an example, how to reproduce the above accuracy and performance results for Image Classification models. 
+The steps below show, taking ResNet50 as an example, how to reproduce the above accuracy and performance results for Image Classification models.
 To reproduce NLP models results (Ernie), please follow [How to reproduce Ernie Quant results on MKL-DNN](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn/README.md).
 
 ### Prepare dataset
@@ -207,13 +207,29 @@ Run the following commands to download and extract Quant model:
 ```bash
 mkdir -p /PATH/TO/DOWNLOAD/MODEL/
 cd /PATH/TO/DOWNLOAD/MODEL/
-export QUANT_MODEL_NAME=resnet50
-export QUANT_MODEL_ARCHIVE=${QUANT_MODEL_NAME}_quant.tar.gz
-wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT2_models/${QUANT_MODEL_ARCHIVE}
+export QUANT_MODEL_NAME=ResNet50
+export QUANT_MODEL_ARCHIVE=${QUANT_MODEL_NAME}_qat_model.tar.gz
+wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT_models/${QUANT_MODEL_ARCHIVE}
 mkdir ${QUANT_MODEL_NAME} && tar -xvf ${QUANT_MODEL_ARCHIVE} -C ${QUANT_MODEL_NAME}
 ```
 
-To download other Quant models, set the `QUANT_MODEL_NAME` variable in the above commands to one of the values: `resnet101`, `mobilenetv1`, `mobilenetv2`, `vgg16`, `vgg19`.
+To download other Quant models, set the `QUANT_MODEL_NAME` variable in the above commands to one of the values: `ResNet101`, `MobileNetV1`, `MobileNetV2`, `VGG16`, `VGG19`.
+
+Moreover, there are other variations of these Quant models that use different methods to obtain scales during training, run these commands to download and extract Quant model:
+
+```bash
+mkdir -p /PATH/TO/DOWNLOAD/MODEL/
+cd /PATH/TO/DOWNLOAD/MODEL/
+export QUANT_MODEL_NAME=ResNet50_qat_perf
+export QUANT_MODEL_ARCHIVE=${QUANT_MODEL_NAME}.tar.gz
+wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT_models/${QUANT_MODEL_ARCHIVE}
+mkdir ${QUANT_MODEL_NAME} && tar -xvf ${QUANT_MODEL_ARCHIVE} -C ${QUANT_MODEL_NAME}
+```
+
+To download other Quant models, set the `QUANT_MODEL_NAME` variable to on of the values: `ResNet50_qat_perf`, `ResNet50_qat_range`, `ResNet50_qat_channelwise`, `MobileNet_qat_perf`, where:
+- `ResNet50_qat_perf`, `MobileNet_qat_perf` with input/output scales in `fake_quantize_moving_average_abs_max` operators, with weight scales in `fake_dequantize_max_abs` operators
+- `ResNet50_qat_range`, with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes, with weight scales in `fake_dequantize_max_abs` operators
+- `ResNet50_qat_channelwise`, with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes, with weight scales in `fake_channel_wise_dequantize_max_abs` operators
 
 Download clean FP32 model for accuracy comparison against the INT8 model:
 

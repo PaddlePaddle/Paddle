@@ -36,6 +36,9 @@ enum AttrType {
   BLOCKS = 10;
   LONGS = 11;
   FLOAT64S = 12;
+  VAR = 13;
+  VARS = 14;
+  FLOAT64 = 15;
 }
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
@@ -58,6 +61,9 @@ message OpDesc {
     repeated int32 blocks_idx = 14;
     repeated int64 longs = 15;
     repeated double float64s = 16;
+    optional string var_name = 17;
+    repeated string vars_name = 18;
+    optional double float64 = 19;
   };
 
   message Var {
@@ -83,6 +89,8 @@ message OpProto {
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
     optional bool dispensable = 5 [ default = false ];
+    optional bool extra = 6 [ default = false ];
+    optional bool quant = 7 [ default = false ];
   }
 
   // AttrProto describes the C++ type Attribute.
@@ -94,6 +102,9 @@ message OpProto {
     // language binding has responsibility to fill that
     // attribute. End-User should not set that attribute.
     optional bool generated = 4 [ default = false ];
+    optional bool extra = 5 [ default = false ];
+    optional bool quant = 6 [ default = false ];
+    optional bool support_tensor = 7 [ default = false];
   }
 
   required string type = 1;
@@ -136,6 +147,13 @@ message VarType {
     // in operators like nccl_op
     RAW = 17;
     TUPLE = 18;
+
+    STRING = 25;
+    STRINGS = 26;
+    VOCAB = 27;
+    FEED_LIST = 28;
+    // The data type of phi::StringTensor
+    PSTRING = 29;
   }
 
   required Type type = 1;
@@ -164,15 +182,31 @@ message VarType {
 
   message Tuple { repeated Type element_type = 1; }
   optional Tuple tuple = 7;
+
+  optional TensorDesc string = 8;
+  optional TensorDesc strings = 9;
+  optional TensorDesc vocab = 10;
 }
 
 message VarDesc {
+
+  message Attr {
+    required string name = 1;
+    required AttrType type = 2;
+    optional int32 i = 3;
+    optional string s = 4;
+    repeated int32 ints = 5;
+  };
+
   required string name = 1;
   required VarType type = 2;
   optional bool persistable = 3 [ default = false ];
   // True if the variable is an input data and
   // have to check the feed data shape and dtype
   optional bool need_check_feed = 4 [ default = false ];
+  optional bool is_parameter = 5 [ default = false ];
+  optional bool stop_gradient = 6 [ default = false ];
+  repeated Attr attrs = 7;
 }
 
 message BlockDesc {

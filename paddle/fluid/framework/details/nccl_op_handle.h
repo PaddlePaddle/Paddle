@@ -27,7 +27,7 @@
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 
 DECLARE_bool(sync_nccl_allreduce);
 
@@ -37,7 +37,8 @@ namespace details {
 
 class NCCLOpHandleBase : public OpHandleBase {
  public:
-  NCCLOpHandleBase(ir::Node* node, const std::vector<platform::Place>& places,
+  NCCLOpHandleBase(ir::Node* node,
+                   const std::vector<platform::Place>& places,
                    const platform::NCCLCommunicator* nccl_ctxs)
       : OpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs == nullptr) {
@@ -52,22 +53,45 @@ class NCCLOpHandleBase : public OpHandleBase {
   virtual ~NCCLOpHandleBase() {
     for (auto& ev : inter_events_) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(ev.second));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(ev.second));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(ev.second));
 #endif
     }
     for (auto& ev : exter_events_) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(ev.second));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(ev.second));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(ev.second));
 #endif
     }
   }
+
+  const platform::NCCLCommunicator* GetNcclContext() const {
+    return nccl_ctxs_;
+  }
+
+  const ncclComm_t GetComm() const {
+    PADDLE_ENFORCE_EQ(
+        places_.size(),
+        1,
+        platform::errors::Unimplemented(
+            "Only supported for single place now, but got %d", places_.size()));
+    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
+                      0,
+                      platform::errors::Unimplemented(
+                          "Not supported use_hierarchical_allreduce_ now"));
+    auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
+    int dev_id = places_[0].device;
+    auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);
+    auto comm = nccl_ctx.comm_;
+    return comm;
+  }
+
   void SetRunEnv(int run_order, bool use_hierarchical_allreduce) {
     PADDLE_ENFORCE_GE(
-        run_order, 0,
+        run_order,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order must be >= 0, but got %d.", run_order));
     run_order_ = run_order;
@@ -90,7 +114,8 @@ class NCCLOpHandleBase : public OpHandleBase {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(places_.size(), 1,
+    PADDLE_ENFORCE_EQ(places_.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "HierarchicalAllReduce can only run "
                           "one proccess with one card mode, but got %d cards.",
@@ -102,21 +127,21 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
 
     for (auto& p : dev_ctxes_) {
-      int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p.first).device;
+      int dev_id = p.first.device;
       if (inter_events_.find(dev_id) != inter_events_.end()) {
         continue;
       }
 
       platform::SetDeviceId(dev_id);
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventCreateWithFlags(
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreateWithFlags(
           &inter_events_[dev_id], hipEventDisableTiming));
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventCreateWithFlags(
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreateWithFlags(
           &exter_events_[dev_id], hipEventDisableTiming));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventCreateWithFlags(
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreateWithFlags(
           &inter_events_[dev_id], cudaEventDisableTiming));
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventCreateWithFlags(
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreateWithFlags(
           &exter_events_[dev_id], cudaEventDisableTiming));
 #endif
       VLOG(10) << "Create events on dev_id:" << dev_id
@@ -125,15 +150,19 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void FlatNCCLAllReduce(platform::Place place, const void* sendbuff,
-                         void* recvbuff, size_t count, ncclDataType_t datatype,
+  void FlatNCCLAllReduce(platform::Place place,
+                         const void* sendbuff,
+                         void* recvbuff,
+                         size_t count,
+                         ncclDataType_t datatype,
                          ncclRedOp_t op) {
     PADDLE_ENFORCE_GE(
-        run_order_, 0,
+        run_order_,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = place.device;
     auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
@@ -142,15 +171,19 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dev_id:" << dev_id << ", dtype:" << datatype
              << ", place:" << place;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
   }
 
-  void NCCLAllReduce(platform::Place place, const void* sendbuff,
-                     void* recvbuff, size_t count, ncclDataType_t datatype,
+  void NCCLAllReduce(platform::Place place,
+                     const void* sendbuff,
+                     void* recvbuff,
+                     size_t count,
+                     ncclDataType_t datatype,
                      ncclRedOp_t op) {
     PADDLE_ENFORCE_GE(
-        run_order_, 0,
+        run_order_,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     if (!use_hierarchical_allreduce_) {
@@ -161,11 +194,15 @@ class NCCLOpHandleBase : public OpHandleBase {
     HierarchicalAllReduce(place, sendbuff, recvbuff, count, datatype, op);
   }
 
-  void HierarchicalAllReduce(platform::Place place, const void* sendbuff,
-                             void* recvbuff, size_t count,
-                             ncclDataType_t datatype, ncclRedOp_t op) {
+  void HierarchicalAllReduce(platform::Place place,
+                             const void* sendbuff,
+                             void* recvbuff,
+                             size_t count,
+                             ncclDataType_t datatype,
+                             ncclRedOp_t op) {
     PADDLE_ENFORCE_GE(
-        run_order_, 0,
+        run_order_,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     InterReduce(place, sendbuff, recvbuff, count, datatype, op);
@@ -178,10 +215,14 @@ class NCCLOpHandleBase : public OpHandleBase {
   }
 
  protected:
-  void InterReduce(platform::Place place, const void* sendbuff, void* recvbuff,
-                   size_t count, ncclDataType_t datatype, ncclRedOp_t op) {
+  void InterReduce(platform::Place place,
+                   const void* sendbuff,
+                   void* recvbuff,
+                   size_t count,
+                   ncclDataType_t datatype,
+                   ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
@@ -192,7 +233,7 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dtype:" << datatype << ", place:" << place
              << ", stream:" << stream;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
         sendbuff, recvbuff, count, datatype, ncclSum, 0, comm, stream));
 
 #ifdef PADDLE_WITH_HIP
@@ -202,22 +243,22 @@ class NCCLOpHandleBase : public OpHandleBase {
 #endif
 
     if (FLAGS_sync_nccl_allreduce) {
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+      platform::GpuStreamSync(stream);
     }
   }
 
-  void ExterAllReduce(platform::Place place, const void* sendbuff,
-                      void* recvbuff, size_t count, ncclDataType_t datatype,
+  void ExterAllReduce(platform::Place place,
+                      const void* sendbuff,
+                      void* recvbuff,
+                      size_t count,
+                      ncclDataType_t datatype,
                       ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalExterCtx(run_order_);
     PADDLE_ENFORCE_NOT_NULL(
-        nccl_ctxs_, platform::errors::NotFound(
-                        "Can't get exter %d nccl contexts.", run_order_));
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+        nccl_ctxs_,
+        platform::errors::NotFound("Can't get exter %d nccl contexts.",
+                                   run_order_));
+    int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
@@ -230,32 +271,30 @@ class NCCLOpHandleBase : public OpHandleBase {
 #ifdef PADDLE_WITH_HIP
     hipStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     hipEventRecord(exter_events_.at(dev_id), stream);
-
-    if (FLAGS_sync_nccl_allreduce) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-    }
 #else
     cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     cudaEventRecord(exter_events_.at(dev_id), stream);
-
-    if (FLAGS_sync_nccl_allreduce) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-    }
 #endif
+    if (FLAGS_sync_nccl_allreduce) {
+      platform::GpuStreamSync(stream);
+    }
   }
 
-  void InterBroadCast(platform::Place place, void* sendbuff, size_t count,
-                      ncclDataType_t datatype, ncclRedOp_t op) {
+  void InterBroadCast(platform::Place place,
+                      void* sendbuff,
+                      size_t count,
+                      ncclDataType_t datatype,
+                      ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
@@ -269,7 +308,7 @@ class NCCLOpHandleBase : public OpHandleBase {
 #else
     cudaStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
 #endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
         sendbuff, count, datatype, 0, comm, stream));
   }
 

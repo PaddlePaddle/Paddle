@@ -19,6 +19,7 @@ import numpy as np
 
 from op_test import OpTest
 import paddle
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 # NOTE(pangyoki): Tensor View Strategy.
@@ -27,6 +28,7 @@ import paddle
 # reuse the input varbase's allocation.
 # View APIs include: `squeeze`, `unsqueeze`, `reshape`, `flatten`, `detach`
 class TestDygraphViewReuseAllocation(unittest.TestCase):
+
     def setUp(self):
         self.init_shape()
 
@@ -37,7 +39,7 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
     def view_api_processing(self, var):
         return paddle.squeeze(var)
 
-    def test_view_api(self):
+    def func_test_view_api(self):
         var = paddle.rand(self.input_shape)
         view_var = self.view_api_processing(var)
         view_var[0] = 2.
@@ -46,9 +48,14 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
 
         var_numpy = var.numpy().reshape(self.output_shape)
         view_var_numpy = view_var.numpy()
-        self.assertTrue(np.array_equal(var_numpy, view_var_numpy))
+        np.testing.assert_array_equal(var_numpy, view_var_numpy)
 
-    def test_forward_version(self):
+    def test_view_api(self):
+        with _test_eager_guard():
+            self.func_test_view_api()
+        self.func_test_view_api()
+
+    def func_test_forward_version(self):
         var = paddle.rand(self.input_shape)
         self.assertEqual(var.inplace_version, 0)
         view_var = self.view_api_processing(var)
@@ -65,7 +72,12 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
         self.assertEqual(view_var.inplace_version, 2)
         self.assertEqual(view_var_2.inplace_version, 2)
 
-    def test_backward_error(self):
+    def test_forward_version(self):
+        with _test_eager_guard():
+            self.func_test_forward_version()
+        self.func_test_forward_version()
+
+    def func_test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
@@ -86,8 +98,14 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
                     format(1, 0)):
                 loss.backward()
 
+    def test_backward_error(self):
+        with _test_eager_guard():
+            self.func_test_backward_error()
+        self.func_test_backward_error()
+
 
 class TestUnsqueezeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
+
     def init_shape(self):
         self.input_shape = [2, 3]
         self.output_shape = [2, 3, 1]
@@ -97,6 +115,7 @@ class TestUnsqueezeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
 
 
 class TestReshapeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
+
     def init_shape(self):
         self.input_shape = [3, 4]
         self.output_shape = [2, 2, 3]
@@ -106,6 +125,7 @@ class TestReshapeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
 
 
 class TestFlattenDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
+
     def init_shape(self):
         self.input_shape = [3, 4]
         self.output_shape = [12]

@@ -15,49 +15,60 @@ limitations under the License. */
 #include "paddle/fluid/operators/gru_op.h"
 
 namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-struct CUDAPlace;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
 class GRUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
+    using LodTensorPtr = LoDTensor*;
+
+    bool is_test = context.Attr<bool>("is_test");
     bool origin_mode = context.Attr<bool>("origin_mode");
     auto* input = context.Input<LoDTensor>("Input");
     auto* h0 = context.Input<Tensor>("H0");
     auto* weight = context.Input<Tensor>("Weight");
     const T* weight_data = weight->data<T>();
     auto* bias = context.Input<Tensor>("Bias");
-    auto* batch_gate = context.Output<LoDTensor>("BatchGate");
-    batch_gate->mutable_data<T>(context.GetPlace());
-    auto* batch_reset_hidden_prev =
-        context.Output<LoDTensor>("BatchResetHiddenPrev");
-    batch_reset_hidden_prev->mutable_data<T>(context.GetPlace());
-    auto* batch_hidden = context.Output<LoDTensor>("BatchHidden");
-    batch_hidden->mutable_data<T>(context.GetPlace());
     auto* hidden = context.Output<LoDTensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 
+    auto input_dims = input->dims();
     auto hidden_dims = hidden->dims();
 
+    LodTensorPtr batch_gate, batch_reset_hidden_prev, batch_hidden;
+    LoDTensor batch_gate_tmp, batch_reset_hidden_prev_tmp, batch_hidden_tmp;
+    if (is_test) {
+      batch_gate = &batch_gate_tmp;
+      batch_gate->Resize(input_dims);
+
+      batch_reset_hidden_prev = &batch_reset_hidden_prev_tmp;
+      batch_reset_hidden_prev->Resize(hidden_dims);
+
+      batch_hidden = &batch_hidden_tmp;
+      batch_hidden->Resize(hidden_dims);
+    } else {
+      batch_gate = context.Output<LoDTensor>("BatchGate");
+      batch_hidden = context.Output<LoDTensor>("BatchHidden");
+      batch_reset_hidden_prev =
+          context.Output<LoDTensor>("BatchResetHiddenPrev");
+    }
+    batch_gate->mutable_data<T>(context.GetPlace());
+    batch_reset_hidden_prev->mutable_data<T>(context.GetPlace());
+    batch_hidden->mutable_data<T>(context.GetPlace());
+
     bool is_reverse = context.Attr<bool>("is_reverse");
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     to_batch(dev_ctx, *input, batch_gate, true, is_reverse);
 
     if (bias) {
-      math::RowwiseAdd<DeviceContext, T> add_bias;
+      phi::funcs::RowwiseAdd<DeviceContext, T> add_bias;
       add_bias(dev_ctx, *batch_gate, *bias, batch_gate);
     }
 
     int frame_size = hidden_dims[1];
-    math::GRUMetaValue<T> gru_value;
+    phi::funcs::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
@@ -70,17 +81,20 @@ class GRUKernel : public framework::OpKernel<T> {
       // according to their length. The initialized cell state also needs
       // to reorder.
       ReorderInitState<DeviceContext, T>(
-          context.template device_context<DeviceContext>(), *h0, order,
-          &ordered_h0, true);
+          context.template device_context<DeviceContext>(),
+          *h0,
+          order,
+          &ordered_h0,
+          true);
       gru_value.prev_out_value = ordered_h0.data<T>();
     } else {
       gru_value.prev_out_value = nullptr;
     }
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto active_node = math::detail::GetActivationType(
+    auto active_node = phi::funcs::detail::GetActivationType(
         context.Attr<std::string>("activation"));
-    auto active_gate = math::detail::GetActivationType(
+    auto active_gate = phi::funcs::detail::GetActivationType(
         context.Attr<std::string>("gate_activation"));
     for (size_t n = 0; n < num_batch; n++) {
       int bstart = static_cast<int>(batch_starts[n]);
@@ -93,13 +107,17 @@ class GRUKernel : public framework::OpKernel<T> {
       gru_value.output_value = hidden_t.data<T>();
       gru_value.gate_value = gate_t.data<T>();
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
-      math::GRUUnitFunctor<DeviceContext, T>::compute(
-          dev_ctx, gru_value, frame_size, cur_batch_size, active_node,
-          active_gate, origin_mode);
+      phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(dev_ctx,
+                                                            gru_value,
+                                                            frame_size,
+                                                            cur_batch_size,
+                                                            active_node,
+                                                            active_gate,
+                                                            origin_mode);
       gru_value.prev_out_value = gru_value.output_value;
     }
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden->set_lod(batch_gate->lod());
     to_seq(dev_ctx, *batch_hidden, hidden);
   }
@@ -113,9 +131,9 @@ class GRUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    gru, ops::GRUKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GRUKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    gru_grad, ops::GRUGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GRUGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(gru,
+                        ops::GRUKernel<phi::GPUContext, float>,
+                        ops::GRUKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(gru_grad,
+                        ops::GRUGradKernel<phi::GPUContext, float>,
+                        ops::GRUGradKernel<phi::GPUContext, double>);

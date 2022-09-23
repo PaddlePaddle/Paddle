@@ -15,12 +15,14 @@
 import os
 import sys
 
+__all__ = []
+
 
 class DataGenerator(object):
     """
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic
-    with paddle.distributed.InMemoryDataset/QueueDataset should 
+    with paddle.distributed.InMemoryDataset/QueueDataset should
     inherit this class.
     """
 
@@ -32,11 +34,11 @@ class DataGenerator(object):
         '''
         Set batch size of current DataGenerator
         This is necessary only if a user wants to define generator_batch
-        
+
         Example:
 
             .. code-block:: python
-                
+
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -52,7 +54,7 @@ class DataGenerator(object):
                                 yield ("words", s[1].extend([s[1][0]]))
                 mydata = MyData()
                 mydata.set_batch(128)
-                    
+
         '''
         self.batch_size_ = batch_size
 
@@ -63,7 +65,7 @@ class DataGenerator(object):
 
         Example:
             .. code-block:: python
-                
+
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -94,15 +96,15 @@ class DataGenerator(object):
     def run_from_stdin(self):
         '''
         This function reads the data row from stdin, parses it with the
-        process function, and further parses the return value of the 
+        process function, and further parses the return value of the
         process function with the _gen_str function. The parsed data will
         be wrote to stdout and the corresponding protofile will be
         generated.
 
         Example:
-        
+
             .. code-block:: python
-                
+
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -150,7 +152,7 @@ class DataGenerator(object):
 
     def generate_sample(self, line):
         '''
-        This function needs to be overridden by the user to process the 
+        This function needs to be overridden by the user to process the
         original data row into a list or tuple.
 
         Args:
@@ -158,10 +160,10 @@ class DataGenerator(object):
 
         Returns:
             Returns the data processed by the user.
-              The data format is list or tuple: 
-            [(name, [feasign, ...]), ...] 
+              The data format is list or tuple:
+            [(name, [feasign, ...]), ...]
               or ((name, [feasign, ...]), ...)
-             
+
             For example:
             [("words", [1926, 08, 17]), ("label", [1])]
               or (("words", [1926, 08, 17]), ("label", [1]))
@@ -174,7 +176,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
-                
+
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -206,7 +208,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
-                
+
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -235,6 +237,7 @@ class DataGenerator(object):
 # add more generalized DataGenerator that can adapt user-defined slot
 # for example, [(name, float_list), (name, str_list), (name, int_list)]
 class MultiSlotStringDataGenerator(DataGenerator):
+
     def _gen_str(self, line):
         '''
         Further processing the output of the process() function rewritten by
@@ -259,6 +262,9 @@ class MultiSlotStringDataGenerator(DataGenerator):
         Returns:
             Return a string data that can be read directly by the MultiSlotDataFeed.
         '''
+        if sys.version > '3' and isinstance(line, zip):
+            line = list(line)
+
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
                 "the output of process() must be in list or tuple type"
@@ -276,6 +282,7 @@ class MultiSlotStringDataGenerator(DataGenerator):
 
 
 class MultiSlotDataGenerator(DataGenerator):
+
     def _gen_str(self, line):
         '''
         Further processing the output of the process() function rewritten by
@@ -283,13 +290,13 @@ class MultiSlotDataGenerator(DataGenerator):
         and updating proto_info information.
 
         The input line will be in this format:
-            >>> [(name, [feasign, ...]), ...] 
+            >>> [(name, [feasign, ...]), ...]
             >>> or ((name, [feasign, ...]), ...)
         The output will be in this format:
             >>> [ids_num id1 id2 ...] ...
         The proto_info will be in this format:
             >>> [(name, type), ...]
-        
+
         For example, if the input is like this:
             >>> [("words", [1926, 08, 17]), ("label", [1])]
             >>> or (("words", [1926, 08, 17]), ("label", [1]))
@@ -304,6 +311,9 @@ class MultiSlotDataGenerator(DataGenerator):
         Returns:
             Return a string data that can be read directly by the MultiSlotDataFeed.
         '''
+        if sys.version > '3' and isinstance(line, zip):
+            line = list(line)
+
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
                 "the output of process() must be in list or tuple type"
@@ -330,8 +340,8 @@ class MultiSlotDataGenerator(DataGenerator):
                 for elem in elements:
                     if isinstance(elem, float):
                         self._proto_info[-1] = (name, "float")
-                    elif not isinstance(elem, int) and not isinstance(elem,
-                                                                      long):
+                    elif not isinstance(elem, int) and not isinstance(
+                            elem, long):
                         raise ValueError(
                             "the type of element%s must be in int or float" %
                             type(elem))
@@ -339,7 +349,8 @@ class MultiSlotDataGenerator(DataGenerator):
         else:
             if len(line) != len(self._proto_info):
                 raise ValueError(
-                    "the complete field set of two given line are inconsistent.")
+                    "the complete field set of two given line are inconsistent."
+                )
             for index, item in enumerate(line):
                 name, elements = item
                 if not isinstance(name, str):
@@ -362,8 +373,8 @@ class MultiSlotDataGenerator(DataGenerator):
                     if self._proto_info[index][1] != "float":
                         if isinstance(elem, float):
                             self._proto_info[index] = (name, "float")
-                        elif not isinstance(elem, int) and not isinstance(elem,
-                                                                          long):
+                        elif not isinstance(elem, int) and not isinstance(
+                                elem, long):
                             raise ValueError(
                                 "the type of element%s must be in int or float"
                                 % type(elem))

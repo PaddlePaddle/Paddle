@@ -43,13 +43,14 @@ void BindGlooContext(py::module *m) {
   py::class_<platform::GlooParallelStrategy> gloo_parallel_strategy(
       *m, "GlooParallelStrategy", "");
   gloo_parallel_strategy.def(py::init())
-      .def_property("rank_num",
-                    [](const platform::GlooParallelStrategy &self) {
-                      return self.rank_num;
-                    },
-                    [](platform::GlooParallelStrategy &self, int nranks) {
-                      self.rank_num = nranks;
-                    })
+      .def_property(
+          "rank_num",
+          [](const platform::GlooParallelStrategy &self) {
+            return self.rank_num;
+          },
+          [](platform::GlooParallelStrategy &self, int nranks) {
+            self.rank_num = nranks;
+          })
       .def_property(
           "rank",
           [](const platform::GlooParallelStrategy &self) { return self.rank; },
@@ -62,20 +63,22 @@ void BindGlooContext(py::module *m) {
           [](platform::GlooParallelStrategy &self, const std::string &iface) {
             self.iface = iface;
           })
-      .def_property("init_seconds",
-                    [](const platform::GlooParallelStrategy &self) {
-                      return self.init_seconds;
-                    },
-                    [](platform::GlooParallelStrategy &self, int init_seconds) {
-                      self.init_seconds = init_seconds;
-                    })
-      .def_property("run_seconds",
-                    [](const platform::GlooParallelStrategy &self) {
-                      return self.run_seconds;
-                    },
-                    [](platform::GlooParallelStrategy &self, int run_seconds) {
-                      self.run_seconds = run_seconds;
-                    })
+      .def_property(
+          "init_seconds",
+          [](const platform::GlooParallelStrategy &self) {
+            return self.init_seconds;
+          },
+          [](platform::GlooParallelStrategy &self, int init_seconds) {
+            self.init_seconds = init_seconds;
+          })
+      .def_property(
+          "run_seconds",
+          [](const platform::GlooParallelStrategy &self) {
+            return self.run_seconds;
+          },
+          [](platform::GlooParallelStrategy &self, int run_seconds) {
+            self.run_seconds = run_seconds;
+          })
       .def_property(
           "ip_address",
           [](const platform::GlooParallelStrategy &self) {
@@ -83,17 +86,22 @@ void BindGlooContext(py::module *m) {
           },
           [](platform::GlooParallelStrategy &self,
              const std::string &ip_address) { self.ip_address = ip_address; })
-      .def_property("ip_port",
-                    [](const platform::GlooParallelStrategy &self) {
-                      return self.ip_port;
-                    },
-                    [](platform::GlooParallelStrategy &self, int ip_port) {
-                      self.ip_port = ip_port;
-                    });
+      .def_property(
+          "ip_port",
+          [](const platform::GlooParallelStrategy &self) {
+            return self.ip_port;
+          },
+          [](platform::GlooParallelStrategy &self, int ip_port) {
+            self.ip_port = ip_port;
+          });
 
   py::class_<platform::GlooParallelContext> gloo_ctx(*m, "GlooParallelContext");
   gloo_ctx.def(py::init<const platform::GlooParallelStrategy &>())
-      .def("init", [](platform::GlooParallelContext &self) { self.Init(); });
+      .def("init", [](platform::GlooParallelContext &self) { self.Init(); })
+      .def("barrier",
+           [](platform::GlooParallelContext &self) { self.Barrier(); })
+      .def("release",
+           [](platform::GlooParallelContext &self) { self.ReleaseContext(); });
 #endif
 }
 

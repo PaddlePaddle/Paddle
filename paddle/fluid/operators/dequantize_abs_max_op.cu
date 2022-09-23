@@ -18,8 +18,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void KeDequantize(const T* in, const float* scale, float max_range,
-                             int num, float* out) {
+__global__ void KeDequantize(
+    const T* in, const float* scale, float max_range, int num, float* out) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num) {
     out[idx] = in[idx] * scale[0] / max_range;
@@ -27,10 +27,12 @@ __global__ void KeDequantize(const T* in, const float* scale, float max_range,
 }
 
 template <typename T>
-struct DequantizeFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* scale,
-                  float max_range, framework::Tensor* out) {
+struct DequantizeFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
+                  float max_range,
+                  framework::Tensor* out) {
     const T* in_data = in->data<T>();
     const float* scale_factor = scale->data<float>();
     float* out_data = out->mutable_data<float>(dev_ctx.GetPlace());
@@ -44,12 +46,14 @@ struct DequantizeFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CUDADeviceContext, int8_t>;
+template struct DequantizeFunctor<phi::GPUContext, int8_t>;
+template struct DequantizeFunctor<phi::GPUContext, int16_t>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(dequantize_abs_max,
-                        ops::DequantizeMaxAbsKernel<CUDA, int8_t>);
+                        ops::DequantizeMaxAbsKernel<CUDA, int8_t>,
+                        ops::DequantizeMaxAbsKernel<CUDA, int16_t>);

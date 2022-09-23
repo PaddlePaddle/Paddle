@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+__all__ = []
+
 
 class ProgramDeps(object):
+
     def __init__(self, block, start_vars, end_vars):
         self._block = block
         # vars where to start to build the deps
@@ -90,8 +93,8 @@ class ProgramDeps(object):
                     raise ValueError(
                         "op_idx: {} is not in self._var_to_use_op[{}], "
                         "self._var_to_use_op[{}] is {}".format(
-                            op_idx, var_name, var_name, self._var_to_use_op[
-                                var_name]))
+                            op_idx, var_name, var_name,
+                            self._var_to_use_op[var_name]))
                 self._var_to_use_op[var_name].remove(op_idx)
             # update _should_removed_var
             if var_name in self._start_vars:
@@ -115,17 +118,28 @@ class ProgramDeps(object):
                     var_name] == []:
                 self._block._remove_var(var_name, sync=False)
 
-    def remove_op(self, op_idx):
+    def remove_op(self, op_idx, reserved_vars=None):
         # update deps
         op = self._block.ops[op_idx]
         for input_name in op.desc.input_arg_names():
+            if reserved_vars is not None and input_name in reserved_vars:
+                continue
             self.crop_input_var_from_op(op_idx, input_name)
         for output_name in op.desc.output_arg_names():
+            if reserved_vars is not None and output_name in reserved_vars:
+                continue
             self.crop_output_var_from_op(op_idx, output_name)
         self._block._remove_op(op_idx, sync=False)
 
     def should_remove_op(self, op_idx):
         op = self._block.ops[op_idx]
+
+        # NOTE: At present, it is found that the OP without output is
+        # only send_v2 and partial_send op, which will be used in
+        # all device
+        if len(op.desc.output_arg_names()) == 0:
+            return False
+
         for output_name in op.desc.output_arg_names():
             if output_name not in self._should_removed_var:
                 return False

@@ -27,72 +27,20 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/macros.h"
 #include "pybind11/stl.h"
 
-// data processing
-DECLARE_bool(use_mkldnn);
-DECLARE_string(tracer_mkldnn_ops_on);
-DECLARE_string(tracer_mkldnn_ops_off);
-// debug
-DECLARE_bool(check_nan_inf);
-DECLARE_bool(cpu_deterministic);
-DECLARE_bool(enable_rpc_profiler);
-DECLARE_int32(multiple_of_cupti_buffer_size);
-DECLARE_bool(reader_queue_speed_test_mode);
-DECLARE_int32(call_stack_level);
-DECLARE_bool(sort_sum_gradient);
-// device management
-DECLARE_int32(paddle_num_threads);
-// executor
-DECLARE_bool(enable_parallel_graph);
-DECLARE_string(pe_profile_fname);
-DECLARE_string(print_sub_graph_dir);
-DECLARE_bool(use_ngraph);
-// memory management
-DECLARE_string(allocator_strategy);
-DECLARE_double(eager_delete_tensor_gb);
-DECLARE_double(fraction_of_cpu_memory_to_use);
-DECLARE_bool(free_idle_chunk);
-DECLARE_bool(free_when_no_cache_hit);
-DECLARE_int32(fuse_parameter_groups_size);
-DECLARE_double(fuse_parameter_memory_size);
-DECLARE_bool(init_allocated_mem);
-DECLARE_uint64(initial_cpu_memory_in_mb);
-DECLARE_double(memory_fraction_of_eager_deletion);
-DECLARE_bool(use_pinned_memory);
-DECLARE_bool(use_system_allocator);
-// others
-DECLARE_bool(benchmark);
-DECLARE_int32(inner_op_parallelism);
-DECLARE_int32(max_inplace_grad_add);
-DECLARE_string(tracer_profile_fname);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// cudnn
-DECLARE_uint64(conv_workspace_size_limit);
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
-DECLARE_bool(cudnn_deterministic);
-DECLARE_bool(cudnn_exhaustive_search);
-// data processing
-DECLARE_bool(enable_cublas_tensor_op_math);
-// device management
-DECLARE_string(selected_gpus);
-// memory management
-DECLARE_bool(eager_delete_scope);
-DECLARE_bool(fast_eager_deletion_mode);
-DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
-DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_uint64(gpu_memory_limit_mb);
-DECLARE_uint64(initial_gpu_memory_in_mb);
-DECLARE_uint64(reallocate_gpu_memory_in_mb);
-// others
-DECLARE_bool(sync_nccl_allreduce);
-#endif
-#ifdef PADDLE_WITH_XPU
-// device management
-DECLARE_string(selected_xpus);
-#endif
+// FIXME(zengjinle): these 2 flags may be removed by the linker when compiling
+// CPU-only Paddle. It is because they are only used in
+// AutoGrowthBestFitAllocator, but AutoGrowthBestFitAllocator is not used
+// (in the translation unit level) when compiling CPU-only Paddle. I do not
+// want to add PADDLE_FORCE_LINK_FLAG, but I have not found any other methods
+// to solve this problem.
+PADDLE_FORCE_LINK_FLAG(free_idle_chunk);
+PADDLE_FORCE_LINK_FLAG(free_when_no_cache_hit);
+
+// NOTE: where are these 2 flags from?
 #ifdef PADDLE_WITH_DISTRIBUTE
-DECLARE_int32(rpc_send_thread_num);
 DECLARE_int32(rpc_get_thread_num);
 DECLARE_int32(rpc_prefetch_thread_num);
 #endif
@@ -141,7 +89,8 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 
   void Register(const std::string &name, bool is_public, const Getter &getter) {
     PADDLE_ENFORCE_EQ(
-        HasGetterMethod(name), false,
+        HasGetterMethod(name),
+        false,
         platform::errors::AlreadyExists(
             "Getter of global variable %s has been registered", name));
     PADDLE_ENFORCE_NOT_NULL(getter,
@@ -150,15 +99,19 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     var_infos_.insert({name, VarInfo(is_public, getter)});
   }
 
-  void Register(const std::string &name, bool is_public, const Getter &getter,
+  void Register(const std::string &name,
+                bool is_public,
+                const Getter &getter,
                 const Setter &setter) {
     PADDLE_ENFORCE_EQ(
-        HasGetterMethod(name), false,
+        HasGetterMethod(name),
+        false,
         platform::errors::AlreadyExists(
             "Getter of global variable %s has been registered", name));
 
     PADDLE_ENFORCE_EQ(
-        HasSetterMethod(name), false,
+        HasSetterMethod(name),
+        false,
         platform::errors::AlreadyExists(
             "Setter of global variable %s has been registered", name));
 
@@ -169,13 +122,13 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_NOT_NULL(setter,
                             platform::errors::InvalidArgument(
                                 "Setter of %s should not be null", name));
-
     var_infos_.insert({name, VarInfo(is_public, getter, setter)});
   }
 
   const Getter &GetterMethod(const std::string &name) const {
     PADDLE_ENFORCE_EQ(
-        HasGetterMethod(name), true,
+        HasGetterMethod(name),
+        true,
         platform::errors::NotFound("Cannot find global variable %s", name));
     return var_infos_.at(name).getter;
   }
@@ -193,12 +146,14 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 
   const Setter &SetterMethod(const std::string &name) const {
     PADDLE_ENFORCE_EQ(
-        HasSetterMethod(name), true,
+        HasSetterMethod(name),
+        true,
         platform::errors::NotFound("Global variable %s is not writable", name));
     return var_infos_.at(name).setter;
   }
 
   void Set(const std::string &name, const py::object &value) const {
+    VLOG(4) << "set " << name << " to " << value;
     SetterMethod(name)(value);
   }
 
@@ -231,81 +186,6 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 
 GlobalVarGetterSetterRegistry GlobalVarGetterSetterRegistry::instance_;
 
-class GlobalVarGetterSetterRegistryHelper {
- public:
-  GlobalVarGetterSetterRegistryHelper(bool is_public, bool is_writable,
-                                      const std::string &var_names)
-      : is_public_(is_public),
-        is_writable_(is_writable),
-        var_names_(SplitVarNames(var_names)) {}
-
-  template <typename... Args>
-  void Register(Args &&... args) const {
-    Impl<0, sizeof...(args) == 1, Args...>::Register(
-        is_public_, is_writable_, var_names_, std::forward<Args>(args)...);
-  }
-
- private:
-  static std::vector<std::string> SplitVarNames(const std::string &names) {
-    auto valid_char = [](char ch) { return !std::isspace(ch) && ch != ','; };
-
-    std::vector<std::string> ret;
-    size_t i = 0, j = 0, n = names.size();
-    while (i < n) {
-      for (; i < n && !valid_char(names[i]); ++i) {
-      }
-      for (j = i + 1; j < n && valid_char(names[j]); ++j) {
-      }
-
-      if (i < n && j <= n) {
-        auto substring = names.substr(i, j - i);
-        VLOG(10) << "Get substring: \"" << substring << "\"";
-        ret.emplace_back(substring);
-      }
-      i = j + 1;
-    }
-    return ret;
-  }
-
- private:
-  template <size_t kIdx, bool kIsStop, typename T, typename... Args>
-  struct Impl {
-    static void Register(bool is_public, bool is_writable,
-                         const std::vector<std::string> &var_names, T &&var,
-                         Args &&... args) {
-      PADDLE_ENFORCE_EQ(kIdx + 1 + sizeof...(args), var_names.size(),
-                        platform::errors::InvalidArgument(
-                            "Argument number not match name number"));
-      Impl<kIdx, true, T>::Register(is_public, is_writable, var_names, var);
-      Impl<kIdx + 1, sizeof...(Args) == 1, Args...>::Register(
-          is_public, is_writable, var_names, std::forward<Args>(args)...);
-    }
-  };
-
-  template <size_t kIdx, typename T>
-  struct Impl<kIdx, true, T> {
-    static void Register(bool is_public, bool is_writable,
-                         const std::vector<std::string> &var_names, T &&var) {
-      auto *instance = GlobalVarGetterSetterRegistry::MutableInstance();
-      if (is_writable) {
-        instance->Register(
-            var_names[kIdx], is_public,
-            GlobalVarGetterSetterRegistry::CreateGetter(std::forward<T>(var)),
-            GlobalVarGetterSetterRegistry::CreateSetter(&var));
-      } else {
-        instance->Register(
-            var_names[kIdx], is_public,
-            GlobalVarGetterSetterRegistry::CreateGetter(std::forward<T>(var)));
-      }
-    }
-  };
-
- private:
-  const bool is_public_;
-  const bool is_writable_;
-  const std::vector<std::string> var_names_;
-};
-
 static void RegisterGlobalVarGetterSetter();
 
 void BindGlobalValueGetterSetter(pybind11::module *module) {
@@ -318,65 +198,71 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
       .def("__contains__", &GlobalVarGetterSetterRegistry::HasGetterMethod)
       .def("keys", &GlobalVarGetterSetterRegistry::Keys)
       .def("is_public", &GlobalVarGetterSetterRegistry::IsPublic)
-      .def("get", &GlobalVarGetterSetterRegistry::GetOrReturnDefaultValue,
-           py::arg("key"), py::arg("default") = py::cast<py::none>(Py_None));
+      .def("get",
+           &GlobalVarGetterSetterRegistry::GetOrReturnDefaultValue,
+           py::arg("key"),
+           py::arg("default") = py::cast<py::none>(Py_None));
 
-  module->def("globals", &GlobalVarGetterSetterRegistry::Instance,
+  module->def("globals",
+              &GlobalVarGetterSetterRegistry::Instance,
               py::return_value_policy::reference);
 }
 
 /* Public vars are designed to be writable. */
-#define REGISTER_PUBLIC_GLOBAL_VAR(...)                                        \
-  do {                                                                         \
-    GlobalVarGetterSetterRegistryHelper(/*is_public=*/true,                    \
-                                        /*is_writable=*/true, "" #__VA_ARGS__) \
-        .Register(__VA_ARGS__);                                                \
+#define REGISTER_PUBLIC_GLOBAL_VAR(var)                                    \
+  do {                                                                     \
+    auto *instance = GlobalVarGetterSetterRegistry::MutableInstance();     \
+    instance->Register(#var,                                               \
+                       /*is_public=*/true,                                 \
+                       GlobalVarGetterSetterRegistry::CreateGetter(var),   \
+                       GlobalVarGetterSetterRegistry::CreateSetter(&var)); \
   } while (0)
 
-#define REGISTER_PRIVATE_GLOBAL_VAR(is_writable, ...)                     \
-  do {                                                                    \
-    GlobalVarGetterSetterRegistryHelper(/*is_public=*/false, is_writable, \
-                                        "" #__VA_ARGS__)                  \
-        .Register(__VA_ARGS__);                                           \
-  } while (0)
+struct RegisterGetterSetterVisitor {
+  RegisterGetterSetterVisitor(const std::string &name,
+                              bool is_writable,
+                              void *value_ptr)
+      : name_(name), is_writable_(is_writable), value_ptr_(value_ptr) {}
+
+  template <typename T>
+  void operator()(const T &) const {
+    auto &value = *static_cast<T *>(value_ptr_);
+    auto *instance = GlobalVarGetterSetterRegistry::MutableInstance();
+    bool is_public = is_writable_;  // currently, all writable vars are public
+    if (is_writable_) {
+      instance->Register(name_,
+                         is_public,
+                         GlobalVarGetterSetterRegistry::CreateGetter(value),
+                         GlobalVarGetterSetterRegistry::CreateSetter(&value));
+    } else {
+      instance->Register(
+          name_, is_public, GlobalVarGetterSetterRegistry::CreateGetter(value));
+    }
+  }
+
+ private:
+  std::string name_;
+  bool is_writable_;
+  void *value_ptr_;
+};
 
 static void RegisterGlobalVarGetterSetter() {
-  REGISTER_PRIVATE_GLOBAL_VAR(/*is_writable=*/false, FLAGS_free_idle_chunk,
-                              FLAGS_free_when_no_cache_hit);
-
-  REGISTER_PUBLIC_GLOBAL_VAR(
-      FLAGS_eager_delete_tensor_gb, FLAGS_enable_parallel_graph,
-      FLAGS_allocator_strategy, FLAGS_use_system_allocator, FLAGS_check_nan_inf,
-      FLAGS_call_stack_level, FLAGS_sort_sum_gradient, FLAGS_cpu_deterministic,
-      FLAGS_enable_rpc_profiler, FLAGS_multiple_of_cupti_buffer_size,
-      FLAGS_reader_queue_speed_test_mode, FLAGS_pe_profile_fname,
-      FLAGS_print_sub_graph_dir, FLAGS_fraction_of_cpu_memory_to_use,
-      FLAGS_fuse_parameter_groups_size, FLAGS_fuse_parameter_memory_size,
-      FLAGS_init_allocated_mem, FLAGS_initial_cpu_memory_in_mb,
-      FLAGS_memory_fraction_of_eager_deletion, FLAGS_use_pinned_memory,
-      FLAGS_benchmark, FLAGS_inner_op_parallelism, FLAGS_tracer_profile_fname,
-      FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_max_inplace_grad_add,
-      FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  REGISTER_PUBLIC_GLOBAL_VAR(
-      FLAGS_gpu_memory_limit_mb, FLAGS_cudnn_deterministic,
-      FLAGS_conv_workspace_size_limit, FLAGS_cudnn_batchnorm_spatial_persistent,
-      FLAGS_cudnn_exhaustive_search, FLAGS_eager_delete_scope,
-      FLAGS_fast_eager_deletion_mode,
-      FLAGS_fraction_of_cuda_pinned_memory_to_use,
-      FLAGS_fraction_of_gpu_memory_to_use, FLAGS_initial_gpu_memory_in_mb,
-      FLAGS_reallocate_gpu_memory_in_mb, FLAGS_enable_cublas_tensor_op_math,
-      FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce);
-#endif
-#ifdef PADDLE_WITH_XPU
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_selected_xpus);
-#endif
 #ifdef PADDLE_WITH_DITRIBUTE
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_send_thread_num,
-                             FLAGS_rpc_get_thread_num,
-                             FLAGS_rpc_prefetch_thread_num);
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_get_thread_num);
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_prefetch_thread_num);
 #endif
+
+  const auto &flag_map = platform::GetExportedFlagInfoMap();
+  for (const auto &pair : flag_map) {
+    const std::string &name = pair.second.name;
+    bool is_writable = pair.second.is_writable;
+    void *value_ptr = pair.second.value_ptr;
+    const auto &default_value = pair.second.default_value;
+    RegisterGetterSetterVisitor visitor(
+        "FLAGS_" + name, is_writable, value_ptr);
+    paddle::visit(visitor, default_value);
+  }
 }
+
 }  // namespace pybind
 }  // namespace paddle

@@ -14,27 +14,33 @@ limitations under the License. */
 
 #pragma once
 #include <functional>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
 void GetSize(T start, T end, T step, int64_t* size) {
-  PADDLE_ENFORCE_NE(step, 0, platform::errors::InvalidArgument(
-                                 "The step of range op should not be 0."));
+  PADDLE_ENFORCE_NE(step,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The step of range op should not be 0."));
 
   if (start < end) {
     PADDLE_ENFORCE_GT(
-        step, 0, platform::errors::InvalidArgument(
-                     "The step should be greater than 0 while start < end."));
+        step,
+        0,
+        platform::errors::InvalidArgument(
+            "The step should be greater than 0 while start < end."));
   }
 
   if (start > end) {
-    PADDLE_ENFORCE_LT(step, 0,
+    PADDLE_ENFORCE_LT(step,
+                      0,
                       platform::errors::InvalidArgument(
-                          "step should be less than 0 while start > end."));
+                          "The step should be less than 0 while start > end."));
   }
 
   *size = std::is_integral<T>::value
@@ -52,7 +58,7 @@ class CPURangeKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
     int64_t size = 0;
     GetSize(start, end, step, &size);
-    out->Resize(framework::make_ddim({size}));
+    out->Resize(phi::make_ddim({size}));
     T* out_data = out->mutable_data<T>(context.GetPlace());
     T value = start;
     for (int64_t i = 0; i < size; ++i) {

@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 namespace paddle {
 namespace framework {
@@ -35,16 +35,15 @@ namespace inference {
 namespace analysis {
 
 /* Memory optimization.
-* We will perform the following operation:
-* 1. Collect all var's lifetime.
-* 2. Make reuse plan: the vars can be reused if there is no overlap(on lifetime)
-* between
-* them.
-* The final plan is a mapping table in which the key represents the original
-* name of var and the value in the table represents the current name of var.
-* 3. Perform reuse plan: Replace all var's name in the model according to the
-* mapping table.
-*/
+ * We will perform the following operation:
+ * 1. Collect all var's lifetime.
+ * 2. Make reuse plan: the vars can be reused if there is no overlap(on
+ * lifetime) between them. The final plan is a mapping table in which the key
+ * represents the original name of var and the value in the table represents the
+ * current name of var.
+ * 3. Perform reuse plan: Replace all var's name in the model according to the
+ * mapping table.
+ */
 class MemoryOptimizePass : public AnalysisPass {
  public:
   using space_table_t = std::unordered_map<std::string, size_t>;
@@ -57,17 +56,15 @@ class MemoryOptimizePass : public AnalysisPass {
 
  private:
   void CollectLifeCycle(
+      framework::ir::Graph *graph,
       std::unordered_map<std::string, lifecycle_t> *lifecycles,
       int sort_kind) const;
 
-  void CollectVarMemorySize(space_table_t *space_table) const;
+  void CollectVarMemorySize(framework::ir::Graph *graph,
+                            space_table_t *space_table) const;
 
  public:
   std::string repr() const override;
-
- private:
-  mutable framework::ir::Graph *graph_{nullptr};
-  mutable int max_lifecycle_{-1};
 };
 
 }  // namespace analysis

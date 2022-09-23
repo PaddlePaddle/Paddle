@@ -14,6 +14,7 @@
 
 import os
 import numpy as np
+
 os.environ['FLAGS_use_mkldnn'] = '0'
 os.environ['CPU_NUM'] = '4'
 
@@ -21,6 +22,11 @@ import paddle.fluid as fluid
 import six
 import unittest
 import multiprocessing
+from functools import reduce
+
+import paddle
+
+paddle.enable_static()
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
@@ -34,11 +40,11 @@ def simple_fc_net():
             hidden,
             size=200,
             act='tanh',
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=1.0)))
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     optimizer = fluid.optimizer.Adam(learning_rate=1e-3)
     optimizer.minimize(loss)
     return image, label, loss
@@ -60,6 +66,7 @@ def get_persistables_and_non_persistables(prog, fetch_list):
 
 
 class TestExecutor(unittest.TestCase):
+
     def test_executor_main(self):
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -85,8 +92,8 @@ class TestExecutor(unittest.TestCase):
         label_shape = (batch_size, ) + tuple(label.shape[1:])
 
         image_np = np.random.random(size=image_shape).astype('float32')
-        label_np = np.random.random_integers(
-            low=0, high=9, size=label_shape).astype('int64')
+        label_np = np.random.random_integers(low=0, high=9,
+                                             size=label_shape).astype('int64')
 
         return image_np, label_np
 
@@ -107,12 +114,18 @@ class TestExecutor(unittest.TestCase):
             if t._is_initialized():
                 outline_np_vars.append(name)
 
-        print('Non-alive persistable vars {} in {}'.format(outline_p_vars,
-                                                           persitables))
-        print('Alive non-persistable vars {} in {}'.format(outline_np_vars,
-                                                           non_persistables))
+        print('Non-alive persistable vars {} in {}'.format(
+            outline_p_vars, persitables))
+        print('Alive non-persistable vars {} in {}'.format(
+            outline_np_vars, non_persistables))
         self.assertEqual(len(outline_p_vars), 0)
         self.assertEqual(len(outline_np_vars), 0)
+
+    def assert_gc_vars(self, program, skip_vars, non_persistable_vars):
+        gc_vars = fluid.core._get_eager_deletion_vars(program.desc, skip_vars)
+        self.assertEqual(len(gc_vars), program.num_blocks)
+        gc_vars = reduce(lambda x, y: x + y, gc_vars[0])
+        self.assertEqual(set(gc_vars), set(non_persistable_vars))
 
     def executor_main(self):
         image, label, loss = simple_fc_net()
@@ -121,6 +134,9 @@ class TestExecutor(unittest.TestCase):
             fluid.default_main_program(), [loss.name])
         print('Non-persistable var number {}'.format(len(non_persistables)))
         print(non_persistables)
+
+        self.assert_gc_vars(fluid.default_main_program(), [loss.name],
+                            non_persistables)
 
         exe = fluid.Executor(self.place)
         exe.run(fluid.default_startup_program())
@@ -131,22 +147,24 @@ class TestExecutor(unittest.TestCase):
 
         for _ in six.moves.range(10):
             image_np, label_np = self.prepare_feed(image, label)
-            fluid.global_scope().var(image.name).get_tensor().set(image_np,
-                                                                  self.place)
-            fluid.global_scope().var(label.name).get_tensor().set(label_np,
-                                                                  self.place)
+            fluid.global_scope().var(image.name).get_tensor().set(
+                image_np, self.place)
+            fluid.global_scope().var(label.name).get_tensor().set(
+                label_np, self.place)
             # exe.run would not create local scope
             # so that we can detect whether gc clears temporary variables
-            exe.run(fluid.default_main_program().desc,
-                    fluid.global_scope(), 0, False, True, [loss.name])
+            exe.run(fluid.default_main_program().desc, fluid.global_scope(), 0,
+                    False, True, [loss.name])
             self.assertScopeVar(fluid.global_scope(), persistables,
                                 non_persistables)
 
     def pe_main(self):
         image, label, loss = simple_fc_net()
         loss.persistable = False
-        persitables, non_persistables = get_persistables_and_non_persistables(
+        persistables, non_persistables = get_persistables_and_non_persistables(
             fluid.default_main_program(), [loss.name])
+        self.assert_gc_vars(fluid.default_main_program(), [loss.name],
+                            non_persistables)
 
         exe = fluid.Executor(self.place)
         exe.run(fluid.default_startup_program())
@@ -158,9 +176,9 @@ class TestExecutor(unittest.TestCase):
         build_strategy.memory_optimize = False
         build_strategy.enable_inplace = False
 
-        prog = fluid.CompiledProgram(fluid.default_main_program(
-        )).with_data_parallel(
-            loss_name=loss.name, exec_strategy=exec_strategy)
+        prog = fluid.CompiledProgram(
+            fluid.default_main_program()).with_data_parallel(
+                loss_name=loss.name, exec_strategy=exec_strategy)
 
         dev_cnt = fluid.core.get_cuda_device_count() if isinstance(self.place, fluid.CUDAPlace)    \
             else int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))

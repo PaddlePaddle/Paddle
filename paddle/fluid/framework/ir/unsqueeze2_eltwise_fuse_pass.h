@@ -34,6 +34,7 @@ class Graph;
 // it maybe change in runtime.
 class UnsqueezeEltwiseFusePass : public FusePassBase {
  public:
+  UnsqueezeEltwiseFusePass();
   virtual ~UnsqueezeEltwiseFusePass() {}
 
  protected:

@@ -23,6 +23,7 @@ import paddle.fluid.optimizer as optimizer
 from paddle.fluid.backward import _append_grad_suffix_
 
 import paddle
+
 paddle.enable_static()
 
 np.random.seed(10)
@@ -64,7 +65,7 @@ class SimpleNetWithCond(object):
 
         return grads
 
-    def build_net(self, cond_i):
+    def build_net(self, cond_i, use_bf16=False):
         """
         pseudo code:
             sum_xy = x + y
@@ -81,21 +82,18 @@ class SimpleNetWithCond(object):
         param_x = fluid.layers.create_parameter(
             dtype="float32",
             shape=self.shape,
-            attr=fluid.ParamAttr(
-                learning_rate=self.param_lr, name="param_x"),
+            attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_x"),
             default_initializer=fluid.initializer.NumpyArrayInitializer(self.x))
 
         param_y = fluid.layers.create_parameter(
             dtype="float32",
             shape=self.shape,
-            attr=fluid.ParamAttr(
-                learning_rate=self.param_lr, name="param_y"),
+            attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_y"),
             default_initializer=fluid.initializer.NumpyArrayInitializer(self.y))
         param_z = fluid.layers.create_parameter(
             dtype="float32",
             shape=self.shape,
-            attr=fluid.ParamAttr(
-                learning_rate=self.param_lr, name="param_z"),
+            attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_z"),
             default_initializer=fluid.initializer.NumpyArrayInitializer(self.z))
 
         sum_xy = fluid.layers.elementwise_add(param_x, param_y, name='sum_xy')
@@ -103,32 +101,44 @@ class SimpleNetWithCond(object):
         useless = fluid.layers.fc(param_x, size=1, name='fc_useless')
 
         def cond_true():
-            cond_yz = fluid.layers.elementwise_add(
-                param_y, param_z, name='sum_cond_yz')
+            cond_yz = fluid.layers.elementwise_add(param_y,
+                                                   param_z,
+                                                   name='sum_cond_yz')
             # param_y will not be updated
             param_y.stop_gradient = self.y_no_grad
-            cond_res = fluid.layers.elementwise_add(
-                cond_yz, param_z, name='sum_cond_true')
+            cond_res = fluid.layers.elementwise_add(cond_yz,
+                                                    param_z,
+                                                    name='sum_cond_true')
             cond_useless = fluid.layers.elementwise_mul(param_x, param_y)
             return cond_res
 
         def cond_false():
-            cond_res = fluid.layers.elementwise_add(
-                param_y, param_z, name='sum_cond_false')
+            cond_res = fluid.layers.elementwise_add(param_y,
+                                                    param_z,
+                                                    name='sum_cond_false')
             cond_useless = fluid.layers.elementwise_mul(param_z, param_z)
             return cond_res
 
         cond_i = fluid.layers.assign(np.array([cond_i], dtype='float32'))
         sum_cond = fluid.layers.cond(cond_i > 1.0, cond_true, cond_false)
         sum_all = fluid.layers.sum([sum_xy, sub_yz, sum_cond])
-        mean_out = fluid.layers.mean(sum_all)
+        mean_out = paddle.mean(sum_all)
+        if use_bf16:
+            import paddle.static.amp as amp
+            self.optimizer = amp.bf16.decorate_bf16(
+                self.optimizer,
+                amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
+                    custom_fp32_list={'elementwise_add'}),
+                use_bf16_guard=False,
+                use_pure_bf16=True)
+
         self.optimizer.minimize(mean_out)
 
         fetch_list = ["param_x", "param_z"] if self.y_no_grad else [
             "param_x", "param_y", "param_z"
         ]
         fetch_list += [_append_grad_suffix_(param) for param in fetch_list]
-        return fetch_list
+        return fetch_list, self.optimizer
 
 
 class TestOptimizer(unittest.TestCase):
@@ -180,7 +190,7 @@ class TestOptimizer(unittest.TestCase):
         for key in ['x', 'y', 'z']:
             self.param_attr[key] = self.attr.copy()
 
-    def _check_grads(self):
+    def _check_grads(self, use_bf16=False):
         """
         main logic code to check the validity of apply_optimize.
         """
@@ -204,22 +214,38 @@ class TestOptimizer(unittest.TestCase):
                                 lambda: dict())
                             test_net = self.NetClass(self.optimizer, param_lr,
                                                      y_no_grad)
-                            fetch_list = test_net.build_net(cond_i)
+                            fetch_list, decorated_optimizer = test_net.build_net(
+                                cond_i, use_bf16)
+                            if use_bf16:
+                                self.optimizer = decorated_optimizer
 
                             exe = fluid.Executor(place)
                             exe.run(init_program)
+                            if use_bf16:
+                                self.optimizer.amp_init(exe.place)
+
                             # Train 2 steps to check validity
                             for batch_i in range(2):
 
                                 res = exe.run(main_program,
                                               fetch_list=fetch_list)
                                 gt_grads = test_net._calc_gradient(cond_i)
-                                gt_params = self._apply_optimize(test_net,
-                                                                 gt_grads)
+                                gt_params = self._apply_optimize(
+                                    test_net, gt_grads)
                                 param_grads = gt_params + gt_grads
                                 for i in range(len(res)):
-                                    np.testing.assert_allclose(res[i],
-                                                               param_grads[i])
+                                    np.testing.assert_allclose(
+                                        res[i], param_grads[i])
+
+
+@unittest.skipIf(not fluid.core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestSGDOptimizer(TestOptimizer):
+
+    def test_optimizer_multiblock_except(self):
+        with self.assertRaisesRegexp(ValueError,
+                                     "var param_y not in this block"):
+            self._check_grads(use_bf16=True)
 
 
 class TestAdamOptimizer(TestOptimizer):
@@ -232,8 +258,10 @@ class TestAdamOptimizer(TestOptimizer):
     def setUp(self):
         self._init_config()
         beta1, beta2, epsilon = 0.9, 0.999, 1e-8
-        self.optimizer = optimizer.AdamOptimizer(
-            learning_rate=0.01, beta1=beta1, beta2=beta2, epsilon=epsilon)
+        self.optimizer = optimizer.AdamOptimizer(learning_rate=0.01,
+                                                 beta1=beta1,
+                                                 beta2=beta2,
+                                                 epsilon=epsilon)
         self.attr = {
             "beta1": beta1,
             "beta2": beta2,
@@ -258,8 +286,9 @@ class TestAdamOptimizer(TestOptimizer):
         moment2_out = beta2 * moment2 + (1. - beta2) * np.square(grad)
 
         lr = attr['lr'] * np.sqrt(1. - beta2_pow) / (1. - beta1_pow)
-        param_out = param - lr * (moment1_out / (np.sqrt(moment2_out) + epsilon
-                                                 * np.sqrt(1 - beta2_pow)))
+        param_out = param - lr * (
+            moment1_out /
+            (np.sqrt(moment2_out) + epsilon * np.sqrt(1 - beta2_pow)))
 
         # update hyper-parameter of optimizer
         self.param_attr[name]['beta1_pow'] = beta1_pow * beta1

@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <paddle/fluid/operators/math/concat_and_split.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -41,7 +43,7 @@ struct ArrayToLoDFunctorImpl {
   void apply();
 };
 
-struct ArrayToLoDFunctor : public boost::static_visitor<void> {
+struct ArrayToLoDFunctor : public std::unary_function<platform::Place, void> {
   std::vector<framework::Tensor> in;
   mutable framework::Tensor *out;
 
@@ -49,10 +51,10 @@ struct ArrayToLoDFunctor : public boost::static_visitor<void> {
   void operator()(Place place) const {
     auto &pool = platform::DeviceContextPool::Instance();
     if (std::is_same<Place, platform::CPUPlace>::value) {
-      Apply(static_cast<platform::CPUDeviceContext *>(pool.Get(place)));
+      Apply(static_cast<phi::CPUContext *>(pool.Get(place)));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      Apply(static_cast<platform::CUDADeviceContext *>(pool.Get(place)));
+      Apply(static_cast<phi::GPUContext *>(pool.Get(place)));
 #else
       PADDLE_THROW(
           platform::errors::Unavailable("Paddle is not compiled with CUDA."));
@@ -65,7 +67,8 @@ struct ArrayToLoDFunctor : public boost::static_visitor<void> {
     ArrayToLoDFunctorImpl<DeviceContext> functor;
     functor.dev_ctx_ = dev_ctx;
     functor.prev_functor_ = this;
-    framework::VisitDataType(out->type(), functor);
+    framework::VisitDataType(framework::TransToProtoVarType(out->dtype()),
+                             functor);
   }
 };
 
@@ -95,45 +98,54 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
 
     // Check dims, place and data type of input's elements and infer output's
     // dim
-    PADDLE_ENFORCE_EQ(x.empty(), false,
+    PADDLE_ENFORCE_EQ(x.empty(),
+                      false,
                       platform::errors::PreconditionNotMet(
                           "There's no element in the input array."));
     int rank = x[0].dims().size();
     platform::Place place = x[0].place();
-    auto data_type = x[0].type();
+    auto data_type = x[0].dtype();
     int64_t batch_size = x[0].dims()[0];
-    framework::DDim ins_dims = rank > 1
-                                   ? framework::slice_ddim(x[0].dims(), 1, rank)
-                                   : framework::make_ddim({0});
+    framework::DDim ins_dims =
+        rank > 1 ? phi::slice_ddim(x[0].dims(), 1, rank) : phi::make_ddim({0});
     for (size_t i = 1; i < x.size(); ++i) {
-      auto ins_i_dims = rank > 1 ? framework::slice_ddim(x[i].dims(), 1, rank)
-                                 : framework::make_ddim({0});
+      auto ins_i_dims = rank > 1 ? phi::slice_ddim(x[i].dims(), 1, rank)
+                                 : phi::make_ddim({0});
       PADDLE_ENFORCE_EQ(
-          ins_i_dims, ins_dims,
+          ins_i_dims,
+          ins_dims,
           platform::errors::InvalidArgument(
               "The dimension of the %zu'th element in LoDTensorArray "
               "differs from previous ones."
               "The current dimension is %d, and the previous dimesion is %d.",
-              i, ins_i_dims, ins_dims));
+              i,
+              ins_i_dims,
+              ins_dims));
       PADDLE_ENFORCE_EQ(
-          x[i].place(), place,
+          x[i].place(),
+          place,
           platform::errors::InvalidArgument(
               "The place class of the %zu'th element in LoDTensorArray "
               "differs from previous ones."
               "The current place is %d, and the previous place is %d.",
-              i, x[i].place(), place));
+              i,
+              x[i].place(),
+              place));
       PADDLE_ENFORCE_EQ(
-          x[i].type(), data_type,
+          x[i].dtype(),
+          data_type,
           platform::errors::InvalidArgument(
               "The date type of the %zu'th element in LoDTensorArray "
               "differs from previous ones."
               "The current data type is %d, and the previous data type is %d.",
-              i, x[i].type(), data_type));
+              i,
+              x[i].dtype(),
+              data_type));
       batch_size += x[i].dims()[0];
     }
-    auto ins_dim_vec = framework::vectorize(ins_dims);
+    auto ins_dim_vec = phi::vectorize(ins_dims);
     ins_dim_vec.insert(ins_dim_vec.begin(), batch_size);
-    framework::DDim out_dims = framework::make_ddim(ins_dim_vec);
+    framework::DDim out_dims = phi::make_ddim(ins_dim_vec);
     out->Resize(out_dims);
     out->mutable_data(place, data_type);
 
@@ -141,10 +153,10 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     std::vector<size_t> table_item_idx(table_items.size());
     // table_item_idx = range(table_items_idx.size())
     std::iota(table_item_idx.begin(), table_item_idx.end(), 0);
-    std::sort(table_item_idx.begin(), table_item_idx.end(),
-              [&](size_t a, size_t b) {
-                return table_items[a].index < table_items[b].index;
-              });
+    std::sort(
+        table_item_idx.begin(), table_item_idx.end(), [&](size_t a, size_t b) {
+          return table_items[a].index < table_items[b].index;
+        });
 
     // Build LoDTensor `out`
     framework::LoD *out_lod = out->mutable_lod();
@@ -156,19 +168,21 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     ArrayToLoDFunctor functor;
     for (size_t idx : table_item_idx) {
       cur_level_lod.push_back(cur_level_lod.back() + table_items[idx].length);
-      PADDLE_ENFORCE_LE(table_items[idx].length, x.size(),
+      PADDLE_ENFORCE_LE(table_items[idx].length,
+                        x.size(),
                         platform::errors::InvalidArgument(
                             "The RankTable items length should less than or "
                             "equal to Input(X) size,"
                             "but receive TankTable items length is %d , longer "
                             "than Input(X) size %d.",
-                            table_items[idx].length, x.size()));
+                            table_items[idx].length,
+                            x.size()));
       for (size_t x_idx = 0; x_idx < table_items[idx].length; ++x_idx) {
         auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
             x[x_idx].lod(), idx, idx + 1, 0);
 
         auto &lod_length = lod_and_offset.first;
-        framework::AppendLoD(out_lod, lod_length);
+        phi::AppendLoD(out_lod, lod_length);
 
         size_t start_offset = lod_and_offset.second.first;
         size_t end_offset = lod_and_offset.second.second;
@@ -176,12 +190,14 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
                  << ", " << end_offset << "]";
         // Copy data
         PADDLE_ENFORCE_GE(
-            end_offset, start_offset,
+            end_offset,
+            start_offset,
             platform::errors::InvalidArgument(
                 "The lod data start offset should smaller or equal to the end "
                 "offset,"
                 "but the start offset is %d, larger than end offset %d.",
-                start_offset, end_offset));
+                start_offset,
+                end_offset));
         size_t len = end_offset - start_offset;
         if (len == 0) {
           continue;
@@ -207,10 +223,10 @@ class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
              "'paddle/framework/lod_rank_table.h' for more details.");
     AddOutput("Out", "(LoDTensor) The LoDTensor formed by input tensor array.");
     AddComment(
-        R"DOC(This Op build a big LoDTensor from a std::vector<LoDTensor> 
+        R"DOC(This Op build a big LoDTensor from a std::vector<LoDTensor>
           and a LoDRankTable. It is supposed to be used in getting dynamic RNN's
-          outputs back to a normal LoDTensor. The std::vector<LoDTensor> 
-          would be the output of RNN Op and the LoDRankTable would be build 
+          outputs back to a normal LoDTensor. The std::vector<LoDTensor>
+          would be the output of RNN Op and the LoDRankTable would be build
           with RNN's input.)DOC");
   }
 };
@@ -219,9 +235,11 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
-        context->HasInput("X"), true,
+        context->HasInput("X"),
+        true,
         platform::errors::NotFound("Input(X) of BmmOp should not be null."));
-    PADDLE_ENFORCE_EQ(context->HasInput("RankTable"), true,
+    PADDLE_ENFORCE_EQ(context->HasInput("RankTable"),
+                      true,
                       platform::errors::NotFound(
                           "Input(RankTable) of BmmOp should not be null."));
     // For compile-time, the first dim of input X and output Out should be -1.
@@ -261,7 +279,8 @@ class ArrayToLoDTensorGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(array_to_lod_tensor, ops::ArrayToLoDTensorOp,
+REGISTER_OPERATOR(array_to_lod_tensor,
+                  ops::ArrayToLoDTensorOp,
                   ops::ArrayToLoDTensorOpProtoMaker,
                   ops::ArrayToLoDTensorInferShape,
                   ops::ArrayToLoDTensorGradMaker<paddle::framework::OpDesc>,

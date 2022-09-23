@@ -14,12 +14,13 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/operators/math/gru_compute.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
+#include "paddle/phi/kernels/funcs/detail/activation_functions.h"
+#include "paddle/phi/kernels/funcs/gru_compute.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
 namespace operators {
@@ -31,8 +32,9 @@ template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
                              framework::Vector<size_t> index_lod,
-                             framework::Tensor* dst, bool indexed_src) {
-  math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
+                             framework::Tensor* dst,
+                             bool indexed_src) {
+  phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
   row_shuffle(ctx, src, index_lod, dst, indexed_src);
 }
@@ -63,13 +65,13 @@ class GRUGradKernel : public framework::OpKernel<T> {
     auto hidden_dims = hidden->dims();
     int frame_size = hidden_dims[1];
 
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     LoDTensor batch_hidden_grad, batch_gate_grad, batch_reset_hidden_prev_grad;
     batch_hidden_grad.mutable_data<T>(hidden_dims, context.GetPlace());
     batch_gate_grad.mutable_data<T>(gate_dims, context.GetPlace());
     batch_reset_hidden_prev_grad.mutable_data<T>(hidden_dims,
                                                  context.GetPlace());
-    math::SetConstant<DeviceContext, T> zero;
+    phi::funcs::SetConstant<DeviceContext, T> zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     zero(dev_ctx, &batch_hidden_grad, static_cast<T>(0.0));
     zero(dev_ctx, &batch_gate_grad, static_cast<T>(0.0));
@@ -80,12 +82,13 @@ class GRUGradKernel : public framework::OpKernel<T> {
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (h0) {
-      ReorderInitState<DeviceContext, T>(dev_ctx, *h0, order, &ordered_h0,
-                                         true);
+      ReorderInitState<DeviceContext, T>(
+          dev_ctx, *h0, order, &ordered_h0, true);
     }
     if (h0_grad) {
       ordered_h0_grad.mutable_data<T>(h0_grad->dims(), context.GetPlace());
-      zero(context.template device_context<DeviceContext>(), &ordered_h0_grad,
+      zero(context.template device_context<DeviceContext>(),
+           &ordered_h0_grad,
            static_cast<T>(0.0));
     }
 
@@ -93,12 +96,12 @@ class GRUGradKernel : public framework::OpKernel<T> {
     batch_hidden_grad.set_lod(batch_hidden->lod());
     to_batch(dev_ctx, *hidden_grad, &batch_hidden_grad, false, is_reverse);
 
-    math::GRUMetaValue<T> gru_value;
+    phi::funcs::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
 
-    math::GRUMetaGrad<T> gru_grad;
+    phi::funcs::GRUMetaGrad<T> gru_grad;
     if (weight_grad) {
       gru_grad.gate_weight_grad =
           weight_grad->mutable_data<T>(context.GetPlace());
@@ -112,9 +115,9 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_hidden_grad.lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto active_node = math::detail::GetActivationType(
+    auto active_node = phi::funcs::detail::GetActivationType(
         context.Attr<std::string>("activation"));
-    auto active_gate = math::detail::GetActivationType(
+    auto active_gate = phi::funcs::detail::GetActivationType(
         context.Attr<std::string>("gate_activation"));
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
       int bstart = static_cast<int>(batch_starts[n]);
@@ -145,24 +148,29 @@ class GRUGradKernel : public framework::OpKernel<T> {
         gru_grad.prev_out_grad = hidden_prev_grad_t.data<T>();
       }
       gru_value.output_value = nullptr;
-      math::GRUUnitGradFunctor<DeviceContext, T>::compute(
-          dev_ctx, gru_value, gru_grad, frame_size, cur_batch_size, active_node,
-          active_gate, origin_mode);
+      phi::funcs::GRUUnitGradFunctor<DeviceContext, T>::compute(dev_ctx,
+                                                                gru_value,
+                                                                gru_grad,
+                                                                frame_size,
+                                                                cur_batch_size,
+                                                                active_node,
+                                                                active_gate,
+                                                                origin_mode);
     }
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
-      math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+      phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
       batch_gate_grad.set_lod(batch_gate->lod());
       to_seq(dev_ctx, batch_gate_grad, input_grad);
     }
     if (bias_grad) {
       bias_grad->mutable_data<T>(context.GetPlace());
-      math::ColwiseSum<DeviceContext, T> col_sum;
+      phi::funcs::ColwiseSum<DeviceContext, T> col_sum;
       col_sum(dev_ctx, batch_gate_grad, bias_grad);
     }
     if (h0 && h0_grad) {
-      ReorderInitState<DeviceContext, T>(dev_ctx, ordered_h0_grad, order,
-                                         h0_grad, false);
+      ReorderInitState<DeviceContext, T>(
+          dev_ctx, ordered_h0_grad, order, h0_grad, false);
     }
   }
 

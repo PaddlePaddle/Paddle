@@ -20,9 +20,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_version_proto.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/macros.h"
+#include "paddle/utils/none.h"
 
 namespace paddle {
 namespace framework {
@@ -33,26 +34,27 @@ class OpVersionMap;
 }  // namespace pb
 
 using OpAttrVariantT =
-    boost::variant<bool,                     /* AttrType::BOOL */
-                   float,                    /* AttrType::FLOAT */
-                   int32_t,                  /* AttrType::INT */
-                   int64_t,                  /* AttrType::LONG*/
-                   std::string,              /* AttrType::STRING */
-                   std::vector<bool>,        /* AttrType::BOOLS */
-                   std::vector<float>,       /* AttrType::FLOATS */
-                   std::vector<int32_t>,     /* AttrType::INTS */
-                   std::vector<int64_t>,     /* AttrType::LONGS */
-                   std::vector<std::string>, /* AttrType::STRINGS */
-                   boost::none_t             /* None */
-                   >;
+    paddle::variant<bool,                     /* AttrType::BOOL */
+                    float,                    /* AttrType::FLOAT */
+                    int32_t,                  /* AttrType::INT */
+                    int64_t,                  /* AttrType::LONG*/
+                    std::string,              /* AttrType::STRING */
+                    std::vector<bool>,        /* AttrType::BOOLS */
+                    std::vector<float>,       /* AttrType::FLOATS */
+                    std::vector<int32_t>,     /* AttrType::INTS */
+                    std::vector<int64_t>,     /* AttrType::LONGS */
+                    std::vector<std::string>, /* AttrType::STRINGS */
+                    paddle::none_t            /* None */
+                    >;
 
 struct OpUpdateInfo {
   virtual ~OpUpdateInfo() = default;
 };
 
 struct OpAttrInfo : OpUpdateInfo {
-  OpAttrInfo(const std::string& name, const std::string& remark,
-             const OpAttrVariantT& default_value = boost::none)
+  OpAttrInfo(const std::string& name,
+             const std::string& remark,
+             const OpAttrVariantT& default_value = paddle::none)
       : name_{name}, default_value_{default_value}, remark_{remark} {}
 
   const std::string& name() const { return name_; }
@@ -133,7 +135,8 @@ OpAttrVariantT op_attr_wrapper(const T& val) {
 template <int N>
 OpAttrVariantT op_attr_wrapper(const char (&val)[N]) {
   PADDLE_ENFORCE_EQ(
-      val[N - 1], 0,
+      val[N - 1],
+      0,
       platform::errors::InvalidArgument(
           "The argument of operator register %c is illegal.", val[N - 1]));
   return OpAttrVariantT{std::string{val}};
@@ -143,7 +146,8 @@ class OpVersionDesc {
  public:
   /* Compatibility upgrade */
   template <typename T>
-  OpVersionDesc&& ModifyAttr(const std::string& name, const std::string& remark,
+  OpVersionDesc&& ModifyAttr(const std::string& name,
+                             const std::string& remark,
                              const T& default_value) {
     infos_.emplace_back(new_update<OpUpdateType::kModifyAttr>(
         OpAttrInfo(name, remark, op_attr_wrapper(default_value))));
@@ -151,7 +155,8 @@ class OpVersionDesc {
   }
 
   template <typename T>
-  OpVersionDesc&& NewAttr(const std::string& name, const std::string& remark,
+  OpVersionDesc&& NewAttr(const std::string& name,
+                          const std::string& remark,
                           const T& default_value) {
     infos_.emplace_back(new_update<OpUpdateType::kNewAttr>(
         OpAttrInfo(name, remark, op_attr_wrapper(default_value))));

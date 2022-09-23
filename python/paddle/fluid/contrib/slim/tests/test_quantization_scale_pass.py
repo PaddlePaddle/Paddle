@@ -17,6 +17,7 @@ import unittest
 import random
 import numpy as np
 import six
+import tempfile
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid.framework import IrGraph
@@ -34,46 +35,48 @@ os.environ["CPU_NUM"] = "1"
 
 
 def conv_net(img, label):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
-        input=img,
-        filter_size=5,
-        num_filters=20,
-        pool_size=2,
-        pool_stride=2,
-        pool_type='max',
-        act="relu")
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
+                                                  filter_size=5,
+                                                  num_filters=20,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  pool_type='max',
+                                                  act="relu")
     conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
-        input=conv_pool_1,
-        filter_size=5,
-        num_filters=50,
-        pool_size=2,
-        pool_stride=2,
-        pool_type='avg',
-        act="relu")
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
+                                                  filter_size=5,
+                                                  num_filters=50,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  pool_type='avg',
+                                                  act="relu")
     hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_loss = fluid.layers.mean(loss)
+    avg_loss = paddle.mean(loss)
     return avg_loss
 
 
 class TestQuantizationScalePass(unittest.TestCase):
+
     def quantization_scale(self,
                            use_cuda,
                            seed,
                            activation_quant_type,
                            weight_quant_type='abs_max',
                            for_ci=False):
+
         def build_program(main, startup, is_test):
             main.random_seed = seed
             startup.random_seed = seed
             with fluid.unique_name.guard():
                 with fluid.program_guard(main, startup):
-                    img = fluid.layers.data(
-                        name='image', shape=[1, 28, 28], dtype='float32')
-                    label = fluid.layers.data(
-                        name='label', shape=[1], dtype='int64')
+                    img = fluid.layers.data(name='image',
+                                            shape=[1, 28, 28],
+                                            dtype='float32')
+                    label = fluid.layers.data(name='label',
+                                              shape=[1],
+                                              dtype='int64')
                     loss = conv_net(img, label)
                     if not is_test:
                         opt = fluid.optimizer.Adam(learning_rate=0.0001)
@@ -135,10 +138,9 @@ class TestQuantizationScalePass(unittest.TestCase):
         iters = 5
         batch_size = 8
 
-        train_reader = paddle.batch(
-            paddle.reader.shuffle(
-                paddle.dataset.mnist.train(), buf_size=500),
-            batch_size=batch_size)
+        train_reader = paddle.batch(paddle.reader.shuffle(
+            paddle.dataset.mnist.train(), buf_size=500),
+                                    batch_size=batch_size)
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
         with fluid.scope_guard(scope):
             for _ in range(iters):
@@ -165,13 +167,19 @@ class TestQuantizationScalePass(unittest.TestCase):
                     marked_nodes.add(op)
             test_graph.draw('.', 'quant_scale' + dev_name, marked_nodes)
 
-        with open('quant_scale_model' + dev_name + '.txt', 'w') as f:
+        tempdir = tempfile.TemporaryDirectory()
+        mapping_table_path = os.path.join(
+            tempdir.name, 'quant_scale_model' + dev_name + '.txt')
+        save_path = os.path.join(tempdir.name, 'quant_scale_model' + dev_name)
+        with open(mapping_table_path, 'w') as f:
             f.write(str(server_program))
 
         with fluid.scope_guard(scope):
-            fluid.io.save_inference_model('quant_scale_model' + dev_name,
-                                          ['image', 'label'], [loss], exe,
-                                          server_program)
+            fluid.io.save_inference_model(save_path, ['image', 'label'], [loss],
+                                          exe,
+                                          server_program,
+                                          clip_extra=True)
+        tempdir.cleanup()
 
     def test_quant_scale_cuda(self):
         if fluid.core.is_compiled_with_cuda():

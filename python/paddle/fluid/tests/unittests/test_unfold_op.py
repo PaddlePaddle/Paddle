@@ -18,6 +18,9 @@ import math
 import numpy as np
 import unittest
 from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
 
 
 class TestUnfoldOp(OpTest):
@@ -49,8 +52,9 @@ class TestUnfoldOp(OpTest):
         dkernel_w = self.dilations[1] * (self.kernel_sizes[1] - 1) + 1
         out_height = int((self.input_height + self.paddings[0] +
                           self.paddings[2] - dkernel_h) / self.strides[0]) + 1
-        out_width = int((self.input_width + self.paddings[1] + self.paddings[3]
-                         - dkernel_w) / self.strides[1]) + 1
+        out_width = int(
+            (self.input_width + self.paddings[1] + self.paddings[3] - dkernel_w)
+            / self.strides[1]) + 1
         output_shape[2] = out_height * out_width
         output = np.zeros(output_shape).astype(np.float64)
         ############ calculate output ##############
@@ -60,8 +64,8 @@ class TestUnfoldOp(OpTest):
                     h_out = int(k / out_width)
                     w_out = k % out_width
                     w_offset = j % self.kernel_sizes[1]
-                    h_offset = int(j /
-                                   self.kernel_sizes[1]) % self.kernel_sizes[0]
+                    h_offset = int(
+                        j / self.kernel_sizes[1]) % self.kernel_sizes[0]
                     c_in = int(j /
                                (self.kernel_sizes[0] * self.kernel_sizes[1]))
                     h_in = h_offset * self.dilations[0] + h_out * self.strides[
@@ -96,6 +100,33 @@ class TestUnfoldOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y')
+
+
+class TestUnfoldAPI(TestUnfoldOp):
+    """
+    This is for test on paddle.nn.Unfold
+    """
+
+    def setUp(self):
+        self.op_type = 'unfold'
+        self.set_data()
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input = fluid.dygraph.to_variable(self.inputs['X'])
+                m = paddle.nn.Unfold(**self.attrs)
+                m.eval()
+                result = m(input)
+                np.testing.assert_allclose(result.numpy(),
+                                           self.outputs['Y'],
+                                           rtol=1e-05)
+
+    def test_info(self):
+        str(paddle.nn.Unfold(**self.attrs))
 
 
 if __name__ == '__main__':

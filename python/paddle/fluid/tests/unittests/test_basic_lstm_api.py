@@ -56,6 +56,7 @@ def lstm_np(input,
             is_bidirect=False,
             sequence_length=None,
             forget_bias=1.0):
+
     def step(step_in, pre_hidden, pre_cell, gate_w, gate_b):
         concat_1 = np.concatenate([step_in, pre_hidden], 1)
 
@@ -68,13 +69,14 @@ def lstm_np(input,
 
         return new_hidden, new_cell
 
+    mask = None
+
     if batch_first:
         input = np.tranpose(input, [1, 0, 2])
         if mask is not None:
             mask = np.transpose(mask, [1, 0])
 
     batch_size = input.shape[1]
-    mask = None
     if sequence_length is not None:
         max_seq_len = input.shape[0]
 
@@ -186,6 +188,7 @@ def lstm_np(input,
 
 
 class TestBasicLSTMApi(unittest.TestCase):
+
     def setUp(self):
         self.hidden_size = 10
         self.batch_size = 5
@@ -196,12 +199,12 @@ class TestBasicLSTMApi(unittest.TestCase):
         self.forget_bias = 1.0
 
     def test_run(self):
-        x = layers.data(
-            name='x',
-            shape=[-1, self.batch_size, self.hidden_size],
-            dtype='float32')
-        sequence_length = layers.data(
-            name="sequence_length", shape=[-1], dtype='float32')
+        x = layers.data(name='x',
+                        shape=[-1, self.batch_size, self.hidden_size],
+                        dtype='float32')
+        sequence_length = layers.data(name="sequence_length",
+                                      shape=[-1],
+                                      dtype='float32')
 
         rnn_out, last_hidden, last_cell = basic_lstm( x, None, None, self.hidden_size, num_layers=self.num_layers, \
                 batch_first = self.batch_first, bidirectional=self.is_bidirect, sequence_length=sequence_length, forget_bias = self.forget_bias )
@@ -226,19 +229,19 @@ class TestBasicLSTMApi(unittest.TestCase):
             gate_w_name = "basic_lstm_layers_" + str(i) + "/BasicLSTMUnit_0.w_0"
             gate_b_name = "basic_lstm_layers_" + str(i) + "/BasicLSTMUnit_0.b_0"
 
-            gate_w = np.array(fluid.global_scope().find_var(gate_w_name)
-                              .get_tensor())
-            gate_w = np.random.uniform(
-                -0.1, 0.1, size=gate_w.shape).astype('float32')
-            fluid.global_scope().find_var(gate_w_name).get_tensor().set(gate_w,
-                                                                        place)
+            gate_w = np.array(
+                fluid.global_scope().find_var(gate_w_name).get_tensor())
+            gate_w = np.random.uniform(-0.1, 0.1,
+                                       size=gate_w.shape).astype('float32')
+            fluid.global_scope().find_var(gate_w_name).get_tensor().set(
+                gate_w, place)
 
-            gate_b = np.array(fluid.global_scope().find_var(gate_b_name)
-                              .get_tensor())
-            gate_b = np.random.uniform(
-                -0.1, 0.1, size=gate_b.shape).astype('float32')
-            fluid.global_scope().find_var(gate_b_name).get_tensor().set(gate_b,
-                                                                        place)
+            gate_b = np.array(
+                fluid.global_scope().find_var(gate_b_name).get_tensor())
+            gate_b = np.random.uniform(-0.1, 0.1,
+                                       size=gate_b.shape).astype('float32')
+            fluid.global_scope().find_var(gate_b_name).get_tensor().set(
+                gate_b, place)
 
             gate_weight.append(gate_w)
             gate_bias.append(gate_b)
@@ -250,57 +253,60 @@ class TestBasicLSTMApi(unittest.TestCase):
                 gate_b_name = "basic_lstm_reverse_layers_" + str(
                     i) + "/BasicLSTMUnit_0.b_0"
 
-                gate_w = np.array(fluid.global_scope().find_var(gate_w_name)
-                                  .get_tensor())
-                gate_w = np.random.uniform(
-                    -0.1, 0.1, size=gate_w.shape).astype('float32')
+                gate_w = np.array(
+                    fluid.global_scope().find_var(gate_w_name).get_tensor())
+                gate_w = np.random.uniform(-0.1, 0.1,
+                                           size=gate_w.shape).astype('float32')
                 fluid.global_scope().find_var(gate_w_name).get_tensor().set(
                     gate_w, place)
 
-                gate_b = np.array(fluid.global_scope().find_var(gate_b_name)
-                                  .get_tensor())
-                gate_b = np.random.uniform(
-                    -0.1, 0.1, size=gate_b.shape).astype('float32')
+                gate_b = np.array(
+                    fluid.global_scope().find_var(gate_b_name).get_tensor())
+                gate_b = np.random.uniform(-0.1, 0.1,
+                                           size=gate_b.shape).astype('float32')
                 fluid.global_scope().find_var(gate_b_name).get_tensor().set(
                     gate_b, place)
 
                 gate_weight.append(gate_w)
                 gate_bias.append(gate_b)
 
-        step_input_np = np.random.uniform(-0.1, 0.1, (
-            self.seq_len, self.batch_size, self.hidden_size)).astype('float32')
+        step_input_np = np.random.uniform(
+            -0.1, 0.1,
+            (self.seq_len, self.batch_size, self.hidden_size)).astype('float32')
         sequence_length_np = np.random.randint(
             self.seq_len // 2, self.seq_len,
             size=(self.batch_size)).astype('int64')
 
-        out = exe.run(
-            feed={'x': step_input_np,
-                  'sequence_length': sequence_length_np},
-            fetch_list=[rnn_out, last_hidden, last_cell])
+        out = exe.run(feed={
+            'x': step_input_np,
+            'sequence_length': sequence_length_np
+        },
+                      fetch_list=[rnn_out, last_hidden, last_cell])
 
         api_rnn_out = out[0]
         api_last_hidden = out[1]
         api_last_cell = out[2]
 
-        np_out = lstm_np(
-            step_input_np,
-            None,
-            None,
-            self.hidden_size,
-            gate_weight,
-            gate_bias,
-            num_layers=self.num_layers,
-            batch_first=self.batch_first,
-            is_bidirect=self.is_bidirect,
-            sequence_length=sequence_length_np)
+        np_out = lstm_np(step_input_np,
+                         None,
+                         None,
+                         self.hidden_size,
+                         gate_weight,
+                         gate_bias,
+                         num_layers=self.num_layers,
+                         batch_first=self.batch_first,
+                         is_bidirect=self.is_bidirect,
+                         sequence_length=sequence_length_np)
 
-        self.assertTrue(np.allclose(api_rnn_out, np_out[0], rtol=1e-4, atol=0))
-        self.assertTrue(
-            np.allclose(
-                api_last_hidden, np_out[1], rtol=1e-4, atol=0))
-        self.assertTrue(
-            np.allclose(
-                api_last_cell, np_out[2], rtol=1e-4, atol=0))
+        np.testing.assert_allclose(api_rnn_out, np_out[0], rtol=0.0001, atol=0)
+        np.testing.assert_allclose(api_last_hidden,
+                                   np_out[1],
+                                   rtol=0.0001,
+                                   atol=0)
+        np.testing.assert_allclose(api_last_cell,
+                                   np_out[2],
+                                   rtol=0.0001,
+                                   atol=0)
 
 
 if __name__ == '__main__':

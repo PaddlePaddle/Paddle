@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import gast
-from .utils import is_paddle_api, is_dygraph_api, is_numpy_api, index_in_list
+from paddle.utils import gast
+from .logging_utils import warn
+from .utils import is_paddle_api, is_dygraph_api, is_numpy_api, index_in_list, ast_to_source_code
 
 __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
 
@@ -57,6 +58,15 @@ class NodeVarType(object):
     # If node.node_var_type in TENSOR_TYPES, it can be considered as tensor-dependent.
     TENSOR_TYPES = {TENSOR, PADDLE_RETURN_TYPES}
 
+    Annotation_map = {
+        "Tensor": TENSOR,
+        "paddle.Tensor": TENSOR,
+        "int": INT,
+        "float": FLOAT,
+        "bool": BOOLEAN,
+        "str": STRING
+    }
+
     @staticmethod
     def binary_op_output_type(in_type1, in_type2):
         if in_type1 == in_type2:
@@ -82,6 +92,16 @@ class NodeVarType(object):
         if in_type1 in forbidden_types and in_type2 in forbidden_types:
             return NodeVarType.UNKNOWN
         return max(in_type1, in_type2)
+
+    @staticmethod
+    def type_from_annotation(annotation):
+        annotation_str = ast_to_source_code(annotation).strip()
+        if annotation_str in NodeVarType.Annotation_map:
+            return NodeVarType.Annotation_map[annotation_str]
+
+        # raise warning if not found
+        warn("Currently we don't support annotation: %s" % annotation_str)
+        return NodeVarType.UNKNOWN
 
 
 class AstNodeWrapper(object):
@@ -161,8 +181,9 @@ class AstVarEnv(object):
         self.cur_scope = AstVarScope()
 
     def enter_scope(self, scope_name, scope_type):
-        self.cur_scope = AstVarScope(
-            scope_name, scope_type, parent_scope=self.cur_scope)
+        self.cur_scope = AstVarScope(scope_name,
+                                     scope_type,
+                                     parent_scope=self.cur_scope)
         return self.cur_scope
 
     def exit_scope(self):
@@ -314,6 +335,29 @@ class StaticAnalysisVisitor(object):
                 if isinstance(target, gast.Name):
                     self.node_to_wrapper_map[target].node_var_type = ret_type
                     self.var_env.set_var_type(target.id, ret_type)
+                # Handle statements like `a, b = paddle.shape(x)`
+                elif isinstance(target, gast.Tuple):
+                    for sub_target in target.elts:
+                        if isinstance(sub_target, gast.Name):
+                            self.node_to_wrapper_map[
+                                sub_target].node_var_type = ret_type
+                            self.var_env.set_var_type(sub_target.id, ret_type)
+            return ret_type
+
+        if isinstance(node, gast.AnnAssign):
+            # TODO(0x45f): To determine whether need to support assignment statements
+            # like `self.x: float = 2.1`.
+            ret_type = {NodeVarType.type_from_annotation(node.annotation)}
+            # if annotation and value(Constant) are diffent type, we use value type
+            if node.value:
+                node_value_type = self.node_to_wrapper_map[
+                    node.value].node_var_type
+                if not (node_value_type
+                        & {NodeVarType.UNKNOWN, NodeVarType.STATEMENT}):
+                    ret_type = node_value_type
+            if isinstance(node.target, gast.Name):
+                self.node_to_wrapper_map[node.target].node_var_type = ret_type
+                self.var_env.set_var_type(node.target.id, ret_type)
             return ret_type
 
         if isinstance(node, gast.Name):
@@ -325,21 +369,8 @@ class StaticAnalysisVisitor(object):
             parent_node_wrapper = cur_wrapper.parent
             if parent_node_wrapper and isinstance(parent_node_wrapper.node,
                                                   gast.arguments):
-                parent_node = parent_node_wrapper.node
-                var_type = {NodeVarType.UNKNOWN}
-                if parent_node.defaults:
-                    index = index_in_list(parent_node.args, node)
-                    args_len = len(parent_node.args)
-                    if index != -1 and args_len - index <= len(
-                            parent_node.defaults):
-                        defaults_node = parent_node.defaults[index - args_len]
-                        if isinstance(defaults_node, gast.Constant):
-                            var_type = self._get_constant_node_type(
-                                defaults_node)
 
-                            # Add node with identified type into cur_env.
-                            self.var_env.set_var_type(node.id, var_type)
-                return var_type
+                return self._get_func_argument_type(parent_node_wrapper, node)
 
             return self.var_env.get_var_type(node.id)
 
@@ -368,5 +399,47 @@ class StaticAnalysisVisitor(object):
 
             if isinstance(node.func, gast.Name):
                 return self.var_env.get_var_type(node.func.id)
+        if isinstance(node, gast.Subscript):
+            if self.is_tensor_node(node.value):
+                return {NodeVarType.TENSOR}
 
         return {NodeVarType.STATEMENT}
+
+    def _get_func_argument_type(self, parent_node_wrapper, node):
+        """
+        Returns type information by parsing annotation or default values.
+
+        For example:
+            1. parse by default values.
+                foo(x, y=1, z='s') -> x: UNKNOWN, y: INT, z: STR
+
+            2. parse by Py3 type annotation.
+                foo(x: Tensor, y: int, z: str) -> x: Tensor, y: INT, z: STR
+
+            3. parse by type annotation and default values.
+                foo(x: Tensor, y: int, z: str = 'abc') -> x: Tensor, y: INT, z: STR
+
+        NOTE: Currently, we only support Tensor, int, bool, float, str et.al.
+              Other complicate types will be supported later.
+        """
+        assert isinstance(node, gast.Name)
+
+        parent_node = parent_node_wrapper.node
+        var_type = {NodeVarType.UNKNOWN}
+        if node.annotation is not None:
+            var_type = {NodeVarType.type_from_annotation(node.annotation)}
+            self.var_env.set_var_type(node.id, var_type)
+
+        # if annotation and value(Constant) are diffent type, we use value type
+        if parent_node.defaults:
+            index = index_in_list(parent_node.args, node)
+            args_len = len(parent_node.args)
+            if index != -1 and args_len - index <= len(parent_node.defaults):
+                defaults_node = parent_node.defaults[index - args_len]
+                if isinstance(defaults_node, gast.Constant):
+                    var_type = self._get_constant_node_type(defaults_node)
+
+                    # Add node with identified type into cur_env.
+                    self.var_env.set_var_type(node.id, var_type)
+
+        return var_type

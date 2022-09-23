@@ -19,11 +19,14 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/variant.h"
+#include "paddle/fluid/operators/controlflow/op_variant.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class ProgramDesc;
 }  // namespace framework
 }  // namespace paddle
@@ -41,13 +44,14 @@ static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 static constexpr char kSuffix[] = "@TMP_COPY";
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-    const framework::ProgramDesc &program, int block_id,
+    const framework::ProgramDesc &program,
+    int block_id,
     const std::vector<std::unique_ptr<framework::OperatorBase>> &all_ops);
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const framework::ProgramDesc &program,
-    const std::vector<framework::OperatorBase *> &while_ops,
-    const std::vector<framework::OperatorBase *> &while_grad_ops);
+    const std::vector<OpVariant> &while_ops,
+    const std::vector<OpVariant> &while_grad_ops);
 
 bool GetCondData(const framework::LoDTensor &cond);
 

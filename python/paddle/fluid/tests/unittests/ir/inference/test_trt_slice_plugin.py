@@ -24,6 +24,7 @@ from paddle.fluid.core import AnalysisConfig
 
 #normal starts && ends
 class SlicePluginTRTTest(InferencePassTest):
+
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [0, 1]
@@ -42,8 +43,10 @@ class SlicePluginTRTTest(InferencePassTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
-            slice_out = fluid.layers.slice(
-                data, axes=axes, starts=starts, ends=ends)
+            slice_out = fluid.layers.slice(data,
+                                           axes=axes,
+                                           starts=starts,
+                                           ends=ends)
             out = fluid.layers.batch_norm(slice_out, is_test=True)
 
         self.feeds = {
@@ -64,6 +67,7 @@ class SlicePluginTRTTest(InferencePassTest):
 
 #negative starts && ends
 class SlicePluginTRTTestNegativeStartsAndEnds(SlicePluginTRTTest):
+
     def setUpSliceParams(self):
         self.params_axes = [2, 3]
         self.params_starts = [-3, -2]
@@ -72,6 +76,7 @@ class SlicePluginTRTTestNegativeStartsAndEnds(SlicePluginTRTTest):
 
 #exceeded bound starts && ends
 class SlicePluginTRTTestStartsAndEndsBoundCheck(SlicePluginTRTTest):
+
     def setUpSliceParams(self):
         self.params_axes = [2, 3]
         self.params_starts = [-5, -2]
@@ -80,10 +85,78 @@ class SlicePluginTRTTestStartsAndEndsBoundCheck(SlicePluginTRTTest):
 
 #fp16
 class SlicePluginTRTTestFp16(SlicePluginTRTTest):
+
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
         self.enable_trt = True
+
+
+class StaticSlicePluginTRTTestFp16(SlicePluginTRTTest):
+
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, True, False)
+        self.enable_trt = True
+
+
+class StaticSlicePluginTRTTestFp32(SlicePluginTRTTest):
+
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False)
+        self.enable_trt = True
+
+
+class SlicePluginTRTTestInt32(SlicePluginTRTTest):
+
+    def setUp(self):
+        self.setUpSliceParams()
+        self.setUpTensorRTParams()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="int32")
+            axes = self.params_axes
+            starts = self.params_starts
+            ends = self.params_ends
+            slice_out = fluid.layers.slice(data,
+                                           axes=axes,
+                                           starts=starts,
+                                           ends=ends)
+            cast_out = fluid.layers.cast(slice_out, 'float32')
+            out = fluid.layers.batch_norm(cast_out, is_test=True)
+
+        self.feeds = {
+            "data": np.random.random((3, 3, 3, 3)).astype("int32"),
+        }
+        self.fetch_list = [out]
+
+
+class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
+
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False)
+        self.enable_trt = True
+
+    def setUp(self):
+        self.setUpSliceParams()
+        self.setUpTensorRTParams()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="int32")
+            axes = self.params_axes
+            starts = self.params_starts
+            ends = self.params_ends
+            slice_out = fluid.layers.slice(data,
+                                           axes=axes,
+                                           starts=starts,
+                                           ends=ends)
+            cast_out = fluid.layers.cast(slice_out, 'float32')
+            out = fluid.layers.batch_norm(cast_out, is_test=True)
+
+        self.feeds = {
+            "data": np.random.random((3, 3, 3, 3)).astype("int32"),
+        }
+        self.fetch_list = [out]
 
 
 if __name__ == "__main__":

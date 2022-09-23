@@ -22,10 +22,12 @@ from op_test import OpTest, _set_use_system_allocator
 from paddle.fluid.framework import grad_var_name
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 import paddle
 
 
 class TestInstanceNorm(unittest.TestCase):
+
     def test_error(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
@@ -45,13 +47,14 @@ class TestInstanceNorm(unittest.TestCase):
 
             def error3d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm3d = paddle.nn.BatchNorm3D(1)
+                instance_norm3d = paddle.nn.InstanceNorm3D(1)
                 instance_norm3d(fluid.dygraph.to_variable(x_data_4))
 
             def weight_bias_false():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm3d = paddle.nn.BatchNorm3D(
-                    1, weight_attr=False, bias_attr=False)
+                instance_norm3d = paddle.nn.InstanceNorm3D(1,
+                                                           weight_attr=False,
+                                                           bias_attr=False)
 
             with fluid.dygraph.guard(p):
                 weight_bias_false()
@@ -82,7 +85,7 @@ class TestInstanceNorm(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_static(self):
         places = [fluid.CPUPlace()]
@@ -114,7 +117,12 @@ class TestInstanceNorm(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
+
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_dygraph()
+            self.test_error()
 
 
 if __name__ == '__main__':

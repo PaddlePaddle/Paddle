@@ -27,8 +27,16 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void CPUBfloat16PlacementPass::SetMkldnnDataType(
-    ir::Graph* graph, int* bfloat16_operators) const {
+void CPUBfloat16PlacementPass::ApplyImpl(ir::Graph* graph) const {
+  int bfloat16_operators = 0;
+  bfloat16_operators += SetMkldnnDataType(graph);
+  bfloat16_operators -= RemoveOrphanedOperators(graph);
+  bfloat16_operators -= RemoveUnsupportedOperators(graph);
+  PrettyLogDetail("---    marked %d operators to bfloat16 ",
+                  bfloat16_operators);
+}
+
+int CPUBfloat16PlacementPass::SetMkldnnDataType(ir::Graph* graph) const {
   const auto& op_types_list =
       Get<std::unordered_set<std::string>>("bfloat16_enabled_op_types");
   // set mkldnn_data_type to bfloat16 to all operators that are in
@@ -39,44 +47,70 @@ void CPUBfloat16PlacementPass::SetMkldnnDataType(
                                                          "bfloat16_placement"};
   bfloat16_placement_pattern(op_types_list);
 
+  int detected_operators = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    GET_IR_NODE_FROM_SUBGRAPH(op_in, op_in, bfloat16_placement_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(op, op, bfloat16_placement_pattern);
+
+    // Only float input can be converted to bfloat16
+    if (op_in->Var()->GetDataType() != proto::VarType::FP32) return;
 
     if ((op->Op()->HasAttr("mkldnn_data_type") ||
          op->Op()->HasProtoAttr("mkldnn_data_type")) &&
         !platform::HasOpINT8DataType(op->Op())) {
+      VLOG(4) << "---    marked " << op->Op()->Type()
+              << " operator to bfloat16 ";
       op->Op()->SetAttr("mkldnn_data_type", std::string("bfloat16"));
-      (*bfloat16_operators)++;
+      detected_operators++;
     }
   };
   gpd(graph, handler);
+  return detected_operators;
 }
 
-void CPUBfloat16PlacementPass::RemoveOrhanedOperators(
-    ir::Graph* graph, int* bfloat16_operators) const {
+int CPUBfloat16PlacementPass::RemoveOrphanedOperators(ir::Graph* graph) const {
   // find orphaned bfloat16 operator that is between two float32 operators
   // revert mkldnn_data_type attr to float32
   GraphPatternDetector gpd;
   patterns::OrphanedBfloat16 orphaned_bfloat16_pattern{gpd.mutable_pattern(),
                                                        "orphaned_bfloat16"};
   orphaned_bfloat16_pattern();
+  int detected_operators = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, orphaned_bfloat16_pattern);
 
     op->Op()->SetAttr("mkldnn_data_type", std::string("float32"));
-    bfloat16_operators--;
+    VLOG(4) << "---  demarked " << op->Op()->Type() << " operator to bfloat16 ";
+    detected_operators++;
   };
   gpd(graph, handler);
+  return detected_operators;
 }
 
-void CPUBfloat16PlacementPass::ApplyImpl(ir::Graph* graph) const {
-  int bfloat16_operators = 0;
-  SetMkldnnDataType(graph, &bfloat16_operators);
-  RemoveOrhanedOperators(graph, &bfloat16_operators);
-  PrettyLogDetail("---    marked %d operators to bfloat16 ",
-                  bfloat16_operators);
+int CPUBfloat16PlacementPass::RemoveUnsupportedOperators(
+    ir::Graph* graph) const {
+  // now quantize is supported FP32 only, so try to find
+  // bfloat16 operator that input type is not FP32
+  GraphPatternDetector gpd;
+  patterns::UnsupportedBfloat16 unsupported_bfloat16_pattern{
+      gpd.mutable_pattern(), "unsupported_bfloat16"};
+  unsupported_bfloat16_pattern();
+  int detected_operators = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    GET_IR_NODE_FROM_SUBGRAPH(prev_out, prev_out, unsupported_bfloat16_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(op, op, unsupported_bfloat16_pattern);
+    if ((prev_out->Var()->GetDataType() != proto::VarType::FP32)) {
+      op->Op()->SetAttr("mkldnn_data_type", std::string("float32"));
+      VLOG(4) << "---  demarked " << op->Op()->Type()
+              << " operator to bfloat16 ";
+      detected_operators++;
+    }
+  };
+  gpd(graph, handler);
+  return detected_operators;
 }
 
 }  // namespace ir

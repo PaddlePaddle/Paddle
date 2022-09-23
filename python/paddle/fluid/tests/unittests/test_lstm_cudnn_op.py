@@ -24,6 +24,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import random
+
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
@@ -34,6 +35,7 @@ EXP_MAX_INPUT = 40.0
 
 
 class RandomWeight:
+
     def __init__(self):
         pass
 
@@ -43,27 +45,34 @@ class RandomWeight:
         self.input_size = input_size
         self.dtype = dtype
 
-        self.weight_ih = np.random.uniform(
-            low=-std, high=std, size=(4 * self.hidden_size,
-                                      self.input_size)).astype(dtype)
+        self.weight_ih = np.random.uniform(low=-std,
+                                           high=std,
+                                           size=(4 * self.hidden_size,
+                                                 self.input_size)).astype(dtype)
         self.weight_hh = np.random.uniform(
-            low=-std, high=std, size=(4 * self.hidden_size,
-                                      self.hidden_size)).astype(dtype)
-        self.bias_ih = np.random.uniform(
-            low=-std, high=std, size=(4 * self.hidden_size)).astype(dtype)
-        self.bias_hh = np.random.uniform(
-            low=-std, high=std, size=(4 * self.hidden_size)).astype(dtype)
+            low=-std, high=std,
+            size=(4 * self.hidden_size, self.hidden_size)).astype(dtype)
+        self.bias_ih = np.random.uniform(low=-std,
+                                         high=std,
+                                         size=(4 *
+                                               self.hidden_size)).astype(dtype)
+        self.bias_hh = np.random.uniform(low=-std,
+                                         high=std,
+                                         size=(4 *
+                                               self.hidden_size)).astype(dtype)
 
 
 weight = RandomWeight()
 
 
 class LayerMixin(object):
+
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
 
 class LayerListMixin(LayerMixin):
+
     def __init__(self, layers=None):
         self._layers = list(layers) if layers else []
 
@@ -75,6 +84,7 @@ class LayerListMixin(LayerMixin):
 
 
 class LSTMCell(LayerMixin):
+
     def __init__(self, input_size, hidden_size, bias=True):
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -263,6 +273,7 @@ def concat_states(states, bidirectional=False, state_components=1):
 
 
 class RNN(LayerMixin):
+
     def __init__(self, cell, is_reverse=False, time_major=False):
         super(RNN, self).__init__()
         self.cell = cell
@@ -283,6 +294,7 @@ class RNN(LayerMixin):
 
 
 class BiRNN(LayerMixin):
+
     def __init__(self, cell_fw, cell_bw, time_major=False):
         super(BiRNN, self).__init__()
         self.cell_fw = cell_fw
@@ -307,6 +319,7 @@ class BiRNN(LayerMixin):
 
 
 class RNNMixin(LayerListMixin):
+
     def forward(self, inputs, initial_states=None, sequence_length=None):
         batch_index = 1 if self.time_major else 0
         batch_size = inputs.shape[batch_index]
@@ -339,6 +352,7 @@ class RNNMixin(LayerListMixin):
 
 
 class LSTM(RNNMixin):
+
     def __init__(self,
                  input_size,
                  hidden_size,
@@ -380,6 +394,7 @@ class LSTM(RNNMixin):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp(OpTest):
+
     def get_weight_names(self):
         weight_names = []
         for i in range(2 * self.num_layers):
@@ -390,8 +405,9 @@ class TestCUDNNLstmOp(OpTest):
 
     def setUp(self):
         self.op_type = "cudnn_lstm"
-        self.dtype = np.float64
-        self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.sequence_length = None if core.is_compiled_with_rocm(
+        ) else np.array([12, 11, 10, 9, 8], dtype=np.int32)
         self.num_layers = 1
         self.set_attrs()
 
@@ -400,24 +416,24 @@ class TestCUDNNLstmOp(OpTest):
         input_size = 21
         hidden_size = 21
 
-        input = np.random.uniform(
-            low=-0.1, high=0.1,
-            size=(seq_length, batch_size, input_size)).astype(self.dtype)
+        input = np.random.uniform(low=-0.1,
+                                  high=0.1,
+                                  size=(seq_length, batch_size,
+                                        input_size)).astype(self.dtype)
         input[11][1:][:] = 0
         input[10][2:][:] = 0
         input[9][3:][:] = 0
         input[8][4:][:] = 0
 
         weight.updata_weight(hidden_size, input_size, self.dtype)
-        rnn1 = LSTM(
-            input_size,
-            hidden_size,
-            num_layers=self.num_layers,
-            time_major=True,
-            direction="forward")
+        rnn1 = LSTM(input_size,
+                    hidden_size,
+                    num_layers=self.num_layers,
+                    time_major=True,
+                    direction="forward")
 
-        output, (last_hidden, last_cell) = rnn1(
-            input, sequence_length=self.sequence_length)
+        output, (last_hidden,
+                 last_cell) = rnn1(input, sequence_length=self.sequence_length)
 
         flat_w = []
         num = 0
@@ -441,11 +457,18 @@ class TestCUDNNLstmOp(OpTest):
             bias_hh = weight.bias_hh
             flat_w.append(("bias" + str(num), bias_hh))
             num += 1
-        init_h = np.zeros((self.num_layers, batch_size,
-                           hidden_size)).astype(self.dtype)
-        init_c = np.zeros((self.num_layers, batch_size,
-                           hidden_size)).astype(self.dtype)
+        init_h = np.zeros(
+            (self.num_layers, batch_size, hidden_size)).astype(self.dtype)
+        init_c = np.zeros(
+            (self.num_layers, batch_size, hidden_size)).astype(self.dtype)
         state_out = np.ndarray((300)).astype("uint8")
+
+        if core.is_compiled_with_rocm():
+            for i in range(len(flat_w)):
+                w = np.split(flat_w[i][1], 4, 0)
+                w = [w[0], w[1], w[3], w[2]]
+                w = np.concatenate(w)
+                flat_w[i] = (flat_w[i][0], w)
 
         self.inputs = {
             'Input': input,
@@ -454,6 +477,13 @@ class TestCUDNNLstmOp(OpTest):
             'InitC': init_c,
             'SequenceLength': self.sequence_length
         }
+        if self.sequence_length is None:
+            self.inputs = {
+                'Input': input,
+                'WeightList': flat_w,
+                'InitH': init_h,
+                'InitC': init_c,
+            }
         self.attrs = {
             'dropout_prob': 0.0,
             'is_bidirec': False,
@@ -474,44 +504,50 @@ class TestCUDNNLstmOp(OpTest):
 
     def test_output_with_place(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(
-            place, no_check_set=['Reserve', 'StateOut'])
+        if core.is_compiled_with_rocm():
+            self.check_output_with_place(place,
+                                         atol=1e-5,
+                                         no_check_set=['Reserve', 'StateOut'])
+        else:
+            self.check_output_with_place(place,
+                                         no_check_set=['Reserve', 'StateOut'])
 
     def test_grad_with_place(self):
         place = core.CUDAPlace(0)
         var_name_list = self.get_weight_names()
         for var_name in var_name_list:
             self.check_grad_with_place(
-                place,
-                set(['Input', var_name, 'InitH', 'InitC']),
+                place, set(['Input', var_name, 'InitH', 'InitC']),
                 ['Out', 'LastH', 'LastC'])
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNlstmAPI(unittest.TestCase):
+
     def test_lstm(self):
         seq_len = 20
         batch_size = 5
         hidden_size = 20
         dropout_prob = 0.0
         num_layers = 1
-        input = fluid.data(
-            name='input',
-            shape=[seq_len, batch_size, hidden_size],
-            dtype='float64')
+        dtype = 'float32' if core.is_compiled_with_rocm() else 'float64'
+        input = fluid.data(name='input',
+                           shape=[seq_len, batch_size, hidden_size],
+                           dtype=dtype)
         init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      'float64', 0.0)
+                                      dtype, 0.0)
         init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      'float64', 0.0)
+                                      dtype, 0.0)
         rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
                                               hidden_size, num_layers,
                                               dropout_prob, False)
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
-        input_i = np.random.uniform(
-            low=-0.1, high=0.1, size=(seq_len, batch_size,
-                                      hidden_size)).astype("float64")
+        input_i = np.random.uniform(low=-0.1,
+                                    high=0.1,
+                                    size=(seq_len, batch_size,
+                                          hidden_size)).astype("float64")
         out = exe.run(fluid.default_main_program(),
                       feed={'input': input_i},
                       fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])
@@ -520,28 +556,30 @@ class TestCUDNNlstmAPI(unittest.TestCase):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNlstmAPI(unittest.TestCase):
+
     def test_lstm(self):
         seq_len = 20
         batch_size = 5
         hidden_size = 20
         dropout_prob = 0.0
         num_layers = 2
-        input = fluid.data(
-            name='input',
-            shape=[seq_len, batch_size, hidden_size],
-            dtype='float64')
+        dtype = 'float32' if core.is_compiled_with_rocm() else 'float64'
+        input = fluid.data(name='input',
+                           shape=[seq_len, batch_size, hidden_size],
+                           dtype=dtype)
         init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      'float64', 0.0)
+                                      dtype, 0.0)
         init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      'float64', 0.0)
+                                      dtype, 0.0)
         rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
                                               hidden_size, num_layers,
                                               dropout_prob, False, True)
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
-        input_i = np.random.uniform(
-            low=-0.1, high=0.1, size=(seq_len, batch_size,
-                                      hidden_size)).astype("float64")
+        input_i = np.random.uniform(low=-0.1,
+                                    high=0.1,
+                                    size=(seq_len, batch_size,
+                                          hidden_size)).astype(dtype)
         out = exe.run(fluid.default_main_program(),
                       feed={'input': input_i},
                       fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])

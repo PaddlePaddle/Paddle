@@ -11,11 +11,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <thrust/device_vector.h>
 #include <thrust/for_each.h>
+#include <thrust/host_vector.h>
 #include <thrust/tuple.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/modified_huber_loss_op.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -48,7 +51,7 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
 
     if (out0) {
-      auto counts = framework::product(in1->dims());
+      auto counts = phi::product(in1->dims());
       auto y_ptr = thrust::device_pointer_cast(in0->data<T>());
       auto inter_val_ptr = thrust::device_pointer_cast(in1->data<T>());
       auto out_grad_ptr = thrust::device_pointer_cast(in2->data<T>());
@@ -58,9 +61,11 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
       auto iter_begin = thrust::make_zip_iterator(
           thrust::make_tuple(x_grad_ptr, inter_val_ptr, y_ptr, out_grad_ptr));
 
-      auto iter_end = thrust::make_zip_iterator(
-          thrust::make_tuple(x_grad_ptr + counts, inter_val_ptr + counts,
-                             y_ptr + counts, out_grad_ptr + counts));
+      auto iter_end =
+          thrust::make_zip_iterator(thrust::make_tuple(x_grad_ptr + counts,
+                                                       inter_val_ptr + counts,
+                                                       y_ptr + counts,
+                                                       out_grad_ptr + counts));
 
       thrust::for_each(iter_begin, iter_end, ModifiedHuberLossBackward());
     }
@@ -71,8 +76,7 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    modified_huber_loss,
-    ops::ModifiedHuberLossKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(modified_huber_loss,
+                        ops::ModifiedHuberLossKernel<phi::GPUContext, float>);
 REGISTER_OP_CUDA_KERNEL(modified_huber_loss_grad,
                         ops::ModifiedHuberLossGradGPUKernel<float>);

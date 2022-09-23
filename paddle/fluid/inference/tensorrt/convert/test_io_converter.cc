@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/tensorrt/convert/io_converter.h"
 
@@ -61,13 +62,13 @@ void IOConverterTester(const platform::DeviceContext& ctx) {
 
 TEST(EngineIOConverterTester, DefaultCPU) {
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
   IOConverterTester(ctx);
 }
 
 TEST(EngineIOConverterTester, DefaultGPU) {
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   IOConverterTester(ctx);
 }
 

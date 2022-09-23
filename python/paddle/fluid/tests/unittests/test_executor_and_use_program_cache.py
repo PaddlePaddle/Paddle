@@ -16,29 +16,29 @@ from __future__ import print_function
 
 import unittest
 
-import numpy
+import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase
 
 
 class TestExecutor(unittest.TestCase):
+
     def test_mul(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
             a = fluid.layers.data(name='a', shape=[784], dtype='float32')
-            b = fluid.layers.data(
-                name='b',
-                shape=[784, 100],
-                dtype='float32',
-                append_batch_size=False)
+            b = fluid.layers.data(name='b',
+                                  shape=[784, 100],
+                                  dtype='float32',
+                                  append_batch_size=False)
             output = fluid.layers.mul(x=a, y=b)
 
         # Compute with numpy
-        a_np = numpy.random.random((100, 784)).astype('float32')
-        b_np = numpy.random.random((784, 100)).astype('float32')
-        out_np = numpy.dot(a_np, b_np)
+        a_np = np.random.random((100, 784)).astype('float32')
+        b_np = np.random.random((784, 100)).astype('float32')
+        out_np = np.dot(a_np, b_np)
 
         place = core.CPUPlace()
         exe = fluid.Executor(place)
@@ -50,36 +50,39 @@ class TestExecutor(unittest.TestCase):
             for i in range(max_iters):
                 begin = time.time()
                 outs = exe.run(program=main_program,
-                               feed={'a': a_np,
-                                     'b': b_np},
+                               feed={
+                                   'a': a_np,
+                                   'b': b_np
+                               },
                                fetch_list=[output.name],
                                use_program_cache=use_program_cache)
                 end = time.time()
                 run_time += end - begin
                 out = outs[0]
                 self.assertEqual((100, 100), out.shape)
-                self.assertTrue(numpy.allclose(out, out_np))
+                np.testing.assert_allclose(out, out_np, rtol=1e-05)
             return run_time
 
         max_iters = 3
-        run_time_with_cache = _train(
-            use_program_cache=True, max_iters=max_iters)
+        run_time_with_cache = _train(use_program_cache=True,
+                                     max_iters=max_iters)
         print("run time with program cache: %f" % run_time_with_cache)
 
-        run_time_without_cache = _train(
-            use_program_cache=False, max_iters=max_iters)
+        run_time_without_cache = _train(use_program_cache=False,
+                                        max_iters=max_iters)
         print("run time without program cache: %f" % run_time_without_cache)
 
-        run_time_with_cache = _train(
-            use_program_cache=True, max_iters=max_iters)
+        run_time_with_cache = _train(use_program_cache=True,
+                                     max_iters=max_iters)
         print("run time with program cache: %f" % run_time_with_cache)
 
-        run_time_with_cache = _train(
-            use_program_cache=True, max_iters=max_iters)
+        run_time_with_cache = _train(use_program_cache=True,
+                                     max_iters=max_iters)
         print("run time with program cache: %f" % run_time_with_cache)
 
 
 class ExecutorPaddingRNNTest(PaddingRNNTestBase):
+
     def train_and_save_inference_program(self,
                                          rnn_model="static",
                                          parallel=True,
@@ -98,19 +101,19 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
     def test_inference_output(self):
         for rnn_model in ["static", "padding"]:
             # Set parallel to False to use the default executor.
-            self.train_and_save_inference_program(
-                rnn_model=rnn_model, parallel=True, use_program_cache=True)
+            self.train_and_save_inference_program(rnn_model=rnn_model,
+                                                  parallel=True,
+                                                  use_program_cache=True)
 
-            x_np = numpy.random.random(
-                (self.config.batch_size, self.config.num_steps,
-                 1)).astype("int64")
-            y_np = numpy.random.random(
+            x_np = np.random.random((self.config.batch_size,
+                                     self.config.num_steps, 1)).astype("int64")
+            y_np = np.random.random(
                 (self.config.batch_size * self.config.num_steps,
                  1)).astype("int64")
-            init_hidden_np = numpy.random.random(
+            init_hidden_np = np.random.random(
                 (self.config.num_layers, self.config.batch_size,
                  self.config.hidden_size)).astype("float32")
-            init_cell_np = numpy.random.random(
+            init_cell_np = np.random.random(
                 (self.config.num_layers, self.config.batch_size,
                  self.config.hidden_size)).astype("float32")
 
@@ -134,14 +137,14 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
                         results_with_cache = results
                     else:
                         results_without_cache = results
-            self.assertEqual(
-                len(results_with_cache), len(results_without_cache))
+            self.assertEqual(len(results_with_cache),
+                             len(results_without_cache))
             for i in range(len(results_with_cache)):
                 self.assertEqual(results_with_cache[i].shape,
                                  results_without_cache[i].shape)
-                self.assertTrue(
-                    numpy.allclose(results_with_cache[i], results_without_cache[
-                        i]))
+                np.testing.assert_allclose(results_with_cache[i],
+                                           results_without_cache[i],
+                                           rtol=1e-05)
 
 
 if __name__ == '__main__':

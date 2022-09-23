@@ -11,205 +11,518 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
-#from .math import *
-#from .creation import *
-#from .linalg import *
+from .attribute import is_complex  # noqa: F401
+from .attribute import is_integer  # noqa: F401
+from .attribute import rank  # noqa: F401
+from .attribute import shape  # noqa: F401
+from .attribute import real  # noqa: F401
+from .attribute import imag  # noqa: F401
+from .attribute import is_floating_point  # noqa: F401
+from .creation import to_tensor  # noqa: F401
+from .creation import diag  # noqa: F401
+from .creation import diagflat  # noqa: F401
+from .creation import eye  # noqa: F401
+from .creation import linspace  # noqa: F401
+from .creation import ones  # noqa: F401
+from .creation import ones_like  # noqa: F401
+from .creation import zeros  # noqa: F401
+from .creation import zeros_like  # noqa: F401
+from .creation import arange  # noqa: F401
+from .creation import full  # noqa: F401
+from .creation import full_like  # noqa: F401
+from .creation import triu  # noqa: F401
+from .creation import tril  # noqa: F401
+from .creation import meshgrid  # noqa: F401
+from .creation import empty  # noqa: F401
+from .creation import empty_like  # noqa: F401
+from .creation import complex  # noqa: F401
+from .linalg import matmul  # noqa: F401
+from .linalg import dot  # noqa: F401
+from .linalg import cov  # noqa: F401
+from .linalg import corrcoef  # noqa: F401
+from .linalg import norm  # noqa: F401
+from .linalg import cond  # noqa: F401
+from .linalg import transpose  # noqa: F401
+from .linalg import lstsq  # noqa: F401
+from .linalg import dist  # noqa: F401
+from .linalg import t  # noqa: F401
+from .linalg import cross  # noqa: F401
+from .linalg import cholesky  # noqa: F401
+from .linalg import bmm  # noqa: F401
+from .linalg import histogram  # noqa: F401
+from .linalg import bincount  # noqa: F401
+from .linalg import mv  # noqa: F401
+from .linalg import eig  # noqa: F401
+from .linalg import matrix_power  # noqa: F401
+from .linalg import qr  # noqa: F401
+from .linalg import eigvals  # noqa: F401
+from .linalg import multi_dot  # noqa: F401
+from .linalg import svd  # noqa: F401
+from .linalg import eigvalsh  # noqa: F401
+from .linalg import eigh  # noqa: F401
+from .linalg import pinv  # noqa: F401
+from .linalg import solve  # noqa: F401
+from .linalg import cholesky_solve  # noqa: F401
+from .linalg import lu  # noqa: F401
+from .linalg import lu_unpack  # noqa: F401
+from .logic import equal  # noqa: F401
+from .logic import greater_equal  # noqa: F401
+from .logic import greater_than  # noqa: F401
+from .logic import is_empty  # noqa: F401
+from .logic import less_equal  # noqa: F401
+from .logic import less_than  # noqa: F401
+from .logic import logical_and  # noqa: F401
+from .logic import logical_not  # noqa: F401
+from .logic import logical_or  # noqa: F401
+from .logic import logical_xor  # noqa: F401
+from .logic import bitwise_and  # noqa: F401
+from .logic import bitwise_or  # noqa: F401
+from .logic import bitwise_xor  # noqa: F401
+from .logic import bitwise_not  # noqa: F401
+from .logic import not_equal  # noqa: F401
+from .logic import allclose  # noqa: F401
+from .logic import isclose  # noqa: F401
+from .logic import equal_all  # noqa: F401
+from .logic import is_tensor  # noqa: F401
+from .manipulation import cast  # noqa: F401
+from .manipulation import concat  # noqa: F401
+from .manipulation import expand  # noqa: F401
+from .manipulation import broadcast_to  # noqa: F401
+from .manipulation import broadcast_tensors  # noqa: F401
+from .manipulation import expand_as  # noqa: F401
+from .manipulation import tile  # noqa: F401
+from .manipulation import flatten  # noqa: F401
+from .manipulation import flatten_  # noqa: F401
+from .manipulation import gather  # noqa: F401
+from .manipulation import gather_nd  # noqa: F401
+from .manipulation import reshape  # noqa: F401
+from .manipulation import reshape_  # noqa: F401
+from .manipulation import flip as reverse  # noqa: F401
+from .manipulation import scatter  # noqa: F401
+from .manipulation import scatter_  # noqa: F401
+from .manipulation import scatter_nd_add  # noqa: F401
+from .manipulation import scatter_nd  # noqa: F401
+from .manipulation import shard_index  # noqa: F401
+from .manipulation import slice  # noqa: F401
+from .manipulation import split  # noqa: F401
+from .manipulation import vsplit  # noqa: F401
+from .manipulation import squeeze  # noqa: F401
+from .manipulation import squeeze_  # noqa: F401
+from .manipulation import stack  # noqa: F401
+from .manipulation import strided_slice  # noqa: F401
+from .manipulation import unique  # noqa: F401
+from .manipulation import unique_consecutive  # noqa: F401
+from .manipulation import unsqueeze  # noqa: F401
+from .manipulation import unsqueeze_  # noqa: F401
+from .manipulation import unstack  # noqa: F401
+from .manipulation import flip  # noqa: F401
+from .manipulation import rot90  # noqa: F401
+from .manipulation import unbind  # noqa: F401
+from .manipulation import roll  # noqa: F401
+from .manipulation import chunk  # noqa: F401
+from .manipulation import tensordot  # noqa: F401
+from .manipulation import as_complex  # noqa: F401
+from .manipulation import take_along_axis  # noqa: F401
+from .manipulation import put_along_axis  # noqa: F401
+from .manipulation import put_along_axis_  # noqa: F401
+from .manipulation import as_real  # noqa: F401
+from .manipulation import moveaxis  # noqa: F401
+from .manipulation import repeat_interleave  # noqa: F401
+from .manipulation import index_add  # noqa: F401
+from .manipulation import index_add_  # noqa: F401
+from .math import abs  # noqa: F401
+from .math import acos  # noqa: F401
+from .math import asin  # noqa: F401
+from .math import atan  # noqa: F401
+from .math import ceil  # noqa: F401
+from .math import ceil_  # noqa: F401
+from .math import cos  # noqa: F401
+from .math import tan  # noqa: F401
+from .math import cosh  # noqa: F401
+from .math import cumsum  # noqa: F401
+from .math import cumprod  # noqa: F401
+from .math import logcumsumexp  # noqa: F401
+from .math import logit  # noqa: F401
+from .math import exp  # noqa: F401
+from .math import exp_  # noqa: F401
+from .math import expm1  # noqa: F401
+from .math import floor  # noqa: F401
+from .math import floor_  # noqa: F401
+from .math import increment  # noqa: F401
+from .math import log  # noqa: F401
+from .math import multiplex  # noqa: F401
+from .math import pow  # noqa: F401
+from .math import reciprocal  # noqa: F401
+from .math import reciprocal_  # noqa: F401
+from .math import round  # noqa: F401
+from .math import round_  # noqa: F401
+from .math import rsqrt  # noqa: F401
+from .math import rsqrt_  # noqa: F401
+from .math import scale  # noqa: F401
+from .math import scale_  # noqa: F401
+from .math import sign  # noqa: F401
+from .math import sin  # noqa: F401
+from .math import sinh  # noqa: F401
+from .math import sqrt  # noqa: F401
+from .math import sqrt_  # noqa: F401
+from .math import square  # noqa: F401
+from .math import stanh  # noqa: F401
+from .math import sum  # noqa: F401
+from .math import nansum  # noqa: F401
+from .math import nanmean  # noqa: F401
+from .math import count_nonzero  # noqa: F401
+from .math import tanh  # noqa: F401
+from .math import tanh_  # noqa: F401
+from .math import add_n  # noqa: F401
+from .math import max  # noqa: F401
+from .math import amax  # noqa: F401
+from .math import maximum  # noqa: F401
+from .math import min  # noqa: F401
+from .math import amin  # noqa: F401
+from .math import minimum  # noqa: F401
+from .math import mm  # noqa: F401
+from .math import divide  # noqa: F401
+from .math import floor_divide  # noqa: F401
+from .math import remainder  # noqa: F401
+from .math import remainder_  # noqa: F401
+from .math import mod  # noqa: F401
+from .math import floor_mod  # noqa: F401
+from .math import multiply  # noqa: F401
+from .math import add  # noqa: F401
+from .math import add_  # noqa: F401
+from .math import subtract  # noqa: F401
+from .math import subtract_  # noqa: F401
+from .math import atan2  # noqa: F401
+from .math import logsumexp  # noqa: F401
+from .math import inverse  # noqa: F401
+from .math import log2  # noqa: F401
+from .math import log10  # noqa: F401
+from .math import log1p  # noqa: F401
+from .math import erf  # noqa: F401
+from .math import addmm  # noqa: F401
+from .math import clip  # noqa: F401
+from .math import clip_  # noqa: F401
+from .math import trace  # noqa: F401
+from .math import kron  # noqa: F401
+from .math import isfinite  # noqa: F401
+from .math import isinf  # noqa: F401
+from .math import isnan  # noqa: F401
+from .math import prod  # noqa: F401
+from .math import all  # noqa: F401
+from .math import any  # noqa: F401
+from .math import broadcast_shape  # noqa: F401
+from .math import conj  # noqa: F401
+from .math import trunc  # noqa: F401
+from .math import digamma  # noqa: F401
+from .math import neg  # noqa: F401
+from .math import lgamma  # noqa: F401
+from .math import diagonal  # noqa: F401
+from .math import acosh  # noqa: F401
+from .math import asinh  # noqa: F401
+from .math import atanh  # noqa: F401
+from .math import lerp  # noqa: F401
+from .math import lerp_  # noqa: F401
+from .math import erfinv  # noqa: F401
+from .math import erfinv_  # noqa: F401
+from .math import rad2deg  # noqa: F401
+from .math import deg2rad  # noqa: F401
+from .math import gcd  # noqa: F401
+from .math import lcm  # noqa: F401
+from .math import diff  # noqa: F401
+from .math import angle  # noqa: F401
+from .math import fmax  # noqa: F401
+from .math import fmin  # noqa: F401
+from .math import inner  # noqa: F401
+from .math import outer  # noqa: F401
+from .math import heaviside  # noqa: F401
+from .math import frac  # noqa: F401
+from .math import sgn  # noqa: F401
+from .math import take  # noqa: F401
 
-# TODO: define alias in tensor and framework directory
+from .random import multinomial  # noqa: F401
+from .random import standard_normal  # noqa: F401
+from .random import normal  # noqa: F401
+from .random import uniform  # noqa: F401
+from .random import uniform_  # noqa: F401
+from .random import randn  # noqa: F401
+from .random import rand  # noqa: F401
+from .random import randint  # noqa: F401
+from .random import randint_like  # noqa: F401
+from .random import randperm  # noqa: F401
+from .random import poisson  # noqa: F401
+from .random import exponential_  # noqa: F401
+from .search import argmax  # noqa: F401
+from .search import argmin  # noqa: F401
+from .search import argsort  # noqa: F401
+from .search import searchsorted  # noqa: F401
+from .search import bucketize  # noqa: F401
+from .search import topk  # noqa: F401
+from .search import where  # noqa: F401
+from .search import index_select  # noqa: F401
+from .search import nonzero  # noqa: F401
+from .search import sort  # noqa: F401
+from .search import index_sample  # noqa: F401
+from .search import masked_select  # noqa: F401
+from .search import kthvalue  # noqa: F401
+from .search import mode  # noqa: F401
 
-from .random import randperm
-from .attribute import rank  #DEFINE_ALIAS
-from .attribute import shape  #DEFINE_ALIAS
-from .attribute import real  #DEFINE_ALIAS
-from .attribute import imag  #DEFINE_ALIAS
-from .creation import to_tensor  #DEFINE_ALIAS
-from .creation import diag  #DEFINE_ALIAS
-from .creation import eye  #DEFINE_ALIAS
-# from .creation import fill_constant  #DEFINE_ALIAS
-# from .creation import get_tensor_from_selected_rows        #DEFINE_ALIAS
-from .creation import linspace  #DEFINE_ALIAS
-from .creation import ones  #DEFINE_ALIAS
-from .creation import ones_like  #DEFINE_ALIAS
-from .creation import zeros  #DEFINE_ALIAS
-from .creation import zeros_like  #DEFINE_ALIAS
-from .creation import arange  #DEFINE_ALIAS
-from .creation import eye  #DEFINE_ALIAS
-from .creation import full  #DEFINE_ALIAS
-from .creation import full_like  #DEFINE_ALIAS
-from .creation import triu  #DEFINE_ALIAS
-from .creation import tril  #DEFINE_ALIAS
-from .creation import meshgrid  #DEFINE_ALIAS
-from .creation import empty  #DEFINE_ALIAS
-from .creation import empty_like  #DEFINE_ALIAS
-from .linalg import matmul  #DEFINE_ALIAS
-from .linalg import dot  #DEFINE_ALIAS
-# from .linalg import einsum        #DEFINE_ALIAS
-from .linalg import norm  #DEFINE_ALIAS
-from .linalg import transpose  #DEFINE_ALIAS
-from .linalg import dist  #DEFINE_ALIAS
-from .linalg import t  #DEFINE_ALIAS
-from .linalg import cross  #DEFINE_ALIAS
-from .linalg import cholesky  #DEFINE_ALIAS
-# from .linalg import tensordot        #DEFINE_ALIAS
-from .linalg import bmm  #DEFINE_ALIAS
-from .linalg import histogram  #DEFINE_ALIAS
-from .linalg import mv  #DEFINE_ALIAS
-from .logic import equal  #DEFINE_ALIAS
-from .logic import greater_equal  #DEFINE_ALIAS
-from .logic import greater_than  #DEFINE_ALIAS
-from .logic import is_empty  #DEFINE_ALIAS
-#from .logic import isfinite  #DEFINE_ALIAS
-from .logic import less_equal  #DEFINE_ALIAS
-from .logic import less_than  #DEFINE_ALIAS
-from .logic import logical_and  #DEFINE_ALIAS
-from .logic import logical_not  #DEFINE_ALIAS
-from .logic import logical_or  #DEFINE_ALIAS
-from .logic import logical_xor  #DEFINE_ALIAS
-from .logic import not_equal  #DEFINE_ALIAS
-from .logic import allclose  #DEFINE_ALIAS
-from .logic import equal_all  #DEFINE_ALIAS
-# from .logic import isnan        #DEFINE_ALIAS
-from .logic import is_tensor  #DEFINE_ALIAS
-from .manipulation import cast  #DEFINE_ALIAS
-from .manipulation import concat  #DEFINE_ALIAS
-from .manipulation import expand  #DEFINE_ALIAS
-from .manipulation import broadcast_to  #DEFINE_ALIAS
-from .manipulation import expand_as  #DEFINE_ALIAS
-from .manipulation import tile  #DEFINE_ALIAS
-from .manipulation import flatten  #DEFINE_ALIAS
-from .manipulation import gather  #DEFINE_ALIAS
-from .manipulation import gather_nd  #DEFINE_ALIAS
-from .manipulation import reshape  #DEFINE_ALIAS
-from .manipulation import reshape_  #DEFINE_ALIAS
-from .manipulation import flip as reverse  #DEFINE_ALIAS
-from .manipulation import scatter  #DEFINE_ALIAS
-from .manipulation import scatter_  #DEFINE_ALIAS
-from .manipulation import scatter_nd_add  #DEFINE_ALIAS
-from .manipulation import scatter_nd  #DEFINE_ALIAS
-from .manipulation import shard_index  #DEFINE_ALIAS
-from .manipulation import slice  #DEFINE_ALIAS
-from .manipulation import split  #DEFINE_ALIAS
-from .manipulation import squeeze  #DEFINE_ALIAS
-from .manipulation import squeeze_  #DEFINE_ALIAS
-from .manipulation import stack  #DEFINE_ALIAS
-from .manipulation import strided_slice  #DEFINE_ALIAS
-from .manipulation import transpose  #DEFINE_ALIAS
-from .manipulation import unique  #DEFINE_ALIAS
-from .manipulation import unsqueeze  #DEFINE_ALIAS
-from .manipulation import unsqueeze_  #DEFINE_ALIAS
-from .manipulation import unstack  #DEFINE_ALIAS
-from .manipulation import flip  #DEFINE_ALIAS
-from .manipulation import unbind  #DEFINE_ALIAS
-from .manipulation import roll  #DEFINE_ALIAS
-from .manipulation import chunk  #DEFINE_ALIAS
-from .math import abs  #DEFINE_ALIAS
-from .math import acos  #DEFINE_ALIAS
-from .math import asin  #DEFINE_ALIAS
-from .math import atan  #DEFINE_ALIAS
-from .math import ceil  #DEFINE_ALIAS
-from .math import cos  #DEFINE_ALIAS
-from .math import tan  #DEFINE_ALIAS
-from .math import cosh  #DEFINE_ALIAS
-from .math import cumsum  #DEFINE_ALIAS
-# from .math import elementwise_add  #DEFINE_ALIAS
-# from .math import elementwise_div  #DEFINE_ALIAS
-# from .math import elementwise_floordiv  #DEFINE_ALIAS
-# from .math import elementwise_mul  #DEFINE_ALIAS
-# from .math import elementwise_mod  #DEFINE_ALIAS
-# from .math import elementwise_pow  #DEFINE_ALIAS
-# from .math import elementwise_sub  #DEFINE_ALIAS
-from .math import exp  #DEFINE_ALIAS
-from .math import floor  #DEFINE_ALIAS
-from .math import increment  #DEFINE_ALIAS
-from .math import log  #DEFINE_ALIAS
-from .math import multiplex  #DEFINE_ALIAS
-from .math import pow  #DEFINE_ALIAS
-from .math import reciprocal  #DEFINE_ALIAS
-# from .math import reduce_max  #DEFINE_ALIAS
-# from .math import reduce_min  #DEFINE_ALIAS
-# from .math import reduce_prod  #DEFINE_ALIAS
-# from .math import reduce_sum  #DEFINE_ALIAS
-from .math import round  #DEFINE_ALIAS
-from .math import rsqrt  #DEFINE_ALIAS
-from .math import scale  #DEFINE_ALIAS
-from .math import sign  #DEFINE_ALIAS
-from .math import sin  #DEFINE_ALIAS
-from .math import sinh  #DEFINE_ALIAS
-from .math import sqrt  #DEFINE_ALIAS
-from .math import square  #DEFINE_ALIAS
-from .math import stanh  #DEFINE_ALIAS
-from .math import sum  #DEFINE_ALIAS
-from .math import tanh  #DEFINE_ALIAS
-from .math import tanh_  #DEFINE_ALIAS
-from .math import add_n  #DEFINE_ALIAS
-from .math import max  #DEFINE_ALIAS
-from .math import maximum  #DEFINE_ALIAS
-from .math import min  #DEFINE_ALIAS
-from .math import minimum  #DEFINE_ALIAS
-from .math import mm  #DEFINE_ALIAS
-from .math import divide  #DEFINE_ALIAS
-from .math import floor_divide  #DEFINE_ALIAS
-from .math import remainder  #DEFINE_ALIAS
-from .math import mod  #DEFINE_ALIAS
-from .math import floor_mod  #DEFINE_ALIAS
-from .math import multiply  #DEFINE_ALIAS
-from .math import add  #DEFINE_ALIAS
-from .math import subtract  #DEFINE_ALIAS
-from .math import atan  #DEFINE_ALIAS
-from .math import logsumexp  #DEFINE_ALIAS
-from .math import inverse  #DEFINE_ALIAS
-from .math import log2  #DEFINE_ALIAS
-from .math import log10  #DEFINE_ALIAS
-from .math import log1p  #DEFINE_ALIAS
-from .math import erf  #DEFINE_ALIAS
-from .math import addmm  #DEFINE_ALIAS
-from .math import clip  #DEFINE_ALIAS
-from .math import trace  #DEFINE_ALIAS
-from .math import kron  #DEFINE_ALIAS
-from .math import isfinite  #DEFINE_ALIAS
-from .math import isinf  #DEFINE_ALIAS
-from .math import isnan  #DEFINE_ALIAS
-from .math import prod  #DEFINE_ALIAS
-from .math import all  #DEFINE_ALIAS
-from .math import any  #DEFINE_ALIAS
-from .math import broadcast_shape  #DEFINE_ALIAS
-from .math import conj  #DEFINE_ALIAS
+from .stat import mean  # noqa: F401
+from .stat import std  # noqa: F401
+from .stat import var  # noqa: F401
+from .stat import numel  # noqa: F401
+from .stat import median  # noqa: F401
+from .stat import nanmedian  # noqa: F401
+from .stat import quantile  # noqa: F401
+from .stat import nanquantile  # noqa: F401
 
-from .random import multinomial  #DEFINE_ALIAS
-from .random import standard_normal
-from .random import normal
-from .random import uniform  #DEFINE_ALIAS
-from .random import randn  #DEFINE_ALIAS
-from .random import rand  #DEFINE_ALIAS
-from .random import randint  #DEFINE_ALIAS
-from .random import randperm  #DEFINE_ALIAS
-from .search import argmax  #DEFINE_ALIAS
-from .search import argmin  #DEFINE_ALIAS
-from .search import argsort  #DEFINE_ALIAS
-# from .search import has_inf  #DEFINE_ALIAS
-# from .search import has_nan  #DEFINE_ALIAS
-# from .search import masked_select        #DEFINE_ALIAS
-from .search import topk  #DEFINE_ALIAS
-from .search import where  #DEFINE_ALIAS
-from .search import index_select  #DEFINE_ALIAS
-from .search import nonzero  #DEFINE_ALIAS
-from .search import sort  #DEFINE_ALIAS
-from .search import index_sample  #DEFINE_ALIAS
-from .search import masked_select  #DEFINE_ALIAS
-from .stat import mean  #DEFINE_ALIAS
-# from .stat import reduce_mean  #DEFINE_ALIAS
-from .stat import std  #DEFINE_ALIAS
-from .stat import var  #DEFINE_ALIAS
-from .stat import numel  #DEFINE_ALIAS
-from .stat import median  #DEFINE_ALIAS
-# from .tensor import Tensor        #DEFINE_ALIAS
-# from .tensor import LoDTensor        #DEFINE_ALIAS
-# from .tensor import LoDTensorArray        #DEFINE_ALIAS
-from .to_string import set_printoptions  #DEFINE_ALIAS
+from .to_string import set_printoptions  # noqa: F401
 
-from .array import array_length  #DEFINE_ALIAS
-from .array import array_read  #DEFINE_ALIAS
-from .array import array_write  #DEFINE_ALIAS
-from .array import create_array  #DEFINE_ALIAS
+from .array import array_length  # noqa: F401
+from .array import array_read  # noqa: F401
+from .array import array_write  # noqa: F401
+from .array import create_array  # noqa: F401
+
+from .einsum import einsum  # noqa: F401
+
+# this list used in math_op_patch.py for _binary_creator_
+tensor_method_func = [  # noqa
+    'matmul',
+    'dot',
+    'cov',
+    'corrcoef',
+    'norm',
+    'cond',
+    'transpose',
+    'lstsq',
+    'dist',
+    't',
+    'cross',
+    'cholesky',
+    'bmm',
+    'histogram',
+    'bincount',
+    'mv',
+    'matrix_power',
+    'qr',
+    'eigvals',
+    'eigvalsh',
+    'abs',
+    'acos',
+    'all',
+    'any',
+    'asin',
+    'atan',
+    'ceil',
+    'ceil_',
+    'cos',
+    'cosh',
+    'cumsum',
+    'cumprod',
+    'logcumsumexp',
+    'logit',
+    'exp',
+    'exp_',
+    'floor',
+    'floor_',
+    'increment',
+    'log',
+    'log2',
+    'log10',
+    'logsumexp',
+    'multiplex',
+    'pow',
+    'prod',
+    'reciprocal',
+    'reciprocal_',
+    'round',
+    'round_',
+    'rsqrt',
+    'rsqrt_',
+    'scale',
+    'scale_',
+    'sign',
+    'sin',
+    'sinh',
+    'sqrt',
+    'sqrt_',
+    'square',
+    'stanh',
+    'sum',
+    'nansum',
+    'nanmean',
+    'count_nonzero',
+    'tanh',
+    'tanh_',
+    'add_n',
+    'max',
+    'amax',
+    'maximum',
+    'min',
+    'amin',
+    'minimum',
+    'fmax',
+    'fmin',
+    'mm',
+    'inner',
+    'outer',
+    'divide',
+    'floor_divide',
+    'remainder',
+    'remainder_',
+    'mod',
+    'floor_mod',
+    'multiply',
+    'add',
+    'add_',
+    'subtract',
+    'subtract_',
+    'atan',
+    'logsumexp',
+    'inverse',
+    'log1p',
+    'erf',
+    'addmm',
+    'clip',
+    'clip_',
+    'trace',
+    'kron',
+    'kthvalue',
+    'isfinite',
+    'isinf',
+    'isnan',
+    'broadcast_shape',
+    'conj',
+    'neg',
+    'lgamma',
+    'equal',
+    'equal_all',
+    'greater_equal',
+    'greater_than',
+    'is_empty',
+    'less_equal',
+    'less_than',
+    'logical_and',
+    'logical_not',
+    'logical_or',
+    'logical_xor',
+    'not_equal',
+    'allclose',
+    'isclose',
+    'is_tensor',
+    'cast',
+    'concat',
+    'expand',
+    'broadcast_to',
+    'expand_as',
+    'flatten',
+    'flatten_',
+    'gather',
+    'gather_nd',
+    'reshape',
+    'reshape_',
+    'reverse',
+    'scatter',
+    'scatter_',
+    'scatter_nd_add',
+    'scatter_nd',
+    'shard_index',
+    'slice',
+    'split',
+    'vsplit',
+    'chunk',
+    'tensordot',
+    'squeeze',
+    'squeeze_',
+    'stack',
+    'strided_slice',
+    'transpose',
+    'unique',
+    'unique_consecutive',
+    'unsqueeze',
+    'unsqueeze_',
+    'unstack',
+    'flip',
+    'rot90',
+    'unbind',
+    'roll',
+    'tile',
+    'argmax',
+    'argmin',
+    'argsort',
+    'masked_select',
+    'topk',
+    'where',
+    'index_select',
+    'nonzero',
+    'sort',
+    'index_sample',
+    'mean',
+    'std',
+    'var',
+    'numel',
+    'median',
+    'nanmedian',
+    'quantile',
+    'nanquantile',
+    'is_complex',
+    'is_integer',
+    'rank',
+    'shape',
+    'real',
+    'imag',
+    'is_floating_point',
+    'digamma',
+    'diagonal',
+    'trunc',
+    'frac',
+    'bitwise_and',
+    'bitwise_or',
+    'bitwise_xor',
+    'bitwise_not',
+    'broadcast_tensors',
+    'eig',
+    'uniform_',
+    'multi_dot',
+    'solve',
+    'cholesky_solve',
+    'triangular_solve',
+    'asinh',
+    'atanh',
+    'acosh',
+    'lu',
+    'lu_unpack',
+    'as_complex',
+    'as_real',
+    'rad2deg',
+    'deg2rad',
+    'gcd',
+    'lcm',
+    'diff',
+    "mode",
+    'lerp',
+    'lerp_',
+    'erfinv',
+    'erfinv_',
+    'angle',
+    'moveaxis',
+    'repeat_interleave',
+    'take_along_axis',
+    'put_along_axis',
+    'put_along_axis_',
+    'exponential_',
+    'heaviside',
+    'index_add',
+    "index_add_",
+    'take',
+    'bucketize',
+    'sgn',
+]
+
+# this list used in math_op_patch.py for magic_method bind
+magic_method_func = [
+    ('__and__', 'bitwise_and'),
+    ('__or__', 'bitwise_or'),
+    ('__xor__', 'bitwise_xor'),
+    ('__invert__', 'bitwise_not'),
+]

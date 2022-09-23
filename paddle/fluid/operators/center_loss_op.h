@@ -17,19 +17,22 @@ limitations under the License. */
 #include <cstring>
 #include <limits>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -84,7 +87,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
     int numel = centers_diffacc.numel();
     std::memset(centers_diffacc_data, 0, sizeof(T) * numel);
 
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     int tLabel;
 
     const T *x_index;
@@ -100,15 +103,22 @@ class CenterLossKernel : public framework::OpKernel<T> {
       x_index = x_data + i * deep_feat_dim;                  // xi index
       center_index = centers_data + tLabel * deep_feat_dim;  // center index
       center_loss_diff_index = centers_diff_data + i * deep_feat_dim;
-      trans(dev_ctx, x_index, x_index + deep_feat_dim, center_index,
-            center_loss_diff_index, SubFunctor<T>());
+      trans(dev_ctx,
+            x_index,
+            x_index + deep_feat_dim,
+            center_index,
+            center_loss_diff_index,
+            SubFunctor<T>());
 
       acc_index = centers_diffacc_data + tLabel * deep_feat_dim;
-      blas.VADD(deep_feat_dim, center_loss_diff_index, acc_index,
+      blas.VADD(deep_feat_dim,
+                center_loss_diff_index,
+                acc_index,
                 acc_index);  // accumulate
-      loss_data[i] = blas.DOT(deep_feat_dim, center_loss_diff_index,
-                              center_loss_diff_index) /
-                     T(2.0);
+      loss_data[i] =
+          blas.DOT(
+              deep_feat_dim, center_loss_diff_index, center_loss_diff_index) /
+          T(2.0);
     }
 
     // update centers data
@@ -145,8 +155,7 @@ class CenterLossGradKernel : public framework::OpKernel<T> {
         *context.template device_context<DeviceContext>().eigen_device();
     x_g->mutable_data<T>(context.GetPlace());
     // eigen matrix
-    auto x_grad =
-        EigenMatrix<T>::From(*x_g, framework::make_ddim({x_dims[0], cols}));
+    auto x_grad = EigenMatrix<T>::From(*x_g, phi::make_ddim({x_dims[0], cols}));
     x_grad.device(eigen_place) = grad_mat;
   }
 };

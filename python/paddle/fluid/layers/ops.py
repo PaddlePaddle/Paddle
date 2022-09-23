@@ -14,11 +14,13 @@
 
 from __future__ import print_function
 import os
-from .layer_function_generator import generate_layer_fn, generate_activation_fn, add_sample_code
+from .layer_function_generator import generate_layer_fn, generate_activation_fn, generate_inplace_fn, add_sample_code
 from .. import core
-from ..framework import convert_np_dtype_to_dtype_, Variable
+from ..framework import convert_np_dtype_to_dtype_, Variable, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
+from paddle import _C_ops, _legacy_C_ops
+import paddle
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -27,34 +29,38 @@ __deprecated_func_name__ = {
 
 __activations_noattr__ = [
     'sigmoid',
+    'silu',
     'logsigmoid',
     'tanh_shrink',
-    'softplus',
     'softsign',
     'tanh',
 ]
 
 __unary_func__ = [
-    'exp',
-    'atan',
-    'sqrt',
-    'rsqrt',
-    'abs',
-    'ceil',
-    'floor',
-    'cos',
-    'tan',
-    'acos',
-    'sin',
-    'sinh',
-    'asin',
-    'cosh',
-    'round',
-    'reciprocal',
-    'square',
+    'exp', 'expm1', 'atan', 'sqrt', 'rsqrt', 'abs', 'ceil', 'floor', 'cos',
+    'tan', 'acos', 'sin', 'sinh', 'asin', 'cosh', 'round', 'reciprocal',
+    'square', 'acosh', 'asinh', 'atanh', 'lgamma'
 ]
 
-__all__ = []
+__inplace_unary_func__ = [
+    'exp_',
+    'sqrt_',
+    'rsqrt_',
+    'ceil_',
+    'floor_',
+    'round_',
+    'reciprocal_',
+]
+
+__all__ = [
+    'softplus',
+    'softshrink',
+    'hard_shrink',
+    'cumsum',
+    'thresholded_relu',
+    'gelu',
+    'erf',
+]
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
@@ -68,25 +74,35 @@ globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
 
 __all__ += __activations_noattr__
 __all__ += __unary_func__
+__all__ += __inplace_unary_func__
 
 for _OP in set(__activations_noattr__):
     _new_OP = _OP
     if _OP in __deprecated_func_name__:
         _new_OP = __deprecated_func_name__[_OP]
-    func = generate_activation_fn(_OP)
-    func = deprecated(
-        since="2.0.0", update_to="paddle.nn.functional.%s" % (_new_OP))(func)
-    globals()[_OP] = func
+    _func = generate_activation_fn(_OP)
+    _func = deprecated(since="2.0.0",
+                       update_to="paddle.nn.functional.%s" % (_new_OP))(_func)
+    globals()[_OP] = _func
 
 for _OP in set(__unary_func__):
     _new_OP = _OP
     if _OP in __deprecated_func_name__:
         _new_OP = __deprecated_func_name__[_OP]
-    func = generate_activation_fn(_OP)
-    func = deprecated(since="2.0.0", update_to="paddle.%s" % (_new_OP))(func)
-    globals()[_OP] = func
+    _func = generate_activation_fn(_OP)
+    _func = deprecated(since="2.0.0", update_to="paddle.%s" % (_new_OP))(_func)
+    globals()[_OP] = _func
 
-add_sample_code(globals()["sigmoid"], r"""
+for _OP in set(__inplace_unary_func__):
+    _new_OP = _OP
+    if _OP in __deprecated_func_name__:
+        _new_OP = __deprecated_func_name__[_OP]
+    _func = generate_inplace_fn(_OP)
+    _func = deprecated(since="2.0.0", update_to="paddle.%s" % (_new_OP))(_func)
+    globals()[_OP] = _func
+
+add_sample_code(
+    globals()["sigmoid"], r"""
 Examples:
     .. code-block:: python
 
@@ -100,7 +116,23 @@ Examples:
 
 """)
 
-add_sample_code(globals()["logsigmoid"], r"""
+add_sample_code(
+    globals()["silu"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+
+        x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+        out = F.silu(x)
+        print(out)
+        # [ 0.7310586 1.7615942 2.8577224, 3.9280552 ]
+
+""")
+
+add_sample_code(
+    globals()["logsigmoid"], r"""
 Examples:
     .. code-block:: python
 
@@ -114,7 +146,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["exp"], r"""
+add_sample_code(
+    globals()["exp"], r"""
 Examples:
     .. code-block:: python
 
@@ -127,7 +160,22 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tanh"], r"""
+add_sample_code(
+    globals()["expm1"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.expm1(x)
+        print(out)
+        # [-0.32967997, -0.18126924,  0.10517092,  0.34985882]
+
+""")
+
+add_sample_code(
+    globals()["tanh"], r"""
 Examples:
     .. code-block:: python
 
@@ -140,7 +188,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["atan"], r"""
+add_sample_code(
+    globals()["atan"], r"""
 Examples:
     .. code-block:: python
 
@@ -153,7 +202,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tanh_shrink"], r"""
+add_sample_code(
+    globals()["tanh_shrink"], r"""
 Examples:
     .. code-block:: python
 
@@ -161,13 +211,14 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.tanhshrink(x) 
+        out = F.tanhshrink(x)
         print(out)
         # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
 
 """)
 
-add_sample_code(globals()["sqrt"], r"""
+add_sample_code(
+    globals()["sqrt"], r"""
 Examples:
     .. code-block:: python
 
@@ -180,7 +231,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["rsqrt"], r"""
+add_sample_code(
+    globals()["rsqrt"], r"""
 Examples:
     .. code-block:: python
 
@@ -193,7 +245,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["abs"], r"""
+add_sample_code(
+    globals()["abs"], r"""
 Examples:
     .. code-block:: python
 
@@ -206,7 +259,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["ceil"], r"""
+add_sample_code(
+    globals()["ceil"], r"""
 Examples:
     .. code-block:: python
 
@@ -219,7 +273,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["floor"], r"""
+add_sample_code(
+    globals()["floor"], r"""
 Examples:
     .. code-block:: python
 
@@ -232,7 +287,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["cos"], r"""
+add_sample_code(
+    globals()["cos"], r"""
 Examples:
     .. code-block:: python
 
@@ -245,7 +301,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tan"], r"""
+add_sample_code(
+    globals()["tan"], r"""
 Examples:
     .. code-block:: python
 
@@ -258,7 +315,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["acos"], r"""
+add_sample_code(
+    globals()["acos"], r"""
 Examples:
     .. code-block:: python
 
@@ -271,7 +329,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["sin"], r"""
+add_sample_code(
+    globals()["sin"], r"""
 Examples:
     .. code-block:: python
 
@@ -284,7 +343,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["asin"], r"""
+add_sample_code(
+    globals()["asin"], r"""
 Examples:
     .. code-block:: python
 
@@ -297,7 +357,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["cosh"], r"""
+add_sample_code(
+    globals()["cosh"], r"""
 Examples:
     .. code-block:: python
 
@@ -310,7 +371,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["sinh"], r"""
+add_sample_code(
+    globals()["sinh"], r"""
 Examples:
     .. code-block:: python
 
@@ -323,7 +385,50 @@ Examples:
 
 """)
 
-add_sample_code(globals()["round"], r"""
+add_sample_code(
+    globals()["asinh"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.asinh(x)
+        print(out)
+        # [-0.39003533, -0.19869010,  0.09983408,  0.29567307]
+
+""")
+
+add_sample_code(
+    globals()["acosh"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1., 3., 4., 5.])
+        out = paddle.acosh(x)
+        print(out)
+        # [0.        , 1.76274729, 2.06343699, 2.29243159]
+
+""")
+
+add_sample_code(
+    globals()["atanh"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.atanh(x)
+        print(out)
+        # [-0.42364895, -0.20273256,  0.10033535,  0.30951962]
+
+""")
+
+add_sample_code(
+    globals()["round"], r"""
 Examples:
     .. code-block:: python
 
@@ -336,7 +441,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["reciprocal"], r"""
+add_sample_code(
+    globals()["reciprocal"], r"""
 Examples:
     .. code-block:: python
 
@@ -349,7 +455,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["square"], r"""
+add_sample_code(
+    globals()["square"], r"""
 Examples:
     .. code-block:: python
 
@@ -362,7 +469,40 @@ Examples:
 
 """)
 
-add_sample_code(globals()["softplus"], r"""
+_softplus_ = generate_layer_fn('softplus')
+
+
+def softplus(x, beta: float = 1.0, threshold: float = 20.0, name=None):
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'softplus')
+    locals_val = locals().copy()
+    kwargs = dict()
+    for name, val in locals_val.items():
+        if val is not None:
+            kwargs[name] = val
+    return _softplus_(**kwargs)
+
+
+softplus.__doc__ = r"""
+    :alias_main: paddle.nn.functional.softplus
+    :alias: paddle.nn.functional.softplus, paddle.nn.functional.activation.softplus
+    :old_api: paddle.fluid.layers.softplus
+
+:strong:`Softplus Activation Operator`
+
+Equation:
+    .. math::
+        out = \\frac{1}{beta} * log(1 + e^{beta * x})
+        For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.
+
+Args:
+    x(Tensor): Input of Softplus op, Tensor, dtype: float32 or float64
+    beta(float, optional): The value of beta for softplus. Default is 1
+    threshold (float, optional): The value of threshold for softplus. Default is 20
+    name(str, optional): Name for the operation (optional, default is None)
+
+Returns:
+    Variable: The output of Softplus op, Tensor, dtype: float32 or float64
+
 Examples:
     .. code-block:: python
 
@@ -370,13 +510,13 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softplus(x) 
+        out = F.softplus(x)
         print(out)
         # [0.513015, 0.598139, 0.744397, 0.854355]
+"""
 
-""")
-
-add_sample_code(globals()["softsign"], r"""
+add_sample_code(
+    globals()["softsign"], r"""
 Examples:
     .. code-block:: python
 
@@ -384,13 +524,11 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softsign(x) 
+        out = F.softsign(x)
         print(out)
         # [-0.285714, -0.166667, 0.0909091, 0.230769]
 
 """)
-
-__all__ += ['softshrink']
 
 _softshrink_ = generate_layer_fn('softshrink')
 
@@ -428,19 +566,17 @@ softshrink.__doc__ = r"""
 Args:
     x: Input of Softshrink operator, an N-D Tensor, with data type float32, float64 or float16.
     alpha (float): non-negative offset
-    
+
 Returns:
     Output of Softshrink operator with the same type of input.
 
 Examples:
     .. code-block:: python
-    
+
         import paddle.fluid as fluid
         data = fluid.data(name="input", shape=[None, 784])
         result = fluid.layers.softshrink(x=data, alpha=0.3)
 """
-
-__all__ += ['hard_shrink']
 
 _hard_shrink_ = generate_layer_fn('hard_shrink')
 
@@ -466,15 +602,12 @@ Examples:
     >>> result = fluid.layers.hard_shrink(x=data, threshold=0.3)
 """
 
-__all__ += ['cumsum']
-
 _cum_sum_ = generate_layer_fn('cumsum')
 
 
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.cumsum",
-    reason="New APIs for Paddle 2.0 are coming.")
+@deprecated(since="2.0.0",
+            update_to="paddle.cumsum",
+            reason="New APIs for Paddle 2.0 are coming.")
 def cumsum(x, axis=None, exclusive=None, reverse=None):
     check_type(x, 'x', (Variable), 'cumsum')
     locals_var = locals().copy()
@@ -493,23 +626,21 @@ cumsum.__doc__ = """
 The cumulative sum of the elements along a given axis. By default, the first element of the result is the same of the first element of the input. If exlusive is true, the first element of the result is 0.
 
 Args:
-    x (Variable): Input of cumsum operator, the Tensor/LoDTensor needed to be cumsumed. 
+    x (Variable): Input of cumsum operator, the Tensor/LoDTensor needed to be cumsumed.
     axis (int, optional): The dimension to accumulate along. -1 means the last dimension. Default is -1.
     exclusive (bool, optional): Whether to perform exclusive cumsum. Default is False.
     reverse (bool, optional): If true, the cumsum is performed in the reversed direction. Default is False.
 
 Returns:
-    Variable(Tensor/LoDTensor): The result of cumsum operator, output of cumsum operator. 
+    Variable(Tensor/LoDTensor): The result of cumsum operator, output of cumsum operator.
 
 Examples:
     .. code-block:: python
-        
+
         import paddle.fluid as fluid
         data = fluid.layers.data(name="input", shape=[32, 784])
         result = fluid.layers.cumsum(data, axis=0)
 """
-
-__all__ += ['thresholded_relu']
 
 _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
@@ -543,7 +674,7 @@ Equation:
 
 Args:
     x(Variable): The input of Thresholded ReLU op, Tensor or LoDTensor, dtype: float32 or float64.
-        
+
     threshold(float, optional): The threshold value. Note that if the arg `threshold` is not set, the threshold in the equation is 1.0.
 
 Returns:
@@ -551,26 +682,26 @@ Returns:
     Variable: The output of Thresholded ReLU op, Tensor or LoDTensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
-    
+
     .. code-block:: python
-    
+
         # declarative mode
         import numpy as np
         from paddle import fluid
-        
+
         x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
         y = fluid.layers.thresholded_relu(x, threshold=0.1)
-        
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         start = fluid.default_startup_program()
         main = fluid.default_main_program()
-        
+
         data = np.random.randn(2, 3).astype("float32")
         exe.run(start)
-        
+
         y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
-        
+
         data
         # array([[ 0.21134382, -1.1805999 ,  0.32876605],
         #        [-1.2210793 , -0.7365624 ,  1.0013918 ]], dtype=float32)
@@ -579,12 +710,12 @@ Examples:
         #        [-0.        , -0.        ,  1.0013918 ]], dtype=float32)
 
     .. code-block:: python
-    
+
         # imperative mode
         import numpy as np
         from paddle import fluid
         import paddle.fluid.dygraph as dg
-        
+
         data = np.random.randn(2, 3).astype("float32")
         place = fluid.CPUPlace()
         with dg.guard(place) as g:
@@ -598,8 +729,6 @@ Examples:
         # array([[ 0.21134382, -0.        ,  0.32876605],
         #        [-0.        , -0.        ,  1.0013918 ]], dtype=float32)
 """
-
-__all__ += ['gelu']
 
 _gelu_ = generate_layer_fn('gelu')
 
@@ -636,26 +765,26 @@ Returns:
     Variable: The output of GeLU op, Tensor or LoDTensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
-    
+
     .. code-block:: python
-    
+
         # declarative mode
         import numpy as np
         from paddle import fluid
-        
+
         x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
         y = fluid.layers.gelu(x)
-        
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         start = fluid.default_startup_program()
         main = fluid.default_main_program()
-        
+
         data = np.random.randn(2, 3).astype("float32")
         exe.run(start)
-        
+
         y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
-        
+
         data
         # array([[ 0.87165993, -1.0541513 , -0.37214822],
         #         [ 0.15647964,  0.32496083,  0.33045998]], dtype=float32)
@@ -664,12 +793,12 @@ Examples:
         #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
 
     .. code-block:: python
-    
+
         # imperative mode
         import numpy as np
         from paddle import fluid
         import paddle.fluid.dygraph as dg
-        
+
         data = np.random.randn(2, 3).astype("float32")
         place = fluid.CPUPlace()
         with dg.guard(place) as g:
@@ -684,12 +813,13 @@ Examples:
         #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
 """
 
-__all__ += ['erf']
-
 _erf_ = generate_layer_fn('erf')
 
 
 def erf(x, name=None):
+    if in_dygraph_mode():
+        return _C_ops.erf(x)
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -715,12 +845,40 @@ Returns:
     Tensor: The output of Erf op, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
-    
+
     .. code-block:: python
-    
+
         import paddle
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.erf(x)
         print(out)
         # [-0.42839236 -0.22270259  0.11246292  0.32862676]
 """
+
+
+def lgamma(x, name=None):
+    r"""
+    Calculates the lgamma of the given input tensor, element-wise.
+
+    This operator performs elementwise lgamma for input $X$.
+    :math:`out = log\Gamma(x)`
+
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the lgamma of the input Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.lgamma(x)
+            print(out)
+            # [1.31452441, 1.76149750, 2.25271273, 1.09579802]
+    """
+    return paddle.Tensor.lgamma(x)

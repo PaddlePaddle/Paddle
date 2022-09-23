@@ -15,7 +15,7 @@
             <Warning>InheritFromHost</Warning>
 
             <BaseCommandLineTemplate>-ccbin "%(VCBinDir)" -x cu [GenerateRelocatableDeviceCode] [Include] [RequiredIncludes] [InterleaveSourceInPTX] [GPUDebugInfo] [GenerateLineInfo] [Keep] [KeepDir] [MaxRegCount] [PtxAsOptionV] [TargetMachinePlatform] [NvccCompilation] [CudaRuntime] [AdditionalOptions]</BaseCommandLineTemplate>
-            <BuildCommandLineTemplate>--use-local-env --cl-version $(CudaClVersion)</BuildCommandLineTemplate>
+            <BuildCommandLineTemplate>--use-local-env $(CudaClVersion)</BuildCommandLineTemplate>
             <BuildDynamicCommandLineTemplate>[CodeGeneration]</BuildDynamicCommandLineTemplate>
             <CleanCommandLineTemplate>-clean</CleanCommandLineTemplate>
             <!-- <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] $(CudaForceSynchronousPdbWrites) /Zi [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate> -->
@@ -88,4 +88,3 @@ set CUDAFE_FLAGS=--sdk_dir "$(WindowsSdkDir)"
         </ClCompile>
     </ItemDefinitionGroup>
 </Project>
-

@@ -42,6 +42,10 @@ class CBroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<int>("root", "(int default 0) root id for broadcasting.")
         .SetDefault(0);
+#if defined(PADDLE_WITH_ASCEND_CL)
+    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
+        .SetDefault("tag");
+#endif
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
@@ -60,10 +64,12 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_broadcast, ops::CBroadcastOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_broadcast,
+                             ops::CBroadcastOp,
                              ops::CBroadcastOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_broadcast, ops::CBroadcastOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(c_broadcast,
+                       ops::CBroadcastOpCPUKernel<float>,
                        ops::CBroadcastOpCPUKernel<double>,
                        ops::CBroadcastOpCPUKernel<int>,
                        ops::CBroadcastOpCPUKernel<int64_t>,

@@ -15,6 +15,8 @@
 from __future__ import print_function
 
 import os
+
+os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -23,10 +25,12 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 
 from test_dist_fleet_base import TestFleetBase
 from dist_fleet_simnet_bow import train_network
+
 paddle.enable_static()
 
 
 class TestDistGeoCtr_2x2(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "geo"
         self._reader = "pyreader"
@@ -42,7 +46,9 @@ class TestDistGeoCtr_2x2(TestFleetBase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
+            "http_proxy": "",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -54,11 +60,13 @@ class TestDistGeoCtr_2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
 
 
 class TestGeoSgdTranspiler(unittest.TestCase):
+
     def test_pserver(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,

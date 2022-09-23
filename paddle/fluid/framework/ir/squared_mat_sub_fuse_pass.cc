@@ -24,7 +24,8 @@ namespace ir {
 
 PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
                                   const std::string& name_scope) {
-  auto var_is_op_input = [=](Node* x, const std::string& op_type,
+  auto var_is_op_input = [=](Node* x,
+                             const std::string& op_type,
                              const std::string& arg_name = "") -> bool {
     if (!(x && x->IsVar())) {
       return false;
@@ -170,8 +171,9 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
 
   auto* matmul_xy_op = pattern->NewNode(
       [=](Node* x) {
-        return x && x->IsOp() && (x->Op()->Type() == "matmul_v2" ||
-                                  x->Op()->Type() == "matmul") &&
+        return x && x->IsOp() &&
+               (x->Op()->Type() == "matmul_v2" ||
+                x->Op()->Type() == "matmul") &&
                is_fusion_first_mul_out(x->outputs[0]);
       },
       name_scope + "/matmul_xy_op");
@@ -212,8 +214,9 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
 
   auto* matmul_squared_x_y_op = pattern->NewNode(
       [=](Node* x) {
-        return x && x->IsOp() && (x->Op()->Type() == "matmul_v2" ||
-                                  x->Op()->Type() == "matmul") &&
+        return x && x->IsOp() &&
+               (x->Op()->Type() == "matmul_v2" ||
+                x->Op()->Type() == "matmul") &&
                is_fusion_mat_squared_x_y_op_out(x->outputs[0]);
       },
       name_scope + "/matmul_squared_x_y_op");
@@ -298,7 +301,9 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
   return last_out_var;
 }
 
-static int BuildFusion(Graph* graph, const std::string& name_scope) {
+static int BuildFusion(Graph* graph,
+                       const std::string& name_scope,
+                       const SquaredMatSubFusePass* pass) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -307,12 +312,14 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
   auto retrieve_node = [](const std::string& name,
                           const GraphPatternDetector::subgraph_t& subgraph,
                           const PDPattern& pat) -> Node* {
-    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)), 0,
+    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)),
+                      0,
                       platform::errors::NotFound(
                           "Pattern has no node called %s.", name.c_str()));
     Node* p = subgraph.at(pat.RetrieveNode(name));
-    PADDLE_ENFORCE_NOT_NULL(p, platform::errors::NotFound(
-                                   "Subgraph has no node %s.", name.c_str()));
+    PADDLE_ENFORCE_NOT_NULL(
+        p,
+        platform::errors::NotFound("Subgraph has no node %s.", name.c_str()));
     return p;
   };
 
@@ -320,6 +327,11 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     LOG(INFO) << "handle sqaure mat sub fuse";
+    if (!pass->IsAcceptable(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+
     auto& fused_pattern = gpd.pattern();
 
     auto* matx = retrieve_node(name_scope + "/x", subgraph, fused_pattern);
@@ -332,8 +344,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
         retrieve_node(name_scope + "/squared_xmuly", subgraph, fused_pattern);
     auto* last_out_var =
         retrieve_node(name_scope + "/out", subgraph, fused_pattern);
-    auto* fill_constant_op = retrieve_node(name_scope + "/fill_constant_op",
-                                           subgraph, fused_pattern);
+    auto* fill_constant_op = retrieve_node(
+        name_scope + "/fill_constant_op", subgraph, fused_pattern);
 
     // Create New OpDesc
     OpDesc op_desc;
@@ -368,14 +380,112 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
     GraphSafeRemoveNodes(graph, marked_nodes);
     ++fusion_count;
   };
-
   gpd(graph, handler);
   return fusion_count;
 }
 
+SquaredMatSubFusePass::SquaredMatSubFusePass() {
+  AddOpCompat(OpCompat("square"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumEQ(1.0f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("transpose_Y")
+      .IsBoolEQ(false)
+      .End();
+
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("trans_y")
+      .IsBoolEQ(false)
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_sub"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({-1, 0})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({-1, 0})
+      .End();
+
+  AddOpCompat(OpCompat("fill_constant"))
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("dtype")
+      .IsNumGE(0)
+      .IsNumLE(25)
+      .End()
+      .AddAttr("shape")
+      .End()
+      // type:float，there is no restriction
+      .AddAttr("value")
+      .End()
+      .AddAttr("str_value")
+      .IsStringEQ("")
+      .IsOptional()
+      .End();
+}
+
+// to use IsCompat
+bool SquaredMatSubFusePass::IsAcceptable(
+    const GraphPatternDetector::subgraph_t& subgraph, Graph* g) const {
+  return IsCompat(subgraph, g);
+}
+
 void SquaredMatSubFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
-  int fusion_count = BuildFusion(graph, name_scope_);
+  int fusion_count = BuildFusion(graph, name_scope_, this);
   AddStatis(fusion_count);
 }
 

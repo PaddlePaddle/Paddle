@@ -24,20 +24,10 @@ from paddle.dataset.common import download, DATA_HOME
 
 
 class TestDistCtrInfer(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
-        self._need_test = 1
-
-        data_url = "https://fleet.bj.bcebos.com/unittest/ctr_saved_params.tar.gz"
-        data_md5 = "aa7e8286ced566ea8a67410be7482438"
-        module_name = "ctr_saved_params"
-        path = download(data_url, module_name, data_md5)
-        print('ctr_params is downloaded at ' + path)
-        tar = tarfile.open(path)
-        unzip_folder = tempfile.mkdtemp()
-        tar.extractall(unzip_folder)
-        self._model_dir = unzip_folder
 
     def check_with_place(self,
                          model_file,
@@ -53,6 +43,8 @@ class TestDistCtrInfer(TestFleetBase):
             "FLAGS_communicator_send_queue_size": "2",
             "FLAGS_communicator_max_merge_var_num": "2",
             "CPU_NUM": "2",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -64,12 +56,27 @@ class TestDistCtrInfer(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_infer(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
-        shutil.rmtree(self._model_dir)
+        model_dirname = tempfile.mkdtemp()
+
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False,
+                              need_envs={
+                                  "SAVE_DIRNAME": model_dirname,
+                              })
+
+        self._need_test = 1
+        self._model_dir = model_dirname
+
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
+
+        shutil.rmtree(model_dirname)
 
 
 class TestDistCtrTrainInfer(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
@@ -80,6 +87,7 @@ class TestDistCtrTrainInfer(TestFleetBase):
                          delta=1e-3,
                          check_error_log=False,
                          need_envs={}):
+
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -89,6 +97,8 @@ class TestDistCtrTrainInfer(TestFleetBase):
             "FLAGS_communicator_send_queue_size": "2",
             "FLAGS_communicator_max_merge_var_num": "2",
             "CPU_NUM": "2",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -100,8 +110,9 @@ class TestDistCtrTrainInfer(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train_infer(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
 
 
 if __name__ == "__main__":

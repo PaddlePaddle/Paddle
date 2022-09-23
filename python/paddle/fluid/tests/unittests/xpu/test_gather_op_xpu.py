@@ -13,13 +13,18 @@
 # limitations under the License.
 
 from __future__ import print_function
-import sys
-sys.path.append("..")
 import unittest
+import sys
+
+sys.path.append("..")
+
 import numpy as np
-from op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+paddle.enable_static()
 
 
 def gather_numpy(x, index, axis):
@@ -29,126 +34,96 @@ def gather_numpy(x, index, axis):
     return gather
 
 
-class TestGatherOp(OpTest):
-    def setUp(self):
-        self.op_type = "gather"
-        self.config()
-        xnp = np.random.random(self.x_shape).astype(self.x_type)
-        self.inputs = {
-            'X': xnp,
-            'Index': np.array(self.index).astype(self.index_type)
-        }
-        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+class XPUTestGather(XPUOpTestWrapper):
 
-    def test_check_output(self):
-        self.check_output()
+    def __init__(self):
+        self.op_name = 'gather'
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+    class TestXPUGatherOp(XPUOpTest):
 
-    def config(self):
-        """
-        For multi-dimension input
-        """
-        self.x_shape = (10, 20)
-        self.x_type = "float64"
-        self.index = [1, 3, 5]
-        self.index_type = "int32"
+        def setUp(self):
+            self.op_type = "gather"
+            self.place = paddle.XPUPlace(0)
+            self.dtype = self.in_type
 
+            self.init_config()
+            xnp = np.random.random(self.x_shape).astype(self.dtype)
+            self.inputs = {
+                'X': xnp,
+                'Index': np.array(self.index).astype(self.index_type)
+            }
+            self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
-class TestXPUGatherOp(OpTest):
-    def setUp(self):
-        self.op_type = "gather"
-        self.dtype = np.float32
-        self.attrs = {'use_xpu': True}
+        def init_config(self):
+            self.x_shape = (10, 20)
+            self.index = [1, 3, 5]
+            self.index_type = np.int32
 
-        self.config()
-        xnp = np.random.random(self.x_shape).astype(self.x_type)
-        self.inputs = {
-            'X': xnp,
-            'Index': np.array(self.index).astype(self.index_type)
-        }
-        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                self.check_output_with_place(self.place)
 
-    def test_check_output(self):
-        if self.dtype == np.float32 and paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+        def test_check_grad(self):
+            if paddle.is_compiled_with_xpu():
+                self.check_grad_with_place(self.place, ['X'], 'Out')
 
-    def test_check_grad(self):
-        if self.dtype == np.float32 and paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ['X'], 'Out')
+    class TestCase1(TestXPUGatherOp):
 
-    def config(self):
-        """
-        For multi-dimension input
-        """
-        self.x_shape = (10, 20)
-        self.x_type = self.dtype
-        self.index = [1, 3, 5]
-        self.index_type = "int32"
+        def init_config(self):
+            self.x_shape = (100)
+            self.index = [1, 3, 5]
+            self.index_type = np.int32
 
+    class TestCase2(TestXPUGatherOp):
 
-class TestCase1(TestXPUGatherOp):
-    def config(self):
-        """
-        For one dimension input
-        """
-        self.x_shape = (100)
-        self.x_type = "float32"
-        self.index = [1, 3, 5]
-        self.index_type = "int32"
+        def init_config(self):
+            self.x_shape = (100)
+            self.index = [1, 3, 5]
+            self.index_type = np.int64
 
+    class TestCase3(TestXPUGatherOp):
 
-class TestCase2(TestXPUGatherOp):
-    def config(self):
-        """
-        For int64_t index type
-        """
-        self.x_shape = (100)
-        self.x_type = "float32"
-        self.index = [1, 3, 5]
-        self.index_type = "int32"
+        def init_config(self):
+            self.x_shape = (10, 20)
+            self.index = [1, 3, 5]
+            self.index_type = np.int32
 
+    class TestCase4(TestXPUGatherOp):
 
-class TestCase3(TestXPUGatherOp):
-    def config(self):
-        """
-        For other input type
-        """
-        self.x_shape = (10, 20)
-        self.x_type = "float32"
-        self.index = [1, 3, 5]
-        self.index_type = "int32"
+        def init_config(self):
+            self.x_shape = (10, 20)
+            self.attrs = {'overwrite': False}
+            self.index = [1, 1]
+            self.index_type = np.int32
+
+    class TestCase5(TestXPUGatherOp):
+
+        def init_config(self):
+            self.x_shape = (10, 20)
+            self.attrs = {'overwrite': False}
+            self.index = [1, 1, 3]
+            self.index_type = np.int32
+
+    class TestCase6(TestXPUGatherOp):
+
+        def init_config(self):
+            self.x_shape = (10, 20)
+            self.attrs = {'overwrite': True}
+            self.index = [1, 3]
+            self.index_type = np.int32
+
+    class TestCase7(TestXPUGatherOp):
+
+        def init_config(self):
+            self.x_shape = (10, 20)
+            self.attrs = {'overwrite': True}
+            self.index = [1, 3]
+            self.index_type = np.int64
 
 
-class TestCase4(TestXPUGatherOp):
-    def config(self):
-        self.x_shape = (10, 20)
-        self.attrs = {'use_xpu': True, 'overwrite': False}
-        self.x_type = "float32"
-        self.index = [1, 1]
-        self.index_type = "int32"
-
-
-class TestCase5(TestXPUGatherOp):
-    def config(self):
-        self.x_shape = (10, 20)
-        self.attrs = {'use_xpu': True, 'overwrite': False}
-        self.x_type = "float32"
-        self.index = [1, 1, 3]
-        self.index_type = "int32"
-
-
-class TestCase6(TestXPUGatherOp):
-    def config(self):
-        self.x_shape = (10, 20)
-        self.attrs = {'use_xpu': True, 'overwrite': True}
-        self.x_type = "float32"
-        self.index = [1, 3]
-        self.index_type = "int32"
-
+support_types = get_xpu_op_support_types('gather')
+for stype in support_types:
+    create_test_class(globals(), XPUTestGather, stype)
 
 if __name__ == "__main__":
     unittest.main()

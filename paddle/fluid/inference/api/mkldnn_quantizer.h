@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
@@ -52,7 +53,7 @@ class AnalysisPredictor::MkldnnQuantizer {
   // Execute full quantization procedure.
   bool Quantize();
 
-#if PADDLE_WITH_TESTING
+#ifdef PADDLE_WITH_TESTING
   friend class MkldnnQuantizerTest;
 #endif
 
@@ -67,6 +68,12 @@ class AnalysisPredictor::MkldnnQuantizer {
                             const std::string& var_name,
                             const framework::LoDTensor& var_tensor,
                             bool is_unsigned);
+  void CalculateSingleGRUWeightsScale(const std::string& var_name,
+                                      const framework::LoDTensor& var_tensor);
+  void CalculateScalesForRNNWeights(const paddle::framework::OpDesc* op,
+                                    bool gru);
+  void CalculateScalesForOpOutputs(const paddle::framework::OpDesc* op);
+  void CalculateScalesForOpInputs(const paddle::framework::OpDesc* op);
   void PrepareArgument() const;
   void ClearDeviceContext() const;
   bool RunQuantizePasses() const;
@@ -79,20 +86,33 @@ class AnalysisPredictor::MkldnnQuantizer {
       const framework::LoDTensor& var_tensor, bool is_unsigned) const;
 
   std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned,
+      const framework::LoDTensor& var_tensor,
+      bool is_unsigned,
       bool is_transposed) const;
+
+  std::pair<bool, framework::LoDTensor> GetMaxChGRUScalingFactor(
+      const framework::LoDTensor& wx_tensor,
+      const framework::LoDTensor& wh_tensor) const;
+
+  std::pair<bool, framework::LoDTensor> GetMaxChLSTMScalingFactor(
+      const framework::LoDTensor& wx_tensor,
+      const framework::LoDTensor& wh_tensor) const;
 
   std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
       const framework::LoDTensor& var_tensor, bool is_unsigned) const;
 
   // Returns histogram and bin width
   std::pair<std::vector<int>, float> Histogram(
-      const framework::LoDTensor& var_tensor, float min_val, float max_val,
+      const framework::LoDTensor& var_tensor,
+      float min_val,
+      float max_val,
       size_t num_bins = 2048) const;
 
   // Calculate the entropy.
-  float SafeEntropy(std::vector<int> reference_distr_P, int P_sum,
-                    std::vector<int> candidate_distr_Q, int Q_sum) const;
+  float SafeEntropy(std::vector<int> reference_distr_P,
+                    int P_sum,
+                    std::vector<int> candidate_distr_Q,
+                    int Q_sum) const;
 
  private:
   AnalysisPredictor& predictor_;

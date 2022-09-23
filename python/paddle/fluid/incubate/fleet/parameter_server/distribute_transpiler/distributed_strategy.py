@@ -24,6 +24,7 @@ from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 
 class TrainerRuntimeConfig(object):
+
     def __init__(self):
         self.mode = None
         num_threads = os.getenv("CPU_NUM", "1")
@@ -46,9 +47,9 @@ class TrainerRuntimeConfig(object):
         self.runtime_configs['communicator_is_sgd_optimizer'] = os.getenv(
             "FLAGS_communicator_is_sgd_optimizer", "1")
 
-        # not used 
-        self.runtime_configs['rpc_deadline'] = os.getenv("FLAGS_rpc_deadline",
-                                                         "180000")
+        # not used
+        self.runtime_configs['rpc_deadline'] = os.getenv(
+            "FLAGS_rpc_deadline", "180000")
         self.runtime_configs['rpc_retry_times'] = os.getenv(
             "FLAGS_rpc_retry_times", "3")
 
@@ -84,18 +85,18 @@ class TrainerRuntimeConfig(object):
                 print('WARNING: In {} mode, communicator_max_merge_var_num '
                       'must be equal to CPU_NUM. But received, '
                       'communicator_max_merge_var_num = {}, CPU_NUM = '
-                      '{}. communicator_max_merge_var_num will be fored to {}.'
-                      .format(mode_str, max_merge_var_num, num_threads,
-                              num_threads))
+                      '{}. communicator_max_merge_var_num will be fored to {}.'.
+                      format(mode_str, max_merge_var_num, num_threads,
+                             num_threads))
                 self.runtime_configs[
                     'communicator_max_merge_var_num'] = num_threads
             if send_queue_size != num_threads:
                 print('WARNING: In {} mode, communicator_send_queue_size '
                       'must be equal to CPU_NUM. But received, '
                       'communicator_send_queue_size = {}, CPU_NUM = '
-                      '{}. communicator_send_queue_size will be fored to {}.'
-                      .format(mode_str, send_queue_size, num_threads,
-                              num_threads))
+                      '{}. communicator_send_queue_size will be fored to {}.'.
+                      format(mode_str, send_queue_size, num_threads,
+                             num_threads))
                 self.runtime_configs[
                     'communicator_send_queue_size'] = num_threads
 
@@ -127,6 +128,7 @@ class TrainerRuntimeConfig(object):
 
 
 class PSLibRuntimeConfig(object):
+
     def __init__(self):
         self.runtime_configs = {}
 
@@ -135,6 +137,7 @@ class PSLibRuntimeConfig(object):
 
 
 class DistributedStrategy(object):
+
     def __init__(self):
         self._program_config = DistributeTranspilerConfig()
         self._trainer_runtime_config = TrainerRuntimeConfig()
@@ -149,6 +152,7 @@ class DistributedStrategy(object):
         if num_threads > 1:
             self._build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         self.debug_opt = None
+        self.use_ps_gpu = False
 
     def set_debug_opt(self, opt_info):
         self.debug_opt = opt_info
@@ -294,6 +298,7 @@ class DistributedStrategy(object):
 
 
 class SyncStrategy(DistributedStrategy):
+
     def __init__(self):
         super(SyncStrategy, self).__init__()
         self.check_program_config()
@@ -322,6 +327,7 @@ class SyncStrategy(DistributedStrategy):
 
 
 class AsyncStrategy(DistributedStrategy):
+
     def __init__(self):
         super(AsyncStrategy, self).__init__()
         self.check_program_config()
@@ -348,6 +354,7 @@ class AsyncStrategy(DistributedStrategy):
 
 
 class HalfAsyncStrategy(DistributedStrategy):
+
     def __init__(self):
         super(HalfAsyncStrategy, self).__init__()
         self.check_program_config()
@@ -375,6 +382,7 @@ class HalfAsyncStrategy(DistributedStrategy):
 
 
 class GeoStrategy(DistributedStrategy):
+
     def __init__(self, update_frequency=100):
         super(GeoStrategy, self).__init__()
         self._program_config.geo_sgd_need_push_nums = update_frequency
@@ -409,6 +417,7 @@ class GeoStrategy(DistributedStrategy):
 
 
 class StrategyFactory(object):
+
     def __init_(self):
         pass
 

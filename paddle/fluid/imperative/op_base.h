@@ -20,6 +20,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -50,17 +51,23 @@ class OpBase {
 
   const framework::AttributeMap& Attrs() const { return attrs_; }
 
+  const framework::AttributeMap& DefaultAttrsMap() const {
+    return *default_attrs_;
+  }
+
   const framework::OpInfo& Info() const {
-    PADDLE_ENFORCE_NOT_NULL(op_, platform::errors::PreconditionNotMet(
-                                     "OpBase::Info() should be called after "
-                                     "OpBase::SetType() is called"));
+    PADDLE_ENFORCE_NOT_NULL(op_,
+                            platform::errors::PreconditionNotMet(
+                                "OpBase::Info() should be called after "
+                                "OpBase::SetType() is called"));
     return op_->Info();
   }
 
   const framework::OperatorBase& InnerOp() const {
-    PADDLE_ENFORCE_NOT_NULL(op_, platform::errors::PreconditionNotMet(
-                                     "OpBase::InnerOp() should be called after "
-                                     "OpBase::SetType() is called"));
+    PADDLE_ENFORCE_NOT_NULL(op_,
+                            platform::errors::PreconditionNotMet(
+                                "OpBase::InnerOp() should be called after "
+                                "OpBase::SetType() is called"));
     return *op_;
   }
 
@@ -83,14 +90,16 @@ class OpBase {
     }
   }
 
-  void SetInput(const std::string& name, VariableWrapperList vars,
+  void SetInput(const std::string& name,
+                VariableWrapperList vars,
                 bool is_grad) {
     auto& in_vars = ins_[name];
     *(in_vars.MutableVarList()) = std::move(vars);
     in_vars.SetIsGrad(is_grad);
   }
 
-  void SetOutput(const std::string& name, VariableWrapperList vars,
+  void SetOutput(const std::string& name,
+                 VariableWrapperList vars,
                  bool is_grad) {
     auto& out_vars = outs_[name];
     *(out_vars.MutableVarList()) = std::move(vars);
@@ -98,6 +107,10 @@ class OpBase {
   }
 
   void SetAttrMap(const framework::AttributeMap& attrs) { attrs_ = attrs; }
+
+  void SetDefaultAttrsMap(const framework::AttributeMap& default_attrs) {
+    default_attrs_ = &default_attrs;
+  }
 
   void SetAttr(const std::string& name, const framework::Attribute& v) {
     attrs_[name] = v;
@@ -110,19 +123,31 @@ class OpBase {
 
   const framework::AttributeMap& Attrs() { return attrs_; }
 
-  bool HasAttr(const std::string& name) const { return attrs_.count(name) > 0; }
+  const framework::AttributeMap& DefaultAttrsMap() { return *default_attrs_; }
+
+  bool HasAttr(const std::string& name) const {
+    VLOG(6) << "Default attrs: " << default_attrs_;
+    VLOG(6) << "attrs: " << &attrs_;
+    return attrs_.count(name) > 0 || default_attrs_->count(name) > 0;
+  }
 
   const framework::Attribute& GetAttr(const std::string& name) const {
     auto it = attrs_.find(name);
-    PADDLE_ENFORCE_NE(
-        it, attrs_.end(),
-        platform::errors::NotFound("can not find attribute [%s]", name));
-    return it->second;
+    if (it != attrs_.end()) {
+      return it->second;
+    } else {
+      auto it_default = default_attrs_->find(name);
+      PADDLE_ENFORCE_NE(
+          it_default,
+          default_attrs_->end(),
+          platform::errors::NotFound("can not find attribute [%s]", name));
+      return it_default->second;
+    }
   }
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return BOOST_GET_CONST(T, GetAttr(name));
+    return PADDLE_GET_CONST(T, GetAttr(name));
   }
 
   size_t id() const { return id_; }
@@ -135,7 +160,8 @@ class OpBase {
 
   void EnforceHasInOut() const {
     PADDLE_ENFORCE_NE(
-        ins_.empty() && outs_.empty(), true,
+        ins_.empty() && outs_.empty(),
+        true,
         platform::errors::NotFound(
             "Inputs and outputs of %s do not exist. This may be because:\n"
             "1. You use some output variables of the previous batch as the "
@@ -156,13 +182,34 @@ class OpBase {
                   const NameVarMap<VarBase>& ins,
                   const NameVarMap<VarBase>& outs,
                   const framework::AttributeMap& attrs,
+                  const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
 
   static void Run(const framework::OperatorBase& op,
                   const NameVarMap<VariableWrapper>& ins,
                   const NameVarMap<VariableWrapper>& outs,
                   const framework::AttributeMap& attrs,
+                  const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
+  static void Run(const framework::OperatorBase& op,
+                  const NameVarMap<egr::EagerVariable>& ins,
+                  const NameVarMap<egr::EagerVariable>& outs,
+                  const framework::AttributeMap& attrs,
+                  const framework::AttributeMap& default_attrs,
+                  const platform::Place& place);
+
+  bool HasVoidFunctionPostHook() const {
+    return !void_function_post_hooks_.empty();
+  }
+
+  void AddVoidFunctionPostHook(std::shared_ptr<std::function<void()>>&& hook) {
+    void_function_post_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<std::function<void()>>>&
+  GetVoidFunctionPostHooks() const {
+    return void_function_post_hooks_;
+  }
 
  private:
   static const std::string& UnknownOpType() {
@@ -174,11 +221,14 @@ class OpBase {
   NameVarMap<VariableWrapper> ins_;
   NameVarMap<VariableWrapper> outs_;
   framework::AttributeMap attrs_;
+  const framework::AttributeMap* default_attrs_;
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};
-
-  std::weak_ptr<InteriorVarHookPipeline> pre_hooks_;
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext
+  static phi::KernelContext phi_kernel_context_;
+  std::vector<std::shared_ptr<std::function<void()>>> void_function_post_hooks_;
 };
 
 class GradOpNode {
@@ -222,9 +272,9 @@ class GradOpNode {
   ConstIterator end() const { return ops_.end(); }
 
   void InsertGradPendingNode(const std::shared_ptr<GradOpNode>& node) {
-    if (node &&
-        std::find(grad_pending_nodes_.begin(), grad_pending_nodes_.end(),
-                  node) == grad_pending_nodes_.end()) {
+    if (node && std::find(grad_pending_nodes_.begin(),
+                          grad_pending_nodes_.end(),
+                          node) == grad_pending_nodes_.end()) {
       grad_pending_nodes_.emplace_back(node);
     }
   }

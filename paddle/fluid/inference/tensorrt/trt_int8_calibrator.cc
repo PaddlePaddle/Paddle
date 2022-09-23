@@ -22,11 +22,13 @@ namespace inference {
 namespace tensorrt {
 
 // set the batch size before constructing the thread to execute engine
-int TRTInt8Calibrator::getBatchSize() const { return batch_size_; }
+int TRTInt8Calibrator::getBatchSize() const TRT_NOEXCEPT { return batch_size_; }
 
 TRTInt8Calibrator::TRTInt8Calibrator(
-    const std::unordered_map<std::string, size_t>& buffers, int batch_size,
-    std::string engine_name, const platform::Place place)
+    const std::unordered_map<std::string, size_t>& buffers,
+    int batch_size,
+    std::string engine_name,
+    const platform::Place place)
     : batch_size_(batch_size), engine_name_(engine_name) {
   int i = 0;
   VLOG(4) << "Init a new calibrator: " << engine_name_;
@@ -35,7 +37,7 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     std::string input_name = it.first;
     int data_size = it.second;
     int num_ele = data_size / sizeof(int16_t);
-    framework::DDim data_shape = framework::make_ddim({num_ele});
+    framework::DDim data_shape = phi::make_ddim({num_ele});
     temp_tensor.Resize(data_shape);
     data_tensors_.push_back(temp_tensor);
     data_buffers_[input_name] = std::pair<void*, size_t>(
@@ -82,10 +84,11 @@ bool TRTInt8Calibrator::setBatch(
     if (dataptr == data_buffers_.end()) {
       PADDLE_THROW(platform::errors::Fatal(
           "%s input name '%s' does not match with the buffer names.",
-          engine_name_, it.first));
+          engine_name_,
+          it.first));
     }
     const auto& d = dataptr->second;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpy(d.first, it.second, d.second, cudaMemcpyDeviceToDevice));
   }
 
@@ -94,8 +97,9 @@ bool TRTInt8Calibrator::setBatch(
   return true;
 }
 
-bool TRTInt8Calibrator::getBatch(void** bindings, const char** names,
-                                 int num_bindings) {
+bool TRTInt8Calibrator::getBatch(void** bindings,
+                                 const char** names,
+                                 int num_bindings) TRT_NOEXCEPT {
   VLOG(4) << "get batch: " << engine_name_;
   std::unique_lock<std::mutex> lk(mut_);
   // The consumer has just finished processing a data.
@@ -114,7 +118,8 @@ bool TRTInt8Calibrator::getBatch(void** bindings, const char** names,
       PADDLE_THROW(
           platform::errors::Fatal("Calibration engine asked for unknown tensor "
                                   "name '%s' at position %d.",
-                                  names[i], i));
+                                  names[i],
+                                  i));
     }
     bindings[i] = it->second.first;
   }
@@ -131,14 +136,15 @@ void TRTInt8Calibrator::setDone() {
   cond_.notify_all();
 }
 
-const void* TRTInt8Calibrator::readCalibrationCache(size_t& length) {
+const void* TRTInt8Calibrator::readCalibrationCache(size_t& length)
+    TRT_NOEXCEPT {
   if (calibration_table_.empty()) return nullptr;
   length = calibration_table_.size();
   return calibration_table_.data();
 }
 
 void TRTInt8Calibrator::writeCalibrationCache(const void* ptr,
-                                              std::size_t length) {
+                                              std::size_t length) TRT_NOEXCEPT {
   calibration_table_ = std::string((const char*)ptr, length);
   VLOG(4) << "Got calibration data for " << engine_name_ << " " << ptr
           << " length=" << length;

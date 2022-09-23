@@ -17,6 +17,7 @@ limitations under the License. */
 #include <stdint.h>
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -28,11 +29,13 @@ struct EigenDim {
   using Type = Eigen::DSizes<Eigen::DenseIndex, D>;
 
   static Type From(const DDim& dims) {
-    PADDLE_ENFORCE_EQ(arity(dims), D,
+    PADDLE_ENFORCE_EQ(arity(dims),
+                      D,
                       platform::errors::InvalidArgument(
                           "Input dimension size should be equal to %d, but "
                           "received dimension size is %d.",
-                          arity(dims), D));
+                          arity(dims),
+                          D));
     Type ret;
     for (int64_t d = 0; d < arity(dims); d++) {
       ret[d] = dims[d];
@@ -42,7 +45,9 @@ struct EigenDim {
 };
 
 // Interpret paddle::platform::Tensor as EigenTensor and EigenConstTensor.
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenTensor {
   // TODO(qijun) Now, default type in unaligned, and we will make a benchmark on
@@ -57,7 +62,7 @@ struct EigenTensor {
   }
 
   static Type From(Tensor& tensor) {  // NOLINT
-    return From(tensor, tensor.dims_);
+    return From(tensor, tensor.dims());
   }  // NOLINT
 
   static ConstType From(const Tensor& tensor, DDim dims) {
@@ -65,53 +70,60 @@ struct EigenTensor {
   }
 
   static ConstType From(const Tensor& tensor) {
-    return From(tensor, tensor.dims_);
+    return From(tensor, tensor.dims());
   }
 };
 
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
   static typename EigenMatrix::Type Reshape(Tensor& tensor,  // NOLINT
                                             int num_col_dims) {
-    int rank = tensor.dims_.size();
-    PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank), true,
+    int rank = tensor.dims().size();
+    PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input dimension number(num_col_dims) must be "
                           "between 0 and %d, but received number is %d.",
-                          rank, num_col_dims));
+                          rank,
+                          num_col_dims));
     return EigenMatrix::From(tensor,
-                             flatten_to_2d(tensor.dims(), num_col_dims));
+                             phi::flatten_to_2d(tensor.dims(), num_col_dims));
   }
 
   static typename EigenMatrix::ConstType Reshape(const Tensor& tensor,
                                                  int num_col_dims) {
-    int rank = tensor.dims_.size();
-    PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank), true,
+    int rank = tensor.dims().size();
+    PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input dimension number(num_col_dims) must be "
                           "between 0 and %d, but received number is %d.",
-                          rank, num_col_dims));
+                          rank,
+                          num_col_dims));
     return EigenMatrix::From(tensor,
-                             flatten_to_2d(tensor.dims(), num_col_dims));
+                             phi::flatten_to_2d(tensor.dims(), num_col_dims));
   }
 };
 
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
   // Flatten reshapes a Tensor into an EigenVector.
   static typename EigenVector::Type Flatten(Tensor& tensor) {  // NOLINT
-    return EigenVector::From(tensor, {product(tensor.dims_)});
+    return EigenVector::From(tensor, {product(tensor.dims())});
   }
 
   static typename EigenVector::ConstType Flatten(
       const Tensor& tensor) {  // NOLINT
-    return EigenVector::From(tensor, {product(tensor.dims_)});
+    return EigenVector::From(tensor, {product(tensor.dims())});
   }
 };
 
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenScalar {
   // Scalar tensor (implemented as a rank-0 tensor) of scalar type T.

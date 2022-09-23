@@ -14,80 +14,48 @@
 
 include(ExternalProject)
 
-# update eigen to the commit id 4da2c6b1 on 03/19/2020
+# update eigen to the commit id f612df27 on 03/16/2021
 set(EIGEN_PREFIX_DIR ${THIRD_PARTY_PATH}/eigen3)
 set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
 set(EIGEN_REPOSITORY https://gitlab.com/libeigen/eigen.git)
-set(EIGEN_TAG        4da2c6b1974827b1999bab652a3d4703e1992d26)
-
-cache_third_party(extern_eigen3
-    REPOSITORY    ${EIGEN_REPOSITORY}
-    TAG           ${EIGEN_TAG}
-    DIR           EIGEN_SOURCE_DIR)
+set(EIGEN_TAG f612df273689a19d25b45ca4f8269463207c4fee)
 
 if(WIN32)
-    add_definitions(-DEIGEN_STRONG_INLINE=inline)
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h native_src)
-    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/arch/CUDA/Half.h native_dst)
-    # For Windows
-    # which will cause a compilation error in Tensor:74:
-    # "can not open file 'unistd.h'"
-    # so use following patch to solve compilation error On Windows.
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Tensor native_src2)
-    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/unsupported/Eigen/CXX11/Tensor native_dst2)
-    # For VS2015
-    # which will cause a compilation error in TensorBlock.h:1028:
-    # "syntax error"
-    # so use following patch to solve compilation error On Windows.
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/TensorBlock.h native_src3)
-    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/TensorBlock.h native_dst3)
-    set(EIGEN_PATCH_COMMAND copy ${native_src} ${native_dst} /Y && copy ${native_src2} ${native_dst2} /Y && copy ${native_src3} ${native_dst3} /Y)
+  add_definitions(-DEIGEN_STRONG_INLINE=inline)
 elseif(LINUX)
-    # For gxx=4.8, __GXX_ABI_VERSION is less than 1004
-    # which will cause a compilation error in Geometry_SSE.h:38:
-    # "no matching function for call to 'pmul(Eigen::internal::Packet4f&, __m128)"
-    # refer to: https://gitlab.com/libeigen/eigen/-/blob/4da2c6b1974827b1999bab652a3d4703e1992d26/Eigen/src/Core/arch/SSE/PacketMath.h#L33-60
-    # add -fabi-version=4 could avoid above error, but will cause "double free corruption" when compile with gcc8
-    # so use following patch to solve compilation error with different version of gcc.
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Geometry_SSE.h native_src1)
-    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Geometry/arch/Geometry_SSE.h native_dst1)
-    # The compiler fully support const expressions since c++14,
-    # but Eigen use some const expressions such as std::max and std::min, which are not supported in c++11
-    # add patch to avoid compilation error in c++11
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/MathFunctions.h native_src2)
-    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/MathFunctions.h native_dst2)
-    if(WITH_ROCM)
-        # For HIPCC Eigen::internal::device::numeric_limits is not EIGEN_DEVICE_FUNC
-        # which will cause compiler error of using __host__ funciont in __host__ __device__
-        file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Meta.h native_src3)
-        file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/util/Meta.h native_dst3)
-        # For HIPCC Eigen::internal::scalar_sum_op<bool,bool> is not EIGEN_DEVICE_FUNC
-        # which will cause compiler error of using __host__ funciont in __host__ __device__
-        file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/BinaryFunctors.h native_src4)
-        file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/functors/BinaryFunctors.h native_dst4)
-        set(EIGEN_PATCH_COMMAND cp ${native_src1} ${native_dst1} && cp ${native_src2} ${native_dst2} && cp ${native_src3} ${native_dst3} && cp ${native_src4} ${native_dst4})
-    else()
-        set(EIGEN_PATCH_COMMAND cp ${native_src1} ${native_dst1} && cp ${native_src2} ${native_dst2})
-    endif()
+  if(WITH_ROCM)
+    # For HIPCC Eigen::internal::device::numeric_limits is not EIGEN_DEVICE_FUNC
+    # which will cause compiler error of using __host__ funciont
+    # in __host__ __device__
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Meta.h native_src)
+    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/util/Meta.h
+         native_dst)
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/TensorReductionGpu.h
+         native_src1)
+    file(
+      TO_NATIVE_PATH
+      ${EIGEN_SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h
+      native_dst1)
+    set(EIGEN_PATCH_COMMAND cp ${native_src} ${native_dst} && cp ${native_src1}
+                            ${native_dst1})
+  endif()
 endif()
 
 set(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR})
-INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIR})
+include_directories(${EIGEN_INCLUDE_DIR})
 
 ExternalProject_Add(
-    extern_eigen3
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    ${SHALLOW_CLONE}
-    "${EIGEN_DOWNLOAD_CMD}"
-    PREFIX          ${EIGEN_PREFIX_DIR}
-    SOURCE_DIR      ${EIGEN_SOURCE_DIR}
-    UPDATE_COMMAND    ""
-    PATCH_COMMAND   ${EIGEN_PATCH_COMMAND}
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND     ""
-    INSTALL_COMMAND   ""
-    TEST_COMMAND      ""
-)
+  extern_eigen3
+  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
+  GIT_REPOSITORY ${EIGEN_REPOSITORY}
+  GIT_TAG ${EIGEN_TAG}
+  PREFIX ${EIGEN_PREFIX_DIR}
+  UPDATE_COMMAND ""
+  PATCH_COMMAND ${EIGEN_PATCH_COMMAND}
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  INSTALL_COMMAND ""
+  TEST_COMMAND "")
 
 add_library(eigen3 INTERFACE)
 

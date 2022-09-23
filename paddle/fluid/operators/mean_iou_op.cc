@@ -22,14 +22,14 @@ class MeanIoUOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Predictions"), "Input", "Predictions",
-                   "MeanIoU");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Predictions"), "Input", "Predictions", "MeanIoU");
     OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "MeanIoU");
-    OP_INOUT_CHECK(ctx->HasOutput("OutMeanIou"), "Output", "OutMeanIou",
-                   "MeanIoU");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("OutMeanIou"), "Output", "OutMeanIou", "MeanIoU");
     OP_INOUT_CHECK(ctx->HasOutput("OutWrong"), "Output", "OutWrong", "MeanIoU");
-    OP_INOUT_CHECK(ctx->HasOutput("OutCorrect"), "Output", "OutCorrect",
-                   "MeanIoU");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("OutCorrect"), "Output", "OutCorrect", "MeanIoU");
 
     int64_t num_classes =
         static_cast<int64_t>(ctx->Attrs().Get<int>("num_classes"));
@@ -87,10 +87,10 @@ class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
 mean-IOU Operator.
 Mean Intersection-Over-Union is a common evaluation metric for
 semantic image segmentation, which first computes the IOU for each
-semantic class and then computes the average over classes. 
-IOU is defined as follows: 
+semantic class and then computes the average over classes.
+IOU is defined as follows:
     IOU = true_positive / (true_positive + false_positive + false_negative).
-It is based on pixel level area while "IOU Similarity Operator" 
+It is based on pixel level area while "IOU Similarity Operator"
 is based on area of rectangle.
 
 )DOC");
@@ -102,9 +102,12 @@ is based on area of rectangle.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    mean_iou, ops::MeanIoUOp, ops::MeanIoUOpMaker,
+    mean_iou,
+    ops::MeanIoUOp,
+    ops::MeanIoUOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(mean_iou, ops::MeanIoUKernel<int>,
+REGISTER_OP_CPU_KERNEL(mean_iou,
+                       ops::MeanIoUKernel<int>,
                        ops::MeanIoUKernel<int32_t>,
                        ops::MeanIoUKernel<int64_t>);

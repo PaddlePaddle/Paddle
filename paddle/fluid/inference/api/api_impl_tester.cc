@@ -18,6 +18,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
@@ -27,7 +28,8 @@ limitations under the License. */
 #define ACC_DIFF 1e-3
 #endif
 
-DEFINE_string(word2vec_dirname, "",
+DEFINE_string(word2vec_dirname,
+              "",
               "Directory of the word2vec inference model.");
 DEFINE_string(book_dirname, "", "Directory of the book inference model.");
 
@@ -36,20 +38,23 @@ namespace paddle {
 PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
   PaddleTensor pt;
 
-  if (t->type() == framework::proto::VarType::INT64) {
-    pt.data.Reset(t->data<void>(), t->numel() * sizeof(int64_t));
+  if (framework::TransToProtoVarType(t->dtype()) ==
+      framework::proto::VarType::INT64) {
+    pt.data.Reset(t->data(), t->numel() * sizeof(int64_t));
     pt.dtype = PaddleDType::INT64;
-  } else if (t->type() == framework::proto::VarType::FP32) {
-    pt.data.Reset(t->data<void>(), t->numel() * sizeof(float));
+  } else if (framework::TransToProtoVarType(t->dtype()) ==
+             framework::proto::VarType::FP32) {
+    pt.data.Reset(t->data(), t->numel() * sizeof(float));
     pt.dtype = PaddleDType::FLOAT32;
-  } else if (t->type() == framework::proto::VarType::INT32) {
-    pt.data.Reset(t->data<void>(), t->numel() * sizeof(int32_t));
+  } else if (framework::TransToProtoVarType(t->dtype()) ==
+             framework::proto::VarType::INT32) {
+    pt.data.Reset(t->data(), t->numel() * sizeof(int32_t));
     pt.dtype = PaddleDType::INT32;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported tensor date type. Now only supports INT64, FP32, INT32."));
   }
-  pt.shape = framework::vectorize<int>(t->dims());
+  pt.shape = phi::vectorize<int>(t->dims());
   return pt;
 }
 
@@ -67,6 +72,7 @@ void MainWord2Vec(const paddle::PaddlePlace& place) {
   auto predictor = CreatePaddlePredictor<NativeConfig>(config);
   config.use_gpu = paddle::gpu_place_used(place);
   config.use_xpu = paddle::xpu_place_used(place);
+  config.use_npu = paddle::npu_place_used(place);
 
   framework::LoDTensor first_word, second_word, third_word, fourth_word;
   framework::LoD lod{{0, 1}};
@@ -105,7 +111,7 @@ void MainWord2Vec(const paddle::PaddlePlace& place) {
 
   TestInference<platform::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
 
-  auto output1_tensor = BOOST_GET(paddle::framework::LoDTensor, output1);
+  auto output1_tensor = PADDLE_GET(paddle::framework::LoDTensor, output1);
   float* lod_data = output1_tensor.data<float>();
   for (int i = 0; i < output1_tensor.numel(); ++i) {
     EXPECT_LT(lod_data[i] - data[i], ACC_DIFF);
@@ -119,6 +125,7 @@ void MainImageClassification(const paddle::PaddlePlace& place) {
   NativeConfig config = GetConfig();
   config.use_gpu = paddle::gpu_place_used(place);
   config.use_xpu = paddle::xpu_place_used(place);
+  config.use_npu = paddle::npu_place_used(place);
   config.model_dir =
       FLAGS_book_dirname + "/image_classification_resnet.inference.model";
 
@@ -130,9 +137,9 @@ void MainImageClassification(const paddle::PaddlePlace& place) {
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
   feed_target_shapes[0][0] = batch_size;
-  framework::DDim input_dims = framework::make_ddim(feed_target_shapes[0]);
-  SetupTensor<float>(&input, input_dims, static_cast<float>(0),
-                     static_cast<float>(1));
+  framework::DDim input_dims = phi::make_ddim(feed_target_shapes[0]);
+  SetupTensor<float>(
+      &input, input_dims, static_cast<float>(0), static_cast<float>(1));
   std::vector<framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -153,7 +160,7 @@ void MainImageClassification(const paddle::PaddlePlace& place) {
   size_t len = outputs[0].data.length();
   float* data = static_cast<float*>(outputs[0].data.data());
   float* lod_data =
-      BOOST_GET(paddle::framework::LoDTensor, output1).data<float>();
+      PADDLE_GET(paddle::framework::LoDTensor, output1).data<float>();
   for (size_t j = 0; j < len / sizeof(float); ++j) {
     EXPECT_NEAR(lod_data[j], data[j], ACC_DIFF);
   }
@@ -163,6 +170,7 @@ void MainThreadsWord2Vec(const paddle::PaddlePlace& place) {
   NativeConfig config = GetConfig();
   config.use_gpu = paddle::gpu_place_used(place);
   config.use_xpu = paddle::xpu_place_used(place);
+  config.use_npu = paddle::npu_place_used(place);
   auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   // prepare inputs data and reference results
@@ -208,7 +216,7 @@ void MainThreadsWord2Vec(const paddle::PaddlePlace& place) {
       }
 
       // check outputs correctness
-      auto ref_tensor = BOOST_GET(paddle::framework::LoDTensor, refs[tid]);
+      auto ref_tensor = PADDLE_GET(paddle::framework::LoDTensor, refs[tid]);
       float* ref_data = ref_tensor.data<float>();
       EXPECT_EQ(ref_tensor.numel(), static_cast<int64_t>(len / sizeof(float)));
       for (int i = 0; i < ref_tensor.numel(); ++i) {
@@ -227,6 +235,7 @@ void MainThreadsImageClassification(const paddle::PaddlePlace& place) {
   NativeConfig config = GetConfig();
   config.use_gpu = paddle::gpu_place_used(place);
   config.use_xpu = paddle::xpu_place_used(place);
+  config.use_npu = paddle::npu_place_used(place);
   config.model_dir =
       FLAGS_book_dirname + "/image_classification_resnet.inference.model";
 
@@ -239,7 +248,7 @@ void MainThreadsImageClassification(const paddle::PaddlePlace& place) {
     std::vector<std::vector<int64_t>> feed_target_shapes =
         GetFeedTargetShapes(config.model_dir, /*is_combined*/ false);
     feed_target_shapes[0][0] = batch_size;
-    framework::DDim input_dims = framework::make_ddim(feed_target_shapes[0]);
+    framework::DDim input_dims = phi::make_ddim(feed_target_shapes[0]);
     SetupTensor<float>(&jobs[i], input_dims, 0.f, 1.f);
     paddle_tensor_feeds[i].push_back(LodTensorToPaddleTensor(&jobs[i]));
 
@@ -262,7 +271,7 @@ void MainThreadsImageClassification(const paddle::PaddlePlace& place) {
       ASSERT_EQ(local_outputs.size(), 1UL);
       const size_t len = local_outputs[0].data.length();
       float* data = static_cast<float*>(local_outputs[0].data.data());
-      auto ref_tensor = BOOST_GET(paddle::framework::LoDTensor, refs[tid]);
+      auto ref_tensor = PADDLE_GET(paddle::framework::LoDTensor, refs[tid]);
       float* ref_data = ref_tensor.data<float>();
       EXPECT_EQ((size_t)ref_tensor.numel(), len / sizeof(float));
       for (int i = 0; i < ref_tensor.numel(); ++i) {
@@ -295,6 +304,15 @@ TEST(inference_api_native, word2vec_xpu) {
 TEST(inference_api_native, image_classification_xpu) {
   MainImageClassification(paddle::PaddlePlace::kXPU);
 }
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+TEST(inference_api_native, word2vec_npu) {
+  MainWord2Vec(paddle::PaddlePlace::kNPU);
+}
+// TEST(inference_api_native, image_classification_npu) {
+//   MainImageClassification(paddle::PaddlePlace::kNPU);
+// }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

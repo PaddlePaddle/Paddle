@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/fc_fuse_pass.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void AddVarToScope(Scope* param_scope, const std::string& name,
+void AddVarToScope(Scope* param_scope,
+                   const std::string& name,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
   tensor->Resize(dims);
@@ -55,15 +56,15 @@ TEST(FCFusePass, basic) {
   auto* bias_0 = layers.data("conv2d_bias_0", {}, true);
   auto* conv2d_out = layers.conv2d(a, filters_0, bias_0, false);
   auto* relu_out_0 = layers.relu(conv2d_out);
-  auto* weights_0 = layers.data("weights_0", {}, true);
+  auto* weights_0 = layers.data("weights_0", {5, 4}, true);
   auto* mul_out_0 = layers.mul(relu_out_0, weights_0);
-  auto* bias_1 = layers.data("bias_1", {}, true);
-  auto* add_out_0 = layers.elementwise_add(mul_out_0, bias_1);
+  auto* bias_1 = layers.data("bias_1", {4}, true);
+  auto* add_out_0 = layers.elementwise_add(mul_out_0, bias_1, nullptr, 1);
   auto* relu_out_1 = layers.relu(add_out_0);
-  auto* weights_1 = layers.data("weights_1", {}, true);
+  auto* weights_1 = layers.data("weights_1", {8, 9}, true);
   auto* mul_out_1 = layers.mul(relu_out_1, weights_1);
-  auto* bias_2 = layers.data("bias_2", {}, true);
-  auto* add_out_1 = layers.elementwise_add(mul_out_1, bias_2);
+  auto* bias_2 = layers.data("bias_2", {1, 9}, true);
+  auto* add_out_1 = layers.elementwise_add(mul_out_1, bias_2, nullptr, 1);
   VLOG(4) << add_out_1;
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
@@ -79,17 +80,22 @@ TEST(FCFusePass, basic) {
   int num_fc_nodes_after = GetNumOpNodes(graph, "fc");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 6,
+  PADDLE_ENFORCE_EQ(num_nodes_before,
+                    num_nodes_after + 6,
                     platform::errors::InvalidArgument(
                         "num_nodes_before=%d, num_nodes_after=%d.",
-                        num_nodes_before, num_nodes_after));
-  PADDLE_ENFORCE_EQ(num_fc_nodes_after, 2,
+                        num_nodes_before,
+                        num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_fc_nodes_after,
+                    2,
                     platform::errors::InvalidArgument("num_fc_nodes_after=%d.",
                                                       num_fc_nodes_after));
-  PADDLE_ENFORCE_EQ(num_mul_nodes_before, num_fc_nodes_after,
+  PADDLE_ENFORCE_EQ(num_mul_nodes_before,
+                    num_fc_nodes_after,
                     platform::errors::InvalidArgument(
                         "num_mul_nodes_before=%d, num_fc_nodes_after=%d.",
-                        num_mul_nodes_before, num_fc_nodes_after));
+                        num_mul_nodes_before,
+                        num_fc_nodes_after));
 }
 
 }  // namespace ir

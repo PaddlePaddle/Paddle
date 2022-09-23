@@ -31,12 +31,17 @@ class Graph;
 
 class RepeatedFCReluFusePass : public FusePassBase {
  public:
-  virtual ~RepeatedFCReluFusePass() {}
+  RepeatedFCReluFusePass();
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
   const std::string name_scope_{"repeated_fc_relu_fuse"};
+
+ private:
+  int BuildFusion(Graph* graph,
+                  const std::string& name_scope,
+                  int num_fc) const;
 };
 
 }  // namespace ir

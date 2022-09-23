@@ -14,17 +14,19 @@
 
 from __future__ import print_function
 
-import numpy
+import numpy as np
 import random
 import collections
+import paddle
 import paddle.fluid as fluid
 import unittest
 from decorator_helper import *
 
 
 class Memory(object):
+
     def __init__(self, shape, dtype='float32'):
-        self.ex = numpy.zeros(shape=shape, dtype=dtype)
+        self.ex = np.zeros(shape=shape, dtype=dtype)
         self.cur = None
 
     def update(self, val):
@@ -40,11 +42,12 @@ class Memory(object):
         self.next()
 
     def reset(self):
-        self.ex = numpy.zeros(shape=self.ex.shape, dtype=self.ex.dtype)
+        self.ex = np.zeros(shape=self.ex.shape, dtype=self.ex.dtype)
         self.cur = None
 
 
 class Output(object):
+
     def __init__(self):
         self.outs = []
 
@@ -59,6 +62,7 @@ class Output(object):
 
 
 class BaseRNN(object):
+
     def __init__(self, ins, mems, params, outs, num_seq=5, max_seq_len=15):
         self.num_seq = num_seq
         self.inputs = collections.defaultdict(list)
@@ -70,7 +74,7 @@ class BaseRNN(object):
                 idtype = ins[iname].get('dtype', 'float32')
                 lst = []
                 for _ in range(seq_len):
-                    lst.append(numpy.random.random(size=ishape).astype(idtype))
+                    lst.append(np.random.random(size=ishape).astype(idtype))
                 self.inputs[iname].append(lst)
 
         self.mems = dict()
@@ -83,7 +87,7 @@ class BaseRNN(object):
         for pname in params:
             pshape = params[pname].get('shape', None)
             pdtype = params[pname].get('dtype', 'float32')
-            self.params[pname] = numpy.random.random(size=pshape).astype(pdtype)
+            self.params[pname] = np.random.random(size=pshape).astype(pdtype)
 
         self.outputs = dict()
 
@@ -131,7 +135,7 @@ class BaseRNN(object):
                 retv[out].append(self.outputs[out].last())
 
         for out in retv:
-            retv[out] = numpy.array(retv[out])
+            retv[out] = np.array(retv[out])
         return retv
 
     def to_feed(self, place):
@@ -146,7 +150,7 @@ class BaseRNN(object):
                 np_flatten.extend(self.inputs[iname][seq_id])
 
             t = fluid.Tensor()
-            t.set(numpy.array(np_flatten), place)
+            t.set(np.array(np_flatten), place)
             t.set_recursive_sequence_lengths([lod])
             feed_dict[iname] = t
 
@@ -159,7 +163,7 @@ class BaseRNN(object):
         if len(p.shape) != 2:
             raise ValueError("Not support get numeric gradient of an parameter,"
                              " which is not matrix")
-        g = numpy.zeros(shape=p.shape, dtype=p.dtype)
+        g = np.zeros(shape=p.shape, dtype=p.dtype)
 
         for i in range(p.shape[0]):
             for j in range(p.shape[1]):
@@ -182,7 +186,7 @@ class BaseRNN(object):
         for seq in ipt:
             seq_grad = []
             for item in seq:
-                item_grad = numpy.zeros(shape=item.shape, dtype=item.dtype)
+                item_grad = np.zeros(shape=item.shape, dtype=item.dtype)
                 if len(item.shape) != 1:
                     raise ValueError("Not support")
 
@@ -201,29 +205,30 @@ class BaseRNN(object):
             return grad
 
         for i in range(len(grad)):
-            grad[i] = numpy.concatenate(grad[i])
-        grad = numpy.concatenate(grad)
+            grad[i] = np.concatenate(grad[i])
+        grad = np.concatenate(grad)
         return grad
 
     def _exe_mean_out_(self):
         outs = self.exe()
-        return numpy.array([o.mean() for o in outs.values()]).mean()
+        return np.array([o.mean() for o in outs.values()]).mean()
 
 
 class SeedFixedTestCase(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         """Fix random seeds to remove randomness from tests"""
-        cls._np_rand_state = numpy.random.get_state()
+        cls._np_rand_state = np.random.get_state()
         cls._py_rand_state = random.getstate()
 
-        numpy.random.seed(123)
+        np.random.seed(123)
         random.seed(124)
 
     @classmethod
     def tearDownClass(cls):
         """Restore random seeds"""
-        numpy.random.set_state(cls._np_rand_state)
+        np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
 
@@ -235,28 +240,29 @@ class TestSimpleMul(SeedFixedTestCase):
     OUT_NAME = 'Out'
 
     class SimpleMul(BaseRNN):
+
         def __init__(self):
             base = TestSimpleMul
-            super(base.SimpleMul, self).__init__({
-                base.DATA_NAME: {
-                    'shape': [base.DATA_WIDTH]
-                }
-            }, {}, {
-                base.PARAM_NAME: {
-                    'shape': [base.DATA_WIDTH, base.HIDDEN_WIDTH]
-                }
-            }, [base.OUT_NAME])
+            super(base.SimpleMul,
+                  self).__init__({base.DATA_NAME: {
+                      'shape': [base.DATA_WIDTH]
+                  }}, {}, {
+                      base.PARAM_NAME: {
+                          'shape': [base.DATA_WIDTH, base.HIDDEN_WIDTH]
+                      }
+                  }, [base.OUT_NAME])
 
         def step(self, X, W, Out):
-            Out.out(numpy.matmul(X, W))
+            Out.out(np.matmul(X, W))
 
     # Test many times in local to ensure the random seed cannot breaks CI
     # @many_times(10)
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMul.SimpleMul()
-        dat = fluid.layers.data(
-            name=self.DATA_NAME, shape=[self.DATA_WIDTH], lod_level=1)
+        dat = fluid.layers.data(name=self.DATA_NAME,
+                                shape=[self.DATA_WIDTH],
+                                lod_level=1)
         dat.stop_gradient = False
 
         rnn = fluid.layers.DynamicRNN()
@@ -271,27 +277,28 @@ class TestSimpleMul(SeedFixedTestCase):
 
         out = rnn()
         out = fluid.layers.sequence_pool(out, pool_type='last')
-        loss = fluid.layers.mean(out)
+        loss = paddle.mean(out)
         fluid.backward.append_backward(loss)
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         out, w_g, i_g = list(
-            map(numpy.array,
+            map(
+                np.array,
                 exe.run(feed=py_rnn.to_feed(cpu),
                         fetch_list=[
-                            out, self.PARAM_NAME + "@GRAD", self.DATA_NAME +
-                            "@GRAD"
+                            out, self.PARAM_NAME + "@GRAD",
+                            self.DATA_NAME + "@GRAD"
                         ],
                         return_numpy=False)))
         out_by_python = py_rnn.exe()[self.OUT_NAME]
-        self.assertTrue(numpy.allclose(out, out_by_python))
+        np.testing.assert_allclose(out, out_by_python, rtol=1e-05)
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
-        self.assertTrue(numpy.allclose(w_g_num, w_g, rtol=0.05))
+        np.testing.assert_allclose(w_g_num, w_g, rtol=0.05)
         i_g_num = py_rnn.get_numeric_gradient_of_input(
             input_name=self.DATA_NAME)
         i_g_num = i_g_num.reshape(i_g.shape)
-        self.assertTrue(numpy.allclose(i_g_num, i_g, rtol=0.05))
+        np.testing.assert_allclose(i_g_num, i_g, rtol=0.05)
 
 
 class TestSimpleMulWithMemory(SeedFixedTestCase):
@@ -301,24 +308,26 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
     PARAM_NAME = 'W'
 
     class SimpleMulWithMemory(BaseRNN):
+
         def __init__(self):
-            super(TestSimpleMulWithMemory.SimpleMulWithMemory, self).__init__({
-                TestSimpleMulWithMemory.DATA_NAME: {
-                    'shape': [TestSimpleMulWithMemory.DATA_WIDTH]
-                }
-            }, {'Mem': {
-                'shape': [TestSimpleMulWithMemory.HIDDEN_WIDTH]
-            }}, {
-                TestSimpleMulWithMemory.PARAM_NAME: {
-                    'shape': [
-                        TestSimpleMulWithMemory.DATA_WIDTH,
-                        TestSimpleMulWithMemory.HIDDEN_WIDTH
-                    ]
-                }
-            }, ['Out'])
+            super(TestSimpleMulWithMemory.SimpleMulWithMemory, self).__init__(
+                {
+                    TestSimpleMulWithMemory.DATA_NAME: {
+                        'shape': [TestSimpleMulWithMemory.DATA_WIDTH]
+                    }
+                }, {'Mem': {
+                    'shape': [TestSimpleMulWithMemory.HIDDEN_WIDTH]
+                }}, {
+                    TestSimpleMulWithMemory.PARAM_NAME: {
+                        'shape': [
+                            TestSimpleMulWithMemory.DATA_WIDTH,
+                            TestSimpleMulWithMemory.HIDDEN_WIDTH
+                        ]
+                    }
+                }, ['Out'])
 
         def step(self, X, Mem, W, Out):
-            o = numpy.matmul(X, W)
+            o = np.matmul(X, W)
             assert isinstance(Mem, Memory)
             o += Mem.ex
             Mem.update(o)
@@ -330,8 +339,9 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMulWithMemory.SimpleMulWithMemory()
-        data = fluid.layers.data(
-            name=self.DATA_NAME, shape=[self.DATA_WIDTH], lod_level=1)
+        data = fluid.layers.data(name=self.DATA_NAME,
+                                 shape=[self.DATA_WIDTH],
+                                 lod_level=1)
         data.stop_gradient = False
         rnn = fluid.layers.DynamicRNN()
         with rnn.block():
@@ -348,31 +358,32 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
 
         out = rnn()
         last = fluid.layers.sequence_pool(input=out, pool_type='last')
-        loss = fluid.layers.mean(last)
+        loss = paddle.mean(last)
         fluid.backward.append_backward(loss)
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         feed = py_rnn.to_feed(cpu)
         last_np, w_g, i_g = list(
-            map(numpy.array,
+            map(
+                np.array,
                 exe.run(feed=feed,
                         fetch_list=[
-                            last, self.PARAM_NAME + "@GRAD", self.DATA_NAME +
-                            "@GRAD"
+                            last, self.PARAM_NAME + "@GRAD",
+                            self.DATA_NAME + "@GRAD"
                         ],
                         return_numpy=False)))
         last_by_py, = list(py_rnn.exe().values())
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
-        self.assertTrue(numpy.allclose(last_np, last_by_py))
+        np.testing.assert_allclose(last_np, last_by_py, rtol=1e-05)
 
-        self.assertTrue(numpy.allclose(w_g_num, w_g, rtol=0.1))
+        np.testing.assert_allclose(w_g_num, w_g, rtol=0.1)
         i_g_num = py_rnn.get_numeric_gradient_of_input(self.DATA_NAME)
         i_g_num = i_g_num.reshape(i_g.shape)
 
         # Since this RNN has many float add. The number could be not stable.
         # rtol = 0.1
-        self.assertTrue(numpy.allclose(i_g_num, i_g, rtol=0.1))
+        np.testing.assert_allclose(i_g_num, i_g, rtol=0.1)
 
 
 if __name__ == '__main__':

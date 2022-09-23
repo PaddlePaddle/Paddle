@@ -19,8 +19,8 @@ import numpy as np
 from paddle.utils.cpp_extension import load, get_build_directory
 from utils import paddle_includes, extra_cc_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-
-# Because Windows don't use docker, the shared lib already exists in the 
+from paddle.fluid.framework import _test_eager_guard
+# Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\dispatch_op\\dispatch_op.pyd'.format(get_build_directory())
 if os.name == 'nt' and os.path.isfile(file):
@@ -36,24 +36,36 @@ dispatch_op = load(
 
 
 class TestJitDispatch(unittest.TestCase):
+
     def setUp(self):
         paddle.set_device('cpu')
 
-    def run_dispatch_test(self, func, dtype):
+    def run_dispatch_test_impl(self, func, dtype):
         np_x = np.ones([2, 2]).astype(dtype)
         x = paddle.to_tensor(np_x)
         out = func(x)
         np_x = x.numpy()
         np_out = out.numpy()
         self.assertTrue(dtype in str(np_out.dtype))
-        self.assertTrue(
-            np.array_equal(np_x, np_out),
-            "custom op x: {},\n custom op out: {}".format(np_x, np_out))
+        np.testing.assert_array_equal(
+            np_x,
+            np_out,
+            err_msg='custom op x: {},\n custom op out: {}'.format(np_x, np_out))
+
+    def run_dispatch_test(self, func, dtype):
+        with _test_eager_guard():
+            self.run_dispatch_test_impl(func, dtype)
+        self.run_dispatch_test_impl(func, dtype)
 
     def test_dispatch_integer(self):
         dtypes = ["int32", "int64", "int8", "uint8", "int16"]
         for dtype in dtypes:
             self.run_dispatch_test(dispatch_op.dispatch_test_integer, dtype)
+
+    def test_dispatch_complex(self):
+        dtypes = ["complex64", "complex128"]
+        for dtype in dtypes:
+            self.run_dispatch_test(dispatch_op.dispatch_test_complex, dtype)
 
     def test_dispatch_float_and_integer(self):
         dtypes = [
@@ -61,6 +73,27 @@ class TestJitDispatch(unittest.TestCase):
         ]
         for dtype in dtypes:
             self.run_dispatch_test(dispatch_op.dispatch_test_float_and_integer,
+                                   dtype)
+
+    def test_dispatch_float_and_complex(self):
+        dtypes = ["float32", "float64", "complex64", "complex128"]
+        for dtype in dtypes:
+            self.run_dispatch_test(dispatch_op.dispatch_test_float_and_complex,
+                                   dtype)
+
+    def test_dispatch_float_and_integer_and_complex(self):
+        dtypes = [
+            "float32", "float64", "int32", "int64", "int8", "uint8", "int16",
+            "complex64", "complex128"
+        ]
+        for dtype in dtypes:
+            self.run_dispatch_test(
+                dispatch_op.dispatch_test_float_and_integer_and_complex, dtype)
+
+    def test_dispatch_float_and_half(self):
+        dtypes = ["float32", "float64", "float16"]
+        for dtype in dtypes:
+            self.run_dispatch_test(dispatch_op.dispatch_test_float_and_half,
                                    dtype)
 
 

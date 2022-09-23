@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/distributed_ops/allreduce_op.h"
+#include "paddle/fluid/operators/collective/allreduce_op.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    allreduce, ops::AllReduceOpKernel<plat::CUDADeviceContext, float>,
-    ops::AllReduceOpKernel<plat::CUDADeviceContext, double>,
-    ops::AllReduceOpKernel<plat::CUDADeviceContext, int>,
-    ops::AllReduceOpKernel<plat::CUDADeviceContext, int64_t>,
-    ops::AllReduceOpKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(allreduce,
+                        ops::AllReduceOpKernel<phi::GPUContext, float>,
+                        ops::AllReduceOpKernel<phi::GPUContext, double>,
+                        ops::AllReduceOpKernel<phi::GPUContext, int>,
+                        ops::AllReduceOpKernel<phi::GPUContext, int64_t>,
+                        ops::AllReduceOpKernel<phi::GPUContext, plat::float16>);

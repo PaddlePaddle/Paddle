@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/benchmark/op_tester.h"
+
 #include <fstream>
+
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -23,6 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/pybind/pybind.h"
+
+// phi
+#include "paddle/phi/kernels/declarations.h"
 
 namespace paddle {
 namespace operators {
@@ -142,7 +147,8 @@ OpTester::GetOpProtoAttrNames() {
       framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
       framework::OpProtoAndCheckerMaker::OpRoleVarAttrName(),
       framework::OpProtoAndCheckerMaker::OpNamescopeAttrName(),
-      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName()};
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName(),
+      framework::OpProtoAndCheckerMaker::OpWithQuantAttrName()};
   for (int i = 0; i != proto.attrs_size(); ++i) {
     const auto &attr = proto.attrs(i);
     if (!Has(skipped_attrs, attr.name())) {
@@ -173,9 +179,11 @@ void OpTester::CreateInputVarDesc() {
   for (auto &name : input_names) {
     const OpInputConfig *input = config_.GetInput(name);
     PADDLE_ENFORCE_NOT_NULL(
-        input, platform::errors::NotFound(
-                   "The input %s of operator %s is not correctlly provided.",
-                   name, config_.op_type));
+        input,
+        platform::errors::NotFound(
+            "The input %s of operator %s is not correctlly provided.",
+            name,
+            config_.op_type));
 
     std::string var_name = config_.op_type + "." + name;
     framework::VarDesc *var = Var(var_name);
@@ -211,9 +219,10 @@ void OpTester::CreateOpDesc() {
   for (auto item : config_.attrs) {
     const std::string &name = item.first;
     PADDLE_ENFORCE_NE(
-        attr_types.find(name), attr_types.end(),
-        platform::errors::NotFound("Operator %s does not have attribute %d.",
-                                   type_, name));
+        attr_types.find(name),
+        attr_types.end(),
+        platform::errors::NotFound(
+            "Operator %s does not have attribute %d.", type_, name));
 
     const std::string &value_str = item.second;
     const framework::proto::AttrType &type = attr_types[name];
@@ -262,21 +271,23 @@ framework::VarDesc *OpTester::Var(const std::string &name) {
 
 template <typename T>
 void OpTester::SetupTensor(framework::LoDTensor *tensor,
-                           const std::vector<int64_t> &shape, T lower, T upper,
+                           const std::vector<int64_t> &shape,
+                           T lower,
+                           T upper,
                            const std::string &initializer,
                            const std::string &filename) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
 
-  T *ptr = tensor->mutable_data<T>(framework::make_ddim(shape), place_);
+  T *ptr = tensor->mutable_data<T>(phi::make_ddim(shape), place_);
 
   framework::LoDTensor cpu_tensor;
   T *cpu_ptr = nullptr;
 
   if (!platform::is_cpu_place(place_)) {
-    cpu_ptr = cpu_tensor.mutable_data<T>(framework::make_ddim(shape),
-                                         platform::CPUPlace());
+    cpu_ptr =
+        cpu_tensor.mutable_data<T>(phi::make_ddim(shape), platform::CPUPlace());
   } else {
     cpu_ptr = ptr;
   }
@@ -307,7 +318,7 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
   }
 
   if (!platform::is_cpu_place(place_)) {
-    TensorCopySync(cpu_tensor, place_, tensor);
+    paddle::framework::TensorCopySync(cpu_tensor, place_, tensor);
   }
 }
 
@@ -341,18 +352,24 @@ void OpTester::CreateVariables(framework::Scope *scope) {
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     const auto &data_type = var_desc->GetDataType();
     if (data_type == framework::proto::VarType::INT32) {
-      SetupTensor<int>(tensor, shape, 0, 1, item.second.initializer,
-                       item.second.filename);
+      SetupTensor<int>(
+          tensor, shape, 0, 1, item.second.initializer, item.second.filename);
     } else if (data_type == framework::proto::VarType::INT64) {
-      SetupTensor<int64_t>(tensor, shape, 0, 1, item.second.initializer,
-                           item.second.filename);
+      SetupTensor<int64_t>(
+          tensor, shape, 0, 1, item.second.initializer, item.second.filename);
     } else if (data_type == framework::proto::VarType::FP32) {
-      SetupTensor<float>(tensor, shape, static_cast<float>(0.0),
-                         static_cast<float>(1.0), item.second.initializer,
+      SetupTensor<float>(tensor,
+                         shape,
+                         static_cast<float>(0.0),
+                         static_cast<float>(1.0),
+                         item.second.initializer,
                          item.second.filename);
     } else if (data_type == framework::proto::VarType::FP64) {
-      SetupTensor<double>(tensor, shape, static_cast<double>(0.0),
-                          static_cast<double>(1.0), item.second.initializer,
+      SetupTensor<double>(tensor,
+                          shape,
+                          static_cast<double>(0.0),
+                          static_cast<double>(1.0),
+                          item.second.initializer,
                           item.second.filename);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -432,19 +449,20 @@ std::string OpTester::DebugString() {
     switch (attr_type) {
       case framework::proto::AttrType::BOOLEAN: {
         ss << GenSpaces(count) << "type: BOOLEAN\n";
-        ss << GenSpaces(count) << "b: " << BOOST_GET_CONST(bool, attr) << "\n";
+        ss << GenSpaces(count) << "b: " << PADDLE_GET_CONST(bool, attr) << "\n";
       } break;
       case framework::proto::AttrType::INT: {
         ss << GenSpaces(count) << "type: INT\n";
-        ss << GenSpaces(count) << "i: " << BOOST_GET_CONST(int, attr) << "\n";
+        ss << GenSpaces(count) << "i: " << PADDLE_GET_CONST(int, attr) << "\n";
       } break;
       case framework::proto::AttrType::FLOAT: {
         ss << GenSpaces(count) << "type: FLOAT\n";
-        ss << GenSpaces(count) << "f: " << BOOST_GET_CONST(float, attr) << "\n";
+        ss << GenSpaces(count) << "f: " << PADDLE_GET_CONST(float, attr)
+           << "\n";
       } break;
       case framework::proto::AttrType::STRING: {
         ss << GenSpaces(count) << "type: STRING\n";
-        ss << GenSpaces(count) << "s: \"" << BOOST_GET_CONST(std::string, attr)
+        ss << GenSpaces(count) << "s: \"" << PADDLE_GET_CONST(std::string, attr)
            << "\"\n";
       } break;
       case framework::proto::AttrType::BOOLEANS: {
@@ -469,7 +487,7 @@ std::string OpTester::DebugString() {
       } break;
       case framework::proto::AttrType::LONG: {
         ss << GenSpaces(count) << "type: LONG\n";
-        ss << GenSpaces(count) << "l: " << BOOST_GET_CONST(int64_t, attr)
+        ss << GenSpaces(count) << "l: " << PADDLE_GET_CONST(int64_t, attr)
            << "\n";
       } break;
       case framework::proto::AttrType::LONGS: {
@@ -491,7 +509,8 @@ TEST(op_tester, base) {
   if (!FLAGS_op_config_list.empty()) {
     std::ifstream fin(FLAGS_op_config_list, std::ios::in | std::ios::binary);
     PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fin), true,
+        static_cast<bool>(fin),
+        true,
         platform::errors::InvalidArgument("OpTester cannot open file %s",
                                           FLAGS_op_config_list.c_str()));
     std::vector<OpTesterConfig> op_configs;

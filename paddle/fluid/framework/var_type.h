@@ -13,12 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/variable.h"
 
@@ -58,7 +57,7 @@ inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
       visitor(var.Get<LoDTensorArray>());
       return;
     case proto::VarType::SELECTED_ROWS:
-      visitor(var.Get<SelectedRows>());
+      visitor(var.Get<phi::SelectedRows>());
       return;
     case proto::VarType::READER:
       visitor(var.Get<ReaderHolder>());

@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 import math
 import functools
-from op_test import OpTest
-from test_lstm_op import ACTIVATION
+from op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
 from paddle import fluid
 from paddle.fluid import Program, program_guard
 
@@ -35,6 +35,7 @@ def gru(
         act_gate,
         dtype='float32',
         origin_mode=False):
+
     def _seq_to_batch(lod, is_reverse):
         idx_in_seq_list = []
         seq_lens = lod[0]
@@ -50,8 +51,8 @@ def gru(
             for i in range(len(seq_lens)):
                 if seq_lens[sorted_seqs[i]] <= batch_idx:
                     break
-                idx = (seq_starts[sorted_seqs[i] + 1] - 1 - batch_idx
-                       ) if is_reverse else (
+                idx = (seq_starts[sorted_seqs[i] + 1] - 1 -
+                       batch_idx) if is_reverse else (
                            seq_starts[sorted_seqs[i]] + batch_idx)
                 idx_in_seq.append(idx)
             idx_in_seq_list.append(idx_in_seq)
@@ -103,8 +104,12 @@ def gru(
 
 
 class TestGRUOp(OpTest):
+
     def set_confs(self):
         pass
+
+    def set_is_test(self):
+        self.is_test = False
 
     def setUp(self):
         self.op_type = "gru"
@@ -118,16 +123,17 @@ class TestGRUOp(OpTest):
         self.dtype = 'float64'
         self.origin_mode = False
         self.set_confs()
+        self.set_is_test()
 
         T = sum(self.lod[0])
         N = len(self.lod[0])
         input = np.random.rand(T, 3 * self.D).astype(self.dtype)
         weight = np.random.rand(self.D, 3 * self.D).astype(self.dtype)
-        bias = np.random.rand(
-            1, 3 * self.D).astype(self.dtype) if self.with_bias else np.zeros(
+        bias = np.random.rand(1, 3 * self.D).astype(
+            self.dtype) if self.with_bias else np.zeros(
                 (1, 3 * self.D), dtype=self.dtype)
-        h0 = np.random.rand(
-            N, self.D).astype(self.dtype) if self.with_h0 else np.zeros(
+        h0 = np.random.rand(N, self.D).astype(
+            self.dtype) if self.with_h0 else np.zeros(
                 (N, self.D), dtype=self.dtype)
 
         batch_gate, batch_reset_hidden_prev, batch_hidden, hidden = gru(
@@ -153,40 +159,46 @@ class TestGRUOp(OpTest):
             'activation': self.act_state,
             'gate_activation': self.act_gate,
             'is_reverse': self.is_reverse,
-            'origin_mode': self.origin_mode
+            'origin_mode': self.origin_mode,
+            'is_test': self.is_test
         }
 
     def test_check_output(self):
         self.check_output(atol=1e-8, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Input', 'H0', 'Weight', 'Bias'], ['Hidden'], check_dygraph=False)
+        self.check_grad(['Input', 'H0', 'Weight', 'Bias'], ['Hidden'],
+                        check_dygraph=False)
 
 
 class TestGRUOriginMode(TestGRUOp):
+
     def set_confs(self):
         self.origin_mode = True
 
 
 class TestGRUOp2(TestGRUOp):
+
     def set_confs(self):
         self.dtype = 'float64'
 
 
 class TestGRUOp2Len0(TestGRUOp):
+
     def set_confs(self):
         self.lod = [[2, 0, 4]]
         self.dtype = 'float64'
 
 
 class TestGRUOp2OriginMode(TestGRUOp):
+
     def set_confs(self):
         self.dtype = 'float64'
         self.origin_mode = True
 
 
 class TestGRUOp2OriginModeLen0(TestGRUOp):
+
     def set_confs(self):
         self.lod = [[0, 3, 4]]
         self.dtype = 'float64'
@@ -194,6 +206,7 @@ class TestGRUOp2OriginModeLen0(TestGRUOp):
 
 
 class TestGRUOp2OriginModeLastLen0(TestGRUOp):
+
     def set_confs(self):
         self.lod = [[0, 3, 0]]
         self.dtype = 'float64'
@@ -201,35 +214,56 @@ class TestGRUOp2OriginModeLastLen0(TestGRUOp):
 
 
 class TestGRUOpNoInitial(TestGRUOp):
+
     def set_confs(self):
         self.with_h0 = False
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Input', 'Weight', 'Bias'], ['Hidden'], check_dygraph=False)
+        self.check_grad(['Input', 'Weight', 'Bias'], ['Hidden'],
+                        check_dygraph=False)
 
 
 class TestGRUOpNoBias(TestGRUOp):
+
     def set_confs(self):
         self.with_bias = False
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Input', 'H0', 'Weight'], ['Hidden'], check_dygraph=False)
+        self.check_grad(['Input', 'H0', 'Weight'], ['Hidden'],
+                        check_dygraph=False)
 
 
 class TestGRUOpReverse(TestGRUOp):
+
     def set_confs(self):
         self.is_reverse = True
 
 
 class TestGRUOpReverseOriginMode(TestGRUOp):
+
     def set_confs(self):
         self.is_reverse = True
         self.origin_mode = True
 
 
+class TestGRUOpInference(TestGRUOp):
+
+    def set_is_test(self):
+        self.is_test = True
+
+    def test_check_output(self):
+        new_outputs = {}
+        new_outputs['Hidden'] = self.outputs['Hidden']
+        self.outputs = new_outputs
+        super(TestGRUOpInference, self).test_check_output()
+
+    # avoid checking gradient
+    def test_check_grad(self):
+        pass
+
+
 class TestGruOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 
@@ -240,8 +274,9 @@ class TestGruOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable)
 
             def test_h_0():
-                in_data = fluid.data(
-                    name="input", shape=[None, 1536], dtype="float32")
+                in_data = fluid.data(name="input",
+                                     shape=[None, 1536],
+                                     dtype="float32")
                 h = fluid.data(name="h", shape=[None, 512], dtype="int32")
                 fluid.layers.dynamic_gru(input=in_data, size=512, h_0=h)
 

@@ -21,6 +21,7 @@ import paddle.version as fluid_version
 
 
 class VersionTest(unittest.TestCase):
+
     def setUp(self):
         self._major_regex = "[0-9]+"
         self._minor_regex = "[0-9]+"

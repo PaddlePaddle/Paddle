@@ -9,10 +9,12 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/kldiv_loss_op.h"
 #include <memory>
 #include <string>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,44 +24,6 @@ using framework::Tensor;
 class KLDivLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "KLDivLoss");
-    OP_INOUT_CHECK(ctx->HasInput("Target"), "Input", "Target", "KLDivLoss");
-    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "KLDivLoss");
-
-    auto dim_x = ctx->GetInputDim("X");
-    auto dim_target = ctx->GetInputDim("Target");
-    PADDLE_ENFORCE_EQ(dim_x.size(), dim_target.size(),
-                      platform::errors::InvalidArgument(
-                          "Input(X) rank and Input(Target) rank should be "
-                          "same, but received X rank(%d) != Target rank(%d)",
-                          dim_x.size(), dim_target.size()));
-    for (int i = 0; i < dim_x.size(); i++) {
-      if (ctx->IsRuntime() || (dim_x[i] > 0 && dim_target[i] > 0)) {
-        PADDLE_ENFORCE_EQ(
-            dim_x[i], dim_target[i],
-            platform::errors::InvalidArgument(
-                "Input(X) and Input(Target) should in same shape. but received "
-                "X dimension[%d](%d) != Target dimension[%d](%d)",
-                i, dim_x[i], i, dim_target[i]));
-      }
-    }
-
-    auto reduction = ctx->Attrs().Get<std::string>("reduction");
-
-    auto reduction_valid = "mean" == reduction || "sum" == reduction ||
-                           "batchmean" == reduction || "none" == reduction;
-    PADDLE_ENFORCE_EQ(
-        reduction_valid, true,
-        platform::errors::InvalidArgument(
-            "Attr(reduction) can only be 'none'|'batchmean'|'sum'|'mean'."));
-
-    if ("none" == reduction) {
-      ctx->SetOutputDim("Loss", dim_x);
-    } else {
-      ctx->SetOutputDim("Loss", {1});
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -108,19 +72,19 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
          While :math:`x` is Input(X) and :math:`y` is Input(Target).
 
          While :attr:`reduction` is :attr:`none`, output loss is in
-         the same shape as Input(X), loss in each point is calculated 
+         the same shape as Input(X), loss in each point is calculated
          seperately and no reduction is applied.
-         
+
          While :attr:`reduction` is :attr:`mean`, output loss is in
          shape of [1] and loss value is the mean value of all losses.
-         
+
          While :attr:`reduction` is :attr:`sum`, output loss is in
          shape of [1] and loss value is the sum value of all losses.
-         
-         While :attr:`reduction` is :attr:`batchmean`, output loss is 
+
+         While :attr:`reduction` is :attr:`batchmean`, output loss is
          in shape of [1] and loss value is the sum value of all losses
          divided by batch size.
-         
+
          )DOC");
   }
 };
@@ -131,8 +95,10 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "KLDivLossGrad");
     OP_INOUT_CHECK(ctx->HasInput("Target"), "Input", "Target", "KLDivLossGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
-                   "Loss@GRAD", "KLDivLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")),
+                   "Input",
+                   "Loss@GRAD",
+                   "KLDivLossGrad");
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);
@@ -172,15 +138,16 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(KLDivLossGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(kldiv_loss, ops::KLDivLossOp, ops::KLDivLossOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(kldiv_loss,
+                            KLDivInferShapeFunctor,
+                            PD_INFER_META(phi::KLDivInferMeta));
+
+REGISTER_OPERATOR(kldiv_loss,
+                  ops::KLDivLossOp,
+                  ops::KLDivLossOpMaker,
                   ops::KLDivLossOpGradMaker<paddle::framework::OpDesc>,
-                  ops::KLDivLossOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(kldiv_loss_grad, ops::KLDivLossOpGrad,
+                  ops::KLDivLossOpGradMaker<paddle::imperative::OpBase>,
+                  KLDivInferShapeFunctor);
+REGISTER_OPERATOR(kldiv_loss_grad,
+                  ops::KLDivLossOpGrad,
                   ops::KLDivLossGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    kldiv_loss, ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    kldiv_loss_grad,
-    ops::KLDivLossGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::KLDivLossGradKernel<paddle::platform::CPUDeviceContext, double>);

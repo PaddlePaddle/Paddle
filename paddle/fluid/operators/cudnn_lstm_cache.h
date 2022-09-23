@@ -15,8 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 
 namespace paddle {
@@ -24,9 +25,16 @@ namespace operators {
 
 class ScopedRNNBase {
  public:
-  ScopedRNNBase(int seq_length, int batch_size, int input_size, int hidden_size,
-                int num_layers, float dropout_prob, int seed, int weight_numel,
-                bool initialized, bool is_bidirec)
+  ScopedRNNBase(int seq_length,
+                int batch_size,
+                int input_size,
+                int hidden_size,
+                int num_layers,
+                float dropout_prob,
+                int seed,
+                int weight_numel,
+                bool initialized,
+                bool is_bidirec)
       : seq_length_(seq_length),
         batch_size_(batch_size),
         input_size_(input_size),
@@ -39,9 +47,12 @@ class ScopedRNNBase {
         is_bidirec_(is_bidirec) {}
 
   template <typename T>
-  void Create(const cudnnHandle_t& handle, const platform::Place& place,
-              const std::vector<int>& sequence_length, size_t* workspace_size,
-              size_t* reserve_size, framework::Tensor* dropout_state) {
+  void Create(const cudnnHandle_t& handle,
+              const platform::Place& place,
+              const std::vector<int>& sequence_length,
+              size_t* workspace_size,
+              size_t* reserve_size,
+              framework::Tensor* dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
     cudnnDataType_t cudnn_type = platform::CudnnDataType<T>::type;
 
@@ -57,17 +68,19 @@ class ScopedRNNBase {
 
 #if CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
-      x_seq_desc_.descriptor<T>(seq_length_, batch_size_, input_size_, true,
-                                sequence_length);
-      y_seq_desc_.descriptor<T>(seq_length_, batch_size_,
-                                hidden_size_ * numDirections, true,
+      x_seq_desc_.descriptor<T>(
+          seq_length_, batch_size_, input_size_, true, sequence_length);
+      y_seq_desc_.descriptor<T>(seq_length_,
+                                batch_size_,
+                                hidden_size_ * numDirections,
+                                true,
                                 sequence_length);
     }
 #endif
 
     // ------------------- cudnn hx, hy, cx, cy descriptors----------
-    std::vector<int> dims_hx = {num_layers_ * numDirections, batch_size_,
-                                hidden_size_};
+    std::vector<int> dims_hx = {
+        num_layers_ * numDirections, batch_size_, hidden_size_};
     std::vector<int> strides_hx = {hidden_size_ * batch_size_, hidden_size_, 1};
     init_h_desc_.descriptor<T>(dims_hx, strides_hx);
     init_c_desc_.descriptor<T>(dims_hx, strides_hx);
@@ -77,42 +90,46 @@ class ScopedRNNBase {
     // ------------------- cudnn dropout descriptors ---------------------
     size_t state_size;
     if (!initialized_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
       dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
                                            place);
     }
-    dropout_desc_.descriptor(handle, place, initialized_, dropout_prob_,
-                             dropout_state, seed_, state_size);
+    dropout_desc_.descriptor(handle,
+                             place,
+                             initialized_,
+                             dropout_prob_,
+                             dropout_state,
+                             seed_,
+                             state_size);
 
-// ------------------- cudnn rnn descriptors ---------------------
-#if CUDNN_VERSION >= 6000
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
-        handle, rnn_desc_.desc(), hidden_size_, num_layers_,
-        dropout_desc_.desc(), CUDNN_LINEAR_INPUT,
-        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-        CUDNN_RNN_ALGO_STANDARD, cudnn_type));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor(
-        rnn_desc_.desc(), hidden_size_, num_layers_, dropout_desc_.desc(),
+    // ------------------- cudnn rnn descriptors ---------------------
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
+        handle,
+        rnn_desc_.desc(),
+        hidden_size_,
+        num_layers_,
+        dropout_desc_.desc(),
         CUDNN_LINEAR_INPUT,
-        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
+        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL,
+        CUDNN_LSTM,
+        CUDNN_RNN_ALGO_STANDARD,
         cudnn_type));
-#endif
 
 #if CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNPaddingMode(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNPaddingMode(
           rnn_desc_.desc(), CUDNN_RNN_PADDED_IO_ENABLED));
     }
 #endif
 
     // ------------------- cudnn weights_size ---------------------
     size_t weights_size_;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
     PADDLE_ENFORCE_EQ(
-        weights_size_, sizeof(T) * weight_numel_,
+        weights_size_,
+        sizeof(T) * weight_numel_,
         platform::errors::InvalidArgument(
             "The cudnn lstm and setting weight size should be same."));
     // ------------------- cudnn weight descriptors ---------------------
@@ -121,13 +138,18 @@ class ScopedRNNBase {
     std::vector<int> dim_w = {dim_tmp, 1, 1};
     weight_desc_.descriptor<T>(layout, dim_w);
     // ------------------- cudnn workspace, reserve size ---------------------
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
-        handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
-        workspace_size));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnGetRNNTrainingReserveSize(
-            handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
-            reserve_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cudnnGetRNNWorkspaceSize(handle,
+                                                    rnn_desc_.desc(),
+                                                    seq_length_,
+                                                    x_descs_.data(),
+                                                    workspace_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cudnnGetRNNTrainingReserveSize(handle,
+                                                          rnn_desc_.desc(),
+                                                          seq_length_,
+                                                          x_descs_.data(),
+                                                          reserve_size));
   }
   cudnnTensorDescriptor_t* x_descs() { return x_descs_.data(); }
   cudnnTensorDescriptor_t* y_descs() { return y_descs_.data(); }

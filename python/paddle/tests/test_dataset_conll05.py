@@ -16,10 +16,11 @@ import os
 import unittest
 import numpy as np
 
-from paddle.text.datasets import *
+from paddle.text.datasets import Conll05st
 
 
 class TestConll05st(unittest.TestCase):
+
     def test_main(self):
         conll05st = Conll05st()
         self.assertTrue(len(conll05st) == 5267)

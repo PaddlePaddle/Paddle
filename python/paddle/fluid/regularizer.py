@@ -16,94 +16,11 @@ from __future__ import print_function
 import logging
 
 from . import framework
-from .framework import in_dygraph_mode, _varbase_creator
+from .framework import _non_static_mode, _varbase_creator, in_dygraph_mode
 from . import core
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
-
-
-def _create_regularization_of_grad(param, grad, regularization=None):
-    """ Create and add backward regularization Operators
-
-    Function helper of append_regularization_ops.
-    """
-    # If no gradient or no regularization is specified,  then we don't need to do anything
-    if grad is None or (param.regularizer is None and regularization is None):
-        return grad
-    regularization_term = None
-    if param.regularizer is not None:
-        # Add variable for regularization term in grad block
-        regularization_term = param.regularizer(param, grad, grad.block)
-    elif regularization is not None:
-        regularization_term = regularization(param, grad, grad.block)
-
-    assert regularization_term is not None
-
-    new_grad = grad
-    if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-        # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
-        # the grad's type and name will be changed. But the gradient's name
-        # is used in ParallelExecutor Reduce mode, so I add a flag for
-        # the new_grad here.
-        new_grad = grad.block.create_var(
-            name=grad.name + core.kNewGradSuffix(),
-            dtype=param.dtype,
-            shape=param.shape,
-            lod_level=param.lod_level,
-            type=core.VarDesc.VarType.LOD_TENSOR)
-
-    inputs = {"X": [grad, regularization_term]}
-    outputs = {"Out": [new_grad]}
-    if in_dygraph_mode():
-        new_grad = core.ops.sum([grad, regularization_term])
-    else:
-        grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
-
-    return new_grad
-
-
-def append_regularization_ops(parameters_and_grads, regularization=None):
-    r"""Create and add backward regularization Operators
-
-    Creates and adds backward regularization operators in the BlockDesc.
-    This will add gradients of the regularizer function to the gradients
-    of the parameters and return these modified gradients. This is the
-    same as implementing weight decay in optimizers for regularization.
-
-    Args:
-        parameters_and_grads: A list of (parameters, gradients) pairs
-                              that need to be regularized.
-        regularization: A global regularizer. If the parameter is not
-                        set. It will be applied with regularizer.
-
-    Returns:
-        list[(Variable, Variable)]: list of (parameters, gradients) \
-        pair with the regularized gradient
-
-    Raises:
-        Exception: Unknown regularization type
-    """
-    params_and_grads = []
-    if in_dygraph_mode():
-        for param, grad in parameters_and_grads:
-            new_grad = _create_regularization_of_grad(param, grad,
-                                                      regularization)
-            params_and_grads.append((param, new_grad))
-    else:
-        repeate_regularizer = False
-        with framework.name_scope('regularization'):
-            for param, grad in parameters_and_grads:
-                if not repeate_regularizer and param.regularizer is not None and regularization is not None:
-                    repeate_regularizer = True
-                    logging.info(
-                        "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
-                        "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
-                        % regularization.__str__())
-                with param.block.program._optimized_guard([param, grad]):
-                    new_grad = _create_regularization_of_grad(param, grad,
-                                                              regularization)
-                    params_and_grads.append((param, new_grad))
-    return params_and_grads
 
 
 class WeightDecayRegularizer(object):
@@ -132,14 +49,14 @@ class WeightDecayRegularizer(object):
 
 
 class L2DecayRegularizer(WeightDecayRegularizer):
-    r""" 
+    r"""
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
 
-    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ). 
-    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
-    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
+    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ).
+    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in
+    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has
     higher priority than ``optimizer`` .
-    
+
     In the implementation, the formula of L2 Weight Decay Regularization is as follows:
 
     .. math::
@@ -177,7 +94,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
             l2 = fluid.regularizer.L2Decay(regularization_coeff=0.1)
             x = fluid.layers.uniform_random([3,4])
-            
+
             # set L1 regularization in fluid.ParamAttr
             w_param = fluid.ParamAttr(regularizer=l1)
             hidden1 = fluid.layers.fc(x, 8, param_attr=w_param)  # fc_0.w_0(L1), fc_0.b_0
@@ -188,9 +105,9 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             # set L2 regularization in optimizer
             optimizer = fluid.optimizer.SGD(learning_rate=1e-4, regularization=l2)
             optimizer.minimize(avg_loss)
-            
+
             # it will Print Message:
-            # Regularization of [fc_0.w_0, fc_1.w_0] have been set by ParamAttr or WeightNormParamAttr already. 
+            # Regularization of [fc_0.w_0, fc_1.w_0] have been set by ParamAttr or WeightNormParamAttr already.
             # So, the Regularization of Optimizer will not take effect for these parameters!
 
     """
@@ -213,24 +130,26 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         Returns:
             new variable for weight decay
         """
-        assert isinstance(param, framework.Parameter)
+        assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
-        inputs = {"X": [param]}
-        attrs = {"scale": self._regularization_coeff}
-
-        if framework.in_dygraph_mode():
-            return core.ops.scale(param, "scale", self._regularization_coeff)
+        if framework._non_static_mode():
+            if framework.in_dygraph_mode():
+                return _C_ops.scale(param, self._regularization_coeff, 0.0,
+                                    True)
+            else:
+                return _legacy_C_ops.scale(param, "scale",
+                                           self._regularization_coeff)
         else:
-            decay = block.create_var(
-                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
+            decay = block.create_var(dtype=param.dtype,
+                                     shape=param.shape,
+                                     lod_level=param.lod_level)
 
             # Append Op to calculate decay
-            block.append_op(
-                type='scale',
-                inputs={"X": param},
-                outputs={"Out": decay},
-                attrs={"scale": self._regularization_coeff})
+            block.append_op(type='scale',
+                            inputs={"X": param},
+                            outputs={"Out": decay},
+                            attrs={"scale": self._regularization_coeff})
 
             return decay
 
@@ -241,21 +160,21 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 class L1DecayRegularizer(WeightDecayRegularizer):
     r"""
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
-    
-    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ). 
-    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
-    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
+
+    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ).
+    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in
+    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has
     higher priority than ``optimizer`` .
-    
+
     In the implementation, the formula of L1 Weight Decay Regularization is as follows:
-	
+
     .. math::
 
         L1WeightDecay = reg\_coeff * sign(parameter)
 
     Args:
         regularization_coeff(float, optional): regularization coeff. Default:0.0.
-	
+
     Examples:
         .. code-block:: python
 
@@ -276,7 +195,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
                 regularization=fluid.regularizer.L1DecayRegularizer(
                     regularization_coeff=0.1))
             optimizer.minimize(avg_loss)
- 
+
 
             # Example2: set Regularizer both in ParamAttr and optimizer
             import paddle.fluid as fluid
@@ -284,7 +203,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
             l2 = fluid.regularizer.L2Decay(regularization_coeff=0.1)
             x = fluid.layers.uniform_random([3,4])
-            
+
             # set L1 regularization in fluid.ParamAttr
             w_param = fluid.ParamAttr(regularizer=l1)
             hidden1 = fluid.layers.fc(x, 8, param_attr=w_param)  # fc_0.w_0(L1), fc_0.b_0
@@ -295,9 +214,9 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             # set L2 regularization in optimizer
             optimizer = fluid.optimizer.SGD(learning_rate=1e-4, regularization=l2)
             optimizer.minimize(avg_loss)
-            
+
             # it will Print Message:
-            # Regularization of [fc_0.w_0, fc_1.w_0] have been set by ParamAttr or WeightNormParamAttr already. 
+            # Regularization of [fc_0.w_0, fc_1.w_0] have been set by ParamAttr or WeightNormParamAttr already.
             # So, the Regularization of Optimizer will not take effect for these parameters!
 
     """
@@ -320,25 +239,31 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         Returns:
             new variable for weight decay
         """
-        assert isinstance(param, framework.Parameter)
+        assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
+            sign = block.create_var(dtype=param.dtype, shape=param.shape)
             decay = block.create_var(dtype=param.dtype, shape=param.shape)
         else:
-            decay = block.create_var(
-                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
+            sign = block.create_var(dtype=param.dtype,
+                                    shape=param.shape,
+                                    lod_level=param.lod_level)
+            decay = block.create_var(dtype=param.dtype,
+                                     shape=param.shape,
+                                     lod_level=param.lod_level)
+        if in_dygraph_mode():
+            sign = _C_ops.sign(param)
+            return _C_ops.scale(sign, self._regularization_coeff, 0.0, True)
 
         # Append sign op
-        block.append_op(
-            type='sign', inputs={"X": param}, outputs={"Out": decay})
+        block.append_op(type='sign', inputs={"X": param}, outputs={"Out": sign})
 
         # Append scale op to the output of sign op
-        block.append_op(
-            type='scale',
-            inputs={"X": decay},
-            outputs={"Out": decay},
-            attrs={"scale": self._regularization_coeff})
+        block.append_op(type='scale',
+                        inputs={"X": sign},
+                        outputs={"Out": decay},
+                        attrs={"scale": self._regularization_coeff})
 
         return decay
 

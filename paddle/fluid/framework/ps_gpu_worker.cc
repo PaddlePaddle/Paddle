@@ -14,14 +14,16 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
-#include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
+     defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -36,11 +38,6 @@ void PSGPUWorker::Initialize(const TrainerDesc& desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   mpi_rank_ = desc.mpi_rank();
   trainer_desc_ = desc;
-  /*
-  for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
-    send_var_list_.push_back(trainer_desc_.xpu_recv_list(i));
-  }
-  */
   for (int i = 0; i < param_.sparse_table_size(); ++i) {
     uint64_t table_id =
         static_cast<uint64_t>(param_.sparse_table(i).table_id());
@@ -91,19 +88,7 @@ void PSGPUWorker::Initialize(const TrainerDesc& desc) {
   no_cvm_ = desc.no_cvm();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
-  dump_fields_.resize(desc.dump_fields_size());
-  for (int i = 0; i < desc.dump_fields_size(); ++i) {
-    dump_fields_[i] = desc.dump_fields(i);
-  }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
-  need_dump_param_ = false;
-  dump_param_.resize(desc.dump_param_size());
-  for (int i = 0; i < desc.dump_param_size(); ++i) {
-    dump_param_[i] = desc.dump_param(i);
-  }
-  if (desc.dump_param_size() != 0) {
-    need_dump_param_ = true;
-  }
   for (int i = 0; i < desc.check_nan_var_names_size(); ++i) {
     check_nan_var_names_.push_back(desc.check_nan_var_names(i));
   }
@@ -130,30 +115,29 @@ void PSGPUWorker::Initialize(const TrainerDesc& desc) {
       }
     }
   }
-  // pull_queue_ = paddle::framework::MakeChannel<std::shared_ptr<HeterTask>>();
-  // push_queue_ = paddle::framework::MakeChannel<std::shared_ptr<HeterTask>>();
 }
 
 void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
   writer_.Reset(queue);
 }
 
-void PSGPUWorker::SetNeedDump(bool need_dump_field) {
-  need_dump_field_ = need_dump_field;
-}
-
-void PSGPUWorker::DumpParam() {}
-
 void PSGPUWorker::TrainFiles() {
+  VLOG(0) << "Begin to train files";
   platform::SetNumThreads(1);
   platform::Timer timeline;
   timeline.Start();
 
   int total_ins_num = 0;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  platform::SetDeviceId(thread_id_);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  platform::SetXPUDeviceId(thread_id_);
+#endif
 
   // how to accumulate fetched values here
   device_reader_->Start();
   int cur_batch;
+  int batch_cnt = 0;
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     for (auto& op : ops_) {
@@ -168,19 +152,61 @@ void PSGPUWorker::TrainFiles() {
         op->Run(*thread_scope_, place_);
       }
     }
+    if (need_dump_field_) {
+      DumpField(*thread_scope_, dump_mode_, dump_interval_);
+    }
+    if (need_dump_param_ && thread_id_ == 0) {
+      DumpParam(*thread_scope_, batch_cnt);
+    }
 
+    for (std::string& var_name : check_nan_var_names_) {
+      Variable* var = thread_scope_->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (tensor == nullptr || !tensor->IsInitialized()) {
+        continue;
+      }
+      if (framework::TensorContainsInf(*tensor) ||
+          framework::TensorContainsNAN(*tensor)) {
+        static std::mutex mutex;
+        {
+          std::lock_guard<std::mutex> lock(mutex);
+          VLOG(0) << "worker " << thread_id_ << ": " << var_name
+                  << " cantains inf or nan";
+          auto all_vars = thread_scope_->LocalVarNames();
+          std::stringstream ss;
+          ss << "====== worker " << thread_id_ << "======\n";
+          for (auto& local_var : all_vars) {
+            platform::PrintVar(thread_scope_, local_var, local_var, &ss);
+            ss << "\n";
+          }
+          std::cout << ss.str() << std::endl;
+          VLOG(0) << "worker " << thread_id_ << "print nan var done....";
+        }
+        sleep(600);
+        exit(-1);
+      }
+    }
+
+    dev_ctx_->Wait();
     PrintFetchVars();
     thread_scope_->DropKids();
+    ++batch_cnt;
+  }
+  if (need_dump_field_ || need_dump_param_) {
+    writer_.Flush();
   }
   timeline.Pause();
-  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost "
+  VLOG(0) << "GpuPs worker " << thread_id_ << " train cost "
           << timeline.ElapsedSec() << " seconds, ins_num: " << total_ins_num;
   return;
 }
 
 void PSGPUWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
-  VLOG(1) << "Begin to train files with profiler";
+  VLOG(0) << "Begin to train files with profiler";
   device_reader_->Start();
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
@@ -208,6 +234,11 @@ void PSGPUWorker::TrainFilesWithProfiler() {
   int total_ins_num = 0;
   int cur_batch;
   timeline.Start();
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  platform::SetDeviceId(thread_id_);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  platform::SetXPUDeviceId(thread_id_);
+#endif
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     timeline.Pause();
@@ -243,13 +274,15 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     total_time += timeline.ElapsedSec();
     timeline.Start();
   }
-  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time
+  VLOG(0) << "GpuPs worker " << thread_id_ << " train cost " << total_time
           << " seconds, ins_num: " << total_ins_num;
   for (size_t i = 0; i < op_name.size(); ++i) {
-    VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
+    VLOG(0) << "card:" << thread_id_ << ", op: " << op_name[i]
             << ", mean time: " << op_total_time[i] / total_ins_num
             << "s, totol time:" << op_total_time[i] << "sec";
   }
+  VLOG(0) << "card: " << thread_id_ << " read time: " << read_time
+          << ", percent: " << read_time / total_time * 100;
   return;
 }
 

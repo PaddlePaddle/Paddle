@@ -12,62 +12,56 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 TEST(selected_rows_functor, gpu_add) {
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDADeviceContext& ctx =
-      *reinterpret_cast<paddle::platform::CUDADeviceContext*>(
-          paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
-  paddle::operators::math::SetConstant<paddle::platform::CUDADeviceContext,
-                                       float>
-      functor;
+  phi::GPUContext& ctx = *reinterpret_cast<phi::GPUContext*>(
+      paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
+  phi::funcs::SetConstant<phi::GPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
   std::vector<int64_t> rows1{0, 4, 7};
-  std::unique_ptr<paddle::framework::SelectedRows> selected_rows1{
-      new paddle::framework::SelectedRows(rows1, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows1{
+      new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      paddle::framework::make_ddim(
-          {static_cast<int64_t>(rows1.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       gpu_place);
   functor(ctx, in1_value, 1.0);
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_EQ(hipDeviceSynchronize(), 0,
+  PADDLE_ENFORCE_EQ(hipDeviceSynchronize(),
+                    0,
                     paddle::platform::errors::PreconditionNotMet(
                         "The all synchronization on the cuda is error!"));
 #else
-  PADDLE_ENFORCE_EQ(cudaDeviceSynchronize(), 0,
+  PADDLE_ENFORCE_EQ(cudaDeviceSynchronize(),
+                    0,
                     paddle::platform::errors::PreconditionNotMet(
                         "The all synchronization on the cuda is error!"));
 #endif
 
   std::vector<int64_t> rows2{0, 5, 7, 9};
-  std::unique_ptr<paddle::framework::SelectedRows> selected_rows2{
-      new paddle::framework::SelectedRows(rows2, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows2{
+      new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      paddle::framework::make_ddim(
-          {static_cast<int64_t>(rows2.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       gpu_place);
   functor(ctx, in2_value, 2.0);
 
-  std::unique_ptr<paddle::framework::SelectedRows> output{
-      new paddle::framework::SelectedRows()};
+  std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   auto* out_value = output->mutable_value();
 
   // simply concat two SelectedRows
-  out_value->mutable_data<float>(paddle::framework::make_ddim({7, 10}),
-                                 gpu_place);
+  out_value->mutable_data<float>(phi::make_ddim({7, 10}), gpu_place);
 
-  paddle::operators::math::SelectedRowsAdd<paddle::platform::CUDADeviceContext,
-                                           float>
-      add_functor;
+  phi::funcs::SelectedRowsAdd<phi::GPUContext, float> add_functor;
   add_functor(ctx, *selected_rows1, *selected_rows2, output.get());
 
   auto out_height = output->height();
@@ -104,18 +98,14 @@ TEST(selected_rows_functor, gpu_add) {
 
   std::unique_ptr<paddle::framework::Tensor> tensor1{
       new paddle::framework::Tensor()};
-  tensor1->mutable_data<float>(
-      paddle::framework::make_ddim({height, row_numel}), gpu_place);
+  tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), gpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
   std::unique_ptr<paddle::framework::Tensor> tensor2{
       new paddle::framework::Tensor()};
-  tensor2->mutable_data<float>(
-      paddle::framework::make_ddim({height, row_numel}), gpu_place);
+  tensor2->mutable_data<float>(phi::make_ddim({height, row_numel}), gpu_place);
 
-  paddle::operators::math::SelectedRowsAddTensor<
-      paddle::platform::CUDADeviceContext, float>
-      add_tensor_functor;
+  phi::funcs::SelectedRowsAddTensor<phi::GPUContext, float> add_tensor_functor;
   add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
 
   paddle::framework::Tensor tensor2_cpu;
@@ -142,47 +132,38 @@ TEST(selected_rows_functor, gpu_add) {
 TEST(selected_rows_functor, gpu_add_to) {
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDADeviceContext& ctx =
-      *reinterpret_cast<paddle::platform::CUDADeviceContext*>(
-          paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
-  paddle::operators::math::SetConstant<paddle::platform::CUDADeviceContext,
-                                       float>
-      functor;
+  phi::GPUContext& ctx = *reinterpret_cast<phi::GPUContext*>(
+      paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
+  phi::funcs::SetConstant<phi::GPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
   std::vector<int64_t> rows1{0, 4, 7};
-  std::unique_ptr<paddle::framework::SelectedRows> selected_rows1{
-      new paddle::framework::SelectedRows(rows1, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows1{
+      new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      paddle::framework::make_ddim(
-          {static_cast<int64_t>(rows1.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       gpu_place);
   functor(ctx, in1_value, 1.0);
 
   std::vector<int64_t> rows2{0, 5, 7, 9};
-  std::unique_ptr<paddle::framework::SelectedRows> selected_rows2{
-      new paddle::framework::SelectedRows(rows2, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows2{
+      new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      paddle::framework::make_ddim(
-          {static_cast<int64_t>(rows2.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       gpu_place);
   functor(ctx, in2_value, 2.0);
 
-  std::unique_ptr<paddle::framework::SelectedRows> output{
-      new paddle::framework::SelectedRows()};
+  std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
   auto* out_value = output->mutable_value();
 
   // simply concat two SelectedRows
-  out_value->mutable_data<float>(paddle::framework::make_ddim({7, 10}),
-                                 gpu_place);
+  out_value->mutable_data<float>(phi::make_ddim({7, 10}), gpu_place);
 
-  paddle::operators::math::SelectedRowsAddTo<
-      paddle::platform::CUDADeviceContext, float>
-      add_to_functor;
+  phi::funcs::SelectedRowsAddTo<phi::GPUContext, float> add_to_functor;
   add_to_functor(ctx, *selected_rows1, 0, output.get());
   add_to_functor(ctx, *selected_rows2, in1_value->numel(), output.get());
 
@@ -220,12 +201,10 @@ TEST(selected_rows_functor, gpu_add_to) {
 
   std::unique_ptr<paddle::framework::Tensor> tensor1{
       new paddle::framework::Tensor()};
-  tensor1->mutable_data<float>(
-      paddle::framework::make_ddim({height, row_numel}), gpu_place);
+  tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), gpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
-  paddle::operators::math::SelectedRowsAddToTensor<
-      paddle::platform::CUDADeviceContext, float>
+  phi::funcs::SelectedRowsAddToTensor<phi::GPUContext, float>
       add_to_tensor_functor;
   add_to_tensor_functor(ctx, *output, tensor1.get());
 
@@ -253,44 +232,36 @@ TEST(selected_rows_functor, gpu_add_to) {
 TEST(selected_rows_functor, gpu_merge_add) {
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDADeviceContext& ctx =
-      *reinterpret_cast<paddle::platform::CUDADeviceContext*>(
-          paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
-  paddle::operators::math::SetConstant<paddle::platform::CUDADeviceContext,
-                                       float>
-      set_const;
+  phi::GPUContext& ctx = *reinterpret_cast<phi::GPUContext*>(
+      paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
+  phi::funcs::SetConstant<phi::GPUContext, float> set_const;
 
   int64_t height = 10;
   int64_t row_numel = 8;
 
   std::vector<int64_t> rows1{5, 2, 5, 3, 5};
-  std::unique_ptr<paddle::framework::SelectedRows> selected_rows1{
-      new paddle::framework::SelectedRows(rows1, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows1{
+      new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      paddle::framework::make_ddim(
-          {static_cast<int64_t>(rows1.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       gpu_place);
   set_const(ctx, in1_value, 1.0);
 
   std::vector<int64_t> rows2{2, 5, 3, 5, 3};
-  std::unique_ptr<paddle::framework::SelectedRows> selected_rows2{
-      new paddle::framework::SelectedRows(rows2, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows2{
+      new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      paddle::framework::make_ddim(
-          {static_cast<int64_t>(rows2.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       gpu_place);
   set_const(ctx, in2_value, 1.0);
 
-  std::unique_ptr<paddle::framework::SelectedRows> output{
-      new paddle::framework::SelectedRows()};
+  std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
-  paddle::operators::math::scatter::MergeAdd<
-      paddle::platform::CUDADeviceContext, float>
-      merge_add_functor;
+  phi::funcs::scatter::MergeAdd<phi::GPUContext, float> merge_add_functor;
 
-  std::vector<const paddle::framework::SelectedRows*> inputs;
+  std::vector<const phi::SelectedRows*> inputs;
   inputs.push_back(selected_rows1.get());
   inputs.push_back(selected_rows2.get());
   merge_add_functor(ctx, inputs, output.get());
@@ -300,8 +271,7 @@ TEST(selected_rows_functor, gpu_merge_add) {
   ctx.Wait();
 
   EXPECT_EQ(output->height(), height);
-  EXPECT_EQ(output->value().dims(),
-            paddle::framework::make_ddim({3, row_numel}));
+  EXPECT_EQ(output->value().dims(), phi::make_ddim({3, row_numel}));
 
   std::vector<int64_t> ret_rows{2, 3, 5};
   EXPECT_EQ(output->rows(), ret_rows);

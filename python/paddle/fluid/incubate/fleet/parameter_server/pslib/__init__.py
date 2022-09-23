@@ -85,8 +85,8 @@ class PSLib(Fleet):
                 if self._role_maker.is_xpu():
                     local_endpoint = self._role_maker.get_local_endpoint()
                     local_endpoint = local_endpoint.split(":")
-                    self._heter_ptr.start_xpu_service(
-                        str(local_endpoint[0]), int(local_endpoint[1]))
+                    self._heter_ptr.start_xpu_service(str(local_endpoint[0]),
+                                                      int(local_endpoint[1]))
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             # worker_index * 2 is for compatible with older versions of pslib
@@ -101,16 +101,17 @@ class PSLib(Fleet):
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
-            if not self._opt_info["use_ps_gpu"]:
-                if self._role_maker.is_worker():
-                    info = self._fleet_ptr.get_clients_info()
-                    all_info = self._role_maker._worker_gather(info[0])
-                    self._fleet_ptr.gather_clients(all_info)
-                    self._fleet_ptr.set_client2client_config(
-                        self._client2client_request_timeout_ms,
-                        self._client2client_connect_timeout_ms,
-                        self._client2client_max_retry)
-                    self._fleet_ptr.create_client2client_connection()
+            if self._role_maker.is_worker():
+                info = self._fleet_ptr.get_clients_info()
+                print("Client Info: {}".format(info))
+                all_info = self._role_maker._worker_gather(info[0])
+                print("All Client Info: {}".format(all_info))
+                self._fleet_ptr.gather_clients(all_info)
+                self._fleet_ptr.set_client2client_config(
+                    self._client2client_request_timeout_ms,
+                    self._client2client_connect_timeout_ms,
+                    self._client2client_max_retry)
+                self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
@@ -135,8 +136,9 @@ class PSLib(Fleet):
                             var_name = table.dense_variable_name[i]
                             if scope.find_var(var_name) is None:
                                 raise ValueError(
-                                    "var " + var_name + " not found in scope, "
-                                    + "you should run startup program first")
+                                    "var " + var_name +
+                                    " not found in scope, " +
+                                    "you should run startup program first")
                             var_name_list.append(var_name)
                         if not self._opt_info["use_ps_gpu"]:
                             self._fleet_ptr.init_model(scope,
@@ -248,9 +250,10 @@ class PSLib(Fleet):
 
         """
 
-        trainer_instance = executor.start_heter_trainer(
-            program, scope, debug, fetch_list, fetch_info, print_period,
-            fetch_handler)
+        trainer_instance = executor.start_heter_trainer(program, scope, debug,
+                                                        fetch_list, fetch_info,
+                                                        print_period,
+                                                        fetch_handler)
         if self._role_maker.is_xpu():
             print("barrier heter")
             self._role_maker._barrier_heter()
@@ -269,6 +272,7 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
+        if self._heter_ptr:
             self._heter_ptr.stop_xpu_service()
         self._role_maker._barrier_worker()
         self._role_maker._barrier_all()
@@ -324,6 +328,21 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.print_table_stat(table_id)
+        self._role_maker._barrier_worker()
+
+    def set_file_num_one_shard(self, table_id, file_num):
+        """
+        set file_num in one shard
+        Args:
+            table_id(int): the id of table
+            file_num(int): file num in one shard
+        Example:
+            .. code-block:: python
+              fleet.set_file_num_one_shard(0, 5)
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.set_file_num_one_shard(table_id, file_num)
         self._role_maker._barrier_worker()
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
@@ -513,18 +532,6 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.clear_one_table(table_id)
-        self._role_maker._barrier_worker()
-
-    def clear_model(self):
-        """
-        clear_model() will be called by user. It will clear sparse model.
-        Examples:
-            .. code-block:: python
-              fleet.clear_model()
-        """
-        self._role_maker._barrier_worker()
-        if self._role_maker.is_first_worker():
-            self._fleet_ptr.clear_model()
         self._role_maker._barrier_worker()
 
     def clear_model(self):
@@ -782,6 +789,15 @@ class PSLib(Fleet):
                 self._fleet_ptr.save_model_one_table(table_id, model_dir, mode)
         self._role_maker._barrier_worker()
 
+    def set_date(self, table_id, date):
+        """
+        set_date, eg, 20210918
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.set_date(table_id, str(date))
+        self._role_maker._barrier_worker()
+
     def _set_opt_info(self, opt_info):
         """
         this function saves the result from DistributedOptimizer.minimize()
@@ -992,10 +1008,11 @@ class DownpourOptimizer(DistributedOptimizer):
         self._optimizer = optimizer
         self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
         if optimizer.type != "adam":
-            print("Currently, distributed optimizer only support Adam"
-                  "Will config built-in adam for you."
-                  "We will support more functions in DistributedOptimizer",
-                  sys.stderr)
+            print(
+                "Currently, distributed optimizer only support Adam"
+                "Will config built-in adam for you."
+                "We will support more functions in DistributedOptimizer",
+                sys.stderr)
             self._optimizer_name = "DistributedAdam"
 
         self._distributed_optimizer = globals()[self._optimizer_name](optimizer)
@@ -1074,7 +1091,8 @@ class DownpourOptimizer(DistributedOptimizer):
                  scopes=None,
                  startup_programs=None,
                  parameter_list=None,
-                 no_grad_set=None):
+                 no_grad_set=None,
+                 program_mode="all_reduce"):
         """
         minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
@@ -1088,6 +1106,7 @@ class DownpourOptimizer(DistributedOptimizer):
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
+            program_mode (str|"all_reduce"): grad action for grogram when use_ps_gpu.
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
@@ -1120,23 +1139,28 @@ class DownpourOptimizer(DistributedOptimizer):
         fleet._main_programs = programs
         fleet._scopes = scopes
         if opt_info["use_ps_gpu"]:
-            from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+            from paddle.fluid.transpiler.collective import MultiThread
             # check start program
-
+            if program_mode not in [
+                    "all_reduce", "fuse_all_reduce", "all_gather",
+                    "all_reduce_xpu"
+            ]:
+                raise ValueError("You should set program_mode in [ all_reduce, \
+                                fuse_all_reduce, all_gather, all_reduce_xpu ]")
             env = self.get_dist_env()
             if not isinstance(losses, list):
                 startup_programs = [startup_programs]
             for i in range(0, len(startup_programs)):
-                t = SingleProcessMultiThread()
+
+                t = MultiThread(trans_mode=program_mode)
                 start_program = startup_programs[i]
                 main_program = programs[i]
-                t.transpile(
-                    startup_program=start_program,
-                    main_program=main_program,
-                    rank=env["trainer_id"],
-                    endpoints=env["trainer_endpoints"],
-                    current_endpoint=env['current_endpoint'],
-                    wait_port=False)
+                t.transpile(startup_program=start_program,
+                            main_program=main_program,
+                            rank=env["trainer_id"],
+                            endpoints=env["trainer_endpoints"],
+                            current_endpoint=env['current_endpoint'],
+                            wait_port=False)
                 if i > 0:
                     self._remove_collective_ops(start_program,
                                                 "c_comm_init_all")

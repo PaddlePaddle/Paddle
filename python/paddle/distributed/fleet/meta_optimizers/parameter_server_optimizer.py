@@ -20,13 +20,27 @@ import os
 import platform
 from ..base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 class ParameterServerOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(ParameterServerOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
+
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(ParameterServerOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
+
+        #self.micro_batch_size = user_defined_strategy.pipeline_configs[
+        #    'micro_batch_size']
+        self.num_microbatches = user_defined_strategy.pipeline_configs[
+            'accumulate_steps']
 
     def _is_graph_out(self):
         return False
@@ -37,6 +51,23 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         return True if k_steps >= 0 else False
+
+    def get_dist_env(self):
+        trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))
+        trainer_endpoints = ''
+        current_endpoint = ''
+        num_trainers = 0
+        if os.getenv('PADDLE_TRAINER_ENDPOINTS'):
+            trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
+            current_endpoint = trainer_endpoints.split(',')[trainer_id]
+            num_trainers = len(trainer_endpoints.split(','))
+
+        return {
+            'trainer_id': trainer_id,
+            'num_trainers': num_trainers,
+            'current_endpoint': current_endpoint,
+            'trainer_endpoints': trainer_endpoints
+        }
 
     def _get_distributed_strategy(self):
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
@@ -64,6 +95,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         _main = compiled_config.origin_main_program.clone()
         _startup = compiled_config.origin_startup_program.clone()
 
+        use_ps_gpu = self.user_defined_strategy.a_sync_configs["use_ps_gpu"]
+
         if not compiled_config.is_geo_mode():
             from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_lr_decay_table_pass
             _add_lr_decay_table_pass(
@@ -71,14 +104,27 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 self.user_defined_strategy.a_sync_configs["lr_decay_steps"])
 
             # for main program
-            _main = worker.delete_optimizer_pass(_main, compiled_config)
-            _main = worker.distributed_ops_pass(_main, compiled_config)
-            _main = worker.append_send_ops_pass(_main, compiled_config)
+            _main = worker.distributed_ops_pass(_main, compiled_config,
+                                                use_ps_gpu)
+            if not use_ps_gpu:
+                _main = worker.delete_optimizer_pass(_main, compiled_config)
+                _main = worker.append_send_ops_pass(_main, compiled_config)
+                _startup = worker.delete_extra_optimizes_pass(
+                    _startup, compiled_config)
 
-            # for startup program
+                # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
-            _startup = worker.delet_extra_optimizes_pass(_startup,
-                                                         compiled_config)
+            if use_ps_gpu:
+                _main = worker.ps_gpu_pass(_main)
+                from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+                t = SingleProcessMultiThread()
+                env = self.get_dist_env()
+                t.transpile(startup_program=_startup,
+                            main_program=_main,
+                            rank=env["trainer_id"],
+                            endpoints=env["trainer_endpoints"],
+                            current_endpoint=env['current_endpoint'],
+                            wait_port=False)
 
             compiled_config.set_origin_ps_main_program(_main)
             compiled_config.set_origin_ps_startup_program(_startup)
@@ -87,15 +133,14 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 from paddle.fluid.incubate.fleet.parameter_server.ir import heter_trainer_pass as heter_worker
                 if self.role_maker._is_heter_worker():
                     # for heter worker
+                    stage_id = self.role_maker._get_stage_id()
+                    device = self.role_maker._heter_device_type().lower()
                     _main = heter_worker.split_heter_worker_ops_pass(
-                        _main, compiled_config)
+                        _main, compiled_config, stage_id, device)
                 else:
                     # for default worker
-                    _main = heter_worker.split_trainer_ops_pass(_main,
-                                                                compiled_config)
-                # for startup change
-                _startup = heter_worker.delete_startup_useless_ops_var_pass(
-                    _startup, _main, compiled_config)
+                    _main = heter_worker.split_trainer_ops_pass(
+                        _main, compiled_config)
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
@@ -158,28 +203,29 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                                                       compiled_config, True)
 
             if not compiled_config.is_sync_mode():
-                _main = server.delete_unused_in_main_pass(_main,
-                                                          compiled_config)
+                _main = server.delete_unused_in_main_pass(
+                    _main, compiled_config)
 
-            _startup = server.delete_unused_in_startup_pass(_startup, _main,
-                                                            compiled_config)
+            _startup = server.delete_unused_in_startup_pass(
+                _startup, _main, compiled_config)
         else:
             _main = server.add_listen_and_serv_pass(_main, compiled_config)
             _main = server.add_rpc_global_flags_pass(_main, compiled_config)
             _main = server.add_geo_optimizer_pass(_main, compiled_config)
             _startup = server.build_pserver_startup_program_pass(
                 _startup, _main, compiled_config)
-            _startup = server.delete_unused_in_startup_pass(_startup, _main,
-                                                            compiled_config)
+            _startup = server.delete_unused_in_startup_pass(
+                _startup, _main, compiled_config)
 
         return _main, _startup
 
     def _can_apply_geo(self, dist_strategy, program):
+
         def get_sys_free_mem():
             plat = platform.system()
             if platform.system() == "Darwin":
-                vm = subprocess.Popen(
-                    ['vm_stat'], stdout=subprocess.PIPE).communicate()[0]
+                vm = subprocess.Popen(['vm_stat'],
+                                      stdout=subprocess.PIPE).communicate()[0]
                 # Process vm_stat
                 vmLines = vm.split('\n')
                 sep = re.compile(r':[\s]+')
@@ -187,8 +233,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 for row in range(1, len(vmLines) - 2):
                     rowText = vmLines[row].strip()
                     rowElements = sep.split(rowText)
-                    vmStats[(rowElements[0]
-                             )] = int(rowElements[1].strip(r'\.')) * 4096
+                    vmStats[(rowElements[0])] = int(
+                        rowElements[1].strip(r'\.')) * 4096
                 return vmStats["Pages free"]
             elif platform.system() == "Linux":
                 mems = {}
@@ -284,22 +330,56 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         if self.role_maker._is_worker() or self.role_maker._is_heter_worker():
             main_program, startup_program = self._build_trainer_programs(
                 compiled_config)
+            if self.role_maker._is_heter_parameter_server_mode:
+                _origin_startup_program._heter_pipeline_opt = {
+                    "startup_program": startup_program,
+                    "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
+                    "heter_place": self.role_maker._heter_device(),
+                }
+
+                loss.block.program._heter_pipeline_opt = {
+                    "trainer": "HeterPipelineTrainer",
+                    "device_worker": "HeterSection",
+                    "trainers": self.role_maker._get_stage_trainers(
+                    ),  ## trainer num in each stage
+                    "trainer_id": int(self.role_maker._role_id()),
+                    "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
+                    "num_pipeline_stages":
+                    int(self.role_maker._get_num_stage()),
+                    "section_program": main_program,
+                    "num_microbatches": self.num_microbatches,
+                    "heter_place": self.role_maker._heter_device(),
+                }
+            else:
+                loss.block.program = main_program
+                fluid.framework.switch_startup_program(startup_program)
+
         elif self.role_maker._is_server():
             main_program, startup_program = self._build_pserver_programs(
                 compiled_config)
-
-        loss.block.program = main_program
-        fluid.framework.switch_startup_program(startup_program)
-
+            loss.block.program = main_program
+            fluid.framework.switch_startup_program(startup_program)
         return None, None
 
     def _disable_strategy(self, dist_strategy):
+        #if self.role_maker._is_heter_parameter_server_mode:
+        #    dist_strategy.pipeline = False
+        #    dist_strategy.pipeline_configs = {
+        #        "micro_batch_size": 1,
+        #        "accumulate_steps": 1,
+        #    }
         dist_strategy.a_sync = False
         a_sync_configs = dist_strategy.a_sync_configs
         a_sync_configs["k_steps"] = -1
         dist_strategy.a_sync_configs = a_sync_configs
 
     def _enable_strategy(self, dist_strategy, context):
+        #if self.role_maker._is_heter_parameter_server_mode:
+        #    dist_strategy.pipeline = True
+        #    dist_strategy.pipeline_configs = {
+        #        "micro_batch_size": 1,
+        #        "accumulate_steps": 1,
+        #    }
         a_sync_configs = dist_strategy.a_sync_configs
         if a_sync_configs["k_steps"] >= 0:
             return

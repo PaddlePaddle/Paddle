@@ -30,4 +30,11 @@ no_check_set_white_list = [
     'cudnn_lstm',
     'rnn',
     'fusion_lstm',
+    'softmax_with_cross_entropy',
+    'svd',
+    'eigh',
+    'eigvalsh',
+    'class_center_sample',
+    'einsum',
+    'rmsprop',
 ]

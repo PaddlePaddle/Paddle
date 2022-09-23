@@ -25,7 +25,8 @@ limitations under the License. */
 #include <unordered_set>
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "glog/logging.h"               // For VLOG()
+#include "gflags/gflags.h"
+#include "glog/logging.h"  // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
@@ -67,6 +68,8 @@ class Version;
 }  // namespace framework
 }  // namespace paddle
 
+DECLARE_bool(check_kernel_launch);
+
 namespace paddle {
 namespace framework {
 
@@ -87,7 +90,8 @@ template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) {
     PADDLE_ENFORCE_EQ(
-        OpInfoMap::Instance().Has(op_type), false,
+        OpInfoMap::Instance().Has(op_type),
+        false,
         platform::errors::AlreadyExists(
             "Operator '%s' is registered more than once.", op_type));
     static_assert(sizeof...(ARGS) != 0,
@@ -126,28 +130,63 @@ class OpRegistry {
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,
-                                                AttributeMap attrs,
+                                                const AttributeMap& attrs,
                                                 bool attr_check = true);
+  static std::unique_ptr<OperatorBase> CreateOp(
+      const std::string& type,
+      const VariableNameMap& inputs,
+      const VariableNameMap& outputs,
+      const AttributeMap& attrs,
+      const AttributeMap& runtime_attrs,
+      bool attr_check = true);
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 };
 
+template <typename PlaceType>
+inline void CheckKernelLaunch(const char* op_type) {}
+
+#ifdef PADDLE_WITH_CUDA
+template <>
+inline void CheckKernelLaunch<::paddle::platform::CUDAPlace>(
+    const char* op_type) {
+  if (FLAGS_check_kernel_launch) {
+    PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(op_type);
+  }
+}
+#endif
+
 template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor;
 
 template <typename PlaceType, typename T, typename Func>
-inline void RegisterKernelClass(const char* op_type, const char* library_type,
-                                int customized_type_value, Func func) {
+inline void RegisterKernelClass(const char* op_type,
+                                const char* library_type,
+                                int customized_type_value,
+                                Func func) {
   std::string library(library_type);
   std::string data_layout = "ANYLAYOUT";
   if (library == "MKLDNN") {
     data_layout = "MKLDNNLAYOUT";
   }
-  OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (std::is_same<PlaceType, platform::CustomPlace>::value) {
+    OpKernelType key(ToDataType(std::type_index(typeid(T))),
+                     platform::CustomPlace(library_type),
+                     StringToDataLayout(data_layout),
+                     LibraryType::kPlain,
+                     customized_type_value);
+    OperatorWithKernel::AllOpKernels()[op_type][key] = func;
+    return;
+  }
+#endif
+  OpKernelType key(ToDataType(std::type_index(typeid(T))),
+                   PlaceType(),
                    StringToDataLayout(data_layout),
-                   StringToLibraryType(library_type), customized_type_value);
+                   StringToLibraryType(library_type),
+                   customized_type_value);
   OperatorWithKernel::AllOpKernels()[op_type][key] = func;
 }
 
@@ -156,14 +195,18 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
   using KERNEL_TYPE =
       typename std::tuple_element<I, std::tuple<KernelTypes...>>::type;
 
-  void operator()(const char* op_type, const char* library_type,
+  void operator()(const char* op_type,
+                  const char* library_type,
                   int customized_type_value) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
     RegisterKernelClass<PlaceType, T>(
-        op_type, library_type, customized_type_value,
+        op_type,
+        library_type,
+        customized_type_value,
 
-        [](const framework::ExecutionContext& ctx) {
+        [op_type](const framework::ExecutionContext& ctx) {
           KERNEL_TYPE().Compute(ctx);
+          CheckKernelLaunch<PlaceType>(op_type);
         });
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
     OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
@@ -174,7 +217,8 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
 
 template <typename PlaceType, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
-  void operator()(const char* op_type, const char* library_type,
+  void operator()(const char* op_type,
+                  const char* library_type,
                   int customized_type_value) const {}
 };
 
@@ -183,7 +227,8 @@ struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
 template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
-  explicit OpKernelRegistrar(const char* op_type, const char* library_type,
+  explicit OpKernelRegistrar(const char* op_type,
+                             const char* library_type,
                              int customized_type_value) {
     OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
     func(op_type, library_type, customized_type_value);
@@ -196,7 +241,8 @@ struct OpKernelRegistrarFunctorEx;
 template <typename PlaceType, typename... DataTypeAndKernelType>
 class OpKernelRegistrarEx : public Registrar {
  public:
-  explicit OpKernelRegistrarEx(const char* op_type, const char* library_type,
+  explicit OpKernelRegistrarEx(const char* op_type,
+                               const char* library_type,
                                int customized_type_value) {
     OpKernelRegistrarFunctorEx<PlaceType, false, 0, DataTypeAndKernelType...>
         func;
@@ -205,14 +251,19 @@ class OpKernelRegistrarEx : public Registrar {
 };
 
 template <typename PlaceType, size_t I, typename... DataTypeAndKernelType>
-struct OpKernelRegistrarFunctorEx<PlaceType, true, I,
+struct OpKernelRegistrarFunctorEx<PlaceType,
+                                  true,
+                                  I,
                                   DataTypeAndKernelType...> {
-  void operator()(const char* op_type, const char* library_type,
+  void operator()(const char* op_type,
+                  const char* library_type,
                   int customized_type_value) const {}
 };
 
 template <typename PlaceType, size_t I, typename... DataTypeAndKernelType>
-struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
+struct OpKernelRegistrarFunctorEx<PlaceType,
+                                  false,
+                                  I,
                                   DataTypeAndKernelType...> {
   using Functor =
       typename std::tuple_element<I + 1,
@@ -221,14 +272,24 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
       typename std::tuple_element<I,
                                   std::tuple<DataTypeAndKernelType...>>::type;
 
-  void operator()(const char* op_type, const char* library_type,
+  void operator()(const char* op_type,
+                  const char* library_type,
                   int customized_type_value) const {
-    RegisterKernelClass<PlaceType, T>(op_type, library_type,
-                                      customized_type_value, Functor());
+    RegisterKernelClass<PlaceType, T>(
+        op_type,
+        library_type,
+        customized_type_value,
+
+        [op_type](const framework::ExecutionContext& ctx) {
+          Functor()(ctx);
+          CheckKernelLaunch<PlaceType>(op_type);
+        });
 
     constexpr auto size =
         std::tuple_size<std::tuple<DataTypeAndKernelType...>>::value;
-    OpKernelRegistrarFunctorEx<PlaceType, I + 2 >= size, I + 2,
+    OpKernelRegistrarFunctorEx<PlaceType,
+                               I + 2 >= size,
+                               I + 2,
                                DataTypeAndKernelType...>
         func;
     func(op_type, library_type, customized_type_value);
@@ -264,8 +325,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
     return 0;                                                            \
   }
 
-#define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
-  REGISTER_OPERATOR(op_type, op_class, op_maker_class, \
+#define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, ...) \
+  REGISTER_OPERATOR(op_type, op_class, __VA_ARGS__, \
         paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
         paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
@@ -295,14 +356,27 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDAPlace, __VA_ARGS__)
+#else
+#define REGISTER_OP_CUDA_KERNEL(op_type, ...)
+#endif
 
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
+#define REGISTER_OP_IPU_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, IPU, ::paddle::platform::IPUPlace, __VA_ARGS__)
+
 #define REGISTER_OP_XPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, XPU, ::paddle::platform::XPUPlace, __VA_ARGS__)
+
+#define REGISTER_OP_NPU_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, NPU, ::paddle::platform::NPUPlace, __VA_ARGS__)
+
+#define REGISTER_OP_MLU_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, MLU, ::paddle::platform::MLUPlace, __VA_ARGS__)
 
 #define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
                               customized_name,                     \
@@ -337,6 +411,24 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define REGISTER_OP_XPU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
       op_type, XPU, ::paddle::platform::XPUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
+#define REGISTER_OP_NPU_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, NPU, ::paddle::platform::NPUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
+#define REGISTER_OP_MLU_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, MLU, ::paddle::platform::MLUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
+#define REGISTER_OP_IPU_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, IPU, ::paddle::platform::IPUPlace, DEFAULT_TYPE,       \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 

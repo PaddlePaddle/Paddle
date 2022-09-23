@@ -18,13 +18,13 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
@@ -51,7 +51,8 @@ using OpTypeCountPair = std::pair<std::string, int>;
 ///
 /// @return     Returns pointer to the created operator descriptor.
 ///
-OpDesc* CreateOp(ProgramDesc* prog, const std::string& op_type_name,
+OpDesc* CreateOp(ProgramDesc* prog,
+                 const std::string& op_type_name,
                  const std::vector<InOutVarNamePair>& inputs,
                  const std::vector<InOutVarNamePair>& outputs,
                  bool use_mkldnn = true);
@@ -113,9 +114,12 @@ ProgramDesc BuildProgramDesc(const std::vector<std::string>& transient_vars,
 ///
 /// @return     Return true if all checks passed, otherwise false.
 ///
-bool RunPassAndAssert(Graph* graph, const std::string& pass_name,
-                      const std::string& from, const std::string& to,
-                      int removed_nodes_count, int added_nodes_count = 0);
+bool RunPassAndAssert(Graph* graph,
+                      const std::string& pass_name,
+                      const std::string& from,
+                      const std::string& to,
+                      int removed_nodes_count,
+                      int added_nodes_count = 0);
 
 ///
 /// @brief      Initializes the tensor memory holder.
@@ -145,11 +149,13 @@ void InitLoDTensorHolder(const Scope& scope,
 ///
 /// @return     The operator descriptor.
 ///
-OpDesc* GetOp(const ProgramDesc& prog, const std::string& op_type,
+OpDesc* GetOp(const ProgramDesc& prog,
+              const std::string& op_type,
               const std::string& output_name,
               const std::string& output_arg_name);
 
-OpDesc* GetOp(const BlockDesc& block_desc, const std::string& op_type,
+OpDesc* GetOp(const BlockDesc& block_desc,
+              const std::string& op_type,
               const std::string& output_name,
               const std::string& output_arg_name);
 

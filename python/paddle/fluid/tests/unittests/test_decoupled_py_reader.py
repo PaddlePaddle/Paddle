@@ -19,9 +19,9 @@ import time
 import six
 import unittest
 
-EPOCH_NUM = 20
-BATCH_SIZE = 32
-BATCH_NUM = 20
+EPOCH_NUM = 5
+BATCH_SIZE = 16
+BATCH_NUM = 10
 CLASS_NUM = 10
 
 
@@ -29,7 +29,7 @@ def random_reader():
     np.random.seed(1)
     for i in range(BATCH_SIZE * BATCH_NUM):
         image = np.random.random([784])
-        label = np.random.random_integers(low=0, high=CLASS_NUM - 1)
+        label = np.random.randint(low=0, high=CLASS_NUM)
         yield image, label
 
 
@@ -41,14 +41,14 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(
-                name='image', shape=[784], dtype='float32')
+            image = fluid.layers.data(name='image',
+                                      shape=[784],
+                                      dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            py_reader = fluid.io.PyReader(
-                feed_list=[image, label],
-                capacity=4,
-                iterable=not use_legacy_py_reader,
-                use_double_buffer=use_double_buffer)
+            py_reader = fluid.io.PyReader(feed_list=[image, label],
+                                          capacity=4,
+                                          iterable=not use_legacy_py_reader,
+                                          use_double_buffer=use_double_buffer)
             hidden = image
             for hidden_size in [10, 20, 30]:
                 hidden = fluid.layers.fc(
@@ -61,9 +61,8 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
             predict_label = fluid.layers.fc(hidden,
                                             size=CLASS_NUM,
                                             act='softmax')
-            loss = fluid.layers.mean(
-                fluid.layers.cross_entropy(
-                    input=predict_label, label=label))
+            loss = paddle.mean(
+                fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)
@@ -71,6 +70,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
 
 class TestBase(unittest.TestCase):
+
     def run_main(self, use_legacy_py_reader, with_data_parallel, places,
                  use_double_buffer):
         scope = fluid.Scope()
@@ -90,8 +90,8 @@ class TestBase(unittest.TestCase):
 
             prog = fluid.CompiledProgram(main_prog)
             if with_data_parallel:
-                prog = prog.with_data_parallel(
-                    loss_name=loss.name, places=places)
+                prog = prog.with_data_parallel(loss_name=loss.name,
+                                               places=places)
 
             step = 0
             step_list = []

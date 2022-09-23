@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/errors.h"
 
@@ -25,32 +26,41 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE_EQ(context->Inputs("Ids").size(),
-                      context->Inputs("Embs").size(),
-                      platform::errors::InvalidArgument(
-                          "Two inputs of EmbeddingEltWiseLayerNormOp shoube be "
-                          "the same size"));
-    PADDLE_ENFORCE_GE(context->Inputs("Embs").size(), 2UL,
+    PADDLE_ENFORCE_EQ(
+        context->Inputs("Ids").size(),
+        context->Inputs("Embs").size(),
+        platform::errors::InvalidArgument(
+            "Two inputs of EmbeddingEltWiseLayerNormOp shoube be "
+            "the same size, but received the size of input Ids = %d,"
+            " the size of input Embs = %d",
+            context->Inputs("Ids").size(),
+            context->Inputs("Embs").size()));
+    PADDLE_ENFORCE_GE(context->Inputs("Embs").size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "Input Embs of EmbeddingEltWiseLayerNormOp should "
                           "have at least 2 tensors"));
-    PADDLE_ENFORCE_GE(context->Inputs("Ids").size(), 2UL,
+    PADDLE_ENFORCE_GE(context->Inputs("Ids").size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "Input Ids of EmbeddingEltWiseLayerNormOp should "
                           "have at least 2 tensors"));
 
     PADDLE_ENFORCE_EQ(
-        context->HasInput("Bias"), true,
+        context->HasInput("Bias"),
+        true,
         platform::errors::InvalidArgument(
             "Input(Bias) of EmbeddingEltWiseLayerNormOp should not be null."));
 
     PADDLE_ENFORCE_EQ(
-        context->HasInput("Scale"), true,
+        context->HasInput("Scale"),
+        true,
         platform::errors::InvalidArgument(
             "Input(Scale) of EmbeddingEltWiseLayerNormOp should not be null."));
 
     PADDLE_ENFORCE_EQ(
-        context->HasOutput("Out"), true,
+        context->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument(
             "Output(Out) of EmbeddingEltWiseLayerNormOp should not be null."));
 
@@ -64,24 +74,30 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
     int seq_len = ids_dims[0][1];
     int hidden = embs_dims[0][1];
     for (size_t i = 0; i < embs_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(embs_dims[i].size(), 2,
+      PADDLE_ENFORCE_EQ(embs_dims[i].size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The Emb dim's size shoule be 2, but found %d.",
                             embs_dims[i].size()));
       PADDLE_ENFORCE_EQ(
-          embs_dims[i][1], dims_bias[0],
+          embs_dims[i][1],
+          dims_bias[0],
           platform::errors::InvalidArgument(
               "The second dims (%d) of the Embedding should be equal "
               "to the Bias's size(%d).",
-              embs_dims[i][1], dims_bias[0]));
+              embs_dims[i][1],
+              dims_bias[0]));
       PADDLE_ENFORCE_EQ(
-          embs_dims[i][1], hidden,
+          embs_dims[i][1],
+          hidden,
           platform::errors::InvalidArgument(
-              "The Emb first dim size(%d) shoule equal to hidden (%d).",
-              embs_dims[i][1], hidden));
+              "The second dimension size(%d) of the Embedding should be "
+              "equal to the hidden's size(%d)",
+              embs_dims[i][1],
+              hidden));
     }
 
-    auto dim_output = framework::make_ddim({batch, seq_len, hidden});
+    auto dim_output = phi::make_ddim({batch, seq_len, hidden});
     context->SetOutputDim("Out", dim_output);
     context->ShareLoD("Ids", /*->*/ "Out");
   }
@@ -94,7 +110,7 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
     bool flag = 0;
     for (auto* input : inputs) {
       if (input->IsInitialized() && input->numel() > 0) {
-        input_data_type = input->type();
+        input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;
       }
@@ -123,12 +139,14 @@ class EmbeddingEltWiseLayerNormOpMaker
         .SetDefault(1e-5)
         .AddCustomChecker([](const float& epsilon) {
           PADDLE_ENFORCE_GE(
-              epsilon, 0.0f,
+              epsilon,
+              0.0f,
               platform::errors::InvalidArgument(
                   "'epsilon' is %f, but it should be between 0.0 and 0.001",
                   epsilon));
           PADDLE_ENFORCE_LE(
-              epsilon, 0.001f,
+              epsilon,
+              0.001f,
               platform::errors::InvalidArgument(
                   "'epsilon' is %f, but it should be between 0.0 and 0.001.",
                   epsilon));

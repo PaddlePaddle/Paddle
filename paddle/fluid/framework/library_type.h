@@ -26,6 +26,7 @@ enum class LibraryType {
   kPlain = 0,
   kMKLDNN = 1,
   kCUDNN = 2,
+  kKP = 3,
 };
 
 inline std::string LibraryTypeToString(const LibraryType& library_type) {
@@ -36,10 +37,12 @@ inline std::string LibraryTypeToString(const LibraryType& library_type) {
       return "MKLDNN";
     case LibraryType::kCUDNN:
       return "CUDNN";
+    case LibraryType::kKP:
+      return "KP";
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unknown LibraryType code (%d), only supports library type include "
-          "PLAIN(0), MKLDNN(1), CUDNN(2).",
+          "PLAIN(0), MKLDNN(1), CUDNN(2), KP(3).",
           static_cast<int>(library_type)));
   }
 }
@@ -57,16 +60,24 @@ inline LibraryType StringToLibraryType(const char* ctype) {
     return LibraryType::kCUDNN;
     // To be compatible with register macro.
     // CPU, CUDA, PLAIN are same library type.
+  } else if (s == std::string("KP")) {
+    return LibraryType::kKP;
   } else if (s == std::string("CPU")) {
     return LibraryType::kPlain;
   } else if (s == std::string("XPU")) {
     return LibraryType::kPlain;
+  } else if (s == std::string("IPU")) {
+    return LibraryType::kPlain;
+  } else if (s == std::string("NPU")) {
+    return LibraryType::kPlain;
   } else if (s == std::string("CUDA")) {
+    return LibraryType::kPlain;
+  } else if (s == std::string("MLU")) {
     return LibraryType::kPlain;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unknown LibraryType string (%s), only support library type string "
-        "include PLAIN, MKLDNN, CUDNN, CPU and CUDA.",
+        "include PLAIN, MKLDNN, CUDNN, CPU, CUDA and IPU.",
         s.c_str()));
   }
 }

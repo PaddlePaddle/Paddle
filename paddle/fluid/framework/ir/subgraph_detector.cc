@@ -117,7 +117,7 @@ void SubgraphDetector::MarkNodesInsideSubGraph() {
 // Use the Union Find(UF) algorithm to find fully connected sub-graphs, if node
 // a's output is node b, that is a and b is in the same sub-graph. The UF
 // algorithm will group them to the same cluster.
-using node_map_t = std::unordered_map<int, Node *>;
+using node_map_t = std::map<int, Node *>;
 // Find the ancestor id of a node.
 int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
   int tmp = id;
@@ -155,8 +155,9 @@ struct BriefNode {
 // 3. change all the dst's inputs and outputs
 // corresponding inlinks and outlinks to src node.
 // 4. delete all dst's inlinks and outlinks.
-void UnionContractedNodes(const std::unordered_map<int, BriefNode *> &node_map,
-                          int src_id, int dst_id) {
+void UnionContractedNodes(const std::map<int, BriefNode *> &node_map,
+                          int src_id,
+                          int dst_id) {
   // merge the two adjacent nodes into one node.
   BriefNode *src_node = node_map.at(src_id);
   BriefNode *dst_node = node_map.at(dst_id);
@@ -221,7 +222,8 @@ void UnionContractedNodes(const std::unordered_map<int, BriefNode *> &node_map,
 // of node.
 // If leave func not nullptr, calls leave(node) after visiting all parents of
 // node.
-void FlexibleDFS(const std::vector<BriefNode *> &source, bool reverse,
+void FlexibleDFS(const std::vector<BriefNode *> &source,
+                 bool reverse,
                  const std::function<bool(const BriefNode *)> &enter,
                  const std::function<bool(const BriefNode *)> &leave) {
   typedef struct {
@@ -262,7 +264,7 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
   std::vector<Node *> marked_nodes;
   //  We use brief_node_map to represent the original graph in order to avoid
   //  changing the original graph.
-  std::unordered_map<int, BriefNode *> brief_node_map;
+  std::map<int, BriefNode *> brief_node_map;
 
   std::unordered_set<int32_t> valid_node_ids;
   for (auto *node : graph_->Nodes()) {
@@ -341,7 +343,9 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
 
         // Reverse DFS from the source_nodes.
         bool have_excess_path = false;
-        FlexibleDFS(source_nodes, true, nullptr,
+        FlexibleDFS(source_nodes,
+                    true,
+                    nullptr,
                     [&have_excess_path, brief_node](const BriefNode *n) {
                       if (n == brief_node) {
                         have_excess_path = true;
@@ -355,10 +359,10 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
       if (contract_nodes.empty()) break;
 
       for (auto dst_node : contract_nodes) {
-        UnionFindCombine(node_map, brief_node->node->id(),
-                         dst_node->node->id());
-        UnionContractedNodes(brief_node_map, brief_node->node->id(),
-                             dst_node->node->id());
+        UnionFindCombine(
+            node_map, brief_node->node->id(), dst_node->node->id());
+        UnionContractedNodes(
+            brief_node_map, brief_node->node->id(), dst_node->node->id());
       }
     }
   }
@@ -371,7 +375,8 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
     }
   }
   std::vector<std::vector<Node *>> result;
-  std::for_each(clusters.begin(), clusters.end(),
+  std::for_each(clusters.begin(),
+                clusters.end(),
                 [&](const decltype(clusters)::value_type &it) {
                   result.push_back(it.second);
                 });

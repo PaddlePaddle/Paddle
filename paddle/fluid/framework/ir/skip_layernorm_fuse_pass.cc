@@ -39,13 +39,12 @@ struct SkipLayerNorm : public PatternBase {
   PDNode *operator()(PDNode *x, PDNode *y);
 
   // declare operator node's name
-  PATTERN_DECL_NODE(fused_skipe_layernorm);
   PATTERN_DECL_NODE(elementwise);
   PATTERN_DECL_NODE(layer_norm);
   // declare variable node's name
   PATTERN_DECL_NODE(
-      elementwise_out);  // (elementwise_input_x,elementwise_input_y) ->
-                         // elementwise_out
+      elementwise_out);  // (elementwise_input_x,elementwise_input_y)
+                         // -> elementwise_out
   PATTERN_DECL_NODE(layer_norm_bias);
   PATTERN_DECL_NODE(layer_norm_scale);
   PATTERN_DECL_NODE(layer_norm_out);
@@ -59,9 +58,10 @@ PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
   y->assert_is_op_input("elementwise_add", "Y");
   auto *elementwise =
       pattern->NewNode(elementwise_repr())->assert_is_op("elementwise_add");
-  auto *elementwise_out_var = pattern->NewNode(elementwise_out_repr())
-                                  ->AsOutput()
-                                  ->assert_is_op_output("elementwise_add");
+  auto *elementwise_out_var =
+      pattern->NewNode(elementwise_out_repr())
+          ->AsOutput()
+          ->assert_is_only_output_of_op("elementwise_add");
 
   // Add links for elementwise_add op.
   elementwise->LinksFrom({x, y}).LinksTo({elementwise_out_var});
@@ -129,25 +129,22 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       return;
     }
 
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "skip_layernorm pass in op compat failed.";
+      return;
+    }
+
     VLOG(4) << "handle SkipLayerNorm fuse";
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              fused_pattern);
-
-    // check if is in ernie or not
-    if (!graph->Has(kEmbEltwiseLayernormPass) ||
-        !graph->Has(kMultiheadMatmulPass)) {
-      LOG(INFO) << "The skip_layernorm_fuse_pass is only supported in "
-                << "Ernie/Bert model. Just skip this pass.";
-      return;
-    }
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, fused_pattern);
 
     std::unordered_set<const Node *> del_node_set;
 
@@ -160,6 +157,12 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetInput("Y", {subgraph.at(y)->Name()});
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
+
+    if (layer_norm->Op()->HasAttr("out_threshold")) {
+      new_desc.SetAttr("enable_int8", true);
+      new_desc.SetAttr("out_threshold",
+                       layer_norm->Op()->GetAttr("out_threshold"));
+    }
 
     // outputs
     new_desc.SetOutput("Out", {layer_norm_out->Name()});

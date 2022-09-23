@@ -19,7 +19,12 @@
 
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
+
+namespace phi {
+class SelectedRows;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -33,11 +38,13 @@ struct ReduceLoDTensor {
 
   template <typename T>
   void apply() const {
-    PADDLE_ENFORCE_NE(src_tensors_.empty(), true,
+    PADDLE_ENFORCE_NE(src_tensors_.empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The number of tensors to be reduced is 0."));
     auto &t0 = *src_tensors_[0];
-    PADDLE_ENFORCE_NE(t0.numel(), 0,
+    PADDLE_ENFORCE_NE(t0.numel(),
+                      0,
                       platform::errors::InvalidArgument(
                           "The size of first tensor to be reduced is 0."));
 
@@ -50,21 +57,27 @@ struct ReduceLoDTensor {
         continue;
       }
 
-      PADDLE_ENFORCE_EQ(t.dims(), t0.dims(),
+      PADDLE_ENFORCE_EQ(t.dims(),
+                        t0.dims(),
                         platform::errors::InvalidArgument(
                             "The shape of tensors to be reduced must be "
                             "consistent. The shape of current tensor is %s, "
                             "but the shape of the first tensor is %s.",
-                            t.dims(), t0.dims()));
+                            t.dims(),
+                            t0.dims()));
 
-      PADDLE_ENFORCE_EQ(t.type(), t0.type(),
+      PADDLE_ENFORCE_EQ(t.type(),
+                        t0.type(),
                         platform::errors::InvalidArgument(
                             "The type of tensors to be reduced must be "
                             "consistent. The type of current tensor is %s, "
                             "but the type of the first tensor is %s.",
-                            t.type(), t0.type()));
-      std::transform(t.data<T>(), t.data<T>() + t.numel(), dst, dst,
-                     [](T a, T b) -> T { return a + b; });
+                            t.type(),
+                            t0.type()));
+      std::transform(
+          t.data<T>(), t.data<T>() + t.numel(), dst, dst, [](T a, T b) -> T {
+            return a + b;
+          });
     }
   }
 };
@@ -74,7 +87,8 @@ struct ReduceBufferData {
   void *dst_data_;
   int64_t numel_;
 
-  ReduceBufferData(const std::vector<const void *> &src, void *dst,
+  ReduceBufferData(const std::vector<const void *> &src,
+                   void *dst,
                    int64_t numel)
       : src_data_(src), dst_data_(dst), numel_(numel) {}
 
@@ -88,23 +102,27 @@ struct ReduceBufferData {
         continue;
       }
 
-      std::transform(srd_data, srd_data + numel_, dst_data, dst_data,
-                     [](T a, T b) -> T { return a + b; });
+      std::transform(
+          srd_data, srd_data + numel_, dst_data, dst_data, [](T a, T b) -> T {
+            return a + b;
+          });
     }
   }
 };
 
 struct GatherLocalSelectedRowsFunctor {
   GatherLocalSelectedRowsFunctor(
-      const std::vector<const SelectedRows *> &src_selected_rows,
+      const std::vector<const phi::SelectedRows *> &src_selected_rows,
       const std::vector<platform::Place> &in_places,
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
-      const platform::Place &out_place, SelectedRows *dst_selected_rows)
+      const platform::Place &out_place,
+      phi::SelectedRows *dst_selected_rows)
       : dev_ctxes_(dev_ctxes),
         in_places_(in_places),
         out_place_(out_place),
         dst_selected_rows_(dst_selected_rows) {
-    PADDLE_ENFORCE_NE(src_selected_rows.empty(), true,
+    PADDLE_ENFORCE_NE(src_selected_rows.empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The number of selected_rows to be gathered is 0."));
 
@@ -125,7 +143,8 @@ struct GatherLocalSelectedRowsFunctor {
     DDim out_dim = pre_in->GetCompleteDims();
     out_dim[0] = static_cast<int64_t>(rows);
     dst_tensor.mutable_value()->Resize(out_dim);
-    dst_tensor.mutable_value()->mutable_data(out_place, pre_in->value().type());
+    dst_tensor.mutable_value()->mutable_data(out_place,
+                                             pre_in->value().dtype());
   }
 
   void operator()() {
@@ -135,8 +154,10 @@ struct GatherLocalSelectedRowsFunctor {
     for (size_t j = 0; j < in_tensors_.size(); ++j) {
       e += in_tensors_[j].dims()[0];
       auto sub_out = out_tensor->Slice(s, e);
-      paddle::framework::TensorCopy(in_tensors_[j], out_place_,
-                                    *(dev_ctxes_.at(in_places_[j])), &sub_out);
+      paddle::framework::TensorCopy(in_tensors_[j],
+                                    out_place_,
+                                    *(dev_ctxes_.at(in_places_[j])),
+                                    &sub_out);
       s = e;
     }
   }
@@ -147,7 +168,7 @@ struct GatherLocalSelectedRowsFunctor {
   std::vector<Tensor> in_tensors_;
 
   platform::Place out_place_;
-  SelectedRows *dst_selected_rows_;
+  phi::SelectedRows *dst_selected_rows_;
 };
 
 }  // namespace details

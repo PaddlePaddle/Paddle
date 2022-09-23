@@ -15,12 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -53,8 +53,10 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
     }
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 
@@ -65,7 +67,8 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
     std::vector<int64_t> output_shape(output_size, 0);
 
     // Validity Check: rank range.
-    PADDLE_ENFORCE_LE(output_size, 6,
+    PADDLE_ENFORCE_LE(output_size,
+                      6,
                       platform::errors::InvalidArgument(
                           "The output "
                           "tensor's rank should be less than 6."));
@@ -73,10 +76,13 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
     for (int axis : unsqz_dims) {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
       // Vaildity Check: the axis bound
-      PADDLE_ENFORCE_GE(cur, 0, platform::errors::InvalidArgument(
-                                    "The insert dimension value should "
-                                    "not be less than 0"));
-      PADDLE_ENFORCE_LE(cur, cur_output_size,
+      PADDLE_ENFORCE_GE(
+          cur,
+          0,
+          platform::errors::InvalidArgument("The insert dimension value should "
+                                            "not be less than 0"));
+      PADDLE_ENFORCE_LE(cur,
+                        cur_output_size,
                         platform::errors::InvalidArgument(
                             "The insert dimension value shoule not be larger "
                             "than the dimension size of input tensor"));
@@ -100,7 +106,7 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
       }
     }
 
-    return framework::make_ddim(output_shape);
+    return phi::make_ddim(output_shape);
   }
 };
 
@@ -129,7 +135,7 @@ class Unsqueeze2GradKernel : public framework::OpKernel<T> {
     // auto in_dims = d_x->dims();
 
     auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);

@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/collective/allreduce_op.h"
+
 #include <future>  // NOLINT
 #include <ostream>
-
-#include "paddle/fluid/operators/distributed_ops/allreduce_op.h"
 
 namespace paddle {
 namespace operators {
@@ -69,12 +69,13 @@ If input and output are the same variable, in-place allreduce will be used.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(allreduce, ops::AllReduceOp,
+REGISTER_OP_WITHOUT_GRADIENT(allreduce,
+                             ops::AllReduceOp,
                              ops::AllReduceOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    allreduce, ops::AllReduceOpKernel<plat::CPUDeviceContext, float>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, double>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, int>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, plat::float16>);
+REGISTER_OP_CPU_KERNEL(allreduce,
+                       ops::AllReduceOpKernel<phi::CPUContext, float>,
+                       ops::AllReduceOpKernel<phi::CPUContext, double>,
+                       ops::AllReduceOpKernel<phi::CPUContext, int>,
+                       ops::AllReduceOpKernel<phi::CPUContext, int64_t>,
+                       ops::AllReduceOpKernel<phi::CPUContext, plat::float16>);

@@ -25,8 +25,8 @@ import errno
 import time
 import logging
 import six
-from . import fs
-from .fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut, FSShellCmdAborted
+#from . import fs
+from paddle.distributed.fleet.utils.fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut, FSShellCmdAborted
 from paddle.fluid import core
 import functools
 
@@ -36,7 +36,9 @@ __all__ = ["HDFSClient"]
 
 
 def _handle_errors(max_time_out=None):
+
     def decorator(f):
+
         @functools.wraps(f)
         def handler(*args, **kwargs):
             o = args[0]
@@ -56,13 +58,15 @@ def _handle_errors(max_time_out=None):
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
                         raise FSTimeOut("args:{} timeout:{}".format(
-                            args, time.time() - start))
+                            args,
+                            time.time() - start))
 
                     time.sleep(inter)
 
                 if time.time() - last_print_time > 30:
                     print("hadoop operator timeout:args:{} timeout:{}".format(
-                        args, time.time() - start))
+                        args,
+                        time.time() - start))
                     last_print_time = time.time()
 
         return handler
@@ -71,6 +75,7 @@ def _handle_errors(max_time_out=None):
 
 
 class HDFSClient(FS):
+
     def __init__(
             self,
             hadoop_home,
@@ -114,8 +119,8 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def ls_dir(self, fs_path):
-        """	
-        list directory under fs_path, and only give the pure name, not include the fs_path	
+        """
+        list directory under fs_path, and only give the pure name, not include the fs_path
         """
         if not self.is_exist(fs_path):
             return [], []
@@ -264,12 +269,11 @@ class HDFSClient(FS):
 
         if test_exists:
             if not self.is_exist(fs_src_path):
-                raise FSFileNotExistsError("{} is not exists".format(
-                    fs_src_path))
+                raise FSFileNotExistsError(
+                    "{} is not exists".format(fs_src_path))
 
             if self.is_exist(fs_dst_path):
-                raise FSFileExistsError("{} exists already".format(
-                    fs_src_path, fs_dst_path, fs_dst_path))
+                raise FSFileExistsError("{} exists already".format(fs_dst_path))
 
         return self._try_mv(fs_src_path, fs_dst_path)
 

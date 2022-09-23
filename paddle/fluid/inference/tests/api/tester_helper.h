@@ -33,11 +33,12 @@
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 #include "paddle/fluid/inference/utils/benchmark.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");
@@ -47,36 +48,59 @@ DEFINE_string(infer_data, "", "data file");
 DEFINE_string(refer_result, "", "reference result for comparison");
 DEFINE_int32(batch_size, 1, "batch size");
 DEFINE_bool(ernie_large, false, "Test ernie large");
-DEFINE_bool(with_accuracy_layer, true,
+DEFINE_bool(with_accuracy_layer,
+            true,
             "Calculate the accuracy while label is in the input");
 DEFINE_bool(enable_fp32, true, "Enable FP32 type prediction");
 DEFINE_bool(enable_bf16, false, "Enable BF16 type prediction");
 DEFINE_bool(enable_int8, false, "Enable INT8 type prediction");
+DEFINE_bool(enable_quant_int8, false, "Enable QUANT INT8 type prediction");
 DEFINE_int32(warmup_batch_size, 100, "batch size for quantization warmup");
 // setting iterations to 0 means processing the whole dataset
 DEFINE_int32(iterations, 0, "number of batches to process");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
 DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
-DEFINE_bool(use_analysis, true,
+DEFINE_bool(use_analysis,
+            true,
             "Running the inference program in analysis mode.");
-DEFINE_bool(record_benchmark, false,
+DEFINE_bool(record_benchmark,
+            false,
             "Record benchmark after profiling the model");
 DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
 DEFINE_double(quantized_accuracy, 1e-2, "Result Quantized Accuracy.");
 DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
-DEFINE_bool(warmup, false,
+DEFINE_bool(warmup,
+            false,
             "Use warmup to calculate elapsed_time more accurately. "
             "To reduce CI time, it sets false in default.");
 DEFINE_int32(warmup_iters, 1, "Number of batches to process during warmup.");
 
 DEFINE_bool(enable_profile, false, "Turn on profiler for fluid");
 DEFINE_int32(cpu_num_threads, 1, "Number of threads for each paddle instance.");
+DEFINE_bool(fuse_multi_gru,
+            false,
+            "Running the inference program with multi_gru_fuse_pass");
+
+// ipu related
+DEFINE_int32(ipu_micro_batch_size, 1, "micro batch size");
+DEFINE_int32(ipu_device_num, 1, "device num");
+DEFINE_bool(ipu_enable_pipelining, false, "enable pipelining");
+DEFINE_int32(ipu_batches_per_step,
+             1,
+             "the number of batches per run in pipelining");
+DEFINE_bool(ipu_enable_fp16, false, "enable fp16");
+DEFINE_int32(ipu_replica_num, 1, "replica num");
+DEFINE_double(ipu_available_memory_proportion,
+              1.0,
+              "available memory proportion");
+DEFINE_bool(ipu_enable_half_partial, false, "enable half partial");
 
 namespace paddle {
 namespace inference {
 
 using paddle::framework::proto::VarType;
+using float16 = paddle::platform::float16;
 
 template <typename T>
 constexpr paddle::PaddleDType GetPaddleDType();
@@ -130,11 +154,13 @@ class Barrier {
 template <typename T>
 class TensorReader {
  public:
-  TensorReader(std::ifstream &file, size_t beginning_offset,
-               std::vector<int> shape, std::string name)
+  TensorReader(std::ifstream &file,
+               size_t beginning_offset,
+               std::vector<int> shape,
+               std::string name)
       : file_(file), position_(beginning_offset), shape_(shape), name_(name) {
-    numel_ = std::accumulate(shape_.begin(), shape_.end(), size_t{1},
-                             std::multiplies<size_t>());
+    numel_ = std::accumulate(
+        shape_.begin(), shape_.end(), size_t{1}, std::multiplies<size_t>());
   }
 
   PaddleTensor NextBatch() {
@@ -169,14 +195,16 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   int test_data_batch_size = test_data[0][0].shape[0];
   auto iterations = test_data.size();
   auto all_test_data_size = iterations * test_data_batch_size;
-  PADDLE_ENFORCE_LE(static_cast<size_t>(num_images), all_test_data_size,
+  PADDLE_ENFORCE_LE(static_cast<size_t>(num_images),
+                    all_test_data_size,
                     platform::errors::InvalidArgument(
                         "The requested quantization warmup data size must be "
                         "lower or equal to the test data size. But received"
                         "warmup size is %d and test data size is %d. Please "
                         "use --warmup_batch_size parameter to set smaller "
                         "warmup batch size.",
-                        num_images, all_test_data_size));
+                        num_images,
+                        all_test_data_size));
 
   PaddleTensor images;
   images.name = "image";
@@ -197,15 +225,16 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
                     element_in_batch * 3 * 224 * 224,
                 3 * 224 * 224,
                 static_cast<float *>(images.data.data()) + i * 3 * 224 * 224);
-
-    std::copy_n(static_cast<int64_t *>(test_data[batch][1].data.data()) +
-                    element_in_batch,
-                1, static_cast<int64_t *>(labels.data.data()) + i);
+    if (FLAGS_with_accuracy_layer)
+      std::copy_n(static_cast<int64_t *>(test_data[batch][1].data.data()) +
+                      element_in_batch,
+                  1,
+                  static_cast<int64_t *>(labels.data.data()) + i);
   }
-
-  auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(2);
+  auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(
+      FLAGS_with_accuracy_layer ? 2 : 1);
   (*warmup_data)[0] = std::move(images);
-  (*warmup_data)[1] = std::move(labels);
+  if (FLAGS_with_accuracy_layer) (*warmup_data)[1] = std::move(labels);
   return warmup_data;
 }
 
@@ -226,10 +255,10 @@ void SetInputs(std::vector<std::vector<PaddleTensor>> *inputs,
   auto labels_offset_in_file =
       images_offset_in_file + sizeof(float) * total_images * 3 * 224 * 224;
 
-  TensorReader<float> image_reader(file, images_offset_in_file,
-                                   image_batch_shape, "image");
-  TensorReader<int64_t> label_reader(file, labels_offset_in_file,
-                                     label_batch_shape, "label");
+  TensorReader<float> image_reader(
+      file, images_offset_in_file, image_batch_shape, "image");
+  TensorReader<int64_t> label_reader(
+      file, labels_offset_in_file, label_batch_shape, "label");
 
   auto iterations_max = total_images / batch_size;
   auto iterations = iterations_max;
@@ -238,9 +267,13 @@ void SetInputs(std::vector<std::vector<PaddleTensor>> *inputs,
   }
   for (auto i = 0; i < iterations; i++) {
     auto images = image_reader.NextBatch();
-    auto labels = label_reader.NextBatch();
-    inputs->emplace_back(
-        std::vector<PaddleTensor>{std::move(images), std::move(labels)});
+    std::vector<PaddleTensor> tmp_vec;
+    tmp_vec.push_back(std::move(images));
+    if (FLAGS_with_accuracy_layer) {
+      auto labels = label_reader.NextBatch();
+      tmp_vec.push_back(std::move(labels));
+    }
+    inputs->push_back(std::move(tmp_vec));
   }
 }
 
@@ -359,13 +392,15 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
 }
 
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
-                       const std::string &dirname, bool is_combined = true,
+                       const std::string &dirname,
+                       bool is_combined = true,
                        std::string model_filename = "model",
                        std::string params_filename = "params",
                        const std::vector<std::string> *feed_names = nullptr,
                        const int continuous_inuput_index = 0) {
   // Set fake_image_data
-  PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0,
+  PADDLE_ENFORCE_EQ(FLAGS_test_all_data,
+                    0,
                     platform::errors::InvalidArgument(
                         "In SetFakeImageInput, expected test_all_data = false, "
                         "but now test_all_data=",
@@ -383,12 +418,14 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
   LOG(INFO) << os.str();
   if (feed_names) {
     PADDLE_ENFORCE_EQ(
-        feed_names->size(), feed_target_shapes.size(),
+        feed_names->size(),
+        feed_target_shapes.size(),
         platform::errors::InvalidArgument(
             "The size of feeds_names and size of "
             "feed_target_shapes must be equal, but now feeds_names "
             "size is %d and feed_target_shapes size is %d",
-            feed_names->size(), feed_target_shapes.size()));
+            feed_names->size(),
+            feed_target_shapes.size()));
   }
   std::vector<PaddleTensor> input_slots(feed_target_shapes.size());
   for (size_t i = 0; i < feed_target_shapes.size(); ++i) {
@@ -403,8 +440,10 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     }
     input.shape = shape;
     input.dtype = PaddleDType::FLOAT32;
-    size_t len = std::accumulate(shape.begin(), shape.end(), size_t{1},
-                                 [](int a, int b) { return a * b; });
+    size_t len = std::accumulate(
+        shape.begin(), shape.end(), size_t{1}, [](int a, int b) {
+          return a * b;
+        });
     input.data.Resize(len * sizeof(float));
     input.lod.assign({{0, static_cast<size_t>(FLAGS_batch_size)}});
     float *input_data = static_cast<float *>(input.data.data());
@@ -419,7 +458,8 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
 
 void GetInputPerBatch(const std::vector<std::vector<int64_t>> &in,
                       std::vector<std::vector<int64_t>> *out,
-                      std::vector<size_t> *lod, size_t batch_iter,
+                      std::vector<size_t> *lod,
+                      size_t batch_iter,
                       size_t batch_end) {
   lod->clear();
   lod->push_back(0);
@@ -453,7 +493,8 @@ void ConvertPaddleTensorToZeroCopyTensor(
 void PredictionWarmUp(PaddlePredictor *predictor,
                       const std::vector<std::vector<PaddleTensor>> &inputs,
                       std::vector<std::vector<PaddleTensor>> *outputs,
-                      int num_threads, int tid,
+                      int num_threads,
+                      int tid,
                       const VarType::Type data_type = VarType::FP32) {
   int batch_size = FLAGS_batch_size;
   LOG(INFO) << "Running thread " << tid << ", warm up run...";
@@ -462,7 +503,8 @@ void PredictionWarmUp(PaddlePredictor *predictor,
   }
   int iterations = 1;
   if (FLAGS_warmup_iters > 1)
-    iterations = std::min(FLAGS_warmup_iters, static_cast<int>(inputs.size()));
+    iterations =
+        (std::min)(FLAGS_warmup_iters, static_cast<int>(inputs.size()));
   outputs->resize(iterations);
   Timer warmup_timer;
   double elapsed_time = 0;
@@ -480,8 +522,8 @@ void PredictionWarmUp(PaddlePredictor *predictor,
     }
   }
   auto batch_latency = elapsed_time / iterations;
-  PrintTime(batch_size, 1, num_threads, tid, batch_latency, iterations,
-            data_type);
+  PrintTime(
+      batch_size, 1, num_threads, tid, batch_latency, iterations, data_type);
   if (FLAGS_enable_profile) {
     paddle::platform::ResetProfiler();
   }
@@ -490,7 +532,8 @@ void PredictionWarmUp(PaddlePredictor *predictor,
 void PredictionRun(PaddlePredictor *predictor,
                    const std::vector<std::vector<PaddleTensor>> &inputs,
                    std::vector<std::vector<PaddleTensor>> *outputs,
-                   int num_threads, int tid,
+                   int num_threads,
+                   int tid,
                    const VarType::Type data_type = VarType::FP32,
                    float *sample_latency = nullptr) {
   int num_times = FLAGS_repeat;
@@ -542,8 +585,13 @@ void PredictionRun(PaddlePredictor *predictor,
 #endif
 
   auto batch_latency = elapsed_time / (iterations * num_times);
-  PrintTime(FLAGS_batch_size, num_times, num_threads, tid, batch_latency,
-            iterations, data_type);
+  PrintTime(FLAGS_batch_size,
+            num_times,
+            num_threads,
+            tid,
+            batch_latency,
+            iterations,
+            data_type);
 
   if (sample_latency != nullptr)
     *sample_latency = batch_latency / FLAGS_batch_size;
@@ -560,21 +608,23 @@ void PredictionRun(PaddlePredictor *predictor,
 void TestOneThreadPrediction(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
-    std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true,
+    std::vector<std::vector<PaddleTensor>> *outputs,
+    bool use_analysis = true,
     const VarType::Type data_type = VarType::FP32,
     float *sample_latency = nullptr) {
   auto predictor = CreateTestPredictor(config, use_analysis);
   if (FLAGS_warmup) {
     PredictionWarmUp(predictor.get(), inputs, outputs, 1, 0, data_type);
   }
-  PredictionRun(predictor.get(), inputs, outputs, 1, 0, data_type,
-                sample_latency);
+  PredictionRun(
+      predictor.get(), inputs, outputs, 1, 0, data_type, sample_latency);
 }
 
 void TestMultiThreadPrediction(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
-    std::vector<std::vector<PaddleTensor>> *outputs, int num_threads,
+    std::vector<std::vector<PaddleTensor>> *outputs,
+    int num_threads,
     bool use_analysis = true) {
   std::vector<std::thread> threads;
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
@@ -590,8 +640,8 @@ void TestMultiThreadPrediction(
       std::vector<std::vector<PaddleTensor>> outputs_tid;
       auto &predictor = predictors[tid];
       if (FLAGS_warmup) {
-        PredictionWarmUp(predictor.get(), inputs, &outputs_tid, num_threads,
-                         tid);
+        PredictionWarmUp(
+            predictor.get(), inputs, &outputs_tid, num_threads, tid);
       }
       PredictionRun(predictor.get(), inputs, &outputs_tid, num_threads, tid);
     });
@@ -604,13 +654,14 @@ void TestMultiThreadPrediction(
 void TestPrediction(const PaddlePredictor::Config *config,
                     const std::vector<std::vector<PaddleTensor>> &inputs,
                     std::vector<std::vector<PaddleTensor>> *outputs,
-                    int num_threads, bool use_analysis = FLAGS_use_analysis) {
+                    int num_threads,
+                    bool use_analysis = FLAGS_use_analysis) {
   PrintConfig(config, use_analysis);
   if (num_threads == 1) {
     TestOneThreadPrediction(config, inputs, outputs, use_analysis);
   } else {
-    TestMultiThreadPrediction(config, inputs, outputs, num_threads,
-                              use_analysis);
+    TestMultiThreadPrediction(
+        config, inputs, outputs, num_threads, use_analysis);
   }
 }
 
@@ -618,14 +669,16 @@ void SummarizeAccuracy(float avg_acc_ref, float avg_acc, int compared_idx) {
   std::string data_type_name = "INT8";
   if (FLAGS_enable_bf16) data_type_name = "BF16";
   PADDLE_ENFORCE_LE(
-      compared_idx, 2,
+      compared_idx,
+      2,
       platform::errors::InvalidArgument(
           "The compared_idx should be <= 2. But received compared_idx = %d. "
           "For top1 accuracy, set compared_idx = 1; For top5 accuracy or mean "
           "Average Precision (mAP), set compared_idx = 2.",
           compared_idx));
   PADDLE_ENFORCE_GE(
-      compared_idx, 1,
+      compared_idx,
+      1,
       platform::errors::InvalidArgument(
           "The compared_idx should be >= 1. But received compared_idx = %d. "
           "For top1 accuracy, set compared_idx = 1; For top5 accuracy or mean "
@@ -651,8 +704,10 @@ void SummarizePerformance(const char *title, float sample) {
             << " ms";
 }
 
-void SummarizePerformance(const char *title_fp32, float sample_latency_fp32,
-                          const char *title, float sample_latency) {
+void SummarizePerformance(const char *title_fp32,
+                          float sample_latency_fp32,
+                          const char *title,
+                          float sample_latency) {
   if (FLAGS_enable_fp32) SummarizePerformance(title_fp32, sample_latency_fp32);
   if (FLAGS_enable_int8 || FLAGS_enable_bf16)
     SummarizePerformance(title, sample_latency);
@@ -661,7 +716,8 @@ void SummarizePerformance(const char *title_fp32, float sample_latency_fp32,
 float CompareAccuracyOne(
     const std::vector<std::vector<PaddleTensor>> &output_slots,
     int compared_idx) {
-  PADDLE_ENFORCE_GT(output_slots.size(), 0,
+  PADDLE_ENFORCE_GT(output_slots.size(),
+                    0,
                     platform::errors::InvalidArgument(
                         "The accuracy vector is empty. The accuracy vector "
                         "size should be bigger than 0"));
@@ -672,7 +728,8 @@ float CompareAccuracyOne(
     switch (compared_idx) {
       case 1:
         PADDLE_ENFORCE_GE(
-            output_slots[i].size(), 2UL,
+            output_slots[i].size(),
+            2UL,
             platform::errors::InvalidArgument(
                 "To achieve top 1 accuracy, output_slots size "
                 "must be bigger than or equal to 2, but now the size is %d",
@@ -680,7 +737,8 @@ float CompareAccuracyOne(
         break;
       case 2:
         PADDLE_ENFORCE_GE(
-            output_slots[i].size(), 3UL,
+            output_slots[i].size(),
+            3UL,
             platform::errors::InvalidArgument(
                 "To achieve top 5 accuracy or mean Average "
                 "Precision (mAP), output_slots size must be "
@@ -760,11 +818,13 @@ void CompareNativeAndAnalysis(
   std::vector<std::vector<PaddleTensor>> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
-  PADDLE_ENFORCE_GT(native_outputs.size(), 0,
+  PADDLE_ENFORCE_GT(native_outputs.size(),
+                    0,
                     platform::errors::InvalidArgument(
                         "The native outputs is empty. The native outputs "
                         "vector size must be bigger than 0"));
-  PADDLE_ENFORCE_GT(analysis_outputs.size(), 0,
+  PADDLE_ENFORCE_GT(analysis_outputs.size(),
+                    0,
                     platform::errors::InvalidArgument(
                         "The analysis outputs is empty. The analysis outputs "
                         "vector size must be bigger than 0"));
@@ -772,15 +832,22 @@ void CompareNativeAndAnalysis(
 }
 
 void CompareQuantizedAndAnalysis(
-    const AnalysisConfig *config, const AnalysisConfig *qconfig,
+    const AnalysisConfig *config,
+    const AnalysisConfig *qconfig,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     const int compared_idx = 1) {
+  PADDLE_ENFORCE_GT(
+      inputs.size(),
+      0,
+      platform::errors::PreconditionNotMet("There is no input data provided."));
   PADDLE_ENFORCE_EQ(
-      inputs[0][0].shape[0], FLAGS_batch_size,
+      inputs[0][0].shape[0],
+      FLAGS_batch_size,
       platform::errors::InvalidArgument(
           "Input data has to be packed batch by batch. The batchsize is set to "
           "%d, but the real input is packed with batchsize = %d",
-          FLAGS_batch_size, inputs[0][0].shape[0]));
+          FLAGS_batch_size,
+          inputs[0][0].shape[0]));
   LOG(INFO) << "FP32 & INT8 prediction run: batch_size " << FLAGS_batch_size
             << ", warmup batch size " << FLAGS_warmup_batch_size << ".";
 
@@ -791,7 +858,11 @@ void CompareQuantizedAndAnalysis(
   float sample_latency_fp32{-1};
 
   if (FLAGS_enable_fp32) {
-    TestOneThreadPrediction(cfg, inputs, &analysis_outputs, true, VarType::FP32,
+    TestOneThreadPrediction(cfg,
+                            inputs,
+                            &analysis_outputs,
+                            true,
+                            VarType::FP32,
                             &sample_latency_fp32);
   }
 
@@ -802,25 +873,33 @@ void CompareQuantizedAndAnalysis(
   float sample_latency_int8{-1};
 
   if (FLAGS_enable_int8) {
-    TestOneThreadPrediction(qcfg, inputs, &quantized_outputs, true,
-                            VarType::INT8, &sample_latency_int8);
+    TestOneThreadPrediction(qcfg,
+                            inputs,
+                            &quantized_outputs,
+                            true,
+                            VarType::INT8,
+                            &sample_latency_int8);
   }
-  SummarizePerformance("FP32", sample_latency_fp32, "INT8",
-                       sample_latency_int8);
+  SummarizePerformance(
+      "FP32", sample_latency_fp32, "INT8", sample_latency_int8);
 
-  CompareAccuracy(quantized_outputs, analysis_outputs, compared_idx);
+  if (FLAGS_with_accuracy_layer)
+    CompareAccuracy(quantized_outputs, analysis_outputs, compared_idx);
 }
 
 void CompareBFloat16AndAnalysis(
-    const AnalysisConfig *config, const AnalysisConfig *qconfig,
+    const AnalysisConfig *config,
+    const AnalysisConfig *qconfig,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     const int compared_idx = 1) {
   PADDLE_ENFORCE_EQ(
-      inputs[0][0].shape[0], FLAGS_batch_size,
+      inputs[0][0].shape[0],
+      FLAGS_batch_size,
       platform::errors::InvalidArgument(
           "Input data has to be packed batch by batch. The batchsize is set to "
           "%d, but the real input is packed with batchsize = %d",
-          FLAGS_batch_size, inputs[0][0].shape[0]));
+          FLAGS_batch_size,
+          inputs[0][0].shape[0]));
   LOG(INFO) << "FP32 & BF16 prediction run: batch_size " << FLAGS_batch_size;
 
   LOG(INFO) << "--- FP32 prediction start ---";
@@ -830,7 +909,11 @@ void CompareBFloat16AndAnalysis(
   float sample_latency_fp32{-1};
 
   if (FLAGS_enable_fp32) {
-    TestOneThreadPrediction(cfg, inputs, &analysis_outputs, true, VarType::FP32,
+    TestOneThreadPrediction(cfg,
+                            inputs,
+                            &analysis_outputs,
+                            true,
+                            VarType::FP32,
                             &sample_latency_fp32);
   }
 
@@ -841,26 +924,30 @@ void CompareBFloat16AndAnalysis(
   float sample_latency_bf16{-1};
 
   if (FLAGS_enable_bf16) {
-    TestOneThreadPrediction(qcfg, inputs, &bf16_outputs, true, VarType::FP32,
-                            &sample_latency_bf16);
+    TestOneThreadPrediction(
+        qcfg, inputs, &bf16_outputs, true, VarType::FP32, &sample_latency_bf16);
   }
-  SummarizePerformance("FP32", sample_latency_fp32, "BF16",
-                       sample_latency_bf16);
+  SummarizePerformance(
+      "FP32", sample_latency_fp32, "BF16", sample_latency_bf16);
 
-  CompareAccuracy(bf16_outputs, analysis_outputs, compared_idx);
+  if (FLAGS_with_accuracy_layer)
+    CompareAccuracy(bf16_outputs, analysis_outputs, compared_idx);
 }
 
 void CompareAnalysisAndAnalysis(
-    const AnalysisConfig *config1, const AnalysisConfig *config2,
+    const AnalysisConfig *config1,
+    const AnalysisConfig *config2,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     const bool with_accuracy_layer = FLAGS_with_accuracy_layer,
     const int compared_idx = 1) {
   PADDLE_ENFORCE_EQ(
-      inputs[0][0].shape[0], FLAGS_batch_size,
+      inputs[0][0].shape[0],
+      FLAGS_batch_size,
       platform::errors::InvalidArgument(
           "Input data has to be packed batch by batch. The batchsize is set to "
           "%d, but the real input is packed with batchsize = %d",
-          FLAGS_batch_size, inputs[0][0].shape[0]));
+          FLAGS_batch_size,
+          inputs[0][0].shape[0]));
 
   LOG(INFO) << "FP32 & INT8 prediction run: batch_size " << FLAGS_batch_size
             << ", warmup batch size " << FLAGS_warmup_batch_size << ".";
@@ -872,8 +959,12 @@ void CompareAnalysisAndAnalysis(
   float sample_latency_fp32{-1};
 
   if (FLAGS_enable_fp32) {
-    TestOneThreadPrediction(cfg1, inputs, &analysis_outputs, true,
-                            VarType::FP32, &sample_latency_fp32);
+    TestOneThreadPrediction(cfg1,
+                            inputs,
+                            &analysis_outputs,
+                            true,
+                            VarType::FP32,
+                            &sample_latency_fp32);
   }
 
   LOG(INFO) << "--- INT8 prediction start ---";
@@ -883,18 +974,19 @@ void CompareAnalysisAndAnalysis(
   float sample_latency_int8{-1};
 
   if (FLAGS_enable_int8) {
-    TestOneThreadPrediction(cfg2, inputs, &int8_outputs, true, VarType::INT8,
-                            &sample_latency_int8);
+    TestOneThreadPrediction(
+        cfg2, inputs, &int8_outputs, true, VarType::INT8, &sample_latency_int8);
   }
-  SummarizePerformance("FP32", sample_latency_fp32, "INT8",
-                       sample_latency_int8);
+  SummarizePerformance(
+      "FP32", sample_latency_fp32, "INT8", sample_latency_int8);
   if (with_accuracy_layer) {
     CompareAccuracy(int8_outputs, analysis_outputs, compared_idx);
   }
 }
 
 void CompareNativeAndAnalysis(
-    PaddlePredictor *native_pred, PaddlePredictor *analysis_pred,
+    PaddlePredictor *native_pred,
+    PaddlePredictor *analysis_pred,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
   int batch_size = FLAGS_batch_size;
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
@@ -904,7 +996,8 @@ void CompareNativeAndAnalysis(
 }
 
 void CompareAnalysisAndZeroCopy(
-    PaddlePredictor::Config *config, PaddlePredictor::Config *config1,
+    PaddlePredictor::Config *config,
+    PaddlePredictor::Config *config1,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     const std::vector<std::string> &outputs_name) {
   int batch_size = FLAGS_batch_size;
@@ -969,16 +1062,16 @@ std::string LoDTensorSummary(const framework::LoDTensor &tensor) {
 
 static bool CompareLoD(const framework::LoD &a, const framework::LoD &b) {
   if (a.size() != b.size()) {
-    LOG(ERROR) << string::Sprintf("lod size not match %d != %d", a.size(),
-                                  b.size());
+    LOG(ERROR) << string::Sprintf(
+        "lod size not match %d != %d", a.size(), b.size());
     return false;
   }
   for (size_t i = 0; i < a.size(); i++) {
     auto &al = a[i];
     auto &bl = b[i];
     if (al.size() != bl.size()) {
-      LOG(ERROR) << string::Sprintf("level size %d != %d", al.size(),
-                                    bl.size());
+      LOG(ERROR) << string::Sprintf(
+          "level size %d != %d", al.size(), bl.size());
       return false;
     }
   }
@@ -988,14 +1081,14 @@ static bool CompareLoD(const framework::LoD &a, const framework::LoD &b) {
 static bool CompareShape(const std::vector<int64_t> &a,
                          const std::vector<int64_t> &b) {
   if (a.size() != b.size()) {
-    LOG(ERROR) << string::Sprintf("shape size not match %d != %d", a.size(),
-                                  b.size());
+    LOG(ERROR) << string::Sprintf(
+        "shape size not match %d != %d", a.size(), b.size());
     return false;
   }
   for (size_t i = 0; i < a.size(); i++) {
     if (a[i] != b[i]) {
-      LOG(ERROR) << string::Sprintf("shape %d-th element not match %d != %d", i,
-                                    a[i], b[i]);
+      LOG(ERROR) << string::Sprintf(
+          "shape %d-th element not match %d != %d", i, a[i], b[i]);
       return false;
     }
   }
@@ -1004,33 +1097,41 @@ static bool CompareShape(const std::vector<int64_t> &a,
 
 static bool CompareTensorData(const framework::LoDTensor &a,
                               const framework::LoDTensor &b) {
-  auto a_shape = framework::vectorize(a.dims());
-  auto b_shape = framework::vectorize(b.dims());
-  size_t a_size = std::accumulate(a_shape.begin(), a_shape.end(), size_t{1},
-                                  [](int a, int b) { return a * b; });
-  size_t b_size = std::accumulate(b_shape.begin(), b_shape.end(), size_t{1},
-                                  [](int a, int b) { return a * b; });
+  auto a_shape = phi::vectorize(a.dims());
+  auto b_shape = phi::vectorize(b.dims());
+  size_t a_size = std::accumulate(
+      a_shape.begin(), a_shape.end(), size_t{1}, [](int a, int b) {
+        return a * b;
+      });
+  size_t b_size = std::accumulate(
+      b_shape.begin(), b_shape.end(), size_t{1}, [](int a, int b) {
+        return a * b;
+      });
   if (a_size != b_size) {
-    LOG(ERROR) << string::Sprintf("tensor data size not match, %d != %d",
-                                  a_size, b_size);
+    LOG(ERROR) << string::Sprintf(
+        "tensor data size not match, %d != %d", a_size, b_size);
   }
 
   for (size_t i = 0; i < a_size; i++) {
-    if (a.type() == VarType::FP32) {
+    if (framework::TransToProtoVarType(a.dtype()) == VarType::FP32) {
       const auto *a_data = a.data<float>();
       const auto *b_data = b.data<float>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {
         LOG(ERROR) << string::Sprintf(
-            "tensor data %d-th element not match, %f != %f", i, a_data[i],
+            "tensor data %d-th element not match, %f != %f",
+            i,
+            a_data[i],
             b_data[i]);
         return false;
       }
-    } else if (a.type() == VarType::INT64) {
+    } else if (framework::TransToProtoVarType(a.dtype()) == VarType::INT64) {
       const auto *a_data = a.data<int64_t>();
       const auto *b_data = b.data<int64_t>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {
         LOG(ERROR) << string::Sprintf(
-            "tensor data %d-th element not match, %f != %f", i, a_data[i],
+            "tensor data %d-th element not match, %f != %f",
+            i,
+            a_data[i],
             b_data[i]);
         return false;
       }
@@ -1045,8 +1146,7 @@ static bool CompareTensor(const framework::LoDTensor &a,
   if (!CompareLoD(a.lod(), b.lod())) {
     return false;
   }
-  if (!CompareShape(framework::vectorize(a.dims()),
-                    framework::vectorize(b.dims()))) {
+  if (!CompareShape(phi::vectorize(a.dims()), phi::vectorize(b.dims()))) {
     return false;
   }
 
@@ -1055,6 +1155,47 @@ static bool CompareTensor(const framework::LoDTensor &a,
   }
 
   return true;
+}
+
+void ConvertFP32toFP16(paddle::PaddleTensor &tensor  // NOLINT
+) {
+  int num = 1;
+  for (auto dim : tensor.shape) {
+    num *= dim;
+  }
+  PADDLE_ENFORCE_EQ(
+      tensor.dtype,
+      PaddleDType::FLOAT32,
+      platform::errors::InvalidArgument(
+          "The tensor dtype is not float32, only support float32 as input"));
+  float *fp32_data = reinterpret_cast<float *>(tensor.data.data());
+  float16 *fp16_data = new float16[num];
+  for (int i = 0; i < num; i++) {
+    fp16_data[i] = float16(fp32_data[i]);
+  }
+  tensor.data =
+      PaddleBuf(static_cast<void *>(fp16_data), num * sizeof(float16));
+  tensor.dtype = PaddleDType::FLOAT16;
+}
+
+void ConvertFP16toFP32(paddle::PaddleTensor &tensor  // NOLINT
+) {
+  int num = 1;
+  for (auto dim : tensor.shape) {
+    num *= dim;
+  }
+  PADDLE_ENFORCE_EQ(
+      tensor.dtype,
+      PaddleDType::FLOAT16,
+      platform::errors::InvalidArgument(
+          "The tensor dtype is not float16, only support float16 as input"));
+  float16 *fp16_data = reinterpret_cast<float16 *>(tensor.data.data());
+  float *fp32_data = new float[num];
+  for (int i = 0; i < num; i++) {
+    fp32_data[i] = static_cast<float>(fp16_data[i]);
+  }
+  tensor.data = PaddleBuf(static_cast<void *>(fp32_data), num * sizeof(float));
+  tensor.dtype = PaddleDType::FLOAT32;
 }
 
 }  // namespace inference

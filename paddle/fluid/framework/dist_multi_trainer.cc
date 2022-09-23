@@ -12,6 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#if defined(PADDLE_WITH_PSCORE)
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#endif
+
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
 
@@ -61,7 +66,11 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
 }
 
 void DistMultiTrainer::RegisterHeterCallback() {
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = paddle::distributed::FleetWrapper::GetInstance();
+#else
   auto fleet_ptr = FleetWrapper::GetInstance();
+#endif
   fleet_ptr->RegisterHeterCallback(
       [this](int worker, int taskid) { workers_[worker]->Schedule(taskid); });
 }
@@ -92,7 +101,7 @@ void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
     workers_[i]->CacheProgram(main_program);
 #endif
   }
@@ -108,8 +117,11 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
     InitDumpEnv();
   }
   pull_dense_worker_->SetRootScope(root_scope_);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_CUDA)
+  pull_dense_worker_->CreatePinVar();
+#endif
   pull_dense_worker_->Start();
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->GetXpuOpIndex();
   }
@@ -153,12 +165,13 @@ void DistMultiTrainer::Finalize() {
       }
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
-    if (root_tensor->type() == proto_type) {                                   \
-      if (thread_tensor->type() != proto_type) {                               \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \
+      if (framework::TransToProtoVarType(thread_tensor->dtype()) !=            \
+          proto_type) {                                                        \
         VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
                 << "] " << need_merge_var_names_[i]                            \
-                << ", root tensor type=" << root_tensor->type()                \
-                << ", thread tensor type=" << thread_tensor->type();           \
+                << ", root tensor type=" << root_tensor->dtype()               \
+                << ", thread tensor type=" << thread_tensor->dtype();          \
         exit(-1);                                                              \
       }                                                                        \
       MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
@@ -174,8 +187,12 @@ void DistMultiTrainer::Finalize() {
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
 
-  // flush local client push queue
+// flush local client push queue
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
+#else
   auto fleet_ptr_ = FleetWrapper::GetInstance();
+#endif
   fleet_ptr_->ClientFlush();
 }
 

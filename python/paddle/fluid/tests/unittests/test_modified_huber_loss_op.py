@@ -29,6 +29,7 @@ def modified_huber_loss_forward(val):
 
 
 class TestModifiedHuberLossOp(OpTest):
+
     def setUp(self):
         self.op_type = 'modified_huber_loss'
         samples_num = 100

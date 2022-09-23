@@ -12,27 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
 #include <gtest/gtest.h>
-#include "paddle/fluid/framework/naive_executor.h"
-#include "paddle/fluid/platform/place.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   if (type == "conv2d") {
+    const std::vector<int> strides({1, 1});
+    const std::vector<int> paddings({0, 0});
+    const std::vector<int> dilations({1, 1});
     op->SetAttr("use_mkldnn", true);
     op->SetAttr("name", name);
+    op->SetAttr("strides", strides);
+    op->SetAttr("groups", 1);
+    op->SetAttr("paddings", paddings);
+    op->SetAttr("padding_algorithm", std::string("EXPLICIT"));
+    op->SetAttr("dilations", dilations);
+    op->SetAttr("data_format", std::string("NCHW"));
+
+    op->SetOutput("Output", outputs);
     op->SetInput("Input", {inputs[0]});
     op->SetInput("Filter", {inputs[1]});
     if (inputs.size() > 2)
@@ -41,10 +54,11 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
       op->SetInput("Bias", {});
   } else if (type == "elementwise_add") {
     op->SetAttr("use_mkldnn", true);
+    op->SetAttr("axis", 1);
     op->SetInput("X", {inputs[0]});
     op->SetInput("Y", {inputs[1]});
+    op->SetOutput("Out", outputs);
   }
-  op->SetOutput("Out", outputs);
   op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
               static_cast<int>(OpRole::kForward));
 }
@@ -65,25 +79,34 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias) {
 
   // conv+bias, both with MKL-DNN
   if (convWithExistingBias) {
-    SetOp(&prog, "conv2d", "conv",
+    SetOp(&prog,
+          "conv2d",
+          "conv",
           std::vector<std::string>({"c", "weights", "conv_bias"}),
           std::vector<std::string>({"f"}));
   } else {
-    SetOp(&prog, "conv2d", "conv", std::vector<std::string>({"c", "weights"}),
+    SetOp(&prog,
+          "conv2d",
+          "conv",
+          std::vector<std::string>({"c", "weights"}),
           std::vector<std::string>({"f"}));
   }
-  SetOp(&prog, "elementwise_add", "eltwise",
+  SetOp(&prog,
+        "elementwise_add",
+        "eltwise",
         std::vector<std::string>({"f", "eltwise_bias"}),
         std::vector<std::string>({"g"}));
 
   return prog;
 }
 
-void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
+void InitTensorHolder(Scope* scope,
+                      const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place, proto::VarType::FP32, 1);
+  tensor->mutable_data(
+      place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }
 
 void MainTest(bool convWithExistingBias) {
@@ -119,9 +142,9 @@ void MainTest(bool convWithExistingBias) {
     if (node->IsOp() && node->Op()->Type() == "conv2d") {
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       // check if "conv" convolution is fused
-      auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
+      auto op_name = PADDLE_GET_CONST(std::string, op->GetAttr("name"));
       if (op_name == "conv") {
         auto input_names = op->InputNames();
         ASSERT_TRUE(std::find(input_names.begin(), input_names.end(), "Bias") !=

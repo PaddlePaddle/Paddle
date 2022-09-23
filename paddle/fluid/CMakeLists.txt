@@ -4,9 +4,8 @@ add_subdirectory(distributed)
 add_subdirectory(framework)
 add_subdirectory(imperative)
 add_subdirectory(operators)
-add_subdirectory(string)
 add_subdirectory(pybind)
-
+add_subdirectory(eager)
+add_subdirectory(jit)
 # NOTE: please add subdirectory inference at last.
 add_subdirectory(inference)
-add_subdirectory(train)

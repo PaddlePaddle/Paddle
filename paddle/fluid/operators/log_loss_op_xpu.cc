@@ -10,10 +10,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/log_loss_op.h"
 #include <memory>
+
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T, typename AttrType = T>
 class LogLossXPUKernel : public framework::OpKernel<T> {
@@ -26,15 +30,13 @@ class LogLossXPUKernel : public framework::OpKernel<T> {
     loss->mutable_data<T>(ctx.GetPlace());
     int n = predict->numel();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r =
-        xpu::log_loss_fwd(dev_ctx.x_context(), n, epsilon, predict->data<T>(),
-                          labels->data<T>(), loss->data<T>());
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External(
-            "XPU log_loss kernel return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r));
+    int r = xpu::log_loss(dev_ctx.x_context(),
+                          predict->data<T>(),
+                          labels->data<T>(),
+                          loss->data<T>(),
+                          n,
+                          epsilon);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_loss");
   }
 };
 template <typename DeviceContext, typename T, typename AttrType = T>
@@ -52,15 +54,14 @@ class LogLossGradXPUKernel : public framework::OpKernel<T> {
     dpred->mutable_data<T>(ctx.GetPlace());
     int n = predict->numel();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::log_loss_bwd(dev_ctx.x_context(), n, epsilon,
-                              predict->data<T>(), labels->data<T>(),
-                              dloss->data<T>(), dpred->data<T>());
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External(
-            "XPU log_loss kernel return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r));
+    int r = xpu::log_loss_grad(dev_ctx.x_context(),
+                               predict->data<T>(),
+                               labels->data<T>(),
+                               dloss->data<T>(),
+                               dpred->data<T>(),
+                               n,
+                               epsilon);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_loss_grad");
   }
 };
 

@@ -16,6 +16,7 @@
 
 #include <NvInfer.h>
 #include <cuda_runtime_api.h>
+
 #include <atomic>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -37,23 +38,26 @@ class TensorRTEngine;
 struct TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
  public:
   TRTInt8Calibrator(const std::unordered_map<std::string, size_t>& buffers,
-                    int batch_size, std::string engine_name,
+                    int batch_size,
+                    std::string engine_name,
                     const platform::Place place);
 
   explicit TRTInt8Calibrator(const std::string& calibration_data);
   ~TRTInt8Calibrator();
 
-  int getBatchSize() const override;
+  int getBatchSize() const TRT_NOEXCEPT override;
 
-  bool getBatch(void* bindings[], const char* names[],
-                int num_bindings) override;
+  bool getBatch(void* bindings[],
+                const char* names[],
+                int num_bindings) TRT_NOEXCEPT override;
 
   bool setBatch(const std::unordered_map<std::string, void*>& data);
   void setDone();
   void waitAndSetDone();
 
-  const void* readCalibrationCache(std::size_t& length) override;
-  void writeCalibrationCache(const void* ptr, std::size_t length) override;
+  const void* readCalibrationCache(std::size_t& length) TRT_NOEXCEPT override;
+  void writeCalibrationCache(const void* ptr,
+                             std::size_t length) TRT_NOEXCEPT override;
   const std::string& getCalibrationTableAsString() {
     return calibration_table_;
   }

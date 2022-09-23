@@ -14,20 +14,19 @@
 
 from ...fluid.initializer import UniformInitializer
 
-__all__ = ['Uniform']
+__all__ = []
 
 
 class Uniform(UniformInitializer):
-    """The random uniform distribution initializer.
+    """The uniform distribution initializer.
 
     Args:
-        low (float, optional): lower boundary of the uniform distribution. The default value is -1.0.
-        high (float, optional): upper boundary of the uniform distribution. The default value is 1.0.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
-            property. For more information, please refer to :ref:`api_guide_Name`.
+        low (float, optional): Lower boundary of the uniform distribution. The default value is :math:`-1.0`.
+        high (float, optional): Upper boundary of the uniform distribution. The default value is :math:`1.0`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A parameter initialized by random uniform distribution.
+        A parameter initialized by uniform distribution.
 
     Examples:
         .. code-block:: python
@@ -45,7 +44,7 @@ class Uniform(UniformInitializer):
             # linear.weight:  [[-0.46245047  0.05260676]
             #                  [ 0.38054508  0.29169726]]
             # linear.bias:  [-0.2734719   0.23939109]
-            
+
             res = linear(data)
             # res:  [[[-0.3553773  0.5836951]]
             #        [[-0.3553773  0.5836951]]
@@ -56,5 +55,9 @@ class Uniform(UniformInitializer):
         assert low is not None, 'low should not be None'
         assert high is not None, 'high should not be None'
         assert high >= low, 'high should greater or equal than low'
-        super(Uniform, self).__init__(
-            low=low, high=high, seed=0, diag_num=0, diag_step=0, diag_val=1.0)
+        super(Uniform, self).__init__(low=low,
+                                      high=high,
+                                      seed=0,
+                                      diag_num=0,
+                                      diag_step=0,
+                                      diag_val=1.0)

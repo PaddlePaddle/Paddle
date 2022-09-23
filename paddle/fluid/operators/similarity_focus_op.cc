@@ -35,17 +35,17 @@ class SimilarityFocusOpMaker : public framework::OpProtoAndCheckerMaker {
 SimilarityFocus Operator.
 
 Generate a similarity focus mask with the same shape of input using the following method:
-1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding 
-   to the axis according to the indexes. For example, if axis=1 and indexes=[a], 
-   it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X 
+1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding
+   to the axis according to the indexes. For example, if axis=1 and indexes=[a],
+   it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X
    is (BatchSize, A, B, C), the shape of tensor T is (BatchSize, B, C).
-2. For each index, find the largest numbers in the tensor T, so that the same 
-   row and same column has at most one number(what it means is that if the 
-   largest number has been found in the i-th row and the j-th column, then 
-   the numbers in the i-th row or j-th column will be skipped. And then the 
-   next largest number will be selected from the remaining numbers. Obviously 
-   there will be min(B, C) numbers), and mark the corresponding position of the 
-   3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for 
+2. For each index, find the largest numbers in the tensor T, so that the same
+   row and same column has at most one number(what it means is that if the
+   largest number has been found in the i-th row and the j-th column, then
+   the numbers in the i-th row or j-th column will be skipped. And then the
+   next largest number will be selected from the remaining numbers. Obviously
+   there will be min(B, C) numbers), and mark the corresponding position of the
+   3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for
    each index.
 3. Broadcast the 3-D similarity focus mask to the same shape of input X.
 
@@ -64,7 +64,8 @@ class SimilarityFocusOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 4,
+        x_dims.size(),
+        4,
         platform::errors::InvalidArgument(
             "The dimension size of Input(X) be 4, but received %d.",
             x_dims.size()));
@@ -86,8 +87,11 @@ class SimilarityFocusOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    similarity_focus, ops::SimilarityFocusOp, ops::SimilarityFocusOpMaker,
+    similarity_focus,
+    ops::SimilarityFocusOp,
+    ops::SimilarityFocusOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(similarity_focus, ops::SimilarityFocusKernel<float>,
+REGISTER_OP_CPU_KERNEL(similarity_focus,
+                       ops::SimilarityFocusKernel<float>,
                        ops::SimilarityFocusKernel<double>);

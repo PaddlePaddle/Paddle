@@ -16,6 +16,7 @@
 #include <map>
 #include <random>
 #include <string>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -24,15 +25,18 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
-USE_OP(elementwise_mul);
+USE_OP_ITSELF(elementwise_mul);
 USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
-USE_OP(relu);
-USE_OP_DEVICE_KERNEL(relu, MKLDNN);
-USE_OP(softmax);
+USE_OP_ITSELF(relu);
+PD_DECLARE_KERNEL(relu, OneDNN, ALL_LAYOUT);
+USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
+USE_OP_ITSELF(conv2d);
+USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);
 
 namespace paddle {
 namespace operators {
@@ -50,10 +54,10 @@ class CacheTester {
     platform::CPUPlace place;
     onednn_dev_ctx_ =
         dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place));
-    onednn_dev_ctx_->ResetBlobMap();
+    onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
 
-  bool Analyze(unsigned short int num_entries) {
+  bool Analyze(uint16_t num_entries) {
     //  Number of created objects in cache should be as expected (num_entries)
     return onednn_dev_ctx_->GetCachedObjectsNumber() == num_entries;
   }
@@ -63,39 +67,48 @@ class CacheTester {
 };
 
 template <typename T>
-void RunOperator(const platform::Place &place, const std::string &op_type,
-                 const framework::DDim &dims, const std::string &output_name,
-                 bool inplace = false) {
+void RunOperator(const platform::Place &place,
+                 const std::string &op_type,
+                 const framework::DDim &dims,
+                 const std::string &first_input) {
   framework::Scope scope;
 
   std::map<const std::string, int> num_inputs = {{"softmax", 1},
                                                  {"relu", 1},
+                                                 {"conv2d", 2},
                                                  {"elementwise_add", 2},
                                                  {"elementwise_mul", 2}};
 
-  std::string first_input = inplace == true ? output_name : "x";
+  std::string first_input_var_name = (op_type == "conv2d") ? "Input" : "X";
+  std::string second_input_var_name = (op_type == "conv2d") ? "Filter" : "Y";
+  std::string output_var_name = (op_type == "conv2d") ? "Output" : "Out";
+  std::string output_name = "output";
 
   std::vector<InputVars> input_names = {
       {first_input, scope.Var(first_input)->GetMutable<framework::LoDTensor>()},
-      {"x1", num_inputs[op_type] > 1
-                 ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x2", num_inputs[op_type] > 2
-                 ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x3", num_inputs[op_type] > 3
-                 ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x4", num_inputs[op_type] > 4
-                 ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
-                 : nullptr}};
+      {"x1",
+       num_inputs[op_type] > 1
+           ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x2",
+       num_inputs[op_type] > 2
+           ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x3",
+       num_inputs[op_type] > 3
+           ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x4",
+       num_inputs[op_type] > 4
+           ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
+           : nullptr}};
   auto *y = scope.Var(output_name)->GetMutable<framework::LoDTensor>();
 
   // Initialize input data
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
                                          static_cast<T>(20.0));
   std::mt19937 engine;
-  size_t numel = static_cast<size_t>(framework::product(dims));
+  size_t numel = static_cast<size_t>(phi::product(dims));
   for (int i = 0; i < num_inputs[op_type]; ++i) {
     input_names[i].tensor->Resize(dims);
     auto data_ptr = input_names[i].tensor->mutable_data<T>(place);
@@ -115,81 +128,43 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
 
   auto op = num_inputs[op_type] > 1
                 ? framework::OpRegistry::CreateOp(
-                      op_type, {{"X", {first_input}}, {"Y", {"x1"}}},
-                      {{"Out", {output_name}}}, {{"use_mkldnn", {true}}})
+                      op_type,
+                      {{first_input_var_name, {first_input}},
+                       {second_input_var_name, {"x1"}}},
+                      {{output_var_name, {output_name}}},
+                      {{"use_mkldnn", {true}}})
                 : framework::OpRegistry::CreateOp(
-                      op_type, {{"X", {first_input}}}, {{"Out", {output_name}}},
+                      op_type,
+                      {{first_input_var_name, {first_input}}},
+                      {{output_var_name, {output_name}}},
                       {{"use_mkldnn", {true}}});
 
   op->Run(scope, place);
   pool.Get(place)->Wait();
 }
 
-TEST(test_softmax_reuse_cache, cpu_place) {
-  framework::DDim dims({32, 64});
+TEST(test_conv2d_reuse_cache, cpu_place) {
+  framework::DDim dims({1, 16, 32, 64});
   platform::CPUPlace p;
   CacheTester ct;
-  RunOperator<float>(p, "softmax", dims, "softmax_out");
-  RunOperator<float>(p, "softmax", dims, "softmax_out");
-  PADDLE_ENFORCE_EQ(ct.Analyze(4), true,
+  RunOperator<float>(p, "conv2d", dims, "input_signal");
+  RunOperator<float>(p, "conv2d", dims, "input_signal");
+  PADDLE_ENFORCE_EQ(ct.Analyze(9),
+                    true,
                     platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
+                        "Invalid number of cached oneDNN objects"));
 }
 
-TEST(test_softmax_noreuse_cache, cpu_place) {
-  framework::DDim dims({32, 64});
+TEST(test_conv2d_noreuse_cache, cpu_place) {
+  framework::DDim dims({1, 16, 32, 64});
   platform::CPUPlace p;
   CacheTester ct;
-  RunOperator<float>(p, "softmax", dims, "softmax_out");
-  RunOperator<float>(p, "softmax", dims, "softmax_out2");
-  PADDLE_ENFORCE_EQ(ct.Analyze(8), true,
+  RunOperator<float>(p, "conv2d", dims, "input_signal");
+  RunOperator<float>(p, "conv2d", dims, "input_signal2");
+  PADDLE_ENFORCE_EQ(ct.Analyze(18),
+                    true,
                     platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
-}
-
-TEST(test_softmax_inplace_cache, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
-  CacheTester ct;
-  RunOperator<float>(p, "softmax", dims, "softmax_out");
-  RunOperator<float>(p, "softmax", dims, "softmax_out", true);
-  PADDLE_ENFORCE_EQ(ct.Analyze(7), true,
-                    platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
-}
-
-TEST(test_relu_inplace_cache, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
-  CacheTester ct;
-  RunOperator<float>(p, "relu", dims, "relu_out");
-  RunOperator<float>(p, "relu", dims, "relu_out", true);
-  PADDLE_ENFORCE_EQ(ct.Analyze(7), true,
-                    platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
-}
-
-TEST(test_elementwise_add_reuse_cache, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
-  CacheTester ct;
-  RunOperator<float>(p, "elementwise_add", dims, "elementwise_add_out");
-  RunOperator<float>(p, "relu", dims, "elementwise_add_out", true);
-  PADDLE_ENFORCE_EQ(ct.Analyze(8), true,
-                    platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
-}
-
-TEST(test_elementwises_sequence_reuse_cache, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
-  CacheTester ct;
-  RunOperator<float>(p, "elementwise_add", dims, "elementwise_add_out", true);
-  RunOperator<float>(p, "elementwise_mul", dims, "elementwise_add_out", true);
-  RunOperator<float>(p, "relu", dims, "elementwise_add_out", true);
-  PADDLE_ENFORCE_EQ(ct.Analyze(11), true,
-                    platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
+                        "Invalid number of cached oneDNN objects"));
 }
 
 }  // namespace operators

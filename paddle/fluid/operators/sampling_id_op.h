@@ -38,12 +38,14 @@ class SamplingIdKernel : public framework::OpKernel<T> {
     const int width = static_cast<int>(input->dims()[1]);
 
     PADDLE_ENFORCE_GE(
-        batch_size, 0,
+        batch_size,
+        0,
         platform::errors::InvalidArgument(
             "batch_size(dims[0]) must be nonnegative. but it is %d.",
             batch_size));
     PADDLE_ENFORCE_GE(
-        width, 0,
+        width,
+        0,
         platform::errors::InvalidArgument(
             "width(dims[1]) must be nonnegative. but it is %d.", width));
 
@@ -74,7 +76,7 @@ class SamplingIdKernel : public framework::OpKernel<T> {
     out_dim.push_back(static_cast<int64_t>(batch_size));
 
     Tensor* output = context.Output<Tensor>("Out");
-    output->Resize(framework::make_ddim(out_dim));
+    output->Resize(phi::make_ddim(out_dim));
     output->mutable_data<T>(context.GetPlace());
     framework::TensorFromVector(ids, context.device_context(), output);
   }

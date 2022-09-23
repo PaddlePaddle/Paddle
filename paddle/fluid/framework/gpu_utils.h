@@ -17,6 +17,7 @@
 #define EIGEN_USE_GPU
 
 #include <array>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -81,9 +82,10 @@ struct Index3 : DeviceArray<int, 3, 0> {
 };
 
 // Flat index with real dimension
-EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int FlatTensorIndex(const Index3& index,
-                                                          const Dim3& dims) {
-  int flat_index = index[0];
+template <typename IndexType = int>
+EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE IndexType
+FlatTensorIndex(const Index3& index, const Dim3& dims) {
+  IndexType flat_index = index[0];
   for (int i = 1; i < 3; i++) {
     flat_index = flat_index * dims[i] + index[i];
   }
@@ -91,12 +93,13 @@ EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int FlatTensorIndex(const Index3& index,
 }
 
 // Convert index to tensor index with dimension.
+template <typename IndexType = int>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index3
-ConvertTensorIndex(int index, const Dim3& dims) {
+ConvertTensorIndex(IndexType index, const Dim3& dims) {
   Index3 tensor_index;
   for (int i = 2; i >= 0; i--) {
-    int new_index = index / dims[i];
-    tensor_index[i] = index - dims[i] * new_index;
+    IndexType new_index = index / dims[i];
+    tensor_index[i] = static_cast<int>(index - dims[i] * new_index);
     index = new_index;
   }
   return tensor_index;
@@ -104,15 +107,19 @@ ConvertTensorIndex(int index, const Dim3& dims) {
 
 template <typename IntType, bool ceil>
 IntType CeilOrFloor(IntType x, IntType deviser) {
-  PADDLE_ENFORCE_GT(deviser, 0, platform::errors::InvalidArgument(
-                                    "deviser should be greater than 0, "
-                                    "but received is:%d",
-                                    deviser));
+  PADDLE_ENFORCE_GT(
+      deviser,
+      0,
+      platform::errors::InvalidArgument("deviser should be greater than 0, "
+                                        "but received is:%d",
+                                        deviser));
 
   PADDLE_ENFORCE_GT(
-      x, 0, platform::errors::InvalidArgument("input should be greater than 0, "
-                                              "but received is:%d",
-                                              x));
+      x,
+      0,
+      platform::errors::InvalidArgument("input should be greater than 0, "
+                                        "but received is:%d",
+                                        x));
 
   const IntType round_to_zero = x / deviser;
   const IntType inte_result = round_to_zero * deviser;

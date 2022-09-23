@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/sample_logits_op.h"
+
 #include <memory>
+
 #include "paddle/fluid/operators/math/sample_prob.h"
 
 namespace paddle {
@@ -58,7 +60,7 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Probabilities",
         "(Tensor, default: Tensor<float>), A 2-D tensor with shape [N, NT + S]."
-        "The probabilites of sampled positive and negtive labels.")
+        "The probabilities of sampled positive and negtive labels.")
         .AsIntermediate();
     AddOutput("LogitsDim", "Store dim information of Logits for gradient op")
         .AsIntermediate();
@@ -100,7 +102,7 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   """
   Computes sampled output training logits and labels suitable for implementing
-  sampled softmax.        
+  sampled softmax.
   """
 
 )DOC");
@@ -112,37 +114,47 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Logits",
-                   "SampleLogitsOp");
-    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Logits",
-                   "SampleLogitsOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Labels"), "Input", "Logits", "SampleLogitsOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Labels"), "Input", "Logits", "SampleLogitsOp");
 
-    OP_INOUT_CHECK(ctx->HasOutput("Samples"), "Output", "Samples",
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Samples"), "Output", "Samples", "SampleLogitsOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Probabilities"),
+                   "Output",
+                   "Probabilities",
                    "SampleLogitsOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Probabilities"), "Output", "Probabilities",
+    OP_INOUT_CHECK(ctx->HasOutput("SampledLogits"),
+                   "Output",
+                   "SampledLogits",
                    "SampleLogitsOp");
-    OP_INOUT_CHECK(ctx->HasOutput("SampledLogits"), "Output", "SampledLogits",
+    OP_INOUT_CHECK(ctx->HasOutput("SampledLabels"),
+                   "Output",
+                   "SampledLabels",
                    "SampleLogitsOp");
-    OP_INOUT_CHECK(ctx->HasOutput("SampledLabels"), "Output", "SampledLabels",
-                   "SampleLogitsOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LogitsDim"), "Output", "LogitsDim",
-                   "SampleLogitsOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LabelsDim"), "Output", "LabelsDim",
-                   "SampleLogitsOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("LogitsDim"), "Output", "LogitsDim", "SampleLogitsOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("LabelsDim"), "Output", "LabelsDim", "SampleLogitsOp");
 
     auto logits_dims = ctx->GetInputDim("Logits");
     auto labels_dims = ctx->GetInputDim("Labels");
 
-    PADDLE_ENFORCE_EQ(logits_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(logits_dims.size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "Input(Logits) of SampleLogitsOp should be 2D. "
                           "But received shape = [%s] and dimension is %d.",
-                          logits_dims, logits_dims.size()));
-    PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
+                          logits_dims,
+                          logits_dims.size()));
+    PADDLE_ENFORCE_EQ(labels_dims.size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "Input(Labels) of SampleLogitsOp should be 2D. "
                           "But received shape = [%s] and dimension is %d.",
-                          labels_dims, labels_dims.size()));
+                          labels_dims,
+                          labels_dims.size()));
 
     const int num_samples = ctx->Attrs().Get<int>("num_samples");
     int num_sampled_classes = labels_dims[1] + num_samples;
@@ -155,13 +167,13 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("SampledLabels", {logits_dims[0], labels_dims[1]});
 
     // append 0 to shape variable to avoid optimized by memory optimize pass
-    auto logits_dim_vec = framework::vectorize(logits_dims);
+    auto logits_dim_vec = phi::vectorize(logits_dims);
     logits_dim_vec.push_back(0);
-    ctx->SetOutputDim("LogitsDim", framework::make_ddim(logits_dim_vec));
+    ctx->SetOutputDim("LogitsDim", phi::make_ddim(logits_dim_vec));
 
-    auto labels_dim_vec = framework::vectorize(labels_dims);
+    auto labels_dim_vec = phi::vectorize(labels_dims);
     labels_dim_vec.push_back(0);
-    ctx->SetOutputDim("LabelsDim", framework::make_ddim(labels_dim_vec));
+    ctx->SetOutputDim("LabelsDim", phi::make_ddim(labels_dim_vec));
   }
 
  protected:
@@ -180,33 +192,43 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("LogitsDim"), "Input", "LogitsDim",
-                   "SampleLogitsOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput("LabelsDim"), "Input", "LabelsDim",
-                   "SampleLogitsOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Samples"), "Input", "SamplesabelsDim",
+    OP_INOUT_CHECK(
+        ctx->HasInput("LogitsDim"), "Input", "LogitsDim", "SampleLogitsOpGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("LabelsDim"), "Input", "LabelsDim", "SampleLogitsOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Samples"),
+                   "Input",
+                   "SamplesabelsDim",
                    "SampleLogitsOpGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("SampledLogits")),
-                   "Input", "SampledLogits@GRAD", "SampleLogitsOpGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
-                   "Logits@GRAD", "SampleLogitsOpGrad");
+                   "Input",
+                   "SampledLogits@GRAD",
+                   "SampleLogitsOpGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")),
+                   "Output",
+                   "Logits@GRAD",
+                   "SampleLogitsOpGrad");
 
     auto logits_dims = ctx->GetInputDim("LogitsDim");
     logits_dims = framework::DDim(logits_dims.Get(), logits_dims.size() - 1);
     auto labels_dims = ctx->GetInputDim("LabelsDim");
     labels_dims = framework::DDim(labels_dims.Get(), labels_dims.size() - 1);
     PADDLE_ENFORCE_EQ(
-        logits_dims.size(), 2UL,
+        logits_dims.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "Input(LogitsDim) of SampleLogitsOpGrad should be 2D. "
             "But received shape = [%s] and dimension is %d.",
-            logits_dims, logits_dims.size()));
+            logits_dims,
+            logits_dims.size()));
     PADDLE_ENFORCE_EQ(
-        labels_dims.size(), 2UL,
+        labels_dims.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "Input(LabelsDim) of SampleLogitsOpGrad should be 2D. "
             "But received shape = [%s] and dimension is %d.",
-            labels_dims, labels_dims.size()));
+            labels_dims,
+            labels_dims.size()));
 
     ctx->SetOutputDim(framework::GradVarName("Logits"), logits_dims);
   }
@@ -248,11 +270,15 @@ class SampleLogitsGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(sample_logits, ops::SampleLogitsOp, ops::SampleLogitsOpMaker,
+REGISTER_OPERATOR(sample_logits,
+                  ops::SampleLogitsOp,
+                  ops::SampleLogitsOpMaker,
                   ops::SampleLogitsGradMaker<paddle::framework::OpDesc>,
                   ops::SampleLogitsGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sample_logits_grad, ops::SampleLogitsOpGrad);
-REGISTER_OP_CPU_KERNEL(sample_logits, ops::SampleLogitsKernel<float>,
+REGISTER_OP_CPU_KERNEL(sample_logits,
+                       ops::SampleLogitsKernel<float>,
                        ops::SampleLogitsKernel<double>);
-REGISTER_OP_CPU_KERNEL(sample_logits_grad, ops::SampleLogitsGradKernel<float>,
+REGISTER_OP_CPU_KERNEL(sample_logits_grad,
+                       ops::SampleLogitsGradKernel<float>,
                        ops::SampleLogitsGradKernel<double>);

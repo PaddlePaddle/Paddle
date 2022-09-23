@@ -24,6 +24,7 @@ import paddle.fluid.core as core
 
 
 class TestException(unittest.TestCase):
+
     def test_exception(self):
         exception = None
         try:
@@ -37,6 +38,7 @@ class TestException(unittest.TestCase):
 
 
 class TestExceptionNoCStack(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         # test no C++ stack format
@@ -47,7 +49,7 @@ class TestExceptionNoCStack(unittest.TestCase):
         y = fluid.layers.data(name='Y', shape=[-1, 1], dtype='float32')
         predict = fluid.layers.fc(input=x, size=1, act=None)
         loss = fluid.layers.square_error_cost(input=predict, label=y)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
 
         fluid.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
 
@@ -60,8 +62,10 @@ class TestExceptionNoCStack(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             exe.run(fluid.default_main_program(),
-                    feed={'X': x,
-                          'Y': y},
+                    feed={
+                        'X': x,
+                        'Y': y
+                    },
                     fetch_list=[avg_loss.name])
 
     def test_exception_in_dynamic_mode(self):

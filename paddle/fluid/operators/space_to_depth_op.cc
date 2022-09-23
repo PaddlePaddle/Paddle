@@ -38,66 +38,81 @@ class SpaceToDepthOp : public framework::OperatorWithKernel {
                        "Output(Out) of SpaceToDepthOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4, platform::errors::InvalidArgument(
-                                            "input should be a 4D tensor"));
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(),
+        4,
+        platform::errors::InvalidArgument("input should be a 4D tensor"));
     auto blocksize = ctx->Attrs().Get<int64_t>("blocksize");
 
-    PADDLE_ENFORCE_GT(blocksize, 1,
+    PADDLE_ENFORCE_GT(blocksize,
+                      1,
                       platform::errors::InvalidArgument(
                           "The blocksize should be Greater than 1"));
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_GT(x_dims[1], 0,
+      PADDLE_ENFORCE_GT(x_dims[1],
+                        0,
                         platform::errors::InvalidArgument(
                             "input channel should be Greater than 0"));
-      PADDLE_ENFORCE_GT(x_dims[2], 0,
+      PADDLE_ENFORCE_GT(x_dims[2],
+                        0,
                         platform::errors::InvalidArgument(
                             "input Height should be Greater than 0"));
-      PADDLE_ENFORCE_GT(x_dims[3], 0,
+      PADDLE_ENFORCE_GT(x_dims[3],
+                        0,
                         platform::errors::InvalidArgument(
                             "input Width should be Greater than 0"));
 
       PADDLE_ENFORCE_EQ(
-          x_dims[1] % (blocksize * blocksize), 0,
+          x_dims[1] % (blocksize * blocksize),
+          0,
           platform::errors::InvalidArgument(
               "input channel should be divisible of the square of "
               "SpaceToDepthOp blocksize"));
-      PADDLE_ENFORCE_EQ(x_dims[2] % (blocksize), 0,
+      PADDLE_ENFORCE_EQ(x_dims[2] % (blocksize),
+                        0,
                         platform::errors::InvalidArgument(
                             "input Height should be divisible of the square of "
                             "SpaceToDepthOp blocksize"));
-      PADDLE_ENFORCE_EQ(x_dims[3] % (blocksize), 0,
+      PADDLE_ENFORCE_EQ(x_dims[3] % (blocksize),
+                        0,
                         platform::errors::InvalidArgument(
                             "input Width should be divisible of the square of "
                             "SpaceToDepthOp blocksize"));
     } else {
       if (x_dims[1] != -1) {
-        PADDLE_ENFORCE_GT(x_dims[1], 0,
+        PADDLE_ENFORCE_GT(x_dims[1],
+                          0,
                           platform::errors::InvalidArgument(
                               "input channel should be Greater than 0"));
         PADDLE_ENFORCE_EQ(
-            x_dims[1] % (blocksize * blocksize), 0,
+            x_dims[1] % (blocksize * blocksize),
+            0,
             platform::errors::InvalidArgument(
                 "input channel should be divisible of the square of "
                 "SpaceToDepthOp blocksize"));
       }
       if (x_dims[2] != -1) {
-        PADDLE_ENFORCE_GT(x_dims[2], 0,
+        PADDLE_ENFORCE_GT(x_dims[2],
+                          0,
                           platform::errors::InvalidArgument(
                               "input Height should be Greater than 0"));
         PADDLE_ENFORCE_EQ(
-            x_dims[2] % (blocksize), 0,
+            x_dims[2] % (blocksize),
+            0,
             platform::errors::InvalidArgument(
                 "input Height should be divisible of the square of "
                 "SpaceToDepthOp blocksize"));
       }
 
       if (x_dims[3] != -1) {
-        PADDLE_ENFORCE_GT(x_dims[3], 0,
+        PADDLE_ENFORCE_GT(x_dims[3],
+                          0,
                           platform::errors::InvalidArgument(
                               "input Width should be Greater than 0"));
 
         PADDLE_ENFORCE_EQ(
-            x_dims[3] % (blocksize), 0,
+            x_dims[3] % (blocksize),
+            0,
             platform::errors::InvalidArgument(
                 "input Width should be divisible of the square of "
                 "SpaceToDepthOp blocksize"));
@@ -113,7 +128,7 @@ class SpaceToDepthOp : public framework::OperatorWithKernel {
     output_shape[2] = x_dims[2] / blocksize;
     output_shape[3] = x_dims[3] / blocksize;
 
-    auto out_dims = framework::make_ddim(output_shape);
+    auto out_dims = phi::make_ddim(output_shape);
 
     ctx->SetOutputDim("Out", out_dims);
 
@@ -181,8 +196,9 @@ class SpaceToDepthGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), platform::errors::InvalidArgument(
-                                           "Input(X) shouldn't be null."));
+    PADDLE_ENFORCE(
+        ctx->HasInput("X"),
+        platform::errors::InvalidArgument("Input(X) shouldn't be null."));
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    platform::errors::InvalidArgument(
                        "Input(Out@GRAD) shouldn't be null."));
@@ -202,20 +218,21 @@ class SpaceToDepthGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(space_to_depth, ops::SpaceToDepthOp, ops::SpaceToDepthOpMaker,
+REGISTER_OPERATOR(space_to_depth,
+                  ops::SpaceToDepthOp,
+                  ops::SpaceToDepthOpMaker,
                   ops::SpaceToDepthGradOpMaker<paddle::framework::OpDesc>,
                   ops::SpaceToDepthGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(space_to_depth_grad, ops::SpaceToDepthGradOp,
+REGISTER_OPERATOR(space_to_depth_grad,
+                  ops::SpaceToDepthGradOp,
                   ops::SpaceToDepthGradOpNoBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    space_to_depth,
-    ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    space_to_depth_grad,
-    ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(space_to_depth,
+                       ops::SpaceToDepthKernel<phi::CPUContext, float>,
+                       ops::SpaceToDepthKernel<phi::CPUContext, double>,
+                       ops::SpaceToDepthKernel<phi::CPUContext, int>,
+                       ops::SpaceToDepthKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(space_to_depth_grad,
+                       ops::SpaceToDepthGradKernel<phi::CPUContext, float>,
+                       ops::SpaceToDepthGradKernel<phi::CPUContext, double>,
+                       ops::SpaceToDepthGradKernel<phi::CPUContext, int>,
+                       ops::SpaceToDepthGradKernel<phi::CPUContext, int64_t>);

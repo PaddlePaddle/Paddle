@@ -31,6 +31,7 @@ numpy.random.seed(2020)
 
 
 class TestDynamicRNN(unittest.TestCase):
+
     def setUp(self):
         self.word_dict_len = 5147
         self.BATCH_SIZE = 2
@@ -82,10 +83,13 @@ class TestDynamicRNN(unittest.TestCase):
         startup_program = fluid.Program()
 
         with fluid.program_guard(main_program, startup_program):
-            sentence = fluid.layers.data(
-                name='word', shape=[1], dtype='int64', lod_level=1)
-            sent_emb = fluid.layers.embedding(
-                input=sentence, size=[self.word_dict_len, 32], dtype='float32')
+            sentence = fluid.layers.data(name='word',
+                                         shape=[1],
+                                         dtype='int64',
+                                         lod_level=1)
+            sent_emb = fluid.layers.embedding(input=sentence,
+                                              size=[self.word_dict_len, 32],
+                                              dtype='float32')
 
             rank_table = lod_rank_table(x=sent_emb)
             sent_emb_array = lod_tensor_to_array(x=sent_emb, table=rank_table)
@@ -95,8 +99,7 @@ class TestDynamicRNN(unittest.TestCase):
             i.stop_gradient = False
 
             boot_mem = fluid.layers.fill_constant_batch_size_like(
-                input=fluid.layers.array_read(
-                    array=sent_emb_array, i=i),
+                input=fluid.layers.array_read(array=sent_emb_array, i=i),
                 value=0,
                 shape=[-1, 100],
                 dtype='float32')
@@ -126,22 +129,21 @@ class TestDynamicRNN(unittest.TestCase):
 
             logits = fluid.layers.fc(input=last, size=1, act=None)
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
-            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
-                x=logits, label=label)
-            loss = fluid.layers.mean(loss)
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(x=logits,
+                                                                  label=label)
+            loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(1e-4)
             sgd.minimize(loss=loss)
 
         # Check for lod_level set in compile-time.
         self.assertEqual(sent_emb.lod_level, result_all_timesteps.lod_level)
 
-        self._train(
-            main_program=main_program,
-            startup_program=startup_program,
-            feed_list=[sentence, label],
-            fetch_list=[sent_emb, result_all_timesteps, loss],
-            is_nested=False,
-            max_iters=1)
+        self._train(main_program=main_program,
+                    startup_program=startup_program,
+                    feed_list=[sentence, label],
+                    fetch_list=[sent_emb, result_all_timesteps, loss],
+                    is_nested=False,
+                    max_iters=1)
 
     def test_train_dynamic_rnn(self):
         main_program = fluid.Program()
@@ -149,10 +151,13 @@ class TestDynamicRNN(unittest.TestCase):
         main_program.random_seed = 10
         startup_program.random_seed = 10
         with fluid.program_guard(main_program, startup_program):
-            sentence = fluid.layers.data(
-                name='word', shape=[1], dtype='int64', lod_level=1)
-            sent_emb = fluid.layers.embedding(
-                input=sentence, size=[self.word_dict_len, 32], dtype='float32')
+            sentence = fluid.layers.data(name='word',
+                                         shape=[1],
+                                         dtype='int64',
+                                         lod_level=1)
+            sent_emb = fluid.layers.embedding(input=sentence,
+                                              size=[self.word_dict_len, 32],
+                                              dtype='float32')
 
             drnn = fluid.layers.DynamicRNN()
             with drnn.block():
@@ -167,22 +172,21 @@ class TestDynamicRNN(unittest.TestCase):
             logits = fluid.layers.fc(input=last, size=1, act=None)
 
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
-            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
-                x=logits, label=label)
-            loss = fluid.layers.mean(loss)
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(x=logits,
+                                                                  label=label)
+            loss = paddle.mean(loss)
             sgd = fluid.optimizer.Adam(1e-3)
             sgd.minimize(loss=loss)
 
         # Check for lod_level set in compile-time.
         self.assertEqual(sent_emb.lod_level, drnn_result.lod_level)
 
-        self._train(
-            main_program=main_program,
-            startup_program=startup_program,
-            feed_list=[sentence, label],
-            fetch_list=[sent_emb, drnn_result, loss],
-            is_nested=False,
-            max_iters=100)
+        self._train(main_program=main_program,
+                    startup_program=startup_program,
+                    feed_list=[sentence, label],
+                    fetch_list=[sent_emb, drnn_result, loss],
+                    is_nested=False,
+                    max_iters=100)
 
     def _fake_reader(self):
         seq_len, label = [[2, 2]], [0, 1]
@@ -203,17 +207,22 @@ class TestDynamicRNN(unittest.TestCase):
         main_program.random_seed = 10
         startup_program.random_seed = 10
         with fluid.program_guard(main_program, startup_program):
-            sentence = fluid.layers.data(
-                name='word', shape=[1], dtype='int64', lod_level=2)
-            label = fluid.layers.data(
-                name='label', shape=[1], dtype='float32', lod_level=1)
+            sentence = fluid.layers.data(name='word',
+                                         shape=[1],
+                                         dtype='int64',
+                                         lod_level=2)
+            label = fluid.layers.data(name='label',
+                                      shape=[1],
+                                      dtype='float32',
+                                      lod_level=1)
 
             drnn0 = fluid.layers.DynamicRNN()
             with drnn0.block():
                 in_0 = drnn0.step_input(sentence)
                 assert in_0.lod_level == 1, "the lod level of in_ should be 1"
-                sentence_emb = fluid.layers.embedding(
-                    input=in_0, size=[len(word_dict), 32], dtype='float32')
+                sentence_emb = fluid.layers.embedding(input=in_0,
+                                                      size=[len(word_dict), 32],
+                                                      dtype='float32')
                 out_0 = fluid.layers.fc(input=sentence_emb,
                                         size=100,
                                         act='tanh')
@@ -231,21 +240,20 @@ class TestDynamicRNN(unittest.TestCase):
 
             last = drnn0()
             logits = fluid.layers.fc(input=last, size=1, act=None)
-            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
-                x=logits, label=label)
-            loss = fluid.layers.mean(loss)
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(x=logits,
+                                                                  label=label)
+            loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(1e-3)
             sgd.minimize(loss=loss)
 
         train_data_orig = self.train_data
         self.train_data = paddle.batch(self._fake_reader, batch_size=2)
-        self._train(
-            main_program=main_program,
-            startup_program=startup_program,
-            feed_list=[sentence, label],
-            fetch_list=[loss],
-            is_nested=True,
-            max_iters=100)
+        self._train(main_program=main_program,
+                    startup_program=startup_program,
+                    feed_list=[sentence, label],
+                    fetch_list=[loss],
+                    is_nested=True,
+                    max_iters=100)
         self.train_data = train_data_orig
 
     # this unit test is just used to the two layer nested dyn_rnn.
@@ -258,10 +266,14 @@ class TestDynamicRNN(unittest.TestCase):
         main_program.random_seed = 10
         startup_program.random_seed = 10
         with fluid.program_guard(main_program, startup_program):
-            sentence = fluid.layers.data(
-                name='word', shape=[1], dtype='int64', lod_level=2)
-            label = fluid.layers.data(
-                name='label', shape=[1], dtype='float32', lod_level=1)
+            sentence = fluid.layers.data(name='word',
+                                         shape=[1],
+                                         dtype='int64',
+                                         lod_level=2)
+            label = fluid.layers.data(name='label',
+                                      shape=[1],
+                                      dtype='float32',
+                                      lod_level=1)
 
             drnn0 = fluid.layers.DynamicRNN()
             with drnn0.block():
@@ -274,10 +286,9 @@ class TestDynamicRNN(unittest.TestCase):
                                                      size=hidden_size * 4,
                                                      act=None,
                                                      bias_attr=False)
-                forward, _ = fluid.layers.dynamic_lstm(
-                    input=input_forward_proj,
-                    size=hidden_size * 4,
-                    use_peepholes=False)
+                forward, _ = fluid.layers.dynamic_lstm(input=input_forward_proj,
+                                                       size=hidden_size * 4,
+                                                       use_peepholes=False)
 
                 drnn1 = fluid.layers.DynamicRNN()
                 with drnn1.block():
@@ -290,31 +301,33 @@ class TestDynamicRNN(unittest.TestCase):
 
             last = drnn0()
             logits = fluid.layers.fc(input=last, size=1, act=None)
-            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
-                x=logits, label=label)
-            loss = fluid.layers.mean(loss)
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(x=logits,
+                                                                  label=label)
+            loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(1e-3)
             sgd.minimize(loss=loss)
 
         train_data_orig = self.train_data
         self.train_data = paddle.batch(self._fake_reader, batch_size=2)
-        self._train(
-            main_program=main_program,
-            startup_program=startup_program,
-            feed_list=[sentence, label],
-            fetch_list=[loss],
-            is_nested=True,
-            max_iters=100)
+        self._train(main_program=main_program,
+                    startup_program=startup_program,
+                    feed_list=[sentence, label],
+                    fetch_list=[loss],
+                    is_nested=True,
+                    max_iters=100)
         self.train_data = train_data_orig
 
 
 class TestDynamicRNNErrors(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             init = fluid.layers.zeros(shape=[1], dtype='float32')
             shape = 'shape'
-            sentence = fluid.data(
-                name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
+            sentence = fluid.data(name='sentence',
+                                  shape=[None, 32],
+                                  dtype='float32',
+                                  lod_level=1)
 
             # The type of Input(shape) in API(memory) must be list or tuple
             def input_shape_type_of_memory():
@@ -333,7 +346,7 @@ class TestDynamicRNNErrors(unittest.TestCase):
                     hidden = fluid.layers.fc(input=[word, memory],
                                              size=10,
                                              act='tanh')
-                    out = np.ones(1).astype('float32')
+                    out = numpy.ones(1).astype('float32')
                     drnn.update_memory(ex_mem=memory, new_mem=hidden)
                     drnn.output(hidden, out)
 

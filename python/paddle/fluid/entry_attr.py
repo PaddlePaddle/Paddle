@@ -39,8 +39,9 @@ class EntryAttr(object):
 
 
 class ProbabilityEntry(EntryAttr):
+
     def __init__(self, probability):
-        super(EntryAttr, self).__init__()
+        super(ProbabilityEntry, self).__init__()
 
         if not isinstance(probability, float):
             raise ValueError("probability must be a float in (0,1)")
@@ -56,8 +57,9 @@ class ProbabilityEntry(EntryAttr):
 
 
 class CountFilterEntry(EntryAttr):
+
     def __init__(self, count_filter):
-        super(EntryAttr, self).__init__()
+        super(CountFilterEntry, self).__init__()
 
         if not isinstance(count_filter, int):
             raise ValueError(

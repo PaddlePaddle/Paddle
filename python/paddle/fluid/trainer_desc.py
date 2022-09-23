@@ -15,9 +15,10 @@
 
 import sys
 import os
+
 __all__ = [
     'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
-    'HeterXpuTrainer', 'HeterBoxWorker'
+    'HeterXpuTrainer', 'HeterPipelineTrainer'
 ]
 
 
@@ -111,6 +112,10 @@ class TrainerDesc(object):
 
     def _set_fleet_desc(self, fleet_desc):
         self._fleet_desc = fleet_desc
+        ## serialize fleet_desc
+        from google.protobuf import text_format
+        fleet_desc_str = text_format.MessageToString(fleet_desc)
+        self.proto_desc.fleet_desc = fleet_desc_str
 
     def _gen_trainer_desc(self):
         pass
@@ -118,11 +123,22 @@ class TrainerDesc(object):
     def _set_program(self, program):
         self._program = program
 
+    def _set_trainer_id(self, trainer_id):
+        self.proto_desc.trainer_id = trainer_id
+
+    def _set_trainers(self, trainers):
+        for trainer_num in trainers:
+            self.proto_desc.trainers.append(trainer_num)
+
     def _set_use_cvm(self, use_cvm=False):
         self.proto_desc.use_cvm = use_cvm
 
     def _set_no_cvm(self, no_cvm=False):
         self.proto_desc.no_cvm = no_cvm
+
+    def _set_scale_sparse_grad_with_batch_size(
+            self, scale_sparse_gradient_with_batch_size=True):
+        self.proto_desc.scale_sparse_gradient_with_batch_size = scale_sparse_gradient_with_batch_size
 
     def _set_scale_datanorm(self, scale_datanorm=-1):
         self.proto_desc.scale_datanorm = scale_datanorm
@@ -139,6 +155,9 @@ class TrainerDesc(object):
     def _set_dump_fields(self, dump_fields):
         for field in dump_fields:
             self.proto_desc.dump_fields.append(field)
+
+    def _set_is_dump_in_simple_mode(self, is_dump_in_simple_mode):
+        self.proto_desc.is_dump_in_simple_mode = is_dump_in_simple_mode
 
     def _set_dump_fields_path(self, path):
         self.proto_desc.dump_fields_path = path
@@ -346,30 +365,6 @@ class HeterXpuTrainer(TrainerDesc):
         self._device_worker._gen_worker_desc(self.proto_desc)
 
 
-class HeterBoxTrainer(TrainerDesc):
-    """
-    Implement of HeterBoxTrainer.
-    It's for Distributed training.
-    """
-
-    def __init__(self):
-        super(HeterBoxTrainer, self).__init__()
-        pass
-
-    def _set_program(self, program):
-        super(HeterBoxTrainer, self)._set_program(program)
-        self._program = program
-
-    def _gen_trainer_desc(self):
-        super(HeterBoxTrainer, self)._gen_trainer_desc()
-        self.proto_desc.class_name = "HeterBoxTrainer"
-        if self._program == None:
-            raise RuntimeError("None Program")
-        self._device_worker._set_infer(self._infer)
-        self._device_worker._set_program(self._program)
-        self._device_worker._gen_worker_desc(self.proto_desc)
-
-
 class PSGPUTrainer(TrainerDesc):
     """
     Implement of PSGPUTrainer.
@@ -387,6 +382,30 @@ class PSGPUTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super(PSGPUTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "PSGPUTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
+
+
+class HeterPipelineTrainer(TrainerDesc):
+    """
+    Implement of HeterPipelineTrainer.
+    It's for HeterPS Pipeline training.
+    """
+
+    def __init__(self):
+        super(HeterPipelineTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(HeterPipelineTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(HeterPipelineTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "HeterPipelineTrainer"
         if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)

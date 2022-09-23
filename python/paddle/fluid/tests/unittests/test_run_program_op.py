@@ -19,9 +19,17 @@ import unittest
 import numpy as np
 import six
 
+import paddle
+from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid as fluid
 from paddle import compat as cpt
 from paddle.fluid import core, framework, executor
+from paddle.fluid.layers.utils import _hash_with_id
+from paddle.fluid.framework import _in_eager_mode_
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
+from paddle.fluid.dygraph.base import switch_to_static_graph
+
+paddle.enable_static()
 
 
 @contextlib.contextmanager
@@ -35,7 +43,31 @@ def program_scope_guard():
                 yield
 
 
-# NOTE: Because RunProgramOp has a special output of type std::vector<Scope *>, 
+@switch_to_static_graph
+def _add_build_strategy_for(input_program, start_op_index, end_op_index):
+    compiled_program = paddle.static.CompiledProgram(
+        core.Graph(input_program.desc, start_op_index, end_op_index),
+        build_strategy=paddle.static.BuildStrategy())
+    compiled_program._compile(core.Scope(),
+                              paddle.framework._current_expected_place())
+    ir_graph = paddle.fluid.framework.IrGraph(compiled_program._graph)
+    builded_program = ir_graph.to_program()
+    return builded_program
+
+
+@switch_to_static_graph
+def _build_program_by_desc(program_desc):
+    prog = framework.Program()
+    prog.desc = program_desc
+    prog.blocks = [
+        framework.Block(prog, i)
+        for i in six.moves.range(prog.desc.num_blocks())
+    ]
+    prog._sync_with_cpp()
+    return prog
+
+
+# NOTE: Because RunProgramOp has a special output of type std::vector<Scope *>,
 # the OpTest cannot be used in RunProgramOp. The variable type cannot be specified
 # when creating output variables in OpTest, default type is LoDTensor
 # NOTE: the gradient test method in OpTest also cannot be used for RunProgramOp,
@@ -43,6 +75,7 @@ def program_scope_guard():
 # when create Operator, so here compare gradients with static graph
 # NOTE: Here rewrite a simple unittest framework for RunProgramOp
 class RunProgramOpTest(unittest.TestCase):
+
     def build_model(self):
         raise NotImplementedError(
             "RunProgramOp test should implement build_model")
@@ -90,12 +123,22 @@ class RunProgramOpTest(unittest.TestCase):
             fwd_op_num = self.build_model()
             return fluid.default_main_program().desc, fwd_op_num
 
+    def get_forward_backward_program_desc(self, whole_program_desc,
+                                          forward_op_num, output_num):
+        program = _build_program_by_desc(whole_program_desc)
+        forward_program = _add_build_strategy_for(program, 0, forward_op_num)
+        backward_program = _add_build_strategy_for(
+            program, forward_op_num + 2 * output_num,
+            program.desc.block(0).op_size())
+        return forward_program.desc, backward_program.desc
+
     def prepare_attrs(self):
-        return {
-            'global_block': self.program_desc.block(0),
-            'start_op_index': 0,
-            'end_op_index': self.fwd_op_num
-        }
+        return [
+            'global_block',
+            self.program_desc.block(0), 'start_op_index', 0, 'end_op_index',
+            self.fwd_op_num, 'program_id',
+            _hash_with_id(self.program_desc, self)
+        ]
 
     def get_param_grad_names(self):
         grad_names = []
@@ -109,7 +152,10 @@ class RunProgramOpTest(unittest.TestCase):
 
         # Step 2. compare output
         for expect_v, actual_v in six.moves.zip(self.expect_outs, actual_outs):
-            self.assertTrue(np.allclose(expect_v, actual_v.numpy(), atol=1e-5))
+            np.testing.assert_allclose(expect_v,
+                                       actual_v.numpy(),
+                                       rtol=1e-05,
+                                       atol=1e-05)
 
     def check_grad_with_place(self, place):
         # Step 1. calc grads
@@ -119,12 +165,24 @@ class RunProgramOpTest(unittest.TestCase):
         for expect_v, actual_v in six.moves.zip(self.expect_grads,
                                                 actual_grads):
             np.testing.assert_array_almost_equal(expect_v, actual_v)
-            self.assertTrue(np.allclose(expect_v, actual_v, atol=1e-5))
+            np.testing.assert_allclose(expect_v,
+                                       actual_v,
+                                       rtol=1e-05,
+                                       atol=1e-05)
 
     def prepare_dygraph_input(self, place, return_param_list=False):
+
         def create_var_base(is_input, name, np_value, stop_gradient):
-            var = core.VarBase(
-                value=np_value, name=name, place=place, zero_copy=True)
+            if _in_eager_mode_:
+                var = core.eager.Tensor(value=np_value,
+                                        name=name,
+                                        place=place,
+                                        zero_copy=True)
+            else:
+                var = core.VarBase(value=np_value,
+                                   name=name,
+                                   place=place,
+                                   zero_copy=True)
             var.stop_gradient = stop_gradient
             return var
 
@@ -147,6 +205,7 @@ class RunProgramOpTest(unittest.TestCase):
         return inputs
 
     def prepare_dygraph_output(self):
+
         def create_var_base(is_input, name):
             var = framework._varbase_creator(dtype=None, shape=None, name=name)
             var.stop_gradient = False
@@ -158,12 +217,17 @@ class RunProgramOpTest(unittest.TestCase):
         for name in self.output_names['Out']:
             outputs['Out'].append(create_var_base(False, name))
 
-        outputs['OutScope'] = framework._varbase_creator(
-            type=core.VarDesc.VarType.STEP_SCOPES,
-            name="program_out_scope",
-            persistable=True)
-        inner_scope = core.Scope()
-        outputs['OutScope'].value().set_scope(inner_scope)
+        if _in_eager_mode_:
+            outputs['OutScope'] = [core.Scope()]
+        else:
+            outputs['OutScope'] = framework._varbase_creator(
+                type=core.VarDesc.VarType.STEP_SCOPES,
+                name="program_out_scope",
+                persistable=True)
+            inner_scope = core.Scope()
+            outputs['OutScope'].value().set_scope(inner_scope)
+
+        outputs['DOut'] = [create_var_base(False, "Fake_var")]
         return outputs
 
     def calc_dygraph_output(self, place):
@@ -174,11 +238,21 @@ class RunProgramOpTest(unittest.TestCase):
             inputs = self.prepare_dygraph_input(place)
             outputs = self.prepare_dygraph_output()
 
-            framework._dygraph_tracer().trace_op(
-                type=self.op_type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs=self.attrs)
+            forward_program_desc, backward_program_desc = self.get_forward_backward_program_desc(
+                self.program_desc, self.fwd_op_num, len(outputs['Out']))
+
+            use_interpretorcore = _is_enable_standalone_executor(
+            ) and _is_dy2st_enable_standalone_executor()
+            self.attrs.extend(('use_interpretorcore', use_interpretorcore))
+            if use_interpretorcore:
+                self.attrs.extend(
+                    ('forward_global_block', forward_program_desc.block(0),
+                     'backward_global_block', backward_program_desc.block(0)))
+
+            _legacy_C_ops.run_program(inputs['X'], inputs['Params'],
+                                      outputs['Out'], outputs['OutScope'],
+                                      outputs['DOut'], None, *self.attrs)
+
             return outputs['Out']
 
     def calc_dygraph_grad(self, place):
@@ -190,11 +264,20 @@ class RunProgramOpTest(unittest.TestCase):
             inputs, input_param_list = self.prepare_dygraph_input(place, True)
             outputs = self.prepare_dygraph_output()
 
-            framework._dygraph_tracer().trace_op(
-                type=self.op_type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs=self.attrs)
+            forward_program_desc, backward_program_desc = self.get_forward_backward_program_desc(
+                self.program_desc, self.fwd_op_num, len(outputs['Out']))
+
+            use_interpretorcore = _is_enable_standalone_executor(
+            ) and _is_dy2st_enable_standalone_executor()
+            self.attrs.extend(('use_interpretorcore', use_interpretorcore))
+            if use_interpretorcore:
+                self.attrs.extend(
+                    ('forward_global_block', forward_program_desc.block(0),
+                     'backward_global_block', backward_program_desc.block(0)))
+
+            _legacy_C_ops.run_program(inputs['X'], inputs['Params'],
+                                      outputs['Out'], outputs['OutScope'],
+                                      outputs['DOut'], None, *self.attrs)
 
             for param in input_param_list:
                 var_type = self._get_grad_vartype(param.name)
@@ -225,6 +308,7 @@ class RunProgramOpTest(unittest.TestCase):
 
 
 class TestRunProgramOpWithFC(RunProgramOpTest):
+
     def setUp(self):
         self.op_type = "run_program"
         self.dtype = np.float32
@@ -236,14 +320,14 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
         self.inputs = {
             'X': {
-                self.input_names['X'][0]: np.random.random((32, 1, 28, 28))
-                .astype(self.dtype)
+                self.input_names['X'][0]:
+                np.random.random((32, 1, 28, 28)).astype(self.dtype)
             },
             'Params': {
-                self.input_names['Params'][0]: np.random.random(
-                    (784, 10)).astype(self.dtype),
-                self.input_names['Params'][1]: np.random.random(
-                    (32, 10)).astype(self.dtype)
+                self.input_names['Params'][0]:
+                np.random.random((784, 10)).astype(self.dtype),
+                self.input_names['Params'][1]:
+                np.random.random((32, 10)).astype(self.dtype)
             }
         }
 
@@ -255,21 +339,20 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        img = fluid.data(
-            name=self.input_names['X'][0],
-            shape=[None, 1, 28, 28],
-            dtype='float32')
+        img = fluid.data(name=self.input_names['X'][0],
+                         shape=[None, 1, 28, 28],
+                         dtype='float32')
         weight_attr = fluid.ParamAttr(
             name=self.input_names['Params'][0],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(self.inputs[
-                'Params'][self.input_names['Params'][0]]),
+            initializer=fluid.initializer.NumpyArrayInitializer(
+                self.inputs['Params'][self.input_names['Params'][0]]),
             trainable=True)
         bias_attr = fluid.ParamAttr(
             name=self.input_names['Params'][1],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(self.inputs[
-                'Params'][self.input_names['Params'][1]]),
+            initializer=fluid.initializer.NumpyArrayInitializer(
+                self.inputs['Params'][self.input_names['Params'][1]]),
             trainable=True)
         pred = fluid.layers.fc(input=img,
                                size=10,
@@ -285,6 +368,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
 
 class TestRunProgramOpWithEmbedding(RunProgramOpTest):
+
     def setUp(self):
         self.op_type = "run_program"
         self.dtype = np.float32
@@ -304,7 +388,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         self.check_output()
 
     def test_check_grad(self):
-        # NOTE: fecth not support SelectedRows, catnot compare 
+        # NOTE: fecth not support SelectedRows, catnot compare
         # sparse gradients with staic mode, only run dygraph
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -315,16 +399,17 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        x = fluid.layers.data(
-            name=self.input_names['X'][0], shape=[5], dtype='int64')
+        x = fluid.layers.data(name=self.input_names['X'][0],
+                              shape=[5],
+                              dtype='int64')
         emb = fluid.input.embedding(
             input=x,
             size=[10, 16],
             param_attr=fluid.ParamAttr(
                 name="emb_weight",
                 learning_rate=10,
-                initializer=fluid.initializer.NumpyArrayInitializer(self.inputs[
-                    'Params'][self.input_names['Params'][0]])),
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    self.inputs['Params'][self.input_names['Params'][0]])),
             is_sparse=True)
         y = fluid.layers.reduce_sum(emb, dim=-1)
         # 2. get forward op num
@@ -333,6 +418,56 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         grads = fluid.backward.gradients(targets=[y], inputs=[x])
 
         return fwd_op_num
+
+
+class Net(paddle.nn.Layer):
+
+    def __init__(self):
+        super(Net, self).__init__()
+        self.fc1 = paddle.nn.Linear(10, 10)
+        self.fc2 = paddle.nn.Linear(10, 1)
+
+    def forward(self, x):
+        out = self.fc1(x)
+        out.stop_gradient = True
+        out = self.fc2(out)
+        return out
+
+
+class TestParametersWithStopGradient(unittest.TestCase):
+
+    def setUp(self):
+        self.seed = 2021
+        self.iter = 5
+
+    def train(self, to_static):
+        # prepare env
+        paddle.seed(self.seed)
+
+        net = Net()
+        if to_static:
+            net = paddle.jit.to_static(net)
+        sgd = paddle.optimizer.SGD(0.01, parameters=net.parameters())
+
+        for i in range(self.iter):
+            x = paddle.rand([4, 10])
+            out = net(x)
+            loss = paddle.mean(out)
+
+            loss.backward()
+            sgd.minimize(loss)
+            net.clear_gradients()
+
+        return loss
+
+    def test_stop_gradient(self):
+        paddle.disable_static()
+
+        dy_loss = self.train(to_static=False)
+        st_loss = self.train(to_static=True)
+        self.assertEqual(dy_loss[0], st_loss[0])
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

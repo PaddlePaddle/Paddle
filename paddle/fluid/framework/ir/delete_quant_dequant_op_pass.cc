@@ -16,11 +16,9 @@
 
 #include <string>
 
-namespace paddle {
-namespace framework {
-class LoDTensor;
-}  // namespace framework
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -28,76 +26,85 @@ namespace ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                         \
-  GET_IR_NODE(any_op_out);                \
   GET_IR_NODE(quant_dequant_op_inscale);  \
   GET_IR_NODE(quant_dequant_op);          \
   GET_IR_NODE(quant_dequant_op_outscale); \
-  GET_IR_NODE(quant_dequant_op_out);      \
-  GET_IR_NODE(any_op2);
+  GET_IR_NODE(quant_dequant_op_out);
 
 void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "delete_quantdequant_op_pattern";
   FusePassBase::Init(pattern_name, graph);
-
   GraphPatternDetector gpd;
+
+  std::string quantdequant_types =
+      "fake_quantize_dequantize_moving_average_abs_max";
+
+  auto* input_node = gpd.mutable_pattern()
+                         ->NewNode("input_node")
+                         ->assert_is_op_input(quantdequant_types, "X")
+                         ->AsInput();
 
   patterns::DeleteQuantDequantOpPattern pattern(gpd.mutable_pattern(),
                                                 pattern_name);
-  pattern();
+  pattern(input_node, quantdequant_types);
   auto* scope = param_scope();
+  int found_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    PADDLE_ENFORCE_EQ(
+        subgraph.count(input_node),
+        true,
+        platform::errors::NotFound(
+            "Input act node(%s) not found in QuantDequantFuse pass.",
+            input_node->name()));
+    Node* input = subgraph.at(input_node);
     GET_NODES;
-    IR_NODE_LINK_TO(any_op_out, any_op2);
-    std::string any_op_out_name = any_op_out->Var()->Name();
-    std::string quant_dequant_op_out_name = quant_dequant_op_out->Var()->Name();
+    int bit_length =
+        PADDLE_GET_CONST(int, quant_dequant_op->Op()->GetAttr("bit_length"));
 
+    // Get input scale from tensor
     std::string input_scale_var_name =
         quant_dequant_op->Op()->Input("InScale").front();
+    PADDLE_ENFORCE_NOT_NULL(
+        scope,
+        platform::errors::InvalidArgument(
+            "Scope in DeleteQuantDequantOpPass should not be null."));
     const LoDTensor& input_scale_tensor =
-        scope->GetVar(input_scale_var_name)->Get<LoDTensor>();
-
+        scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
+    PADDLE_ENFORCE_EQ(
+        paddle::platform::is_cpu_place(input_scale_tensor.place()),
+        true,
+        platform::errors::InvalidArgument(
+            "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
-    float input_scale = input_scale_data[0] / 127.;
-    auto* any_op2_desc = any_op2->Op();
-    // auto input_args_names = any_op2_desc->InputArgumentNames();
-    auto var_map = any_op2_desc->Inputs();
-    std::string arg_name = "";
-    for (auto& name_m : var_map) {
-      if (std::find(name_m.second.begin(), name_m.second.end(),
-                    quant_dequant_op_out_name) != name_m.second.end()) {
-        arg_name = name_m.first;
-      }
-    }
-    CHECK(arg_name.size() > 0) << "can not find the input "
-                               << quant_dequant_op_out_name;
-    any_op2_desc->SetAttr("enable_int8", true);
-    any_op2_desc->SetAttr(arg_name + "_scale", input_scale);
+    float input_scale = input_scale_data[0];
 
-    // modify the any_op2's inputs
-    for (auto& name_m : var_map) {
-      if (std::find(name_m.second.begin(), name_m.second.end(),
-                    quant_dequant_op_out_name) != name_m.second.end()) {
-        std::vector<std::string> new_inputs;
-        for (auto& i_n : name_m.second) {
-          if (i_n != quant_dequant_op_out_name) {
-            new_inputs.push_back(i_n);
-          }
-        }
-        new_inputs.push_back(any_op_out_name);
-        any_op2_desc->SetInput(name_m.first, new_inputs);
-        any_op2_desc->Flush();
-      }
+    // Set input scale in attr, and relink nodes
+    std::string input_name = input->Var()->Name();
+    std::string quant_dequant_output_name = quant_dequant_op_out->Var()->Name();
+    auto outlinks = quant_dequant_op_out->outputs;
+    for (auto* quantized_node : outlinks) {
+      auto op_desc = quantized_node->Op();
+      std::string quantized_op_type = op_desc->Type();
+      op_desc->SetAttr("Input_scale", input_scale);
+      op_desc->SetAttr("bit_length", bit_length);
+      op_desc->SetAttr("enable_int8", true);
+      op_desc->RenameInput(quant_dequant_output_name, input_name);
+      op_desc->Flush();
+      IR_NODE_LINK_TO(input, quantized_node);
     }
-    any_op2_desc->Flush();
+
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph,
-                         {quant_dequant_op, quant_dequant_op_out,
-                          quant_dequant_op_inscale, quant_dequant_op_outscale});
+                         {quant_dequant_op_inscale,
+                          quant_dequant_op,
+                          quant_dequant_op_outscale,
+                          quant_dequant_op_out});
+    found_count++;
   };
-
   gpd(graph, handler);
+  AddStatis(found_count);
 }
 
 }  // namespace ir

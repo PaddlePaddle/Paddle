@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/tensorrt.h"
+
 #include <string>
 
 namespace paddle {
@@ -27,7 +28,8 @@ void* tensorrt_plugin_dso_handle;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-TENSORRT_RAND_ROUTINE_EACH(DEFINE_WRAP);
+TENSORRT_RAND_ROUTINE_EACH_POINTER(DEFINE_WRAP);
+TENSORRT_RAND_ROUTINE_EACH_NON_POINTER(DEFINE_WRAP);
 TENSORRT_PLUGIN_RAND_ROUTINE_EACH(DEFINE_WRAP);
 
 void* GetDsoHandle(const std::string& dso_name) {
@@ -39,12 +41,11 @@ void* GetDsoHandle(const std::string& dso_name) {
 
   void* dso_handle = dlopen(dso_name.c_str(), dynload_flags);
 
-  if (nullptr == dso_handle) {
-    auto error_msg =
-        "You are using Paddle compiled with TensorRT, but TensorRT dynamic "
-        "library is not found. Ignore this if TensorRT is not needed.\n";
-    std::cerr << error_msg;
-  }
+  PADDLE_ENFORCE_NOT_NULL(dso_handle,
+                          paddle::platform::errors::NotFound(
+                              "TensorRT is needed, "
+                              "but TensorRT dynamic library is not found."));
+
   return dso_handle;
 }
 

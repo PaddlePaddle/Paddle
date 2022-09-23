@@ -37,15 +37,17 @@ class CWaitComputeOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     PADDLE_ENFORCE_EQ(
-        is_gpu_place(place), true,
+        platform::is_gpu_place(place),
+        true,
         platform::errors::PreconditionNotMet(
-            "wait_compute op can run on gpu place only for now."));
+            "wait_compute op can run on gpu place only for now, but got %s",
+            place.DebugString()));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");
 
     auto compute_stream =
-        static_cast<platform::CUDADeviceContext*>(
+        static_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place))
             ->stream();
     auto comm_stream =
@@ -57,11 +59,11 @@ class CWaitComputeOp : public framework::OperatorBase {
 
 // compute_stream-->event-->comm_stream
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, compute_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, compute_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
 #endif
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -91,5 +93,6 @@ Comm stream wait Compute Stream with async event.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_wait_compute, ops::CWaitComputeOp,
+REGISTER_OPERATOR(c_wait_compute,
+                  ops::CWaitComputeOp,
                   ops::CWaitComputeOpMaker);

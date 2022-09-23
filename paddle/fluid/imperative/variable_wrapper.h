@@ -19,16 +19,19 @@
 #include <string>
 #include <utility>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/op_base.h"
+#include "paddle/phi/common/layout.h"
 
 namespace paddle {
 namespace imperative {
 
-class InteriorVarHookPipeline;
-class LeafVarHookPipeline;
+class VariableWrapperHook;
+class InplaceVariableWrapperHook;
 class VarBase;
 class GradOpNode;
 
@@ -37,6 +40,9 @@ class VariableWrapper {
   friend class VarBase;
 
   explicit VariableWrapper(const std::string& name) : name_(name) {}
+
+  VariableWrapper(const std::string& name, const framework::Variable& variable)
+      : var_(variable), name_(name) {}
 
   ~VariableWrapper() { VLOG(10) << "Destruct VariableWrapper: " << Name(); }
 
@@ -100,8 +106,8 @@ class VariableWrapper {
       const framework::Tensor* tensor = nullptr;
       if (var_.IsType<framework::LoDTensor>()) {
         tensor = &(var_.Get<framework::LoDTensor>());
-      } else if (var_.IsType<framework::SelectedRows>()) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+      } else if (var_.IsType<phi::SelectedRows>()) {
+        tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
         PADDLE_THROW(platform::errors::PermissionDenied(
             "Only support LoDTensor and SelectedRows for gradient var"));
@@ -149,16 +155,26 @@ class VariableWrapper {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+        tensor = &(var_.Get<phi::SelectedRows>().value());
+      } else if (type_ == framework::proto::VarType::VOCAB) {
+        const framework::Vocab* data = nullptr;
+        data = &(var_.Get<framework::Vocab>());
+        if (data && data->size() != 0) {
+          VLOG(6) << "The tensor of variable " << name_
+                  << " is not initialized";
+          return data_type_;
+        }
+        return framework::proto::VarType::VOCAB;
       } else {
         VLOG(6) << "Variable " << name_ << " is not initialized";
         return data_type_;
       }
     }
     if (tensor && tensor->IsInitialized()) {
-      return tensor->type();
+      return framework::TransToProtoVarType(tensor->dtype());
     } else {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
+
       return data_type_;
     }
   }
@@ -171,6 +187,12 @@ class VariableWrapper {
     return fwd_data_type_;
   }
 
+  paddle::experimental::DataLayout DataLayout() { return layout_; }
+
+  void SetDataLayout(const paddle::experimental::DataLayout layout) {
+    layout_ = layout;
+  }
+
   const platform::Place Place() const {
     const framework::Tensor* tensor = nullptr;
     auto place =
@@ -179,7 +201,7 @@ class VariableWrapper {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+        tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
         VLOG(6) << "Variable " << name_ << " is not initialized";
         return place;
@@ -193,51 +215,25 @@ class VariableWrapper {
     }
   }
 
-  /* Hook related method: only can be call by GradVarBase */
-
-  bool HasInteriorHooks() const { return interior_hooks_ != nullptr; }
-
-  bool HasLeafHooks() const { return leaf_hooks_ != nullptr; }
-
-  void AddGradVarInteriorHook(std::unique_ptr<OpBasePreHook>&& hook) {
-    auto interior_hooks = GetGradVarInteriorHooksSafely();
-    interior_hooks->add_hook(std::move(hook));
-  }
-
-  void AddGradVarLeafHook(std::unique_ptr<GradAccumulatorPostHook>&& hook) {
-    auto leaf_hooks = GetGradVarLeafHooksSafely();
-    leaf_hooks->add_hook(std::move(hook));
-  }
-
-  void AddGradVarLeafBackwardHook(
-      std::unique_ptr<GradAccumulatorPostHook>&& hook) {
-    auto leaf_hooks = GetGradVarLeafHooksSafely();
-    leaf_hooks->add_backward_hook(std::move(hook));
-  }
-
-  const std::shared_ptr<InteriorVarHookPipeline>& GetInteriorHooks() const {
-    return interior_hooks_;
-  }
-
-  std::shared_ptr<InteriorVarHookPipeline>& GetInteriorHooks() {
-    return interior_hooks_;
-  }
-
-  const std::shared_ptr<LeafVarHookPipeline>& GetLeafHooks() const {
-    return leaf_hooks_;
-  }
-
-  std::shared_ptr<LeafVarHookPipeline>& GetLeafHooks() { return leaf_hooks_; }
-
   uint32_t InplaceVersionSnapshot() const { return inplace_version_snapshot_; }
 
-  void ResetInplaceVersion() {
-    auto new_version = var_.CurrentInplaceVersion();
+  void ResetInplaceVersion(bool set_to_zero = false) {
+    if (!set_to_zero) {
+      auto new_version = var_.CurrentInplaceVersion();
 
-    VLOG(6) << "The wrapper version of VariableWrapper '" << name_
-            << "' will be updated from " << inplace_version_snapshot_ << "to "
-            << new_version;
-    inplace_version_snapshot_ = new_version;
+      VLOG(6) << "The wrapper version of VariableWrapper '" << name_
+              << "' will be updated from " << inplace_version_snapshot_ << "to "
+              << new_version;
+      inplace_version_snapshot_ = new_version;
+
+    } else {
+      // Reset Snapshot & InplaceVersion to zero
+      inplace_version_snapshot_ = 0;
+      auto var = this->MutableVar();
+      if (var) {
+        var->SetInplaceVersionToZero();
+      }
+    }
   }
 
   bool hasCacheKey(const paddle::framework::OpKernelType& key) {
@@ -255,12 +251,45 @@ class VariableWrapper {
     return;
   }
 
+  /* Hook related methods */
+  bool HasVariableWrapperHook() const { return !var_hooks_.empty(); }
+
+  int64_t AddVariableWrapperHook(std::shared_ptr<VariableWrapperHook>&& hook) {
+    var_hooks_.emplace(next_hook_id_, std::move(hook));
+    return next_hook_id_++;
+  }
+
+  bool RemoveVariableWrapperHook(const int64_t& hook_id) {
+    auto remove_cnt = var_hooks_.erase(hook_id);
+    if (remove_cnt == 0) {
+      return false;
+    }
+    return true;
+  }
+
+  const std::map<int64_t, std::shared_ptr<VariableWrapperHook>>&
+  GetVariableWrapperHooks() const {
+    return var_hooks_;
+  }
+
+  bool HasVoidHook() const { return !void_hooks_.empty(); }
+
+  void AddVoidHook(std::shared_ptr<std::function<void()>>&& hook) {
+    void_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<std::function<void()>>>& GetVoidHooks()
+      const {
+    return void_hooks_;
+  }
+
  private:
   void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
     auto shared_var = grad_var_.lock();
     if (shared_var != var) {
       PADDLE_ENFORCE_EQ(
-          shared_var, nullptr,
+          shared_var,
+          nullptr,
           platform::errors::PermissionDenied(
               "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
@@ -278,7 +307,8 @@ class VariableWrapper {
       if (grad_node->InplaceGradNameMap().empty()) {
         // grad_node doesn't have Inplace message
         PADDLE_ENFORCE_EQ(
-            shared_node, nullptr,
+            shared_node,
+            nullptr,
             platform::errors::PermissionDenied(
                 "Cannot set gradient op twice unless using Inplace Strategy."));
       } else if (shared_node) {
@@ -287,41 +317,6 @@ class VariableWrapper {
       }
       grad_node_ = grad_node;
     }
-  }
-
-  /* Hook related private methods */
-  std::shared_ptr<VariableWrapper> GetGradVarSafely() const {
-    auto shared_grad_var = grad_var_.lock();
-    PADDLE_ENFORCE_NOT_NULL(
-        shared_grad_var,
-        platform::errors::PermissionDenied(
-            "Cannot add gradient hook on Tensor without gradient."));
-    return shared_grad_var;
-  }
-
-  std::shared_ptr<InteriorVarHookPipeline>& GetGradVarInteriorHooksSafely() {
-    auto shared_grad_var = GetGradVarSafely();
-    PADDLE_ENFORCE_EQ(HasGradNode(), true,
-                      platform::errors::PermissionDenied(
-                          "Only interior Tensor in backward can register "
-                          "interior gradient hook."));
-    if (shared_grad_var->interior_hooks_ == nullptr) {
-      shared_grad_var->interior_hooks_ =
-          std::make_shared<InteriorVarHookPipeline>();
-    }
-    return shared_grad_var->interior_hooks_;
-  }
-
-  std::shared_ptr<LeafVarHookPipeline>& GetGradVarLeafHooksSafely() {
-    auto shared_grad_var = GetGradVarSafely();
-    PADDLE_ENFORCE_EQ(
-        HasGradNode(), false,
-        platform::errors::PermissionDenied(
-            "Only leaf Tensor in backward can register leaf gradient hook."));
-    if (shared_grad_var->leaf_hooks_ == nullptr) {
-      shared_grad_var->leaf_hooks_ = std::make_shared<LeafVarHookPipeline>();
-    }
-    return shared_grad_var->leaf_hooks_;
   }
 
  private:
@@ -358,11 +353,23 @@ class VariableWrapper {
   // isn't need
   bool is_empty_{false};
 
-  // NOTE: only grad var can hold hooks now
-  // only interior var can hold interior hooks
-  std::shared_ptr<InteriorVarHookPipeline> interior_hooks_;
-  // only leaf var can hold leaf hooks
-  std::shared_ptr<LeafVarHookPipeline> leaf_hooks_;
+  // NOTE(chenweihang): only grad var will hold hooks now
+  int64_t next_hook_id_{0};
+  // [ Hooks with VariableWrapper as input and output ]
+  // NOTE: Now registered for grad var, support adding and removing,
+  // key is the accumulated int64_t value
+  // NOTE: Var hook need to support removing, so need hook id
+  std::map<int64_t, std::shared_ptr<VariableWrapperHook>> var_hooks_;
+  // [ Hooks without input and output ]
+  // NOTE: Now registered after the execution of the entire backward
+  // process is over, currently only used for reducing in distributed
+  // training
+  // NOTE: Now no need to support remove void hook
+  std::vector<std::shared_ptr<std::function<void()>>> void_hooks_;
+
+  // DataLayout for layoutAutotune
+  paddle::experimental::DataLayout layout_{
+      paddle::experimental::DataLayout::UNDEFINED};
 };
 
 }  // namespace imperative

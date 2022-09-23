@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/operators/detection/prior_box_op.h"
 
 namespace paddle {
@@ -122,7 +123,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
     }
     framework::Tensor var_t;
     var_t.mutable_data<T>(
-        framework::make_ddim({1, static_cast<int>(variances.size())}),
+        phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
 
     auto var_et = framework::EigenTensor<T, 2>::From(var_t);

@@ -13,16 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/phi/core/ddim.h"
 
-USE_OP(relu);
-USE_OP(elementwise_add);
-USE_OP(softmax);
+USE_OP_ITSELF(relu);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(softmax);
 
 namespace paddle {
 namespace operators {
@@ -48,7 +48,7 @@ class DygraphInferShapeTest {
   void SetOpType(const std::string& op_type) { op_type_ = op_type; }
   void Run(std::function<void(framework::InferShapeContext* ctx)> infer_shape) {
     imperative::DygraphInferShapeContext<imperative::VarBase> ctx(
-        &ins_, &outs_, &attrs_, op_type_);
+        &ins_, &outs_, &attrs_, {}, op_type_);
     infer_shape(&ctx);
     for (const auto& pair : expected_dims_) {
       auto out = outs_[pair.first][0];

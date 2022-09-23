@@ -18,6 +18,8 @@ from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 import paddle.fluid.core as core
 
+__all__ = []
+
 
 class DatasetBase(object):
     """ Base dataset class. """
@@ -31,6 +33,8 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+        self.use_ps_gpu = False
+        self.psgpu = None
 
     def init(self,
              batch_size=1,
@@ -42,7 +46,7 @@ class DatasetBase(object):
              fs_ugi="",
              download_cmd="cat"):
         """
-        should be called only once in user's python scripts to initialize setings of dataset instance. 
+        should be called only once in user's python scripts to initialize setings of dataset instance.
         Normally, it is called by InMemoryDataset or QueueDataset.
 
         Args:
@@ -50,7 +54,7 @@ class DatasetBase(object):
             thread_num(int): thread num, it is the num of readers. default is 1.
             use_var(list): list of variables. Variables which you will use. default is [].
             pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default is "cat"
-            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut is 0.
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. default is 0.
             fs_name(str): fs name. default is "".
             fs_ugi(str): fs ugi. default is "".
             download_cmd(str): customized download command. default is "cat"
@@ -137,6 +141,23 @@ class DatasetBase(object):
     def _set_input_type(self, input_type):
         self.proto_desc.input_type = input_type
 
+    def _set_uid_slot(self, uid_slot):
+        """
+        Set user slot name.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetBase()
+              dataset._set_uid_slot('6048')
+
+        Args:
+            set_uid_slot(string): user slot name
+        """
+        multi_slot = self.proto_desc.multi_slot_desc
+        multi_slot.uid_slot = uid_slot
+
     def _set_use_var(self, var_list):
         """
         Set Variables which you will use.
@@ -212,6 +233,20 @@ class DatasetBase(object):
         self.dataset.set_data_feed_desc(self._desc())
         self.dataset.create_readers()
 
+    def _set_use_ps_gpu(self, use_ps_gpu):
+        """
+        set use_ps_gpu flag
+
+        Args:
+            use_ps_gpu: bool
+        """
+        self.use_ps_gpu = use_ps_gpu
+        # if not defined heterps with paddle, users will not use psgpu
+        if not core._is_compiled_with_heterps():
+            self.use_ps_gpu = 0
+        elif self.use_ps_gpu:
+            self.psgpu = core.PSGPU()
+
     def _finish_to_run(self):
         self.dataset.destroy_readers()
 
@@ -237,11 +272,76 @@ class DatasetBase(object):
     def _dynamic_adjust_after_train(self):
         pass
 
+    def _check_use_var_with_data_generator(self, var_list, data_generator_class,
+                                           test_file):
+        """
+         Var consistency insepection of use_var_list and data_generator data.
+
+        Examples:
+            .. code-block:: python
+
+              # required: skiptest
+              import paddle
+              from dataset_generator import CTRDataset
+              dataset = paddle.distributed.fleet.DatasetBase()
+              generator_class = CTRDataset()
+              dataset._check_use_var_with_data_generator([data, label], generator_class, "data/part-00000")
+
+        Args:
+            var_list(list): variable list
+            data_generator_class(class): data_generator class
+            test_file(str): local test file path
+        """
+
+        f = open(test_file, "r")
+        var_len = len(var_list)
+
+        while True:
+            line = f.readline()
+            if line:
+                line_iter = data_generator_class.generate_sample(line)
+                for user_parsed_line in line_iter():
+                    data_gen_len = len(user_parsed_line)
+                    if var_len != data_gen_len:
+                        raise ValueError(
+                            "var length mismatch error: var_list = %s vs data_generator = %s"
+                            % (var_len, data_gen_len))
+
+                    for i, ele in enumerate(user_parsed_line):
+                        if len(ele[1]) == 0:
+                            raise ValueError(
+                                "var length error: var %s's length in data_generator is 0"
+                                % ele[0])
+
+                        if var_list[
+                                i].dtype == core.VarDesc.VarType.FP32 and not all(
+                                    isinstance(ele, float) for ele in ele[1]):
+                            raise TypeError(
+                                "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-float value, which is %s \n"
+                                "Please check if order of var_list and data_generator are aligned. \n"
+                                "Please check if var's type in data_generator is correct."
+                                % (ele[0], "float", ele[1]))
+
+                        if (var_list[i].dtype == core.VarDesc.VarType.INT64
+                                or var_list[i].dtype
+                                == core.VarDesc.VarType.INT32) and not all(
+                                    isinstance(ele, int) for ele in ele[1]):
+                            raise TypeError(
+                                "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-int value, which is %s \n"
+                                "Please check if order of var_list and data_generator are aligned. \n"
+                                "Please check if var's type in data_generator is correct."
+                                % (ele[0], "int", ele[1]))
+
+            else:
+                break
+
+        f.close()
+
 
 class InMemoryDataset(DatasetBase):
     """
     :api_attr: Static Graph
-    
+
     It will load data into memory and shuffle data before training.
 
     Examples:
@@ -276,8 +376,8 @@ class InMemoryDataset(DatasetBase):
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs:
 
-            merge_size(int): ins size to merge, if merge_size > 0, set merge by line id, 
-                             instances of same line id will be merged after shuffle, 
+            merge_size(int): ins size to merge, if merge_size > 0, set merge by line id,
+                             instances of same line id will be merged after shuffle,
                              you should parse line id in data generator. default is -1.
             parse_ins_id(bool): Set if Dataset need to parse ins_id. default is False.
             parse_content(bool): Set if Dataset need to parse content. default is False.
@@ -304,7 +404,7 @@ class InMemoryDataset(DatasetBase):
                     parse_content=True,
                     fea_eval=True,
                     candidate_size=10000)
-              
+
         """
         merge_size = kwargs.get("merge_size", -1)
         if merge_size > 0:
@@ -341,7 +441,7 @@ class InMemoryDataset(DatasetBase):
             batch_size(int): batch size. It will be effective during training. default is 1.
             thread_num(int): thread num, it is the num of readers. default is 1.
             use_var(list): list of variables. Variables which you will use. default is [].
-            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut is 0.
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. default is 0.
             fs_name(str): fs name. default is "".
             fs_ugi(str): fs ugi. default is "".
             pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default is "cat"
@@ -349,8 +449,8 @@ class InMemoryDataset(DatasetBase):
             data_feed_type(str): data feed type used in c++ code. default is "MultiSlotInMemoryDataFeed".
             queue_num(int): Dataset output queue num, training threads get data from queues. default is-1, which is set same as thread number in c++.
 
-            merge_size(int): ins size to merge, if merge_size > 0, set merge by line id, 
-                             instances of same line id will be merged after shuffle, 
+            merge_size(int): ins size to merge, if merge_size > 0, set merge by line id,
+                             instances of same line id will be merged after shuffle,
                              you should parse line id in data generator. default is -1.
             parse_ins_id(bool): Set if Dataset need to parse ins_id. default is False.
             parse_content(bool): Set if Dataset need to parse content. default is False.
@@ -363,7 +463,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle    
+                import paddle
                 paddle.enable_static()
 
                 dataset = paddle.distributed.InMemoryDataset()
@@ -379,7 +479,7 @@ class InMemoryDataset(DatasetBase):
                     fea_eval=True,
                     candidate_size=10000)
                 dataset.update_settings(batch_size=2)
-            
+
         """
         for key in kwargs:
             if key == "pipe_command":
@@ -415,14 +515,14 @@ class InMemoryDataset(DatasetBase):
         :api_attr: Static Graph
 
         should be called only once in user's python scripts to initialize setings of dataset instance
-        
+
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs:
-            
+
             batch_size(int): batch size. It will be effective during training. default is 1.
             thread_num(int): thread num, it is the num of readers. default is 1.
             use_var(list): list of variables. Variables which you will use. default is [].
-            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut is 0.
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. default is 0.
             fs_name(str): fs name. default is "".
             fs_ugi(str): fs ugi. default is "".
             pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default is "cat"
@@ -461,7 +561,7 @@ class InMemoryDataset(DatasetBase):
                 dataset.set_filelist(
                     ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
                 dataset.load_into_memory()
-                
+
                 place = paddle.CPUPlace()
                 exe = paddle.static.Executor(place)
                 startup_program = paddle.static.Program()
@@ -469,7 +569,7 @@ class InMemoryDataset(DatasetBase):
                 exe.run(startup_program)
 
                 exe.train_from_dataset(main_program, dataset)
-                
+
                 os.remove("./test_queue_dataset_run_a.txt")
                 os.remove("./test_queue_dataset_run_b.txt")
 
@@ -483,19 +583,20 @@ class InMemoryDataset(DatasetBase):
         pipe_command = kwargs.get("pipe_command", "cat")
         download_cmd = kwargs.get("download_cmd", "cat")
 
-        super(InMemoryDataset, self).init(
-            batch_size=batch_size,
-            thread_num=thread_num,
-            use_var=use_var,
-            pipe_command=pipe_command,
-            input_type=input_type,
-            fs_name=fs_name,
-            fs_ugi=fs_ugi,
-            download_cmd=download_cmd)
-
-        data_feed_type = kwargs.get("data_feed_type",
-                                    "MultiSlotInMemoryDataFeed")
+        if self.use_ps_gpu:
+            data_feed_type = "SlotRecordInMemoryDataFeed"
+        else:
+            data_feed_type = "MultiSlotInMemoryDataFeed"
         self._set_feed_type(data_feed_type)
+
+        super(InMemoryDataset, self).init(batch_size=batch_size,
+                                          thread_num=thread_num,
+                                          use_var=use_var,
+                                          pipe_command=pipe_command,
+                                          input_type=input_type,
+                                          fs_name=fs_name,
+                                          fs_ugi=fs_ugi,
+                                          download_cmd=download_cmd)
 
         if kwargs.get("queue_num", -1) > 0:
             queue_num = kwargs.get("queue_num", -1)
@@ -506,6 +607,8 @@ class InMemoryDataset(DatasetBase):
         Set data_feed_desc
         """
         self.proto_desc.name = data_feed_type
+        if (self.proto_desc.name == "SlotRecordInMemoryDataFeed"):
+            self.dataset = core.Dataset("SlotRecordDataset")
 
     def _prepare_to_run(self):
         """
@@ -529,12 +632,18 @@ class InMemoryDataset(DatasetBase):
 
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     def _set_queue_num(self, queue_num):
@@ -649,6 +758,23 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = True
         self.parse_ins_id = True
 
+    def _set_shuffle_by_uid(self, enable_shuffle_uid):
+        """
+        Set if Dataset need to shuffle by uid.
+
+        Args:
+            set_shuffle_by_uid(bool): if shuffle according to uid or not
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              paddle.enable_static()
+              dataset = paddle.distributed.InMemoryDataset()
+              dataset._set_shuffle_by_uid(True)
+        """
+        self.dataset.set_shuffle_by_uid(enable_shuffle_uid)
+
     def _set_generate_unique_feasigns(self, generate_uni_feasigns, shard_num):
         self.dataset.set_generate_unique_feasigns(generate_uni_feasigns)
         self.gen_uni_feasigns = generate_uni_feasigns
@@ -656,21 +782,67 @@ class InMemoryDataset(DatasetBase):
 
     def _generate_local_tables_unlock(self, table_id, fea_dim, read_thread_num,
                                       consume_thread_num, shard_num):
-        self.dataset.generate_local_tables_unlock(
-            table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
+        self.dataset.generate_local_tables_unlock(table_id, fea_dim,
+                                                  read_thread_num,
+                                                  consume_thread_num, shard_num)
 
-    def load_into_memory(self):
+    def set_date(self, date):
         """
         :api_attr: Static Graph
-        
-        Load data into memory
+
+        Set training date for pull sparse parameters, saving and loading model. Only used in psgpu
+
+        Args:
+            date(str): training date(format : YYMMDD). eg.20211111
 
         Examples:
             .. code-block:: python
 
                 import paddle
                 paddle.enable_static()
-                
+
+                dataset = paddle.distributed.InMemoryDataset()
+                slots = ["slot1", "slot2", "slot3", "slot4"]
+                slots_vars = []
+                for slot in slots:
+                    var = paddle.static.data(
+                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                    slots_vars.append(var)
+                dataset.init(
+                    batch_size=1,
+                    thread_num=2,
+                    input_type=1,
+                    pipe_command="cat",
+                    use_var=slots_vars)
+                dataset.set_date("20211111")
+        """
+        year = int(date[:4])
+        month = int(date[4:6])
+        day = int(date[6:])
+        if self.use_ps_gpu and core._is_compiled_with_heterps():
+            self.psgpu.set_date(year, month, day)
+
+    def tdm_sample(self, tree_name, tree_path, tdm_layer_counts,
+                   start_sample_layer, with_hierachy, seed, id_slot):
+        self.dataset.tdm_sample(tree_name, tree_path, tdm_layer_counts,
+                                start_sample_layer, with_hierachy, seed,
+                                id_slot)
+
+    def load_into_memory(self, is_shuffle=False):
+        """
+        :api_attr: Static Graph
+
+        Load data into memory
+
+        Args:
+            is_shuffle(bool): whether to use local shuffle, default is False
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                paddle.enable_static()
+
                 dataset = paddle.distributed.InMemoryDataset()
                 slots = ["slot1", "slot2", "slot3", "slot4"]
                 slots_vars = []
@@ -689,7 +861,11 @@ class InMemoryDataset(DatasetBase):
                 dataset.load_into_memory()
         """
         self._prepare_to_run()
-        self.dataset.load_into_memory()
+        if not self.use_ps_gpu:
+            self.dataset.load_into_memory()
+        elif core._is_compiled_with_heterps():
+            self.psgpu.set_dataset(self.dataset)
+            self.psgpu.load_into_memory(is_shuffle)
 
     def preload_into_memory(self, thread_num=None):
         """
@@ -859,7 +1035,7 @@ class InMemoryDataset(DatasetBase):
     def release_memory(self):
         """
         :api_attr: Static Graph
-        
+
         Release InMemoryDataset memory data, when data will not be used again.
 
         Examples:
@@ -867,7 +1043,7 @@ class InMemoryDataset(DatasetBase):
 
                 import paddle
                 paddle.enable_static()
-                
+
                 dataset = paddle.distributed.InMemoryDataset()
                 slots = ["slot1", "slot2", "slot3", "slot4"]
                 slots_vars = []
@@ -968,7 +1144,7 @@ class InMemoryDataset(DatasetBase):
 
                 import paddle
                 paddle.enable_static()
-                
+
                 dataset = paddle.distributed.InMemoryDataset()
                 dataset = paddle.distributed.InMemoryDataset()
                 slots = ["slot1", "slot2", "slot3", "slot4"]
@@ -1004,13 +1180,13 @@ class InMemoryDataset(DatasetBase):
         """
         set fea eval mode for slots shuffle to debug the importance level of
         slots(features), fea_eval need to be set True for slots shuffle.
-        
+
         Args:
-            record_candidate_size(int): size of instances candidate to shuffle 
+            record_candidate_size(int): size of instances candidate to shuffle
                                         one slot
             fea_eval(bool): whether enable fea eval mode to enable slots shuffle.
                             default is True.
-            
+
         Examples:
             .. code-block:: python
 
@@ -1026,12 +1202,12 @@ class InMemoryDataset(DatasetBase):
 
     def slots_shuffle(self, slots):
         """
-        Slots Shuffle 
-        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        Slots Shuffle
+        Slots Shuffle is a shuffle method in slots level, which is usually used
         in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc while doing slots shuffle on one or several slots with baseline to 
+        auc while doing slots shuffle on one or several slots with baseline to
         evaluate the importance level of slots(features).
-        
+
         Args:
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
@@ -1040,7 +1216,7 @@ class InMemoryDataset(DatasetBase):
 
                 import paddle
                 paddle.enable_static()
-                
+
                 dataset = paddle.distributed.InMemoryDataset()
                 dataset._init_distributed_settings(fea_eval=True)
                 slots = ["slot1", "slot2", "slot3", "slot4"]
@@ -1266,7 +1442,7 @@ class BoxPSDataset(InMemoryDataset):
     def begin_pass(self):
         """
         Begin Pass
-        Notify BoxPS to load sparse parameters of next pass to GPU Memory 
+        Notify BoxPS to load sparse parameters of next pass to GPU Memory
 
         Examples:
             .. code-block:: python
@@ -1280,7 +1456,7 @@ class BoxPSDataset(InMemoryDataset):
     def end_pass(self, need_save_delta):
         """
         End Pass
-        Notify BoxPS that current pass ended 
+        Notify BoxPS that current pass ended
         Examples:
             .. code-block:: python
 
@@ -1346,12 +1522,12 @@ class BoxPSDataset(InMemoryDataset):
 
     def slots_shuffle(self, slots):
         """
-        Slots Shuffle 
-        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        Slots Shuffle
+        Slots Shuffle is a shuffle method in slots level, which is usually used
         in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc while doing slots shuffle on one or several slots with baseline to 
+        auc while doing slots shuffle on one or several slots with baseline to
         evaluate the importance level of slots(features).
-        
+
         Args:
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
@@ -1409,7 +1585,7 @@ class BoxPSDataset(InMemoryDataset):
 
     def preprocess_instance(self):
         """
-        Merge pv instance and convey it from input_channel to input_pv_channel. 
+        Merge pv instance and convey it from input_channel to input_pv_channel.
         It will be effective when enable_pv_merge_ is True.
 
         Examples:

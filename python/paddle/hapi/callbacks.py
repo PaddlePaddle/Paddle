@@ -25,10 +25,7 @@ from paddle.utils import try_import
 
 from .progressbar import ProgressBar
 
-__all__ = [
-    'Callback', 'ProgBarLogger', 'ModelCheckpoint', 'VisualDL', 'LRScheduler',
-    'EarlyStopping', 'ReduceLROnPlateau'
-]
+__all__ = []
 
 
 def config_callbacks(callbacks=None,
@@ -71,6 +68,7 @@ def config_callbacks(callbacks=None,
 
 
 class CallbackList(object):
+
     def __init__(self, callbacks=None):
         # copy
         self.callbacks = [c for c in callbacks]
@@ -129,12 +127,13 @@ class CallbackList(object):
 
 class Callback(object):
     """
-    Base class used to build new callbacks.
+    Base class used to build new callbacks. And new callbacks could also
+    terminate training by setting `model.stop_training=True`.
 
     Examples:
 
         .. code-block:: python
-            
+
             import paddle
 
             # build a simple model checkpoint callback
@@ -307,7 +306,7 @@ class ProgBarLogger(Callback):
             the logs such as loss, metrics are printed. Default: 1.
         verbose (int): The verbosity mode, should be 0, 1, or 2.
             0 = silent, 1 = progress bar, 2 = one line each printing, 3 = 2 +
-            time counter, such as average reader cost, samples per second. 
+            time counter, such as average reader cost, samples per second.
             Default: 2.
 
     Examples:
@@ -327,7 +326,7 @@ class ProgBarLogger(Callback):
             ])
             train_dataset = MNIST(mode='train', transform=transform)
 
-            lenet = paddle.vision.LeNet()
+            lenet = paddle.vision.models.LeNet()
             model = paddle.Model(lenet,
                 inputs, labels)
 
@@ -364,7 +363,7 @@ class ProgBarLogger(Callback):
         }
         if self._is_print():
             print(
-                "The loss value printed in the log is the current step, and the metric is the average value of previous step."
+                "The loss value printed in the log is the current step, and the metric is the average value of previous steps."
             )
 
     def on_epoch_begin(self, epoch=None, logs=None):
@@ -398,6 +397,10 @@ class ProgBarLogger(Callback):
             values.append(
                 ('ips', "%.5f samples/sec" %
                  (samples / (timer['data_time'] + timer['batch_time']))))
+            timer['count'] = 0
+            timer['samples'] = 0
+            timer['data_time'] = 0.
+            timer['batch_time'] = 0.
 
         progbar.update(steps, values)
 
@@ -439,8 +442,8 @@ class ProgBarLogger(Callback):
             'samples': 0,
         }
 
-        self.eval_progbar = ProgressBar(
-            num=self.eval_steps, verbose=self.verbose)
+        self.eval_progbar = ProgressBar(num=self.eval_steps,
+                                        verbose=self.verbose)
         if self._is_print():
             print('Eval begin...')
 
@@ -483,8 +486,8 @@ class ProgBarLogger(Callback):
             'samples': 0,
         }
 
-        self.test_progbar = ProgressBar(
-            num=self.test_steps, verbose=self.verbose)
+        self.test_progbar = ProgressBar(num=self.test_steps,
+                                        verbose=self.verbose)
         if self._is_print():
             print('Predict begin...')
 
@@ -557,7 +560,7 @@ class ModelCheckpoint(Callback):
             ])
             train_dataset = MNIST(mode='train', transform=transform)
 
-            lenet = paddle.vision.LeNet()
+            lenet = paddle.vision.models.LeNet()
             model = paddle.Model(lenet,
                 inputs, labels)
 
@@ -595,10 +598,11 @@ class ModelCheckpoint(Callback):
 
 class LRScheduler(Callback):
     """Lr scheduler callback function
+
     Args:
-        by_step(bool, optional): whether to update learning rate scheduler 
+        by_step(bool, optional): whether to update learning rate scheduler
             by step. Default: True.
-        by_epoch(bool, optional): whether to update learning rate scheduler 
+        by_epoch(bool, optional): whether to update learning rate scheduler
             by epoch. Default: False.
 
     Examples:
@@ -617,14 +621,14 @@ class LRScheduler(Callback):
             ])
             train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
 
-            lenet = paddle.vision.LeNet()
+            lenet = paddle.vision.models.LeNet()
             model = paddle.Model(lenet,
                 inputs, labels)
 
             base_lr = 1e-3
             boundaries = [5, 8]
             wamup_steps = 4
-            
+
             def make_optimizer(parameters=None):
                 momentum = 0.9
                 weight_decay = 5e-4
@@ -633,7 +637,7 @@ class LRScheduler(Callback):
                     boundaries=boundaries, values=values)
                 learning_rate = paddle.optimizer.lr.LinearWarmup(
                     learning_rate=learning_rate,
-                    warmup_steps=wamup_epochs,
+                    warmup_steps=wamup_steps,
                     start_lr=base_lr / 5.,
                     end_lr=base_lr,
                     verbose=True)
@@ -643,13 +647,13 @@ class LRScheduler(Callback):
                     momentum=momentum,
                     parameters=parameters)
                 return optimizer
-                
+
             optim = make_optimizer(parameters=lenet.parameters())
             model.prepare(optimizer=optim,
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
 
-            # if LRScheduler callback not set, an instance LRScheduler update by step 
+            # if LRScheduler callback not set, an instance LRScheduler update by step
             # will be created auto.
             model.fit(train_dataset, batch_size=64)
 
@@ -684,7 +688,9 @@ class LRScheduler(Callback):
 
 
 class EarlyStopping(Callback):
-    """Stop training when the given monitor stopped improving during evaluation.
+    """Stop training when the given monitor stopped improving during evaluation
+    by setting `model.stop_training=True`.
+
     Args:
         monitor(str): Quantity to be monitored. Default: 'loss'.
         mode(str|None): Mode should be one of 'auto', 'min' or 'max'. In 'min'
@@ -705,7 +711,7 @@ class EarlyStopping(Callback):
             Training will stop if the model doesn't show improvement over the
             baseline. Default: None.
         save_best_model(bool): Whether to save best model. Default: True.
-        
+
     Examples:
         .. code-block:: python
 
@@ -859,14 +865,14 @@ class VisualDL(Callback):
             train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
             eval_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
 
-            net = paddle.vision.LeNet()
+            net = paddle.vision.models.LeNet()
             model = paddle.Model(net, inputs, labels)
 
             optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
             model.prepare(optimizer=optim,
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
-            
+
             ## uncomment following lines to fit model with visualdl callback function
             # callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
             # model.fit(train_dataset, eval_dataset, batch_size=64, callbacks=callback)
@@ -920,8 +926,9 @@ class VisualDL(Callback):
                 else:
                     continue
 
-                self.writer.add_scalar(
-                    tag=temp_tag, step=total_step, value=temp_value)
+                self.writer.add_scalar(tag=temp_tag,
+                                       step=total_step,
+                                       value=temp_value)
 
     def on_train_batch_end(self, step, logs=None):
         logs = logs or {}
@@ -956,7 +963,7 @@ class ReduceLROnPlateau(Callback):
     of 2-10 once learning stagnates. This callback monitors a
     quantity and if no improvement is seen for a 'patience' number
     of epochs, the learning rate is reduced.
-    
+
     Args:
         monitor(str, optional): Quantity to be monitored. Default: 'loss'.
         factor(float, optional): factor by which the learning rate will be reduced.
@@ -966,21 +973,21 @@ class ReduceLROnPlateau(Callback):
         verbose(int, optional): The verbosity mode. 0: quiet, 1: update messages.
             Default: 1.
         mode(str, optional): one of `{'auto', 'min', 'max'}`. In `'min'` mode,
-            the learning rate will be reduced when the quantity monitored has 
-            stopped decreasing. In 'max' mode, learning rate will reduce until 
-            monitored quantity stops increasing. In 'auto' mode, exact mode 
-            can be inferred by the name of monitor. If 'acc' in monitor, the 
-            mode will be considered as 'max', otherwise the mode will be set 
+            the learning rate will be reduced when the quantity monitored has
+            stopped decreasing. In 'max' mode, learning rate will reduce until
+            monitored quantity stops increasing. In 'auto' mode, exact mode
+            can be inferred by the name of monitor. If 'acc' in monitor, the
+            mode will be considered as 'max', otherwise the mode will be set
             to 'min'. Default: 'auto'.
-        min_delta(int|float, optional): threshold for measuring the new optimum, 
+        min_delta(int|float, optional): threshold for measuring the new optimum,
             to only focus on significant changes. Default: 0.
         cooldown(int, optional): number of epochs to wait before resuming normal operation after
             lr has been reduced. Default: 0.
         min_lr(float, optional): lower bound on the learning rate. Default: 0.
-  
+
     Examples:
           .. code-block:: python
-  
+
               import paddle
               from paddle import Model
               from paddle.static import InputSpec
@@ -988,7 +995,7 @@ class ReduceLROnPlateau(Callback):
               from paddle.vision.datasets import MNIST
               from paddle.metric import Accuracy
               from paddle.nn.layer.loss import CrossEntropyLoss
-              import paddle.vision.transforms as T  
+              import paddle.vision.transforms as T
               sample_num = 200
               transform = T.Compose(
                   [T.Transpose(), T.Normalize([127.5], [127.5])])
@@ -996,14 +1003,14 @@ class ReduceLROnPlateau(Callback):
               val_dataset = MNIST(mode='test', transform=transform)
               net = LeNet()
               optim = paddle.optimizer.Adam(
-                  learning_rate=0.001, parameters=net.parameters())  
+                  learning_rate=0.001, parameters=net.parameters())
               inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
-              labels = [InputSpec([None, 1], 'int64', 'label')]  
+              labels = [InputSpec([None, 1], 'int64', 'label')]
               model = Model(net, inputs=inputs, labels=labels)
               model.prepare(
                   optim,
                   loss=CrossEntropyLoss(),
-                  metrics=[Accuracy()])  
+                  metrics=[Accuracy()])
               callbacks = paddle.callbacks.ReduceLROnPlateau(patience=3, verbose=1)
               model.fit(train_dataset,
                           val_dataset,
@@ -1012,7 +1019,7 @@ class ReduceLROnPlateau(Callback):
                           save_freq=10,
                           epochs=20,
                           callbacks=[callbacks])
-  
+
     """
 
     def __init__(self,
@@ -1052,8 +1059,8 @@ class ReduceLROnPlateau(Callback):
             warnings.warn('Learning rate reduction mode %s is unknown, '
                           'fallback to auto mode.' % self.mode)
             self.mode = 'auto'
-        if (self.mode == 'min' or
-            (self.mode == 'auto' and 'acc' not in self.monitor)):
+        if (self.mode == 'min'
+                or (self.mode == 'auto' and 'acc' not in self.monitor)):
             self.monitor_op = lambda a, b: np.less(a, b - self.min_delta)
             self.best = np.Inf
         else:
@@ -1080,8 +1087,8 @@ class ReduceLROnPlateau(Callback):
                     return
             except Exception as e:
                 warnings.warn(
-                    'There are something wrong when get learning_rate from optimizer: {}.'.
-                    format(e))
+                    'There are something wrong when get learning_rate from optimizer: {}.'
+                    .format(e))
                 return
 
         current = logs[self.monitor]

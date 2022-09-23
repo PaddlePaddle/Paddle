@@ -383,7 +383,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of worker
         """
         if self._check_role_generation():
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
         return 0
 
     def _server_num(self):
@@ -391,30 +391,30 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of server
         """
         if self._check_role_generation():
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
         else:
             self.generate_role()
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
 
     def worker_index(self):
         """
         return the index of worker
         """
         if self._check_role_generation():
-            return self._rank / self._proc_per_node
+            return int(self._rank / self._proc_per_node)
         else:
             self.generate_role()
-            return self._get_size() / 2
+            return int(self._get_size() / 2)
 
     def server_index(self):
         """
         return the index of server
         """
         if self._check_role_generation():
-            return self._rank / self._proc_per_node
+            return int(self._rank / self._proc_per_node)
         else:
             self.generate_role()
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
 
     def _all_reduce(self, input, output, mode="sum"):
         """
@@ -591,13 +591,14 @@ class GeneralRoleMaker(RoleMakerBase):
     """
 
     def __init__(self, **kwargs):
-        super(RoleMakerBase, self).__init__()
+        super(GeneralRoleMaker, self).__init__()
         self._role_is_generated = False
         self._hdfs_name = kwargs.get("hdfs_name", "")
         self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
         self._hdfs_path = kwargs.get("path", "").rstrip("/")
         self._init_timeout_seconds = kwargs.get("init_timeout_seconds", 3600)
         self._run_timeout_seconds = kwargs.get("run_timeout_seconds", 9999999)
+        self._use_metric = kwargs.get("use_metric", False)
         ip_port = kwargs.get("http_ip_port", "")
         self._use_ps_gpu = kwargs.get("use_ps_gpu", False)
         self._http_ip_port = []
@@ -612,6 +613,7 @@ class GeneralRoleMaker(RoleMakerBase):
             # set running status of http server
             self._http_server_d["running"] = False
         self._iface = self.__get_default_iface()
+        self._iface = "" if self._iface == "lo" else self._iface
         # this environment variable can be empty
         self._prefix = os.getenv("SYS_JOB_ID", "")
 
@@ -628,8 +630,8 @@ class GeneralRoleMaker(RoleMakerBase):
                 raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
             self._is_barrier_all = 1
             if "PADDLE_IS_BARRIER_ALL_ROLE" in os.environ:
-                self._is_barrier_all = int(os.environ[
-                    "PADDLE_IS_BARRIER_ALL_ROLE"])
+                self._is_barrier_all = int(
+                    os.environ["PADDLE_IS_BARRIER_ALL_ROLE"])
             if training_role == "TRAINER":
                 role = Role.WORKER
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
@@ -640,9 +642,9 @@ class GeneralRoleMaker(RoleMakerBase):
                         "all": len(worker_endpoints) + len(eplist)
                     }
                     # child process for http server
-                    self._http_server = Process(
-                        target=self.__start_kv_server,
-                        args=(self._http_server_d, size_d))
+                    self._http_server = Process(target=self.__start_kv_server,
+                                                args=(self._http_server_d,
+                                                      size_d))
                     self._http_server.daemon = True
                     # set running status to True
                     self._http_server_d["running"] = True
@@ -667,7 +669,7 @@ class GeneralRoleMaker(RoleMakerBase):
                                             self._hdfs_name, self._hdfs_ugi)
                     gloo.init()
                     self._node_type_comm = gloo
-                    if self._use_ps_gpu:
+                    if self._use_ps_gpu or self._use_metric:
                         Gloo_strategy = fluid.core.GlooParallelStrategy()
                         Gloo_strategy.rank = current_id
                         Gloo_strategy.rank_num = len(worker_endpoints)
@@ -733,11 +735,6 @@ class GeneralRoleMaker(RoleMakerBase):
             self._rank = all_list.index(self._cur_endpoint)
             self._size = len(all_list)
             self._worker_endpoints = worker_endpoints
-            if self._http_server is not None:
-                # set running status to False
-                self._http_server_d["running"] = False
-                # wait until child process exits
-                self._http_server.join()
             self._role_is_generated = True
 
     def all_gather(self, input):

@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
-
+#include "paddle/utils/any.h"
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -63,6 +63,7 @@ class Node {
   }
 
   enum class Type { kOperation, kVariable };
+  enum class Dep { kSame = 0, kBefore = 1, kAfter = 2, kNoDep = 3 };
 #if !defined(_WIN32)  // msvc not support constexpr correctly.
   static constexpr char kControlDepVarName[] = "__control_var";
 #else
@@ -74,18 +75,22 @@ class Node {
   std::string Name() const { return name_; }
 
   VarDesc* Var() const {
-    PADDLE_ENFORCE_EQ(IsVar(), true,
+    PADDLE_ENFORCE_EQ(IsVar(),
+                      true,
                       platform::errors::InvalidArgument(
-                          "Node(%s) must be kVariable type, but not %d.", name_,
+                          "Node(%s) must be kVariable type, but not %d.",
+                          name_,
                           static_cast<int>(type_)));
     return var_desc_.get();
   }
 
   OpDesc* Op() const {
-    PADDLE_ENFORCE_EQ(IsOp(), true,
+    PADDLE_ENFORCE_EQ(IsOp(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Node(%s) must be kOperation type, but not %d.",
-                          name_, static_cast<int>(type_)));
+                          name_,
+                          static_cast<int>(type_)));
     return op_desc_.get();
   }
 
@@ -104,11 +109,12 @@ class Node {
   template <typename T>
   T& Wrapper() {
     try {
-      return *boost::any_cast<T*>(wrapper_);
-    } catch (boost::bad_any_cast&) {
+      return *paddle::any_cast<T*>(wrapper_);
+    } catch (paddle::bad_any_cast&) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Invalid wrapper type error, expected %s, actual %s.",
-          typeid(T).name(), wrapper_type_.name()));
+          typeid(T).name(),
+          wrapper_type_.name()));
     }
   }
 
@@ -121,6 +127,11 @@ class Node {
   // Please don't use this API!
   int id() const { return id_; }
 
+  // Only use this for auto parallel.
+  // A node does not have original desc if the return is zero.
+  uint64_t OriginalDescId() const { return original_desc_id_; }
+  int GraphId() const { return graph_id_; }
+
   bool IsOp() const { return type_ == Type::kOperation; }
   bool IsVar() const { return type_ == Type::kVariable; }
   bool IsCtrlVar() const {
@@ -130,14 +141,105 @@ class Node {
 
   void RenameVar(const std::string& new_name) {
     PADDLE_ENFORCE_EQ(
-        type_ == Type::kVariable && var_desc_, true,
+        type_ == Type::kVariable && var_desc_,
+        true,
         platform::errors::InvalidArgument("Node must be type of variable."));
     name_ = new_name;
     var_desc_->SetName(new_name);
   }
 
+  int DescOrder() const { return desc_order_; }
+
+  int GetVarNodeBlockId() const {
+    PADDLE_ENFORCE_EQ(
+        type_ == Type::kVariable && var_desc_,
+        true,
+        platform::errors::InvalidArgument("Node must be type of variable."));
+    return block_id_;
+  }
+
+  const std::string ToString() const {
+    if (IsOp()) {
+      std::string op_str(Name());
+
+      const auto& op = Op();
+      if (op == nullptr) {
+        // Node is an Op but hasn't OpDesc (often create by CreateEmptyNode),
+        // like ScaleLossGradOp, it's type is OpHandle, which created by Pass
+        // and then inserted into graph.
+        // For OpHandle, we have to use Node's input and output for sorting.
+        std::vector<Node*> sorted_inputs(inputs);
+        std::vector<Node*> sorted_outputs(outputs);
+
+        auto comparator = [](Node* a, Node* b) {
+          return a->Name() > b->Name();
+        };
+        std::stable_sort(
+            sorted_inputs.begin(), sorted_inputs.end(), comparator);
+        std::stable_sort(
+            sorted_outputs.begin(), sorted_outputs.end(), comparator);
+
+        std::string out_str = "{";
+        std::string pre_str = "";
+        for (const auto& output : sorted_outputs) {
+          out_str.append(pre_str + output->Name());
+          pre_str = ", ";
+        }
+        out_str.append("} = ");
+
+        std::string in_str = "(";
+        pre_str = "";
+        for (const auto& input : sorted_inputs) {
+          in_str.append(pre_str + input->Name());
+          pre_str = ", ";
+        }
+        in_str.append(")");
+        op_str = out_str + op_str + in_str;
+      } else {
+        // A normal Op, has OpDesc, create from ProgramDesc
+        std::string out_str = "{";
+        std::string outer_pre_str = "";
+        for (const auto& output : op->OutputNames()) {
+          out_str.append(outer_pre_str + output + "=[");
+          std::string inner_pre_str = "";
+          for (const auto& arg : op->Output(output)) {
+            out_str.append(inner_pre_str + arg);
+            inner_pre_str = " ,";
+          }
+          outer_pre_str = ", ";
+          out_str.append("]");
+        }
+        out_str.append("} = ");
+
+        std::string in_str = "(";
+        outer_pre_str = "";
+        for (const auto& input : op->InputNames()) {
+          in_str.append(outer_pre_str + input + "=[");
+          std::string inner_pre_str = "";
+          for (const auto& arg : op->Input(input)) {
+            in_str.append(inner_pre_str + arg);
+            inner_pre_str = " ,";
+          }
+          outer_pre_str = " ,";
+          in_str.append("]");
+        }
+        in_str.append(")");
+        op_str = out_str + op_str + in_str;
+      }
+
+      return op_str;
+    }
+    return Name();
+  }
+
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
+
+  // Because NO_DESC_ORDER is a constexpr number,
+  // no one can change it, meanwhile, we need
+  // check whether the DescOrder invalid sometime,
+  // so expose it is a good idea
+  static constexpr int NO_DESC_ORDER = INT_MAX;
 
  protected:
   std::string name_;
@@ -146,9 +248,22 @@ class Node {
   Type type_;
   int id_;
 
+  int desc_order_;
+  int block_id_{-1};
+
+  // Store the original id of var desc or op desc.
+  // Only use this for auto parallel.
+  uint64_t original_desc_id_{0};
+  int graph_id_{-1};
+
  private:
   // ID can only set by a Graph.
   void SetId(int id) { id_ = id; }
+  void SetGraphId(int graph_id) { graph_id_ = graph_id; }
+
+  // desc_order can only set by a Graph when constructing a Graph from a
+  // BlockDesc.
+  void SetDescOrder(int desc_order) { desc_order_ = desc_order; }
 
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
@@ -156,24 +271,34 @@ class Node {
   friend std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
   friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 
-  explicit Node(const std::string& name, Type type)
-      : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
+  explicit Node(const std::string& name, Type type, int block_id = 0)
+      : name_(name),
+        var_desc_(nullptr),
+        op_desc_(nullptr),
+        type_(type),
+        desc_order_(NO_DESC_ORDER),
+        block_id_(block_id) {}
 
-  explicit Node(VarDesc* var_desc)
+  explicit Node(VarDesc* var_desc, int block_id)
       : name_(var_desc->Name()),
         var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
-        type_(Type::kVariable) {}
+        type_(Type::kVariable),
+        desc_order_(NO_DESC_ORDER),
+        block_id_(block_id),
+        original_desc_id_(var_desc->OriginalId()) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
-        type_(Type::kOperation) {}
+        type_(Type::kOperation),
+        desc_order_(NO_DESC_ORDER),
+        original_desc_id_(op_desc->OriginalId()) {}
 
   Node() = delete;
 
-  boost::any wrapper_;
+  paddle::any wrapper_;
   std::function<void(void)> wrapper_deleter_;
   std::type_index wrapper_type_ = std::type_index(typeid(void));
 

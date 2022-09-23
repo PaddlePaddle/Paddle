@@ -13,36 +13,31 @@
 # limitations under the License.
 
 # TODO: define the initializers to create a Parameter in neural network
-from ...fluid.initializer import Bilinear  #DEFINE_ALIAS
-from ...fluid.initializer import set_global_initializer  #DEFINE_ALIAS
+from ...fluid.initializer import Bilinear  # noqa: F401
+from ...fluid.initializer import set_global_initializer  # noqa: F401
+from ...fluid.initializer import calculate_gain  # noqa: F401
 
-from . import constant
-from .constant import Constant  #DEFINE_ALIAS
+from .constant import Constant  # noqa: F401
 
-from . import kaiming
-from .kaiming import KaimingNormal  #DEFINE_ALIAS
-from .kaiming import KaimingUniform  #DEFINE_ALIAS
+from .kaiming import KaimingNormal  # noqa: F401
+from .kaiming import KaimingUniform  # noqa: F401
 
-__all__ = ['Bilinear', 'set_global_initializer']
+from .xavier import XavierNormal  # noqa: F401
+from .xavier import XavierUniform  # noqa: F401
 
-__all__ += constant.__all__
-__all__ += kaiming.__all__
+from .assign import Assign  # noqa: F401
 
-from . import xavier
-from .xavier import XavierNormal  #DEFINE_ALIAS
-from .xavier import XavierUniform  #DEFINE_ALIAS
+from .normal import Normal  # noqa: F401
+from .normal import TruncatedNormal  # noqa: F401
 
-from . import assign
-from .assign import Assign  #DEFINE_ALIAS
+from .uniform import Uniform  # noqa: F401
 
-from . import normal
-from .normal import Normal  #DEFINE_ALIAS
-from .normal import TruncatedNormal  #DEFINE_ALIAS
+from .orthogonal import Orthogonal  # noqa: F401
 
-from . import uniform
-from .uniform import Uniform  #DEFINE_ALIAS
+from .dirac import Dirac  # noqa: F401
 
-__all__ += xavier.__all__
-__all__ += assign.__all__
-__all__ += normal.__all__
-__all__ += uniform.__all__
+__all__ = [  #noqa
+    'Bilinear', 'Constant', 'KaimingUniform', 'KaimingNormal', 'XavierNormal',
+    'XavierUniform', 'Assign', 'Normal', 'TruncatedNormal', 'Uniform',
+    'Orthogonal', 'Dirac', 'set_global_initializer', 'calculate_gain'
+]

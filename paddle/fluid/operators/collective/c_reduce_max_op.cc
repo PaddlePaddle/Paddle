@@ -23,10 +23,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -43,7 +39,8 @@ class CReduceMaxOpMaker : public CReduceOpMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_reduce_max, ops::CReduceOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_reduce_max,
+                             ops::CReduceOp,
                              ops::CReduceMaxOpMaker);
 
 REGISTER_OP_CPU_KERNEL(c_reduce_max,

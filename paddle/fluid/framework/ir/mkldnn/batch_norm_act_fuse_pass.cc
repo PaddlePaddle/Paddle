@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/batch_norm_act_fuse_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -29,12 +30,62 @@ void FuseBatchNormActOneDNNPass::ApplyImpl(Graph *graph) const {
   FuseBatchNormAct(graph, act_type);
 }
 
+FuseBatchNormActOneDNNPass::FuseBatchNormActOneDNNPass() {
+  AddOpCompat(OpCompat("batch_norm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddInput("Mean")
+      .IsTensor()
+      .End()
+      .AddInput("Variance")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("MeanOut")
+      .IsOptional()
+      .End()
+      .AddOutput("VarianceOut")
+      .IsOptional()
+      .End()
+      .AddOutput("SavedMean")
+      .IsOptional()
+      .End()
+      .AddOutput("SavedVariance")
+      .IsOptional()
+      .End()
+      .AddOutput("ReserveSpace")
+      .IsOptional()
+      .End()
+      .AddAttr("epsilon")
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+
 void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument(
-                 "The input graph of "
-                 "FuseBatchNormActOneDNNPass should not be nullptr."));
+      graph,
+      platform::errors::InvalidArgument(
+          "The input graph of "
+          "FuseBatchNormActOneDNNPass should not be nullptr."));
   FusePassBase::Init("bn_act", graph);
 
   GraphPatternDetector gpd;
@@ -45,6 +96,11 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse BatchNorm with ReLU activation op.";
+
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     // BN output
     GET_IR_NODE_FROM_SUBGRAPH(bn_out, bn_out, bn_act_pattern);
     // ACT output
@@ -54,18 +110,9 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     GET_IR_NODE_FROM_SUBGRAPH(act, act, bn_act_pattern);
 
     auto *bn_op = batch_norm->Op();
-
-    if (bn_op->HasAttr("use_mkldnn")) {
-      PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, bn_op->GetAttr("use_mkldnn")),
-          platform::errors::PreconditionNotMet(
-              "The BatchNorm+Act fusion may happen only when oneDNN library "
-              "is used."));
-    }
-
     if (bn_op->HasAttr("trainable_statistics")) {
       PADDLE_ENFORCE(
-          !BOOST_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),
+          !PADDLE_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),
           platform::errors::PreconditionNotMet(
               "The BatchNorm+Act fusion may happen only when mean and variance "
               "are not calculated by current batch statistics."));
@@ -73,7 +120,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
 
     if (bn_op->HasAttr("is_test")) {
       PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, bn_op->GetAttr("is_test")),
+          PADDLE_GET_CONST(bool, bn_op->GetAttr("is_test")),
           platform::errors::PreconditionNotMet(
               "The BatchNorm+Act fusion may happen only during inference."));
     }
@@ -84,6 +131,11 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     bn_op->SetAttr("trainable_statistics", false);
     bn_op->SetOutput("Y", {act_out->Name()});
 
+    if (!IsCompat(*bn_op)) {
+      LOG(WARNING) << "Fc fuse pass in out fc op compat failed.";
+      return;
+    }
+
     IR_OP_VAR_LINK(batch_norm, act_out);
     GraphSafeRemoveNodes(g, {act, bn_out});
     found_bn_act_count++;
@@ -91,8 +143,9 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
 
   gpd(graph, handler);
   AddStatis(found_bn_act_count);
-  PrettyLogDetail("---    fused %d batch norm with relu activation",
-                  found_bn_act_count);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    PrettyLogDetail("---    fused %d batch norm with relu activation",
+                    found_bn_act_count);
 }
 
 }  // namespace ir

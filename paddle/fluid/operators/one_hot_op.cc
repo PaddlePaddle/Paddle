@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/one_hot_op.h"
+
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace operators {
@@ -28,14 +28,16 @@ class OneHotOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "OneHot");
 
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+    PADDLE_ENFORCE_GE(x_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Input(input) rank should be at least 2, "
                           "but received input rank (%d) less than 2",
                           x_dims.size()));
 
     if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
-      PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
+      PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1],
+                        1U,
                         platform::errors::InvalidArgument(
                             "Last dimension of Input(input) should be 1, "
                             "but received input Last dimension(%d) != 1",
@@ -62,13 +64,14 @@ class OneHotOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -125,9 +128,11 @@ Out is a LoDTensor:
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    one_hot, ops::OneHotOp, ops::OneHotOpMaker,
+    one_hot,
+    ops::OneHotOp,
+    ops::OneHotOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    one_hot, ops::OneHotKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::OneHotKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(one_hot,
+                       ops::OneHotKernel<phi::CPUContext, int>,
+                       ops::OneHotKernel<phi::CPUContext, int64_t>);

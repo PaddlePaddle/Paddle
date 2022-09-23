@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/imperative/engine.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 
@@ -30,7 +31,9 @@ class OpBase;
 
 class BasicEngine : public Engine {
  public:
-  void Init(VarBase* var, bool retain_graph = false);
+  void Init(const std::vector<std::shared_ptr<VarBase>>& tensors,
+            const std::vector<std::shared_ptr<VarBase>>& grad_tensors,
+            bool retain_graph = false);
 
   void Execute() override;
 
@@ -46,7 +49,7 @@ class BasicEngine : public Engine {
   void Clear();
 
  private:
-  std::shared_ptr<GradOpNode> init_node_;
+  std::vector<std::shared_ptr<GradOpNode>> init_nodes_;
   std::unordered_map<GradOpNode*, size_t> node_deps_;
   // The input and output of Inplace op are the same. If only `var` is used
   // as the key, then the input and output of inplace op must be gradient

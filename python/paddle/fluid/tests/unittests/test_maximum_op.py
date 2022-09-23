@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 
 
 class ApiMaximumTest(unittest.TestCase):
+
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -47,10 +48,12 @@ class ApiMaximumTest(unittest.TestCase):
             data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
             result_max = paddle.maximum(data_x, data_y)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"x": self.input_x,
-                                 "y": self.input_y},
+            res, = exe.run(feed={
+                "x": self.input_x,
+                "y": self.input_y
+            },
                            fetch_list=[result_max])
-        self.assertTrue(np.allclose(res, self.np_expected1))
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -58,10 +61,12 @@ class ApiMaximumTest(unittest.TestCase):
             data_z = paddle.static.data("z", shape=[15], dtype="float32")
             result_max = paddle.maximum(data_x, data_z)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"x": self.input_x,
-                                 "z": self.input_z},
+            res, = exe.run(feed={
+                "x": self.input_x,
+                "z": self.input_z
+            },
                            fetch_list=[result_max])
-        self.assertTrue(np.allclose(res, self.np_expected2))
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -69,10 +74,12 @@ class ApiMaximumTest(unittest.TestCase):
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_max = paddle.maximum(data_a, data_c)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"a": self.input_a,
-                                 "c": self.input_c},
+            res, = exe.run(feed={
+                "a": self.input_a,
+                "c": self.input_c
+            },
                            fetch_list=[result_max])
-        self.assertTrue(np.allclose(res, self.np_expected3))
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -80,10 +87,12 @@ class ApiMaximumTest(unittest.TestCase):
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_max = paddle.maximum(data_b, data_c)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"b": self.input_b,
-                                 "c": self.input_c},
+            res, = exe.run(feed={
+                "b": self.input_b,
+                "c": self.input_c
+            },
                            fetch_list=[result_max])
-        self.assertTrue(np.allclose(res, self.np_expected4))
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
     def test_dynamic_api(self):
         paddle.disable_static()
@@ -97,17 +106,17 @@ class ApiMaximumTest(unittest.TestCase):
 
         res = paddle.maximum(x, y)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected1))
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
 
         # test broadcast
         res = paddle.maximum(x, z)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected2))
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
 
         res = paddle.maximum(a, c)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected3))
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
 
         res = paddle.maximum(b, c)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected4))
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)

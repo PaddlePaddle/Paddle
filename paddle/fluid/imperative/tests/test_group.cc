@@ -14,8 +14,8 @@
 
 #include <sstream>
 #include <string>
-#include "gtest/gtest.h"
 
+#include "gtest/gtest.h"
 #include "paddle/fluid/imperative/reducer.h"
 
 namespace paddle {
@@ -72,21 +72,23 @@ void GroupConcatSplit(Place place, size_t size) {
       value.push_back(static_cast<T>(1.0 * j));
     }
 
-    if (std::is_same<Place, platform::CUDAPlace>::value) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      paddle::memory::Copy(place, data, cpu_place, value.data(),
-                           sizeof(T) * value.size(), 0);
+    if (std::is_same<Place, platform::CUDAPlace>::value ||
+        std::is_same<Place, platform::MLUPlace>::value) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_CNCL)
+      paddle::memory::Copy(
+          place, data, cpu_place, value.data(), sizeof(T) * value.size(), 0);
 #endif
     } else {
-      paddle::memory::Copy(place, data, cpu_place, value.data(),
-                           sizeof(T) * value.size());
+      paddle::memory::Copy(
+          place, data, cpu_place, value.data(), sizeof(T) * value.size());
     }
 
     framework::Tensor tmp;
     tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(len)});
     group.dense_tensors_.push_back(std::move(tmp));
     group.all_length_ += len;
-    group.dtype_ = tensor->type();
+    group.dtype_ = framework::TransToProtoVarType(tensor->dtype());
   }
 
   paddle::platform::DeviceContextPool& pool =
@@ -95,8 +97,8 @@ void GroupConcatSplit(Place place, size_t size) {
 
   {  // concat
     auto* tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
-    tensor->Resize(framework::make_ddim({group.all_length_}))
-        .mutable_data(place, group.dtype_);
+    tensor->Resize(phi::make_ddim({group.all_length_}))
+        .mutable_data(place, framework::TransToPhiDataType(group.dtype_));
     group.ConcatTensors(*dev_ctx);
 
     group.DivNRanks(*dev_ctx, 1);
@@ -180,5 +182,19 @@ TEST(TestGroup, TestXPUConcatSplit) {
 }
 #endif
 
+#if defined(PADDLE_WITH_CNCL)
+TEST(TestGroup, TestMLUConcatSplit) {
+  platform::MLUPlace mlu_place(0);
+  platform::CPUPlace cpu_place;
+
+  int size = 3;
+  GroupConcatSplit<float>(cpu_place, size);
+  GroupConcatSplit<float>(mlu_place, size);
+
+  size = 15;
+  GroupConcatSplit<float>(cpu_place, size);
+  GroupConcatSplit<float>(mlu_place, size);
+}
+#endif
 }  // namespace imperative
 }  // namespace paddle

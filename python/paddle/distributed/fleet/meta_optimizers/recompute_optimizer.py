@@ -14,8 +14,11 @@
 from paddle.fluid.optimizer import RecomputeOptimizer as RO
 from .meta_optimizer_base import MetaOptimizerBase
 
+__all__ = []
+
 
 class RecomputeOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(RecomputeOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -31,8 +34,9 @@ class RecomputeOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(RecomputeOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        super(RecomputeOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
 
     def _init_wrapped_opt(self):
         if self.wrapped_opt is not None:
@@ -52,8 +56,8 @@ class RecomputeOptimizer(MetaOptimizerBase):
             return False
 
         if self.user_defined_strategy.recompute == True:
-            if len(self.user_defined_strategy.recompute_configs[
-                    "checkpoints"]) == 0:
+            if len(self.user_defined_strategy.recompute_configs["checkpoints"]
+                   ) == 0:
                 return False
             else:
                 return True
@@ -81,8 +85,9 @@ class RecomputeOptimizer(MetaOptimizerBase):
         return self.wrapped_opt.apply_gradients(params_grads=params_grads)
 
     def apply_optimize(self, loss, startup_program, params_grads):
-        return self.wrapped_opt.apply_optimize(
-            loss, startup_program=startup_program, params_grads=params_grads)
+        return self.wrapped_opt.apply_optimize(loss,
+                                               startup_program=startup_program,
+                                               params_grads=params_grads)
 
     def minimize_impl(self,
                       loss,

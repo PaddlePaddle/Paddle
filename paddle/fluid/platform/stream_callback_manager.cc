@@ -13,19 +13,31 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/stream_callback_manager.h"
-#include "paddle/fluid/platform/enforce.h"
+
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_HIP
-static void StreamCallbackFunc(gpuStream_t stream, gpuError_t status,
+static void StreamCallbackFunc(gpuStream_t stream,
+                               gpuError_t status,
                                void *user_data)
-#elif CUDA_VERSION >= 10000
-static void CUDART_CB StreamCallbackFunc(void *user_data)
+#endif
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10000
+    static void CUDART_CB StreamCallbackFunc(void *user_data)
 #else
-static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
-                                         cudaError_t status, void *user_data)
+    static void CUDART_CB
+    StreamCallbackFunc(cudaStream_t stream, cudaError_t status, void *user_data)
+#endif
+#endif
+
+#if PADDLE_WITH_ASCEND_CL
+        static void StreamCallbackFunc(void *user_data)
+#endif
+#if PADDLE_WITH_MLU
+            static void StreamCallbackFunc(void *user_data)
 #endif
 {
   std::unique_ptr<std::function<void()>> func(
@@ -33,10 +45,13 @@ static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
   (*func)();
 }
 
-StreamCallbackManager::StreamCallbackManager(const gpuStream_t stream)
+template <typename Stream>
+StreamCallbackManager<Stream>::StreamCallbackManager(const Stream stream)
     : stream_(stream), thread_pool_(1) {}
 
-void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
+template <typename Stream>
+void StreamCallbackManager<Stream>::AddCallback(
+    std::function<void()> callback) const {
   auto *callback_func = new std::function<void()>(std::move(callback));
   auto *func = new std::function<void()>([this, callback_func] {
     std::lock_guard<std::mutex> lock(mtx_);
@@ -45,23 +60,43 @@ void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
       (*callback_func)();
     });
   });
+
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       hipStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
-#elif CUDA_VERSION >= 10000
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+#endif
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10000
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaLaunchHostFunc(stream_, StreamCallbackFunc, func));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
+#endif
+#endif
+
+#if PADDLE_WITH_ASCEND_CL
+  VLOG(3) << "aclrtLaunchCallback at stream: " << stream_;
+  // TODO(zhiqiu): failed to call aclrtLaunchCallback
+  NPULaunchCallback(StreamCallbackFunc, func, ACL_CALLBACK_BLOCK, stream_);
+#endif
+
+#if PADDLE_WITH_MLU
+  VLOG(3) << "MLULaunchCallback at stream: " << stream_;
+  cnrtInvokeHostFunc(stream_, StreamCallbackFunc, func);
 #endif
 }
 
-void StreamCallbackManager::Wait() const {
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
-#else
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
+template <typename Stream>
+void StreamCallbackManager<Stream>::Wait() const {
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
+  platform::GpuStreamSync(stream_);
+#endif
+#ifdef PADDLE_WITH_MLU
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(stream_));
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  NPUStreamSync(stream_);
 #endif
   {
     std::lock_guard<std::mutex> lock(mtx_);
@@ -70,6 +105,19 @@ void StreamCallbackManager::Wait() const {
     }
   }
 }
+
+#ifdef PADDLE_WITH_CUDA
+template struct StreamCallbackManager<gpuStream_t>;
+#endif
+#ifdef PADDLE_WITH_HIP
+template struct StreamCallbackManager<hipStream_t>;
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+template struct StreamCallbackManager<aclrtStream>;
+#endif
+#ifdef PADDLE_WITH_MLU
+template struct StreamCallbackManager<mluStream>;
+#endif
 
 }  // namespace platform
 }  // namespace paddle

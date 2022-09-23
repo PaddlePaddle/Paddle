@@ -24,11 +24,13 @@ import random
 
 
 class TestElementwiseModOp(OpTest):
+
     def init_kernel_type(self):
         self.use_mkldnn = False
 
     def setUp(self):
         self.op_type = "elementwise_floordiv"
+        self.python_api = paddle.floor_divide
         self.dtype = np.int32
         self.axis = -1
         self.init_dtype()
@@ -44,7 +46,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -59,6 +61,7 @@ class TestElementwiseModOp(OpTest):
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
+
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)
         scale_y = random.randint(1, 100000000)
@@ -68,6 +71,7 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
 
 
 class TestElementwiseModOpInverse(TestElementwiseModOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10]).astype(self.dtype)
         self.y = np.random.uniform(0, 1000, [10, 10]).astype(self.dtype)
@@ -75,6 +79,7 @@ class TestElementwiseModOpInverse(TestElementwiseModOp):
 
 
 class TestFloorDivideOp(unittest.TestCase):
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="int64")
@@ -95,7 +100,7 @@ class TestFloorDivideOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
-            # divide by zero 
+            # divide by zero
             np_x = np.array([2, 3, 4])
             np_y = np.array([0])
             x = paddle.to_tensor(np_x)
@@ -105,7 +110,7 @@ class TestFloorDivideOp(unittest.TestCase):
             except Exception as e:
                 print("Error: Divide by zero encounter in floor_divide\n")
 
-            # divide by zero 
+            # divide by zero
             np_x = np.array([2])
             np_y = np.array([0, 0, 0])
             x = paddle.to_tensor(np_x, dtype="int32")

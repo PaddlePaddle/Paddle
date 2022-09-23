@@ -16,8 +16,11 @@ from paddle.fluid.optimizer import LambOptimizer as LAMB
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
+__all__ = []
+
 
 class LambOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(LambOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -28,8 +31,9 @@ class LambOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(LambOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        super(LambOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
 
         opt = self.inner_opt
         if not isinstance(opt, AdamOptimizer):
@@ -68,8 +72,8 @@ class LambOptimizer(MetaOptimizerBase):
         if self.user_defined_strategy.lamb:
             if not isinstance(self.inner_opt, AdamOptimizer):
                 logging.warn(
-                    "lamb need the inner optimizer to be AdamOptimizer optimizer but got {}.".
-                    format(self.inner_opt.type))
+                    "lamb need the inner optimizer to be AdamOptimizer optimizer but got {}."
+                    .format(self.inner_opt.type))
                 return False
             return True
         return False
@@ -99,8 +103,9 @@ class LambOptimizer(MetaOptimizerBase):
         return self.lamb_opt.apply_gradients(params_grads=params_grads)
 
     def apply_optimize(self, loss, startup_program, params_grads):
-        return self.lamb_opt.apply_optimize(
-            loss, startup_program=startup_program, params_grads=params_grads)
+        return self.lamb_opt.apply_optimize(loss,
+                                            startup_program=startup_program,
+                                            params_grads=params_grads)
 
     def minimize_impl(self,
                       loss,

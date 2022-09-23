@@ -26,18 +26,16 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-struct DequantizeFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* dict,
+struct DequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor* dict,
                   framework::Tensor* out) {
     const float* dict_data = dict->data<float>();
     const T* input_data = in->data<T>();
@@ -53,7 +51,7 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CPUDeviceContext, int8_t>;
+template struct DequantizeFunctor<phi::CPUContext, int8_t>;
 
 class DequantizeLogOp : public framework::OperatorWithKernel {
  public:
@@ -64,10 +62,12 @@ class DequantizeLogOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "Input(X) of DequantizeLogOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Out) of DequantizeLogOp is not found."));
 
@@ -76,7 +76,7 @@ class DequantizeLogOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     auto type = framework::OpKernelType(data_type, ctx.device_context());
     return type;
@@ -108,10 +108,12 @@ This calculation is an opposite operation of QuantizeLogOp:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
-    dequantize_log, ops::DequantizeLogOp, ops::DequantizeLogOpMaker,
+    dequantize_log,
+    ops::DequantizeLogOp,
+    ops::DequantizeLogOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(dequantize_log, ops::DequantizeLogKernel<CPU, int8_t>);

@@ -15,7 +15,7 @@
 from ...fluid.initializer import NormalInitializer
 from ...fluid.initializer import TruncatedNormalInitializer
 
-__all__ = ['Normal', 'TruncatedNormal']
+__all__ = []
 
 
 class Normal(NormalInitializer):
@@ -46,7 +46,7 @@ class Normal(NormalInitializer):
             # linear.weight:  [[ 2.1973135 -2.2697184]
             #                  [-1.9104223 -1.0541488]]
             # linear.bias:  [ 0.7885926  -0.74719954]
-            
+
             res = linear(data)
             # res:  [[[ 1.0754838 -4.071067 ]]
             #        [[ 1.0754838 -4.071067 ]]
@@ -60,16 +60,15 @@ class Normal(NormalInitializer):
 
 
 class TruncatedNormal(TruncatedNormalInitializer):
-    """The Random TruncatedNormal (Gaussian) distribution initializer.
+    """The truncated normal distribution (Gaussian distribution) initializer.
 
     Args:
-        mean (float, optional): mean of the normal distribution. The default value is 0.0.
-        std (float, optional): standard deviation of the normal distribution. The default value is 1.0.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
-            property. For more information, please refer to :ref:`api_guide_Name`.
+        mean (float, optional): Mean of the normal distribution. The default value is :math:`0.0`.
+        std (float, optional): Standard deviation of the normal distribution. The default value is :math:`1.0`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A parameter initialized by Random TruncatedNormal (Gaussian) distribution.
+        A parameter initialized by truncated normal distribution (Gaussian distribution).
 
     Examples:
         .. code-block:: python

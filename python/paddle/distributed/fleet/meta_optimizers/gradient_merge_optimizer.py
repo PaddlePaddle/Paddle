@@ -14,8 +14,11 @@
 from paddle.fluid.optimizer import GradientMergeOptimizer as GM
 from .meta_optimizer_base import MetaOptimizerBase
 
+__all__ = []
+
 
 class GradientMergeOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(GradientMergeOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -31,8 +34,9 @@ class GradientMergeOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(GradientMergeOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        super(GradientMergeOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
 
     def _init_wrapped_opt(self):
         config = self.user_defined_strategy.gradient_merge_configs

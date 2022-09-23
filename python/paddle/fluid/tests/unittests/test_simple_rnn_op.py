@@ -19,9 +19,11 @@ import math
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import random
 import sys
+
 sys.path.append("./rnn")
 from rnn_numpy import SimpleRNN
 from convert import get_params_for_net
@@ -32,6 +34,7 @@ paddle.enable_static()
 
 
 class TestSimpleRNNOp(OpTest):
+
     def get_weight_names(self):
         weight_names = []
         for i in range(self.num_layers):
@@ -44,8 +47,9 @@ class TestSimpleRNNOp(OpTest):
 
     def setUp(self):
         self.op_type = "rnn"
-        self.dtype = np.float64
-        self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+        self.sequence_length = None if core.is_compiled_with_rocm(
+        ) else np.array([12, 11, 10, 9, 8], dtype=np.int32)
         self.num_layers = 1
         self.is_bidirec = False
         self.is_test = False
@@ -60,23 +64,24 @@ class TestSimpleRNNOp(OpTest):
         input_size = 3
         hidden_size = 2
 
-        input = np.random.uniform(
-            low=-0.1, high=0.1,
-            size=(seq_length, batch_size, input_size)).astype(self.dtype)
+        input = np.random.uniform(low=-0.1,
+                                  high=0.1,
+                                  size=(seq_length, batch_size,
+                                        input_size)).astype(self.dtype)
         if self.sequence_length is not None:
             input[11][1:][:] = 0
             input[10][2:][:] = 0
             input[9][3:][:] = 0
             input[8][4:][:] = 0
 
-        rnn1 = SimpleRNN(
-            input_size,
-            hidden_size,
-            num_layers=self.num_layers,
-            time_major=True,
-            direction=direction,
-            dropout=self.dropout,
-            nonlinearity=self.mode)
+        rnn1 = SimpleRNN(input_size,
+                         hidden_size,
+                         num_layers=self.num_layers,
+                         time_major=True,
+                         direction=direction,
+                         dropout=self.dropout,
+                         nonlinearity=self.mode,
+                         dtype=self.dtype)
 
         flat_w = get_params_for_net(rnn1)
 
@@ -130,23 +135,27 @@ class TestSimpleRNNOp(OpTest):
 
 
 class TestSimpleRNNOp1(TestSimpleRNNOp):
+
     def set_attrs(self):
         self.sequence_length = None
 
 
 class TestSimpleRNNOp2(TestSimpleRNNOp):
+
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
 
 
 class TestSimpleRNNOp3(TestSimpleRNNOp):
+
     def set_attrs(self):
         self.sequence_length = None
         self.is_test = True
 
 
 class TestSimpleRNNOp4(TestSimpleRNNOp):
+
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
@@ -154,6 +163,7 @@ class TestSimpleRNNOp4(TestSimpleRNNOp):
 
 
 class TestSimpleRNNOp5(TestSimpleRNNOp):
+
     def set_attrs(self):
         self.mode = "RNN_RELU"
 

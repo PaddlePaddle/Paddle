@@ -12,11 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/flip_op.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -28,71 +32,6 @@ class FlipOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of FlipOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of FlipOp should not be null."));
-    auto x_dims = ctx->GetInputDim("X");
-    auto flip_dims = ctx->Attrs().Get<std::vector<int>>("axis");
-    size_t flip_dims_size = flip_dims.size();
-
-    if (flip_dims_size > 0) {
-      // check if dims axis within range
-      auto min_max_d = std::minmax_element(flip_dims.begin(), flip_dims.end());
-      PADDLE_ENFORCE_LT(
-          *min_max_d.first, x_dims.size(),
-          platform::errors::InvalidArgument(
-              "min(axes) should be less than the input tensor X's "
-              "axes of FlipOp. But received min(axes) = %d,  "
-              "X's axes = %d, X's shape = [%s]",
-              *min_max_d.first, x_dims.size(), x_dims));
-      PADDLE_ENFORCE_GE(*min_max_d.first, x_dims.size() * -1,
-                        platform::errors::InvalidArgument(
-                            "min(axes) should be greater than or equal to the "
-                            "input tensor X's "
-                            "axes of FlipOp times -1. But received "
-                            "min(axes) = %d,  X's "
-                            "axes = %d, X's shape = [%s]",
-                            *min_max_d.first, x_dims.size() * -1, x_dims));
-      PADDLE_ENFORCE_LT(
-          *min_max_d.second, x_dims.size(),
-          platform::errors::InvalidArgument(
-              "max(axes) should be less than the input tensor X's "
-              "axes of FlipOp. But received max(axes) = %d,  "
-              "X's axes = %d, X's shape = [%s]",
-              *min_max_d.second, x_dims.size(), x_dims));
-      PADDLE_ENFORCE_GE(*min_max_d.second, x_dims.size() * -1,
-                        platform::errors::InvalidArgument(
-                            "max(axes) should be greater than or equal to the "
-                            "input tensor X's "
-                            "axes of FlipOp times -1. But received "
-                            "max(axes) = %d,  X's "
-                            "axes = %d, X's shape = [%s]",
-                            *min_max_d.second, x_dims.size() * -1, x_dims));
-
-      // check duplicates in dims
-      flip_dims.erase(std::unique(flip_dims.begin(), flip_dims.end()),
-                      flip_dims.end());
-      PADDLE_ENFORCE_EQ(flip_dims.size(), flip_dims_size,
-                        platform::errors::InvalidArgument(
-                            "axes has duplicates, original flip axes size=%d, "
-                            "but unique flip axes size=%d.)",
-                            flip_dims_size, flip_dims.size()));
-    }
-
-    VLOG(3) << "flip operator x.shape=" << x_dims;
-
-    std::vector<int64_t> output_dims(x_dims.size());
-    for (int i = 0; i < x_dims.size(); ++i) {
-      output_dims[i] = x_dims[i];
-    }
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
-    ctx->ShareLoD("X", "Out");
-  }
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     framework::LibraryType library = framework::LibraryType::kPlain;
@@ -100,8 +39,11 @@ class FlipOp : public framework::OperatorWithKernel {
     int customized_type_value =
         framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return framework::OpKernelType(input_data_type,
+                                   ctx.GetPlace(),
+                                   layout,
+                                   library,
+                                   customized_type_value);
   }
 };
 
@@ -145,21 +87,23 @@ class FlipOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(flip, ops::FlipOp, ops::FlipOpMaker, ops::FlipOpInferVarType,
+namespace plat = paddle::platform;
+DECLARE_INFER_SHAPE_FUNCTOR(flip,
+                            FlipInferShapeFunctor,
+                            PD_INFER_META(phi::FlipInferMeta));
+REGISTER_OPERATOR(flip,
+                  ops::FlipOp,
+                  ops::FlipOpMaker,
+                  ops::FlipOpInferVarType,
                   ops::FlipOpGradMaker<paddle::framework::OpDesc>,
-                  ops::FlipOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    flip, ops::FlipKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, bool>);
+                  ops::FlipOpGradMaker<paddle::imperative::OpBase>,
+                  FlipInferShapeFunctor);
 
 /* ==========================  register checkpoint ===========================*/
-REGISTER_OP_VERSION(flip)
-    .AddCheckpoint(
-        R"ROC(Upgrade flip, add new attr [axis] and delete attr [dims].)ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("axis", "The added attr 'axis' doesn't set default value.",
-                     boost::none)
-            .DeleteAttr("dims", "The attr 'dims' is deleted."));
+REGISTER_OP_VERSION(flip).AddCheckpoint(
+    R"ROC(Upgrade flip, add new attr [axis] and delete attr [dims].)ROC",
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("axis",
+                 "The added attr 'axis' doesn't set default value.",
+                 paddle::none)
+        .DeleteAttr("dims", "The attr 'dims' is deleted."));

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <sys/time.h>
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -22,18 +24,16 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace distributed {
 
 template <typename T>
-inline paddle::operators::math::BlasT<paddle::platform::CPUDeviceContext, T>
-GetBlas() {
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
-  return paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext,
-                                          T>(cpu_ctx);
+inline phi::funcs::BlasT<phi::CPUContext, T> GetBlas() {
+  phi::CPUContext cpu_ctx;
+  return phi::funcs::GetBlas<phi::CPUContext, T>(cpu_ctx);
 }
 
 template <typename T>
@@ -47,6 +47,20 @@ template <typename T>
 inline void ADD(int n, const T* x, const T y, T* z) {
   for (int i = 0; i < n; ++i) {
     z[i] = x[i] + y;
+  }
+}
+
+template <typename T>
+inline void DIV(int n, const T x, const T* y, T* z) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x / y[i];
+  }
+}
+
+template <typename T>
+inline void ELE_MUL(int n, const T* x, const T* y, T* z) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
   }
 }
 
@@ -83,5 +97,12 @@ std::string to_string(const std::vector<T>& vec) {
   }
   return ss.str();
 }
+
+inline double GetCurrentUS() {
+  struct timeval time;
+  gettimeofday(&time, NULL);
+  return 1e+6 * time.tv_sec + time.tv_usec;
 }
-}
+
+}  // namespace distributed
+}  // namespace paddle

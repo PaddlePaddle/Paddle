@@ -28,11 +28,19 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/mem_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
+
 namespace paddle {
 namespace platform {
+
+namespace proto {
+class Profile;
+}
 
 const int kEnableProfiler = 1;
 const int kDisableProfiler = 2;
@@ -99,6 +107,22 @@ struct MemEvenRecorder {
  public:
   void PushMemRecord(const void* ptr, const Place& place, size_t size);
   void PopMemRecord(const void* ptr, const Place& place);
+  void PushMemRecord(const void* ptr,
+                     const Place& place,
+                     size_t size,
+                     TracerMemEventType type,
+                     uint64_t current_allocated,
+                     uint64_t current_reserved,
+                     uint64_t peak_allocated,
+                     uint64_t peak_reserved);
+  void PopMemRecord(const void* ptr,
+                    const Place& place,
+                    size_t size,
+                    TracerMemEventType type,
+                    uint64_t current_allocated,
+                    uint64_t current_reserved,
+                    uint64_t peak_allocated,
+                    uint64_t peak_reserved);
   void Flush();
   static MemEvenRecorder& Instance() { return recorder; }
 
@@ -122,32 +146,6 @@ struct MemEvenRecorder {
   std::mutex mtx_;
   MemEvenRecorder() {}
   DISABLE_COPY_AND_ASSIGN(MemEvenRecorder);
-};
-
-struct RecordEvent {
-  RecordEvent(const std::string& name,
-              const EventRole role = EventRole::kOrdinary);
-
-  ~RecordEvent();
-
-  bool is_enabled_{false};
-  bool is_pushed_{false};
-  uint64_t start_ns_;
-  // Event name
-  std::string name_;
-  // Need to distinguish name by op type, block_id, program_id and perhaps
-  // different kernel invocations within an op.
-  std::string full_name_;
-  EventRole role_{EventRole::kOrdinary};
-};
-
-class RecordRPCEvent {
- public:
-  explicit RecordRPCEvent(const std::string& name);
-  ~RecordRPCEvent() {}
-
- private:
-  std::unique_ptr<RecordEvent> event_;
 };
 
 struct RecordBlock {
@@ -183,7 +181,8 @@ struct EventList {
   std::vector<T> Reduce() {
     std::vector<T> result;
     for (auto& block : event_blocks) {
-      result.insert(result.begin(), std::make_move_iterator(block.begin()),
+      result.insert(result.begin(),
+                    std::make_move_iterator(block.begin()),
                     std::make_move_iterator(block.end()));
     }
     event_blocks.clear();
@@ -196,12 +195,22 @@ struct EventList {
 };
 
 void Mark(const std::string& name);
-void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                  const Place& place, const std::string& annotation);
-void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                 const Place& place, const std::string& annotation);
-Event* PushEvent(const std::string& name, const EventRole role);
-void PopEvent(const std::string& name, const EventRole role);
+void PushMemEvent(uint64_t start_ns,
+                  uint64_t end_ns,
+                  size_t bytes,
+                  const Place& place,
+                  const std::string& annotation);
+void PopMemEvent(uint64_t start_ns,
+                 uint64_t end_ns,
+                 size_t bytes,
+                 const Place& place,
+                 const std::string& annotation);
+Event* PushEvent(const std::string& name,
+                 const EventRole role,
+                 const std::string attr = "none");
+void PopEvent(const std::string& name,
+              const EventRole role,
+              const std::string attr = "none");
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> GetAllEvents();
@@ -212,6 +221,11 @@ void EnableProfiler(ProfilerState state);
 void ResetProfiler();
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);
+// Disable profiler but return events instead of print it.
+void CompleteProfilerEvents(proto::Profile* tracer_profile,
+                            std::vector<std::vector<Event>>* time_events,
+                            std::vector<std::vector<MemEvent>>* mem_events);
+
 // Test if the profiler is currently enabled.
 bool IsProfileEnabled();
 // Whether the trainer should send profiling state to PS.
@@ -230,6 +244,18 @@ int64_t ListenerId();
 
 void NvprofEnableRecordEvent();
 void NvprofDisableRecordEvent();
+
+void EnableHostEventRecorder();
+void DisableHostEventRecorder();
+
+void EnableMemoryRecorder();
+void DisableMemoryRecorder();
+
+void EnableInputShapeRecorder();
+void DisableInputShapeRecorder();
+
+// Defined for UT
+std::string PrintHostEvents();
 
 }  // namespace platform
 }  // namespace paddle

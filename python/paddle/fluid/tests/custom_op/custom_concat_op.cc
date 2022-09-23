@@ -75,8 +75,7 @@ std::vector<paddle::Tensor> ConcatForwardDynamicAxis(
   auto out_shape = ComputeOutShape(in_shapes, axis);
 
   // create output
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(out_shape);
+  auto out = paddle::empty(out_shape, inputs[0].type(), paddle::CPUPlace());
 
   // calc
   PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES(
@@ -107,8 +106,7 @@ std::vector<paddle::Tensor> ConcatBackwardDynamicAxis(
   // create outputs
   std::vector<paddle::Tensor> grad_inputs;
   for (auto& t : inputs) {
-    auto grad = paddle::Tensor(paddle::PlaceType::kCPU);
-    grad.reshape(t.shape());
+    auto grad = paddle::empty(t.shape(), t.dtype(), t.place());
     grad_inputs.emplace_back(grad);
   }
 
@@ -122,13 +120,14 @@ std::vector<paddle::Tensor> ConcatBackwardDynamicAxis(
 }
 
 std::vector<std::vector<int64_t>> ConcatInferShapeDynamicAxis(
-    std::vector<std::vector<int64_t>> input_shapes,
-    std::vector<int64_t> axis_shape) {
+    const std::vector<std::vector<int64_t>>& input_shapes,
+    const std::vector<int64_t>& axis_shape) {
   return {std::vector<int64_t>(input_shapes[0].size(), -1)};
 }
 
 std::vector<paddle::DataType> ConcatInferDtypeDynamicAxis(
-    std::vector<paddle::DataType> input_dtypes, paddle::DataType axis_dtype) {
+    const std::vector<paddle::DataType>& input_dtypes,
+    const paddle::DataType& axis_dtype) {
   return {input_dtypes[0]};
 }
 
@@ -143,3 +142,91 @@ PD_BUILD_GRAD_OP(custom_concat)
     .Inputs({paddle::Vec("X"), paddle::Grad("Out"), "Axis"})
     .Outputs({paddle::Grad(paddle::Vec("X"))})
     .SetKernelFn(PD_KERNEL(ConcatBackwardDynamicAxis));
+
+std::vector<paddle::Tensor> ConcatForwardStaticAxis(
+    const std::vector<paddle::Tensor>& inputs, const int64_t& axis) {
+  // check inputs
+  PD_CHECK(inputs.size() >= 1, "No Tensor need to be concat.");
+  for (auto& t : inputs) {
+    CHECK_INPUT(t);
+  }
+
+  // compute output shape
+  int64_t rank = static_cast<int64_t>(inputs[0].shape().size());
+  auto final_axis = ComputeAxis(axis, rank);
+  std::vector<std::vector<int64_t>> in_shapes;
+  for (auto& t : inputs) {
+    in_shapes.emplace_back(t.shape());
+  }
+  auto out_shape = ComputeOutShape(in_shapes, final_axis);
+
+  // create output
+  auto out = paddle::empty(out_shape, inputs[0].type(), paddle::CPUPlace());
+
+  // calc
+  PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES(
+      inputs[0].type(), "ConcatCpuKernel", ([&] {
+        ConcatCpuKernel<data_t>(inputs, &out, final_axis);
+      }));
+
+  return {out};
+}
+
+std::vector<paddle::Tensor> ConcatBackwardStaticAxis(
+    const std::vector<paddle::Tensor>& inputs,
+    const paddle::Tensor& grad_out,
+    const int64_t& axis) {
+  // check input
+  PD_CHECK(inputs.size() >= 1, "No Tensor need to be concat.");
+  for (auto& t : inputs) {
+    CHECK_INPUT(t);
+  }
+  CHECK_INPUT(grad_out);
+
+  // compate axis
+  int64_t rank = static_cast<int64_t>(inputs[0].shape().size());
+  auto final_axis = ComputeAxis(axis, rank);
+
+  // create outputs
+  std::vector<paddle::Tensor> grad_inputs;
+  for (auto& t : inputs) {
+    auto grad = paddle::empty(t.shape(), t.dtype(), t.place());
+    grad_inputs.emplace_back(grad);
+  }
+
+  // calc
+  PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES(
+      grad_out.type(), "SplitCpuKernel", ([&] {
+        SplitCpuKernel<data_t>(grad_out, inputs, &grad_inputs, final_axis);
+      }));
+
+  return grad_inputs;
+}
+
+std::vector<std::vector<int64_t>> ConcatInferShapeStaticAxis(
+    const std::vector<std::vector<int64_t>>& input_shapes,
+    const int64_t& axis) {
+  int64_t rank = static_cast<int64_t>(input_shapes[0].size());
+  auto final_axis = ComputeAxis(axis, rank);
+  auto out_shape = ComputeOutShape(input_shapes, final_axis);
+  return {out_shape};
+}
+
+std::vector<paddle::DataType> ConcatInferDtypeStaticAxis(
+    const std::vector<paddle::DataType>& input_dtypes) {
+  return {input_dtypes[0]};
+}
+
+PD_BUILD_OP(custom_concat_with_attr)
+    .Inputs({paddle::Vec("X")})
+    .Outputs({"Out"})
+    .Attrs({"axis: int64_t"})
+    .SetKernelFn(PD_KERNEL(ConcatForwardStaticAxis))
+    .SetInferShapeFn(PD_INFER_SHAPE(ConcatInferShapeStaticAxis))
+    .SetInferDtypeFn(PD_INFER_DTYPE(ConcatInferDtypeStaticAxis));
+
+PD_BUILD_GRAD_OP(custom_concat_with_attr)
+    .Inputs({paddle::Vec("X"), paddle::Grad("Out")})
+    .Outputs({paddle::Grad(paddle::Vec("X"))})
+    .Attrs({"axis: int64_t"})
+    .SetKernelFn(PD_KERNEL(ConcatBackwardStaticAxis));

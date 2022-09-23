@@ -9,11 +9,18 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/interpolate_v2_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -25,19 +32,29 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
-  PADDLE_ENFORCE_EQ("linear", interp_method,
+  PADDLE_ENFORCE_EQ("linear",
+                    interp_method,
                     platform::errors::InvalidArgument(
                         "Interpolation method can only be \"linear\" when"
                         "Input(X) dimension is 3, but got method = %s .",
                         interp_method));
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
-
+  for (int i = 0; i < dim_x.size(); ++i) {
+    PADDLE_ENFORCE_NE(dim_x[i],
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The shape of input(x) should be larged "
+                          "than 0, bug received shape[%d] is %d ",
+                          i,
+                          dim_x[i]));
+  }
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
-        inputs_name.size(), 1,
+        inputs_name.size(),
+        1,
         platform::errors::InvalidArgument(
             "Input(SizeTensor)'size of Op(interpolate) must be 1. "
             "Attr(out_shape)'s length must be 1 for 3-D input tensor, but got "
@@ -59,12 +76,14 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
-        scale_tensor.size(), 1,
+        scale_tensor.size(),
+        1,
         platform::errors::InvalidArgument(
             "Scale's dimension size must be 1, but got dimension = %d .",
             scale_tensor.size()));
     PADDLE_ENFORCE_EQ(
-        scale_tensor[0], 1,
+        scale_tensor[0],
+        1,
         platform::errors::InvalidArgument(
             "Scale's shape must be 1, but got shape = %d .", scale_tensor[0]));
     out_w = -1;
@@ -73,9 +92,13 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     if (scale.size() > 0) {
       float scale_w = -1;
       scale_w = scale[0];
-      PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
-                                               "scale  of Op(interpolate) "
-                                               "should be greater than 0."));
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0,
+          true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
       if (scale_w > 0.) {
         // round down
         out_w = (data_layout == DataLayout::kNCHW
@@ -92,12 +115,17 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
     PADDLE_ENFORCE_EQ(
-        out_size_dim.size(), 1,
+        out_size_dim.size(),
+        1,
         platform::errors::InvalidArgument(
             "OutSize's dimension size must be 1, but got dimention = %d .",
             out_size_dim.size()));
-    PADDLE_ENFORCE_EQ(out_size_dim[0], 1, platform::errors::InvalidArgument(
-                                              "OutSize's dim[0] must be 1"));
+    PADDLE_ENFORCE_EQ(
+        out_size_dim[0],
+        1,
+        platform::errors::InvalidArgument(
+            "OutSize's 0-th dimension's value must be 1, but got value = %d .",
+            out_size_dim[0]));
     ctx->ShareLoD("X", "Out");
     return;
   }
@@ -125,11 +153,22 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
+  for (int i = 0; i < dim_x.size(); ++i) {
+    PADDLE_ENFORCE_NE(dim_x[i],
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The shape of input(x) should be larged "
+                          "than 0, bug received shape[%d] is %d ",
+                          i,
+                          dim_x[i]));
+  }
+
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
-        inputs_name.size(), 2,
+        inputs_name.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(SizeTensor)'size of Op(interpolate) must be 2. "
             "Attr(out_shape)'s length must be 2 for 4-D input "
@@ -152,11 +191,13 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
-        scale_tensor.size(), 1,
+        scale_tensor.size(),
+        1,
         platform::errors::InvalidArgument(
             "Scale's dimension size must be 1, but got dimension = %d .",
             scale_tensor.size()));
-    PADDLE_ENFORCE_EQ(scale_tensor[0] == 2 || scale_tensor[0] == 1, true,
+    PADDLE_ENFORCE_EQ(scale_tensor[0] == 2 || scale_tensor[0] == 1,
+                      true,
                       platform::errors::InvalidArgument(
                           "Scale's shape must be 2 or 1, but got shape = %d .",
                           scale_tensor[0]));
@@ -170,9 +211,19 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
       scale_h = scale[0];
       scale_w = scale[1];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0 && scale_h > 0, true,
-          platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                            "should be greater than 0."));
+          scale_w > 0,
+          true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0,
+          true,
+          platform::errors::InvalidArgument(
+              "The scale_h in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
       if (scale_h > 0. && scale_w > 0.) {
         // round down
         out_h = (data_layout == DataLayout::kNCHW
@@ -194,12 +245,14 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
     PADDLE_ENFORCE_EQ(
-        out_size_dim.size(), 1,
+        out_size_dim.size(),
+        1,
         platform::errors::InvalidArgument(
             "OutSize's dimension size must be 1, but got dimension = %d .",
             out_size_dim.size()));
     PADDLE_ENFORCE_EQ(
-        out_size_dim[0], 2,
+        out_size_dim[0],
+        2,
         platform::errors::InvalidArgument(
             "OutSize's dim[0] must be 2, but got dimention = %d .",
             out_size_dim[0]));
@@ -220,20 +273,31 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
-  PADDLE_ENFORCE_EQ(
-      "trilinear", interp_method,
-      platform::errors::InvalidArgument(
-          "Interpolation method can only be \"trilinear\" when Input(X) "
-          "dimension is 5, but got method = %s .",
-          interp_method));
+  PADDLE_ENFORCE("nearest" == interp_method || "trilinear" == interp_method,
+                 platform::errors::InvalidArgument(
+                     "Interpolation method can only be \"trilinear\" or "
+                     "\"nearest\" when Input(X) "
+                     "dimension is 5, but got method = %s .",
+                     interp_method));
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
+
+  for (int i = 0; i < dim_x.size(); ++i) {
+    PADDLE_ENFORCE_NE(dim_x[i],
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The shape of input(x) should be larged "
+                          "than 0, bug received shape[%d] is %d ",
+                          i,
+                          dim_x[i]));
+  }
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
-        inputs_name.size(), 3,
+        inputs_name.size(),
+        3,
         platform::errors::InvalidArgument(
             "Input(SizeTensor)'s size of Op(interpolate) must be 3. "
             "Attr(out_shape)'s length must be 3 for 5-D input "
@@ -257,11 +321,13 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
-        scale_tensor.size(), 1,
+        scale_tensor.size(),
+        1,
         platform::errors::InvalidArgument(
             "Scale's dimension size must be 1, but got size = %d .",
             scale_tensor.size()));
-    PADDLE_ENFORCE_EQ(scale_tensor[0] == 3 || scale_tensor[0] == 1, true,
+    PADDLE_ENFORCE_EQ(scale_tensor[0] == 3 || scale_tensor[0] == 1,
+                      true,
                       platform::errors::InvalidArgument(
                           "Scale's shape must be 3 or 1, but got shape = %d .",
                           scale_tensor[0]));
@@ -278,9 +344,26 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
       scale_h = scale[1];
       scale_w = scale[2];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0 && scale_h > 0 && scale_d > 0, true,
-          platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                            "should be greater than 0."));
+          scale_w > 0,
+          true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0,
+          true,
+          platform::errors::InvalidArgument(
+              "The scale_h in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
+      PADDLE_ENFORCE_EQ(
+          scale_d > 0,
+          true,
+          platform::errors::InvalidArgument(
+              "The scale_d in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_d));
       if (scale_d > 0. && scale_h > 0. && scale_w > 0.) {
         // round down
         out_d = (data_layout == DataLayout::kNCHW
@@ -307,11 +390,13 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
     PADDLE_ENFORCE_EQ(
-        out_size_dim.size(), 1,
+        out_size_dim.size(),
+        1,
         platform::errors::InvalidArgument(
             "OutSize's dimension size must be 1, but got size is %d.",
             out_size_dim.size()));
-    PADDLE_ENFORCE_EQ(out_size_dim[0], 3,
+    PADDLE_ENFORCE_EQ(out_size_dim[0],
+                      3,
                       platform::errors::InvalidArgument(
                           "OutSize's dim[0] must be 3, but got size is %d.",
                           out_size_dim[0]));
@@ -359,18 +444,47 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    const auto& interp_method = ctx.Attr<std::string>("interp_method");
+    // TODO(danqing): support other interp_method
+    if (this->CanMKLDNNBeUsed(ctx, data_type) &&
+        (interp_method == "nearest" || interp_method == "bilinear")) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_layout");
+      auto dl = framework::StringToDataLayout(data_format);
+      // Some models may have intentionally set "AnyLayout" for pool
+      // op. Treat this as NCHW (default data_format value)
+      if (dl != framework::DataLayout::kAnyLayout) {
+        return framework::OpKernelType(
+            expected_kernel_type.data_type_, tensor.place(), dl);
+      }
+    }
+#endif
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -439,25 +553,25 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"
-          for nearest neighbor interpolation and \"bilinear\" for bilinear 
+          for nearest neighbor interpolation and \"bilinear\" for bilinear
           interpolation and \"linear\" for linear interpolation..
 
           Nearest neighbor interpolation is to perform nearest neighbor interpolation
-          in both the 3rd dimension(in height direction) and the 4th dimension(in width 
+          in both the 3rd dimension(in height direction) and the 4th dimension(in width
           direction) on input tensor.
-           
-          Linear interpolation is the method of using a line connecting two known quantities 
-          to determine the value of an unknown quantity between the two known quantities. 
-          
-          Bilinear interpolation is an extension of linear interpolation for 
-          interpolating functions of two variables (e.g. H-direction and 
-          W-direction in this op) on a rectilinear 2D grid. The key idea is 
-          to perform linear interpolation first in one direction, and then 
+
+          Linear interpolation is the method of using a line connecting two known quantities
+          to determine the value of an unknown quantity between the two known quantities.
+
+          Bilinear interpolation is an extension of linear interpolation for
+          interpolating functions of two variables (e.g. H-direction and
+          W-direction in this op) on a rectilinear 2D grid. The key idea is
+          to perform linear interpolation first in one direction, and then
           again in the other direction.
 
-          Trilinear interpolation is an extension of linear interpolation for 
-          interpolating functions of three variables (e.g. D-direction, 
-          H-direction and W-direction in this op) on a rectilinear 3D grid. 
+          Trilinear interpolation is an extension of linear interpolation for
+          interpolating functions of three variables (e.g. D-direction,
+          H-direction and W-direction in this op) on a rectilinear 3D grid.
           The linear interpolation is performed on three directions.
 
           Bicubic interpolation is an extension of cubic interpolation for interpolating
@@ -465,24 +579,24 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
           smoother than corresponding surfaces obtained by bilinear interpolation or
           nearest-neighbor interpolation.
 
-          Align_corners and align_mode are optional parameters,the calculation method 
+          Align_corners and align_mode are optional parameters,the calculation method
           of interpolation can be selected by them.
-          
+
           Example:
 
           For scale:
-          
+
             if align_corners = True and out_{size}>1 :
 
               scale_{factor} = (in_{size}-1.0)/(out_{size}-1.0)
-            
+
             else:
-              
+
               scale_{factor} = float(in_{size}/out_{size})
-            
-          
+
+
           Nearest neighbor interpolation:
-          
+
           if:
               align_corners = False
 
@@ -505,16 +619,16 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
 
           if:
               align_corners = False , align_mode = 0
-              
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
-              
+
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
           else:
-           
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
 
@@ -525,17 +639,17 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
 
           if:
               align_corners = False , align_mode = 0
-              
+
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
-              
+
               D_out = (D_{in}+0.5) * scale_{factor} - 0.5
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
           else:
-           
+
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
 
@@ -557,13 +671,13 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
-          For details of nearest neighbor interpolation, please refer to Wikipedia: 
+          For details of nearest neighbor interpolation, please refer to Wikipedia:
           https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
 
-          For details of bilinear interpolation, please refer to Wikipedia: 
+          For details of bilinear interpolation, please refer to Wikipedia:
           https://en.wikipedia.org/wiki/Bilinear_interp_v2olation
 
-          For details of trilinear interpolation, please refer to Wikipedia: 
+          For details of trilinear interpolation, please refer to Wikipedia:
           https://en.wikipedia.org/wiki/Trilinear_interp_v2olation
 
           For details of bicubic interpolation, please refer to Wikipedia:
@@ -579,8 +693,10 @@ class InterpolateV2OpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "InterpolateGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "InterpolateGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "InterpolateGrad");
 
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
@@ -596,13 +712,14 @@ class InterpolateV2OpGrad : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -640,62 +757,65 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(InterpolateV2GradNoNeedBufferVarsInferer,
 // not
 // compatible with interp_op, so a new one is added in paddle2.0
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(bilinear_interp_v2, ops::InterpolateV2Op,
+
+DECLARE_INFER_SHAPE_FUNCTOR(bilinear_interp_v2,
+                            BilinearInterpInferShapeFunctor,
+                            PD_INFER_META(phi::InterpolateInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(nearest_interp_v2,
+                            NearestInterpInferShapeFunctor,
+                            PD_INFER_META(phi::InterpolateInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(trilinear_interp_v2,
+                            TrilinearInterpInferShapeFunctor,
+                            PD_INFER_META(phi::InterpolateInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(bicubic_interp_v2,
+                            BicubicInterpInferShapeFunctor,
+                            PD_INFER_META(phi::InterpolateInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(linear_interp_v2,
+                            LinearInterpInferShapeFunctor,
+                            PD_INFER_META(phi::InterpolateInferMeta));
+
+REGISTER_OPERATOR(bilinear_interp_v2,
+                  ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(bilinear_interp_v2_grad, ops::InterpolateV2OpGrad,
+                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
+                  BilinearInterpInferShapeFunctor);
+REGISTER_OPERATOR(bilinear_interp_v2_grad,
+                  ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
-REGISTER_OPERATOR(nearest_interp_v2, ops::InterpolateV2Op,
+REGISTER_OPERATOR(nearest_interp_v2,
+                  ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(nearest_interp_v2_grad, ops::InterpolateV2OpGrad,
+                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
+                  NearestInterpInferShapeFunctor);
+REGISTER_OPERATOR(nearest_interp_v2_grad,
+                  ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
-REGISTER_OPERATOR(trilinear_interp_v2, ops::InterpolateV2Op,
+REGISTER_OPERATOR(trilinear_interp_v2,
+                  ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(trilinear_interp_v2_grad, ops::InterpolateV2OpGrad,
+                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
+                  TrilinearInterpInferShapeFunctor);
+REGISTER_OPERATOR(trilinear_interp_v2_grad,
+                  ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
-REGISTER_OPERATOR(bicubic_interp_v2, ops::InterpolateV2Op,
+REGISTER_OPERATOR(bicubic_interp_v2,
+                  ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(bicubic_interp_v2_grad, ops::InterpolateV2OpGrad,
+                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
+                  BicubicInterpInferShapeFunctor);
+REGISTER_OPERATOR(bicubic_interp_v2_grad,
+                  ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(bilinear_interp_v2, ops::InterpolateV2Kernel<float>,
-                       ops::InterpolateV2Kernel<double>,
-                       ops::InterpolateV2Kernel<uint8_t>);
-REGISTER_OP_CPU_KERNEL(bilinear_interp_v2_grad,
-                       ops::InterpolateV2GradKernel<float>,
-                       ops::InterpolateV2GradKernel<double>);
-REGISTER_OP_CPU_KERNEL(nearest_interp_v2, ops::InterpolateV2Kernel<float>,
-                       ops::InterpolateV2Kernel<double>,
-                       ops::InterpolateV2Kernel<uint8_t>);
-REGISTER_OP_CPU_KERNEL(nearest_interp_v2_grad,
-                       ops::InterpolateV2GradKernel<float>,
-                       ops::InterpolateV2GradKernel<double>);
-REGISTER_OP_CPU_KERNEL(trilinear_interp_v2, ops::InterpolateV2Kernel<float>,
-                       ops::InterpolateV2Kernel<double>,
-                       ops::InterpolateV2Kernel<uint8_t>);
-REGISTER_OP_CPU_KERNEL(trilinear_interp_v2_grad,
-                       ops::InterpolateV2GradKernel<float>,
-                       ops::InterpolateV2GradKernel<double>);
-REGISTER_OPERATOR(linear_interp_v2, ops::InterpolateV2Op,
+REGISTER_OPERATOR(linear_interp_v2,
+                  ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(linear_interp_v2_grad, ops::InterpolateV2OpGrad,
+                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
+                  LinearInterpInferShapeFunctor);
+REGISTER_OPERATOR(linear_interp_v2_grad,
+                  ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(linear_interp_v2, ops::InterpolateV2Kernel<float>,
-                       ops::InterpolateV2Kernel<double>,
-                       ops::InterpolateV2Kernel<uint8_t>);
-REGISTER_OP_CPU_KERNEL(linear_interp_v2_grad,
-                       ops::InterpolateV2GradKernel<float>,
-                       ops::InterpolateV2GradKernel<double>);
-REGISTER_OP_CPU_KERNEL(bicubic_interp_v2, ops::InterpolateV2Kernel<float>,
-                       ops::InterpolateV2Kernel<double>);
-REGISTER_OP_CPU_KERNEL(bicubic_interp_v2_grad,
-                       ops::InterpolateV2GradKernel<float>,
-                       ops::InterpolateV2GradKernel<double>);

@@ -16,9 +16,11 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 import paddle
+from paddle.fluid.framework import _test_eager_guard, _non_static_mode
 
 
 class MyLayer(fluid.Layer):
+
     def __init__(self, num_channel, dim, num_filter=5):
         super(MyLayer, self).__init__()
         self.fc = fluid.dygraph.Linear(dim, dim)
@@ -31,7 +33,8 @@ class MyLayer(fluid.Layer):
 
 
 class TestImperativeNamedSubLayers(unittest.TestCase):
-    def test_named_sublayers(self):
+
+    def func_test_named_sublayers(self):
         with fluid.dygraph.guard():
             fc1 = fluid.Linear(10, 3)
             fc2 = fluid.Linear(3, 10, bias_attr=False)
@@ -42,27 +45,31 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
 
             expected_sublayers = [fc1, fc2, custom, custom.fc, custom.conv]
             self.assertEqual(len(list_named_sublayers), len(expected_sublayers))
-            for (name, sublayer), expected_sublayer in zip(list_named_sublayers,
-                                                           expected_sublayers):
+            for (name,
+                 sublayer), expected_sublayer in zip(list_named_sublayers,
+                                                     expected_sublayers):
                 self.assertEqual(sublayer, expected_sublayer)
 
             list_sublayers = list(model.sublayers())
             self.assertEqual(len(list_named_sublayers), len(list_sublayers))
-            for (name, sublayer), expected_sublayer in zip(list_named_sublayers,
-                                                           list_sublayers):
+            for (name,
+                 sublayer), expected_sublayer in zip(list_named_sublayers,
+                                                     list_sublayers):
                 self.assertEqual(sublayer, expected_sublayer)
-
-            for name, sublayer in model.named_sublayers(
-                    include_sublayers=False):
-                self.assertEqual(model[name], sublayer)
 
             self.assertListEqual(
                 [l for _, l in list(model.named_sublayers(include_self=True))],
                 [model] + expected_sublayers)
 
+    def test_named_sublayers(self):
+        with _test_eager_guard():
+            self.func_test_named_sublayers()
+        self.func_test_named_sublayers()
+
 
 class TestImperativeNamedParameters(unittest.TestCase):
-    def test_named_parameters(self):
+
+    def func_test_named_parameters(self):
         with fluid.dygraph.guard():
             fc1 = fluid.Linear(10, 3)
             fc2 = fluid.Linear(3, 10, bias_attr=False)
@@ -71,7 +78,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
 
             named_parameters = list(model.named_parameters())
             expected_named_parameters = list()
-            for prefix, layer in model.named_sublayers(include_sublayers=True):
+            for prefix, layer in model.named_sublayers():
                 for name, param in layer.named_parameters(
                         include_sublayers=False):
                     full_name = prefix + ('.' if prefix else '') + name
@@ -79,10 +86,16 @@ class TestImperativeNamedParameters(unittest.TestCase):
 
             self.assertListEqual(expected_named_parameters, named_parameters)
 
-    def test_dir_layer(self):
+    def test_named_parameters(self):
+        with _test_eager_guard():
+            self.func_test_named_parameters()
+        self.func_test_named_parameters()
+
+    def func_test_dir_layer(self):
         with fluid.dygraph.guard():
 
             class Mymodel(fluid.dygraph.Layer):
+
                 def __init__(self):
                     super(Mymodel, self).__init__()
                     self.linear1 = fluid.dygraph.Linear(10, 10)
@@ -91,11 +104,10 @@ class TestImperativeNamedParameters(unittest.TestCase):
                     self.embedding = fluid.dygraph.Embedding(size=[128, 16])
                     self.h_0 = fluid.dygraph.to_variable(
                         np.zeros([10, 10]).astype('float32'))
-                    self.weight = self.create_parameter(
-                        shape=[2, 3],
-                        attr=fluid.ParamAttr(),
-                        dtype="float32",
-                        is_bias=False)
+                    self.weight = self.create_parameter(shape=[2, 3],
+                                                        attr=fluid.ParamAttr(),
+                                                        dtype="float32",
+                                                        is_bias=False)
 
             model = Mymodel()
 
@@ -113,6 +125,11 @@ class TestImperativeNamedParameters(unittest.TestCase):
                             "model should contain buffer: h_0")
             self.assertTrue("weight" in expected_members,
                             "model should contain parameter: weight")
+
+    def test_dir_layer(self):
+        with _test_eager_guard():
+            self.func_test_dir_layer()
+        self.func_test_dir_layer()
 
 
 if __name__ == '__main__':

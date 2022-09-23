@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
+
 #include <cmath>
 
 #include "paddle/fluid/platform/enforce.h"
@@ -33,7 +34,7 @@ static int HighestBitPos(size_t N) {
   }
 }
 
-BestFitAllocator::BestFitAllocator(Allocation* allocation)
+BestFitAllocator::BestFitAllocator(phi::Allocation* allocation)
     : allocation_(allocation) {
   details::Chunk chunk;
   chunk.size_ = allocation_->size();
@@ -60,10 +61,12 @@ BestFitAllocator::ListIt BestFitAllocator::SplitChunk(size_t request_size,
   auto to_split_it = bin_iterator->second;
   free_chunks_[free_chunk_offset].erase(bin_iterator);
 
-  PADDLE_ENFORCE_EQ(to_split_it->is_free, true,
+  PADDLE_ENFORCE_EQ(to_split_it->is_free,
+                    true,
                     platform::errors::PreconditionNotMet(
                         "The memory chunk to split is not free"));
-  PADDLE_ENFORCE_GE(to_split_it->size_, request_size,
+  PADDLE_ENFORCE_GE(to_split_it->size_,
+                    request_size,
                     platform::errors::PreconditionNotMet(
                         "The size of memory chunk to split is "
                         "not larger than size of request memory"));
@@ -104,7 +107,8 @@ void BestFitAllocator::EraseFreeNode(const ListIt& it) {
     ++map_it;
   }
   PADDLE_ENFORCE_NE(
-      map_it, free_map.end(),
+      map_it,
+      free_map.end(),
       platform::errors::NotFound("The node to erase is not found in map"));
   free_map.erase(map_it);
 }
@@ -115,14 +119,15 @@ size_t BestFitAllocator::NumFreeChunks() const {
   }
   return num;
 }
-void BestFitAllocator::FreeImpl(Allocation* allocation) {
+void BestFitAllocator::FreeImpl(phi::Allocation* allocation) {
   auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(
       bf_allocation,
       platform::errors::InvalidArgument(
           "The input allocation is not type of BestFitAllocation."));
   auto chunk_it = bf_allocation->ChunkIterator();
-  PADDLE_ENFORCE_EQ(chunk_it->is_free, false,
+  PADDLE_ENFORCE_EQ(chunk_it->is_free,
+                    false,
                     platform::errors::PreconditionNotMet(
                         "The chunk of allocation to free is freed already"));
   chunk_it->is_free = true;
@@ -150,7 +155,7 @@ void BestFitAllocator::FreeImpl(Allocation* allocation) {
   InsertFreeNode(chunk_it);
   delete allocation;
 }
-Allocation* BestFitAllocator::AllocateImpl(size_t size) {
+phi::Allocation* BestFitAllocator::AllocateImpl(size_t size) {
   auto highest_set_bit = static_cast<size_t>(HighestBitPos(size));
   MapIt map_it;
   for (; highest_set_bit < free_chunks_.size(); ++highest_set_bit) {
@@ -173,7 +178,8 @@ BestFitAllocation::BestFitAllocation(
     : Allocation(reinterpret_cast<void*>(
                      reinterpret_cast<uintptr_t>(allocator->BasePtr()) +
                      chunk_it->offset_),
-                 chunk_it->size_, allocator->Place()),
+                 chunk_it->size_,
+                 allocator->Place()),
       chunk_it_(chunk_it) {}
 }  // namespace allocation
 }  // namespace memory

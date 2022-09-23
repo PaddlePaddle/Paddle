@@ -14,11 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/lod_utils.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
 class OpDesc;
 class Scope;
 }  // namespace framework
@@ -66,8 +70,8 @@ class SplitLoDTensorOp : public framework::OperatorBase {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx,
-                            cpu_mask.get());
+      framework::TensorCopy(
+          mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
 #else
       PADDLE_THROW(paddle::platform::errors::Fatal(
           "Not support GPU, Please compile WITH_GPU option"));
@@ -93,7 +97,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
               x_lod, start_idx, start_idx + 1, level);
 
           auto &lod_length = lod_and_offset.first;
-          framework::AppendLoD(lod, lod_length);
+          phi::AppendLoD(lod, lod_length);
 
           size_t start_offset = lod_and_offset.second.first;
           size_t end_offset = lod_and_offset.second.second;
@@ -111,8 +115,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
       }
       auto &ranges = copy_ranges[t];
       size_t height = std::accumulate(
-          ranges.begin(), ranges.end(), 0UL,
-          [](size_t a, const CopyRange &b) { return a + b.end - b.begin; });
+          ranges.begin(), ranges.end(), 0UL, [](size_t a, const CopyRange &b) {
+            return a + b.end - b.begin;
+          });
       auto x_dim = x.dims();
       x_dim[0] = static_cast<int64_t>(height);
       out->Resize(x_dim);
@@ -128,7 +133,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
                                 static_cast<int>(offset + len));
         framework::TensorCopy(x.Slice(static_cast<int>(each_range.begin),
                                       static_cast<int>(each_range.end)),
-                              x.place(), dev_ctx, &slice);
+                              x.place(),
+                              dev_ctx,
+                              &slice);
         offset += len;
       }
     }
@@ -159,16 +166,17 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "SplitLoDTensor");
-    OP_INOUT_CHECK(context->HasInput("Mask"), "Input", "Mask",
-                   "SplitLoDTensor");
-    OP_INOUT_CHECK(context->HasOutput("OutTrue"), "Output", "OutTrue",
-                   "SplitLoDTensor");
-    OP_INOUT_CHECK(context->HasOutput("OutFalse"), "Output", "OutFalse",
-                   "SplitLoDTensor");
+    OP_INOUT_CHECK(
+        context->HasInput("Mask"), "Input", "Mask", "SplitLoDTensor");
+    OP_INOUT_CHECK(
+        context->HasOutput("OutTrue"), "Output", "OutTrue", "SplitLoDTensor");
+    OP_INOUT_CHECK(
+        context->HasOutput("OutFalse"), "Output", "OutFalse", "SplitLoDTensor");
 
     auto mask_dim = context->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(
-        mask_dim.size(), 2,
+        mask_dim.size(),
+        2,
         platform::errors::InvalidArgument(
             "If you are using IfElse OP:"
             "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
@@ -176,8 +184,10 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
             "Please ensure that the cond should be a 2-D tensor and "
             "the second dim size of cond should be 1. "
             "But now the cond's shape is [",
-            *mask_dim.Get(), "].\n"));
-    PADDLE_ENFORCE_EQ(mask_dim[1], 1,
+            *mask_dim.Get(),
+            "].\n"));
+    PADDLE_ENFORCE_EQ(mask_dim[1],
+                      1,
                       platform::errors::InvalidArgument(
                           "If you are using IfElse OP:"
                           "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
@@ -185,7 +195,8 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
                           "Please ensure that the cond should be a 2-D tensor "
                           "and the second dim size of cond should be 1. "
                           "But now the cond's shape is [",
-                          *mask_dim.Get(), "].\n"));
+                          *mask_dim.Get(),
+                          "].\n"));
 
     context->SetOutputDim("OutTrue", context->GetInputDim("X"));
     context->SetOutputDim("OutFalse", context->GetInputDim("X"));
@@ -214,7 +225,9 @@ class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    split_lod_tensor, ops::SplitLoDTensorOp, ops::SplitLoDTensorOpProtoMaker,
+    split_lod_tensor,
+    ops::SplitLoDTensorOp,
+    ops::SplitLoDTensorOpProtoMaker,
     ops::SplitLoDTensorInferShape,
     ops::SplitLoDTensorArrayGradMaker<paddle::framework::OpDesc>,
     ops::SplitLoDTensorArrayGradMaker<paddle::imperative::OpBase>);

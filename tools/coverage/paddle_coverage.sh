@@ -33,7 +33,7 @@ make install
 
 cd /paddle/build
 
-python3.7 ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID}
+python3.7 ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID} || exit 101
 
 lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
@@ -48,6 +48,31 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/operators/*' \
         '/paddle/paddle/fluid/recordio/*' \
         '/paddle/paddle/fluid/string/*' \
+        '/paddle/paddle/fluid/eager/*' \
+        '/paddle/paddle/phi/*' \
+        -o coverage-full.tmp \
+        --rc lcov_branch_coverage=0
+
+    mv -f coverage-full.tmp coverage-full.info
+
+    lcov --remove coverage-full.info \
+        '/paddle/paddle/fluid/framework/*_test*' \
+        '/paddle/paddle/fluid/*/*test*' \
+        '/paddle/paddle/fluid/*/*/*test*' \
+        '/paddle/paddle/fluid/inference/tests/*' \
+        '/paddle/paddle/fluid/inference/api/demo_ci/*' \
+        '/paddle/paddle/fluid/eager/tests/*' \
+        '/paddle/paddle/phi/tests/*' \
+        -o coverage-full.tmp \
+        --rc lcov_branch_coverage=0
+
+    mv -f coverage-full.tmp coverage-full.info
+}
+
+function gen_full_html_report_xpu() {
+    lcov --extract coverage.info \
+        '/paddle/paddle/fluid/operators/*xpu*' \
+        '/paddle/paddle/phi/kernels/xpu/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -65,9 +90,9 @@ function gen_full_html_report() {
     mv -f coverage-full.tmp coverage-full.info
 }
 
-function gen_full_html_report_xpu() {
+function gen_full_html_report_npu() {
     lcov --extract coverage.info \
-        '/paddle/paddle/fluid/operators/*xpu*' \
+        '/paddle/paddle/fluid/operators/*npu*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -87,6 +112,8 @@ function gen_full_html_report_xpu() {
 
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     gen_full_html_report_xpu || true
+elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
+    gen_full_html_report_npu || true
 else
     gen_full_html_report || true
 fi
@@ -119,13 +146,13 @@ gen_diff_html_report || true
 
 export COVERAGE_FILE=/paddle/build/python-coverage.data
 
-set +x
-coverage combine `ls python-coverage.data.*`
-set -x
+coverage combine `$(ls python-coverage.data.*)` || NO_PYTHON_COVERAGE_DATA=1
 
-coverage xml -i -o python-coverage.xml
+`$(coverage xml -i -o python-coverage.xml)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
 
-python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info
+sed -i 's/mnt\/paddle/paddle/g' python-coverage.xml
+
+`$(python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
 
 # python full html report
 #
@@ -185,8 +212,12 @@ echo "Assert Python Diff Coverage"
 
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     echo "XPU has no python coverage!"
+elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
+    echo "NPU has no python coverage!"
 else
-    python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
+    if [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]];then
+        python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
+    fi
 fi
 
 if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -25,6 +26,7 @@ from paddle.fluid.layers.control_flow import ConditionalBlock
 
 
 class ConditionalBlockTest(unittest.TestCase):
+
     def test_forward(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -45,7 +47,7 @@ class ConditionalBlockTest(unittest.TestCase):
 
             outs = exe.run(main_program, feed={'X': x}, fetch_list=[out])[0]
             print(outs)
-            loss = layers.mean(out)
+            loss = paddle.mean(out)
             append_backward(loss=loss)
             outs = exe.run(
                 main_program,
@@ -55,6 +57,7 @@ class ConditionalBlockTest(unittest.TestCase):
 
 
 class TestConditionalBlockOpInferShape(unittest.TestCase):
+
     def test_infer_shape(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -64,19 +67,23 @@ class TestConditionalBlockOpInferShape(unittest.TestCase):
             main_program._rollback()
             step_scope = global_block.create_var(
                 type=core.VarDesc.VarType.STEP_SCOPES)
-            cond_var = layers.fill_constant(
-                shape=[1], dtype='bool', value=False)
+            cond_var = layers.fill_constant(shape=[1],
+                                            dtype='bool',
+                                            value=False)
 
-            op = global_block.append_op(
-                type='conditional_block',
-                inputs={
-                    'Cond': [cond_var],
-                    'Input': [],
-                },
-                outputs={'Out': [],
-                         'Scope': [step_scope]},
-                attrs={'sub_block': sub_block,
-                       'is_scalar_condition': True})
+            op = global_block.append_op(type='conditional_block',
+                                        inputs={
+                                            'Cond': [cond_var],
+                                            'Input': [],
+                                        },
+                                        outputs={
+                                            'Out': [],
+                                            'Scope': [step_scope]
+                                        },
+                                        attrs={
+                                            'sub_block': sub_block,
+                                            'is_scalar_condition': True
+                                        })
             op.desc.infer_shape(global_block.desc)
 
 
