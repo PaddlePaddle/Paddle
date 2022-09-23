@@ -33,16 +33,15 @@ if(WIN32)
   set(FLUID_CORE_LIB ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.lib)
   add_custom_command(
     OUTPUT ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_FILE:${SHARD_LIB_NAME}> ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_LINKER_FILE:${SHARD_LIB_NAME}>
-            ${FLUID_CORE_LIB}
-    DEPENDS ${SHARD_LIB_NAME})
+    COMMAND cmake -E copy $<TARGET_FILE:libpaddle> ${FLUID_CORE}
+    COMMAND cmake -E copy $<TARGET_LINKER_FILE:libpaddle> ${FLUID_CORE_LIB}
+    DEPENDS libpaddle)
 else()
   set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.so)
   add_custom_command(
     OUTPUT ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_FILE:${SHARD_LIB_NAME}> ${FLUID_CORE}
-    DEPENDS ${SHARD_LIB_NAME})
+    COMMAND cmake -E copy $<TARGET_FILE:paddle> ${FLUID_CORE}
+    DEPENDS paddle)
 endif()
 
 set(FLUID_CORE_DEPS ${FLUID_CORE})
