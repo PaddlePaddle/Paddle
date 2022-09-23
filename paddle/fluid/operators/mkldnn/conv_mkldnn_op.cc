@@ -1048,7 +1048,6 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
            {DNNL_ARG_DIFF_WEIGHTS, *diff_weights_memory_p}});
       astream.wait();
 
-
       // For convolution with groups convert from blocked to NCHW
       // otherwise there will be problems in next operators working on this data
       if (g > 1) {
@@ -1093,7 +1092,8 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
         dnnl::memory::format_tag target_format =
             weights_tz.size() == 6 ? dnnl::memory::format_tag::oidhw
                                    : dnnl::memory::format_tag::oihw;
-        filter_grad->set_mem_desc(dnnl::memory::desc out_mem_desc(phi::vectorize<int64_t>(in.dims()), in_type, target_format));
+        filter_grad->set_mem_desc(dnnl::memory::desc out_mem_desc(
+            phi::vectorize<int64_t>(in.dims()), in_type, target_format));
       } else {
         filter_grad->set_mem_desc(diff_weights_memory_p->get_desc());
       }
