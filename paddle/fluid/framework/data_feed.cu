@@ -828,6 +828,13 @@ int GraphDataGenerator::GenerateBatch() {
         }
       }
     }
+
+    if (drop_last_) {
+      if (ins_buf_pair_len_ < batch_size_) {
+        return 0;
+      }
+    }
+
     total_instance =
         ins_buf_pair_len_ < batch_size_ ? ins_buf_pair_len_ : batch_size_;
     total_instance *= 2;
@@ -1521,6 +1528,7 @@ void GraphDataGenerator::SetConfig(
   once_sample_startid_len_ = graph_config.once_sample_startid_len();
   debug_mode_ = graph_config.debug_mode();
   gpu_graph_training_ = graph_config.gpu_graph_training();
+  drop_last_ = graph_config.gpu_graph_training(); 
   if (debug_mode_ || !gpu_graph_training_) {
     batch_size_ = graph_config.batch_size();
   } else {

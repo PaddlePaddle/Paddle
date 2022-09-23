@@ -1082,6 +1082,7 @@ class InMemoryDataset(DatasetBase):
             "gpu_graph_training", True)
         self.proto_desc.graph_config.sage_mode = config.get("sage_mode", False)
         self.proto_desc.graph_config.samples = config.get("samples", "")
+        self.proto_desc.graph_config.drop_last = config.get("drop_last", False)
         self.dataset.set_gpu_graph_mode(True)
 
 

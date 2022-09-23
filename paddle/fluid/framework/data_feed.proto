@@ -40,6 +40,7 @@ message GraphConfig {
   optional bool gpu_graph_training = 10 [ default = true ];
   optional bool sage_mode = 11 [ default = false ];
   optional string samples = 12;
+  optional bool drop_last = 13 [ default = false ];
 }
 
 message DataFeedDesc {

@@ -994,6 +994,7 @@ class GraphDataGenerator {
   bool gpu_graph_training_;
   bool sage_mode_;
   std::vector<int> samples_;
+  bool drop_last_;
 };
 
 class DataFeed {
