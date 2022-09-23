@@ -266,7 +266,7 @@ class TestRSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
             'rsqrt_p',
             # jvp op:
             'div_p',
-            'div_p'
+            'div_p',
             'mul_p',
             'fill_constant_p',
             # 'sqrt_p',
