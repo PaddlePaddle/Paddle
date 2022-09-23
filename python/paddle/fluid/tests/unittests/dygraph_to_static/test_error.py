@@ -507,19 +507,19 @@ class TestSetStateDictErr(unittest.TestCase):
 
 
 class _super_A(paddle.nn.Layer):
-	def __init__(self):
-		super().__init__()
-		self.linear = paddle.nn.Linear(10, 3)
+    def __init__(self):
+        super().__init__()
+        self.linear = paddle.nn.Linear(10, 3)
 
-	def forward(self, x):
-		out = self.linear(x)
-		return out
 
+    def forward(self, x):
+        out = self.linear(x)
+        return out
 
 
 class _super_B(_super_A):
-	def forward(self, x):
-		super().forward(x)
+    def forward(self, x):
+        super().forward(x)
 
 
 class TestSuperCallErr(unittest.TestCase):
@@ -533,7 +533,6 @@ class TestSuperCallErr(unittest.TestCase):
         error_message = str(new_exception)
 
         self.assertIn("'super()' is not supported in dy2static, please use 'super(Class, self)' or 'super(Class, cls)' instead.", error_message)
-
 
 
 if __name__ == '__main__':
