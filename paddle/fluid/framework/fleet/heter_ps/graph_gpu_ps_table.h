@@ -145,7 +145,8 @@ class GpuPsGraphTable
       std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs);
   std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(int gpu_id, int edge_type_len);
   int get_feature_of_nodes(
-      int gpu_id, uint64_t *d_walk, uint64_t *d_offset, int size, int slot_num);
+      int gpu_id, uint64_t *d_walk, uint64_t *d_offset, int size, int slot_num,
+      int* d_slot_feature_num_map, int fea_num_per_node);
 
   NodeQueryResult query_node_list(int gpu_id,
                                   int idx,

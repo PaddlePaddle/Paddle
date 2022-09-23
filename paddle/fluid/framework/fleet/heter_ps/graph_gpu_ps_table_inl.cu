@@ -82,36 +82,45 @@ __global__ void get_features_kernel(GpuPsCommGraphFea graph,
                                     GpuPsFeaInfo* fea_info_array,
                                     int* actual_size,
                                     uint64_t* feature,
+                                    int* slot_feature_num_map,
                                     int slot_num,
-                                    int n) {
+                                    int n,
+                                    int fea_num_per_node) {
   int idx = blockIdx.x * blockDim.y + threadIdx.y;
   if (idx < n) {
     int feature_size = fea_info_array[idx].feature_size;
-    int offset = idx * slot_num;
+    int src_offset = fea_info_array[idx].feature_offset;
+    int dst_offset = idx * fea_num_per_node;
+    uint64_t* dst_feature = &feature[dst_offset];
     if (feature_size == 0) {
-      for (int k = 0; k < slot_num; ++k) {
-        feature[offset + k] = 0;
+      for (int k = 0; k < fea_num_per_node; ++k) {
+        dst_feature[k] = 0;
       }
-      actual_size[idx] = slot_num;
+      actual_size[idx] = fea_num_per_node;
       return;
     }
 
-    uint64_t* feature_start =
-        &(graph.feature_list[fea_info_array[idx].feature_offset]);
-    uint8_t* slot_id_start =
-        &(graph.slot_id_list[fea_info_array[idx].feature_offset]);
-    int m = 0;
-    for (int k = 0; k < slot_num; ++k) {
-      if (m >= fea_info_array[idx].feature_size || k < slot_id_start[m]) {
-        feature[offset + k] = 0;
-      } else if (k == slot_id_start[m]) {
-        feature[offset + k] = feature_start[m];
-        ++m;
+    uint64_t* feature_start = &(graph.feature_list[src_offset]);
+    uint8_t* slot_id_start = &(graph.slot_id_list[src_offset]);
+    for (int slot_id = 0, dst_fea_idx = 0, src_fea_idx = 0; slot_id < slot_num; slot_id++) {
+      int feature_num = slot_feature_num_map[slot_id];
+      if (src_fea_idx >= feature_size || slot_id < slot_id_start[src_fea_idx]) {
+        for (int j = 0; j < feature_num; ++j, ++dst_fea_idx) {
+          dst_feature[dst_fea_idx] = 0;
+        }
+      } else if (slot_id == slot_id_start[src_fea_idx]) {
+        for (int j = 0; j < feature_num; ++j, ++dst_fea_idx) {
+          if (slot_id == slot_id_start[src_fea_idx]) {
+            dst_feature[dst_fea_idx] = feature_start[src_fea_idx++];
+          } else {
+            dst_feature[dst_fea_idx] = 0;
+          }
+        }
       } else {
         assert(0);
       }
     }
-    actual_size[idx] = slot_num;
+    actual_size[idx] = fea_num_per_node;
   }
 }
 
@@ -1349,7 +1358,9 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id,
                                           uint64_t* d_nodes,
                                           uint64_t* d_feature,
                                           int node_num,
-                                          int slot_num) {
+                                          int slot_num,
+                                          int* d_slot_feature_num_map,
+                                          int fea_num_per_node) {
   if (node_num == 0) {
     return -1;
   }
@@ -1373,7 +1384,7 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id,
   auto d_shard_keys = memory::Alloc(place, node_num * sizeof(uint64_t));
   uint64_t* d_shard_keys_ptr = reinterpret_cast<uint64_t*>(d_shard_keys->ptr());
   auto d_shard_vals =
-      memory::Alloc(place, slot_num * node_num * sizeof(uint64_t));
+      memory::Alloc(place, fea_num_per_node * node_num * sizeof(uint64_t));
   uint64_t* d_shard_vals_ptr = reinterpret_cast<uint64_t*>(d_shard_vals->ptr());
   auto d_shard_actual_size = memory::Alloc(place, node_num * sizeof(int));
   int* d_shard_actual_size_ptr =
@@ -1400,7 +1411,7 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id,
     create_storage(gpu_id,
                    i,
                    shard_len * sizeof(uint64_t),
-                   shard_len * slot_num * sizeof(uint64_t) +
+                   shard_len * fea_num_per_node * sizeof(uint64_t) +
                        shard_len * sizeof(uint64_t) +
                        sizeof(int) * (shard_len + shard_len % 2));
   }
@@ -1443,8 +1454,10 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id,
         val_array,
         actual_size_array,
         feature_array,
+        d_slot_feature_num_map,
         slot_num,
-        shard_len);
+        shard_len,
+        fea_num_per_node);
   }
 
   for (int i = 0; i < total_gpu; ++i) {
@@ -1456,7 +1469,7 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id,
 
   move_result_to_source_gpu(gpu_id,
                             total_gpu,
-                            slot_num,
+                            fea_num_per_node,
                             h_left,
                             h_right,
                             d_shard_vals_ptr,
@@ -1467,7 +1480,7 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id,
                                                       d_feature,
                                                       d_shard_actual_size_ptr,
                                                       d_idx_ptr,
-                                                      slot_num,
+                                                      fea_num_per_node,
                                                       node_num);
 
   for (int i = 0; i < total_gpu; ++i) {
