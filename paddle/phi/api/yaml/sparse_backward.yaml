@@ -40,7 +40,8 @@
     param : [x, y]
   kernel :
     func : add_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
-           add_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
+           add_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr},
+           add_coo_dense_grad{sparse_coo, dense, sparse_coo -> sparse_coo, dense}
 
 - backward_op : addmm_grad
   forward : addmm(Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0) -> Tensor(out)

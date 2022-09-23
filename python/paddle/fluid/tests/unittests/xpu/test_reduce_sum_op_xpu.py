@@ -67,7 +67,7 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            pass
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class XPUTestReduceSumCase1(XPUTestReduceSumBase):
 

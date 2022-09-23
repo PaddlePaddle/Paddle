@@ -27,9 +27,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
+#define FINAL_MASK 0xffffffff
 #ifdef __HIPCC__
 namespace rocprim {
 namespace detail {
@@ -102,6 +104,14 @@ inline static int GetDesiredBlockDim(int dim) {
     return 64;
   } else {
     return 32;
+  }
+}
+
+inline static int getMaxLength(int k) {
+  if (k / 5 < 1) {
+    return 1;
+  } else if (k / 5 >= 1) {
+    return min(k / 5, 5);
   }
 }
 
@@ -248,7 +258,11 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[],
         if (k < MaxLength - (*beam)) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-static_cast<T>(INFINITY), -1);
+          if (largest) {
+            topk[k].set(-static_cast<T>(INFINITY), -1);
+          } else {
+            topk[k].set(static_cast<T>(INFINITY), -1);
+          }
         }
       }
       if (!(*is_empty)) {
@@ -258,79 +272,98 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[],
     }
 
     *max = topk[MaxLength - 1];
-    if ((*max).v == -static_cast<T>(1)) *is_empty = true;
+    if ((*max).id == -1) *is_empty = true;
     *beam = 0;
   }
 }
 
+template <typename T>
+__forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
+                                              const bool& largest) {
+  if (largest) {
+#pragma unroll
+    for (int offset = 16; offset > 0; offset >>= 1) {
+      T tmp_val = platform::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
+      int tmp_id = platform::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+      if (input.v < tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
+        input.v = tmp_val;
+        input.id = tmp_id;
+      }
+    }
+  } else {
+#pragma unroll
+    for (int offset = 16; offset > 0; offset >>= 1) {
+      T tmp_val = platform::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
+      int tmp_id = platform::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+      if (input.v > tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
+        input.v = tmp_val;
+        input.id = tmp_id;
+      }
+    }
+  }
+  return input;
+}
+
 template <typename T, int MaxLength, int BlockSize>
-__device__ __forceinline__ void BlockReduce(Pair<T>* sh_topk,
-                                            int* maxid,
+__device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
                                             Pair<T> topk[],
                                             T** topVal,
                                             int64_t** topIds,
                                             int* beam,
                                             int* k,
                                             const int tid,
-                                            const int warp,
+                                            const int wid,
+                                            const int lane,
                                             const bool& largest) {
   while (true) {
     __syncthreads();
-    if (tid < BlockSize / 2) {
-      if (largest) {
-        if (sh_topk[tid] < sh_topk[tid + BlockSize / 2]) {
-          maxid[tid] = tid + BlockSize / 2;
-        } else {
-          maxid[tid] = tid;
-        }
-      } else {
-        if (sh_topk[tid] > sh_topk[tid + BlockSize / 2]) {
-          maxid[tid] = tid + BlockSize / 2;
-        } else {
-          maxid[tid] = tid;
-        }
-      }
+    Pair<T> input_now = topk[0];
+    input_now = WarpReduce(input_now, largest);
+
+    if (lane == 0) {
+      shared_max[wid] = input_now;
     }
     __syncthreads();
-    for (int stride = BlockSize / 4; stride > 0; stride = stride / 2) {
-      if (tid < stride) {
-        if (largest) {
-          if (sh_topk[maxid[tid]] < sh_topk[maxid[tid + stride]]) {
-            maxid[tid] = maxid[tid + stride];
-          }
-        } else {
-          if (sh_topk[maxid[tid]] > sh_topk[maxid[tid + stride]]) {
-            maxid[tid] = maxid[tid + stride];
-          }
-        }
-      }
-      __syncthreads();
+    if (largest) {
+      input_now = (tid < BlockSize / 32)
+                      ? shared_max[lane]
+                      : Pair<T>(-static_cast<T>(INFINITY), -1);
+    } else {
+      input_now = (tid < BlockSize / 32)
+                      ? shared_max[lane]
+                      : Pair<T>(static_cast<T>(INFINITY), -1);
+    }
+    if (wid == 0) {
+      input_now = WarpReduce(input_now, largest);
+      if (lane == 0) shared_max[0] = input_now;
     }
     __syncthreads();
 
     if (tid == 0) {
-      **topVal = sh_topk[maxid[0]].v;
-      **topIds = sh_topk[maxid[0]].id;
+      **topVal = input_now.v;
+      **topIds = input_now.id;
       (*topVal)++;
       (*topIds)++;
     }
-    if (tid == maxid[0]) (*beam)++;
-    if (--(*k) == 0) break;
-    __syncthreads();
-
-    if (tid == maxid[0]) {
+    int tid_max = shared_max[0].id % BlockSize;
+    if (tid == tid_max) {
+      (*beam)++;
       if (*beam < MaxLength) {
-        sh_topk[tid] = topk[*beam];
+        topk[0] = topk[*beam];
       }
     }
-    // NOTE(zcd): temporary solution
-    unsigned mask = 0u;
-    CREATE_SHFL_MASK(mask, true);
+    if (--(*k) == 0) break;
 
-    if (maxid[0] / 32 == warp) {
-      if (platform::CudaShuffleSync(mask, *beam, (maxid[0]) % 32, 32) ==
-          MaxLength)
-        break;
+    if (MaxLength < 5) {
+      if (*beam >= MaxLength) break;
+    } else {
+      unsigned mask = 0u;
+      CREATE_SHFL_MASK(mask, true);
+      if (tid_max / 32 == wid) {
+        if (platform::CudaShuffleSync(mask, *beam, tid_max % 32, 32) ==
+            MaxLength)
+          break;
+      }
     }
   }
 }
@@ -355,14 +388,13 @@ __global__ void KeMatrixTopK(T* output,
                              int grid_dim,
                              int num,
                              bool largest = true) {
-  __shared__ Pair<T> sh_topk[BlockSize];
   const int tid = threadIdx.x;
-  const int warp = threadIdx.x / 32;
-
+  const int wid = tid / 32;
+  const int lane = tid % 32;
   const int bid = blockIdx.x;
   for (int i = bid; i < num; i += grid_dim) {
     int top_num = k;
-    __shared__ int maxid[BlockSize / 2];
+    __shared__ Pair<T> shared_max[BlockSize / 32];
     T* out = output + i * output_stride;
     int64_t* inds = indices + i * k;
     Pair<T> topk[MaxLength];
@@ -389,17 +421,15 @@ __global__ void KeMatrixTopK(T* output,
                                              dim,
                                              tid,
                                              largest);
-
-      sh_topk[tid] = topk[0];
-      BlockReduce<T, MaxLength, BlockSize>(sh_topk,
-                                           maxid,
+      BlockReduce<T, MaxLength, BlockSize>(shared_max,
                                            topk,
                                            &out,
                                            &inds,
                                            &beam,
                                            &top_num,
                                            tid,
-                                           warp,
+                                           wid,
+                                           lane,
                                            largest);
     }
   }
