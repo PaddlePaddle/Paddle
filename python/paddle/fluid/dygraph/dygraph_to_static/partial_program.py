@@ -639,8 +639,7 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _get_forward_backward_program_form(self, whole_program,
                                            forward_end_op_index):
-        # if core.is_compiled_with_npu():
-        if True:
+        if core.is_compiled_with_npu():
             # update control op attr: skip_eager_deletion_vars
             core.parse_safe_eager_deletion_conditional_op_and_conditional_grad_op(
                 whole_program.desc)
