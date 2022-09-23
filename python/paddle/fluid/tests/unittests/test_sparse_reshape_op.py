@@ -24,25 +24,30 @@ class TestReshape(unittest.TestCase):
         with _test_eager_guard():
             # mask = paddle.randint(0, 2, x_shape).astype("float32")
             # origin_x = paddle.rand(x_shape, dtype='float32') * mask
-            mask = paddle.randint(0, 2, x_shape)
-            origin_x = paddle.randint(-100, 100, x_shape) * mask
+            # mask = paddle.randint(0, 2, x_shape)
+            # origin_x = paddle.randint(-100, 100, x_shape) * mask
 
-            dense_x = origin_x.detach()
+            # dense_x = paddle.clone(origin_x.detach())
+            mask = np.random.randint(0, 2, x_shape)
+            np_x = np.random.randint(-100, 100, x_shape) * mask 
+            dense_x = paddle.to_tensor(np_x)
             dense_x.stop_gradient = False
             # dense_out = paddle.transpose(dense_x, dims)
             dense_out = paddle.reshape(dense_x, new_shape)
 
             if format == "coo":
-                sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
+                # sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
+                sp_x = paddle.to_tensor(np_x).to_sparse_coo(len(x_shape))
             else:
-                sp_x = origin_x.detach().to_sparse_csr()
+                # sp_x = origin_x.detach().to_sparse_csr()
+                sp_x = paddle.to_tensor(np_x).to_sparse_csr()
             sp_x.stop_gradient = False
             # sp_out = paddle.incubate.sparse.transpose(sp_x, dims)
             sp_out = paddle.incubate.sparse.reshape(sp_x, new_shape)
 
             print(10*'=', "OccupyMars2025 the following is dense_out", 10*'=')
-            print("dense_out:", dense_out)
             print("dense_out.numpy():", dense_out.numpy())
+            print("dense_out:", dense_out)
             print(10*'=', "OccupyMars2025 the following is sp_out", 10*'=')
             print("sp_out:", sp_out)
             print("sp_out.to_dense():", sp_out.to_dense())
