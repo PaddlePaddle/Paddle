@@ -155,9 +155,7 @@ static PyObject* tensor__add__method(TensorObject* self,
       1);
 
   EAGER_TRY
-
   VLOG(6) << "Running Eager tensor__add__method";
-
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -179,8 +177,11 @@ static PyObject* tensor__add__method(TensorObject* self,
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     }
-    eager_gil_scoped_release guard;
-    ret = CallScalarFuction(self_tensor, other, "add");
+
+    {
+      eager_gil_scoped_release guard;
+      ret = CallScalarFuction(self_tensor, other, "add");
+    }
     return ToPyObject(ret);
   }
 
@@ -188,9 +189,11 @@ static PyObject* tensor__add__method(TensorObject* self,
   paddle::experimental::Tensor other_tensor;
   if (!PyCheckTensor(other_obj)) {
     paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
-    eager_gil_scoped_release guard;
-    other_tensor =
-        full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+    {
+      eager_gil_scoped_release guard;
+      other_tensor =
+          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+    }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
@@ -227,10 +230,12 @@ static PyObject* tensor__add__method(TensorObject* self,
   // 4. calculation
   VLOG(6) << "Calling add_ad_func in tensor__add__method";
 
-  eager_gil_scoped_release guard;
-  ret = add_ad_func(self_tensor, other_tensor);
-  return ToPyObject(ret);
+  {
+    eager_gil_scoped_release guard;
+    ret = add_ad_func(self_tensor, other_tensor);
+  }
 
+  return ToPyObject(ret);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -266,8 +271,10 @@ static PyObject* tensor__sub__method(TensorObject* self,
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     }
-    eager_gil_scoped_release guard;
-    ret = CallScalarFuction(self_tensor, other, "sub");
+    {
+      eager_gil_scoped_release guard;
+      ret = CallScalarFuction(self_tensor, other, "sub");
+    }
 
     return ToPyObject(ret);
   }
@@ -275,9 +282,11 @@ static PyObject* tensor__sub__method(TensorObject* self,
   paddle::experimental::Tensor other_tensor;
   if (!PyCheckTensor(other_obj)) {
     paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
-    eager_gil_scoped_release guard;
-    other_tensor =
-        full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+    {
+      eager_gil_scoped_release guard;
+      other_tensor =
+          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+    }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
@@ -310,11 +319,12 @@ static PyObject* tensor__sub__method(TensorObject* self,
   }
   // 4. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__sub__method";
+  {
+    eager_gil_scoped_release guard;
+    ret = subtract_ad_func(self_tensor, other_tensor);
+  }
 
-  eager_gil_scoped_release guard;
-  ret = subtract_ad_func(self_tensor, other_tensor);
   return ToPyObject(ret);
-
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -327,7 +337,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(6) << "Running Eager tensor__rsub__method";
+  VLOG(1) << "Running Eager tensor__rsub__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -350,10 +360,10 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     }
-
-    eager_gil_scoped_release guard;
-    ret = CallScalarFuction(self_tensor, other, "rsub");
-
+    {
+      eager_gil_scoped_release guard;
+      ret = CallScalarFuction(self_tensor, other, "rsub");
+    }
     return ToPyObject(ret);
   }
 
@@ -361,10 +371,11 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   paddle::experimental::Tensor other_tensor;
   if (!PyCheckTensor(other_obj)) {
     paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
-
-    eager_gil_scoped_release guard;
-    other_tensor =
-        full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+    {
+      eager_gil_scoped_release guard;
+      other_tensor =
+          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+    }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
@@ -398,11 +409,12 @@ static PyObject* tensor__rsub__method(TensorObject* self,
 
   // 4. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__rsub__method";
+  {
+    eager_gil_scoped_release guard;
+    ret = subtract_ad_func(other_tensor, self_tensor);
+  }
 
-  eager_gil_scoped_release guard;
-  ret = subtract_ad_func(other_tensor, self_tensor);
   return ToPyObject(ret);
-
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
