@@ -194,16 +194,5 @@ class TestImperativeQatLSQ(unittest.TestCase):
         self.func_qat()
 
 
-class TestImperativeQatLSQChannelWise(TestImperativeQatLSQ):
-
-    def set_vars(self):
-        paddle.enable_static()
-        self.weight_quantize_type = 'channel_wise_lsq_weight'
-        self.activation_quantize_type = 'lsq_act'
-        self.onnx_format = False
-        self.fuse_conv_bn = False
-        print('weight_quantize_type', self.weight_quantize_type)
-
-
 if __name__ == '__main__':
     unittest.main()
