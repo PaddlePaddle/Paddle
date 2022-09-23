@@ -103,7 +103,7 @@ void SetDevice(paddle::platform::Place place) {
   if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::SetDeviceId(place.device);
-    VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+    VLOG(1) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
             << " from " << static_cast<int>(place.device);
 #else
     PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
@@ -114,7 +114,7 @@ void SetDevice(paddle::platform::Place place) {
   if (paddle::platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceManager::SetDevice(place);
-    VLOG(6) << "CurrentDeviceId: "
+    VLOG(1) << "CurrentDeviceId: "
             << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from "
             << static_cast<int>(place.device);
 #else
@@ -128,34 +128,17 @@ void SetDevice(paddle::platform::Place place) {
 // scalar func only support add, radd, sub, rsub, mul, rmul, div, truediv.
 // this function will update gradually.
 paddle::experimental::Tensor CallScalarFuction(
-    paddle::experimental::Tensor* self_tensor,
-    PyObject* other_obj,
+    const paddle::experimental::Tensor& self_tensor,
+    float other,
     std::string op_type) {
   paddle::experimental::Tensor ret;
-  float other;
-  if (PyFloat_Check(other_obj)) {
-    other = CastPyArg2AttrFloat(other_obj, 0);
-    if (_supported_int_dtype_.find(self_tensor->dtype()) !=
-        _supported_int_dtype_.end()) {
-      (*self_tensor) = cast_ad_func(*self_tensor, DataType::FLOAT32);
-    }
-  } else if (PyCheckInteger(other_obj) ||
-             IsNumpyType(other_obj)) {  // PyLong_Check(other_obj) &&
-                                        // !PyBool_Check(other_obj)
-    other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
-    if (op_type == "div" && _supported_int_dtype_.find(self_tensor->dtype()) !=
-                                _supported_int_dtype_.end()) {
-      (*self_tensor) = cast_ad_func(*self_tensor, DataType::FLOAT32);
-    }
-  }
-
   if (op_type == "add" || op_type == "radd") {
-    ret = scale_ad_func(*self_tensor, phi::Scalar(1.0), other, true);
+    ret = scale_ad_func(self_tensor, phi::Scalar(1.0), other, true);
   } else if (op_type == "sub") {
-    ret = scale_ad_func(*self_tensor, phi::Scalar(1.0), -other, true);
+    ret = scale_ad_func(self_tensor, phi::Scalar(1.0), -other, true);
 
   } else if (op_type == "rsub") {
-    ret = scale_ad_func(*self_tensor, phi::Scalar(-1.0), other, true);
+    ret = scale_ad_func(self_tensor, phi::Scalar(-1.0), other, true);
   }
 
   return ret;
@@ -165,13 +148,12 @@ static PyObject* tensor__add__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   paddle::platform::RecordEvent pythonc_record_event(
-      "add pybind_patch_func",
+      "__add__ or __radd_ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
   PyThreadState* tstate = nullptr;
   try {
     VLOG(6) << "Running Eager tensor__add__method";
-    tstate = PyEval_SaveThread();
 
     // Set Device ID
     auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -184,7 +166,18 @@ static PyObject* tensor__add__method(TensorObject* self,
     // 1. scalar exists cases
     if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
         IsNumpyType(other_obj)) {
-      ret = CallScalarFuction(&self_tensor, other_obj, "add");
+      float other = 0.0;
+      if (PyFloat_Check(other_obj)) {
+        other = CastPyArg2AttrFloat(other_obj, 0);
+        if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+            _supported_int_dtype_.end()) {
+          self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        }
+      } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+        other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      }
+      tstate = PyEval_SaveThread();
+      ret = CallScalarFuction(self_tensor, other, "add");
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(ret);
@@ -195,8 +188,11 @@ static PyObject* tensor__add__method(TensorObject* self,
     if (!PyCheckTensor(other_obj)) {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "full", 0);
+      tstate = PyEval_SaveThread();
       other_tensor =
           full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      PyEval_RestoreThread(tstate);
+      tstate = nullptr;
     } else {
       other_tensor = CastPyArg2Tensor(other_obj, 0);
     }
@@ -231,7 +227,9 @@ static PyObject* tensor__add__method(TensorObject* self,
     }
 
     // 4. calculation
-    VLOG(6) << "Calling add_dygraph_function in tensor__add__method";
+    VLOG(6) << "Calling add_ad_func in tensor__add__method";
+
+    tstate = PyEval_SaveThread();
     ret = add_ad_func(self_tensor, other_tensor);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
@@ -249,13 +247,12 @@ static PyObject* tensor__sub__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   paddle::platform::RecordEvent pythonc_record_event(
-      "sub pybind_patch_func",
+      "__sub__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
   PyThreadState* tstate = nullptr;
   try {
     VLOG(6) << "Running Eager tensor__sub__method";
-    tstate = PyEval_SaveThread();
 
     // Set Device ID
     auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -265,23 +262,35 @@ static PyObject* tensor__sub__method(TensorObject* self,
     paddle::experimental::Tensor self_tensor = self->tensor;
 
     PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
-
     // 1. scalar exists cases
     if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
         IsNumpyType(other_obj)) {
-      ret = CallScalarFuction(&self_tensor, other_obj, "sub");
+      float other = 0.0;
+      if (PyFloat_Check(other_obj)) {
+        other = CastPyArg2AttrFloat(other_obj, 0);
+        if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+            _supported_int_dtype_.end()) {
+          self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        }
+      } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+        other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      }
+      tstate = PyEval_SaveThread();
+      ret = CallScalarFuction(self_tensor, other, "sub");
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(ret);
     }
-
     // 2. create or get tensor for other_obj
     paddle::experimental::Tensor other_tensor;
     if (!PyCheckTensor(other_obj)) {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "full", 0);
+      tstate = PyEval_SaveThread();
       other_tensor =
           full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      PyEval_RestoreThread(tstate);
+      tstate = nullptr;
     } else {
       other_tensor = CastPyArg2Tensor(other_obj, 0);
     }
@@ -312,11 +321,11 @@ static PyObject* tensor__sub__method(TensorObject* self,
         other_tensor = cast_ad_func(other_tensor, lhs_dtype);
       }
     }
-
     // 4. calculation
     VLOG(6) << "Calling subtract_ad_func in tensor__sub__method";
-    ret = subtract_ad_func(self_tensor, other_tensor);
 
+    tstate = PyEval_SaveThread();
+    ret = subtract_ad_func(self_tensor, other_tensor);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(ret);
@@ -333,13 +342,12 @@ static PyObject* tensor__rsub__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
   paddle::platform::RecordEvent pythonc_record_event(
-      "rsub pybind_patch_func",
+      "__rsub__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
   PyThreadState* tstate = nullptr;
   try {
     VLOG(6) << "Running Eager tensor__rsub__method";
-    tstate = PyEval_SaveThread();
 
     // Set Device ID
     auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -352,7 +360,18 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     // 1. scalar exists cases
     if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
         IsNumpyType(other_obj)) {
-      ret = CallScalarFuction(&self_tensor, other_obj, "rsub");
+      float other = 0.0;
+      if (PyFloat_Check(other_obj)) {
+        other = CastPyArg2AttrFloat(other_obj, 0);
+        if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+            _supported_int_dtype_.end()) {
+          self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        }
+      } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+        other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      }
+      tstate = PyEval_SaveThread();
+      ret = CallScalarFuction(self_tensor, other, "rsub");
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(ret);
@@ -363,8 +382,11 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     if (!PyCheckTensor(other_obj)) {
       paddle::experimental::Scalar value =
           CastPyArg2Scalar(other_obj, "full", 0);
+      tstate = PyEval_SaveThread();
       other_tensor =
           full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      PyEval_RestoreThread(tstate);
+      tstate = nullptr;
     } else {
       other_tensor = CastPyArg2Tensor(other_obj, 0);
     }
@@ -397,7 +419,9 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     }
 
     // 4. calculation
-    VLOG(6) << "Calling subtract_dygraph_function in tensor__rsub__method";
+    VLOG(6) << "Calling subtract_ad_func in tensor__rsub__method";
+
+    tstate = PyEval_SaveThread();
     ret = subtract_ad_func(other_tensor, self_tensor);
 
     PyEval_RestoreThread(tstate);
