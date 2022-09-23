@@ -276,11 +276,7 @@ class Normal(distribution.Distribution):
 
         .. math::
 
-<<<<<<< HEAD
             ratio = \\frac{\sigma_0}{\sigma_1}
-=======
-            ratio = \frac{\sigma_0}{\sigma_1}
->>>>>>> f778470061589ba4c396d7a2b56f2f94819ceb39
 
         .. math::
 
