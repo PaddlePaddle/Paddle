@@ -151,96 +151,85 @@ static PyObject* tensor__add__method(TensorObject* self,
       "__add__ or __radd_ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
-  PyThreadState* tstate = nullptr;
-  try {
-    VLOG(6) << "Running Eager tensor__add__method";
 
-    // Set Device ID
-    auto place = egr::Controller::Instance().GetExpectedPlace();
-    SetDevice(place);
+  EAGER_TRY
 
-    paddle::experimental::Tensor ret;
-    paddle::experimental::Tensor self_tensor = self->tensor;
-    PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  VLOG(6) << "Running Eager tensor__add__method";
 
-    // 1. scalar exists cases
-    if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-        IsNumpyType(other_obj)) {
-      float other = 0.0;
-      if (PyFloat_Check(other_obj)) {
-        other = CastPyArg2AttrFloat(other_obj, 0);
-        if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-            _supported_int_dtype_.end()) {
-          self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-        }
-      } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-        other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+  // Set Device ID
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+  SetDevice(place);
+
+  paddle::experimental::Tensor ret;
+  paddle::experimental::Tensor self_tensor = self->tensor;
+  PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+
+  // 1. scalar exists cases
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      IsNumpyType(other_obj)) {
+    float other = 0.0;
+    if (PyFloat_Check(other_obj)) {
+      other = CastPyArg2AttrFloat(other_obj, 0);
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-      tstate = PyEval_SaveThread();
-      ret = CallScalarFuction(self_tensor, other, "add");
-      PyEval_RestoreThread(tstate);
-      tstate = nullptr;
-      return ToPyObject(ret);
+    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     }
-
-    // 2. create or get tensor for other_obj
-    paddle::experimental::Tensor other_tensor;
-    if (!PyCheckTensor(other_obj)) {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "full", 0);
-      tstate = PyEval_SaveThread();
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
-      PyEval_RestoreThread(tstate);
-      tstate = nullptr;
-    } else {
-      other_tensor = CastPyArg2Tensor(other_obj, 0);
-    }
-
-    // 3. promote types or unify right var type to left var
-    phi::DataType lhs_dtype = self_tensor.dtype();
-    phi::DataType rhs_dtype = other_tensor.dtype();
-    if (lhs_dtype != rhs_dtype) {
-      // note: only op_type in _supported_promote_complex_types_ should promote
-      // dtype
-      if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-          _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-        phi::DataType promote_dtype = framework::TransToPhiDataType(
-            framework::PromoteTypesIfComplexExists(
-                framework::TransToProtoVarType(lhs_dtype),
-                framework::TransToProtoVarType(rhs_dtype)));
-        if (lhs_dtype != promote_dtype) {
-          // cast
-          self_tensor = cast_ad_func(self_tensor, promote_dtype);
-        }
-        if (rhs_dtype != promote_dtype) {
-          other_tensor = cast_ad_func(other_tensor, promote_dtype);
-        }
-      } else {
-        LOG(WARNING)
-            << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-        other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-      }
-    }
-
-    // 4. calculation
-    VLOG(6) << "Calling add_ad_func in tensor__add__method";
-
-    tstate = PyEval_SaveThread();
-    ret = add_ad_func(self_tensor, other_tensor);
-    PyEval_RestoreThread(tstate);
-    tstate = nullptr;
+    eager_gil_scoped_release guard;
+    ret = CallScalarFuction(self_tensor, other, "add");
     return ToPyObject(ret);
-  } catch (...) {
-    if (tstate) {
-      PyEval_RestoreThread(tstate);
-    }
-    ThrowExceptionToPython(std::current_exception());
-    return nullptr;
   }
+
+  // 2. create or get tensor for other_obj
+  paddle::experimental::Tensor other_tensor;
+  if (!PyCheckTensor(other_obj)) {
+    paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
+    eager_gil_scoped_release guard;
+    other_tensor =
+        full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+  } else {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  }
+
+  // 3. promote types or unify right var type to left var
+  phi::DataType lhs_dtype = self_tensor.dtype();
+  phi::DataType rhs_dtype = other_tensor.dtype();
+  if (lhs_dtype != rhs_dtype) {
+    // note: only op_type in _supported_promote_complex_types_ should promote
+    // dtype
+    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
+        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
+      phi::DataType promote_dtype =
+          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
+              framework::TransToProtoVarType(lhs_dtype),
+              framework::TransToProtoVarType(rhs_dtype)));
+      if (lhs_dtype != promote_dtype) {
+        // cast
+        self_tensor = cast_ad_func(self_tensor, promote_dtype);
+      }
+      if (rhs_dtype != promote_dtype) {
+        other_tensor = cast_ad_func(other_tensor, promote_dtype);
+      }
+    } else {
+      LOG(WARNING)
+          << "The dtype of left and right Tensor are not the same, left "
+             "dtype is "
+          << lhs_dtype << ", but right dtype is " << rhs_dtype
+          << ", the right dtype will convert to " << lhs_dtype;
+      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    }
+  }
+
+  // 4. calculation
+  VLOG(6) << "Calling add_ad_func in tensor__add__method";
+
+  eager_gil_scoped_release guard;
+  ret = add_ad_func(self_tensor, other_tensor);
+  return ToPyObject(ret);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 static PyObject* tensor__sub__method(TensorObject* self,
@@ -250,92 +239,81 @@ static PyObject* tensor__sub__method(TensorObject* self,
       "__sub__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
-  PyThreadState* tstate = nullptr;
-  try {
-    VLOG(6) << "Running Eager tensor__sub__method";
 
-    // Set Device ID
-    auto place = egr::Controller::Instance().GetExpectedPlace();
-    SetDevice(place);
+  EAGER_TRY
+  VLOG(6) << "Running Eager tensor__sub__method";
 
-    paddle::experimental::Tensor ret;
-    paddle::experimental::Tensor self_tensor = self->tensor;
+  // Set Device ID
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+  SetDevice(place);
 
-    PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
-    // 1. scalar exists cases
-    if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-        IsNumpyType(other_obj)) {
-      float other = 0.0;
-      if (PyFloat_Check(other_obj)) {
-        other = CastPyArg2AttrFloat(other_obj, 0);
-        if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-            _supported_int_dtype_.end()) {
-          self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-        }
-      } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-        other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+  paddle::experimental::Tensor ret;
+  paddle::experimental::Tensor self_tensor = self->tensor;
+
+  PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // 1. scalar exists cases
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      IsNumpyType(other_obj)) {
+    float other = 0.0;
+    if (PyFloat_Check(other_obj)) {
+      other = CastPyArg2AttrFloat(other_obj, 0);
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-      tstate = PyEval_SaveThread();
-      ret = CallScalarFuction(self_tensor, other, "sub");
-      PyEval_RestoreThread(tstate);
-      tstate = nullptr;
-      return ToPyObject(ret);
+    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     }
-    // 2. create or get tensor for other_obj
-    paddle::experimental::Tensor other_tensor;
-    if (!PyCheckTensor(other_obj)) {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "full", 0);
-      tstate = PyEval_SaveThread();
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
-      PyEval_RestoreThread(tstate);
-      tstate = nullptr;
-    } else {
-      other_tensor = CastPyArg2Tensor(other_obj, 0);
-    }
+    eager_gil_scoped_release guard;
+    ret = CallScalarFuction(self_tensor, other, "sub");
 
-    // 3. promote types or unify right var type to left var
-    phi::DataType lhs_dtype = self_tensor.dtype();
-    phi::DataType rhs_dtype = other_tensor.dtype();
-    if (lhs_dtype != rhs_dtype) {
-      if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-          _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-        phi::DataType promote_dtype = framework::TransToPhiDataType(
-            framework::PromoteTypesIfComplexExists(
-                framework::TransToProtoVarType(lhs_dtype),
-                framework::TransToProtoVarType(rhs_dtype)));
-        if (lhs_dtype != promote_dtype) {
-          // cast
-          self_tensor = cast_ad_func(self_tensor, promote_dtype);
-        }
-        if (rhs_dtype != promote_dtype) {
-          other_tensor = cast_ad_func(other_tensor, promote_dtype);
-        }
-      } else {
-        LOG(WARNING)
-            << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-        other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-      }
-    }
-    // 4. calculation
-    VLOG(6) << "Calling subtract_ad_func in tensor__sub__method";
-
-    tstate = PyEval_SaveThread();
-    ret = subtract_ad_func(self_tensor, other_tensor);
-    PyEval_RestoreThread(tstate);
-    tstate = nullptr;
     return ToPyObject(ret);
-  } catch (...) {
-    if (tstate) {
-      PyEval_RestoreThread(tstate);
-    }
-    ThrowExceptionToPython(std::current_exception());
-    return nullptr;
   }
+  // 2. create or get tensor for other_obj
+  paddle::experimental::Tensor other_tensor;
+  if (!PyCheckTensor(other_obj)) {
+    paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
+    eager_gil_scoped_release guard;
+    other_tensor =
+        full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+  } else {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  }
+
+  // 3. promote types or unify right var type to left var
+  phi::DataType lhs_dtype = self_tensor.dtype();
+  phi::DataType rhs_dtype = other_tensor.dtype();
+  if (lhs_dtype != rhs_dtype) {
+    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
+        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
+      phi::DataType promote_dtype =
+          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
+              framework::TransToProtoVarType(lhs_dtype),
+              framework::TransToProtoVarType(rhs_dtype)));
+      if (lhs_dtype != promote_dtype) {
+        // cast
+        self_tensor = cast_ad_func(self_tensor, promote_dtype);
+      }
+      if (rhs_dtype != promote_dtype) {
+        other_tensor = cast_ad_func(other_tensor, promote_dtype);
+      }
+    } else {
+      LOG(WARNING)
+          << "The dtype of left and right Tensor are not the same, left "
+             "dtype is "
+          << lhs_dtype << ", but right dtype is " << rhs_dtype
+          << ", the right dtype will convert to " << lhs_dtype;
+      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    }
+  }
+  // 4. calculation
+  VLOG(6) << "Calling subtract_ad_func in tensor__sub__method";
+
+  eager_gil_scoped_release guard;
+  ret = subtract_ad_func(self_tensor, other_tensor);
+  return ToPyObject(ret);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 static PyObject* tensor__rsub__method(TensorObject* self,
@@ -345,95 +323,85 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       "__rsub__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
-  PyThreadState* tstate = nullptr;
-  try {
-    VLOG(6) << "Running Eager tensor__rsub__method";
 
-    // Set Device ID
-    auto place = egr::Controller::Instance().GetExpectedPlace();
-    SetDevice(place);
+  EAGER_TRY
+  VLOG(6) << "Running Eager tensor__rsub__method";
 
-    paddle::experimental::Tensor ret;
-    paddle::experimental::Tensor self_tensor = self->tensor;
-    PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // Set Device ID
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+  SetDevice(place);
 
-    // 1. scalar exists cases
-    if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-        IsNumpyType(other_obj)) {
-      float other = 0.0;
-      if (PyFloat_Check(other_obj)) {
-        other = CastPyArg2AttrFloat(other_obj, 0);
-        if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-            _supported_int_dtype_.end()) {
-          self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-        }
-      } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-        other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+  paddle::experimental::Tensor ret;
+  paddle::experimental::Tensor self_tensor = self->tensor;
+  PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+
+  // 1. scalar exists cases
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      IsNumpyType(other_obj)) {
+    float other = 0.0;
+    if (PyFloat_Check(other_obj)) {
+      other = CastPyArg2AttrFloat(other_obj, 0);
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-      tstate = PyEval_SaveThread();
-      ret = CallScalarFuction(self_tensor, other, "rsub");
-      PyEval_RestoreThread(tstate);
-      tstate = nullptr;
-      return ToPyObject(ret);
+    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
     }
 
-    // 2. create or get tensor for other_obj
-    paddle::experimental::Tensor other_tensor;
-    if (!PyCheckTensor(other_obj)) {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "full", 0);
-      tstate = PyEval_SaveThread();
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
-      PyEval_RestoreThread(tstate);
-      tstate = nullptr;
-    } else {
-      other_tensor = CastPyArg2Tensor(other_obj, 0);
-    }
+    eager_gil_scoped_release guard;
+    ret = CallScalarFuction(self_tensor, other, "rsub");
 
-    // 3. promote types or unify right var type to left var
-    phi::DataType lhs_dtype = self_tensor.dtype();
-    phi::DataType rhs_dtype = other_tensor.dtype();
-    if (lhs_dtype != rhs_dtype) {
-      if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-          _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-        phi::DataType promote_dtype = framework::TransToPhiDataType(
-            framework::PromoteTypesIfComplexExists(
-                framework::TransToProtoVarType(lhs_dtype),
-                framework::TransToProtoVarType(rhs_dtype)));
-        if (lhs_dtype != promote_dtype) {
-          // cast
-          self_tensor = cast_ad_func(self_tensor, promote_dtype);
-        }
-        if (rhs_dtype != promote_dtype) {
-          other_tensor = cast_ad_func(other_tensor, promote_dtype);
-        }
-      } else {
-        LOG(WARNING)
-            << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-        other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-      }
-    }
-
-    // 4. calculation
-    VLOG(6) << "Calling subtract_ad_func in tensor__rsub__method";
-
-    tstate = PyEval_SaveThread();
-    ret = subtract_ad_func(other_tensor, self_tensor);
-
-    PyEval_RestoreThread(tstate);
-    tstate = nullptr;
     return ToPyObject(ret);
-  } catch (...) {
-    if (tstate) {
-      PyEval_RestoreThread(tstate);
-    }
-    ThrowExceptionToPython(std::current_exception());
-    return nullptr;
   }
+
+  // 2. create or get tensor for other_obj
+  paddle::experimental::Tensor other_tensor;
+  if (!PyCheckTensor(other_obj)) {
+    paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
+
+    eager_gil_scoped_release guard;
+    other_tensor =
+        full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+  } else {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  }
+
+  // 3. promote types or unify right var type to left var
+  phi::DataType lhs_dtype = self_tensor.dtype();
+  phi::DataType rhs_dtype = other_tensor.dtype();
+  if (lhs_dtype != rhs_dtype) {
+    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
+        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
+      phi::DataType promote_dtype =
+          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
+              framework::TransToProtoVarType(lhs_dtype),
+              framework::TransToProtoVarType(rhs_dtype)));
+      if (lhs_dtype != promote_dtype) {
+        // cast
+        self_tensor = cast_ad_func(self_tensor, promote_dtype);
+      }
+      if (rhs_dtype != promote_dtype) {
+        other_tensor = cast_ad_func(other_tensor, promote_dtype);
+      }
+    } else {
+      LOG(WARNING)
+          << "The dtype of left and right Tensor are not the same, left "
+             "dtype is "
+          << lhs_dtype << ", but right dtype is " << rhs_dtype
+          << ", the right dtype will convert to " << lhs_dtype;
+      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    }
+  }
+
+  // 4. calculation
+  VLOG(6) << "Calling subtract_ad_func in tensor__rsub__method";
+
+  eager_gil_scoped_release guard;
+  ret = subtract_ad_func(other_tensor, self_tensor);
+  return ToPyObject(ret);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 PyMethodDef math_op_patch_methods[] = {
