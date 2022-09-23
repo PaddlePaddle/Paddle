@@ -29,6 +29,7 @@ import paddle
 import warnings
 from paddle.nn.layer.norm import _BatchNormBase
 from paddle.framework import no_grad
+from paddle import _C_ops
 
 
 class BatchNorm(paddle.nn.BatchNorm1D):
@@ -271,11 +272,12 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
                              bias_attr, data_format, name)
 
     def forward(self, x):
-        assert x.is_sparse_coo(
-        ), "SyncBatchNorm only support SparseTensor in COO format."
-        out = super(SyncBatchNorm, self).forward(x.values())
-        return paddle.incubate.sparse.sparse_coo_tensor(
-            x.indices(), out, shape=x.shape, stop_gradient=x.stop_gradient)
+        self._check_data_format()
+        sync_batch_norm_out, _, _, _, _, _ = _C_ops.sparse_sync_batch_norm(
+            x, self.weight, self.bias, self._mean, self._variance,
+            self._momentum, self._epsilon, self._data_format, not self.training,
+            False, False, False)
+        return sync_batch_norm_out
 
     @classmethod
     def convert_sync_batchnorm(cls, layer):
