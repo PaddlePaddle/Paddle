@@ -105,7 +105,7 @@ class LogNormal(TransformedDistribution):
 
         .. math::
 
-            entropy(\sigma) = 0.5 \\log (2 \pi e \sigma^2) + \mu
+            entropy(\sigma) = 0.5 \log (2 \pi e \sigma^2) + \mu
 
         In the above equation:
 
@@ -136,11 +136,11 @@ class LogNormal(TransformedDistribution):
 
         .. math::
 
-            KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = 0.5 (ratio^2 + (\\frac{diff}{\sigma_1})^2 - 1 - 2 \\ln {ratio})
+            KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = 0.5 (ratio^2 + (\frac{diff}{\sigma_1})^2 - 1 - 2 \ln {ratio})
 
         .. math::
 
-            ratio = \\frac{\sigma_0}{\sigma_1}
+            ratio = \frac{\sigma_0}{\sigma_1}
 
         .. math::
 

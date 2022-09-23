@@ -276,7 +276,7 @@ class Normal(distribution.Distribution):
 
         .. math::
 
-            ratio = \\frac{\sigma_0}{\sigma_1}
+            ratio = \frac{\sigma_0}{\sigma_1}
 
         .. math::
 
