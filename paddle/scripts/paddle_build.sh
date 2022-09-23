@@ -1151,23 +1151,9 @@ function check_diff_file_for_coverage() {
     export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
 }
-function diff_two_file(){
-    diff $1 $2 > /dev/null
-    if [ $? == 0 ]; then
-        echo "Both file are same"
-    else
-        echo "Both file are different"
-    fi
-}
+
 function check_change_of_unittest() {
     generate_unittest_spec "PR"
-    fetch_upstream_develop_if_not_exist
-    git reset --hard upstream/$BRANCH
-    cmake_gen $1
-    generate_unittest_spec "DEV"
-    file_new=${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV_LJD.spec
-    file_origin=${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec
-    diff_two_file $file_new $file_origin
     check_approvals_of_unittest 2
 }
 
