@@ -284,7 +284,7 @@ void InterpreterCore::reset_scope(Scope* new_scope) {
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
   async_work_queue_ = src->GetWorkQueue();
-  VLOG(8) << "Share AsyncWorkQueue from InterpreterCore(" << &src
+  VLOG(8) << "Share AsyncWorkQueue from InterpreterCore(" << src.get()
           << ") to InterpreterCore(" << this << ")";
 }
 

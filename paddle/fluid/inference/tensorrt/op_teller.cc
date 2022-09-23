@@ -326,6 +326,20 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "matmul_v2") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      return true;
+    }
+
     if (op_type == "matmul") {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -2081,6 +2095,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   std::unordered_set<std::string> int8_teller_set{
       "mul",
       "matmul",
+      "matmul_v2",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2190,6 +2205,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
+      "matmul_v2",
       "conv2d",
       "conv2d_fusion",
       "pool2d",

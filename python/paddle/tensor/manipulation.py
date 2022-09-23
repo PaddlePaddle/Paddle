@@ -142,10 +142,6 @@ def slice(input, axes, starts, ends):
     Returns:
         Tensor:  A ``Tensor``. The data type is same as ``input``.
 
-    Raises:
-        TypeError: The type of ``starts`` must be list, tuple or Tensor.
-        TypeError: The type of ``ends`` must be list, tuple or Tensor.
-
     Examples:
         .. code-block:: python
 
@@ -440,9 +436,6 @@ def unstack(x, axis=0, num=None):
 
     Returns:
         list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
-
-    Raises:
-        ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
 
     Examples:
         .. code-block:: python
@@ -1130,10 +1123,12 @@ def concat(x, axis=0, name=None):
 
 def broadcast_tensors(input, name=None):
     """
-    This OP broadcast a list of tensors following broadcast semantics
+    Broadcast a list of tensors following broadcast semantics
 
-    .. note::
-        If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
@@ -1427,10 +1422,6 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         Tensor: A tensor with the contents of the input tensor, with input \
                   axes flattened by indicated start axis and end axis. \
                   A Tensor with data type same as input x.
-
-    Raises:
-        ValueError: If x is not a Tensor.
-        ValueError: If start_axis or stop_axis is illegal.
 
     Examples:
 
@@ -2117,7 +2108,8 @@ def unique_consecutive(x,
     r"""
     Eliminates all but the first element from every consecutive group of equivalent elements.
 
-    .. note:: This function is different from :func:`paddle.unique` in the sense that this function
+    Note:
+        This function is different from :func:`paddle.unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
 
     Args:
@@ -4490,7 +4482,7 @@ def index_add(x, index, axis, value, name=None):
 def index_add_(x, index, axis, value, name=None):
     """
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_tensor_index_add`.
+    Please refer to :ref:`api_paddle_index_add`.
 
     Examples:
         .. code-block:: python

@@ -152,16 +152,16 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
   if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
+    return framework::OpKernelType(data_type,
+                                   ctx.GetPlace(),
+                                   framework::DataLayout::kMKLDNN,
+                                   framework::LibraryType::kMKLDNN);
   }
 #endif
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 void FusionGRUOpMaker::Make() {

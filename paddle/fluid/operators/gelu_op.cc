@@ -77,8 +77,7 @@ class GeluGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
-    auto it = this->Attrs().find("use_mkldnn");
-    if (it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx, data_type)) {
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       return framework::OpKernelType(data_type,
                                      ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,

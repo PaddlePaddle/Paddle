@@ -37,7 +37,7 @@ class Uniform(distribution.Distribution):
 
     .. math::
 
-        pdf(x; a, b) = \\frac{1}{Z}, \ a <=x <b
+        pdf(x; a, b) = \frac{1}{Z}, \ a <=x <b
 
     .. math::
 
@@ -50,43 +50,45 @@ class Uniform(distribution.Distribution):
     * :math:`Z`: is the normalizing constant.
 
     The parameters `low` and `high` must be shaped in a way that supports
-    [broadcasting](https://www.paddlepaddle.org.cn/documentation/docs/en/develop/beginners_guide/basic_concept/broadcasting_en.html) (e.g., `high - low` is a valid operation).
+    :ref:`user_guide_broadcasting` (e.g., `high - low` is a valid operation).
 
     Args:
-        low(int|float|list|tuple|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
-        high(int|float|list|tuple|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
-        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        low(int|float|list|tuple|numpy.ndarray|Tensor): The lower boundary of
+            uniform distribution.The data type is float32 and float64.
+        high(int|float|list|tuple|numpy.ndarray|Tensor): The higher boundary
+            of uniform distribution.The data type is float32 and float64.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Examples:
         .. code-block:: python
 
-          import paddle
-          from paddle.distribution import Uniform
+            import paddle
+            from paddle.distribution import Uniform
 
-          # Without broadcasting, a single uniform distribution [3, 4]:
-          u1 = Uniform(low=3.0, high=4.0)
-          # 2 distributions [1, 3], [2, 4]
-          u2 = Uniform(low=[1.0, 2.0], high=[3.0, 4.0])
-          # 4 distributions
-          u3 = Uniform(low=[[1.0, 2.0], [3.0, 4.0]],
-                    high=[[1.5, 2.5], [3.5, 4.5]])
+            # Without broadcasting, a single uniform distribution [3, 4]:
+            u1 = Uniform(low=3.0, high=4.0)
+            # 2 distributions [1, 3], [2, 4]
+            u2 = Uniform(low=[1.0, 2.0], high=[3.0, 4.0])
+            # 4 distributions
+            u3 = Uniform(low=[[1.0, 2.0], [3.0, 4.0]],
+                        high=[[1.5, 2.5], [3.5, 4.5]])
 
-          # With broadcasting:
-          u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
+            # With broadcasting:
+            u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
 
-          # Complete example
-          value_tensor = paddle.to_tensor([0.8], dtype="float32")
+            # Complete example
+            value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
-          uniform = Uniform([0.], [2.])
+            uniform = Uniform([0.], [2.])
 
-          sample = uniform.sample([2])
-          # a random tensor created by uniform distribution with shape: [2, 1]
-          entropy = uniform.entropy()
-          # [0.6931472] with shape: [1]
-          lp = uniform.log_prob(value_tensor)
-          # [-0.6931472] with shape: [1]
-          p = uniform.probs(value_tensor)
-          # [0.5] with shape: [1]
+            sample = uniform.sample([2])
+            # a random tensor created by uniform distribution with shape: [2, 1]
+            entropy = uniform.entropy()
+            # [0.6931472] with shape: [1]
+            lp = uniform.log_prob(value_tensor)
+            # [-0.6931472] with shape: [1]
+            p = uniform.probs(value_tensor)
+            # [0.5] with shape: [1]
     """
 
     def __init__(self, low, high, name=None):
@@ -132,11 +134,11 @@ class Uniform(distribution.Distribution):
         """Generate samples of the specified shape.
 
         Args:
-          shape (list): 1D `int32`. Shape of the generated samples.
-          seed (int): Python integer number.
+            shape (list): 1D `int32`. Shape of the generated samples.
+            seed (int): Python integer number.
 
         Returns:
-          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+            Tensor, A tensor with prepended dimensions shape. The data type is float32.
 
         """
         if not _non_static_mode():
@@ -179,10 +181,10 @@ class Uniform(distribution.Distribution):
         """Log probability density/mass function.
 
         Args:
-          value (Tensor): The input tensor.
+            value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability.The data type is same with value.
+            Tensor, log probability.The data type is same with value.
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
@@ -216,10 +218,10 @@ class Uniform(distribution.Distribution):
         """Probability density/mass function.
 
         Args:
-          value (Tensor): The input tensor.
+            value (Tensor): The input tensor.
 
         Returns:
-          Tensor: probability.The data type is same with value.
+            Tensor, probability. The data type is same with value.
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
@@ -256,7 +258,7 @@ class Uniform(distribution.Distribution):
             entropy(low, high) = \\log (high - low)
 
         Returns:
-          Tensor: Shannon entropy of uniform distribution.The data type is float32.
+            Tensor, Shannon entropy of uniform distribution.The data type is float32.
 
         """
         name = self.name + '_entropy'

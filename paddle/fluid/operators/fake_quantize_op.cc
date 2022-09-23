@@ -432,24 +432,6 @@ class FakeQuantOrWithDequantAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
-    AddAttr<int>(
-        "round_type",
-        "(int, default 1) The round type of fp32 to int."
-        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
-        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
-        "round(2.5)=3")
-        .SetDefault(1)
-        .AddCustomChecker([](const int &round_type) {
-          PADDLE_ENFORCE_EQ(
-              round_type == 0 || round_type == 1,
-              true,
-              platform::errors::InvalidArgument(
-                  "'round_type' should be 0 or 1, 0 rounding to "
-                  "nearest ties to even and 1 is rounding to nearest "
-                  "ties away from zero.but the received is %d",
-                  round_type));
-        })
-        .AsExtra();
     AddComment(R"DOC(
 This is a Base Op which supports FakeQuantAbsMaxOpMaker and FakeQuantDequantAbsMaxOpMaker.
 FakeQuantAbsMaxOp operator is used in the dynamic quantization.
@@ -529,24 +511,6 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
-    AddAttr<int>(
-        "round_type",
-        "(int, default 1) The round type of fp32 to int."
-        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
-        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
-        "round(2.5)=3")
-        .SetDefault(1)
-        .AddCustomChecker([](const int &round_type) {
-          PADDLE_ENFORCE_EQ(
-              round_type == 0 || round_type == 1,
-              true,
-              platform::errors::InvalidArgument(
-                  "'round_type' should be 0 or 1, 0 rounding to "
-                  "nearest ties to even and 1 is rounding to nearest "
-                  "ties away from zero.but the received is %d",
-                  round_type));
-        })
-        .AsExtra();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
@@ -628,24 +592,6 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
-    AddAttr<int>(
-        "round_type",
-        "(int, default 1) The round type of fp32 to int."
-        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
-        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
-        "round(2.5)=3")
-        .SetDefault(1)
-        .AddCustomChecker([](const int &round_type) {
-          PADDLE_ENFORCE_EQ(
-              round_type == 0 || round_type == 1,
-              true,
-              platform::errors::InvalidArgument(
-                  "'round_type' should be 0 or 1, 0 rounding to "
-                  "nearest ties to even and 1 is rounding to nearest "
-                  "ties away from zero.but the received is %d",
-                  round_type));
-        })
-        .AsExtra();
     AddComment(R"DOC(
 The scale of FakeChannelWiseQuantize operator is a vector.
 In detail, each channel of the input X has a scale value.
@@ -715,24 +661,6 @@ class FakeQuantizeRangeAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
-    AddAttr<int>(
-        "round_type",
-        "(int, default 1) The round type of fp32 to int."
-        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
-        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
-        "round(2.5)=3")
-        .SetDefault(1)
-        .AddCustomChecker([](const int &round_type) {
-          PADDLE_ENFORCE_EQ(
-              round_type == 0 || round_type == 1,
-              true,
-              platform::errors::InvalidArgument(
-                  "'round_type' should be 0 or 1, 0 rounding to "
-                  "nearest ties to even and 1 is rounding to nearest "
-                  "ties away from zero.but the received is %d",
-                  round_type));
-        })
-        .AsExtra();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
@@ -815,24 +743,6 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
-    AddAttr<int>(
-        "round_type",
-        "(int, default 1) The round type of fp32 to int."
-        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
-        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
-        "round(2.5)=3")
-        .SetDefault(1)
-        .AddCustomChecker([](const int &round_type) {
-          PADDLE_ENFORCE_EQ(
-              round_type == 0 || round_type == 1,
-              true,
-              platform::errors::InvalidArgument(
-                  "'round_type' should be 0 or 1, 0 rounding to "
-                  "nearest ties to even and 1 is rounding to nearest "
-                  "ties away from zero.but the received is %d",
-                  round_type));
-        })
-        .AsExtra();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")

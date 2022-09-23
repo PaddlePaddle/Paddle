@@ -546,11 +546,11 @@ void BindPaddlePredictor(py::module *m) {
       .def("get_input_names", &PaddlePredictor::GetInputNames)
       .def("get_output_names", &PaddlePredictor::GetOutputNames)
       .def("zero_copy_run", &PaddlePredictor::ZeroCopyRun)
-      .def("clone", [](PaddlePredictor &self) { self.Clone(nullptr); })
+      .def("clone", [](PaddlePredictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("clone",
            [](PaddlePredictor &self, phi::CUDAStream &stream) {
-             self.Clone(stream.raw_stream());
+             return self.Clone(stream.raw_stream());
            })
 #endif
       .def("get_serialized_program", &PaddlePredictor::GetSerializedProgram);
@@ -593,11 +593,12 @@ void BindNativePredictor(py::module *m) {
       .def("get_input_tensor", &NativePaddlePredictor::GetInputTensor)
       .def("get_output_tensor", &NativePaddlePredictor::GetOutputTensor)
       .def("zero_copy_run", &NativePaddlePredictor::ZeroCopyRun)
-      .def("clone", [](NativePaddlePredictor &self) { self.Clone(nullptr); })
+      .def("clone",
+           [](NativePaddlePredictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("clone",
            [](NativePaddlePredictor &self, phi::CUDAStream &stream) {
-             self.Clone(stream.raw_stream());
+             return self.Clone(stream.raw_stream());
            })
 #endif
       .def("scope",
@@ -896,11 +897,11 @@ void BindAnalysisPredictor(py::module *m) {
       .def("analysis_argument",
            &AnalysisPredictor::analysis_argument,
            py::return_value_policy::reference)
-      .def("clone", [](AnalysisPredictor &self) { self.Clone(nullptr); })
+      .def("clone", [](AnalysisPredictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("clone",
            [](AnalysisPredictor &self, phi::CUDAStream &stream) {
-             self.Clone(stream.raw_stream());
+             return self.Clone(stream.raw_stream());
            })
 #endif
       .def("scope",
@@ -929,11 +930,12 @@ void BindPaddleInferPredictor(py::module *m) {
 #endif
              self.Run();
            })
-      .def("clone", [](paddle_infer::Predictor &self) { self.Clone(nullptr); })
+      .def("clone",
+           [](paddle_infer::Predictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("clone",
            [](paddle_infer::Predictor &self, phi::CUDAStream &stream) {
-             self.Clone(stream.raw_stream());
+             return self.Clone(stream.raw_stream());
            })
 #endif
       .def("try_shrink_memory", &paddle_infer::Predictor::TryShrinkMemory)

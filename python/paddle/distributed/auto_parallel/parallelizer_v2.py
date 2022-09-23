@@ -105,9 +105,13 @@ class Parallelizer:
                 format(time.time() - time0, self._mode))
         else:
             # Apply pre optimization passes
-            # self._apply_pre_optimization(serial_main_program,
-            #                              serial_startup_program, None, None,
-            #                              None)
+            time0 = time.time()
+            self._apply_pre_optimization(serial_main_program,
+                                         serial_startup_program, None, None,
+                                         None)
+            self._logger.info(
+                "within parallel apply_pre_optimization time: {}, mode {}".
+                format(time.time() - time0, self._mode))
             # Do logical partition
             time0 = time.time()
             partitioner = Partitioner(self._dist_context, rank)
@@ -176,7 +180,7 @@ class Parallelizer:
         # apply amp pass
         # FIXME we disenable amp for eval since it has a little bug with
         # eval program and which will be fixed in future
-        if self._mode == 'train' and self._strategy.amp.enable:
+        if self._strategy.amp.enable:
             config = copy.deepcopy(self._strategy.amp.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads

@@ -265,7 +265,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     distributed::ProcessGroup* pg = map->get(rid);
     distributed::AllreduceOptions opts;
-    opts.reduce_op = distributed::ReduceOp::SUM;
+    opts.reduce_op = distributed::ReduceOp::MAX;
 
     // allocate memory on device.
     softmax->mutable_data<T>(place);
@@ -348,6 +348,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     in_out.clear();
     in_out.push_back(predicted_logits);
+    opts.reduce_op = distributed::ReduceOp::SUM;
     pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
     // step 4, obtain exp(logit)
@@ -364,6 +365,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     in_out.clear();
     in_out.push_back(sum_exp_logits);
+    opts.reduce_op = distributed::ReduceOp::SUM;
     pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
     auto eigen_loss = math::EigenMatrix<T>::From(loss_2d);

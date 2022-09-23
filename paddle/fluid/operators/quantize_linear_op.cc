@@ -134,10 +134,6 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("OutScale", "(Tensor) Current scale")
         .AsDispensable()
         .AsExtra();  // only qat use
-    AddAttr<float>("moving_rate",
-                   "(float, default 0.9) moving rate.")  // only qat use
-        .SetDefault(0.9)
-        .AsExtra();
     AddAttr<int>("quant_axis",
                  "(int, default 0) The axis for quantization. "
                  "For conv2d, depthwise_conv2d, conv2d_transpose "
