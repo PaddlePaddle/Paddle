@@ -77,7 +77,7 @@ void ReshapeCsrKernel(const Context& dev_ctx,
                       const SparseCsrTensor& x,
                       const phi::IntArray& shape,
                       SparseCsrTensor* out) {
-    /*将csr格式转化为coo格式后处理*/
+    /*transform csr format to coo format, and then use coo kernel*/
     const SparseCooTensor x_coo = CsrToCoo<T, Context>(dev_ctx, x);
     SparseCooTensor out_coo;
     ReshapeCooKernel<T, Context>(dev_ctx, x_coo, shape, &out_coo);
@@ -112,3 +112,4 @@ PD_REGISTER_KERNEL(reshape_csr,
                    int,
                    int64_t,
                    bool) {}
+                                 
