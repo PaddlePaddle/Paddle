@@ -35,7 +35,7 @@ list(
   layernorm_shift_partition_op.cu
   generic_plugin.cu)
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
-  list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cc
+  list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu
        many_emb_Layernorm_varseqlen_kernelMTron.cu
        many_emb_Layernorm_varseqlen_kernelHFace.cu)
 endif()
