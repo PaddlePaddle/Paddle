@@ -1161,10 +1161,13 @@ function diff_two_file(){
 }
 function check_change_of_unittest() {
     generate_unittest_spec "PR"
+    cmake_develop_startTime_s=`date +%s`
     fetch_upstream_develop_if_not_exist
     git reset --hard upstream/$BRANCH
     cmake_gen $1
     generate_unittest_spec "DEV"
+    cmake_develop_endTime_s=`date +%s`
+    echo "this optimization has saved time: $[ $cmake_develop_endTime_s - $cmake_develop_startTime_s]s"
     file_new=${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV_LJD.spec
     file_origin=${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec
     diff_two_file $file_new $file_origin
