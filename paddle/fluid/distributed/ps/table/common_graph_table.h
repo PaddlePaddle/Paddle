@@ -680,6 +680,7 @@ class GraphTable : public Table {
   int32_t make_complementary_graph(int idx, int64_t byte_size);
   int32_t dump_edges_to_ssd(int idx);
   int32_t get_partition_num(int idx) { return partitions[idx].size(); }
+  std::vector<int> slot_feature_num_map() const { return slot_feature_num_map_; }
   std::vector<uint64_t> get_partition(int idx, int index) {
     if (idx >= (int)partitions.size() || index >= (int)partitions[idx].size())
       return std::vector<uint64_t>();
@@ -697,6 +698,7 @@ class GraphTable : public Table {
 #endif
   virtual int32_t add_comm_edge(int idx, uint64_t src_id, uint64_t dst_id);
   virtual int32_t build_sampler(int idx, std::string sample_type = "random");
+  void set_slot_feature_separator(const std::string &ch);
   void set_feature_separator(const std::string &ch);
   std::vector<std::vector<GraphShard *>> edge_shards, feature_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
@@ -735,7 +737,9 @@ class GraphTable : public Table {
   // std::shared_ptr<GraphSampler> graph_sampler;
   // REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
 #endif
+  std::string slot_feature_separator_ = std::string(" ");
   std::string feature_separator_ = std::string(" ");
+  std::vector<int> slot_feature_num_map_;
 };
 
 /*

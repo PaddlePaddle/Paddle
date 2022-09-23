@@ -102,12 +102,16 @@ class GraphGpuWrapper {
                                               int sample_size);
   std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(
       int gpu_id, int edge_type_len);
+  std::vector<int> slot_feature_num_map() const ;
   void set_feature_separator(std::string ch);
+  void set_slot_feature_separator(std::string ch);
   int get_feature_of_nodes(int gpu_id,
                            uint64_t* d_walk,
                            uint64_t* d_offset,
                            uint32_t size,
-                           int slot_num);
+                           int slot_num,
+                           int* d_slot_feature_num_map,
+                           int fea_num_per_node);
 
   std::unordered_map<std::string, int> edge_to_id, feature_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
@@ -122,6 +126,7 @@ class GraphGpuWrapper {
   int upload_num = 8;
   std::shared_ptr<::ThreadPool> upload_task_pool;
   std::string feature_separator_ = std::string(" ");
+  std::string slot_feature_separator_ = std::string(" ");
 };
 #endif
 }  // namespace framework
