@@ -16,10 +16,9 @@ limitations under the License. */
 
 namespace phi {
 
-phi::DDim ValidateShape(const std::vector<int64_t>& shape,
-                        const phi::DDim& in_dims) {
-  const int64_t in_size = phi::product(in_dims);
-  auto in_dims_vec = phi::vectorize(in_dims);
+DDim ValidateShape(const std::vector<int64_t>& shape, const DDim& in_dims) {
+  const int64_t in_size = product(in_dims);
+  auto in_dims_vec = vectorize(in_dims);
   bool all_positive = std::all_of(in_dims_vec.cbegin(),
                                   in_dims_vec.cend(),
                                   [](int64_t i) { return i > 0; });
@@ -36,22 +35,22 @@ phi::DDim ValidateShape(const std::vector<int64_t>& shape,
       PADDLE_ENFORCE_EQ(
           unk_dim_idx,
           -1,
-          phi::errors::InvalidArgument(
+          errors::InvalidArgument(
               "Only one dimension value of 'shape' in ReshapeOp can "
               "be -1. But received shape = [%s], shape[%d] is also -1.",
-              phi::make_ddim(shape),
+              make_ddim(shape),
               i));
       unk_dim_idx = i;
     } else if (shape[i] == copy_dim_val) {
       PADDLE_ENFORCE_LT(
           static_cast<int>(i),
           in_dims.size(),
-          phi::errors::InvalidArgument(
+          errors::InvalidArgument(
               "The index of 0 in `shape` must be less than "
               "the input tensor X's dimensions. "
               "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
               "X's dimensions = %d.",
-              phi::make_ddim(shape),
+              make_ddim(shape),
               i,
               in_dims,
               in_dims.size()));
@@ -59,11 +58,11 @@ phi::DDim ValidateShape(const std::vector<int64_t>& shape,
       PADDLE_ENFORCE_GT(
           shape[i],
           0,
-          phi::errors::InvalidArgument(
+          errors::InvalidArgument(
               "Each dimension value of 'shape' in ReshapeOp must not "
               "be negative except one unknown dimension. "
               "But received  shape = [%s], shape[%d] = %d.",
-              phi::make_ddim(shape),
+              make_ddim(shape),
               i,
               shape[i]));
     }
@@ -82,7 +81,7 @@ phi::DDim ValidateShape(const std::vector<int64_t>& shape,
       PADDLE_ENFORCE_EQ(
           output_shape[unk_dim_idx] * capacity,
           -in_size,
-          phi::errors::InvalidArgument(
+          errors::InvalidArgument(
               "The 'shape' attribute in ReshapeOp is invalid. "
               "The input tensor X'size must be divisible by known "
               "capacity of 'shape'. "
@@ -90,7 +89,7 @@ phi::DDim ValidateShape(const std::vector<int64_t>& shape,
               "'shape' is [%s], known capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              phi::make_ddim(shape),
+              make_ddim(shape),
               capacity));
     } else {
       output_shape[unk_dim_idx] = -1;
@@ -100,7 +99,7 @@ phi::DDim ValidateShape(const std::vector<int64_t>& shape,
       PADDLE_ENFORCE_EQ(
           capacity,
           in_size,
-          phi::errors::InvalidArgument(
+          errors::InvalidArgument(
               "The 'shape' in ReshapeOp is invalid. "
               "The input tensor X'size must be equal to the capacity of "
               "'shape'. "
@@ -108,69 +107,65 @@ phi::DDim ValidateShape(const std::vector<int64_t>& shape,
               "[%s], the capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              phi::make_ddim(shape),
+              make_ddim(shape),
               capacity));
     }
   }
-  return phi::make_ddim(output_shape);
+  return make_ddim(output_shape);
 }
 
-template <typename T, typename Context>
+template <typename Context>
 void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
                    DenseTensor* out) {
-  phi::DDim x_dims = x.dims();
-  phi::DDim out_dims = ValidateShape(shape.GetData(), x_dims);
+  DDim x_dims = x.dims();
+  DDim out_dims = ValidateShape(shape.GetData(), x_dims);
 
-  auto x_vec_dims = phi::vectorize(x_dims);
-  phi::funcs::ReorderOneDNNHandler reorder_handler(
+  auto x_vec_dims = vectorize(x_dims);
+  funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims,
       x.dtype(),
-      phi::funcs::ToOneDNNDataType(x.dtype()),
+      funcs::ToOneDNNDataType(x.dtype()),
       dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), funcs::to_void_cast<T>(x.data<T>()));
+      x.mem_desc(), funcs::to_void_cast<void>(x.data()));
   out->Resize(x_dims);  // to match x numel, format is changed later
   // reorder is done into a plain tag to allow usage with blocked formats
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-      out,
-      phi::funcs::GetPlainOneDNNFormat(x.dims().size()),
-      dev_ctx.GetPlace());
+      out, funcs::GetPlainOneDNNFormat(x.dims().size()), dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
 
-  auto& astream = phi::OneDNNContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
 
   astream.wait();
 
   out->Resize(out_dims);
   out->set_mem_desc(
-      reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
+      reorder_dst_memory_p->get_desc().reshape(vectorize(out_dims)));
 }
 
-template <typename T, typename Context>
+template <typename Context>
 void ReshapeWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
                        const IntArray& shape,
                        DenseTensor* out,
                        DenseTensor* xshape) {
-  ReshapeKernel<T, Context>(dev_ctx, x, shape, out);
+  ReshapeKernel<Context>(dev_ctx, x, shape, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(reshape,
-                   OneDNN,
-                   ALL_LAYOUT,
-                   phi::ReshapeKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(reshape_with_xshape,
-                   OneDNN,
-                   ALL_LAYOUT,
-                   phi::ReshapeWithXShape,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_GENERAL_KERNEL(reshape,
+                           OneDNN,
+                           ALL_LAYOUT,
+                           phi::ReshapeKernel<phi::OneDNNContext>,
+                           ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
+                           OneDNN,
+                           ALL_LAYOUT,
+                           phi::ReshapeWithXShape<phi::OneDNNContext>,
+                           ALL_DTYPE) {}
