@@ -152,7 +152,8 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(expected_kernel_key.place_)) {
-    PADDLE_THROW("For GPU kernel, they must not fallback into CPU kernel.");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "For GPU kernel, they must not fallback into CPU kernel."));
   }
 #endif
 
