@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -25,7 +26,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      const IntArray& paddings,
                      const std::string& mode,
-                     float pad_value,
+                     const Scalar& pad_value,
                      const std::string& data_format,
                      DenseTensor* x_grad);
 

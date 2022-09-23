@@ -789,8 +789,8 @@
     func : norm_grad
 
 - backward_op : pad3d_double_grad
-  forward : pad3d_grad(Tensor x, Tensor grad_out, IntArray paddings, str mode, float pad_value, str data_format) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, IntArray paddings, str mode, float pad_value, str data_format)
+  forward : pad3d_grad(Tensor x, Tensor grad_out, IntArray paddings, str mode, Scalar pad_value, str data_format) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray paddings, str mode, Scalar pad_value, str data_format)
   output : Tensor(grad_out_grad)
   infer_meta :
     func : Pad3dInferMeta
@@ -798,8 +798,8 @@
     func : pad3d
 
 - backward_op : pad3d_grad
-  forward : pad3d(Tensor x, IntArray paddings, str mode,  float pad_value, str data_format) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, IntArray paddings, str mode,  float pad_value, str data_format)
+  forward : pad3d(Tensor x, IntArray paddings, str mode, Scalar pad_value, str data_format) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray paddings, str mode, Scalar pad_value, str data_format)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

@@ -13,20 +13,16 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/framework/op_desc.h"
 
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
+namespace paddle {
+namespace framework {
+namespace no_scalar {
+void ConvertProgram(ProgramDesc* program);
+}  // namespace no_scalar
 
-namespace phi {
-
-template <typename T, typename Context>
-void Pad3dKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const IntArray& paddings,
-                 const std::string& mode,
-                 const Scalar& pad_value,
-                 const std::string& data_format,
-                 DenseTensor* out);
-
-}  // namespace phi
+namespace scalar {
+void ConvertProgram(ProgramDesc* program);
+}  // namespace scalar
+}  // namespace framework
+}  // namespace paddle

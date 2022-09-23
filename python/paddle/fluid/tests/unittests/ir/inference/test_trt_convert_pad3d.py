@@ -21,6 +21,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.fluid import framework
 
 
 class TrtConvertPad3dTensorPadding(TrtLayerAutoScanTest):
@@ -53,7 +54,7 @@ class TrtConvertPad3dTensorPadding(TrtLayerAutoScanTest):
                 for pad_mode in ['constant', 'reflect', 'replicate']:
                     dics = [
                         {
-                            "value": value,
+                            "value": framework.wrap_as_scalar(value),
                             "data_format": "NCDHW",
                             "mode": pad_mode,
                             "paddings": [],

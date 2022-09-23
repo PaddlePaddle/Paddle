@@ -29,6 +29,27 @@ _supported_int_dtype_ = [
     core.VarDesc.VarType.INT64,
 ]
 
+_supported_promote_complex_types_ = [
+    '__add__',
+    '__radd__',
+    '__sub__',
+    '__rsub__',
+    '__mul__',
+    '__rmul__',
+    '__div__',
+    '__truediv__',
+    '__rdiv__',
+    '__rtruediv__',
+    '__matmul__',
+    '__pow__',
+    '__rpow__',
+]
+
+_complex_dtypes = [
+    core.VarDesc.VarType.COMPLEX64,
+    core.VarDesc.VarType.COMPLEX128,
+]
+
 compare_ops = ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']
 
 EXPRESSION_MAP = {
@@ -58,6 +79,13 @@ EXPRESSION_MAP = {
 _already_patch_variable = False
 
 
+def has_dynamic_size(shape):
+    for size in shape:
+        if size == -1:
+            return True
+    return False
+
+
 def monkey_patch_variable():
     def unique_tmp_name():
         return unique_name.generate("tmp")
@@ -81,7 +109,8 @@ def monkey_patch_variable():
         return block.create_var(name=tmp_name, dtype=dtype, type=type)
 
     def create_tensor(block, value, dtype, shape):
-        value = float(value)
+        # NOTE(chenfeiyu): use data as-is. converting to float is wrong
+        # value = float(value)
         var = create_new_tmp_var(block, dtype)
         block.append_op(
             type="fill_constant",
@@ -102,7 +131,8 @@ def monkey_patch_variable():
 
     def create_tensor_with_batchsize(ref_var, value, dtype):
         assert isinstance(ref_var, Variable)
-        value = float(value)
+        # NOTE(chenfeiyu): use data as-is. converting to float is wrong
+        # value = float(value)
         block = current_block(ref_var)
         var = create_new_tmp_var(block, dtype)
         batch_dim = -1
@@ -378,32 +408,66 @@ def monkey_patch_variable():
 
             # 2. create variable for scalar
             lhs_dtype = safe_get_dtype(self)
+            # NOTE(chenfeiyu): in case of possible overflow,
+            # infer data type by value is better
+            if isinstance(other_var, complex):
+                dtype_for_other = core.VarDesc.VarType.COMPLEX64
+            else:
+                dtype_for_other = lhs_dtype
             if not isinstance(other_var, Variable):
                 if reverse:
-                    for elem in self.shape:
-                        if elem < 0:
-                            other_var = create_tensor_with_batchsize(
-                                self, other_var, lhs_dtype
-                            )
-                            break
+                    has_unknown_size = has_dynamic_size(self.shape)
+                    if has_unknown_size:
+                        other_var = create_tensor_with_batchsize(
+                            self, other_var, dtype_for_other
+                        )
                     else:
-                        # when break is not triggered, enter the else branch
                         other_var = create_tensor(
                             current_block(self),
                             other_var,
-                            dtype=lhs_dtype,
+                            dtype=dtype_for_other,
                             shape=self.shape,
                         )
+
                 else:
                     # add fill_op to current_block
                     other_var = create_scalar(
-                        current_block(self), value=other_var, dtype=lhs_dtype
+                        current_block(self),
+                        value=other_var,
+                        dtype=dtype_for_other,
                     )
 
             # 3. unify right var type to left var
             rhs_dtype = safe_get_dtype(other_var)
+            out_dtype = lhs_dtype
             if lhs_dtype != rhs_dtype:
-                other_var = astype(other_var, lhs_dtype)
+                if method_name in _supported_promote_complex_types_ and (
+                    lhs_dtype in _complex_dtypes or rhs_dtype in _complex_dtypes
+                ):
+                    # only when lhs_dtype or rhs_dtype is complex type,
+                    # the dtype will promote, in other cases, directly
+                    # use lhs_dtype, this is consistent will original rule
+                    promote_dtype = core._promote_types_if_complex_exists(
+                        lhs_dtype, rhs_dtype
+                    )
+                    out_dtype = promote_dtype
+                    self = (
+                        self
+                        if lhs_dtype == promote_dtype
+                        else astype(self, promote_dtype)
+                    )
+                    other_var = (
+                        other_var
+                        if rhs_dtype == promote_dtype
+                        else astype(other_var, promote_dtype)
+                    )
+                else:
+                    warnings.warn(
+                        'The dtype of left and right variables are not the same, left dtype is {}, but right dtype is {}, the right dtype will convert to {}'.format(
+                            lhs_dtype, rhs_dtype, lhs_dtype
+                        )
+                    )
+                    other_var = astype(other_var, lhs_dtype)
             if reverse:
                 tmp = self
                 self = other_var
@@ -413,7 +477,7 @@ def monkey_patch_variable():
             if method_name in compare_ops:
                 out = create_new_tmp_var(current_block(self), dtype="bool")
             else:
-                out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+                out = create_new_tmp_var(current_block(self), dtype=out_dtype)
 
             axis = -1
             if other_var.ndim > 0 and other_var.shape[0] == -1:

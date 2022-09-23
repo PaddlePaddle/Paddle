@@ -1158,7 +1158,7 @@
   backward : pad_grad
 
 - op : pad3d
-  args : (Tensor x, IntArray paddings, str mode,  float pad_value, str data_format)
+  args : (Tensor x, IntArray paddings, str mode, Scalar pad_value, str data_format)
   output : Tensor(out)
   infer_meta :
     func : Pad3dInferMeta

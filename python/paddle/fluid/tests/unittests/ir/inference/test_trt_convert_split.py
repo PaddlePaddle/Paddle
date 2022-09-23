@@ -21,6 +21,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.fluid import framework
 
 
 class TrtConvertSplitTest(TrtLayerAutoScanTest):
@@ -324,7 +325,7 @@ class TrtConvertSplitTest2(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["shapeT1_data"]},
                             "op_attrs": {
                                 "dtype": 2,
-                                "str_value": "1",
+                                "value": framework.wrap_as_scalar(1),
                                 "shape": [1],
                             },
                         },
@@ -334,7 +335,7 @@ class TrtConvertSplitTest2(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["shapeT2_data"]},
                             "op_attrs": {
                                 "dtype": 2,
-                                "str_value": "1",
+                                "value": framework.wrap_as_scalar(1),
                                 "shape": [1],
                             },
                         },
@@ -344,7 +345,7 @@ class TrtConvertSplitTest2(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["shapeT3_data"]},
                             "op_attrs": {
                                 "dtype": 2,
-                                "str_value": "1",
+                                "value": framework.wrap_as_scalar(1),
                                 "shape": [1],
                             },
                         },

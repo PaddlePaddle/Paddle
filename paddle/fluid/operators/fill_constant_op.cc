@@ -143,12 +143,9 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
              "The shape of the element in vector must be [1].")
         .AsDuplicable()
         .AsDispensable();
-    AddAttr<float>("value", "(float, default 0.0f) The value to be filled")
+    AddAttr<experimental::Scalar>(
+        "value", "(Scalar, default 0.0f) The value to be filled")
         .SetDefault(0.0f);
-    AddAttr<std::string>(
-        "str_value",
-        "(string, default empty) The str convert to value to be filled")
-        .SetDefault("");
     AddAttr<bool>("force_cpu",
                   "(bool, default false) Force fill output variable to cpu "
                   "memory. Otherwise, fill output variable to the running "
@@ -203,4 +200,13 @@ REGISTER_OP_VERSION(fill_constant)
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "place_type",
             "In order to support tensor in CUDAPinnedPlace and XPUPlace",
-            -1));
+            -1))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade fill_constant, add support for generic Scalar.
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .ModifyAttr("value", "add generic scalar value", 0.0f)
+            .DeleteAttr(
+                "str_value",
+                "remove string as an attribute to represent numeric value"));

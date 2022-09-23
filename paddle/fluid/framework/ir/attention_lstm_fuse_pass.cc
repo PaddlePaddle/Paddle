@@ -61,7 +61,7 @@ AttentionLSTMFusePass::AttentionLSTMFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("value")
-      .IsType<float>()
+      // .IsType<float>() there shall no longer be restrictions here
       .End();
 
   AddOpCompat(OpCompat("sequence_expand"))

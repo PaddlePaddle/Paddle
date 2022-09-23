@@ -396,7 +396,7 @@ def _create_loss_op_desc_(loss):
         {"Out": [_append_grad_suffix_(loss.name)]},
         {
             "shape": create_shape,
-            "value": 1.0,
+            "value": framework.wrap_as_scalar(1.0),
             "dtype": loss.dtype,
             "force_cpu": False,
             core.op_proto_and_checker_maker.kOpRoleAttrName(): int(
@@ -755,7 +755,7 @@ def _remove_no_grad_branch_(
                     "fill_any_like",
                     {"X": [x_in]},
                     {"Out": [arg]},
-                    {'value': 0, 'dtype': -1},
+                    {'value': framework.wrap_as_scalar(0), 'dtype': -1},
                 )
                 # update the mapping between fwd and bwd
                 if (
@@ -2404,7 +2404,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                 {"X": [target.name]},
                 {"Out": [grad_name]},
                 {
-                    "value": 1.0,
+                    "value": framework.wrap_as_scalar(1.0),
                     "dtype": target.dtype,
                 },
             )

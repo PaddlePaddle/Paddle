@@ -906,11 +906,67 @@ struct PowGradDX {
   }
 };
 
+template <>
+struct PowGradDX<dtype::complex<float>> {
+  HOSTDEVICE dtype::complex<float> operator()(
+      dtype::complex<float> x,
+      dtype::complex<float> y,
+      dtype::complex<float> out,
+      dtype::complex<float> dout) const {
+    return dtype::conj(dtype::conj(dout) * y *
+                       dtype::pow(x, y - dtype::complex<float>(1.0f)));
+  }
+};
+
+template <>
+struct PowGradDX<dtype::complex<double>> {
+  HOSTDEVICE dtype::complex<double> operator()(
+      dtype::complex<double> x,
+      dtype::complex<double> y,
+      dtype::complex<double> out,
+      dtype::complex<double> dout) const {
+    return dtype::conj(dtype::conj(dout) * y *
+                       dtype::pow(x, y - dtype::complex<double>(1.0)));
+  }
+};
+
 template <typename T, typename Enable = void>
 struct PowGradDY {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return compute_pow_grad_dy<T, MPType>(x, y, out, dout);
+  }
+};
+
+template <>
+struct PowGradDY<dtype::complex<float>, void> {
+  HOSTDEVICE dtype::complex<float> operator()(
+      dtype::complex<float> x,
+      dtype::complex<float> y,
+      dtype::complex<float> out,
+      dtype::complex<float> dout) const {
+    // pow is not defined for (0, 0) in complex plane,
+    // for continuity \frac{\partial pow(x, y)}{y} is defined as 0
+    if (x == dtype::complex<float>(0, 0)) {
+      return dtype::complex<float>(0, 0);
+    }
+    return dtype::conj(dtype::conj(dout) * dtype::pow(x, y) * dtype::log(x));
+  }
+};
+
+template <>
+struct PowGradDY<dtype::complex<double>, void> {
+  HOSTDEVICE dtype::complex<double> operator()(
+      dtype::complex<double> x,
+      dtype::complex<double> y,
+      dtype::complex<double> out,
+      dtype::complex<double> dout) const {
+    // pow is not defined for (0, 0) in complex plane,
+    // for continuity \frac{\partial pow(x, y)}{y} is defined as 0
+    if (x == dtype::complex<double>(0, 0)) {
+      return dtype::complex<double>(0, 0);
+    }
+    return dtype::conj(dtype::conj(dout) * dtype::pow(x, y) * dtype::log(x));
   }
 };
 

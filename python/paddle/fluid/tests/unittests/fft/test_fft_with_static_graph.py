@@ -689,24 +689,6 @@ class TestIrfft2(unittest.TestCase):
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
-            'test_input_dtype',
-            np.random.randn(4, 4, 4),
-            None,
-            -1,
-            'backward',
-            TypeError,
-        ),
-        (
-            'test_bool_input',
-            (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-                np.bool_
-            ),
-            None,
-            -1,
-            'backward',
-            TypeError,
-        ),
-        (
             'test_n_nagative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             -1,
@@ -782,24 +764,6 @@ class TestHfftException(unittest.TestCase):
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
-        (
-            'test_input_dtype',
-            np.random.randn(4, 4, 4),
-            None,
-            -1,
-            'backward',
-            TypeError,
-        ),
-        (
-            'test_bool_input',
-            (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-                np.bool_
-            ),
-            None,
-            -1,
-            'backward',
-            TypeError,
-        ),
         (
             'test_n_nagative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
@@ -877,24 +841,6 @@ class TestIrfftException(unittest.TestCase):
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
-        (
-            'test_input_dtype',
-            np.random.randn(4, 4, 4),
-            None,
-            None,
-            'backward',
-            TypeError,
-        ),
-        (
-            'test_bool_input',
-            (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-                np.bool_
-            ),
-            None,
-            (-2, -1),
-            'backward',
-            TypeError,
-        ),
         (
             'test_n_nagative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
@@ -981,24 +927,6 @@ class TestHfft2Exception(unittest.TestCase):
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
-            'test_input_dtype',
-            np.random.randn(4, 4, 4),
-            None,
-            None,
-            'backward',
-            TypeError,
-        ),
-        (
-            'test_bool_input',
-            (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-                np.bool_
-            ),
-            None,
-            (-2, -1),
-            'backward',
-            TypeError,
-        ),
-        (
             'test_n_nagative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             (-1, -2),
@@ -1084,24 +1012,6 @@ class TestIrfft2Exception(unittest.TestCase):
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
-            'test_input_dtype',
-            np.random.randn(4, 4, 4),
-            None,
-            None,
-            'backward',
-            TypeError,
-        ),
-        (
-            'test_bool_input',
-            (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-                np.bool_
-            ),
-            None,
-            (-2, -1),
-            'backward',
-            TypeError,
-        ),
-        (
             'test_n_nagative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             (-1, -2),
@@ -1186,17 +1096,6 @@ class TestHfftnException(unittest.TestCase):
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
-        (
-            'test_input_dtype',
-            np.random.randn(4, 4, 4),
-            None,
-            None,
-            'backward',
-            TypeError,
-        ),
-        #  ('test_bool_input',
-        #                (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)
-        #                 ).astype(np.bool_), None, (-2, -1), 'backward', ValueError),
         (
             'test_n_nagative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),

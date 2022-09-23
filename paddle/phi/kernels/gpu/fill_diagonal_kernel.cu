@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
@@ -46,7 +48,7 @@ __global__ void fill_constant_kernel(const int64_t featuresize,
 template <typename T, typename Context>
 void FillDiagonalKernel(const Context& ctx,
                         const DenseTensor& x,
-                        float value,
+                        const Scalar& value,
                         int offset,
                         bool wrap,
                         DenseTensor* out) {
@@ -58,8 +60,7 @@ void FillDiagonalKernel(const Context& ctx,
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
 
   T* out_data = ctx.template Alloc<T>(out);
-  auto fill_val = static_cast<T>(value);
-  T temp_var = static_cast<T>(fill_val);
+  T temp_var = value.to<T>();
 
   auto size = out->numel();
   auto out_dims = out->dims();
@@ -87,4 +88,6 @@ PD_REGISTER_KERNEL(fill_diagonal,
                    int64_t,
                    int,
                    phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    bool) {}

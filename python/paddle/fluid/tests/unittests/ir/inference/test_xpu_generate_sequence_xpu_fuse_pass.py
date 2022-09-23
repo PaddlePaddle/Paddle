@@ -18,6 +18,8 @@ import hypothesis.strategies as st
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
+from paddle.fluid import framework
+
 
 class TestGenerateSequenceXPUFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
@@ -37,7 +39,7 @@ class TestGenerateSequenceXPUFusePass(PassAutoScanTest):
             inputs={"X": ["fill_any_like_x"]},
             outputs={"Out": ["fill_any_like_out"]},
             dtype=fill_any_like_dtype,
-            value=1.0,
+            value=framework.wrap_as_scalar(1.0),
         )
         cumsum_op = OpConfig(
             "cumsum",

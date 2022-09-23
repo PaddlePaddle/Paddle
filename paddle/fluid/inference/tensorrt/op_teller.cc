@@ -1738,9 +1738,9 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "pad") {
       if (!desc.HasAttr("pad_value") || !desc.HasAttr("paddings")) return false;
-      const float pad_value =
-          PADDLE_GET_CONST(float, desc.GetAttr("pad_value"));
-      if (pad_value != 0.0f) {
+      const auto pad_value = PADDLE_GET_CONST(paddle::experimental::Scalar,
+                                              desc.GetAttr("pad_value"));
+      if (pad_value.to<float>() != 0.0f) {
         VLOG(3) << "The pad layer of TRT only support zero.";
         return false;
       }

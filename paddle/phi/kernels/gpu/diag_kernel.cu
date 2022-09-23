@@ -18,6 +18,7 @@
 #include <tuple>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -59,7 +60,7 @@ template <typename T, typename Context>
 void DiagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int offset,
-                float padding_value,
+                const Scalar& padding_value,
                 DenseTensor* out) {
   auto* x_data = x.data<T>();
   auto x_dims = x.dims();
@@ -79,7 +80,7 @@ void DiagKernel(const Context& dev_ctx,
 
   if (x_dims.size() <= 1) {
     phi::funcs::SetConstant<Context, T> set_padding_value;
-    set_padding_value(dev_ctx, out, static_cast<T>(padding_value));
+    set_padding_value(dev_ctx, out, padding_value.to<T>());
 
     auto x_length = (x_dims.size() == 1UL ? x_dims[0] : int64_t(1));
     auto size = (offset > 0) ? x_length + offset : x_length - offset;
@@ -138,4 +139,6 @@ PD_REGISTER_KERNEL(diag,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

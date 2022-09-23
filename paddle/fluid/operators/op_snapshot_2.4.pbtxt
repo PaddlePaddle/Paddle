@@ -1,0 +1,474 @@
+pair {
+  op_name: "not_equal"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "data_norm"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "cumsum"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "fake_channel_wise_quantize_abs_max"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "greater_equal"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "fill_constant"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "conv_transpose"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "fusion_gru"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "flip"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "elementwise_sub"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "dequantize"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "grid_sampler"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "expand_as_v2"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "linspace"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "moving_average_abs_max_scale"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "p_norm"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "lamb"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "instance_norm"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "lookup_table_v2"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "lookup_table"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "lstsq"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "seed"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "softmax_with_cross_entropy"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "rank_attention"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "cudnn_lstm"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "clip"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "requantize"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "fake_channel_wise_dequantize_max_abs"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "yolo_box"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "elementwise_max"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "transfer_layout"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "arg_min"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "roll"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "for_pybind_test__"
+  op_version {
+    version: 4
+  }
+}
+pair {
+  op_name: "print"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "trace"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "matmul"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "roi_pool"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "roi_align"
+  op_version {
+    version: 3
+  }
+}
+pair {
+  op_name: "softplus"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "momentum"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "conv2d_transpose"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "conv3d_transpose"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "depthwise_conv2d_transpose"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "conv2d"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "gaussian_random"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "unique_consecutive"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "conv3d"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "pixel_shuffle"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "collect_fpn_proposals"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "coalesce_tensor"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "arg_max"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "allclose"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "matrix_nms"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "less_than"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "affine_grid"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "hard_shrink"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "set_value"
+  op_version {
+    version: 3
+  }
+}
+pair {
+  op_name: "mish"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "quantize"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "distribute_fpn_proposals"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "adam"
+  op_version {
+    version: 4
+  }
+}
+pair {
+  op_name: "elementwise_pow"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "elementwise_mul"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "elementwise_mod"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "auc"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "elementwise_min"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "gather"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "elementwise_div"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "elementwise_add"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "leaky_relu"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "generate_proposal_labels"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "elementwise_floordiv"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "less_equal"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "generate_proposals"
+  op_version {
+    version: 2
+  }
+}
+pair {
+  op_name: "depthwise_conv2d"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "greater_than"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "generate_proposals_v2"
+  op_version {
+    version: 1
+  }
+}
+pair {
+  op_name: "equal"
+  op_version {
+    version: 1
+  }
+}

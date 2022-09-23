@@ -27,14 +27,10 @@ class FillConstantOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
-    std::string str_value =
-        PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
+    auto value = PADDLE_GET_CONST(paddle::experimental::Scalar,
+                                  op_desc.GetAttr("value"));
     std::vector<int64_t> shape =
         PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
-    if (str_value == "") {
-      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
-      str_value = std::to_string(value);
-    }
     std::unique_ptr<phi::DenseTensor> out_tensor(new phi::DenseTensor());
     out_tensor->Resize(phi::make_ddim(shape));
     nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
@@ -43,13 +39,13 @@ class FillConstantOpConverter : public OpConverter {
     if (dtype == 2 || dtype == 3) {  // int,int64
       auto* tmp_ptr = out_tensor->mutable_data<int>(platform::CPUPlace());
       for (int64_t i = 0; i < out_tensor->numel(); i++)
-        tmp_ptr[i] = std::stoi(str_value);
+        tmp_ptr[i] = value.to<int>();
       trt_dtype = nvinfer1::DataType::kINT32;
       trt_data = static_cast<void*>(tmp_ptr);
     } else if (dtype == 5) {  // float
       auto* tmp_ptr = out_tensor->mutable_data<float>(platform::CPUPlace());
       for (int64_t i = 0; i < out_tensor->numel(); i++)
-        tmp_ptr[i] = std::stof(str_value);
+        tmp_ptr[i] = value.to<float>();
       trt_data = static_cast<void*>(tmp_ptr);
     }
 

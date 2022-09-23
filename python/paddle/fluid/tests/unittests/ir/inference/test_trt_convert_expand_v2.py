@@ -21,6 +21,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.fluid import framework
 
 
 class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
@@ -205,7 +206,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
                         "op_outputs": {"Out": ["shapeT1_data"]},
                         "op_attrs": {
                             "dtype": 2,
-                            "str_value": "10",
+                            "value": framework.wrap_as_scalar(10),
                             "shape": [1],
                         },
                     },
@@ -303,7 +304,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
                         "op_outputs": {"Out": ["shapeT1_data"]},
                         "op_attrs": {
                             "dtype": 2,
-                            "str_value": "10",
+                            "value": framework.wrap_as_scalar(10),
                             "shape": [1],
                         },
                     },
@@ -313,7 +314,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
                         "op_outputs": {"Out": ["shapeT2_data"]},
                         "op_attrs": {
                             "dtype": 2,
-                            "str_value": "12",
+                            "value": framework.wrap_as_scalar(12),
                             "shape": [1],
                         },
                     },
@@ -323,7 +324,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
                         "op_outputs": {"Out": ["shapeT3_data"]},
                         "op_attrs": {
                             "dtype": 2,
-                            "str_value": "4",
+                            "value": framework.wrap_as_scalar(4),
                             "shape": [1],
                         },
                     },
@@ -333,7 +334,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
                         "op_outputs": {"Out": ["shapeT4_data"]},
                         "op_attrs": {
                             "dtype": 2,
-                            "str_value": "6",
+                            "value": framework.wrap_as_scalar(6),
                             "shape": [1],
                         },
                     },

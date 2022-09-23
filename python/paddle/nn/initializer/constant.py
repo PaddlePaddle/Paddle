@@ -57,9 +57,7 @@ class ConstantInitializer(Initializer):
             place = _current_expected_place()
             if self._force_cpu:
                 place = core.CPUPlace()
-            _C_ops.full_(
-                var, var.shape, str(float(self._value)), var.dtype, place
-            )
+            _C_ops.full_(var, var.shape, self._value, var.dtype, place)
             return None
         else:
             op = block.append_op(
@@ -68,8 +66,7 @@ class ConstantInitializer(Initializer):
                 attrs={
                     "shape": var.shape,
                     "dtype": int(var.dtype),
-                    "value": float(self._value),
-                    'str_value': str(float(self._value)),
+                    "value": self._value,
                     'force_cpu': self._force_cpu,
                 },
                 stop_gradient=True,

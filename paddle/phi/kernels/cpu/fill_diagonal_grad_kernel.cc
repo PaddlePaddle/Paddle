@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/fill_diagonal_grad_kernel.h"
 
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
@@ -22,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void FillDiagonalGradKernel(const Context& ctx,
                             const DenseTensor& out_grad,
-                            float value,
+                            const Scalar& value,
                             int offset,
                             bool wrap,
                             DenseTensor* x_grad) {
@@ -61,4 +62,6 @@ PD_REGISTER_KERNEL(fill_diagonal_grad,
                    int64_t,
                    int,
                    phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    bool) {}

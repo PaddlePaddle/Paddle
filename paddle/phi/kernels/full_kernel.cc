@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/full_kernel.h"
-
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -46,7 +46,9 @@ PD_REGISTER_KERNEL(full_batch_size_like,
                    double,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -60,7 +62,9 @@ PD_REGISTER_KERNEL(full_batch_size_like,
                    int64_t,
                    bool,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif

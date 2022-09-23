@@ -443,6 +443,14 @@ def pow(x, y, name=None):
     if in_dygraph_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
+        elif isinstance(y, complex):
+            y_dtype = (
+                paddle.complex128
+                if (x.dtype == paddle.complex128 or x.dtype == paddle.float64)
+                else paddle.complex64
+            )
+            y_tensor = paddle.to_tensor(y, y_dtype)
+            return _C_ops.elementwise_pow(x, y_tensor)
         elif isinstance(y, (paddle.Tensor, Variable)):
             return _C_ops.elementwise_pow(x, y)
         else:
@@ -460,6 +468,16 @@ def pow(x, y, name=None):
                 type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs
             )
             return out
+        elif isinstance(y, complex):
+            helper = LayerHelper('elementwise_pow', **locals())
+            y_dtype = (
+                paddle.complex128
+                if (x.dtype == paddle.complex128 or x.dtype == paddle.float64)
+                else paddle.complex64
+            )
+            y = paddle.to_tensor(y, y_dtype)
+            out = helper.create_variable_for_type_inference(dtype=y_dtype)
+            return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
         elif isinstance(y, (paddle.Tensor, Variable)):
             # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
             helper = LayerHelper('elementwise_pow', **locals())
@@ -513,7 +531,16 @@ def _elementwise_op(helper):
             'complex128',
         ]
     else:
-        data_type = ['float16', 'float32', 'float64', 'int32', 'int64', 'bool']
+        data_type = [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'complex64',
+            'complex128',
+        ]
     check_variable_and_dtype(
         x,
         'x',

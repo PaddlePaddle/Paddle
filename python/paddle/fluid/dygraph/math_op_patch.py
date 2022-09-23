@@ -55,6 +55,8 @@ _supported_promote_complex_types_ = [
     '__rdiv__',
     '__rtruediv__',
     '__matmul__',
+    '__pow__',
+    '__rpow__',
 ]
 
 _complex_dtypes = [

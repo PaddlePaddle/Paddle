@@ -359,7 +359,7 @@
     data_type : out_grad
 
 - backward_op : diag_grad
-  forward : diag (Tensor x, int offset, float padding_value) -> Tensor(out)
+  forward : diag (Tensor x, int offset, Scalar padding_value) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int offset)
   output : Tensor(x_grad)
   infer_meta :
@@ -535,8 +535,8 @@
   no_need_buffer: x
 
 - backward_op : fill_diagonal_grad
-  forward : fill_diagonal (Tensor x, float value=0, int offset=0, bool wrap=false) -> Tensor(out)
-  args : (Tensor out_grad, float value, int offset, bool wrap)
+  forward : fill_diagonal (Tensor x, Scalar value=0, int offset=0, bool wrap=false) -> Tensor(out)
+  args : (Tensor out_grad, Scalar value, int offset, bool wrap)
   output : Tensor(x_grad)
   infer_meta :
     func : FillDiagonalGradInferMeta

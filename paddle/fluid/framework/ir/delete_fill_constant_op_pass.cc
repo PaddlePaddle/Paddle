@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/ir/delete_fill_constant_op_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/scalar.h"
 
 namespace paddle {
 namespace framework {
@@ -68,7 +70,8 @@ void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
     Node* fill_constant_out_node = subgraph.at(fill_constant_out);
     // Get fill_constant's attr
     auto fill_constant = fill_constant_op_node->Op();
-    auto value = PADDLE_GET_CONST(float, fill_constant->GetAttr("value"));
+    auto value = PADDLE_GET_CONST(paddle::experimental::Scalar,
+                                  fill_constant->GetAttr("value"));
     auto shape =
         PADDLE_GET_CONST(std::vector<int64_t>, fill_constant->GetAttr("shape"));
     auto* scope = param_scope();
@@ -82,19 +85,27 @@ void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
     fill_constant_out_tensor->Resize(phi::make_ddim(shape));
     switch (dtype) {
       case phi::DataType::BOOL:
-        FillConstData<bool>(fill_constant_out_tensor, static_cast<bool>(value));
+        FillConstData<bool>(fill_constant_out_tensor, value.to<bool>());
         break;
       case phi::DataType::INT32:
-        FillConstData<int32_t>(fill_constant_out_tensor,
-                               static_cast<int32_t>(value));
+        FillConstData<int32_t>(fill_constant_out_tensor, value.to<int32_t>());
         break;
       case phi::DataType::INT64:
-        FillConstData<int64_t>(fill_constant_out_tensor,
-                               static_cast<int64_t>(value));
+        FillConstData<int64_t>(fill_constant_out_tensor, value.to<int64_t>());
         break;
       case phi::DataType::FLOAT32:
-        FillConstData<float>(fill_constant_out_tensor,
-                             static_cast<float>(value));
+        FillConstData<float>(fill_constant_out_tensor, value.to<float>());
+        break;
+      case phi::DataType::FLOAT64:
+        FillConstData<double>(fill_constant_out_tensor, value.to<double>());
+        break;
+      case phi::DataType::COMPLEX64:
+        FillConstData<phi::dtype::complex<float>>(
+            fill_constant_out_tensor, value.to<phi::dtype::complex<float>>());
+        break;
+      case phi::DataType::COMPLEX128:
+        FillConstData<phi::dtype::complex<double>>(
+            fill_constant_out_tensor, value.to<phi::dtype::complex<double>>());
         break;
       default:
         LOG(WARNING) << "Unsupported dtype for fill_constant op: " << dtype;

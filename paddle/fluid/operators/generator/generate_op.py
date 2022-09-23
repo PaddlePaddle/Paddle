@@ -427,16 +427,23 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
                     item['fluid_name'] for item in bw_op['attrs']
                 ]
                 for attr in reuse_op['attrs']:
+                    attr_type = attr["typename"]
                     if args_index < len(args_list):
-                        attr_value = (
-                            f"this->GetAttr(\"{args_list[args_index]}\")"
-                            if args_list[args_index] in bw_fluid_attrs_set
-                            else args_list[args_index]
-                        )
+                        if args_list[args_index] in bw_fluid_attrs_set:
+                            attr_value = (
+                                f"this->GetAttr(\"{args_list[args_index]}\")"
+                            )
+                        elif attr.get("data_type", None) == "Scalar":
+                            attr_value = (
+                                f"experimental::Scalar({args_list[args_index]})"
+                            )
+                        else:
+                            attr_value = args_list[args_index]
                         bw_op['invoke']['attrs'].append(
                             {
                                 'name': attr['name'],
                                 'fluid_name': attr['fluid_name'],
+                                'typename': attr_type,
                                 'value': attr_value,
                             }
                         )

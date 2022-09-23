@@ -75,14 +75,7 @@ class NumpyArrayInitializer(Initializer):
             out_dtype = var.dtype
             np_value = self._value
 
-        if out_dtype == core.VarDesc.VarType.FP32:
-            value_name = "fp32_values"
-            values = [float(v) for v in np_value.flat]
-        elif out_dtype == core.VarDesc.VarType.INT32:
-            value_name = "int32_values"
-            values = [int(v) for v in np_value.flat]
-        else:
-            raise ValueError("Unsupported dtype %s", self._value.dtype)
+        values = np_value.ravel().tolist()
         if self._value.size > 1024 * 1024 * 1024:
             raise ValueError(
                 "The size of input is too big. Please consider "
@@ -113,7 +106,7 @@ class NumpyArrayInitializer(Initializer):
                 attrs={
                     'dtype': out_dtype,
                     'shape': list(self._value.shape),
-                    value_name: values,
+                    'values': values,
                 },
                 stop_gradient=True,
             )

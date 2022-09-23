@@ -21,6 +21,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.fluid import framework
 
 
 class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
@@ -42,14 +43,9 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
                 for dtype in [5, 2, 3]:
                     for str_value in ["2", "23", "-1"]:
                         self.num_input = num_input
-                        value = float(str_value)
-                        if np.random.choice([False, True]):
-                            str_value = str_value
-                        else:
-                            str_value = ""
+                        value = framework.wrap_as_scalar(float(str_value))
                         dics = [
                             {
-                                "str_value": str_value,
                                 "value": value,
                                 "shape": shape,
                                 "dtype": dtype,

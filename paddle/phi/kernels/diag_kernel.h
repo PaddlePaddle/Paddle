@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -43,14 +44,14 @@ template <typename T, typename Context>
 void DiagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int offset,
-                float padding_value,
+                const Scalar& padding_value,
                 DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Diag(const Context& dev_ctx,
                  const DenseTensor& x,
                  int offset,
-                 float padding_value) {
+                 const Scalar& padding_value) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   DiagInferMeta(x, offset, padding_value, &meta_out);

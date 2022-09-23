@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/fill_diagonal_kernel.h"
 
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -23,11 +24,11 @@ namespace phi {
 template <typename T, typename Context>
 void FillDiagonalKernel(const Context& ctx,
                         const DenseTensor& x,
-                        float value,
+                        const Scalar& value,
                         int offset,
                         bool wrap,
                         DenseTensor* out) {
-  T temp_var = static_cast<T>(value);
+  T temp_var = value.to<T>();
 
   T* out_data = ctx.template Alloc<T>(out);
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
@@ -65,4 +66,6 @@ PD_REGISTER_KERNEL(fill_diagonal,
                    int64_t,
                    int,
                    phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    bool) {}

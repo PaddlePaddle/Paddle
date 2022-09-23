@@ -23,6 +23,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.fluid import framework
 
 
 class TrtConvertTileTest(TrtLayerAutoScanTest):
@@ -136,7 +137,7 @@ class TrtConvertTileTest2(TrtLayerAutoScanTest):
                 "op_outputs": {"Out": ["repeat_times"]},
                 "op_attrs": {
                     "dtype": 2,
-                    "str_value": "10",
+                    "value": framework.wrap_as_scalar(10),
                     "shape": [1],
                 },
             },
@@ -225,7 +226,7 @@ class TrtConvertTileTest3(TrtLayerAutoScanTest):
                 "op_outputs": {"Out": ["repeat_times1"]},
                 "op_attrs": {
                     "dtype": 2,
-                    "str_value": "10",
+                    "value": framework.wrap_as_scalar(10),
                     "shape": [1],
                 },
             },
@@ -235,7 +236,7 @@ class TrtConvertTileTest3(TrtLayerAutoScanTest):
                 "op_outputs": {"Out": ["repeat_times2"]},
                 "op_attrs": {
                     "dtype": 2,
-                    "str_value": "12",
+                    "value": framework.wrap_as_scalar(12),
                     "shape": [1],
                 },
             },

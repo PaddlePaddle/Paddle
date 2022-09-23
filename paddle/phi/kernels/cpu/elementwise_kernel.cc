@@ -167,7 +167,9 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   complex64,
+                   complex128) {}
 
 PD_REGISTER_KERNEL(heaviside,
                    CPU,

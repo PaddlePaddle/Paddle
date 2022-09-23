@@ -16,12 +16,11 @@
 
 namespace phi {
 KernelSignature FillOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("fill", {"X"}, {"value_float"}, {"Out"});
+  return KernelSignature("fill", {"X"}, {"value"}, {"Out"});
 }
 
 KernelSignature FillGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "fill_grad", {"Out@GRAD"}, {"value_float"}, {"X@GRAD"});
+  return KernelSignature("fill_grad", {"Out@GRAD"}, {"value"}, {"X@GRAD"});
 }
 
 }  // namespace phi

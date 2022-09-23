@@ -46,7 +46,7 @@ __global__ void fill_constant_kernel(const int64_t featuresize,
 template <typename T, typename Context>
 void FillDiagonalGradKernel(const Context& ctx,
                             const DenseTensor& out_grad,
-                            float value,
+                            const Scalar& value,
                             int offset,
                             bool wrap,
                             DenseTensor* x_grad) {
@@ -86,4 +86,6 @@ PD_REGISTER_KERNEL(fill_diagonal_grad,
                    int64_t,
                    int,
                    phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    bool) {}

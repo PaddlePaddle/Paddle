@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -331,7 +332,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      const IntArray& paddings,
                      const std::string& mode,
-                     float pad_value,
+                     const Scalar& pad_value,
                      const std::string& data_format,
                      DenseTensor* x_grad) {
   std::vector<int64_t> pads = paddings.GetData();
@@ -509,4 +510,6 @@ PD_REGISTER_KERNEL(pad3d_grad,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

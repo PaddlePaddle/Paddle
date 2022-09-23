@@ -54,12 +54,12 @@ attr_types_map = {
 opmaker_attr_types_map = {
     # special types
     'IntArray': 'std::vector<int64_t>',
-    'Scalar': 'float',
+    'Scalar': 'experimental::Scalar',
     'Scalar(bool)': 'bool',
     'Scalar(int)': 'int',
     'Scalar(int64_t)': 'int64_t',
     'Scalar(float)': 'float',
-    'Scalar[]': 'std::vector<Scalar>',
+    'Scalar[]': 'std::vector<experiemntal::Scalar>',
     'Place': 'int',
     'DataLayout': 'int',
     'DataType': 'int',

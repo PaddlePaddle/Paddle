@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/pad3d_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -364,7 +365,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      const IntArray& paddings,
                      const std::string& mode,
-                     float pad_value,
+                     const Scalar& pad_value,
                      const std::string& data_format,
                      DenseTensor* x_grad) {
   std::vector<int64_t> pads = paddings.GetData();
@@ -476,5 +477,11 @@ void Pad3dGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    pad3d_grad, CPU, ALL_LAYOUT, phi::Pad3dGradKernel, float, double) {}
+PD_REGISTER_KERNEL(pad3d_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Pad3dGradKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -90,6 +90,8 @@ void MinimumGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
 PD_REGISTER_KERNEL(fmax_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -151,4 +153,6 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    int,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
-                   int64_t) {}
+                   int64_t,
+                   complex64,
+                   complex128) {}

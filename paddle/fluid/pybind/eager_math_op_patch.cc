@@ -1543,13 +1543,25 @@ static PyObject* tensor__pow__method(TensorObject* self,
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
+  phi::DataType promote_dtype =
+      framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
+          framework::TransToProtoVarType(lhs_dtype),
+          framework::TransToProtoVarType(rhs_dtype)));
+  if (lhs_dtype != promote_dtype) {
     VLOG(6) << "The dtype of left and right Tensor are not the same, left "
                "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
+            << lhs_dtype << ", but promoted dtype is " << promote_dtype
+            << ", the left dtype will convert to " << promote_dtype;
     eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    self_tensor = cast_ad_func(self_tensor, promote_dtype);
+  }
+  if (rhs_dtype != promote_dtype) {
+    VLOG(6) << "The dtype of left and right Tensor are not the same, right "
+               "dtype is "
+            << rhs_dtype << ", but promoted dtype is " << promote_dtype
+            << ", the right dtype will convert to " << promote_dtype;
+    eager_gil_scoped_release guard;
+    other_tensor = cast_ad_func(other_tensor, promote_dtype);
   }
 
   // 4. calculation
@@ -1635,13 +1647,25 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
+  phi::DataType promote_dtype =
+      framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
+          framework::TransToProtoVarType(lhs_dtype),
+          framework::TransToProtoVarType(rhs_dtype)));
+  if (lhs_dtype != promote_dtype) {
     VLOG(6) << "The dtype of left and right Tensor are not the same, left "
                "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
+            << lhs_dtype << ", but promoted dtype is " << promote_dtype
+            << ", the left dtype will convert to " << promote_dtype;
     eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    self_tensor = cast_ad_func(self_tensor, promote_dtype);
+  }
+  if (rhs_dtype != promote_dtype) {
+    VLOG(6) << "The dtype of left and right Tensor are not the same, right "
+               "dtype is "
+            << rhs_dtype << ", but promoted dtype is " << promote_dtype
+            << ", the right dtype will convert to " << promote_dtype;
+    eager_gil_scoped_release guard;
+    other_tensor = cast_ad_func(other_tensor, promote_dtype);
   }
 
   // 4. calculation

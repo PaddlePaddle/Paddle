@@ -920,11 +920,28 @@ void BindImperative(py::module *m_ptr) {
                   if (!py::isinstance<py::array_t<bool>>(value_obj)) {
                     value = pybind11::detail::CastNumpyArray<bool>(value_obj);
                   }
+                } else if (self->DataType() ==
+                           framework::proto::VarType::COMPLEX64) {
+                  if (!py::isinstance<py::array_t<std::complex<float>>>(
+                          value_obj)) {
+                    value =
+                        pybind11::detail::CastNumpyArray<std::complex<float>>(
+                            value_obj);
+                  }
+                } else if (self->DataType() ==
+                           framework::proto::VarType::COMPLEX128) {
+                  if (!py::isinstance<py::array_t<std::complex<double>>>(
+                          value_obj)) {
+                    value =
+                        pybind11::detail::CastNumpyArray<std::complex<double>>(
+                            value_obj);
+                  }
                 } else {
                   PADDLE_THROW(platform::errors::InvalidArgument(
                       "When assign a numpy.np value to a paddle.Tensor, "
                       "the data type of the paddle.Tensor must be bool, "
-                      "float32, int32 or int64, "
+                      "float32, float64, complex64, complex128, int32 or "
+                      "int64, "
                       "please check the type of tensor."));
                 }
 
@@ -939,35 +956,45 @@ void BindImperative(py::module *m_ptr) {
                 // convert the value to self data type
                 if (py::isinstance<py::float_>(value_obj) ||
                     py::isinstance<py::int_>(value_obj) ||
-                    py::isinstance<py::bool_>(value_obj)) {
+                    py::isinstance<py::bool_>(value_obj) ||
+                    PyComplex_Check(value_obj.ptr())) {
                   if (self->DataType() == framework::proto::VarType::FP32) {
-                    attrs["fp32_values"] =
-                        std::vector<float>{value_obj.cast<float>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<float>()};
                   } else if (self->DataType() ==
                              framework::proto::VarType::FP64) {
-                    attrs["fp64_values"] =
-                        std::vector<double>{value_obj.cast<double>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<double>()};
                   } else if (self->DataType() ==
                              framework::proto::VarType::INT32) {
-                    attrs["int32_values"] =
-                        std::vector<int32_t>{value_obj.cast<int32_t>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<int32_t>()};
                   } else if (self->DataType() ==
                              framework::proto::VarType::INT64) {
-                    attrs["int64_values"] =
-                        std::vector<int64_t>{value_obj.cast<int64_t>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<int64_t>()};
                   } else if (self->DataType() ==
                              framework::proto::VarType::BOOL) {
-                    attrs["bool_values"] =
-                        std::vector<int>{value_obj.cast<bool>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<bool>()};
                   } else if (self->DataType() ==
                              framework::proto::VarType::FP16) {
-                    attrs["fp16_values"] =
-                        std::vector<float>{value_obj.cast<float>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<float>()};
+                  } else if (self->DataType() ==
+                             framework::proto::VarType::COMPLEX64) {
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<std::complex<float>>()};
+                  } else if (self->DataType() ==
+                             framework::proto::VarType::COMPLEX128) {
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<std::complex<double>>()};
                   } else {
                     PADDLE_THROW(platform::errors::InvalidArgument(
                         "When assign a value to a paddle.Tensor, "
                         "the data type of the paddle.Tensor must be bool, "
-                        "float32, int32, int64 or float16, "
+                        "float32, float64, complex64, complex128, int32, int64 "
+                        "or float16, "
                         "please check the type of tensor."));
                   }
                   attrs["shape"] = std::vector<int64_t>{1};

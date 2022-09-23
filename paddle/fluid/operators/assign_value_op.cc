@@ -15,8 +15,11 @@
 #include "paddle/fluid/operators/assign_value_op.h"
 
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/nullary.h"
 
@@ -63,14 +66,11 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({framework::proto::VarType::BOOL,
                  framework::proto::VarType::INT32,
                  framework::proto::VarType::FP32,
-                 framework::proto::VarType::INT64});
-    AddAttr<std::vector<int>>("bool_values", "store the bool values")
-        .SetDefault({});
-    AddAttr<std::vector<float>>("fp32_values", "store the float32 values")
-        .SetDefault({});
-    AddAttr<std::vector<int>>("int32_values", "store the int32 values")
-        .SetDefault({});
-    AddAttr<std::vector<int64_t>>("int64_values", "store the int64 values")
+                 framework::proto::VarType::INT64,
+                 framework::proto::VarType::FP64,
+                 framework::proto::VarType::COMPLEX64,
+                 framework::proto::VarType::COMPLEX128});
+    AddAttr<std::vector<paddle::experimental::Scalar>>("values", "store values")
         .SetDefault({});
     AddComment(R"DOC(
 AssignValue operator
@@ -95,3 +95,17 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AssignValueInferShapeFunctor);
+
+REGISTER_OP_VERSION(assign_value)
+    .AddCheckpoint(
+        R"ROC(
+Upgrade assign_value, remove plain attributes in favor of generic attribute.
+              )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("values",
+                     "values",
+                     std::vector<paddle::experimental::Scalar>())
+            .DeleteAttr("bool_values", "remove plain attributes")
+            .DeleteAttr("fp32_values", "remove plain attributes")
+            .DeleteAttr("int32_values", "remove plain attributes")
+            .DeleteAttr("int64_values", "remove plain attributes"));

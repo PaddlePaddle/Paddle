@@ -159,8 +159,11 @@ void FFTC2RGradInferMeta(const MetaTensor& x,
                          MetaTensor* out,
                          MetaConfig = MetaConfig());
 
-void FillDiagonalGradInferMeta(
-    const MetaTensor& dout, float value, int offset, bool wrap, MetaTensor* dx);
+void FillDiagonalGradInferMeta(const MetaTensor& dout,
+                               const Scalar& value,
+                               int offset,
+                               bool wrap,
+                               MetaTensor* dx);
 
 void FillDiagonalTensorGradInferMeta(const MetaTensor& out_grad,
                                      int64_t offset,

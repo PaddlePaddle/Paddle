@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import re
 import warnings
 
 from google.protobuf import text_format
@@ -111,6 +112,16 @@ def check_embedding_dim(accessor_proto, varname, program_id, context):
                     embedding_dim - 3, embedx_dim
                 )
             )
+
+
+def _extract_float_repr(s):
+    m = re.match(r"Scalar\([^\(]+\((.+)\)\)", s)
+    if m:
+        # match Scalar wrapped numeric literal
+        return m.group(1)
+    else:
+        # plain numeric literal
+        return s
 
 
 class Service:
@@ -231,12 +242,16 @@ class Accessor:
                     learning_rate = common_accessor.initializers[-1].split("&")[
                         1
                     ]
-                    sgd_param.naive.learning_rate = float(learning_rate)
+                    sgd_param.naive.learning_rate = float(
+                        _extract_float_repr(learning_rate)
+                    )
                 if not sgd_param.naive.HasField("initial_range"):
                     initial_range = common_accessor.initializers[0].split("&")[
                         -1
                     ]
-                    sgd_param.naive.initial_range = float(initial_range)
+                    sgd_param.naive.initial_range = float(
+                        _extract_float_repr(initial_range)
+                    )
                 if len(sgd_param.naive.weight_bounds) == 0:
                     sgd_param.naive.weight_bounds.extend([-10.0, 10.0])
 
@@ -248,33 +263,43 @@ class Accessor:
                     learning_rate = common_accessor.initializers[-1].split("&")[
                         1
                     ]
-                    sgd_param.adam.learning_rate = float(learning_rate)
+                    sgd_param.adam.learning_rate = float(
+                        _extract_float_repr(learning_rate)
+                    )
                 if not sgd_param.adam.HasField("initial_range"):
                     initial_range = common_accessor.initializers[0].split("&")[
                         -1
                     ]
-                    sgd_param.adam.initial_range = float(initial_range)
+                    sgd_param.adam.initial_range = float(
+                        _extract_float_repr(initial_range)
+                    )
 
                 attr_list = [x.split("&") for x in common_accessor.attrs]
                 if (
                     not sgd_param.adam.HasField("beta1_decay_rate")
                     and common_accessor.accessor_class == "adam"
                 ):
-                    sgd_param.adam.beta1_decay_rate = float(attr_list[0][1])
+                    sgd_param.adam.beta1_decay_rate = float(
+                        _extract_float_repr(attr_list[0][1])
+                    )
                 else:
                     sgd_param.adam.beta1_decay_rate = 0.9
                 if (
                     not sgd_param.adam.HasField("beta2_decay_rate")
                     and common_accessor.accessor_class == "adam"
                 ):
-                    sgd_param.adam.beta2_decay_rate = float(attr_list[1][1])
+                    sgd_param.adam.beta2_decay_rate = float(
+                        _extract_float_repr(attr_list[1][1])
+                    )
                 else:
                     sgd_param.adam.beta2_decay_rate = 0.999
                 if (
                     not sgd_param.adam.HasField("ada_epsilon")
                     and common_accessor.accessor_class == "adam"
                 ):
-                    sgd_param.adam.ada_epsilon = float(attr_list[2][1])
+                    sgd_param.adam.ada_epsilon = float(
+                        _extract_float_repr(attr_list[2][1])
+                    )
                 else:
                     sgd_param.adam.ada_epsilon = 1e-08
                 if len(sgd_param.adam.weight_bounds) == 0:
@@ -396,7 +421,7 @@ class CommonAccessor(Accessor):
                 # print("get_initializer_attr op type:", op.type)
                 for attr in self.opt_init_map[op.type]:
                     # print("get_initializer_attr opt_init_map attr:", attr)
-                    init_attr.append(str(op.attr(attr)))
+                    init_attr.append(_extract_float_repr(str(op.attr(attr))))
                     # print("get_initializer_attr op attr:", str(op.attr(attr)))
                 attr_str = l_in.join(init_attr)
                 break
@@ -1347,6 +1372,8 @@ class TheOnePSRuntime(RuntimeBase):
             print(f"server_desc: \n{server_desc}")
 
         self._server = core.DistFleetWrapper()
+        print("THIS_PROGRAMS")
+        print(server_desc)
         self._server.init_server(
             server_desc,
             self.string_hosts,

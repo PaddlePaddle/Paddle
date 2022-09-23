@@ -339,7 +339,7 @@
   backward : det_grad
 
 - op : diag
-  args : (Tensor x, int offset = 0, float padding_value = 0.0)
+  args : (Tensor x, int offset = 0, Scalar padding_value = 0.0)
   output : Tensor
   infer_meta :
     func : DiagInferMeta
@@ -512,7 +512,7 @@
   backward : fft_r2c_grad
 
 - op : fill_diagonal
-  args : (Tensor x, float value=0, int offset=0, bool wrap=false)
+  args : (Tensor x, Scalar value=0, int offset=0, bool wrap=false)
   output : Tensor(out)
   infer_meta :
     func : FillDiagonalInferMeta
@@ -1048,7 +1048,7 @@
   backward : multi_dot_grad
 
 - op : multinomial
-  args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
+  args : (Tensor x, Scalar num_samples = 1, bool replacement = false)
   output : Tensor(out)
   infer_meta :
     func : MultinomialInferMeta
@@ -1631,7 +1631,7 @@
   backward : thresholded_relu_grad
 
 - op : topk
-  args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)
+  args : (Tensor x, Scalar k = 1, int axis = -1, bool largest = true, bool sorted = true)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : TopKInferMeta

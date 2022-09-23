@@ -14,13 +14,15 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+
 namespace phi {
 
 template <typename T, typename Context>
 void FillDiagonalKernel(const Context& ctx,
                         const DenseTensor& x,
-                        float value,
+                        const Scalar& value,
                         int offset,
                         bool wrap,
                         DenseTensor* out);

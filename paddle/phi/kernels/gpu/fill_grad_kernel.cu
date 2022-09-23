@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/fill_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/fill_grad_kernel_impl.h"
 
@@ -28,4 +29,6 @@ PD_REGISTER_KERNEL(fill_grad,
                    int,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

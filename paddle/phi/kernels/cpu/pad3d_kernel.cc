@@ -381,10 +381,10 @@ void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const IntArray& paddings,
                  const std::string& mode,
-                 float pad_value,
+                 const Scalar& pad_value,
                  const std::string& data_format,
                  DenseTensor* out) {
-  T value = static_cast<T>(pad_value);
+  T value = pad_value.to<T>();
   std::vector<int64_t> pads = paddings.GetData();
 
   auto in_dims = x.dims();
@@ -583,5 +583,6 @@ PD_REGISTER_KERNEL(pad3d,
                    double,
                    int,
                    int64_t,
+                   bool,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

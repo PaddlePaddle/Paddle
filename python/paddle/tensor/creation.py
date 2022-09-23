@@ -16,7 +16,6 @@
 
 import math
 import re
-import warnings
 
 import numpy as np
 
@@ -789,9 +788,9 @@ def full_like(x, fill_value, dtype=None, name=None):
 
     Args:
         x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
-        fill_value(bool|float|int): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
+        fill_value(bool|float|int|complex): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
         dtype(np.dtype|str, optional): The data type of output. The data type can be one
-            of bool, float16, float32, float64, int32, int64. The default value is None, which means the output
+            of bool, float16, float32, float64, int32, int64, complex64, complex128. The default value is None, which means the output
             data type is the same as input.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -829,6 +828,8 @@ def full_like(x, fill_value, dtype=None, name=None):
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'full_like',
         )
@@ -844,6 +845,8 @@ def full_like(x, fill_value, dtype=None, name=None):
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'full_like/zeros_like/ones_like',
         )
@@ -860,6 +863,53 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
+    """
+
+    This OP creates a Tensor with specified `shape` and `dtype`, and
+    initializes it with a constant specified by `value`.
+
+    The attribute `stop_gradient` of the created Tensor is set to True.
+
+    Args:
+        shape(list|tuple|Tensor): Shape of the output Tensor, the data type of ``shape`` is int32 or int64.
+            If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor with date type int32 or int64.
+        dtype(np.dtype|str): Data type of the output Tensor which can
+            be float16, float32, float64, uint8, int16, int32, int64.
+        value(bool|float|int|Tensor): The constant value used to initialize
+            the Tensor to be created. If ``value`` is an Tensor, it should be an 1-D Tensor.
+        force_cpu(bool, optional): data should be on CPU if it's true, default value is False.
+        out(Tensor, optional): Optional output which can be any created
+            Tensor that meets the requirements to store the result of operation.
+            if ``out`` is None, a new Tensor will be create to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Tensor which is created according to shape and dtype.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          # attr shape is a list which doesn't contain  Tensor.
+          data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') # data1=[[0],[0]]
+          data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1)
+          # data1=[[5], [5]] data2=[[5], [5]]
+
+          # attr shape is a list which contains Tensor.
+          positive_2 = fluid.layers.fill_constant([1], "int32", 2)
+          data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[[1.5, 1.5]]
+
+          # attr shape is a Tensor.
+          shape = fluid.layers.fill_constant([2], "int32", 2) # shape=[2,2]
+          data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
+
+          # attr value is a Tensor.
+          val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
+          data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
+    """
+
     if in_dygraph_mode():
         place = _current_expected_place()
         if force_cpu:
@@ -871,26 +921,20 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
         if out is None:
-            out = _C_ops.full(shape, float(value), dtype, place)
+            out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
 
         if out is not None:
             # final state mode is support out is not None.
-            _C_ops.full_(out, shape, float(value), dtype, place)
+            _C_ops.full_(out, shape, value, dtype, place)
             out.stop_gradient = True
             return out
     else:
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
         if not isinstance(value, Variable):
-            if dtype in ['int8', 'uint8', 'int16', 'int32', 'int64']:
-                attrs['str_value'] = str(int(value))
-                attrs['value'] = int(value)
-            else:
-                attrs['str_value'] = str(float(value))
-                attrs['value'] = float(value)
-
+            attrs['value'] = np.array(value).item()
         helper = LayerHelper("fill_constant", **locals())
         inputs = {}
         if isinstance(value, Variable):
@@ -1718,7 +1762,7 @@ def diag(x, offset=0, padding_value=0, name=None):
     If ``offset`` < 0, it is subdiagonal.
 
     Args:
-        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64.
+        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float32, float64, int32, int64.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
         padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1785,11 +1829,21 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')
-        check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
+        check_type(
+            padding_value, 'padding_value', (int, float, complex), 'diag_v2'
+        )
         if len(x.shape) != 1 and len(x.shape) != 2:
             raise ValueError(
                 "The dimension of input x must be either 1 or 2, but received {}".format(
@@ -2051,6 +2105,8 @@ def assign(x, output=None):
                     'uint8',
                     'int8',
                     'bool',
+                    'complex64',
+                    'complex128',
                 ],
                 'assign',
                 '(When the type of input in assign is Variable.)',
@@ -2094,33 +2150,23 @@ def assign(x, output=None):
             )
 
         dtype = convert_np_dtype_to_dtype_(input.dtype)
-        if dtype == core.VarDesc.VarType.FP64:
-            # Setting FP64 numpy data is not supported in Paddle, so we
-            # use FP32 here
-            warnings.warn(
-                "paddle.assign doesn't support float64 input now due "
-                "to current platform protobuf data limitation, we convert "
-                "it to float32"
-            )
-            dtype = core.VarDesc.VarType.FP32
-        if dtype == core.VarDesc.VarType.BOOL:
-            value_name = "bool_values"
-            values = [int(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.FP32:
-            value_name = "fp32_values"
-            values = [float(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.INT32:
-            value_name = "int32_values"
-            values = [int(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.INT64:
-            value_name = "int64_values"
-            values = [int(v) for v in input.flat]
-        else:
-            raise TypeError(
-                "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be bool, float32, int32 or int64, but "
-                "received %s." % convert_dtype(dtype)
-            )
+        check_dtype(
+            dtype,
+            'input',
+            [
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'assign',
+            '(When the type of input in assign is numpy array.)',
+        )
+        # convert it to a python list to avoid using numpy scalar types here
+        values = input.ravel().tolist()
         if input.size > 1024 * 1024:
             raise ValueError(
                 "The size of input is too big. Please consider "
@@ -2147,7 +2193,7 @@ def assign(x, output=None):
                 attrs={
                     'dtype': dtype,
                     'shape': list(input.shape),
-                    value_name: values,
+                    'values': values,
                 },
             )
 

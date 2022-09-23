@@ -21,6 +21,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.fluid import framework
 
 
 class TrtConvertPadTest(TrtLayerAutoScanTest):
@@ -53,7 +54,13 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
                 [0, 0, 1, 1, 1, 1, 1, 1],
                 [0, 0, 0, 0, -1, -1, 1, 1],
             ]:
-                dics = [{"pad_value": pad_value, "paddings": paddings}, {}]
+                dics = [
+                    {
+                        "pad_value": framework.wrap_as_scalar(pad_value),
+                        "paddings": paddings,
+                    },
+                    {},
+                ]
 
                 ops_config = [
                     {

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -55,7 +56,7 @@ class ExponentialGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("fill_any_like");
     retv->SetInput("X", this->OutputGrad("Out"));
-    retv->SetAttr("value", 0.0f);
+    retv->SetAttr("value", paddle::experimental::Scalar(0.0f));
     retv->SetOutput("Out", this->InputGrad("X"));
   }
 };

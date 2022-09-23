@@ -68,36 +68,51 @@ AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name
 {% macro add_attr(i, attr, op_name) %}{# inline #}
   {% set name = attr["fluid_name"] %}
   {% set typename = attr["typename"] %}
-  {% if typename is scalar and
-  ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
+  {% if typename is scalar %}
+    {% if "is_support_tensor" not in attr or attr["is_support_tensor"] is false%}
 AddInput("{{attr | to_scalar_tensor_name}}", "attribute {{i}} for {{op_name}} op from 0D Tensor.")
     .AsDispensable();
+    {% endif %}
+    {% if "data_type" in attr %}{# for compatibility with legacy opmaker #}
 AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
-  {% elif typename == "IntArray" and
-  ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}{# the type has been renamed #}
-    {% if 'tensor_name' in attr or 'manual_flag' not in attr %}
+    {% else %}{# generate as is #}
+AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
+    {% endif %}
+  {% elif typename == "IntArray" %}{# the type has been renamed #}
+    {% if "is_support_tensor" not in attr or attr["is_support_tensor"] is false %}
+      {% if "manual_flag" in attr and attr["manual_flag"] %}{# generate as specified #}
+        {% if "tensor_name" in attr %}
 AddInput("{{attr | to_int_array_tensor_name}}", "attribute {{i}} for {{op_name}} op from 1D integer Tensor.")
     .AsDispensable();
-    {% endif %}
-    {% if 'tensors_name' in attr or 'manual_flag' not in attr %}
+        {% endif %}
+        {% if "tensors_name" in attr %}
 AddInput("{{attr | to_int_array_tensors_name}}", "attribute {{i}} for {{op_name}} op from list fo 0D integer Tensors.")
     .AsDuplicable()
     .AsDispensable();
+        {% endif %}
+      {% else %}{# generate both if not specified #}
+AddInput("{{attr | to_int_array_tensor_name}}", "attribute {{i}} for {{op_name}} op from 1D integer Tensor.")
+    .AsDispensable();
+AddInput("{{attr | to_int_array_tensors_name}}", "attribute {{i}} for {{op_name}} op from list fo 0D integer Tensors.")
+    .AsDuplicable()
+    .AsDispensable();
+      {% endif %}
     {% endif %}
-  AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
-  {% elif "is_support_tensor" in attr and attr["is_support_tensor"] %}
+    {% if "data_type" in attr %}{# for compatibility with legacy opmaker #}
 AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
+    {% else %}{# generate as std::vector<int64_t> #}
+AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
+    {% endif %}
   {% else %}
 AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
   {% endif %}
   {% if "default_value" in attr %}
     .SetDefault({{process_default_value(attr)}})
-  {%- endif %}
+  {% endif %}
   {% if "is_support_tensor" in attr and attr["is_support_tensor"] %}
-
     .SupportTensor()
   {%- endif %}
-{%- endmacro %}
+{%- endmacro -%}
 
 {# process default value for attributes, some attribute has different types and different default values in op & opmaker #}
 {% macro process_default_value(attr) %}{# inline #}
@@ -271,11 +286,12 @@ paddle::small_vector<const char*> inputs {
 {% set typename = attr["typename"] %}
 {%- if attr["fluid_name"] in kernel_args %}
 {% set name = attr["fluid_name"] %}
-{% if typename is scalar and
-("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}{# scalar correspond to a dispensable input and an attr in opmaker #}
-attrs.emplace_back(ctx.HasInput("{{attr | to_scalar_tensor_name}}") ? "{{attr | to_scalar_tensor_name}}" : "{{name}}");
-{%- elif typename == "IntArray" and
-("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
+{% if typename is scalar %}{# scalar correspond to a dispensable input and an attr in opmaker #}
+attrs.emplace_back(
+  ctx.HasInput("{{attr | to_scalar_tensor_name}}")
+  ? "{{attr | to_scalar_tensor_name}}"
+  : "{{name}}");
+{%- elif typename == "IntArray" %}
   {% if 'tensor_name' in attr and  'tensors_name' not in attr %}
 attrs.emplace_back(
   ctx.HasInput("{{attr | to_int_array_tensor_name}}")

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/common/scalar.h"
 
 namespace phi {
 
@@ -107,7 +108,7 @@ template <typename T, typename Context>
 void PadOpKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const std::vector<int64_t>& paddings,
-                 float pad_value,
+                 const Scalar& pad_value,
                  DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto& astream = OneDNNContext::tls().get_stream();
@@ -139,7 +140,7 @@ void PadOpKernel(const Context& dev_ctx,
   T* out_ptr = out->data<T>();
   std::fill(out_ptr,
             out_ptr + CalculateNumOfPrefillElems(out_tz, paddings),
-            pad_value);
+            pad_value.to<T>());
 
   // paddings are in order: left, right, top, bottom, front, back
   for (size_t i = 0; i < paddings.size(); ++i) {

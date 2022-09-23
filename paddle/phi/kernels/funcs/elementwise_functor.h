@@ -636,5 +636,47 @@ struct ElementwiseInversePowFunctor {
   }
 };
 
+template <>
+struct ElementwiseInversePowFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float f_a = static_cast<float>(a);
+    float f_b = static_cast<float>(b);
+    return static_cast<dtype::float16>(std::pow(f_b, f_a));
+  }
+};
+
+template <>
+struct ElementwisePowFunctor<dtype::complex<float>> {
+  inline HOSTDEVICE dtype::complex<float> operator()(
+      const dtype::complex<float> a, const dtype::complex<float> b) const {
+    return static_cast<dtype::complex<float>>(phi::dtype::pow(a, b));
+  }
+};
+
+template <>
+struct ElementwisePowFunctor<dtype::complex<double>> {
+  inline HOSTDEVICE dtype::complex<double> operator()(
+      const dtype::complex<double> a, const dtype::complex<double> b) const {
+    return static_cast<dtype::complex<double>>(phi::dtype::pow(a, b));
+  }
+};
+
+template <>
+struct ElementwiseInversePowFunctor<dtype::complex<float>> {
+  inline HOSTDEVICE dtype::complex<float> operator()(
+      const dtype::complex<float> a, const dtype::complex<float> b) const {
+    return static_cast<dtype::complex<float>>(phi::dtype::pow(b, a));
+  }
+};
+
+template <>
+struct ElementwiseInversePowFunctor<dtype::complex<double>> {
+  inline HOSTDEVICE dtype::complex<double> operator()(
+      const dtype::complex<double> a, const dtype::complex<double> b) const {
+    return static_cast<dtype::complex<double>>(phi::dtype::pow(b, a));
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi

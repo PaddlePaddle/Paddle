@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -56,10 +58,10 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
         "padding 0 row to top, 1 row to bottom, 2 columns to left "
         "and 3 columns to right. Size of paddings should be equal to "
         "2 * dimension size of the input tensor.");
-    AddAttr<float>("pad_value",
-                   "(float, default 0.0) "
-                   "The value to fill the padded areas.")
-        .SetDefault(0.0f)
+    AddAttr<experimental::Scalar>("pad_value",
+                                  "(Scalar, default 0.0) "
+                                  "The value to fill the padded areas.")
+        .SetDefault(experimental::Scalar(0.0f))
         .SupportTensor();
     AddComment(R"DOC(
 Pad Operator.
@@ -160,3 +162,13 @@ REGISTER_OPERATOR(pad_grad,
                   ops::PadOpGrad,
                   ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OP_VERSION(pad).AddCheckpoint(
+    R"ROC(
+Upgrade pad, use generic pad_value instead of float pad_value.
+              )ROC",
+    paddle::framework::compatible::OpVersionDesc().ModifyAttr(
+        "pad_value",
+        "use generic type for pad_value, it could be the same type as the "
+        "input.",
+        paddle::experimental::Scalar(0.0f)));

@@ -328,7 +328,7 @@ void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const IntArray& paddings,
                  const std::string& mode,
-                 float pad_value,
+                 const Scalar& pad_value,
                  const std::string& data_format,
                  DenseTensor* out) {
   std::vector<int64_t> pads = paddings.GetData();
@@ -336,7 +336,7 @@ void Pad3dKernel(const Context& dev_ctx,
   auto in_dims = x.dims();
   const T* in_data = x.data<T>();
   auto out_dims = out->dims();
-  T value = static_cast<T>(pad_value);
+  T value = pad_value.to<T>();
 
   if (data_format == "NCDHW") {
     out_dims[0] = in_dims[0];

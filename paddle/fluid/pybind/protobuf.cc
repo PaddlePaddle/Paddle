@@ -23,6 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/framework/program_converter.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
@@ -50,6 +52,24 @@ static pybind11::bytes SerializeMessage(
   // Check IsInitialized in Python
   std::string retv;
   PADDLE_ENFORCE_EQ(self.Proto()->SerializePartialToString(&retv),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Failed to serialize input Desc to string."));
+  return retv;
+}
+
+template <>
+pybind11::bytes SerializeMessage<pd::ProgramDesc>(
+    pd::ProgramDesc &self) {  // NOLINT due to pybind11 convention.
+  // Check IsInitialized in Python
+  std::string retv;
+  pd::ProgramDesc copy = self;
+  // NOTE(chenfeiyu): save versioned ops' version id by default
+  framework::compatible::pb::OpVersionMap op_version_map(copy.OpVersionMap());
+  paddle::framework::compatible::SaveOpVersions(
+      framework::compatible::get_op_version_map(), &op_version_map);
+  pd::no_scalar::ConvertProgram(&copy);
+  PADDLE_ENFORCE_EQ(copy.Proto()->SerializePartialToString(&retv),
                     true,
                     platform::errors::InvalidArgument(
                         "Failed to serialize input Desc to string."));
@@ -372,7 +392,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("_set_int32_attr", &pd::OpDesc::SetPlainAttr<int>)
       .def("_set_int64_attr", &pd::OpDesc::SetPlainAttr<int64_t>)
       .def("_set_float32_attr", &pd::OpDesc::SetPlainAttr<float>)
-      //  .def("_set_float64_attr", &pd::OpDesc::SetPlainAttr<double>)
+      .def("_set_float64_attr", &pd::OpDesc::SetPlainAttr<double>)
       .def("_set_str_attr", &pd::OpDesc::SetPlainAttr<std::string>)
 
       .def("_set_bools_attr", &pd::OpDesc::SetPlainAttr<std::vector<bool>>)

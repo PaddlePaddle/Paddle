@@ -196,6 +196,8 @@ def cast(x, dtype):
                 'int64',
                 'uint8',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'cast',
         )
@@ -213,6 +215,8 @@ def cast(x, dtype):
                 'int64',
                 'uint8',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'cast',
         )
@@ -873,7 +877,7 @@ def fill_(x, value):
             print(tensor.tolist())   #[0, 0, 0, 0, 0]
 
     """
-    if not isinstance(value, (float, int)):
+    if not isinstance(value, (float, int, bool, complex)):
         raise TypeError(
             "The type of 'value'  must be int or float, but received %s."
             % (type(value))
@@ -1136,6 +1140,8 @@ def concat(x, axis=0, name=None):
                         'int8',
                         'unit8',
                         'uint16',
+                        'complex64',
+                        'complex128',
                     ],
                     'concat',
                 )

@@ -630,7 +630,7 @@ void DiagEmbedInferMeta(
 
 void DiagInferMeta(const MetaTensor& x,
                    int offset,
-                   float padding_value,
+                   const Scalar& padding_value,
                    MetaTensor* out) {
   auto x_dims = x.dims();
 
@@ -1043,8 +1043,11 @@ void ExpandInferMeta(const MetaTensor& x,
   }
 }
 
-void FillDiagonalInferMeta(
-    const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {
+void FillDiagonalInferMeta(const MetaTensor& x,
+                           const Scalar& value,
+                           int offset,
+                           bool wrap,
+                           MetaTensor* out) {
   PADDLE_ENFORCE_NE(
       out,
       nullptr,
@@ -2501,7 +2504,7 @@ void PadInferMeta(const MetaTensor& input,
 void Pad3dInferMeta(const MetaTensor& x,
                     const IntArray& paddings_int_array,
                     const std::string& mode,
-                    float value,
+                    const Scalar& value,
                     const std::string& data_format,
                     MetaTensor* out,
                     MetaConfig config) {

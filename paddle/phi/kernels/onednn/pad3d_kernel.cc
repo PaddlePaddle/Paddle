@@ -25,7 +25,7 @@ void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const IntArray& paddings,
                  const std::string& mode,
-                 float pad_value,
+                 const Scalar& pad_value,
                  const std::string& data_format,
                  DenseTensor* out) {
   PadOpKernel<T, Context>(dev_ctx, x, paddings.GetData(), pad_value, out);

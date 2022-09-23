@@ -64,6 +64,8 @@ def _manipulation_unop(helper):
 
 # Each primitive op is given a Python constructor for sake of convenience.
 def fill_const(value, shape, dtype, out=None):
+    if isinstance(value, paddle.fluid.core.Scalar):
+        value = float(value.value())
     attrs = {'value': value, 'shape': shape, 'dtype': dtype}
     helper = LayerHelper('fill_constant_p', **locals())
     if out is None:

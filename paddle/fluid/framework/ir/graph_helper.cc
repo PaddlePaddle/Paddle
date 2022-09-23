@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
+#include "paddle/phi/common/scalar.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
@@ -479,7 +480,7 @@ void RemoveControlDepInputAndOuput(OpDesc *op_desc) {
 static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   desc->SetType("fill_constant");
   desc->SetAttr("shape", std::vector<int64_t>({1}));
-  desc->SetAttr("value", 1.0f);
+  desc->SetAttr("value", experimental::Scalar(1.0f));
 
   if (node.IsWrappedBy<details::OpHandleBase>()) {
     details::OpHandleBase &op_hander =
@@ -487,9 +488,10 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
     desc->SetAttr(
         "dtype",
         dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->DType());
-    desc->SetAttr(
-        "value",
-        dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->Coeff());
+    desc->SetAttr("value",
+                  experimental::Scalar(
+                      dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)
+                          ->Coeff()));
   }
 
   desc->SetAttr("force_cpu", false);

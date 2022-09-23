@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/program_converter.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/inference/analysis/helper.h"
@@ -73,7 +74,11 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
         }
       }
     }
-    std::string program_bytes = program_desc.Proto()->SerializeAsString();
+
+    // call convert program before saving to convert to old format
+    framework::ProgramDesc program_desc_copy = program_desc;
+    framework::no_scalar::ConvertProgram(&program_desc_copy);
+    std::string program_bytes = program_desc_copy.Proto()->SerializeAsString();
     // rename from "17_ir_fc_fuse_pass.dot" to "fc_fuse_pass.pdmodel"
     program_path =
         graph_viz_path.substr(found1 + 4, found2 - found1 - 4) + ".pdmodel";

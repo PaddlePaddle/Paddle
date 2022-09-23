@@ -584,7 +584,6 @@ class Inserter:
             )
         inputs = {}
         attrs = {'force_cpu': False}
-        attrs['str_value'] = str(int("1"))
         attrs['value'] = int("1")
         attrs['dtype'] = out.dtype
         attrs['op_role'] = op_role

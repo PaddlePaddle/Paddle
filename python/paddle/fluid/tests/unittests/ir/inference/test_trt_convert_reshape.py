@@ -21,6 +21,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.fluid import framework
 
 
 class TrtConvertReshapeTest(TrtLayerAutoScanTest):
@@ -237,7 +238,7 @@ class TrtConvertReshapeTest2(TrtLayerAutoScanTest):
                         "op_outputs": {"Out": ["shapeT1_data"]},
                         "op_attrs": {
                             "dtype": 2,
-                            "str_value": "2",
+                            "value": framework.wrap_as_scalar(2),
                             "shape": [1],
                         },
                     },
@@ -247,7 +248,7 @@ class TrtConvertReshapeTest2(TrtLayerAutoScanTest):
                         "op_outputs": {"Out": ["shapeT2_data"]},
                         "op_attrs": {
                             "dtype": 2,
-                            "str_value": "24",
+                            "value": framework.wrap_as_scalar(24),
                             "shape": [1],
                         },
                     },
@@ -358,7 +359,7 @@ class TrtConvertReshapeTest3(TrtLayerAutoScanTest):
                         "op_outputs": {"Out": ["shape_data"]},
                         "op_attrs": {
                             "dtype": 2,
-                            "str_value": "12",
+                            "value": framework.wrap_as_scalar(12),
                             "shape": [2],
                         },
                     },

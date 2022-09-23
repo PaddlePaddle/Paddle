@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -21,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void FillDiagonalGradKernel(const Context& ctx,
                             const DenseTensor& out_grad,
-                            float value,
+                            const Scalar& value,
                             int offset,
                             bool wrap,
                             DenseTensor* x_grad);

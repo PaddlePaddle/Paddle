@@ -36,6 +36,14 @@
         - add_input : Max
           comment : Pass the mix, min value as input, not attribute. Max is dispensable.
 
+- op : diag
+  version :
+   - checkpoint : use generic attribute for padding_value
+     action :
+      - modify_attr : padding_value
+        comment : paddding value for diag_v2 op
+        default: 0.0f
+
 - op : equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
@@ -43,6 +51,15 @@
         - modify_attr : force_cpu
           comment : In order to force fill output variable to gpu memory.
           default : "false"
+
+- op : fill_diagonal
+  version :
+   - checkpoint : Upgrade fill_diagonal, change the type of attribute [value]
+                  to Scalar to support generic type.
+     action :
+      - modify_attr : value
+        comment : value of fill_diagonal op
+        default: 0.0f
 
 - op : flip
   version :

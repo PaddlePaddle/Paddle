@@ -1584,7 +1584,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         pad_value = value
 
         if in_dygraph_mode():
-            out = _C_ops.pad(x, paddings, float(pad_value))
+            out = _C_ops.pad(x, paddings, pad_value)
             return out
 
         check_variable_and_dtype(
@@ -1603,9 +1603,9 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
             "pad",
         )
 
-        check_type(pad_value, 'pad_value', (float, int, Variable), 'pad')
-        if isinstance(pad_value, int):
-            pad_value = float(pad_value)
+        check_type(
+            pad_value, 'pad_value', (float, int, complex, Variable), 'pad'
+        )
 
         helper = LayerHelper('pad', **locals())
         dtype = helper.input_dtype(input_param_name='x')

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/diag_kernel.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
@@ -135,4 +136,6 @@ PD_REGISTER_KERNEL(diag_grad,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

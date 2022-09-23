@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/elementwise_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
@@ -51,6 +52,8 @@ void MinimumGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
 PD_REGISTER_KERNEL(fmax_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -106,4 +109,6 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   complex64,
+                   complex128) {}

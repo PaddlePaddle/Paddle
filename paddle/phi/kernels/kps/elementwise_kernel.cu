@@ -182,5 +182,7 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    int,
                    float16,
                    bfloat16,
-                   int64_t) {}
+                   int64_t,
+                   complex64,
+                   complex128) {}
 #endif

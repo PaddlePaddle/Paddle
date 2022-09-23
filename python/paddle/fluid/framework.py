@@ -5872,6 +5872,22 @@ class Program:
             res_str = ""
             for block in self.blocks:
                 res_str += block.to_string(throw_on_error, with_details)
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))
+            res_str += (
+                "version {\n  "
+                + textwrap.indent(
+                    _debug_string_(proto.version, throw_on_error), "  "
+                )
+                + "}\n"
+            )
+            res_str += (
+                "op_version_map {\n  "
+                + textwrap.indent(
+                    _debug_string_(proto.op_version_map, throw_on_error), "  "
+                )
+                + "}\n"
+            )
         else:
             protostr = self.desc.serialize_to_string()
             proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))

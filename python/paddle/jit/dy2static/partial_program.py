@@ -977,6 +977,9 @@ class PartialProgramLayer:
             # preventing out_vars is empty or just one element at the beginning
             if len(res) == 0 and has_removed:
                 return None
+            # TODO(zhangliujie, chenfeiyu): to distinguish bewteen singleton
+            # tuple and item, e.g. `(tensor_a,)` and `tensor_a`. Keep
+            # singleton tuple
             elif len(res) == 1 and has_removed:
                 return res[0]
             return res

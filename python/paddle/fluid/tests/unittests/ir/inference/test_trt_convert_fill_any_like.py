@@ -21,6 +21,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.fluid import framework
 
 
 class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
@@ -69,7 +70,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
                 for dtype in [-1, 0, 2, 3, 4, 5]:
                     dics = [
                         {
-                            "value": value,
+                            "value": framework.wrap_as_scalar(value),
                             "dtype": dtype,
                         },
                     ]

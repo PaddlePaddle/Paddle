@@ -21,6 +21,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+from paddle.fluid import framework
 
 
 class TrtConvertRangeDynamicTest(TrtLayerAutoScanTest):
@@ -41,7 +42,7 @@ class TrtConvertRangeDynamicTest(TrtLayerAutoScanTest):
                     "op_outputs": {"Out": ["start_data"]},
                     "op_attrs": {
                         "dtype": self.in_dtype,
-                        "str_value": "7",
+                        "value": framework.wrap_as_scalar(7),
                         "shape": [1],
                     },
                 },
@@ -51,7 +52,7 @@ class TrtConvertRangeDynamicTest(TrtLayerAutoScanTest):
                     "op_outputs": {"Out": ["end_data"]},
                     "op_attrs": {
                         "dtype": self.in_dtype,
-                        "str_value": "256",
+                        "value": framework.wrap_as_scalar(256),
                         "shape": [1],
                     },
                 },
@@ -61,7 +62,7 @@ class TrtConvertRangeDynamicTest(TrtLayerAutoScanTest):
                     "op_outputs": {"Out": ["step_data"]},
                     "op_attrs": {
                         "dtype": self.in_dtype,
-                        "str_value": "1",
+                        "value": framework.wrap_as_scalar(1),
                         "shape": [1],
                     },
                 },

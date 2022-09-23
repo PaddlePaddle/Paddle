@@ -20,6 +20,8 @@ import numpy as np
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
+from paddle.fluid import framework
+
 
 class TestSquaredMatSubFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
@@ -32,8 +34,6 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
         alpha2 = 1.0
         axis1 = draw(st.sampled_from([-1, 0]))
         place_type = draw(st.sampled_from([-1, 0]))
-        has_str_value = draw(st.booleans())
-        str_value = ''
         value = draw(st.floats(min_value=-10, max_value=10))
         shape = draw(st.sampled_from([[1]]))
         axis2 = draw(st.sampled_from([-1, 0]))
@@ -110,31 +110,17 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
             attrs={"axis": axis1},
         )
 
-        if has_str_value:
-            fill_constant_op = OpConfig(
-                type="fill_constant",
-                inputs={},
-                outputs={"Out": ["constant_out"]},
-                attrs={
-                    "dtype": 5,
-                    "place_type": place_type,
-                    "str_value": str_value,
-                    "value": value,
-                    "shape": shape,
-                },
-            )
-        else:
-            fill_constant_op = OpConfig(
-                type="fill_constant",
-                inputs={},
-                outputs={"Out": ["constant_out"]},
-                attrs={
-                    "dtype": 5,
-                    "place_type": place_type,
-                    "value": value,
-                    "shape": shape,
-                },
-            )
+        fill_constant_op = OpConfig(
+            type="fill_constant",
+            inputs={},
+            outputs={"Out": ["constant_out"]},
+            attrs={
+                "dtype": 5,
+                "place_type": place_type,
+                "value": framework.wrap_as_scalar(value),
+                "shape": shape,
+            },
+        )
 
         elt_mul_op = OpConfig(
             type="elementwise_mul",

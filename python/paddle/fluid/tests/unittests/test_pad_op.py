@@ -165,7 +165,8 @@ class TestPaddingValueTensor(UnittestBase):
         return "Var["
 
     def call_func(self, x):
-        padding_value = paddle.assign([1.0])
+        # due to the bug that [supportTensor Attr interferes with kernel selection]
+        padding_value = paddle.assign([1.0]).astype(x.dtype)
         out = paddle.nn.functional.pad(
             x, pad=[1, 1, 1, 1], value=padding_value, mode='constant'
         )
@@ -174,7 +175,7 @@ class TestPaddingValueTensor(UnittestBase):
 
 class TestPaddingValueTensor2(TestPaddingValueTensor):
     def call_func(self, x):
-        padding_value = paddle.assign([1.0])
+        padding_value = paddle.assign([1.0]).astype(x.dtype)
         # test for int value
         tmp = paddle.nn.functional.pad(x, pad=[1, 1, 1, 1], value=1)
         out = paddle.nn.functional.pad(x, pad=[1, 1, 1, 1], value=padding_value)

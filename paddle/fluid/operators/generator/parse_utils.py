@@ -588,13 +588,13 @@ def cross_validate(ops):
             fw_call = op["forward"]
             fw_name = fw_call["name"]
             if fw_name not in ops:
-                print(
+                raise ValueError(
                     f"Something Wrong here, this backward op ({name})'s forward op ({fw_name}) does not exist."
                 )
             else:
                 fw_op = ops[fw_name]
                 if "backward" not in fw_op or fw_op["backward"] is None:
-                    print(
+                    raise ValueError(
                         f"Something Wrong here, {name}'s forward op ({fw_name}) does not claim {name} as its backward."
                     )
                 else:

@@ -356,7 +356,10 @@ static int BuildFusion(Graph* graph,
     op_desc.SetOutput("SquaredY", {squaredy->Name()});
     op_desc.SetOutput("SquaredXY", {squaredxy->Name()});
     op_desc.SetOutput("Out", {last_out_var->Name()});
-    op_desc.SetAttr("scalar", fill_constant_op->Op()->GetAttr("value"));
+
+    auto scalar = PADDLE_GET_CONST(paddle::experimental::Scalar,
+                                   fill_constant_op->Op()->GetAttr("value"));
+    op_desc.SetAttr("scalar", scalar.to<float>());
 
     auto* op = graph->CreateOpNode(&op_desc);
     IR_NODE_LINK_TO(matx, op);
@@ -503,5 +506,5 @@ REGISTER_PASS_CAPABILITY(squared_mat_sub_fuse_pass)
             .EQ("square", 0)
             .LE("elementwise_mul", 1)
             .LE("elementwise_sub", 1)
-            .LE("fill_constant", 2)
+            .LE("fill_constant", 3)
             .EQ("fusion_squared_mat_sub", 0));

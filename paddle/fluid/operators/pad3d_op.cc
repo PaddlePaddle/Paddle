@@ -19,6 +19,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -92,10 +94,11 @@ class Pad3dOpMaker : public framework::OpProtoAndCheckerMaker {
         "padding 0 column to left, 1 column to right, "
         "2 row to top, 3 row to bottom, 4 depth to front "
         "and 5 depth to back. Size of paddings must be 6.");
-    AddAttr<float>("value",
-                   "(float, default 0.0) "
-                   "The value to fill the padded areas in constant mode.")
-        .SetDefault(0.0f);
+    AddAttr<experimental::Scalar>(
+        "value",
+        "(Scalar, default 0.0) "
+        "The value to fill the padded areas in constant mode.")
+        .SetDefault(experimental::Scalar(0.0f));
     AddAttr<std::string>(
         "mode",
         "(string, default constant) "
@@ -246,3 +249,11 @@ REGISTER_OPERATOR(pad3d_grad,
                   ops::Pad3dOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Pad3dOpDoubleGradMaker<paddle::imperative::OpBase>,
                   ops::Pad3dOpGradNoNeedBufferVarsInferer);
+REGISTER_OP_VERSION(pad3d).AddCheckpoint(
+    R"ROC(
+Upgrade pad, use generic value instead of float value.
+              )ROC",
+    paddle::framework::compatible::OpVersionDesc().ModifyAttr(
+        "value",
+        "use generic type for value, it could be the same type as the input.",
+        paddle::experimental::Scalar(0.0f)));

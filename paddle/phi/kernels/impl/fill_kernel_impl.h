@@ -29,11 +29,6 @@ void FillKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   T fill_var = value.to<T>();
 
-  PADDLE_ENFORCE_EQ(std::isnan(static_cast<double>(fill_var)),
-                    false,
-                    phi::errors::InvalidArgument("fill value should not be NaN,"
-                                                 " but received NaN"));
-
   dev_ctx.template Alloc<T>(out);
 
   phi::funcs::SetConstant<Context, T> functor;

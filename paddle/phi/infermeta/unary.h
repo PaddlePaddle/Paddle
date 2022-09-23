@@ -120,7 +120,7 @@ void DiagEmbedInferMeta(
 
 void DiagInferMeta(const MetaTensor& x,
                    int offset,
-                   float padding_value,
+                   const Scalar& padding_value,
                    MetaTensor* out);
 
 void DiagonalInferMeta(
@@ -163,8 +163,11 @@ void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
 
-void FillDiagonalInferMeta(
-    const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out);
+void FillDiagonalInferMeta(const MetaTensor& x,
+                           const Scalar& value,
+                           int offset,
+                           bool wrap,
+                           MetaTensor* out);
 
 void FFTC2CInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axes,
@@ -345,7 +348,7 @@ void PadInferMeta(const MetaTensor& input,
 void Pad3dInferMeta(const MetaTensor& x,
                     const IntArray& paddings,
                     const std::string& mode,
-                    float value,
+                    const Scalar& value,
                     const std::string& data_format,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
