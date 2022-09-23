@@ -371,10 +371,10 @@ static PyObject* tensor_method__copy_to(TensorObject* self,
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
-
+  paddle::experimental::Tensor cp_tensor;
   {
     eager_gil_scoped_release guard;
-    auto cp_tensor = self->tensor.copy_to(place, blocking);
+    cp_tensor = self->tensor.copy_to(place, blocking);
     if (!blocking) {
       IncreaseTensorReferenceCountUntilCopyComplete(self->tensor, place);
     }
@@ -390,9 +390,11 @@ static PyObject* tensor_method__copy_to(TensorObject* self,
 static PyObject* tensor_method_cpu(TensorObject* self,
                                    PyObject* args,
                                    PyObject* kwargs) {
-  EAGER_TRY {
+  EAGER_TRY
+  paddle::experimental::Tensor cp_tensor;
+  {
     eager_gil_scoped_release guard;
-    auto cp_tensor = self->tensor.copy_to(phi::CPUPlace(), true);
+    cp_tensor = self->tensor.copy_to(phi::CPUPlace(), true);
     egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
     egr::EagerUtils::autograd_meta(&cp_tensor)
         ->SetPersistable(
@@ -460,7 +462,9 @@ static PyObject* tensor_method_copy_(TensorObject* self,
 static PyObject* tensor_method_clone(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  EAGER_TRY {
+  EAGER_TRY
+  paddle::experimental::Tensor out;
+  {
     eager_gil_scoped_release guard;
     PADDLE_ENFORCE_EQ(
         self->tensor.initialized(),
@@ -470,7 +474,7 @@ static PyObject* tensor_method_clone(TensorObject* self,
             "uninitialized tensor %s, please check your code.",
             self->tensor.name()));
 
-    auto out = assign_ad_func(self->tensor);
+    out = assign_ad_func(self->tensor);
   }
   return ToPyObject(out);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -878,6 +882,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       none_axes.pop_back();
     }
     if (!none_axes.empty()) {
+      paddle::experimental::Tensor new_out;
       {
         eager_gil_scoped_release guard;
         // Deal with cases that decrease_axes is not empty
@@ -893,8 +898,6 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
           }
           axis -= len;
         }
-
-        paddle::experimental::Tensor new_out;
         new_out = unsqueeze_ad_func(out, none_axes);
       }
       return ToPyObject(new_out);
