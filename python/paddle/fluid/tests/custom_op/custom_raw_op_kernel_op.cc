@@ -31,8 +31,8 @@ void ReluGPUForward(const phi::DenseTensor &x, phi::DenseTensor *y) {
 
 __PD_DEFINE_RAW_OP_KERNEL_FUNC(custom_raw_relu, ctx) {
   namespace f = paddle::framework;
-  const auto *x = ctx.Input<f::Tensor>("X");
-  auto *y = ctx.Output<f::Tensor>("Y");
+  const auto *x = ctx.Input<phi::DenseTensor>("X");
+  auto *y = ctx.Output<phi::DenseTensor>("Y");
   PADDLE_ENFORCE_NOT_NULL(x,
                           paddle::platform::errors::InvalidArgument(
                               "Input(X) should not be nullptr."));
