@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import paddle
 from paddle.fluid import framework, core, layers, unique_name
 from paddle.fluid.framework import Variable
 from paddle.fluid.clip import ClipGradByGlobalNorm
@@ -287,9 +288,8 @@ class DistributedFusedLamb(Optimizer):
 
         step = self._get_or_create_step()
 
-        from paddle.distributed import get_rank, get_world_size
-        rank = get_rank()
-        nranks = get_world_size()
+        rank = paddle.distributed.get_rank()
+        nranks = paddle.distributed.get_world_size()
         if self._nproc_per_node is None:
             nproc_per_node = nranks
         else:
