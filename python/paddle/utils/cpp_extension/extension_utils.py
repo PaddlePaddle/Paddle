@@ -413,7 +413,7 @@ def _get_lib_core_path():
 
 def _get_dll_core_path():
     """
-    Return real path of libpaddle.lib on Windows.
+    Return real path of libcore_(no)avx.dylib on Windows.
     """
     raw_core_name = _get_core_name()
     dll_core_name = "libpaddle.dll"
@@ -560,6 +560,17 @@ def create_sym_link_if_not_exist():
     core_path = os.path.join(_get_fluid_path(), raw_core_name)
     if IS_WINDOWS:
         new_dll_core_path = _get_dll_core_path()
+        # create symbol link on windows
+        if not os.path.exists(new_dll_core_path):
+            try:
+                os.symlink(core_path, new_dll_core_path)
+            except Exception:
+                warnings.warn(
+                    "Failed to create soft symbol link for {}.\n You can run prompt as administrator and execute the "
+                    "following command manually: `mklink {} {}`. Now it will create hard link for {} trickly."
+                    .format(raw_core_name, new_dll_core_path, core_path,
+                            raw_core_name))
+                run_cmd('mklink /H {} {}'.format(new_dll_core_path, core_path))
         # libpaddle with lib suffix
         assert os.path.exists(new_dll_core_path)
         return raw_core_name[:-4] + ".lib"
