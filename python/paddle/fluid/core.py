@@ -25,7 +25,6 @@ has_paddle_dy_lib = False
 dy_lib_name = 'libpaddle'
 dy_lib_suffix = 'so'
 if os.name == 'nt':
-    dy_lib_name = 'paddle'
     dy_lib_suffix = 'pyd'
 
 current_path = os.path.abspath(os.path.dirname(__file__))
@@ -247,10 +246,7 @@ if platform.system().lower() == 'linux':
             sys.stderr.write('Error: Can not preload libgomp.so')
 
 try:
-    if os.name == 'nt':
-        from . import paddle as libpaddle
-    else:
-        from . import libpaddle
+    from . import libpaddle
     if avx_supported() and not libpaddle.is_compiled_with_avx():
         sys.stderr.write(
             "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "

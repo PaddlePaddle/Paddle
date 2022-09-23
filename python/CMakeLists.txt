@@ -24,9 +24,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
                ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
-
+set(PADDLE_CORE_NAME "libpaddle")
 if(WIN32)
-  set(PADDLE_CORE_NAME "paddle")
   set(FLUID_CORE ${FLUID_DST_DIR}/${PADDLE_CORE_NAME}.pyd)
   add_custom_command(
     OUTPUT ${FLUID_CORE}
@@ -34,7 +33,6 @@ if(WIN32)
     COMMAND cmake -E copy $<TARGET_LINKER_FILE:paddle> ${FLUID_DST_DIR}
     DEPENDS paddle)
 else()
-  set(PADDLE_CORE_NAME "libpaddle")
   set(FLUID_CORE ${FLUID_DST_DIR}/${PADDLE_CORE_NAME}.so)
   add_custom_command(
     OUTPUT ${FLUID_CORE}

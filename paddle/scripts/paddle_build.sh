@@ -2892,12 +2892,12 @@ EOF
     local LIB_TYPE=$1
     case $LIB_TYPE in
       full)
-        # Build full Paddle Python module. Will timeout without caching 'copy_paddle' first
-        make -j `nproc` framework_py_proto copy_paddle paddle_python
+        # Build full Paddle Python module. Will timeout without caching 'copy_libpaddle' first
+        make -j `nproc` framework_py_proto copy_libpaddle paddle_python
         ;;
       pybind)
         # Build paddle pybind library. Takes 49 minutes to build. Might timeout
-        make -j `nproc` copy_paddle
+        make -j `nproc` copy_libpaddle
         ;;
       proto)
         # Even smaller library.
