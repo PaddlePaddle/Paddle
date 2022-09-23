@@ -254,10 +254,10 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 35, in func_error_in_compile_time'.format(
+            'File "{}", line 33, in func_error_in_compile_time'.format(
                 self.filepath),
             'inner_func()',
-            'File "{}", line 28, in inner_func'.format(self.filepath),
+            'File "{}", line 26, in inner_func'.format(self.filepath),
             'def inner_func():',
             'fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
             '<--- HERE',
@@ -284,7 +284,7 @@ class TestErrorStaticLayerCallInCompiletime_2(
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 46, in func_error_in_compile_time_2'.format(
+            'File "{}", line 44, in func_error_in_compile_time_2'.format(
                 self.filepath),
             'def func_error_in_compile_time_2(x):',
             'x = fluid.dygraph.to_variable(x)',
@@ -309,7 +309,7 @@ class TestErrorStaticLayerCallInCompiletime_3(
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 91, in forward'.format(self.filepath),
+            'File "{}", line 90, in forward'.format(self.filepath),
             '@paddle.jit.to_static',
             'def forward(self):',
             'self.test_func()',
@@ -334,7 +334,7 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 54, in func_error_in_runtime'.format(
+            'File "{}", line 52, in func_error_in_runtime'.format(
                 self.filepath),
             'x = fluid.dygraph.to_variable(x)',
             'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
@@ -351,7 +351,7 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 106, in func_error_in_runtime_with_empty_line'.
+            'File "{}", line 105, in func_error_in_runtime_with_empty_line'.
             format(self.filepath),
             'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
             'x = fluid.layers.reshape(x, shape=[1, two])',
@@ -397,7 +397,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 80, in forward'.format(self.filepath),
+            'File "{}", line 78, in forward'.format(self.filepath),
             'def forward(self, x):',
             'y = self._linear(x)',
             'z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
@@ -433,7 +433,7 @@ class TestSuggestionErrorInRuntime(TestErrorBase):
         self.expected_message = [
             'File "{}", line 118, in forward'.format(self.filepath),
             'return self.inner_net.forward(x)',
-            'File "{}", line 127, in forward'.format(self.filepath),
+            'File "{}", line 128, in forward'.format(self.filepath),
             'def forward(self, x):',
             'out = paddle.matmul(self.w, x)',
             '<--- HERE',
