@@ -97,17 +97,16 @@ class TestLogNormalSample(unittest.TestCase):
             loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
-            self.sample_shape = [9000]
+            self.sample_shape = [100000]
             self._paddle_lognormal = LogNormal(loc=loc, scale=scale)
-            self.mean = self._paddle_lognormal.mean
             self.samples = self._paddle_lognormal.sample(self.sample_shape)
-        fetch_list = [self.mean, self.samples]
+        fetch_list = [self.samples]
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
         executor.run(startup_program)
-        [self.mean, self.samples] = executor.run(main_program,
-                                                 feed=self.feeds,
-                                                 fetch_list=fetch_list)
+        [self.samples] = executor.run(main_program,
+                                      feed=self.feeds,
+                                      fetch_list=fetch_list)
 
     def test_sample(self):
         for i in range(len(self.scale)):

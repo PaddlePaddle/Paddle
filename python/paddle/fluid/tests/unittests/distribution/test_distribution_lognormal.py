@@ -147,7 +147,7 @@ class TestLogNormalSample(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self._paddle_lognormal = LogNormal(loc=self.loc, scale=self.scale)
-        self.shape = [9000]
+        self.shape = [100000]
         self.samples = self._paddle_lognormal.sample(self.shape)
 
     def test_sample(self):
