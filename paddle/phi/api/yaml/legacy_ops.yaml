@@ -3018,3 +3018,12 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
+
+- op: bincount
+  args: (Tensor x, Tensor weights, Scalar minlength)
+  output: Tensor(out)
+  infer_meta:
+    func: BincountInferMeta
+  kernel:
+    func: bincount
+  optional: weights
