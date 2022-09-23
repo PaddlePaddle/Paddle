@@ -44,7 +44,7 @@ __all__ = [
     'AddQuantDequantPassV2',
     'ReplaceFakeQuantDequantPass',
     'QuantWeightPass',
-    'OutScaleForInferencePassV2',
+    'AddQuantDequantForInferencePass',
 ]
 
 _fake_quant_op_list = [
@@ -1438,7 +1438,7 @@ class OutScaleForTrainingPass(object):
         self._place = _get_paddle_place(place)
         self._moving_rate = moving_rate
         self._is_test = is_test
-        self._teller_set = utils._out_scale_op_list
+        self._teller_set = utils.QUANT_SUPPORTED_OP_TYPE_LIST
         self._scale_dict = scale_dict
 
     def apply(self, graph):
@@ -1568,7 +1568,7 @@ class OutScaleForInferencePass(object):
             scope(fluid.Scope): The scope is used to initialize these new parameters.
         """
         self._scope = scope
-        self._teller_set = utils._out_scale_op_list
+        self._teller_set = utils.QUANT_SUPPORTED_OP_TYPE_LIST
 
     def apply(self, graph):
         """
@@ -2752,16 +2752,13 @@ class QuantWeightPass(object):
         tensor.set(array, self._place)
 
 
-class OutScaleForInferencePassV2(object):
+class AddQuantDequantForInferencePass(object):
     """
-    Insert quant/dequant linear op with act and remove moving_average_abs_max_scale op.
+    When export quant model, it will traverse to find the output of each op, and then insert the quant/dequant op after it.
     """
 
     def __init__(self, scope, place, quant_bits=8):
         """
-        This pass is used for setting output scales of some operators.
-        These output scales may be used by tensorRT or some other inference engines.
-
         Args:
             scope(fluid.Scope): The scope is used to initialize these new parameters.
             place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to restore the weight tensors.
@@ -2771,19 +2768,16 @@ class OutScaleForInferencePassV2(object):
         self._scope = scope
         self._place = place
         self._quant_bits = quant_bits
-        self._teller_set = utils._out_scale_op_list
+        self._teller_set = utils.QUANT_SUPPORTED_OP_TYPE_LIST
 
     def apply(self, graph):
         """
-        Get output scales from the scope and set these scales in op_descs
-        of operators in the teller_set.
-
         Args:
             graph(IrGraph): the target graph.
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        quant_dequant_node_map = {}
+        dequant_node_map = {}
         dequantized_vars_map = collections.OrderedDict()
         for op_node in graph.all_op_nodes():
             if op_node.name() in self._teller_set:
@@ -2800,7 +2794,7 @@ class OutScaleForInferencePassV2(object):
                         dequant_var_node = self._insert_quant_dequant_op(
                             graph, out_node)
                         dequantized_vars_map[var_name] = dequant_var_node
-                    quant_dequant_node_map[var_name] = dequant_var_node
+                    dequant_node_map[var_name] = dequant_var_node
 
         # remove unuse node and link act quant/dequant linear to op node
         for op_node in graph.all_op_nodes():
@@ -2809,11 +2803,12 @@ class OutScaleForInferencePassV2(object):
             else:
                 var_names = utils._get_op_input_var_names(op_node)
                 for var_name in var_names:
-                    if var_name in quant_dequant_node_map:
+                    if var_name in dequant_node_map:
                         in_node = graph._find_node_by_name(
                             op_node.inputs, var_name)
-                        graph.update_input_link(
-                            in_node, quant_dequant_node_map[var_name], op_node)
+                        graph.update_input_link(in_node,
+                                                dequant_node_map[var_name],
+                                                op_node)
 
         return graph
 

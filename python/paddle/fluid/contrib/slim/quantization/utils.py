@@ -113,9 +113,11 @@ _act_supported_quantizable_op_type = [
     "scale",
 ]
 
-_out_scale_op_list = list(
+QUANT_SUPPORTED_OP_TYPE_LIST = list(
     set(_weight_supported_quantizable_op_type +
         _act_supported_quantizable_op_type))
+
+_out_scale_op_list = QUANT_SUPPORTED_OP_TYPE_LIST
 
 _channelwise_quant_axis1_ops = [
     'conv2d_transpose', 'mul', 'matmul', 'matmul_v2'

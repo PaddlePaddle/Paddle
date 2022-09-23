@@ -344,7 +344,7 @@ class PostTrainingQuantization(object):
         self._fetch_list = None
         self._data_loader = data_loader
 
-        self._out_scale_op_list = utils._out_scale_op_list
+        self._out_scale_op_list = utils.QUANT_SUPPORTED_OP_TYPE_LIST
         self._quantized_weight_var_name = set()
         self._quantized_act_var_name = set()
         self._weight_op_pairs = {}
