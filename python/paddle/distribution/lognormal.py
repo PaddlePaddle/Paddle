@@ -44,7 +44,6 @@ class LogNormal(TransformedDistribution):
 
           import paddle
           #from paddle.distribution import LogNormal
-          from lognormal import LogNormal
           # Define a single scalar LogNormal distribution.
           dist = LogNormal(loc=0., scale=3.)
           # Define a batch of two scalar valued LogNormals.
