@@ -182,11 +182,17 @@ class OperatorBase {
   }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE_NE(
-        attrs_.find(name),
-        attrs_.end(),
-        platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
-    return PADDLE_GET_CONST(T, attrs_.at(name));
+    auto it = attrs_.find(name);
+    if (it == attrs_.end()) {
+      it = runtime_attrs_.find(name);
+      PADDLE_ENFORCE_NE(
+          it,
+          runtime_attrs_.end(),
+          platform::errors::NotFound(
+              "(%s) is not found in AttributeMap and RuntimeAttributeMap.",
+              name));
+    }
+    return PADDLE_GET_CONST(T, it->second);
   }
   void SetAttr(const std::string& name, const Attribute& v) {
     PADDLE_ENFORCE_EQ(
@@ -506,6 +512,13 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     });
   }
 
+  bool IsSelectedRowsInputs(const std::string& name) const override {
+    auto vars = ctx_.MultiInputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SelectedRows>();
+    });
+  }
+
   bool IsSelectedRowsInput(const std::string& name) const override {
     const auto* var = ctx_.InputVar(name);
     return var->IsType<phi::SelectedRows>();
@@ -682,7 +695,7 @@ class OperatorWithKernel : public OperatorBase {
    * Transfer data from scope to a transferred scope. If there is no data need
    * to be transferred, it returns nullptr.
    *
-   * * transfered_inplace_vars is a output vector.
+   * transfered_inplace_vars is a output vector.
    */
   Scope* PrepareData(const Scope& scope,
                      const OpKernelType& expected_kernel_key,

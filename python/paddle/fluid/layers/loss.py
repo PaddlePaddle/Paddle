@@ -64,14 +64,14 @@ def center_loss(input,
     :api_attr: Static Graph
 
     **Center loss Cost layer**
-    
+
     This OP accepts input (deep features,the output of the last hidden layer)
-    and target label and return the center loss cost. The average of the 
-    distances of each sample in the mini-batch from the center of the 
+    and target label and return the center loss cost. The average of the
+    distances of each sample in the mini-batch from the center of the
     corresponding category is calculated as the center loss.
-    
+
     For deep features, :math:`X`, and target labels, :math:`Y`, the equation is:
-    
+
     .. math::
 
         Out = \\frac{1}{2}(X - Y)^2
@@ -82,16 +82,16 @@ def center_loss(input,
                          with shape[N x 1],where N is the batch size. Its dtype should be int32.
         num_classes (int): the number of classification categories.
         alpha (float|Variable): learning rate of centers.
-        param_attr (ParamAttr): Attribute initializer of centers. 
+        param_attr (ParamAttr): Attribute initializer of centers.
         update_center (bool): whether to update value of center.
 
     Returns:
-        Variable: 2-D tensor with shape [N * 1] 
+        Variable: 2-D tensor with shape [N * 1]
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid 
+          import paddle.fluid as fluid
           import paddle
           paddle.enable_static()
 
@@ -326,7 +326,7 @@ def square_error_cost(input, label):
         label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        Tensor, The tensor storing the element-wise squared 
+        Tensor, The tensor storing the element-wise squared
         error difference between input and label.
 
     Examples:
@@ -439,28 +439,28 @@ def warpctc(input,
     Args:
        input (Variable): The unscaled probabilities of variable-length sequences,
          which is a 2-D Tensor with LoD information, or a 3-D Tensor without Lod
-         information. When it is a 2-D LodTensor, its shape is 
+         information. When it is a 2-D LodTensor, its shape is
          `[Lp, num_classes + 1]`, where `Lp` is the sum of all input
          sequences' length and `num_classes` is the true number of classes.
-         (not including the blank label). When it is a 3-D Tensor, its shape 
+         (not including the blank label). When it is a 3-D Tensor, its shape
          is `[max_logit_length, batch_size, num_classes + 1]`,
          where `max_logit_length` is the longest length of
          input logit sequence. The data type should be float32 or float64.
        label (Variable): The ground truth of variable-length sequence,
          which must be a 2-D Tensor with LoD information or a 3-D Tensor without
-         LoD information, needs to be consistent with the coressponding input. 
-         When it is a 2-D LoDTensor, its shape is `[Lg, 1]`, where `Lg` is the sum 
-         of all labels' length. When it is a 3-D Tensor, its shape is 
+         LoD information, needs to be consistent with the coressponding input.
+         When it is a 2-D LoDTensor, its shape is `[Lg, 1]`, where `Lg` is the sum
+         of all labels' length. When it is a 3-D Tensor, its shape is
          `[batch_size, max_label_length]`, where `max_label_length` is the longest
          length of label sequence. Data type must be int32.
        blank (int, default 0): The blank label index of Connectionist
          Temporal Classification (CTC) loss, which is in the
-         half-opened interval `[0, num_classes + 1)`. The data type must be int32. 
+         half-opened interval `[0, num_classes + 1)`. The data type must be int32.
        norm_by_times(bool, default false): Whether to normalize the gradients
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
          followed by a mean_op.
-       input_length(Variable): The length for each input sequence if it is 
+       input_length(Variable): The length for each input sequence if it is
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
@@ -494,10 +494,10 @@ def warpctc(input,
             cost = fluid.layers.warpctc(input=logits, label=label)
             place = fluid.CPUPlace()
             x = fluid.create_lod_tensor(
-                     np.random.rand(np.sum(seq_lens), class_num+1).astype("float32"), 
+                     np.random.rand(np.sum(seq_lens), class_num+1).astype("float32"),
                      [seq_lens], place)
             y = fluid.create_lod_tensor(
-                     np.random.randint(0, class_num, [np.sum(label_lens), 1]).astype("int32"), 
+                     np.random.randint(0, class_num, [np.sum(label_lens), 1]).astype("int32"),
                      [label_lens], place)
             exe = fluid.Executor(place)
             output= exe.run(fluid.default_main_program(),
@@ -620,7 +620,7 @@ def nce(input,
     ${comment}
 
     Args:
-        input (Tensor): Input tensor, 2-D tensor with shape [batch_size, dim], 
+        input (Tensor): Input tensor, 2-D tensor with shape [batch_size, dim],
             and data type is float32 or float64.
         label (Tensor): Input label, 2-D tensor with shape [batch_size, num_true_class],
             and data type is int64.
@@ -628,14 +628,14 @@ def nce(input,
         sample_weight (Tensor|None): A Tensor of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
-        param_attr (ParamAttr|None): To specify the weight parameter attribute. 
-            Default: None, which means the default weight parameter property is 
+        param_attr (ParamAttr|None): To specify the weight parameter attribute.
+            Default: None, which means the default weight parameter property is
             used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        bias_attr (ParamAttr|None): To specify the bias parameter attribute. 
-            Default: None, which means the default bias parameter property is 
+        bias_attr (ParamAttr|None): To specify the bias parameter attribute.
+            Default: None, which means the default bias parameter property is
             used. See usage for details in :ref:`api_fluid_ParamAttr` .
         num_neg_samples (int): ${num_neg_samples_comment}.
-        name(str|None): For detailed information, please refer to 
+        name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
         sampler (str, optional): The sampler used to sample class from negative classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
@@ -645,7 +645,7 @@ def nce(input,
                        custom_dist[i] is the probability of i-th class to be sampled.
                        default: None.
         seed (int, optional): The seed used in sampler. Default 0, means no random seed.
-        is_sparse(bool, optional): The flag indicating whether to use sparse update, 
+        is_sparse(bool, optional): The flag indicating whether to use sparse update,
             the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default False.
 
     Returns:
@@ -828,7 +828,7 @@ def hsigmoid(input,
              is_sparse=False):
     """
     :api_attr: Static Graph
-    
+
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
@@ -990,50 +990,50 @@ def sampled_softmax_with_cross_entropy(logits,
     """
     **Sampled Softmax With Cross Entropy Operator.**
 
-    Cross entropy loss with sampled softmax is used as the output layer for 
+    Cross entropy loss with sampled softmax is used as the output layer for
     larger output classes extensively. This operator samples a number of samples
-    for all examples, and computes the softmax normalized values for each 
-    row of the sampled tensor, after which cross-entropy loss is computed. 
+    for all examples, and computes the softmax normalized values for each
+    row of the sampled tensor, after which cross-entropy loss is computed.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
     softmax operator since that would produce incorrect results.
-    
+
     For examples with T true labels (T >= 1), we assume that each true label has
     a probability of 1/T. For each sample, S samples are generated using a
     log uniform distribution. True labels are concatenated with these samples to
     form T + S samples for each example. So, assume the shape of logits is
-    [N x K], the shape for samples is [N x (T+S)]. For each sampled label, a 
-    probability is calculated, which corresponds to the Q(y|x) in 
+    [N x K], the shape for samples is [N x (T+S)]. For each sampled label, a
+    probability is calculated, which corresponds to the Q(y|x) in
     [Jean et al., 2014](http://arxiv.org/abs/1412.2007).
-    
-    Logits are sampled according to the sampled labels. Then if 
-    remove_accidental_hits is True, if a sample[i, j] accidentally hits true 
-    labels, then the corresponding sampled_logits[i, j] is minus by 1e20 to 
+
+    Logits are sampled according to the sampled labels. Then if
+    remove_accidental_hits is True, if a sample[i, j] accidentally hits true
+    labels, then the corresponding sampled_logits[i, j] is minus by 1e20 to
     make its softmax result close to zero. Then sampled logits are subtracted by
-    logQ(y|x), these sampled logits and re-indexed labels are used to compute 
+    logQ(y|x), these sampled logits and re-indexed labels are used to compute
     a softmax with cross entropy.
 
     Args:
         logits (Variable): The unscaled log probabilities, which is a 2-D tensor
             with shape [N x K]. N is the batch_size, and K is the class number.
-        label (Variable): The ground truth which is a 2-D tensor. Label is a 
-            Tensor<int64> with shape [N x T], where T is the number of true 
-            labels per example. 
-        num_samples (int): The number for each example, num_samples should be 
+        label (Variable): The ground truth which is a 2-D tensor. Label is a
+            Tensor<int64> with shape [N x T], where T is the number of true
+            labels per example.
+        num_samples (int): The number for each example, num_samples should be
             less than the number of class.
         num_true(int): The number of target classes per training example.
-        remove_accidental_hits (bool): A flag indicating whether to remove 
-            accidental hits when sampling. If True and if a sample[i, j] 
-            accidentally hits true labels, then the corresponding 
-            sampled_logits[i, j] is minus by 1e20 to make its softmax result 
+        remove_accidental_hits (bool): A flag indicating whether to remove
+            accidental hits when sampling. If True and if a sample[i, j]
+            accidentally hits true labels, then the corresponding
+            sampled_logits[i, j] is minus by 1e20 to make its softmax result
             close to zero. Default is True.
         use_customized_samples (bool): Whether to use custom samples and probabities to sample
             logits.
         customized_samples (Variable): User defined samples, which is a 2-D tensor
-            with shape [N, T + S]. S is the num_samples, and T is the number of true 
-            labels per example. 
-        customized_probabilities (Variable): User defined probabilities of samples, 
+            with shape [N, T + S]. S is the num_samples, and T is the number of true
+            labels per example.
+        customized_probabilities (Variable): User defined probabilities of samples,
             a 2-D tensor which has the same shape with customized_samples.
         seed (int): The random seed for generating random number, which is used
             in the process of sampling. Default is 0.
@@ -1140,17 +1140,17 @@ def softmax_with_cross_entropy(logits,
                                axis=-1):
     r"""
 
-    This operator implements the cross entropy loss function with softmax. This function 
-    combines the calculation of the softmax operation and the cross entropy loss function 
+    This operator implements the cross entropy loss function with softmax. This function
+    combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
     softmax operator since that would produce incorrect results.
 
-    When the attribute :attr:`soft_label` is set :attr:`False`, this operators 
-    expects mutually exclusive hard labels, each sample in a batch is in exactly 
-    one class with a probability of 1.0. Each sample in the batch will have a 
+    When the attribute :attr:`soft_label` is set :attr:`False`, this operators
+    expects mutually exclusive hard labels, each sample in a batch is in exactly
+    one class with a probability of 1.0. Each sample in the batch will have a
     single label.
 
     The equation is as follows:
@@ -1185,27 +1185,27 @@ def softmax_with_cross_entropy(logits,
     Args:
         logits (Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
         label (Tensor): The ground truth  ``Tensor`` , data type is the same
-            as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`, 
-            Label is a ``Tensor``  in the same shape with :attr:`logits`. 
-            If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor`` 
+            as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`,
+            Label is a ``Tensor``  in the same shape with :attr:`logits`.
+            If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor``
             in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
         soft_label (bool, optional): A flag to indicate whether to interpretant the given
             labels as soft labels. Default False.
         ignore_index (int, optional): Specifies a target value that is ignored and does
                                       not contribute to the input gradient. Only valid
-                                      if :attr:`soft_label` is set to :attr:`False`. 
+                                      if :attr:`soft_label` is set to :attr:`False`.
                                       Default: kIgnoreIndex(-100).
         numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
                                               numerically stable algorithm. Only valid
-                                              when :attr:`soft_label` is :attr:`False` 
-                                              and GPU is used. When :attr:`soft_label` 
-                                              is :attr:`True` or CPU is used, the 
+                                              when :attr:`soft_label` is :attr:`False`
+                                              and GPU is used. When :attr:`soft_label`
+                                              is :attr:`True` or CPU is used, the
                                               algorithm is always numerically stable.
                                               Note that the speed may be slower when use
                                               stable algorithm. Default: True.
         return_softmax (bool, optional): A flag indicating whether to return the softmax
                                          along with the cross entropy loss. Default: False.
-        axis (int, optional): The index of dimension to perform softmax calculations. It 
+        axis (int, optional): The index of dimension to perform softmax calculations. It
                               should be in range :math:`[-1, rank - 1]`, while :math:`rank`
                               is the rank of input :attr:`logits`. Default: -1.
 
@@ -1244,7 +1244,7 @@ def identity_loss(x, reduction="none"):
     it is used as the start of backpropagation.
 
     When `reduction` is `none`, return raw `Out`.
-    
+
     When `reduction` is `mean`, return
 
     .. math::
@@ -1297,15 +1297,15 @@ def identity_loss(x, reduction="none"):
 def rank_loss(label, left, right, name=None):
     r"""
 
-    This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model 
-    with a training sample consisting of a pair of documents (A and B), The label (P) 
-    indicates whether A is ranked higher than B or not. Please refer to more details: 
+    This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model
+    with a training sample consisting of a pair of documents (A and B), The label (P)
+    indicates whether A is ranked higher than B or not. Please refer to more details:
     `RankNet <http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf>`_
 
     Rank loss layer takes three inputs: left ( :math:`o_i` ), right ( :math:`o_j` ) and
     label ( :math:`P_{i,j}` ). The inputs respectively represent RankNet's output scores
-    for documents A and B and the value of label P. Rank loss layer takes batch inputs 
-    with size batch_size (batch_size >= 1), P = {0, 1} or {0, 0.5, 1}, 
+    for documents A and B and the value of label P. Rank loss layer takes batch inputs
+    with size batch_size (batch_size >= 1), P = {0, 1} or {0, 0.5, 1},
     where 0.5 means that there is no information about the rank of the input pair.
     The following equation computes rank loss C_{i,j} from the inputs:
 
@@ -1374,7 +1374,7 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
        left (Variable): Ranking score for left. Data type float32.
        right (Variable): Ranking score for right. Data type float32.
        margin (float): Indicates the given margin.
-       name(str|None): For detailed information, please refer to 
+       name(str|None): For detailed information, please refer to
            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
@@ -1430,7 +1430,7 @@ def sigmoid_cross_entropy_with_logits(x,
                 as log(p/(1-p)) The data type should be float32 or float64.
         label (Tensor): a 2-D tensor of the same type and shape as X.
                 This input is a tensor of probabalistic labels for each logit.
-        ignore_index(int): Specifies a target value that is ignored and 
+        ignore_index(int): Specifies a target value that is ignored and
                 does not contribute to the input gradient.
         name(str|None): The default value is None.  Normally there is
             no need for user to set this property.  For more information,
@@ -1449,7 +1449,7 @@ def sigmoid_cross_entropy_with_logits(x,
 
             input = paddle.rand(shape=[10], dtype='float32')
             label = paddle.rand(shape=[10], dtype='float32')
-            loss = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(input, label, 
+            loss = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(input, label,
                                                             ignore_index=-1, normalize=True)
             print(loss)
     """
@@ -1507,7 +1507,7 @@ def teacher_student_sigmoid_loss(input,
 
     Examples:
         .. code-block:: python
-          
+
           import paddle.fluid as fluid
           import paddle
           paddle.enable_static()
@@ -1632,22 +1632,22 @@ def kldiv_loss(x, target, reduction='mean', name=None):
 
             import paddle
             import paddle.fluid as fluid
-            
+
             x = paddle.rand(shape=[3,4,2,2], dtype='float32')
             target = paddle.rand(shape=[3,4,2,2], dtype='float32')
 
             # 'batchmean' reduction, loss shape will be [1]
             loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean')
             print(loss.shape) # shape=[1]
-            
+
             # 'mean' reduction, loss shape will be [1]
             loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='mean')
             print(loss.shape) # shape=[1]
-            
+
             # 'sum' reduction, loss shape will be [1]
             loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='sum')
             print(loss.shape) # shape=[1]
-            
+
             # 'none' reduction, loss shape is same with X shape
             loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='none')
             print(loss.shape) # shape=[3, 4, 2, 2]
@@ -1674,42 +1674,42 @@ from .control_flow import equal
 
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
-    """ 
-  
+    """
+
     Npair loss requires paired data. Npair loss has two parts: the first part is L2
     regularizer on the embedding vector; the second part is cross entropy loss which
     takes the similarity matrix of anchor and positive as logits.
-  
+
     For more information, please refer to:
     `Improved Deep Metric Learning with Multi class N pair Loss Objective <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/papers/nips16_npairmetriclearning.pdf>`_
-  
+
     Args:
-      anchor(Tensor): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
+      anchor(Tensor): embedding vector for the anchor image. shape=[batch_size, embedding_dims],
                         the data type is float32 or float64.
-      positive(Tensor): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
+      positive(Tensor): embedding vector for the positive image. shape=[batch_size, embedding_dims],
                         the data type is float32 or float64.
       labels(Tensor): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
       l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
 
-  
+
     Returns:
       A Tensor representing the npair loss, the data type is the same as anchor, the shape is [1].
-  
+
     Examples:
 
       .. code-block:: python
-  
+
           import paddle
-          
+
           DATATYPE = "float32"
-  
+
           anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
           positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
           labels = paddle.rand(shape=(18,), dtype=DATATYPE)
-          
+
           npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
           print(npair_loss)
-  
+
     """
     return paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg)
 
@@ -1722,10 +1722,10 @@ def mse_loss(input, label):
     The loss can be described as:
 
     .. math::
-        
+
         Out = MEAN((input - label)^2)
 
-    Parameters: 
+    Parameters:
         input (Tensor): Input tensor, the data type should be float32.
         label (Tensor): Label tensor, the data type should be float32.
 
@@ -1733,7 +1733,7 @@ def mse_loss(input, label):
         Tensor: The tensor storing the mean square error difference of input and label.
 
     Return type: Tensor.
-    
+
     Examples:
         .. code-block:: python
 

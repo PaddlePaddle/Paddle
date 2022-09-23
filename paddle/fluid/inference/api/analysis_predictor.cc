@@ -1095,6 +1095,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
+    argument_.SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
   }
 
   if (config_.dlnne_enabled()) {
@@ -2015,6 +2016,13 @@ AnalysisPredictor::~AnalysisPredictor() {
     memory::Release(place_);
   }
   device_contexts_.clear();
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.trt_engine_memory_sharing()) {
+    inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+        .releaseContextMemory(predictor_id_);
+  }
+#endif
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
@@ -2107,6 +2115,7 @@ USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
 USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
+USE_TRT_CONVERTER(matmul_v2);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(exp);
@@ -2185,6 +2194,8 @@ USE_TRT_CONVERTER(shape)
 USE_TRT_CONVERTER(fill_constant)
 USE_TRT_CONVERTER(fused_token_prune)
 USE_TRT_CONVERTER(layernorm_shift_partition)
+USE_TRT_CONVERTER(generic_plugin_creater)
+USE_TRT_CONVERTER(custom_plugin_creater)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)

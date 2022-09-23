@@ -39,7 +39,7 @@ class Partitioner(object):
     warning:: Partitioner is experimental and subject to change.
 
     Partitioner convert a program into another program.
-    Given a serial program which has been auto completed with shard annotation, the Partitioner 
+    Given a serial program which has been auto completed with shard annotation, the Partitioner
     convert the serial program into a "distributed" program. The Partitioner will  modify the serial
     program in following two ways, which is also the major difference between serial and distributed program:
         1. partition op: replace a serial op into its corresponding dist op infered from the shard annotation
