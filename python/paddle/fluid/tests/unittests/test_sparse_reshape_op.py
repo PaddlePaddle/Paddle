@@ -31,28 +31,33 @@ class TestReshape(unittest.TestCase):
             mask = np.random.randint(0, 2, x_shape)
             np_x = np.random.randint(-100, 100, x_shape) * mask 
             dense_x = paddle.to_tensor(np_x)
+            dense_x.numpy()
+            print(dense_x.numpy())
             dense_x.stop_gradient = False
+            dense_x.numpy()
             # dense_out = paddle.transpose(dense_x, dims)
             dense_out = paddle.reshape(dense_x, new_shape)
+            dense_out.numpy()
+            print(dense_out.numpy())
 
-            if format == "coo":
-                # sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
-                sp_x = paddle.to_tensor(np_x).to_sparse_coo(len(x_shape))
-            else:
-                # sp_x = origin_x.detach().to_sparse_csr()
-                sp_x = paddle.to_tensor(np_x).to_sparse_csr()
-            sp_x.stop_gradient = False
-            # sp_out = paddle.incubate.sparse.transpose(sp_x, dims)
-            sp_out = paddle.incubate.sparse.reshape(sp_x, new_shape)
+            # if format == "coo":
+            #     # sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
+            #     sp_x = paddle.to_tensor(np_x).to_sparse_coo(len(x_shape))
+            # else:
+            #     # sp_x = origin_x.detach().to_sparse_csr()
+            #     sp_x = paddle.to_tensor(np_x).to_sparse_csr()
+            # sp_x.stop_gradient = False
+            # # sp_out = paddle.incubate.sparse.transpose(sp_x, dims)
+            # sp_out = paddle.incubate.sparse.reshape(sp_x, new_shape)
 
-            print(10*'=', "OccupyMars2025 the following is dense_out", 10*'=')
-            print("dense_out.numpy():", dense_out.numpy())
-            print("dense_out:", dense_out)
-            print(10*'=', "OccupyMars2025 the following is sp_out", 10*'=')
-            print("sp_out:", sp_out)
-            print("sp_out.to_dense():", sp_out.to_dense())
-            print("sp_out.to_dense().numpy():", sp_out.to_dense().numpy())
-            print(10*'=', "OccupyMars2025 the end", 10*'=')
+            # print(10*'=', "OccupyMars2025 the following is dense_out", 10*'=')
+            # print("dense_out.numpy():", dense_out.numpy())
+            # print("dense_out:", dense_out)
+            # print(10*'=', "OccupyMars2025 the following is sp_out", 10*'=')
+            # print("sp_out:", sp_out)
+            # print("sp_out.to_dense():", sp_out.to_dense())
+            # print("sp_out.to_dense().numpy():", sp_out.to_dense().numpy())
+            # print(10*'=', "OccupyMars2025 the end", 10*'=')
             
             # np.testing.assert_allclose(sp_out.to_dense().numpy(),
             #                            dense_out.numpy(),
