@@ -1123,7 +1123,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
     if (!IsCompat(subgraph, graph)) {
-      LOG(WARNING) << "fused_multi_transformer_encoder pass in " \
+      LOG(WARNING) << "fused_multi_transformer_encoder pass in "
                       "op compat failed.";
       return;
     }
@@ -1509,22 +1509,14 @@ FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
 
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
-      // in bias, shape is (B, S, N*H),
-      // in biasqk, shape is (B, H, S, S)
       .IsTensor()
       .End()
       .AddInput("Y")
-      // in bias, shape is (N*H)
-      // in biasqk, shape is (B, H, S, S)
       .IsTensor()
       .End()
-      // in bias, shape is (B, S, N*H)
-      // in biasqk, shape is (B, H, S, S)
       .AddOutput("Out")
       .IsTensor()
       .End()
-      // in bias, it equal to 2
-      // in biasqk, it equal to -1 or 0
       .AddAttr("axis")
       .IsIntIn({2, -1, 0})
       .End();
@@ -1821,7 +1813,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
     if (!IsCompat(subgraph, graph)) {
-      LOG(WARNING) << "fused_multi_transformer_encoder_fuse_qkv " \
+      LOG(WARNING) << "fused_multi_transformer_encoder_fuse_qkv "
                       "pass in op compat failed.";
       return;
     }
@@ -2182,22 +2174,14 @@ FusedMultiTransformerEncoderFuseQKVPass::
 
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
-      // in bias, shape is (B, S, N*H),
-      // in biasqk, shape is (B, H, S, S)
       .IsTensor()
       .End()
       .AddInput("Y")
-      // in bias, shape is (N*H)
-      // in biasqk, shape is (B, H, S, S)
       .IsTensor()
       .End()
-      // in bias, shape is (B, S, N*H)
-      // in biasqk, shape is (B, H, S, S)
       .AddOutput("Out")
       .IsTensor()
       .End()
-      // in bias, it equal to 2
-      // in biasqk, it equal to -1 or 0
       .AddAttr("axis")
       .IsIntIn({2, -1, 0})
       .End();
@@ -2225,8 +2209,6 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .IsType<std::vector<int>>()
       .End();
 
-  // -->: (B, S, H, N) -> (B, H, S, N)
-  // <--: (B, H, S, N) -> (B, S, H, N)
   AddOpCompat(OpCompat("transpose2"))
       .AddInput("X")
       .IsTensor()

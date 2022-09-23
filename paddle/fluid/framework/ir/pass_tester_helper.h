@@ -146,8 +146,10 @@ struct Layers {
     return unary_op("relu", x, out);
   }
 
-  VarDesc* gelu(VarDesc* x, VarDesc* out = nullptr) {
-    return unary_op("gelu", x, out);
+  VarDesc* gelu(VarDesc* x, VarDesc* out = nullptr, bool approximate = true) {
+    AttributeMap attrs;
+    attrs["approximate"] = approximate;
+    return unary_op("gelu", x, out, &attrs);
   }
 
   VarDesc* sigmoid(VarDesc* x, VarDesc* out = nullptr) {
@@ -507,7 +509,7 @@ struct Layers {
     op->SetInput("Condition", {cond->Name()});
     op->SetOutput("Out", {out->Name()});
     op->SetOutput("StepScopes", {step_scopes->Name()});
-    // op->SetAttr("sub_block", {program_.MutableBlock(1)});
+    op->SetAttr("sub_block", {program_.MutableBlock(0)});
     op->SetAttr("is_test", true);
     return out;
   }
@@ -576,7 +578,10 @@ struct Layers {
     return var;
   }
 
-  VarDesc* unary_op(std::string type, VarDesc* x, VarDesc* out = nullptr) {
+  VarDesc* unary_op(std::string type,
+                    VarDesc* x,
+                    VarDesc* out = nullptr,
+                    const AttributeMap* attrs = nullptr) {
     if (!out) {
       out = lod_tensor(unique_name());
     }
@@ -584,6 +589,11 @@ struct Layers {
     op->SetType(type);
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", {out->Name()});
+    if (attrs) {
+      for (auto& iter : *attrs) {
+        op->SetAttr(iter.first, iter.second);
+      }
+    }
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;

@@ -147,7 +147,7 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
       layers.matmul(transpose_0, transpose_1, nullptr, false, true);
 
   auto* bqk = layers.data("biasqk", {1, 12, 128, 128}, true);
-  auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk);
+  auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk, nullptr, -1);
   auto* softmax_qk = layers.softmax(elementwise_qk, -1);
   auto* dropout_qk = layers.dropout(softmax_qk, 0.1, "upscale_in_train");
 
