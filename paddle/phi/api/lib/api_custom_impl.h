@@ -33,30 +33,7 @@ namespace experimental {
 
 Tensor add_n_impl(const std::vector<Tensor>& x);
 
-std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
-    const Tensor& x,
-    const Tensor& scale,
-    const Tensor& bias,
-    const Tensor& mean,
-    const Tensor& variance,
-    float momentum,
-    float epsilon,
-    const std::string& data_layout,
-    bool is_test,
-    bool use_global_stats,
-    bool trainable_statistics,
-    bool fuse_with_relu);
-
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
-
-Tensor embedding_impl(const Tensor& x,
-                      const Tensor& weight,
-                      int64_t padding_idx,
-                      bool sparse);
-
-std::vector<Tensor> split_impl(const Tensor& x,
-                               const IntArray& num_or_sections,
-                               const Scalar& axis);
 
 ////////////////// Backward(grad) api impls //////////////////////
 

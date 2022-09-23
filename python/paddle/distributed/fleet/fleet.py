@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import warnings
 import paddle
 import os
 from types import MethodType
@@ -32,6 +31,8 @@ from .base import topology as tp
 from .meta_parallel import model_parallel_random_seed
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
+from .utils.log_util import logger, set_log_level
+import logging
 
 __all__ = []
 
@@ -54,7 +55,7 @@ def apply_ir_passes(main_program, startup_program, config):
         # RawProgramOptimizer also inserts coalesce_tensor
         # into program. These two procedures may conflict
         # in which vars are to be fused.
-        warnings.warn(
+        logger.warning(
             'Currently, the fuse_all_optimizer_ops pass has conflict with fuse_all_reduce_ops pass. Disable the fuse_all_optimizer_ops pass temporarily.'
         )
         build_strategy.fuse_all_optimizer_ops = False
@@ -83,7 +84,7 @@ def _is_non_distributed_check_(func):
 
         if cls._role_maker is not None and cls._role_maker._is_non_distributed(
         ) is True:
-            warnings.warn(
+            logger.warning(
                 "%s() function doesn't work when use non_distributed fleet." %
                 (func.__name__))
             return
@@ -165,7 +166,11 @@ class Fleet(object):
         self._context = {}
         self.user_defined_optimizer = paddle.optimizer.Optimizer(0.0)
 
-    def init(self, role_maker=None, is_collective=False, strategy=None):
+    def init(self,
+             role_maker=None,
+             is_collective=False,
+             strategy=None,
+             log_level="INFO"):
         """
         Initialize role_maker in Fleet.
 
@@ -183,6 +188,8 @@ class Fleet(object):
                 is False.
             strategy (DistributedStrategy): Extra properties for distributed training.
                 For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
+            log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight
+                the logging level is. Default is "INFO".
 
 
         Returns:
@@ -218,7 +225,18 @@ class Fleet(object):
                 strategy = fleet.DistributedStrategy()
                 fleet.init(strategy=strategy)
 
+        Examples5:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                fleet.init(log_level = "DEBUG")
+
         """
+
+        set_log_level(log_level)
+
         if strategy is None:
             strategy = DistributedStrategy()
         self._user_defined_strategy = copy.deepcopy(strategy)
@@ -262,12 +280,12 @@ class Fleet(object):
                 self._hcg = tp.HybridCommunicateGroup(self._topology)
                 return
             if parallel_helper._is_parallel_ctx_initialized():
-                warnings.warn(
+                logger.warning(
                     "The dygraph parallel environment has been initialized.")
             else:
                 # FLAGS_nccl_nrings is used for dynamic graph multi-stream communication
                 if "FLAGS_nccl_nrings" in os.environ:
-                    warnings.warn(
+                    logger.warning(
                         "You have set the environment variable FLAGS_nccl_nrings "
                         "outside the program, so the nccl_comm_num in "
                         "DistributedStrategy will not take effect here.")
@@ -282,7 +300,7 @@ class Fleet(object):
                 if tp._HYBRID_PARALLEL_GROUP is None:
                     self._init_hybrid_parallel_env()
                 else:
-                    warnings.warn(
+                    logger.warning(
                         "The dygraph hybrid parallel environment has been initialized."
                     )
         elif self._is_collective:
@@ -851,9 +869,6 @@ class Fleet(object):
                 fleet.init_server()
 
         """
-        # warnings.warn(
-        #     "'save_inference_model' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
-        # )
 
         self._runtime_handle._save_inference_model(executor, dirname,
                                                    feeded_var_names,
@@ -903,10 +918,6 @@ class Fleet(object):
                 fleet.save_persistables(exe, "dirname", paddle.static.default_main_program())
 
         """
-        # warnings.warn(
-        #     "'save_persistables' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
-        # )
-
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
 
@@ -1016,7 +1027,7 @@ class Fleet(object):
 
         if strategy is not None:
             if self._is_collective:
-                warnings.warn(
+                logger.warning(
                     "It is recommended to use DistributedStrategy "
                     "in fleet.init(). The strategy here is only for compatibility. "
                     "If the strategy in fleet.distributed_optimizer() is "
@@ -1305,8 +1316,9 @@ class Fleet(object):
             copy_user_defined_strategy, can_not_apply_optimizer_list)
 
         context["valid_strategy"] = copy.deepcopy(valid_strategy)
-        # print("valid_strategy:", context["valid_strategy"])
-        # print("user_defined_strategy:", context["user_defined_strategy"])
+        logger.debug("valid_strategy: " + str(context["valid_strategy"]))
+        logger.debug("user_defined_strategy: " +
+                     str(context["user_defined_strategy"]))
 
         applied_meta_list = self.strategy_compiler._get_applied_meta_list()
         applied_graph_list = self.strategy_compiler._get_applied_graph_list()
@@ -1336,17 +1348,19 @@ class Fleet(object):
                                                         no_grad_set=no_grad_set)
 
         if meta_optimizer:
-            # print("before minimize program id:", id(loss.block.program))
+            logger.debug("before minimize program id: " +
+                         str(id(loss.block.program)))
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
-            # print("after minimize program id:", id(loss.block.program))
-
+            logger.debug("after minimize program id: " +
+                         str(id(loss.block.program)))
             default_program = paddle.static.default_main_program()
-            # print("default program id:", id(default_program))
+            logger.debug("default program id: " + str(id(default_program)))
 
             if id(default_program) != id(loss.block.program):
                 paddle.fluid.framework.switch_main_program(loss.block.program)
-            # print("default program id after switch:", id(default_program))
+            logger.debug("default program id after switch: " +
+                         str(id(default_program)))
 
         else:
             optimize_ops, params_grads = self.user_defined_optimizer.minimize(
@@ -1356,7 +1370,8 @@ class Fleet(object):
         context["program_params_grads"] = params_grads
 
         if graph_optimizer:
-            # print("before graph minimize program id:", id(loss.block.program))
+            logger.debug("before graph minimize program id: " +
+                         str(id(loss.block.program)))
             optimize_ops, params_grads = graph_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
             # since we do not encourage users to use graph operations
@@ -1455,7 +1470,8 @@ class Fleet(object):
                 if v or k not in opt_info:
                     opt_info[k] = v
             program._fleet_opt = opt_info
-            # print("fleet base opt info:", id(program), program._fleet_opt)
+            logger.debug("fleet base opt info: " + str(id(program)) +
+                         str(program._fleet_opt))
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
