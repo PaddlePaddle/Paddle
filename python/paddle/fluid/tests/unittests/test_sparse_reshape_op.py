@@ -30,7 +30,20 @@ class TestReshape(unittest.TestCase):
             # dense_x = paddle.clone(origin_x.detach())
             mask = np.random.randint(0, 2, x_shape)
             np_x = np.random.randint(-100, 100, x_shape) * mask 
-            dense_x = paddle.to_tensor(np_x)
+            ### cpu version
+            dense_x = paddle.to_tensor(np_x, place=paddle.CPUPlace())
+            dense_x.numpy()
+            print(dense_x.numpy())
+            dense_x.stop_gradient = False
+            dense_x.numpy()
+            # dense_out = paddle.transpose(dense_x, dims)
+            dense_out = paddle.reshape(dense_x, new_shape)
+            dense_out.numpy()
+            print(dense_out.numpy())
+
+
+            ## cuda version
+            dense_x = paddle.to_tensor(np_x, place=paddle.CUDAPlace(0))
             dense_x.numpy()
             print(dense_x.numpy())
             dense_x.stop_gradient = False
