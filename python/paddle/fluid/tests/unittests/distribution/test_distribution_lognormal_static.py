@@ -17,16 +17,13 @@ import paddle
 import numpy as np
 import scipy.stats
 import config
-from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
+from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 from paddle.distribution.lognormal import LogNormal
-from test_distribution import DistributionNumpy
 from test_distribution_lognormal import LogNormalNumpy
 from paddle.distribution.kl import kl_divergence
 
 np.random.seed(2022)
-
-paddle.enable_static()
 
 
 @place(config.DEVICES)
@@ -35,6 +32,7 @@ paddle.enable_static()
 class TestLogNormal(unittest.TestCase):
 
     def setUp(self):
+        paddle.enable_static()
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         executor = paddle.static.Executor(self.place)
@@ -88,9 +86,10 @@ class TestLogNormal(unittest.TestCase):
 @place(config.DEVICES)
 @parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample', xrand(
     (5, )), xrand((5, )))])
-class LogNormalTestSample(unittest.TestCase):
+class TestLogNormalSample(unittest.TestCase):
 
     def setUp(self):
+        paddle.enable_static()
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         executor = paddle.static.Executor(self.place)
@@ -128,9 +127,10 @@ class LogNormalTestSample(unittest.TestCase):
     (TEST_CASE_NAME, 'loc1', 'scale1', 'loc2', 'scale2'),
     [('one-dim', xrand((2, )), xrand((2, )), xrand((2, )), xrand((2, ))),
      ('multi-dim', xrand((2, 2)), xrand((2, 2)), xrand((2, 2)), xrand((2, 2)))])
-class TestLognormalKL(unittest.TestCase):
+class TestLogNormalKL(unittest.TestCase):
 
     def setUp(self):
+        paddle.enable_static()
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         executor = paddle.static.Executor(self.place)

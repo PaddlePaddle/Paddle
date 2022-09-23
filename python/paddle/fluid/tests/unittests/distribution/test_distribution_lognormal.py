@@ -81,6 +81,7 @@ class LogNormalNumpy(DistributionNumpy):
 class LogNormalTest(unittest.TestCase):
 
     def setUp(self):
+        paddle.disable_static()
         self._paddle_lognormal = LogNormal(loc=paddle.to_tensor(self.loc),
                                            scale=paddle.to_tensor(self.scale))
         self._np_lognormal = LogNormalNumpy(self.loc, self.scale)
@@ -141,15 +142,19 @@ class LogNormalTest(unittest.TestCase):
 @place(config.DEVICES)
 @parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample1', xrand(
     (2, )), xrand((2, ))), ('sample2', xrand((5, )), xrand((5, )))])
-class LogNormalTestSample(unittest.TestCase):
+class TestLogNormalSample(unittest.TestCase):
+
+    def setUp(self):
+        paddle.disable_static()
+        self._paddle_lognormal = LogNormal(loc=self.loc, scale=self.scale)
+        self.shape = [8000]
+        self.samples = self._paddle_lognormal.sample(self.shape)
 
     def test_sample(self):
-        self._paddle_lognormal = LogNormal(loc=self.loc, scale=self.scale)
-        shape = [8000]
-        samples = self._paddle_lognormal.sample(shape)
+
         for i in range(len(self.scale)):
             self.assertTrue(
-                self._kstest(self.loc[i], self.scale[i], samples[:, i]))
+                self._kstest(self.loc[i], self.scale[i], self.samples[:, i]))
 
     def _kstest(self, loc, scale, samples):
         # Uses the Kolmogorov-Smirnov test for goodness of fit.
@@ -164,9 +169,10 @@ class LogNormalTestSample(unittest.TestCase):
     (TEST_CASE_NAME, 'loc1', 'scale1', 'loc2', 'scale2'),
     [('one-dim', xrand((2, )), xrand((2, )), xrand((2, )), xrand((2, ))),
      ('multi-dim', xrand((2, 2)), xrand((2, 2)), xrand((2, 2)), xrand((2, 2)))])
-class TestLognormalKL(unittest.TestCase):
+class TestLogNormalKL(unittest.TestCase):
 
     def setUp(self):
+        paddle.disable_static()
         self._paddle_lognormal = LogNormal(loc=paddle.to_tensor(self.loc1),
                                            scale=paddle.to_tensor(self.scale1))
         self._paddle_lognormal_other = LogNormal(
