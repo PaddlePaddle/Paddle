@@ -156,6 +156,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   }
 
   if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
+    eager_gil_scoped_release guard;
     platform::CPUPlace place;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
@@ -186,6 +187,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (self->tensor.is_gpu()) {
+    eager_gil_scoped_release guard;
 #if defined(PADDLE_WITH_CUDA)
     gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
 #elif defined(PADDLE_WITH_HIP)
@@ -217,6 +219,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (self->tensor.is_custom_device()) {
+    eager_gil_scoped_release guard;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -278,6 +281,7 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
   }
 
   if (self->tensor.is_cpu()) {
+    eager_gil_scoped_release guard;
     VLOG(6) << "Getting StringTensor's numpy value";
     auto string_tensor =
         std::dynamic_pointer_cast<phi::StringTensor>(self->tensor.impl());
@@ -367,14 +371,18 @@ static PyObject* tensor_method__copy_to(TensorObject* self,
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
-  auto cp_tensor = self->tensor.copy_to(place, blocking);
-  if (!blocking) {
-    IncreaseTensorReferenceCountUntilCopyComplete(self->tensor, place);
+
+  {
+    eager_gil_scoped_release guard;
+    auto cp_tensor = self->tensor.copy_to(place, blocking);
+    if (!blocking) {
+      IncreaseTensorReferenceCountUntilCopyComplete(self->tensor, place);
+    }
+    egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
+    egr::EagerUtils::autograd_meta(&cp_tensor)
+        ->SetPersistable(
+            egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
   }
-  egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
-  egr::EagerUtils::autograd_meta(&cp_tensor)
-      ->SetPersistable(
-          egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
   return ToPyObject(cp_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -382,12 +390,14 @@ static PyObject* tensor_method__copy_to(TensorObject* self,
 static PyObject* tensor_method_cpu(TensorObject* self,
                                    PyObject* args,
                                    PyObject* kwargs) {
-  EAGER_TRY
-  auto cp_tensor = self->tensor.copy_to(phi::CPUPlace(), true);
-  egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
-  egr::EagerUtils::autograd_meta(&cp_tensor)
-      ->SetPersistable(
-          egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
+  EAGER_TRY {
+    eager_gil_scoped_release guard;
+    auto cp_tensor = self->tensor.copy_to(phi::CPUPlace(), true);
+    egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
+    egr::EagerUtils::autograd_meta(&cp_tensor)
+        ->SetPersistable(
+            egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
+  }
   return ToPyObject(cp_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -423,6 +433,7 @@ static PyObject* tensor_method_copy_(TensorObject* self,
   VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
   if (!self->tensor.initialized()) {
+    eager_gil_scoped_release guard;
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetStopGradient(
             egr::EagerUtils::autograd_meta(&(src_tensor))->StopGradient());
@@ -434,6 +445,7 @@ static PyObject* tensor_method_copy_(TensorObject* self,
     }
   } else {
     if (src_tensor.initialized()) {
+      eager_gil_scoped_release guard;
       self->tensor.copy_(src_tensor, self->tensor.place(), blocking);
     }
   }
@@ -448,17 +460,18 @@ static PyObject* tensor_method_copy_(TensorObject* self,
 static PyObject* tensor_method_clone(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  EAGER_TRY
+  EAGER_TRY {
+    eager_gil_scoped_release guard;
+    PADDLE_ENFORCE_EQ(
+        self->tensor.initialized(),
+        true,
+        paddle::platform::errors::InvalidArgument(
+            "We can only support initialized tensor in clone, however we got "
+            "uninitialized tensor %s, please check your code.",
+            self->tensor.name()));
 
-  PADDLE_ENFORCE_EQ(
-      self->tensor.initialized(),
-      true,
-      paddle::platform::errors::InvalidArgument(
-          "We can only support initialized tensor in clone, however we got "
-          "uninitialized tensor %s, please check your code.",
-          self->tensor.name()));
-
-  auto out = assign_ad_func(self->tensor);
+    auto out = assign_ad_func(self->tensor);
+  }
   return ToPyObject(out);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -468,6 +481,7 @@ static PyObject* tensor_retain_grads(TensorObject* self,
                                      PyObject* kwargs) {
   EAGER_TRY
   if (egr::Controller::Instance().HasGrad()) {
+    eager_gil_scoped_release guard;
     auto meta = egr::EagerUtils::autograd_meta(&(self->tensor));
     if (!meta->GetMutableGradNode()) {
       VLOG(6) << "Make grad node of tensor: " << self->tensor.name()
@@ -508,6 +522,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
   }
 
   if (grad->impl()) {
+    eager_gil_scoped_release guard;
     if (grad->is_selected_rows()) {
       auto selected_rows =
           std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl());
@@ -550,6 +565,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
   VLOG(4) << "ZeroGrads " << self->tensor.name();
 
   if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+    eager_gil_scoped_release guard;
     // Add RetainGrad as PostHook to AccumulationNode
     paddle::experimental::Tensor* grad =
         egr::EagerUtils::mutable_grad(self->tensor);
@@ -568,6 +584,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
       }
     }
   } else {
+    eager_gil_scoped_release guard;
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
     if (meta->MutableGrad()->initialized()) {
       if (meta->MutableGrad()->is_dense_tensor()) {
@@ -828,6 +845,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                            decrease_axis.end());
 
     if (op_type == "slice") {
+      eager_gil_scoped_release guard;
       out = slice_ad_func(self->tensor,
                           slice_axes_tmp,
                           slice_starts,
@@ -835,6 +853,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                           infer_flags_tmp,
                           decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
+      eager_gil_scoped_release guard;
       out = strided_slice_ad_func(
           self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
@@ -859,28 +878,32 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       none_axes.pop_back();
     }
     if (!none_axes.empty()) {
-      // Deal with cases that decrease_axes is not empty
-      // For example:
-      // # x.shape: (2,3,4)
-      // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
-      for (auto& axis : none_axes) {
-        int len = 0;
-        for (int da : decrease_axis) {
-          if (da < axis) {
-            len++;
+      {
+        eager_gil_scoped_release guard;
+        // Deal with cases that decrease_axes is not empty
+        // For example:
+        // # x.shape: (2,3,4)
+        // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+        for (auto& axis : none_axes) {
+          int len = 0;
+          for (int da : decrease_axis) {
+            if (da < axis) {
+              len++;
+            }
           }
+          axis -= len;
         }
-        axis -= len;
-      }
 
-      paddle::experimental::Tensor new_out;
-      new_out = unsqueeze_ad_func(out, none_axes);
+        paddle::experimental::Tensor new_out;
+        new_out = unsqueeze_ad_func(out, none_axes);
+      }
       return ToPyObject(new_out);
     }
   }
 
   // the index is a list
   if (list_select_flag) {
+    eager_gil_scoped_release guard;
     auto select_index = paddle::experimental::Tensor(
         egr::Controller::Instance().GenerateUniqueName());
     auto idx_tensor = std::make_shared<phi::DenseTensor>();
