@@ -307,7 +307,7 @@ inline void RunProgramAPI(
       PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
 
   if (use_interpretorcore) {
-    VLOG(0) << "RunProgramOp use interpretercore to execute program.";
+    VLOG(2) << "RunProgramOp use interpretercore to execute program.";
 
     paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
@@ -507,7 +507,7 @@ inline void RunProgramGradAPI(
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   if (use_interpretorcore) {
-    VLOG(0) << "RunProgramGradOp use interpretercore to execute program.";
+    VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
     paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
