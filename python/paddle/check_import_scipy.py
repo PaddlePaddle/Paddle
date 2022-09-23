@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import annotations
+from __future__ import generator_stop, print_function
 
 
 def check_import_scipy(OsName):
