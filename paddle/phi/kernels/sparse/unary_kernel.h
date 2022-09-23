@@ -101,7 +101,7 @@ void CastCsrKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void TransposeCooKernel(const Context& dev_ctx,
-                        const SparseCsrTensor& x,
+                        const SparseCooTensor& x,
                         const std::vector<int>& perm,
                         SparseCooTensor* out);
 
@@ -113,7 +113,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 SparseCooTensor TransposeCoo(const Context& dev_ctx,
-                             const SparseCsrTensor& x,
+                             const SparseCooTensor& x,
                              const std::vector<int>& perm) {
   PADDLE_ENFORCE_EQ(x.sparse_dim(),
                     perm.size(),
