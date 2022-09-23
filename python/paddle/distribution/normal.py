@@ -128,10 +128,20 @@ class Normal(distribution.Distribution):
 
     @property
     def mean(self):
+        """Mean of multinomial distribuion.
+
+        Returns:
+            Tensor: mean value.
+        """
         return self.loc
 
     @property
     def variance(self):
+        """Variance of lognormal distribution.
+
+        Returns:
+            Tensor: variance value.
+        """
         return self.scale.pow(2)
 
     def sample(self, shape, seed=0):
