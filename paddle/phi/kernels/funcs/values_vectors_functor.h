@@ -197,6 +197,8 @@ struct MatrixEighFunctor<CPUContext, T> {
 // Calculates the eigenvalues ​​and eigenvectors of Hermitian or real
 // symmetric matrices on GPU, and uses the variable has_vectors
 // to control whether to return the eigenvectors.
+// Reference to
+// https://github.com/pytorch/pytorch/pull/53040#issuecomment-788264724
 template <typename T>
 struct MatrixEighFunctor<GPUContext, T> {
  public:
