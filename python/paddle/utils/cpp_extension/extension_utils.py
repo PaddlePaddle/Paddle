@@ -413,10 +413,10 @@ def _get_lib_core_path():
 
 def _get_dll_core_path():
     """
-    Return real path of libcore_(no)avx.dylib on Windows.
+    Return real path of paddle.lib on Windows.
     """
     raw_core_name = _get_core_name()
-    dll_core_name = "libpaddle.dll"
+    dll_core_name = "paddle.dll"
     return os.path.join(_get_fluid_path(), dll_core_name)
 
 
