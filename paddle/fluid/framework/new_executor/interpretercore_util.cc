@@ -651,18 +651,14 @@ void build_op_func_list(const platform::Place& place,
 
         // step 5. run kernel
         if (run_phi_kernel) {
-          VLOG(1) << "start run phi kernel. ";
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               runtime_context, dev_ctx, &phi_kernel_context);
           (*op_func_node.phi_kernel_)(&phi_kernel_context);
-          VLOG(1) << "end run phi kernel. ";
         } else {
-          VLOG(4) << "start run kernel. ";
           // the place of exec_ctx maybe has changed.
           op_func_node.kernel_func_(ExecutionContext(
               *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
-          VLOG(4) << "end run kernel. ";
         }
 
         // post-process grad_op.outputs if need cast complex grad into real

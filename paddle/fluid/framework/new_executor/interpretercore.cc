@@ -497,13 +497,14 @@ void InterpreterCore::Convert(
 
   // calculate last_live_ops_
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
-    auto& instr = vec_instruction_[op_idx];
+    Instruction& instr = vec_instruction_[op_idx];
     OpInOutInfo info;
+    info.Build(instr.OpBase());
+
     std::set<size_t> gc_check_vars;
 
     const std::map<std::string, std::vector<int>>& ins = instr.Inputs();
     const std::map<std::string, std::vector<int>>& outs = instr.Outputs();
-
     std::multimap<std::string, std::vector<int>> ins_and_outs{ins.begin(),
                                                               ins.end()};
     ins_and_outs.insert(outs.begin(), outs.end());
@@ -513,19 +514,13 @@ void InterpreterCore::Convert(
         if (id == kEmptyVarIndex) {
           continue;
         }
-
-        // var can be gc-ed
-        if (!info.IsBuilt()) {
-          info.Build(instr.OpBase());
-        }
         auto* var_desc = var_scope_.VarDesc(id);
-        if (var_desc) {
-          if (info.IsInArgBufferNeeded(var_desc->Name())) {
-            gc_check_vars.insert(id);
-          }
-        } else {
-          gc_check_vars.insert(id);
+        // skip no_need_buffer input vars
+        if (var_desc && ins.count(item.first) &&
+            !info.IsInArgBufferNeeded(var_desc->Name())) {
+          continue;
         }
+        gc_check_vars.insert(id);
       }
     }
 
