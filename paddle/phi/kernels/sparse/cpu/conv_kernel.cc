@@ -180,7 +180,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      const int groups,
                      const bool subm,
                      const std::string& key,
-                     bool cutlass,
+                     const bool cutlass,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
