@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -193,7 +193,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
 
       phi::SelectedRows tmp_merged_grad;
       phi::SelectedRows* merged_grad = &tmp_merged_grad;
-      math::scatter::MergeAdd<DeviceContext, T> merge_func;
+      phi::funcs::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(
           ctx.template device_context<DeviceContext>(), *grad, merged_grad);
 
