@@ -17,10 +17,6 @@ repos:
     hooks:
     -   id: yapf
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
-        exclude: |
-            (?x)^(
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_origin_info.py
-            )$
 -   repo: https://github.com/PyCQA/flake8
     rev: 4.0.1
     hooks:
