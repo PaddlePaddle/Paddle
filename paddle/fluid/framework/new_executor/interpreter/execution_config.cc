@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 
+#include <set>
 #include <thread>
+
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
@@ -48,7 +49,7 @@ static constexpr size_t kMinOpNumForAsyncPrepare = 1000;
 // Note that the purpose of the config is to limit the total 'possible'
 // threads introduced by interpretercore to avoid hurting performance.
 
-inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place place,
+inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place& place,
                                                      size_t op_num) {
   int num_device_threads = kDeviceNumThreads,
       num_host_threads = kHostNumThreads,
@@ -129,6 +130,24 @@ inline std::tuple<int, int, int> GetThreadPoolConfig(const phi::Place place,
           << ", num_prepare_threads:" << num_prepare_threads;
   return std::make_tuple(
       num_host_threads, num_device_threads, num_prepare_threads);
+}
+
+ExecutionConfig::ExecutionConfig(const phi::Place& place, size_t op_num) {
+  std::tie(host_num_threads, deivce_num_threads, prepare_num_threads) =
+      GetThreadPoolConfig(place, op_num);
+}
+
+void ExecutionConfig::Log(int log_level) {
+  VLOG(log_level) << "ExecutionConfig:";
+  VLOG(log_level) << "used_for_jit = " << used_for_jit;
+  VLOG(log_level) << "create_local_scope = " << create_local_scope;
+  VLOG(log_level) << "host_num_threads = " << host_num_threads;
+  VLOG(log_level) << "deivce_num_threads = " << deivce_num_threads;
+  VLOG(log_level) << "prepare_num_threads = " << prepare_num_threads;
+  VLOG(log_level) << "skip_gc_vars = ";
+  for (const std::string& var : skip_gc_vars) {
+    VLOG(log_level) << var;
+  }
 }
 
 }  // namespace interpreter

@@ -76,6 +76,18 @@ class CAllReduceOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (var_name == "Cond") {
+      return expected_kernel_type;
+    } else {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    }
+  }
 };
 
 template <ReduceType red_type, typename T>
@@ -83,6 +95,7 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
+
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
@@ -180,6 +193,23 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
+    if (ctx.HasInput("Cond")) {
+      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto place = cond->place();
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` tensor should be on cpu place"));
+      PADDLE_ENFORCE_EQ(cond->numel(),
+                        1,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` should be shape [1]"));
+      if (!cond->data<bool>()[0]) {
+        VLOG(4) << "Skip all reduce Op since cond is 0";
+        return;
+      }
+    }
+
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     auto place = ctx.GetPlace();
@@ -296,6 +326,23 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_XPU_BKCL)
+    if (ctx.HasInput("Cond")) {
+      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto place = cond->place();
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` tensor should be on cpu place"));
+      PADDLE_ENFORCE_EQ(cond->numel(),
+                        1,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` should be shape [1]"));
+      if (!cond->data<bool>()[0]) {
+        VLOG(4) << "Skip all reduce Op since cond is 0";
+        return;
+      }
+    }
+
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
@@ -364,6 +411,23 @@ template <ReduceType red_type, typename T>
 class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    if (ctx.HasInput("Cond")) {
+      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto place = cond->place();
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` tensor should be on cpu place"));
+      PADDLE_ENFORCE_EQ(cond->numel(),
+                        1,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` should be shape [1]"));
+      if (!cond->data<bool>()[0]) {
+        VLOG(4) << "Skip all reduce Op since cond is 0";
+        return;
+      }
+    }
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
@@ -468,6 +532,23 @@ class CAllReduceOpMLUKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
+    if (ctx.HasInput("Cond")) {
+      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto place = cond->place();
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` tensor should be on cpu place"));
+      PADDLE_ENFORCE_EQ(cond->numel(),
+                        1,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` should be shape [1]"));
+      if (!cond->data<bool>()[0]) {
+        VLOG(4) << "Skip all reduce Op since cond is 0";
+        return;
+      }
+    }
+
     auto place = ctx.GetPlace();
     cnclDataType_t dtype =
         platform::ToCNCLDataType(framework::TransToProtoVarType(in->dtype()));
@@ -549,10 +630,12 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 )DOC",
                                GetName(),
                                GetName()));
+    ExtraMake();
   }
 
  protected:
   virtual std::string GetName() const = 0;
+  virtual void ExtraMake() {}
 };
 
 }  // namespace operators

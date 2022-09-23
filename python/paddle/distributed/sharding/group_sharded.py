@@ -177,7 +177,7 @@ def save_group_sharded_model(model, output, optimizer=None):
     """
     Group sharded encapsulated model and optimizer state saving module.
 
-    .. note::
+    Note:
         If using save_group_sharded_model saves the model. When loading again, you need to set the model or optimizer state before using group_sharded_parallel.
 
     Args:
