@@ -40,13 +40,19 @@ class TestReshape(unittest.TestCase):
             # sp_out = paddle.incubate.sparse.transpose(sp_x, dims)
             sp_out = paddle.incubate.sparse.reshape(sp_x, new_shape)
 
-            print(sp_out)
-            sp_out.to_dense()
-            print(sp_out.to_dense())
+            print(10*'=', "OccupyMars2025 the following is dense_out", 10*'=')
+            print("dense_out:", dense_out)
+            print("dense_out.numpy():", dense_out.numpy())
+            print(10*'=', "OccupyMars2025 the following is sp_out", 10*'=')
+            print("sp_out:", sp_out)
+            print("sp_out.to_dense():", sp_out.to_dense())
+            print("sp_out.to_dense().numpy():", sp_out.to_dense().numpy())
+            print(10*'=', "OccupyMars2025 the end", 10*'=')
+            
             # np.testing.assert_allclose(sp_out.to_dense().numpy(),
             #                            dense_out.numpy(),
             #                            rtol=1e-05)
-            
+
             # dense_out.backward()
             # sp_out.backward()
             # np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
