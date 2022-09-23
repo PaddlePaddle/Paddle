@@ -156,7 +156,7 @@ class TestOriginInfoWithNestedFunc(TestOriginInfo):
     def set_dygraph_info(self):
         self.line_num = 5
         self.line_index_list = [0, 1, 2, 3, 4]
-        self.dy_rel_lineno_list = [0, 1, 2, 4, 5]
+        self.dy_rel_lineno_list = [0, 2, 3, 5, 6]
         self.dy_abs_col_offset = [0, 4, 8, 4, 4]
         self.dy_func_name = [self.dygraph_func.__name__] + \
                             ["f1"] * 2 + \
