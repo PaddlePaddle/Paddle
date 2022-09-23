@@ -1048,14 +1048,13 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
            {DNNL_ARG_DIFF_WEIGHTS, *diff_weights_memory_p}});
       astream.wait();
 
-      filter_grad->set_layout(framework::DataLayout::kMKLDNN);
-      // in OneDNN groups in convolution are treated as separate dimension
-      // which is not the case in paddlepaddle
-      auto filter_fmt = platform::GetMKLDNNFormat(*diff_weights_memory_p);
 
       // For convolution with groups convert from blocked to NCHW
       // otherwise there will be problems in next operators working on this data
       if (g > 1) {
+        // in OneDNN groups in convolution are treated as separate dimension
+        // which is not the case in paddlepaddle
+
         dnnl::memory::data_type in_type = framework::ToMKLDNNDataType(
             framework::TransToProtoVarType(filter->dtype()));
         // for 3d conv with groups (six dimensional data reorder to goidhw)
@@ -1094,9 +1093,9 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
         dnnl::memory::format_tag target_format =
             weights_tz.size() == 6 ? dnnl::memory::format_tag::oidhw
                                    : dnnl::memory::format_tag::oihw;
-        filter_grad->set_format(target_format);
+        filter_grad->set_mem_desc(dnnl::memory::desc out_mem_desc(phi::vectorize<int64_t>(in.dims()), in_type, target_format));
       } else {
-        filter_grad->set_format(filter_fmt);
+        filter_grad->set_mem_desc(diff_weights_memory_p->get_desc());
       }
     }
     if (input_grad) {
@@ -1119,8 +1118,7 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
                                 {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
       astream.wait();
 
-      input_grad->set_layout(framework::DataLayout::kMKLDNN);
-      input_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory_p));
+      input_grad->set_mem_desc(diff_src_memory_p->get_desc());
     }
   }
 };
