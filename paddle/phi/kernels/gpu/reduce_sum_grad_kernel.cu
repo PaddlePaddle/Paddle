@@ -25,22 +25,23 @@ template <typename T, typename Context>
 void ReduceSumGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& out_grad,
-                         const std::vector<int64_t>& dims,
+                         const IntArray& dims,
                          bool keep_dim,
                          bool reduce_all,
-                         DataType in_dtype,
-                         DataType out_dtype,
                          DenseTensor* x_grad) {
+  using MPType = typename kps::details::MPTypeTrait<T>::Type;
+  auto out_dtype = x.dtype();
   auto* in_x = &x;
   auto* d_out = &out_grad;
   auto* d_x = x_grad;
 
-  auto pt_out_dtype = in_dtype;
-
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = in_x->dims().size();
+  if (dims.size() == 0) {
+    reduce_all = true;
+  }
   std::vector<int> reduce_dims =
-      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
+      funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
 
   auto update_dims = vectorize(d_x->dims());
   int reduce_num = 1;
@@ -52,25 +53,19 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   DenseTensor new_d_out(d_out->dtype());
   new_d_out.ShareDataWith(*d_out);
   new_d_out.Resize(phi::make_ddim(update_dims));
-  if (in_dtype != DataType::UNDEFINED) {
-    dev_ctx.Alloc(d_x, in_dtype);
-  } else {
-    dev_ctx.Alloc(d_x, d_out->dtype());
-  }
 
+  dev_ctx.Alloc(d_x, x.dtype());
+  auto pt_out_dtype = x.dtype();
   auto pt_d_out = new_d_out;
   auto pt_d_x = *d_x;
-  if (in_dtype == DataType::UNDEFINED) {
-    pt_out_dtype = d_out->dtype();
-  }
-  using MPType = typename kps::details::MPTypeTrait<T>::Type;
-
+  std::vector<const DenseTensor*> inputs = {&pt_d_out};
+  std::vector<DenseTensor*> outputs = {&pt_d_x};
   phi::ReduceGrad<T, kps::IdentityFunctor<T, MPType>>(
       dev_ctx,
       &pt_d_out,
       &pt_d_x,
       pt_out_dtype,
-      kps::IdentityFunctor<T, MPType>(reduce_num));
+      kps::IdentityFunctor<T, MPType>());
 }
 
 }  // namespace phi

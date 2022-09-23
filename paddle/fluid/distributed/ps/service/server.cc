@@ -29,7 +29,7 @@ REGISTER_PSCORE_CLASS(PsBaseService, BrpcPsService);
 REGISTER_PSCORE_CLASS(PSServer, GraphBrpcServer);
 REGISTER_PSCORE_CLASS(PsBaseService, GraphBrpcService);
 
-PSServer *PSServerFactory::create(const PSParameter &ps_config) {
+PSServer *PSServerFactory::Create(const PSParameter &ps_config) {
   const auto &config = ps_config.server_param();
 
   if (!config.has_downpour_server_param()) {
@@ -56,12 +56,14 @@ PSServer *PSServerFactory::create(const PSParameter &ps_config) {
                << service_param.server_class();
     return NULL;
   }
-  TableManager::instance().initialize();
+  TableManager::Instance().Initialize();
   return server;
 }
 
-int32_t PSServer::configure(
-    const PSParameter &config, PSEnvironment &env, size_t server_rank,
+int32_t PSServer::Configure(
+    const PSParameter &config,
+    PSEnvironment &env,
+    size_t server_rank,
     const std::vector<framework::ProgramDesc> &server_sub_program) {
   scope_.reset(new framework::Scope());
   _config = config.server_param();
@@ -69,14 +71,14 @@ int32_t PSServer::configure(
   _environment = &env;
   _shuffled_ins =
       paddle::framework::MakeChannel<std::pair<uint64_t, std::string>>();
-  size_t shard_num = env.get_ps_servers().size();
+  size_t shard_num = env.GetPsServers().size();
 
   const auto &downpour_param = _config.downpour_server_param();
 
   uint32_t barrier_table = UINT32_MAX;
   uint32_t global_step_table = UINT32_MAX;
 
-  for (size_t i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
+  for (int i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
     auto *table = CREATE_PSCORE_CLASS(
         Table, downpour_param.downpour_table_param(i).table_class());
 
@@ -89,21 +91,21 @@ int32_t PSServer::configure(
       global_step_table = downpour_param.downpour_table_param(i).table_id();
     }
 
-    table->set_program_env(scope_.get(), place_, &server_sub_program);
-    table->set_shard(_rank, shard_num);
-    table->initialize(downpour_param.downpour_table_param(i),
+    table->SetProgramEnv(scope_.get(), place_, &server_sub_program);
+    table->SetShard(_rank, shard_num);
+    table->Initialize(downpour_param.downpour_table_param(i),
                       config.fs_client_param());
     _table_map[downpour_param.downpour_table_param(i).table_id()].reset(table);
   }
 
   if (barrier_table != UINT32_MAX) {
-    _table_map[barrier_table]->set_table_map(&_table_map);
+    _table_map[barrier_table]->SetTableMap(&_table_map);
   }
   if (global_step_table != UINT32_MAX) {
-    _table_map[global_step_table]->set_table_map(&_table_map);
+    _table_map[global_step_table]->SetTableMap(&_table_map);
   }
 
-  return initialize();
+  return Initialize();
 }
 }  // namespace distributed
 }  // namespace paddle

@@ -85,7 +85,7 @@ void Tile(const Context& dev_ctx,
 template <typename T, typename Context>
 void TileKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const ScalarArray& repeat_times,
+                const IntArray& repeat_times,
                 DenseTensor* out) {
   auto rank = x.dims().size();
   auto& repeat_times_data = repeat_times.GetData();

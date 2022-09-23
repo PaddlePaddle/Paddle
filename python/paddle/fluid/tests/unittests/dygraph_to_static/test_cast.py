@@ -61,9 +61,10 @@ def test_mix_cast(x):
 
 
 class TestCastBase(unittest.TestCase):
+
     def setUp(self):
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
         self.prepare()
         self.set_func()
 
@@ -90,13 +91,16 @@ class TestCastBase(unittest.TestCase):
             msg='The target dtype is {}, but the casted dtype is {}.'.format(
                 self.cast_dtype, res.dtype))
         ref_val = self.input.astype(self.cast_dtype)
-        self.assertTrue(
-            np.allclose(res, ref_val),
-            msg='The casted value is {}.\nThe correct value is {}.'.format(
+        np.testing.assert_allclose(
+            res,
+            ref_val,
+            rtol=1e-05,
+            err_msg='The casted value is {}.\nThe correct value is {}.'.format(
                 res, ref_val))
 
 
 class TestIntCast(TestCastBase):
+
     def prepare(self):
         self.input_shape = (1, )
         self.input_dtype = 'float32'
@@ -110,6 +114,7 @@ class TestIntCast(TestCastBase):
 
 
 class TestFloatCast(TestCastBase):
+
     def prepare(self):
         self.input_shape = (8, 16)
         self.input_dtype = 'bool'
@@ -123,6 +128,7 @@ class TestFloatCast(TestCastBase):
 
 
 class TestMixCast(TestCastBase):
+
     def prepare(self):
         self.input_shape = (8, 32)
         self.input_dtype = 'float32'
@@ -145,13 +151,16 @@ class TestMixCast(TestCastBase):
                 self.cast_dtype, res.dtype))
         ref_val = self.input.astype(self.cast_int).astype(
             self.cast_float).astype(self.cast_bool).astype(self.cast_dtype)
-        self.assertTrue(
-            np.allclose(res, ref_val),
-            msg='The casted value is {}.\nThe correct value is {}.'.format(
+        np.testing.assert_allclose(
+            res,
+            ref_val,
+            rtol=1e-05,
+            err_msg='The casted value is {}.\nThe correct value is {}.'.format(
                 res, ref_val))
 
 
 class TestNotVarCast(TestCastBase):
+
     def prepare(self):
         self.input = 3.14
         self.cast_dtype = 'int'

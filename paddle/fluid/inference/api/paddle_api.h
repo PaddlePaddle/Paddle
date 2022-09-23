@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "crypto/cipher.h"
 #include "paddle_infer_declare.h"  // NOLINT
 #include "paddle_tensor.h"         // NOLINT
@@ -36,6 +37,7 @@ namespace paddle {
 
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
+using PaddleDataLayout = paddle_infer::DataLayout;
 
 /// \brief Memory manager for PaddleTensor.
 ///
@@ -193,7 +195,8 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
  private:
   friend class AnalysisPredictor;
   friend class ONNXRuntimePredictor;
-  explicit ZeroCopyTensor(void* scope) : paddle_infer::Tensor{scope} {}
+  explicit ZeroCopyTensor(void* scope, const void* device_contexts)
+      : paddle_infer::Tensor{scope, device_contexts} {}
 };
 
 /// \brief A Predictor for executing inference on a model.
@@ -225,6 +228,12 @@ class PD_INFER_DECL PaddlePredictor {
   /// \brief Get the input shape of the model.
   /// \return A map contains all the input names and shape defined in the model.
   virtual std::map<std::string, std::vector<int64_t>> GetInputTensorShape() {
+    return {};
+  }
+
+  /// \brief Get the input type of the model.
+  /// \return A map contains all the input names and type defined in the model.
+  virtual std::map<std::string, paddle_infer::DataType> GetInputTypes() {
     return {};
   }
 
@@ -284,7 +293,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// When using clone, the same network will be created,
   /// and the parameters between them are shared.
   /// \return unique_ptr which contains the pointer of predictor
-  virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
+  virtual std::unique_ptr<PaddlePredictor> Clone(void* stream = nullptr) = 0;
 
   /// \brief Destroy the Predictor.
   virtual ~PaddlePredictor() = default;
@@ -298,6 +307,11 @@ class PD_INFER_DECL PaddlePredictor {
   struct Config {
     std::string model_dir; /*!< path to the model directory. */
   };
+
+  virtual void* GetExecStream() const { return nullptr; }
+
+ protected:
+  virtual const void* GetDeviceContexts() const { return nullptr; }
 };
 
 ///
@@ -390,12 +404,14 @@ PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
     const ConfigT& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig& config);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
+    const NativeConfig& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+    const AnalysisConfig& config);
 
 template <>
 PD_INFER_DECL std::unique_ptr<PaddlePredictor>
@@ -419,8 +435,10 @@ using hipStream_t = struct ihipStream_t*;
 
 namespace paddle_infer {
 class Predictor;
+class Tensor;
 using Config = paddle::AnalysisConfig;
 namespace experimental {
+// Unstable interface, may be modified or deleted in the future.
 class PD_INFER_DECL InternalUtils {
  public:
   // Note: Can only be used under thread_local semantics.
@@ -428,8 +446,26 @@ class PD_INFER_DECL InternalUtils {
                                     cudaStream_t stream);
   static bool RunWithExternalStream(paddle_infer::Predictor* pred,
                                     hipStream_t stream);
+
   static void UpdateConfigInterleaved(paddle_infer::Config* c,
                                       bool with_interleaved);
+
+  static void SetTransformerPosid(
+      paddle_infer::Config* c, const std::string& tensorrt_transformer_posid);
+
+  static void SetTransformerMaskid(
+      paddle_infer::Config* c, const std::string& tensorrt_transformer_maskid);
+
+  static void SyncStream(paddle_infer::Predictor* pred);
+  static void SyncStream(cudaStream_t stream);
+  template <typename T>
+  static void CopyFromCpuWithIoStream(paddle_infer::Tensor* t,
+                                      const T* data,
+                                      cudaStream_t stream);
+  template <typename T>
+  static void CopyToCpuWithIoStream(paddle_infer::Tensor* t,
+                                    T* data,
+                                    cudaStream_t stream);
 };
 }  // namespace experimental
 }  // namespace paddle_infer

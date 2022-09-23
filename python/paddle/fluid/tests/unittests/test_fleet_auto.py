@@ -22,6 +22,7 @@ paddle.enable_static()
 
 
 class TestDistributedStrategyAuto(unittest.TestCase):
+
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
@@ -31,16 +32,17 @@ class TestDistributedStrategyAuto(unittest.TestCase):
 
     def test_distributed_strategy_auto(self):
         fleet.init(is_collective=True)
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32')
+        input_x = paddle.fluid.layers.data(name="x",
+                                           shape=[32],
+                                           dtype='float32')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
+        cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                 label=input_y)
+        avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.auto = True

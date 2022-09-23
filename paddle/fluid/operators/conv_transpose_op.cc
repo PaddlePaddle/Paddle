@@ -13,13 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_transpose_op.h"
-#include <memory>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
-
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -28,165 +33,6 @@ namespace paddle {
 namespace operators {
 
 using DataLayout = framework::DataLayout;
-
-void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
-  OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "ConvTranspose");
-  OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "ConvTranspose");
-  OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "ConvTranspose");
-
-  auto in_dims = ctx->GetInputDim("Input");
-  auto filter_dims = ctx->GetInputDim("Filter");
-  std::vector<int> output_size =
-      ctx->Attrs().Get<std::vector<int>>("output_size");
-  std::vector<int> output_padding =
-      ctx->Attrs().Get<std::vector<int>>("output_padding");
-  std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
-  std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-  std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
-  int groups = ctx->Attrs().Get<int>("groups");
-  std::string padding_algorithm =
-      ctx->Attrs().Get<std::string>("padding_algorithm");
-  const std::string data_layout_str =
-      ctx->Attrs().Get<std::string>("data_format");
-  const DataLayout data_layout =
-      ctx->IsRunMKLDNNKernel() ? DataLayout::kNCHW
-                               : framework::StringToDataLayout(data_layout_str);
-
-  PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
-                    platform::errors::InvalidArgument(
-                        "Input of Op(conv_transpose) should be 4-D or "
-                        "5-D Tensor. But received: %u-D Tensor, "
-                        "the shape of input is [%s]",
-                        in_dims.size(), in_dims));
-  PADDLE_ENFORCE_EQ(
-      in_dims.size(), filter_dims.size(),
-      platform::errors::InvalidArgument(
-          "The input's dimension size and filter's dimension size of "
-          "Op (conv_transpose) should be equal. But received: the shape of "
-          "input is [%s], the dimension size of input is [%d], the shape "
-          "of filter is [%s],  the dimension size of filter is [%d]. ",
-          in_dims, in_dims.size(), filter_dims, filter_dims.size()));
-
-  int stride_size = strides.size();
-  for (int i = 0; i < stride_size; ++i) {
-    PADDLE_ENFORCE_GT(
-        strides[i], 0,
-        platform::errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
-            "stride is %d.",
-            strides[i]));
-  }
-
-  int in_sub_stride_size = in_dims.size() - stride_size;
-
-  PADDLE_ENFORCE_EQ(
-      in_dims.size() - strides.size(), 2U,
-      platform::errors::InvalidArgument(
-          "The input's dimension size minus Attr(stride)'s size must "
-          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
-          "input's dimension size is [%d], the shape of input "
-          "is [%s], the Attr(stride)'s size is [%d].",
-          in_sub_stride_size, in_dims.size(), in_dims, strides.size()));
-  if (output_size.size())
-    PADDLE_ENFORCE_EQ(
-        output_size.size(), strides.size(),
-        platform::errors::InvalidArgument(
-            "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
-            "should be the same."));
-  if (output_padding.size())
-    PADDLE_ENFORCE_EQ(
-        output_padding.size(), strides.size(),
-        platform::errors::InvalidArgument(
-            "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
-            "should be the same."));
-
-  const int64_t C =
-      (data_layout != DataLayout::kNHWC ? in_dims[1]
-                                        : in_dims[in_dims.size() - 1]);
-  PADDLE_ENFORCE_EQ(
-      C, filter_dims[0],
-      platform::errors::InvalidArgument(
-          "The number of input channels should be equal to filter channels "
-          "for Op(conv_transpose). But received: the input's channels is "
-          "[%d], the shape of input is [%s], the filter's channels is [%d], "
-          "the shape of filter is [%s]. The data_format is %s."
-          "The error may come from wrong data_format setting.",
-          C, in_dims, filter_dims[0], filter_dims, data_layout_str));
-
-  framework::DDim in_data_dims;
-  if (data_layout != DataLayout::kNHWC) {
-    in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
-  } else {
-    in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
-  }
-  framework::DDim filter_data_dims =
-      phi::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-  UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                           in_data_dims, strides, ksize);
-
-  std::vector<int64_t> output_shape({in_dims[0]});
-  if (data_layout != DataLayout::kNHWC) {
-    output_shape.push_back(filter_dims[1] * groups);
-  }
-  const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
-  for (size_t i = 0; i < strides.size(); ++i) {
-    auto filter_extent = dilations[i] * (filter_dims[i + 2] - 1) + 1;
-    auto infer_shape = (ctx->IsRuntime() || in_dims[i + offset] > 0)
-                           ? (in_dims[i + offset] - 1) * strides[i] -
-                                 paddings[2 * i] - paddings[2 * i + 1] +
-                                 filter_extent
-                           : -1;
-    if (output_size.size()) {
-      if (ctx->IsRuntime()) {
-        PADDLE_ENFORCE_GE(
-            output_size[i], infer_shape,
-            platform::errors::InvalidArgument(
-                "output_size of Op(ConvTransposeOp) should not be "
-                "less than the infered output size. But received output_size = "
-                "[%s], whose dim %d is less than the infered output size [%s]",
-                phi::make_ddim(output_size).to_str(), i, infer_shape));
-        PADDLE_ENFORCE_LT(
-            output_size[i], infer_shape + strides[i],
-            platform::errors::InvalidArgument(
-                "output_size of Op(ConvTransposeOp) should be less "
-                "than infered size + stride. But received output_size = [%s], "
-                "whose dim %d is not less than the infered output size (%d) + "
-                "stride (%d) = %d",
-                phi::make_ddim(output_size).to_str(), i, infer_shape,
-                strides[i], infer_shape + strides[i]));
-      }
-      output_shape.push_back(output_size[i]);
-    } else if (output_padding.size()) {
-      if (ctx->IsRuntime()) {
-        PADDLE_ENFORCE_GE(
-            output_padding[i], 0,
-            platform::errors::InvalidArgument(
-                "output_padding of Op(ConvTransposeOp) should not be "
-                "less than the 0. But received output_padding = "
-                "[%s], whose dim %d is less than 0",
-                phi::make_ddim(output_padding).to_str(), i));
-        PADDLE_ENFORCE_LT(
-            output_padding[i], std::max(strides[i], dilations[i]),
-            platform::errors::InvalidArgument(
-                "output_padding of Op(ConvTransposeOp) should be less "
-                "than either stride or dilation. But received output_size = "
-                "[%s], "
-                "whose dim %d is not less than either stride (%d)  or "
-                "dilation (%d)",
-                phi::make_ddim(output_size).to_str(), i, strides[i],
-                dilations[i]));
-      }
-      output_shape.push_back((infer_shape + output_padding[i]));
-    } else {
-      output_shape.push_back(infer_shape);
-    }
-  }
-  if (data_layout == DataLayout::kNHWC) {
-    output_shape.push_back(filter_dims[1] * groups);
-  }
-  ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
-}
 
 framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
@@ -198,7 +44,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
     if (use_cudnn) {
       library_ = framework::LibraryType::kCUDNN;
@@ -217,7 +63,8 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 }
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
-    const std::string& var_name, const Tensor& tensor,
+    const std::string& var_name,
+    const framework::Tensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
@@ -233,21 +80,15 @@ framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     // op. Treat this as NCHW (default data_format value)
     if (dl != framework::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(),
-          framework::StringToDataLayout(data_format));
+          expected_kernel_type.data_type_, tensor.place(), dl);
     }
   }
 #endif
-  return framework::OpKernelType(expected_kernel_type.data_type_,
-                                 tensor.place(), tensor.layout());
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 void Conv2DTransposeOpMaker::Make() {
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false)
-      .AsExtra();
   AddInput("Input",
            "(Tensor) The input tensor of convolution transpose operator. "
            "The format of input tensor is NCHW or NHWC. Where N is batch size, "
@@ -278,7 +119,8 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<std::vector<int>>("output_size",
                             "(vector<int> default: []), the "
                             "size of the output tensor")
-      .SetDefault({});
+      .SetDefault({})
+      .SupportTensor();
   AddAttr<int>("groups",
                "(int default:1), the groups number of the convolution "
                "transpose operator. ")
@@ -298,40 +140,6 @@ void Conv2DTransposeOpMaker::Make() {
       "(vector<int> default:{0, 0}), the paddings(h_pad, w_pad) of convolution "
       "transpose operator.")
       .SetDefault({0, 0});
-  AddAttr<bool>(
-      "use_cudnn",
-      "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("force_fp32_output",
-                "(bool, default false) Force BF16 kernel output FP32, only "
-                "used in MKL-DNN BF16")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<std::string>(
-      "mkldnn_data_type",
-      "(string, default \"float32\"). Data type of mkldnn kernel")
-      .SetDefault("float32")
-      .InEnum({"float32", "bfloat16"})
-      .AsExtra();
-  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<std::string>("fuse_activation",
-                       "(string, default \"\") Only used in mkldnn kernel")
-      .SetDefault("")
-      .AsExtra();
-  AddAttr<float>("fuse_alpha",
-                 "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f)
-      .AsExtra();
-  AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f)
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -345,14 +153,6 @@ void Conv2DTransposeOpMaker::Make() {
       "\"SAME\",\"VALID\". Set to \"EXPLICIT\" for explicit padding. "
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
-  AddAttr<int>("workspace_size_MB",
-               "Used in cudnn kernel only. workspace size for cudnn, in MB, "
-               "workspace is a section of GPU memory which will be "
-               "allocated/freed each time the operator runs, larger "
-               "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully set.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
-      .AsExtra();
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
 
@@ -432,15 +232,6 @@ void Conv3DTransposeOpMaker::Make() {
                "(int default:1), the groups number of the convolution3d "
                "transpose operator. ")
       .SetDefault(1);
-  AddAttr<bool>(
-      "use_cudnn",
-      "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -454,14 +245,6 @@ void Conv3DTransposeOpMaker::Make() {
       "\"SAME\",\"VALID\". Set to \"EXPLICIT\" for explicit padding. "
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
-  AddAttr<int>("workspace_size_MB",
-               "Used in cudnn kernel only. workspace size for cudnn, in MB, "
-               "workspace is a section of GPU memory which will be "
-               "allocated/freed each time the operator runs, larger "
-               "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully set.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
-      .AsExtra();
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
 
@@ -493,17 +276,6 @@ Example:
 )DOC");
 }
 
-void ConvTransposeOpGrad::InferShape(framework::InferShapeContext* ctx) const {
-  auto in_dims = ctx->GetInputDim("Input");
-  auto filter_dims = ctx->GetInputDim("Filter");
-  if (ctx->HasOutput(framework::GradVarName("Input"))) {
-    ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
-  }
-  if (ctx->HasOutput(framework::GradVarName("Filter"))) {
-    ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
-  }
-}
-
 framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   bool use_cudnn =
@@ -511,7 +283,7 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
   }
 #endif
@@ -524,8 +296,10 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
 
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_);
 }
 
 template <typename T>
@@ -578,32 +352,16 @@ class ConvTransposeDoubleGradMaker : public framework::SingleGradOpMaker<T> {
                   ddx.empty()
                       ? this->EmptyInputGrad()
                       : this->InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
-                                         : this->InputGrad("Filter"));
-    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
-                                        : this->InputGrad("Input"));
+    op->SetOutput(
+        "DFilter",
+        ddx.empty() ? this->EmptyInputGrad() : this->InputGrad("Filter"));
+    op->SetOutput(
+        "DInput",
+        ddw.empty() ? this->EmptyInputGrad() : this->InputGrad("Input"));
 
     op->SetAttrMap(this->Attrs());
   }
 };
-
-void ConvTransposeOpDoubleGrad::InferShape(
-    framework::InferShapeContext* ctx) const {
-  auto x_dims = ctx->GetInputDim("Input");
-  auto w_dims = ctx->GetInputDim("Filter");
-  auto do_dims = ctx->GetInputDim("DOutput");
-
-  if (ctx->HasOutput("DDOutput") &&
-      (ctx->HasInput("DDInput") || (ctx->HasInput("DDFilter")))) {
-    ctx->SetOutputDim("DDOutput", do_dims);
-  }
-  if (ctx->HasOutput("DFilter") && ctx->HasInput("DDInput")) {
-    ctx->SetOutputDim("DFilter", w_dims);
-  }
-  if (ctx->HasOutput("DInput") && ctx->HasInput("DDFilter")) {
-    ctx->SetOutputDim("DInput", x_dims);
-  }
-}
 
 framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
@@ -612,7 +370,7 @@ framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
   }
 #endif
@@ -625,8 +383,10 @@ framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
 
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_);
 }
 
 }  // namespace operators
@@ -635,59 +395,67 @@ framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
 namespace ops = paddle::operators;
 
 // conv2d_transpose
-REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,
+DECLARE_INFER_SHAPE_FUNCTOR(conv2d_transpose,
+                            Conv2dTranposeInferShapeFunctor,
+                            PD_INFER_META(phi::Conv2dTransposeInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(conv2d_transpose_grad,
+                            Conv2dTranposeGradInferShapeFunctor,
+                            PD_INFER_META(phi::Conv2dTransposeGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(
+    conv2d_transpose_grad_grad,
+    Conv2dTranposeDoubleGradInferShapeFunctor,
+    PD_INFER_META(phi::Conv2dTransposeDoubleGradInferMeta));
+
+REGISTER_OPERATOR(conv2d_transpose,
+                  ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
                   ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
-    conv2d_transpose_grad, ops::ConvTransposeOpGrad,
-    ops::ConvTransposeDoubleGradMaker<paddle::framework::OpDesc>,
-    ops::ConvTransposeDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(conv2d_transpose_grad_grad, ops::ConvTransposeOpDoubleGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    conv2d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv2d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
-                                     double>);
+                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>,
+                  Conv2dTranposeInferShapeFunctor);
+REGISTER_OPERATOR(conv2d_transpose_grad,
+                  ops::ConvTransposeOpGrad,
+                  ops::ConvTransposeDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::ConvTransposeDoubleGradMaker<paddle::imperative::OpBase>,
+                  Conv2dTranposeGradInferShapeFunctor);
+REGISTER_OPERATOR(conv2d_transpose_grad_grad,
+                  ops::ConvTransposeOpDoubleGrad,
+                  Conv2dTranposeDoubleGradInferShapeFunctor);
 
 // conv3d_transpose
-REGISTER_OPERATOR(conv3d_transpose, ops::ConvTransposeOp,
+DECLARE_INFER_SHAPE_FUNCTOR(conv3d_transpose,
+                            Conv3dTranposeInferShapeFunctor,
+                            PD_INFER_META(phi::ConvTransposeInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(conv3d_transpose_grad,
+                            Conv3dTranposeGradInferShapeFunctor,
+                            PD_INFER_META(phi::ConvTransposeGradInferMeta));
+
+REGISTER_OPERATOR(conv3d_transpose,
+                  ops::ConvTransposeOp,
                   ops::Conv3DTransposeOpMaker,
                   ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(conv3d_transpose_grad, ops::ConvTransposeOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    conv3d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv3d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
-                                     double>);
+                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>,
+                  Conv3dTranposeInferShapeFunctor);
+REGISTER_OPERATOR(conv3d_transpose_grad,
+                  ops::ConvTransposeOpGrad,
+                  Conv3dTranposeGradInferShapeFunctor);
 
 // depthwise conv2d_transpose
-REGISTER_OPERATOR(depthwise_conv2d_transpose, ops::ConvTransposeOp,
+DECLARE_INFER_SHAPE_FUNCTOR(depthwise_conv2d_transpose,
+                            DepthWiseConv2dTranposeInferShapeFunctor,
+                            PD_INFER_META(phi::Conv2dTransposeInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(depthwise_conv2d_transpose_grad,
+                            DepthWiseConv2dTranposeGradInferShapeFunctor,
+                            PD_INFER_META(phi::Conv2dTransposeGradInferMeta));
+
+REGISTER_OPERATOR(depthwise_conv2d_transpose,
+                  ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
                   ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(depthwise_conv2d_transpose_grad, ops::ConvTransposeOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    depthwise_conv2d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    depthwise_conv2d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
-                                     double>);
+                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>,
+                  DepthWiseConv2dTranposeInferShapeFunctor);
+REGISTER_OPERATOR(depthwise_conv2d_transpose_grad,
+                  ops::ConvTransposeOpGrad,
+                  DepthWiseConv2dTranposeGradInferShapeFunctor);
 
 REGISTER_OP_VERSION(conv_transpose)
     .AddCheckpoint(
@@ -718,7 +486,8 @@ REGISTER_OP_VERSION(conv2d_transpose)
             .NewAttr("force_fp32_output",
                      "Force BF16 kernel output FP32, only used in MKL-DNN BF16",
                      false)
-            .NewAttr("mkldnn_data_type", "Data type of mkldnn kernel",
+            .NewAttr("mkldnn_data_type",
+                     "Data type of mkldnn kernel",
                      "float32"));
 
 REGISTER_OP_VERSION(conv3d_transpose)

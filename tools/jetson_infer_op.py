@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -51,16 +51,14 @@ def parse_arguments():
     :return:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--shell_name',
-        type=str,
-        default='get_op_list.sh',
-        help='please input right name')
-    parser.add_argument(
-        '--op_list_file',
-        type=str,
-        default='list_op.txt',
-        help='please input right name')
+    parser.add_argument('--shell_name',
+                        type=str,
+                        default='get_op_list.sh',
+                        help='please input right name')
+    parser.add_argument('--op_list_file',
+                        type=str,
+                        default='list_op.txt',
+                        help='please input right name')
     return parser.parse_args()
 
 
@@ -154,7 +152,7 @@ def set_diff_value(file, atol="1e-5", inplace_atol="1e-7"):
     """
     :param file: refer to op_test.py
     :param atol: refer to op_test.py
-    :param inplace_atol: 
+    :param inplace_atol:
     :return:
     """
     os.system("sed -i 's/self.check_output(/self\.check_output\(atol=" + atol +

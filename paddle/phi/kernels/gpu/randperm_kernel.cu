@@ -16,10 +16,12 @@
 
 #ifdef __NVCC__
 #include <curand_kernel.h>
+
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
 #include <hiprand_kernel.h>
+
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
@@ -36,26 +38,29 @@ DECLARE_bool(use_curand);
 
 namespace phi {
 
-template <typename T>
-__global__ void SwapRepeatKernel(
-    int* key, T* data, int n, uint64_t seed, uint64_t offset) {
+template <typename keyT, typename dataT>
+__global__ void SwapRepeatKernel(keyT* key_out_data,
+                                 dataT* out_data,
+                                 int n,
+                                 uint64_t seed,
+                                 uint64_t offset) {
   size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
-  if (idx < n) return;
+  if (idx >= n - 1) return;  // out of range
 
-  bool first_repeat = false;
-  if (data[idx] == data[idx + 1]) {
+  bool is_first_repeat = false;
+  if (key_out_data[idx] == key_out_data[idx + 1]) {
     if (idx == 0) {
-      first_repeat = true;
-    } else if (data[idx] != data[idx - 1]) {
-      first_repeat = true;
+      is_first_repeat = true;
+    } else if (key_out_data[idx] != key_out_data[idx - 1]) {
+      is_first_repeat = true;
     }
   }
 
-  if (!first_repeat) return;
+  if (!is_first_repeat) return;
 
   int repeat_size = 1;
   for (int i = idx; i < n; ++i) {
-    if (data[i] == data[i + 1]) {
+    if (key_out_data[i] == key_out_data[i + 1]) {
       ++repeat_size;
     } else {
       break;
@@ -74,9 +79,9 @@ __global__ void SwapRepeatKernel(
     uint32_t r = hiprand(&state) % (i + 1);
 #endif
     if (r != i) {
-      T tmp = data[idx + i];
-      data[idx + i] = data[idx + r];
-      data[idx + r] = tmp;
+      dataT tmp = out_data[idx + i];
+      out_data[idx + i] = out_data[idx + r];
+      out_data[idx + r] = tmp;
     }
   }
 }
@@ -84,91 +89,68 @@ __global__ void SwapRepeatKernel(
 template <typename T, typename Context>
 void RandpermRawKernel(
     const Context& dev_ctx, int n, DataType dtype, int seed, DenseTensor* out) {
-  if (FLAGS_use_curand) {
-    DenseTensor key;
-    RandintKernel<int, Context>(dev_ctx,
-                                std::numeric_limits<int>::min(),
-                                std::numeric_limits<int>::max(),
-                                ScalarArray({n}),
-                                phi::DataType::INT32,
-                                &key);
-    DenseTensor key_out = Empty<int, Context>(dev_ctx, ScalarArray({n}));
+  DenseTensor key;
+  RandintKernel<int, Context>(dev_ctx,
+                              std::numeric_limits<int>::min(),
+                              std::numeric_limits<int>::max(),
+                              IntArray({n}),
+                              phi::DataType::INT32,
+                              &key);
+  DenseTensor key_out = Empty<int, Context>(dev_ctx, IntArray({n}));
 
-    DenseTensor range = Empty<T, Context>(dev_ctx, ScalarArray({n}));
-    T* range_data = range.data<T>();
-    funcs::ForRange<Context> for_range(dev_ctx, n);
-    for_range([range_data] __device__(size_t idx) {
-      range_data[idx] = static_cast<T>(idx);
-    });
+  DenseTensor range = Empty<T, Context>(dev_ctx, IntArray({n}));
+  T* range_data = range.data<T>();
+  funcs::ForRange<Context> for_range(dev_ctx, n);
+  for_range([range_data] __device__(size_t idx) {
+    range_data[idx] = static_cast<T>(idx);
+  });
 
-    out->Resize(phi::make_ddim({n}));
-    T* out_data = dev_ctx.template Alloc<T>(out);
+  out->Resize(phi::make_ddim({n}));
+  T* out_data = dev_ctx.template Alloc<T>(out);
 
-    // Refer to [Algorithm of randperm] https://osf.io/af2hy/ to
-    // improve performance of radix sort.
-    double n_d = static_cast<double>(n);
-    int begin_bit = 0;
-    int end_bit =
-        std::ceil(std::log2(n_d - (6 * n_d * n_d + 1) / (12 * std::log(0.9))));
+  // Refer to [Algorithm of randperm] https://osf.io/af2hy/ to
+  // improve performance of radix sort.
+  double n_d = static_cast<double>(n);
+  int begin_bit = 0;
+  int end_bit =
+      std::ceil(std::log2(n_d - (6 * n_d * n_d + 1) / (12 * std::log(0.9))));
 
-    size_t temp_storage_bytes = 0;
-    cub::DeviceRadixSort::SortPairs<int, T>(nullptr,
-                                            temp_storage_bytes,
-                                            key.data<int>(),
-                                            key_out.data<int>(),
-                                            range.data<T>(),
-                                            out_data,
-                                            n,
-                                            begin_bit,
-                                            end_bit < 32 ? end_bit : 32,
-                                            dev_ctx.stream());
+  size_t temp_storage_bytes = 0;
+  cub::DeviceRadixSort::SortPairs<int, T>(nullptr,
+                                          temp_storage_bytes,
+                                          key.data<int>(),
+                                          key_out.data<int>(),
+                                          range.data<T>(),
+                                          out_data,
+                                          n,
+                                          begin_bit,
+                                          end_bit < 32 ? end_bit : 32,
+                                          dev_ctx.stream());
 
-    auto d_temp_storage = paddle::memory::Alloc(dev_ctx, temp_storage_bytes);
-    cub::DeviceRadixSort::SortPairs<int, T>(d_temp_storage->ptr(),
-                                            temp_storage_bytes,
-                                            key.data<int>(),
-                                            key_out.data<int>(),
-                                            range.data<T>(),
-                                            out_data,
-                                            n,
-                                            begin_bit,
-                                            end_bit < 32 ? end_bit : 32,
-                                            dev_ctx.stream());
+  auto d_temp_storage = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      temp_storage_bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  cub::DeviceRadixSort::SortPairs<int, T>(d_temp_storage->ptr(),
+                                          temp_storage_bytes,
+                                          key.data<int>(),
+                                          key_out.data<int>(),
+                                          range.data<T>(),
+                                          out_data,
+                                          n,
+                                          begin_bit,
+                                          end_bit < 32 ? end_bit : 32,
+                                          dev_ctx.stream());
 
-    auto gen_cuda = dev_ctx.GetGenerator();
-    auto seed_offset = gen_cuda->IncrementOffset(n);
-    uint64_t seed = seed_offset.first;
-    uint64_t offset = seed_offset.second;
+  auto gen_cuda = dev_ctx.GetGenerator();
+  auto seed_offset = gen_cuda->IncrementOffset(n);
 
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n);
-    SwapRepeatKernel<T><<<config.block_per_grid.x,
-                          config.thread_per_block.x,
-                          0,
-                          dev_ctx.stream()>>>(
-        key_out.data<int>(), out_data, n, seed, offset);
-  } else {
-    DenseTensor tmp;
-    tmp.Resize(phi::make_ddim({n}));
-    T* tmp_data = dev_ctx.template HostAlloc<T>(&tmp);
-
-    std::shared_ptr<std::mt19937_64> engine;
-    if (seed) {
-      engine = std::make_shared<std::mt19937_64>();
-      engine->seed(seed);
-    } else {
-      engine = dev_ctx.GetHostGenerator()->GetCPUEngine();
-    }
-
-    for (int i = 0; i < n; ++i) {
-      tmp_data[i] = static_cast<T>(i);
-    }
-    std::shuffle(tmp_data, tmp_data + n, *engine);
-
-    T* out_data = dev_ctx.template Alloc<T>(out);
-    auto size = out->numel() * paddle::experimental::SizeOf(out->dtype());
-    paddle::memory::Copy<phi::GPUPlace, phi::Place>(
-        out->place(), out_data, tmp.place(), tmp_data, size, 0);
-  }
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n);
+  SwapRepeatKernel<<<config.block_per_grid.x,
+                     config.thread_per_block.x,
+                     0,
+                     dev_ctx.stream()>>>(
+      key_out.data<int>(), out_data, n, seed_offset.first, seed_offset.second);
 }
 
 template <typename T, typename Context>

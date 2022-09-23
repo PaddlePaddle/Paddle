@@ -25,7 +25,7 @@ from contextlib import contextmanager
 
 from paddle.fluid import unique_name, compiler
 from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel
-from paddle.fluid.framework import in_dygraph_mode, Program
+from paddle.fluid.framework import _non_static_mode, Program
 
 g_train_epoch_range = None
 g_checker = None
@@ -69,6 +69,7 @@ def _thread_checker():
 
 
 class AutoCheckpointChecker(object):
+
     def __init__(self):
         self._run_env = None
         self._platform = None
@@ -129,7 +130,7 @@ class AutoCheckpointChecker(object):
         return self._save_checkpoint_inter
 
     def valid(self):
-        if in_dygraph_mode():
+        if _non_static_mode():
             return False
 
         return self._run_env is not None and \
@@ -191,6 +192,7 @@ class AutoCheckpointChecker(object):
 
 
 class ExeTrainStatus(SerializableBase):
+
     def __init__(self):
         self._epoch_no = -1  # start epoch_no
         self._hash_key = None
@@ -263,6 +265,7 @@ class ExeTrainStatus(SerializableBase):
 
 
 class TrainEpochRange(SerializableBase):
+
     def __init__(self,
                  max_epoch_num,
                  name,
@@ -319,11 +322,10 @@ class TrainEpochRange(SerializableBase):
         epoch_no = -1
         for i in cp_nos[::-1]:
             t = TrainEpochRange(self._max_epoch_num, self.name, restored=False)
-            self._cper.load_checkpoint(
-                self._checkpoint_path, [t],
-                self._checker.trainer_id,
-                checkpoint_no=i,
-                local_cache_path=self._checker._fs_cache)
+            self._cper.load_checkpoint(self._checkpoint_path, [t],
+                                       self._checker.trainer_id,
+                                       checkpoint_no=i,
+                                       local_cache_path=self._checker._fs_cache)
             cps.append(t)
             logger.debug("look for valid:{} t:{}".format(i, t._serialize()))
             if epoch_no < 0:
@@ -343,10 +345,9 @@ class TrainEpochRange(SerializableBase):
 
         if g_acp_type == CONST_ACP_TYPE:
             # get the last one
-            self._cper.load_checkpoint(
-                self._checkpoint_path, [self],
-                self._checker.trainer_id,
-                local_cache_path=self._checker._fs_cache)
+            self._cper.load_checkpoint(self._checkpoint_path, [self],
+                                       self._checker.trainer_id,
+                                       local_cache_path=self._checker._fs_cache)
             self._restored_from = CONST_CHECKPOINT
             self._checkpoint_epoch_no = self._epoch_no
 
@@ -359,11 +360,10 @@ class TrainEpochRange(SerializableBase):
                 self._restored_from = CONST_MEMORYINIT
                 return
 
-            self._cper.load_checkpoint(
-                self._checkpoint_path, [self],
-                self._checker.trainer_id,
-                checkpoint_no=i,
-                local_cache_path=self._checker._fs_cache)
+            self._cper.load_checkpoint(self._checkpoint_path, [self],
+                                       self._checker.trainer_id,
+                                       checkpoint_no=i,
+                                       local_cache_path=self._checker._fs_cache)
 
             self._restored_from = CONST_CHECKPOINT
             self._checkpoint_epoch_no = self._epoch_no
@@ -497,9 +497,8 @@ class TrainEpochRange(SerializableBase):
             logger.debug("save executor checkpoint:{}".format(t._serialize()))
 
         if len(self._exe_status) > 0:
-            self._cper.save_checkpoint(
-                self._checkpoint_path, [self],
-                local_cache_path=self._checker._fs_cache)
+            self._cper.save_checkpoint(self._checkpoint_path, [self],
+                                       local_cache_path=self._checker._fs_cache)
             logger.info("save train_epoch_range checkpoint:{}".format(
                 self._serialize()))
 
@@ -658,11 +657,10 @@ def _auto_checkpoint(exe, prog):
         if t._restored_from is None:
             a = CheckpointSaver(g_train_epoch_range._hdfs)
             m = PaddleModel(exe, program)
-            a.load_checkpoint(
-                g_checker.get_exe_checkpoint_path(key), [m],
-                trainer_id=g_checker.trainer_id,
-                checkpoint_no=t._checkpoint_no,
-                local_cache_path=g_checker._fs_cache)
+            a.load_checkpoint(g_checker.get_exe_checkpoint_path(key), [m],
+                              trainer_id=g_checker.trainer_id,
+                              checkpoint_no=t._checkpoint_no,
+                              local_cache_path=g_checker._fs_cache)
             t._restored_from = CONST_CHECKPOINT
             logger.info("load executor checkpoint {}".format(t))
         t._exe = exe

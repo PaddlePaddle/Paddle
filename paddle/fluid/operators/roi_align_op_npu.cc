@@ -34,7 +34,8 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     auto aligned = ctx.Attr<bool>("aligned");
     auto roi_end_mode = 0;
     PADDLE_ENFORCE_EQ(
-        aligned, false,
+        aligned,
+        false,
         platform::errors::InvalidArgument(
             "ROIAlignNPU only support Aligned attribute equaled to False"));
 
@@ -120,11 +121,13 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     in_grad->mutable_data<T>(place);
 
     PADDLE_ENFORCE_EQ(
-        aligned, false,
+        aligned,
+        false,
         platform::errors::InvalidArgument(
             "ROIAlignGradNPU only support Aligned attribute equaled to False"));
     PADDLE_ENFORCE_EQ(
-        ctx.HasInput("RoisNum"), true,
+        ctx.HasInput("RoisNum"),
+        true,
         platform::errors::NotFound("Input(RoisNum) of ROIAlignGradOp "
                                    "is not found while using NPU."));
     PADDLE_ENFORCE_EQ(
@@ -141,8 +144,8 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     ROIsNum_fp.mutable_data<T>(RoisNum->dims(), place);  // shape = [rois_num]
     int nputype_fp32 =
         static_cast<int>(ConvertToNpuDtype(framework::proto::VarType::FP32));
-    const auto& runner_cast = NpuOpRunner("Cast", {*RoisNum}, {ROIsNum_fp},
-                                          {{"dst_type", nputype_fp32}});
+    const auto& runner_cast = NpuOpRunner(
+        "Cast", {*RoisNum}, {ROIsNum_fp}, {{"dst_type", nputype_fp32}});
     runner_cast.Run(stream);
     ROIsNum_fp.Resize({rois_num, 1});
 
@@ -150,12 +153,14 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     std::vector<paddle::framework::Tensor> x_list;
     x_list.push_back(ROIsNum_fp);
     x_list.push_back(*rois);
-    const auto& runner_concat = NpuOpRunner("ConcatD", {x_list}, {ROIs_N5},
-                                            {{"N", 2}, {"concat_dim", 1}});
+    const auto& runner_concat = NpuOpRunner(
+        "ConcatD", {x_list}, {ROIs_N5}, {{"N", 2}, {"concat_dim", 1}});
     runner_concat.Run(stream);
 
-    //  By analysis, in order to match cpu grad version,
-    //  rois[:,3:5] should substrate 1 before call ascend grad function
+    //  If CANN version code is less than 504, by analysis, in order to match
+    //  cpu grad version, rois[:,3:5] should substrate 1 before call ascend grad
+    //  function
+#if (CANN_VERSION_CODE < 504000)
     std::vector<float> vec_dlt = {0, 0, 0, -1.0f, -1.0f};
     Tensor tsr_dlt;
     tsr_dlt.mutable_data<float>({5}, place);
@@ -164,11 +169,14 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     const auto& runner_add =
         NpuOpRunner("AddV2", {ROIs_N5, tsr_dlt}, {ROIs_N5}, {});
     runner_add.Run(stream);
+#endif
 
     //  Call ascend RoiAlignGrad function
     int roi_end_mode = 0;
     const auto& runner_roi_align_grad =
-        NpuOpRunner("ROIAlignGrad", {*out_grad, ROIs_N5}, {*in_grad},
+        NpuOpRunner("ROIAlignGrad",
+                    {*out_grad, ROIs_N5},
+                    {*in_grad},
                     {{"xdiff_shape", phi::vectorize<int>(in_dims)},
                      {"pooled_width", pooled_width},
                      {"pooled_height", pooled_height},
@@ -189,6 +197,7 @@ REGISTER_OP_NPU_KERNEL(
     ops::ROIAlignNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::ROIAlignNPUKernel<paddle::platform::NPUDeviceContext, int>);
 
-REGISTER_OP_NPU_KERNEL(roi_align_grad, ops::ROIAlignNPUGradKernel<float>,
+REGISTER_OP_NPU_KERNEL(roi_align_grad,
+                       ops::ROIAlignNPUGradKernel<float>,
                        ops::ROIAlignNPUGradKernel<double>,
                        ops::ROIAlignNPUGradKernel<int>);

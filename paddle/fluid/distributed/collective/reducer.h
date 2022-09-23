@@ -16,6 +16,7 @@
 
 #include <map>
 #include <vector>
+
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
@@ -26,30 +27,35 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {
 using Tensor = paddle::experimental::Tensor;
 using Scalar = paddle::experimental::ScalarBase<paddle::experimental::Tensor>;
-using ScalarArray =
-    paddle::experimental::ScalarArrayBase<paddle::experimental::Tensor>;
+using IntArray =
+    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+using Backend = paddle::experimental::Backend;
 
 std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
-    const std::vector<Tensor>, const std::vector<bool> &is_sparse_gradient,
+    const std::vector<Tensor>,
+    const std::vector<bool> &is_sparse_gradient,
     const std::vector<size_t> &group_size_limits,
     const std::vector<int64_t> &tensor_indices = {});
 
 class EagerGroup {
  public:
   Tensor dense_contents_;
+  Tensor sparse_contents_;
+  bool is_sparse_ = false;
 
   // for concat kernel
   std::vector<phi::DenseTensor> dense_tensors_;
   std::vector<int64_t> length_;
   int64_t all_length_{0};
-  std::vector<ScalarArray> origin_shapes_;
+  std::vector<IntArray> origin_shapes_;
 
   // Global indices of participating tensors in the group
   std::vector<size_t> tensor_indices_;
@@ -60,6 +66,9 @@ class EagerGroup {
 
   // external message of group
   phi::DataType dtype_;
+
+  // help to sync
+  std::shared_ptr<ProcessGroup::Task> task;
 
   // context is used to select the stream for concat
   void ConcatTensors(const platform::Place &);
@@ -98,6 +107,11 @@ class EagerReducer {
   void MarkVarReady(const size_t var_index, const bool is_used_var);
   void MarkGroupReady(const size_t group_index);
   void FusedAllReduceSchedule(EagerGroup *group, const int curr_group_index);
+  void AllReduceSparse(EagerGroup *group, const int curr_group_index);
+  void FinalizeBackward();
+  void TraverseBackwardGraph(const std::vector<Tensor> &outputs);
+  void ProcessUnusedDenseVars();
+  bool HasGrad(size_t var_index);
 
  private:
   std::vector<Tensor> tensors_;
@@ -105,20 +119,26 @@ class EagerReducer {
   std::vector<bool> is_sparse_gradient_;
   std::shared_ptr<distributed::ProcessGroup> process_group_;
   std::vector<size_t> group_size_limits_;
-  bool find_unused_vars_each_step_;
 
   std::vector<EagerGroup> groups_;
   std::vector<TensorLocator> variable_locators_;
-  PlaceType place_;
   platform::Place inner_place_;
   size_t next_group_ = 0;
   int64_t nranks_ = -1;
-  std::vector<std::shared_ptr<paddle::distributed::ProcessGroup::Task>> tasks_;
 
   bool grad_need_hooks_{false};
 
   std::vector<bool> vars_marked_ready_;
-  std::vector<int> local_used_vars_;
+  std::vector<int32_t> local_used_vars_;
+
+  // Following variables are to help unused vars
+  std::vector<size_t> unused_vars_;
+  std::map<egr::GradNodeBase *, size_t> gradnode_index_map_;
+  bool has_marked_unused_vars_{false};
+  bool find_unused_vars_each_step_{false};
+  bool find_unused_vars_once_{true};
+  bool groups_need_finalize_{false};
+  Tensor global_used_vars_;
 };
 
 }  //  namespace distributed

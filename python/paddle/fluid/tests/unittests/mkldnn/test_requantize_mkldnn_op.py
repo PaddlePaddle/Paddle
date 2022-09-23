@@ -23,6 +23,7 @@ from mkldnn_op_test import format_reorder
 
 
 class TestReQuantizeOp(OpTest):
+
     def set_input_size(self):
         self.input_size = [1, 1, 10, 10]
         self.format_reorder = format_reorder
@@ -44,12 +45,12 @@ class TestReQuantizeOp(OpTest):
     def prepare_input(self):
         if self.input_data_type == 'int8':
             # input data values are integers from interval [-128, 128)
-            self.input = (np.random.randint(0, 256, self.input_size) - 128
-                          ).astype(self.input_data_type)
+            self.input = (np.random.randint(0, 256, self.input_size) -
+                          128).astype(self.input_data_type)
         else:
             # input data values are integers from interval [0, 256)
-            self.input = (np.random.randint(
-                0, 256, self.input_size)).astype(self.input_data_type)
+            self.input = (np.random.randint(0, 256, self.input_size)).astype(
+                self.input_data_type)
 
         self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(self.input)}
         self.attrs = {
@@ -112,24 +113,28 @@ class TestReQuantizeOp(OpTest):
 
 
 class TestReQuantizeOp_S8_SameScales(TestReQuantizeOp):
+
     def set_scales(self):
         self.scale_in = 127.0
         self.scale_out = 127.0
 
 
 class TestReQuantizeOp_S8_DifferentScales_1(TestReQuantizeOp):
+
     def set_scales(self):
         self.scale_in = 127.0
         self.scale_out = 100.0
 
 
 class TestReQuantizeOp_S8_DifferentScales_2(TestReQuantizeOp):
+
     def set_scales(self):
         self.scale_in = 100.0
         self.scale_out = 127.0
 
 
 class TestReQuantizeOp_S8_ZeroInputScale(TestReQuantizeOp):
+
     def set_scales(self):
         self.scale_in = 0.0
         self.scale_out = 127.0
@@ -144,6 +149,7 @@ class TestReQuantizeOp_S8_ZeroInputScale(TestReQuantizeOp):
 
 
 class TestReQuantizeOp_S8_ZeroOutputScale(TestReQuantizeOp):
+
     def set_scales(self):
         self.scale_in = 127.0
         self.scale_out = 0.0
@@ -161,18 +167,21 @@ class TestReQuantizeOp_S8_ZeroOutputScale(TestReQuantizeOp):
 
 
 class TestReQuantizeOp_U8_SameScales(TestReQuantizeOp_S8_SameScales):
+
     def set_input_data_type(self):
         self.input_data_type = 'uint8'
 
 
 class TestReQuantizeOp_U8_DifferentScales_1(
         TestReQuantizeOp_S8_DifferentScales_1):
+
     def set_input_data_type(self):
         self.input_data_type = 'uint8'
 
 
 class TestReQuantizeOp_U8_DifferentScales_2(
         TestReQuantizeOp_S8_DifferentScales_2):
+
     def set_input_data_type(self):
         self.input_data_type = 'uint8'
 
@@ -181,6 +190,7 @@ class TestReQuantizeOp_U8_DifferentScales_2(
 
 
 class TestReQuantizeOp_S8_WithShift(TestReQuantizeOp):
+
     def set_scales(self):
         self.scale_in = 60.0
         self.scale_out = 127.0
@@ -196,6 +206,7 @@ class TestReQuantizeOp_S8_WithShift(TestReQuantizeOp):
 
 
 class TestReQuantizeOp_S8_WithOutputShift(TestReQuantizeOp):
+
     def set_scales(self):
         self.scale_in = 127.0
         self.scale_out = 60.0
@@ -209,6 +220,7 @@ class TestReQuantizeOp_S8_WithOutputShift(TestReQuantizeOp):
 
 
 class TestReQuantizeOp_U8_SameScales_SameShift(TestReQuantizeOp_U8_SameScales):
+
     def set_shifts(self):
         self.shift_in = 128.0
         self.shift_out = 128.0
@@ -216,6 +228,7 @@ class TestReQuantizeOp_U8_SameScales_SameShift(TestReQuantizeOp_U8_SameScales):
 
 class TestReQuantizeOp_U8_SameScales_DifferentShift_1(
         TestReQuantizeOp_U8_SameScales):
+
     def set_shifts(self):
         self.shift_in = 60.0
         self.shift_out = 128.0
@@ -223,6 +236,7 @@ class TestReQuantizeOp_U8_SameScales_DifferentShift_1(
 
 class TestReQuantizeOp_U8_SameScales_DifferentShift_2(
         TestReQuantizeOp_U8_SameScales):
+
     def set_shifts(self):
         self.shift_in = 128.0
         self.shift_out = 60.0
@@ -230,6 +244,7 @@ class TestReQuantizeOp_U8_SameScales_DifferentShift_2(
 
 class TestReQuantizeOp_U8_DifferentScales_1_SameShift(
         TestReQuantizeOp_U8_DifferentScales_1):
+
     def set_shifts(self):
         self.shift_in = 128.0
         self.shift_out = 128.0
@@ -237,6 +252,7 @@ class TestReQuantizeOp_U8_DifferentScales_1_SameShift(
 
 class TestReQuantizeOp_U8_DifferentScales_2_SameShift(
         TestReQuantizeOp_U8_DifferentScales_2):
+
     def set_shifts(self):
         self.shift_in = 128.0
         self.shift_out = 128.0
@@ -244,6 +260,7 @@ class TestReQuantizeOp_U8_DifferentScales_2_SameShift(
 
 class TestReQuantizeOp_U8_DifferentScales_1_DifferentShift_1(
         TestReQuantizeOp_U8_DifferentScales_1):
+
     def set_shifts(self):
         self.shift_in = 128.0
         self.shift_out = 60.0
@@ -251,6 +268,7 @@ class TestReQuantizeOp_U8_DifferentScales_1_DifferentShift_1(
 
 class TestReQuantizeOp_U8_DifferentScales_2_DifferentShift_1(
         TestReQuantizeOp_U8_DifferentScales_2):
+
     def set_shifts(self):
         self.shift_in = 128.0
         self.shift_out = 60.0
@@ -258,6 +276,7 @@ class TestReQuantizeOp_U8_DifferentScales_2_DifferentShift_1(
 
 class TestReQuantizeOp_U8_DifferentScales_1_DifferentShift_2(
         TestReQuantizeOp_U8_DifferentScales_1):
+
     def set_shifts(self):
         self.shift_in = 60.0
         self.shift_out = 128.0
@@ -265,6 +284,7 @@ class TestReQuantizeOp_U8_DifferentScales_1_DifferentShift_2(
 
 class TestReQuantizeOp_U8_DifferentScales_2_DifferentShift_2(
         TestReQuantizeOp_U8_DifferentScales_2):
+
     def set_shifts(self):
         self.shift_in = 60.0
         self.shift_out = 128.0
@@ -274,6 +294,7 @@ class TestReQuantizeOp_U8_DifferentScales_2_DifferentShift_2(
 
 
 class TestReQuantizeOp_2DimFormat(TestReQuantizeOp):
+
     def format_reorder_2Dim(self, out, size):
         return out
 
@@ -286,6 +307,7 @@ class TestReQuantizeOp_2DimFormat(TestReQuantizeOp):
 
 
 class TestReQuantizeOpReused(TestReQuantizeOp):
+
     def setUp(self):
         #  self.input_size = [1, 1, 10, 10]
         self.input_size = [1, 1, 2, 2]
@@ -317,18 +339,20 @@ class TestReQuantizeOpReused(TestReQuantizeOp):
         with fluid.program_guard(program):
             block = program.global_block()
             for name in variables:
-                block.create_var(
-                    name=name, dtype="int8", shape=variables[name].shape)
-            block.append_op(
-                type="requantize",
-                inputs={'Input': block.var('input'), },
-                outputs={"Output": block.var('output')},
-                attrs={
-                    'Scale_in': self.scale_in,
-                    'Scale_out': self.scale_out,
-                    'Shift_in': self.shift_in,
-                    'Shift_out': self.shift_out
-                })
+                block.create_var(name=name,
+                                 dtype="int8",
+                                 shape=variables[name].shape)
+            block.append_op(type="requantize",
+                            inputs={
+                                'Input': block.var('input'),
+                            },
+                            outputs={"Output": block.var('output')},
+                            attrs={
+                                'Scale_in': self.scale_in,
+                                'Scale_out': self.scale_out,
+                                'Shift_in': self.shift_in,
+                                'Shift_out': self.shift_out
+                            })
             place = core.CPUPlace()
             exe = fluid.Executor(place)
             for i in range(2):
@@ -336,15 +360,17 @@ class TestReQuantizeOpReused(TestReQuantizeOp):
                               feed={'input': variables['input']},
                               fetch_list=['output'])
 
-            self.assertTrue(
-                np.allclose(
-                    variables['output'], out[0], atol=1e-4), 'output')
+            np.testing.assert_allclose(variables['output'],
+                                       out[0],
+                                       rtol=1e-05,
+                                       atol=1e-4)
 
 
 # ---------------test reused requantize op, no shift------------------------
 
 
 class TestReQuantizeOpReused_WithShift(TestReQuantizeOpReused):
+
     def set_input_data_type(self):
         self.input_data_type = 'uint8'
 

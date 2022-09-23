@@ -16,16 +16,34 @@ limitations under the License. */
 
 namespace phi {
 
+KernelSignature GraphSendRecvOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("Out_size")) {
+    return KernelSignature("graph_send_recv",
+                           {"X", "Src_index", "Dst_index"},
+                           {"reduce_op", "Out_size"},
+                           {"Out", "Dst_count"});
+  } else {
+    return KernelSignature("graph_send_recv",
+                           {"X", "Src_index", "Dst_index"},
+                           {"reduce_op", "out_size"},
+                           {"Out", "Dst_count"});
+  }
+}
+
 KernelSignature GraphSendRecvGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "graph_send_recv_grad",
-      {GradVarName("Out"), "X", "Out", "Src_index", "Dst_index", "Dst_count"},
-      {"pool_type"},
-      {GradVarName("X")});
+      {"X", "Src_index", "Dst_index", "Out", "Dst_count", "Out@GRAD"},
+      {"reduce_op"},
+      {"X@GRAD"});
 }
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(graph_send_recv,
+                           phi::GraphSendRecvOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(graph_send_recv_grad,
                            phi::GraphSendRecvGradOpArgumentMapping);

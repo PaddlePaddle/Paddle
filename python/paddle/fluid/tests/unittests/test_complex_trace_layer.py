@@ -19,9 +19,11 @@ from numpy.random import random as rand
 from paddle import tensor
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexTraceLayer(unittest.TestCase):
+
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [fluid.CPUPlace()]
@@ -30,15 +32,20 @@ class TestComplexTraceLayer(unittest.TestCase):
 
     def test_basic_api(self):
         for dtype in self._dtypes:
-            input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
-                [2, 20, 2, 3]).astype(dtype)
+            input = rand([
+                2, 20, 2, 3
+            ]).astype(dtype) + 1j * rand([2, 20, 2, 3]).astype(dtype)
             for place in self._places:
                 with dg.guard(place):
                     var_x = dg.to_variable(input)
-                    result = tensor.trace(
-                        var_x, offset=1, axis1=0, axis2=2).numpy()
+                    result = tensor.trace(var_x, offset=1, axis1=0,
+                                          axis2=2).numpy()
                     target = np.trace(input, offset=1, axis1=0, axis2=2)
-                    self.assertTrue(np.allclose(result, target))
+                    np.testing.assert_allclose(result, target, rtol=1e-05)
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_basic_api()
 
 
 if __name__ == '__main__':

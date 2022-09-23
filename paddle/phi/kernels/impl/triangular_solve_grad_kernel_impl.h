@@ -14,9 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/triangular_solve_grad_kernel.h"
-
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -24,6 +22,7 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/matrix_reduce.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
+#include "paddle/phi/kernels/triangular_solve_grad_kernel.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
 
 namespace phi {
@@ -44,7 +43,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
   std::tie(x_bst_dims_vec, y_bst_dims_vec) =
       funcs::MatrixGetBroadcastDims(x, y);
 
-  ScalarArray y_bst_dims_array(y_bst_dims_vec);
+  IntArray y_bst_dims_array(y_bst_dims_vec);
   DenseTensor dy_bst = phi::Empty<T, Context>(dev_ctx, y_bst_dims_array);
   if (dy) {
     // calculate x's conjugate for complex
@@ -71,7 +70,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     }
   }
 
-  ScalarArray x_bst_dims_array(x_bst_dims_vec);
+  IntArray x_bst_dims_array(x_bst_dims_vec);
   DenseTensor dx_bst = phi::Empty<T, Context>(dev_ctx, x_bst_dims_array);
   if (dx) {
     // calculate x's conjugate for complex

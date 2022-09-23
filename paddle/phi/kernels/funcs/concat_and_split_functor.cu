@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
@@ -27,22 +26,21 @@ __global__ void ConcatKernel_(const T** inputs,
                               const int64_t output_rows,
                               const int64_t output_cols,
                               T* output) {
-  int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  int curr_segment = 0;
-  int curr_offset = input_cols[0];
-  for (; tid_x < output_cols; tid_x += blockDim.x * gridDim.x) {
-    int curr_col_offset = input_cols[curr_segment + 1];
+  int64_t curr_segment = 0;
+  int64_t curr_offset = input_cols[0];
+  CUDA_KERNEL_LOOP_TYPE(tid_x, output_cols, int64_t) {
+    int64_t curr_col_offset = input_cols[curr_segment + 1];
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
       curr_col_offset = input_cols[curr_segment + 1];
     }
 
-    int local_col = tid_x - curr_offset;
-    int segment_width = curr_col_offset - curr_offset;
+    int64_t local_col = tid_x - curr_offset;
+    int64_t segment_width = curr_col_offset - curr_offset;
 
     const T* input_ptr = inputs[curr_segment];
-    int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+    int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
     for (; tid_y < output_rows; tid_y += blockDim.y * gridDim.y)
       output[tid_y * output_cols + tid_x] =
           input_ptr[tid_y * segment_width + local_col];
@@ -51,16 +49,15 @@ __global__ void ConcatKernel_(const T** inputs,
 
 template <typename T>
 __device__ void ConcatKernelDetail(const T** inputs_data,
-                                   const int fixed_in_col,
-                                   const int out_rows,
-                                   const int out_cols,
+                                   const int64_t fixed_in_col,
+                                   const int64_t out_rows,
+                                   const int64_t out_cols,
                                    T* output_data) {
-  int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  for (; tid_x < out_cols; tid_x += blockDim.x * gridDim.x) {
-    int split = tid_x * 1.0 / fixed_in_col;
-    int in_offset = tid_x - split * fixed_in_col;
+  CUDA_KERNEL_LOOP_TYPE(tid_x, out_cols, int64_t) {
+    int64_t split = tid_x * 1.0 / fixed_in_col;
+    int64_t in_offset = tid_x - split * fixed_in_col;
     const T* input_ptr = inputs_data[split];
-    int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+    int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
     for (; tid_y < out_rows; tid_y += blockDim.y * gridDim.y) {
       output_data[tid_y * out_cols + tid_x] =
           input_ptr[tid_y * fixed_in_col + in_offset];
@@ -134,22 +131,21 @@ __global__ void SplitKernel_(const T* input_data,
                              const int64_t* out_cols,
                              int out_cols_size,
                              T** outputs_data) {
-  int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  int curr_segment = 0;
-  int curr_offset = out_cols[0];
-  for (; tid_x < in_col; tid_x += blockDim.x * gridDim.x) {
-    int curr_col_offset = out_cols[curr_segment + 1];
+  int64_t curr_segment = 0;
+  int64_t curr_offset = out_cols[0];
+  CUDA_KERNEL_LOOP_TYPE(tid_x, in_col, int64_t) {
+    int64_t curr_col_offset = out_cols[curr_segment + 1];
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
       curr_col_offset = out_cols[curr_segment + 1];
     }
 
-    int local_col = tid_x - curr_offset;
-    int segment_width = curr_col_offset - curr_offset;
+    int64_t local_col = tid_x - curr_offset;
+    int64_t segment_width = curr_col_offset - curr_offset;
     T* output_ptr = outputs_data[curr_segment];
     if (output_ptr != nullptr) {
-      int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+      int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
       for (; tid_y < in_row; tid_y += blockDim.y * gridDim.y)
         output_ptr[tid_y * segment_width + local_col] =
             input_data[tid_y * in_col + tid_x];
@@ -159,17 +155,16 @@ __global__ void SplitKernel_(const T* input_data,
 
 template <typename T>
 __device__ void SplitKernelDetail(const T* input_data,
-                                  const int in_row,
-                                  const int in_col,
-                                  const int fixed_out_col,
+                                  const int64_t in_row,
+                                  const int64_t in_col,
+                                  const int64_t fixed_out_col,
                                   T** outputs_data) {
-  int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  for (; tid_x < in_col; tid_x += blockDim.x * gridDim.x) {
-    int split = tid_x / fixed_out_col;
-    int in_offset = tid_x - split * fixed_out_col;
+  CUDA_KERNEL_LOOP_TYPE(tid_x, in_col, int64_t) {
+    int64_t split = tid_x / fixed_out_col;
+    int64_t in_offset = tid_x - split * fixed_out_col;
     T* output_ptr = outputs_data[split];
     if (output_ptr != nullptr) {
-      int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+      int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
       for (; tid_y < in_row; tid_y += blockDim.y * gridDim.y)
         output_ptr[tid_y * fixed_out_col + in_offset] =
             input_data[tid_y * in_col + tid_x];
@@ -267,7 +262,7 @@ struct ConcatFunctor<phi::GPUContext, T> {
                   int axis,
                   phi::DenseTensor* output) {
     // TODO(zcd): Add input data validity checking
-    int in_num = input.size();
+    int64_t in_num = input.size();
     int64_t in_row = 1;
     auto dim_0 = input[0].dims();
     for (int i = 0; i < axis; ++i) {
@@ -276,7 +271,7 @@ struct ConcatFunctor<phi::GPUContext, T> {
     int64_t in_col = input[0].numel() / in_row;
     int64_t out_row = in_row, out_col = 0;
 
-    int inputs_col_num = in_num + 1;
+    int64_t inputs_col_num = in_num + 1;
     std::vector<const T*> inputs_data_vec(in_num);
     std::vector<int64_t> inputs_col_vec(inputs_col_num);
     const T** inputs_data = inputs_data_vec.data();
@@ -320,7 +315,10 @@ struct ConcatFunctor<phi::GPUContext, T> {
     paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
     const T** dev_ins_data = nullptr;
     if (!has_same_shape || in_num < 2 || in_num > 4) {
-      tmp_dev_ins_data = paddle::memory::Alloc(context, in_num * sizeof(T*));
+      tmp_dev_ins_data = paddle::memory::Alloc(
+          context.GetPlace(),
+          in_num * sizeof(T*),
+          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           inputs_data, in_num);
       paddle::memory::Copy(context.GetPlace(),
@@ -365,8 +363,10 @@ struct ConcatFunctor<phi::GPUContext, T> {
             dev_ins_data, in_num, in_col, out_row, out_col, output->data<T>());
       }
     } else {
-      auto tmp_dev_ins_col_data =
-          paddle::memory::Alloc(context, inputs_col_num * sizeof(int64_t));
+      auto tmp_dev_ins_col_data = paddle::memory::Alloc(
+          context.GetPlace(),
+          inputs_col_num * sizeof(int64_t),
+          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
 
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           inputs_col, inputs_col_num);
@@ -480,7 +480,10 @@ class SplitFunctor<phi::GPUContext, T> {
     T** dev_out_gpu_data = nullptr;
     if (!has_same_shape || o_num < 2 || o_num > 4) {
       // TODO(chentianyu03): try to find a method to remove the Alloc function
-      tmp_dev_outs_data = paddle::memory::Alloc(context, o_num * sizeof(T*));
+      tmp_dev_outs_data = paddle::memory::Alloc(
+          context.GetPlace(),
+          o_num * sizeof(T*),
+          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           outputs_data, o_num);
       paddle::memory::Copy(context.GetPlace(),
@@ -528,7 +531,10 @@ class SplitFunctor<phi::GPUContext, T> {
       auto tmp_dev_ins_col_data =
           // TODO(chentianyu03): try to find a method to remove the Alloc
           // function
-          paddle::memory::Alloc(context, outputs_cols_num * sizeof(int64_t));
+          paddle::memory::Alloc(
+              context.GetPlace(),
+              outputs_cols_num * sizeof(int64_t),
+              phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           outputs_cols, outputs_cols_num);
       paddle::memory::Copy(context.GetPlace(),
@@ -548,6 +554,7 @@ class SplitFunctor<phi::GPUContext, T> {
           static_cast<int>(outputs_cols_num),
           dev_out_gpu_data);
     }
+
 #ifdef PADDLE_WITH_HIP
     // Prevent the pinned memory value from being covered and release the memory
     // after the launch kernel of the stream is executed (reapply pinned memory

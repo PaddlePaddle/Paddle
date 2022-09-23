@@ -26,12 +26,15 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
-                name="data1", shape=[-1, 3, 64, 64], dtype="float32")
-            data2 = fluid.data(
-                name="data2", shape=[-1, 3, 64, 1], dtype="float32")
+            data1 = fluid.data(name="data1",
+                               shape=[-1, 3, 64, 64],
+                               dtype="float32")
+            data2 = fluid.data(name="data2",
+                               shape=[-1, 3, 64, 1],
+                               dtype="float32")
             eltwise_out = self.append_eltwise(data1, data2)
             out = fluid.layers.batch_norm(eltwise_out, is_test=True)
         self.feeds = {
@@ -54,6 +57,27 @@ class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
             self.check_output_with_option(use_gpu)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TensorRTSubgraphPassElementwiseBroadcastTest1(
+        TensorRTSubgraphPassElementwiseBroadcastTest):
+
+    def append_eltwise(self, data1, data2):
+        return fluid.layers.elementwise_sub(x=data1, y=data2, axis=0)
+
+
+class TensorRTSubgraphPassElementwiseBroadcastTest2(
+        TensorRTSubgraphPassElementwiseBroadcastTest):
+
+    def append_eltwise(self, data1, data2):
+        return fluid.layers.elementwise_mul(x=data1, y=data2, axis=0)
+
+
+class TensorRTSubgraphPassElementwiseBroadcastTest3(
+        TensorRTSubgraphPassElementwiseBroadcastTest):
+
+    def append_eltwise(self, data1, data2):
+        return fluid.layers.elementwise_div(x=data1, y=data2, axis=0)
 
 
 if __name__ == "__main__":

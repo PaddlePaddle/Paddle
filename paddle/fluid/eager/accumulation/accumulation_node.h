@@ -24,33 +24,34 @@ class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
   explicit GradNodeAccumulation(AutogradMeta* meta) : GradNodeBase(1, 1) {
-    VLOG(6) << "Construct GradNodeAccumulation";
-    weak_grad_ = meta->WeakGrad();
+    VLOG(5) << "Construct GradNodeAccumulation";
+    if (meta) {
+      weak_grad_ = meta->WeakGrad();
+    }
+
     SetDefaultGradInOutMeta();
   }
 
   ~GradNodeAccumulation() override {
-    VLOG(6) << "Destruct GradNodeAccumulation";
+    VLOG(5) << "Destruct GradNodeAccumulation";
   }
 
   // Functor: perform backward computations
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
-      bool create_graph = false) override;
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
 
-  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
+  void ClearTensorWrappers() override { VLOG(5) << "Do nothing here now"; }
 
   std::string name() { return "GradNodeAccumulation"; }
 
   /**
    * Register ReduceHook
    * **/
-  void RegisterReduceHook(std::shared_ptr<TensorVoidHook>&& hook);
+  void RegisterReduceHook(std::shared_ptr<VoidHook>&& hook);
 
   /**
    * Apply ReduceHook here
@@ -58,14 +59,21 @@ class GradNodeAccumulation : public GradNodeBase {
   inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
   void ApplyReduceHooks();
 
- private:
-  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    return std::shared_ptr<GradNodeAccumulation>(
+        new GradNodeAccumulation(nullptr));
+  }
 
+  void SetFakeEmpty(bool is_fake_empty) { is_fake_empty_ = is_fake_empty; }
+
+ private:
+  // TODO(Jiabin): remove this when we make our clear gradient really cleared;
+  bool is_fake_empty_ = {false};
+  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
+  std::vector<std::shared_ptr<VoidHook>> reduce_hooks_;
   std::function<paddle::experimental::Tensor(
       const paddle::experimental::Tensor&)>
       retain_grad_hook_;
-
-  std::vector<std::shared_ptr<TensorVoidHook>> reduce_hooks_;
 };
 
 }  // namespace egr

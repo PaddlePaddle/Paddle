@@ -27,7 +27,7 @@ def _is_trainable(param):
 
 class DygraphShardingOptimizer(object):
     """
-    A wrapper for Sharding Optimizer in Dygraph. 
+    A wrapper for Sharding Optimizer in Dygraph.
 
     .. warning: DygraphShardingOptimizer is experimental and subject to change.
 
@@ -35,7 +35,7 @@ class DygraphShardingOptimizer(object):
 
     """
 
-    # TODO (JZ-LIANG) 
+    # TODO (JZ-LIANG)
     # TO support following featrues in future:
     # 1. fused update parameter sync
     # 2. parameters_groups
@@ -88,7 +88,7 @@ class DygraphShardingOptimizer(object):
         Partitions parameters among sharding ranks.
 
         Return:
-        Dict[int, List] 
+        Dict[int, List]
         """
         # TODO(JZ-LIANG) support multiple partition methods
         # method1: greedy even but unorder
@@ -113,7 +113,7 @@ class DygraphShardingOptimizer(object):
         mapping parameters to the shard which holds it.
 
         Return:
-        Dict[str, int] 
+        Dict[str, int]
         """
         mapping = {}
         for rank, params in self._rank2params.items():
@@ -124,7 +124,7 @@ class DygraphShardingOptimizer(object):
     def _buid_inner_optimizer(self):
         # we rely on the inner opt to determine whether a parameter is stop_gradient or not:
         # create moment
-        # update related ops: clip, regular, opt  
+        # update related ops: clip, regular, opt
         self._inner_optimizer = self._inner_optimizer_class(
             parameters=self._rank2params[self._sharding_rank],
             **self._inner_optimizer_kargs)
@@ -142,11 +142,11 @@ class DygraphShardingOptimizer(object):
                 for param in params:
                     paddle.distributed.broadcast(
                         param,
-                        # the collective API need src rank to be the global rank id 
-                        # instead of the relative logic rank id within group 
+                        # the collective API need src rank to be the global rank id
+                        # instead of the relative logic rank id within group
                         src=self._hcg.get_sharding_parallel_group().ranks[rank],
                         group=self._hcg.get_sharding_parallel_group(),
-                        use_calc_stream=True)
+                        sync_op=True)
 
     def _update_trainable(self):
         """
@@ -160,17 +160,17 @@ class DygraphShardingOptimizer(object):
                  parameters=None,
                  no_grad_set=None):
 
-        # NOTE in dygraph mode, the only different between step and minimize is that minimize 
+        # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
 
         input_param_names = set([param.name for param in parameters])
         parameters = list(
-            filter(lambda x: x.name in input_param_names, self._rank2params[
-                self._sharding_rank]))
+            filter(lambda x: x.name in input_param_names,
+                   self._rank2params[self._sharding_rank]))
         result = self._inner_optimizer.minimize(loss, startup_program,
                                                 parameters, no_grad_set)
 
-        # sync parameters accross sharding ranks
+        # sync parameters across sharding ranks
         self._sharding_sync_parameters()
 
         return result
@@ -181,7 +181,7 @@ class DygraphShardingOptimizer(object):
         # actually updating
         self._inner_optimizer.step()
 
-        # sync parameters accross sharding ranks
+        # sync parameters across sharding ranks
         self._sharding_sync_parameters()
 
     # TODO is it a good way to make _grad_clip a property

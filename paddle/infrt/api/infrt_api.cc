@@ -17,27 +17,48 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Support/DynamicLibrary.h>
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
+#include <mlir/IR/BuiltinOps.h>
 #include <mlir/Parser.h>
+#include <mlir/Pass/PassManager.h>
+#include <mlir/Transforms/Passes.h>
 
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
+#include "paddle/infrt/dialect/infrt/pass/infrt_weights_unfold_pass.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
+#include "paddle/infrt/dialect/phi/ir/phi_base.h"
+#include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
 #include "paddle/infrt/host_context/core_runtime.h"
 #include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/mlir_function_executable.h"
 #include "paddle/infrt/host_context/mlir_to_runtime_translate.h"
 #include "paddle/infrt/host_context/op_executable.h"
+#include "paddle/infrt/host_context/paddle_mlir.h"
 #include "paddle/infrt/host_context/value.h"
 #include "paddle/infrt/kernel/basic_kernels.h"
 #include "paddle/infrt/kernel/control_flow_kernels.h"
+#include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
+#include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.h"
+#include "paddle/infrt/kernel/phi/registry.h"
 #include "paddle/infrt/kernel/tensor_kernels.h"
 #include "paddle/infrt/kernel/tensor_shape_kernels.h"
 #include "paddle/infrt/kernel/test_kernels.h"
 #include "paddle/infrt/tensor/tensor_map.h"
+
+#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+#include "paddle/infrt/dialect/tensorrt/trt_graph_fuse_pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_graph_split_pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_op_converter_pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_op_teller_pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_type_convert_pass.h"
+#include "paddle/infrt/kernel/tensorrt/registry.h"
+#endif
 
 using namespace infrt::host_context;  // NOLINT
 using namespace infrt::tensor;        // NOLINT
@@ -84,12 +105,12 @@ class PredictExecutor : public MlirToRuntimeTranslator {
 
   PredictExecutor(mlir::ModuleOp module,
                   KernelRegistry* registry,
-                  TensorMap* map)
+                  ::infrt::phi::DenseTensorMap&& map)
       : MlirToRuntimeTranslator(module, &core_runtime),
         core_runtime(registry),
         registry_(registry) {
     CHECK(registry_);
-    Init(map);
+    Init(std::move(map));
   }
 
   void Run() {
@@ -100,18 +121,18 @@ class PredictExecutor : public MlirToRuntimeTranslator {
 
   int GetInputNum() { return inputs_.size(); }
 
-  DenseHostTensor* GetInput(int i) { return inputs_[i]; }
+  ::phi::DenseTensor* GetInput(int i) { return inputs_[i]; }
 
   int GetOutputNum() { return outputs_.size(); }
 
-  DenseHostTensor* GetOutput(int i) { return outputs_[i]; }
+  ::phi::DenseTensor* GetOutput(int i) { return outputs_[i]; }
 
  private:
-  void Init(TensorMap* map) {
+  void Init(::infrt::phi::DenseTensorMap&& map) {
     EmitFunctions();
     llvm::Optional<mlir::FuncOp> predict_func_ = llvm::None;
     for (auto func_op : impl_->module.getOps<mlir::FuncOp>()) {
-      if (func_op.getName().str() != "predict") continue;
+      if (func_op.getName().str() != "main_graph") continue;
       predict_func_ = func_op;
       break;
     }
@@ -125,20 +146,24 @@ class PredictExecutor : public MlirToRuntimeTranslator {
         new MlirFunctionExecutable(predict_func, registry_, impl_->func_defs);
 
     // process parammeters
+    VLOG(3) << "Arguments num of predict func: "
+            << predict_func.getNumArguments();
     for (size_t i = 0; i < predict_func.getNumArguments(); ++i) {
       auto arg = predict_func.getArgument(i);
       auto type = arg.getType();
       // this param is TensorMap
-      if (type.isa<infrt::DenseTensorMapType>()) {
-        auto* value = new host_context::Value(std::move(*map));
+      if (type.isa<::infrt::phi::DenseTensorMapType>()) {
+        auto* value = new host_context::Value(std::move(map));
         arguments_.push_back(value);
         AddValue(predict_func.getArgument(i), value);
-      } else {
+      } else if (type.isa<::infrt::DenseTensorType>()) {
         // this param is an input Tensor
-        auto dht = DenseHostTensor();
+        auto dht = ::phi::DenseTensor();
         auto* value = new host_context::Value(std::move(dht));
         arguments_.push_back(value);
-        inputs_.push_back(&(value->get<DenseHostTensor>()));
+        inputs_.push_back(&(value->get<::phi::DenseTensor>()));
+      } else {
+        llvm_unreachable("The input type has not been supported by predictor.");
       }
     }
 
@@ -146,9 +171,18 @@ class PredictExecutor : public MlirToRuntimeTranslator {
     auto& last_op = predict_func.front().back();
     if (last_op.getName().getStringRef() == "infrt.return") {
       for (size_t i = 0; i < last_op.getNumOperands(); ++i) {
-        auto* value = AddValue(mlir::Value(last_op.getOperand(i)));
-        results_.push_back(ValueRef(value));
-        outputs_.push_back(&(value->get<DenseHostTensor>()));
+        auto operand = last_op.getOperand(i);
+        if (operand.getType().isa<::infrt::DenseTensorType>()) {
+          auto r = impl_->value_map.try_emplace(
+              operand, ValueRef(new host_context::Value(::phi::DenseTensor())));
+          CHECK(r.second) << "Duplicate add mlir value ["
+                          << DumpToString(operand) << "]";
+          auto* value = r.first->second.get();
+          results_.push_back(ValueRef(value));
+          outputs_.push_back(&(value->get<::phi::DenseTensor>()));
+        } else {
+          llvm_unreachable("infrt.return only supports DenseTensor now.");
+        }
       }
     }
   }
@@ -166,22 +200,22 @@ class PredictExecutor : public MlirToRuntimeTranslator {
  private:
   KernelRegistry* registry_{};
   MlirFunctionExecutable* function_executable_;
-  llvm::SmallVector<DenseHostTensor*, 1> inputs_;
+  llvm::SmallVector<::phi::DenseTensor*, 1> inputs_;
   llvm::SmallVector<host_context::Value*, 2> arguments_;
-  llvm::SmallVector<DenseHostTensor*, 1> outputs_;
+  llvm::SmallVector<::phi::DenseTensor*, 1> outputs_;
   llvm::SmallVector<ValueRef, 1> results_;
 };
 
-std::shared_ptr<InfRtPredictor> CreateInfRtPredictor(
+std::unique_ptr<InfRtPredictor> CreateInfRtPredictor(
     const InfRtConfig& config) {
-  auto x = std::make_shared<InfRtPredictor>();
+  auto x = std::make_unique<InfRtPredictor>();
   x->Init(config);
   return x;
 }
 
 struct InfRtPredictor::Impl {
-  mlir::OwningModuleRef module_ref;
   std::unique_ptr<PredictExecutor> executor;
+  MLIRModelGenImpl module_gen_;
 };
 
 InfRtPredictor::InfRtPredictor() : impl_(new Impl) {}
@@ -190,8 +224,7 @@ InfRtPredictor::~InfRtPredictor() {}
 void InfRtPredictor::Run() { impl_->executor->Run(); }
 
 int InfRtPredictor::Init(const InfRtConfig& config) {
-  mlir::MLIRContext* context = infrt::Global::getMLIRContext();
-  auto module_ref = dialect::LoadMlirFile(config.mlir_path(), context);
+  mlir::MLIRContext* context = ::infrt::Global::getMLIRContext();
 
   KernelRegistry* registry = new KernelRegistry();
 
@@ -200,8 +233,57 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
   kernel::RegisterTensorShapeKernels(registry);
   kernel::RegisterTensorKernels(registry);
   kernel::RegisterControlFlowKernels(registry);
+#ifdef INFRT_WITH_PHI
+  kernel::RegisterPhiKernels(registry);
+  kernel::RegisterInferShapeLaunchers(registry);
+#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+  kernel::RegisterTrtKernels(registry);
+#endif  // INFRT_WITH_GPU && INFRT_WITH_TRT
+#endif
 
-  impl_->module_ref = std::move(module_ref);
+  mlir::ModuleOp module_op;
+  if (config.tensorrt_enabled()) {
+    module_op = impl_->module_gen_.ImportPaddleModel(
+        config.model_dir(), config.param_dir(), false);
+  } else {
+    module_op = impl_->module_gen_.ImportPaddleModel(config.model_dir(),
+                                                     config.param_dir());
+  }
+
+  context->loadAllAvailableDialects();
+  ::mlir::PassManager pm(context);
+  ::mlir::OpPassManager& pass_manager = pm.nest<::mlir::FuncOp>();
+  if (config.tensorrt_enabled()) {
+    pass_manager.addPass(::infrt::CreateInfrtWeightsUnfoldPass());
+#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+    pass_manager.addPass(::infrt::trt::CreateTrtOpTellerPass());
+    pass_manager.addPass(::infrt::trt::CreateTrtGraphFusePass());
+    pass_manager.addPass(::infrt::trt::CreateTrtGraphSplitPass(1));
+    pass_manager.addPass(::infrt::trt::CreateTrtOpConverterPass());
+    pass_manager.addPass(::infrt::trt::CreateTrtTypeConvertPass());
+#endif
+    pass_manager.addPass(::mlir::createCanonicalizerPass());
+  } else {
+    std::vector<::infrt::Place> valid_places = {
+        {::infrt::TargetType::CPU,
+         ::infrt::PrecisionType::FLOAT32,
+         ::infrt::LayoutType::NCHW}};
+    if (config.gpu_enabled()) {
+      valid_places.insert(valid_places.begin(),
+                          ::infrt::Place(::infrt::TargetType::GPU,
+                                         ::infrt::PrecisionType::FLOAT32,
+                                         ::infrt::LayoutType::NCHW));
+    }
+    pass_manager.addPass(CreatePhiOpCvtPass(valid_places));
+    pass_manager.addPass(CreateInfrtOpFusePass());
+  }
+  if (mlir::failed(pm.run(module_op))) {
+    std::cout << "\npass failed!\n" << std::endl;
+    return 4;
+  }
+#ifndef NDEBUG
+  module_op.dump();
+#endif  // NDEBUG
 
   // load extra shared library
   for (const std::string& lib_path : config.shared_libs()) {
@@ -222,23 +304,31 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
   }
 
   // Load params
-  TensorMap* tensor_map = LoadParams(config.model_dir());
+  if (config.gpu_enabled() && !config.tensorrt_enabled()) {
+    auto tensor_map = ::infrt::kernel::phi::LoadCombinedParamsToGpu(
+        config.model_dir(), config.param_dir());
+    impl_->executor.reset(
+        new PredictExecutor(module_op, registry, std::move(tensor_map)));
 
-  // Create PredictExecutor
-  impl_->executor.reset(
-      new PredictExecutor(impl_->module_ref.get(), registry, tensor_map));
+  } else {
+    auto tensor_map = ::infrt::kernel::phi::LoadCombinedParameters(
+        config.model_dir(), config.param_dir());
+    impl_->executor.reset(
+        new PredictExecutor(module_op, registry, std::move(tensor_map)));
+  }
+
   return 0;
 }
 
 int InfRtPredictor::GetInputNum() { return impl_->executor->GetInputNum(); }
 
-DenseHostTensor* InfRtPredictor::GetInput(int i) {
+::phi::DenseTensor* InfRtPredictor::GetInput(int i) {
   return impl_->executor->GetInput(i);
 }
 
 int InfRtPredictor::GetOutputNum() { return impl_->executor->GetOutputNum(); }
 
-DenseHostTensor* InfRtPredictor::GetOutput(int i) {
+::phi::DenseTensor* InfRtPredictor::GetOutput(int i) {
   return impl_->executor->GetOutput(i);
 }
 

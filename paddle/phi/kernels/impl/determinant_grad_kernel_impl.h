@@ -14,16 +14,15 @@
 
 #pragma once
 
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
-
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
-#include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -39,8 +40,10 @@ class FlattenKernel : public framework::OpKernel<T> {
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 
@@ -72,8 +75,10 @@ class FlattenGradKernel : public framework::OpKernel<T> {
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        d_x);
     d_x->Resize(in_dims);
   }
 };
@@ -94,8 +99,10 @@ class Flatten2Kernel : public framework::OpKernel<T> {
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 };
@@ -113,50 +120,11 @@ class Flatten2GradKernel : public framework::OpKernel<T> {
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        d_x);
     d_x->Resize(x_dims);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
-    out->mutable_data(context.GetPlace(), in->type());
-    auto &start_axis = context.Attr<int>("start_axis");
-    auto &stop_axis = context.Attr<int>("stop_axis");
-    auto &dev_ctx = context.device_context<DeviceContext>();
-
-    // call new kernel
-    phi::FlattenKernel<T, typename paddle::framework::ConvertToPhiContext<
-                              DeviceContext>::TYPE>(
-        static_cast<const typename paddle::framework::ConvertToPhiContext<
-            DeviceContext>::TYPE &>(dev_ctx),
-        *in, start_axis, stop_axis, out);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto *xshape = ctx.Input<framework::LoDTensor>("XShape");
-
-    d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    auto &dev_ctx = ctx.device_context<DeviceContext>();
-
-    // call new kernel
-    phi::FlattenGradKernel<T, typename paddle::framework::ConvertToPhiContext<
-                                  DeviceContext>::TYPE>(
-        static_cast<const typename paddle::framework::ConvertToPhiContext<
-            DeviceContext>::TYPE &>(dev_ctx),
-        *d_out, *xshape, d_x);
   }
 };
 

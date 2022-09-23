@@ -14,9 +14,11 @@
 
 #include "paddle/infrt/dialect/tensorrt/trt_graph_fuse_pass.h"
 
+#include <glog/logging.h>
 #include <llvm/ADT/SetVector.h>
 #include <mlir/Analysis/SliceAnalysis.h>
 #include <mlir/IR/Builders.h>
+
 #include <list>
 #include <unordered_set>
 #include <vector>
@@ -55,8 +57,8 @@ bool reverseDfs(std::vector<mlir::Operation *> source,
 
 // merge the first&second graph op to a new graph op.
 void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
-                             mlir::pd::GraphOp first,
-                             mlir::pd::GraphOp second) {
+                             ::infrt::GraphOp first,
+                             ::infrt::GraphOp second) {
   // comput inputs and outputs
   ::llvm::SmallVector<mlir::Value, 4> inputs(first.getOperands()), outputs;
   for (mlir::Value input : second.getOperands()) {
@@ -85,7 +87,7 @@ void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
   // create the new graph op
   builder.setInsertionPoint(first);
   auto loc = first.getLoc();
-  auto graph_op = builder.create<mlir::pd::GraphOp>(loc, return_types, inputs);
+  auto graph_op = builder.create<::infrt::GraphOp>(loc, return_types, inputs);
   mlir::Block *block = new mlir::Block;
   auto copy_range = second.getBody()->without_terminator();
   block->getOperations().splice(block->begin(),
@@ -133,8 +135,7 @@ void topoSortBlock(mlir::Block &body) {  // NOLINT
   for (auto it = body.rbegin(); it != body.rend(); ++it) {
     toSort.insert(&*it);
   }
-  llvm::SetVector<mlir::Operation *> result =
-      mlir::topologicalSort(std::move(toSort));
+  llvm::SetVector<mlir::Operation *> result = mlir::topologicalSort(toSort);
   for (auto *op : result) {
     op->moveBefore(body.getTerminator());
   }
@@ -150,13 +151,13 @@ void TRTGraphFusePass::runOnFunction() {
   do {
     changed = false;
     for (auto &op : body) {
-      mlir::pd::GraphOp graph_op =
-          ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(&op);
+      ::infrt::GraphOp graph_op =
+          ::llvm::dyn_cast_or_null<::infrt::GraphOp>(&op);
       if (nullptr == graph_op) continue;
 
       for (auto user_op : op.getUsers()) {
-        mlir::pd::GraphOp user_graph_op =
-            ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(user_op);
+        ::infrt::GraphOp user_graph_op =
+            ::llvm::dyn_cast_or_null<::infrt::GraphOp>(user_op);
         if (nullptr == user_graph_op) continue;
         // get all dst input nodes except src.
         std::vector<mlir::Operation *> source_nodes;
@@ -177,7 +178,14 @@ void TRTGraphFusePass::runOnFunction() {
       if (changed) break;
     }
   } while (changed);
-  topoSortBlock(body);
+
+  // TODO(wilber): Implement a toposort for efficiency.
+  // topoSortBlock(body);
 }
+
+std::unique_ptr<mlir::Pass> CreateTrtGraphFusePass() {
+  return std::make_unique<TRTGraphFusePass>();
+}
+
 }  // namespace trt
 }  // namespace infrt

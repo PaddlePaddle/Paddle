@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/tensorrt/trt_kernels.h"
+
 #include <string>
+#include <unordered_set>
+
 #include "NvInfer.h"
 #include "NvInferRuntime.h"
 #include "NvInferRuntimeCommon.h"
@@ -21,6 +24,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
+#include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/Value.h"
@@ -28,6 +32,9 @@
 #include "paddle/infrt/backends/tensorrt/trt_options.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 #include "paddle/infrt/host_context/symbol_table.h"
+#include "paddle/infrt/kernel/tensorrt/trt_helper.h"
+#include "paddle/infrt/kernel/tensorrt/trt_layers.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
@@ -35,8 +42,7 @@ namespace kernel {
 namespace tensorrt {
 
 ::infrt::backends::tensorrt::TrtEngine CreateTrtEngine(
-    MlirOperationWithInfrtSymbol
-        create_engine_op /*, input_tensors, output_tensors, weights*/) {
+    MlirOperationWithInfrtSymbol create_engine_op) {
   // TODO(wilber): The device_id needs to get from mlir.
   int device_id = 0;
   backends::tensorrt::TrtEngine engine(device_id);
@@ -51,6 +57,7 @@ namespace tensorrt {
   // TODO(wilber): The build option shoule be fiiled from mlir info.
   backends::tensorrt::BuildOptions options;
   options.max_batch = 4;
+  options.workspace = 128;
 
   // Parse mlir Region which only has one block.
   mlir::Operation& operation = *create_engine_op.operation;
@@ -62,8 +69,9 @@ namespace tensorrt {
   auto& region = operation.getRegion(0);
   auto& block = region.getBlocks().front();
 
-  llvm::DenseMap<mlir::Value, nvinfer1::ITensor*> map_info;
-  std::unordered_map<std::string, phi::DenseTensor*> trt_bind_inputs;
+  std::unordered_map<std::string, ::phi::DenseTensor*> trt_bind_inputs;
+  ValueToITensorMap value_to_trt_tensor_map;
+  ValueToTensorMap value_to_tensor_map;
 
   for (auto index_operand : llvm::enumerate(operation.getOperands())) {
     mlir::Value operand = index_operand.value();
@@ -72,70 +80,91 @@ namespace tensorrt {
     const std::string input_name = "input_" + std::to_string(idx);
     auto* v = symbol_table->GetValue(std::to_string(idx));
     CHECK_NOTNULL(v);
-    auto* t = &v->get<phi::DenseTensor>();
-    trt_bind_inputs[input_name] = t;
+    auto* t = &v->get<::phi::DenseTensor>();
+    value_to_tensor_map[operand] = t;
+
     // TODO(wilber): get input info from mlir.
+
     // TODO(wilber): input dims, now only support static_shape, and just remove
-    // the first dimension.
+    // the first dimension. If the first dim is not -1, maybe we can pass the
+    // origin dims.
+
     // TODO(wilber): now only suppot float input.
-    nvinfer1::Dims dims;
-    dims.nbDims = t->dims().size() - 1;
-    for (int i = 0; i < dims.nbDims; ++i) {
-      dims.d[i] = t->dims()[i + 1];
+
+    if (operand.isa<mlir::BlockArgument>()) {
+      // TODO(wilber): A trick: the weights are CPU tensor and inputs are GPU
+      // tensor, so we treat all GPU tensors as inputs to trt.
+      if (t->place().GetType() == ::phi::AllocationType::GPU) {
+        trt_bind_inputs[input_name] = t;
+        nvinfer1::Dims dims;
+        dims.nbDims = t->dims().size() - 1;
+        for (int i = 0; i < dims.nbDims; ++i) {
+          dims.d[i] = t->dims()[i + 1];
+        }
+        auto* in = network->addInput(
+            input_name.c_str(), nvinfer1::DataType::kFLOAT, dims);
+        value_to_trt_tensor_map[operand] = in;
+      }
+    } else {
+      // TODO(wilber): Replace with the op name that generates the weights.
+      std::unordered_set<std::string> weight_flags{
+          "phi_dt.tensor_map_get_tensor",
+          "phi_dt.create_dense_tensor.cpu",
+          "phi_dt.create_inited_dense_tensor.cpu.f32",
+          "phi_dt.create_host_inited_dense_tensor.f32"};
+      if (!weight_flags.count(
+              operand.getDefiningOp()->getName().getStringRef().str())) {
+        trt_bind_inputs[input_name] = t;
+        nvinfer1::Dims dims;
+        dims.nbDims = t->dims().size() - 1;
+        for (int i = 0; i < dims.nbDims; ++i) {
+          dims.d[i] = t->dims()[i + 1];
+        }
+        auto* in = network->addInput(
+            input_name.c_str(), nvinfer1::DataType::kFLOAT, dims);
+        value_to_trt_tensor_map[operand] = in;
+      }
     }
-    auto* in =
-        network->addInput(input_name.c_str(), nvinfer1::DataType::kFLOAT, dims);
-    map_info[operand] = in;
   }
 
   // TODO(wilber): Find a way to add layer.
-  for (auto& inner_op : block.without_terminator()) {
-    if (inner_op.getName().getStringRef() == "trt.Activation") {
-      trt::ActivationOp act_op = llvm::dyn_cast<trt::ActivationOp>(inner_op);
-      auto in_arg = act_op.getOperand();
-      if (!map_info.count(in_arg)) {
-        CHECK(false) << "map_info not has in_arg.";
-      }
-      nvinfer1::ActivationType act_type =
-          static_cast<nvinfer1::ActivationType>(act_op.activation_type());
-      auto* act_layer = network->addActivation(*map_info[in_arg], act_type);
-      act_layer->setAlpha(act_op.alpha().convertToFloat());
-      act_layer->setBeta(act_op.beta().convertToFloat());
-      for (size_t i = 0; i < act_op->getNumResults(); ++i) {
-        nvinfer1::ITensor* act_out_tensor = act_layer->getOutput(i);
-        mlir::Value act_out = act_op->getResult(i);
-        map_info[act_out] = act_out_tensor;
-      }
+  for (auto& operation : block.without_terminator()) {
+    VLOG(1) << "process " << operation.getName().getStringRef().str() << " ...";
+    if (trt::ActivationOp op = llvm::dyn_cast<trt::ActivationOp>(operation)) {
+      ActivationFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::FullyConnectedOp op =
+                   llvm::dyn_cast<trt::FullyConnectedOp>(operation)) {
+      FcFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ConvolutionOp op =
+                   llvm::dyn_cast<trt::ConvolutionOp>(operation)) {
+      ConvFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::PoolingOp op = llvm::dyn_cast<trt::PoolingOp>(operation)) {
+      PoolFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ShuffleOp op = llvm::dyn_cast<trt::ShuffleOp>(operation)) {
+      ShuffleFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ScaleNdOp op = llvm::dyn_cast<trt::ScaleNdOp>(operation)) {
+      ScaleNdFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ElementWiseOp op =
+                   llvm::dyn_cast<trt::ElementWiseOp>(operation)) {
+      EltwiseFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else {
+      CHECK(false) << "not supported operation.";
     }
+  }
 
-    // if (inner_op.getName().getStringRef() == "trt.Constant") {
-    //   trt::ConstantOp op = llvm::dyn_cast<trt::ConstantOp>(inner_op);
-    //   mlir::Value op_out = op.getResult();
-    //   std::vector<float> weight_data{1};
-    //   auto* layer = network->addConstant(nvinfer1::Dims2(1, 1),
-    //   nvinfer1::Weights{nvinfer1::DataType::kFLOAT, weight_data.data(), 1});
-    //   auto* op_out_tenor = layer->getOutput(0);
-    //   map_info[op_out] = op_out_tenor;
-    // }
-  }
-  for (auto& inner_op : block.without_terminator()) {
-    for (mlir::Value v : inner_op.getResults()) {
-      for (mlir::Operation* user : v.getUsers()) {
-        if (user->getName().getStringRef() == "infrt.return") {
-          if (!map_info.count(v)) {
-            CHECK(false) << "map_info not has value";
-          }
-          network->markOutput(*map_info[v]);
-        }
-      }
-    }
-  }
-  // std::unordered_map<std::string, phi::DenseTensor*> trt_bind_outputs;
-  mlir::Operation* ret = block.getTerminator();
-  for (unsigned int i = 0; i < ret->getNumOperands(); ++i) {
-    mlir::Value arg = ret->getOperand(i);
-    CHECK(map_info.count(arg));
-    map_info[arg]->setName(("output_" + std::to_string(i)).c_str());
+  for (auto index_operand :
+       llvm::enumerate(block.getTerminator()->getOperands())) {
+    mlir::Value arg = index_operand.value();
+    CHECK(value_to_trt_tensor_map.count(arg));
+    // TODO(wilber): A trick that we name trt output tensor's name as output_0,
+    // output_1, ...
+    value_to_trt_tensor_map[arg]->setName(
+        ("output_" + std::to_string(index_operand.index())).c_str());
+    network->markOutput(*value_to_trt_tensor_map[arg]);
   }
   for (int i = 0; i < network->getNbOutputs(); ++i) {
     engine.PrepareOutputHandle(network->getOutput(i)->getName());
@@ -157,10 +186,10 @@ void PrintTrtLayer(backends::tensorrt::TrtEngine* engine) {
   engine->GetEngineInfo();
 }
 
-std::vector<phi::DenseTensor*> TrtEngineCompute(
-    backends::tensorrt::TrtEngine* engine, const phi::GPUContext& context) {
+std::vector<::phi::DenseTensor*> TrtEngineCompute(
+    backends::tensorrt::TrtEngine* engine, const ::phi::GPUContext& context) {
   engine->Run(context);
-  std::vector<phi::DenseTensor*> res;
+  std::vector<::phi::DenseTensor*> res;
   for (size_t i = 0; i < engine->GetOutputNum(); ++i) {
     res.push_back(engine->GetOutput("output_" + std::to_string(i)));
   }

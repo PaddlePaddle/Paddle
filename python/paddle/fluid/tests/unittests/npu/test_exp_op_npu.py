@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,6 +31,7 @@ SEED = 2049
 
 
 class TestExpNPUOP(OpTest):
+
     def setUp(self):
 
         self.set_npu()
@@ -50,8 +51,6 @@ class TestExpNPUOP(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def init_dtype(self):
@@ -65,6 +64,7 @@ class TestExpNPUOP(OpTest):
 
 
 class TestExpNPUOPFloat64(TestExpNPUOP):
+
     def init_dtype(self):
         self.dtype = np.float64
 

@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -29,7 +30,8 @@ namespace operators {
 class DequeueOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
-  DequeueOp(const std::string& type, const framework::VariableNameMap& inputs,
+  DequeueOp(const std::string& type,
+            const framework::VariableNameMap& inputs,
             const framework::VariableNameMap& outputs,
             const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -47,31 +49,34 @@ class DequeueOp : public framework::OperatorBase {
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
     auto& out_names = Outputs("Out");
-    PADDLE_ENFORCE_GT(out_names.size(), 0,
+    PADDLE_ENFORCE_GT(out_names.size(),
+                      0,
                       platform::errors::InvalidArgument(
                           "The output for Op(dequeue) must be set."));
     for (size_t i = 0; i < out_names.size(); ++i) {
       auto out_var = scope.FindVar(out_names[i]);
       PADDLE_ENFORCE_NOT_NULL(
-          out_var, platform::errors::NotFound("No variable with name %s found",
-                                              out_names[i]));
+          out_var,
+          platform::errors::NotFound("No variable with name %s found",
+                                     out_names[i]));
       auto* out_tensor = out_var->GetMutable<LoDTensor>();
       PADDLE_ENFORCE_NOT_NULL(
           out_tensor,
           platform::errors::InvalidArgument(
               "Variable with name %s has not been initialized.", out_names[i]));
 
-      std::vector<LoDTensor> lod_tensor_vec;
+      paddle::framework::LoDTensorArray lod_tensor_vec;
       bool success = false;
       lod_tensor_vec = queue_holder->GetQueue()->Pop(&success);
-      PADDLE_ENFORCE_EQ(lod_tensor_vec.size(), 1,
+      PADDLE_ENFORCE_EQ(lod_tensor_vec.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Expected to pop only one element per Pop call for "
                             "Op(dequeue), but poped %d element.",
                             lod_tensor_vec.size()));
       for (size_t j = 0; j < lod_tensor_vec.size(); ++j) {
-        paddle::framework::TensorCopySync(lod_tensor_vec[j], dev_place,
-                                          out_tensor);
+        paddle::framework::TensorCopySync(
+            lod_tensor_vec[j], dev_place, out_tensor);
       }
     }
   }
@@ -85,7 +90,7 @@ class DequeueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "A list of `lod_tensor` to dequeue and assigned.")
         .AsDuplicable();
     AddComment(R"DOC(
-			Dequeue operator.
+      Dequeue operator.
       )DOC");
   }
 };

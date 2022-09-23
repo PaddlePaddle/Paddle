@@ -15,13 +15,15 @@
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
-import paddle._C_ops as ops
+import paddle._legacy_C_ops as ops
 
 
 class TestGetFloatStatusOp(unittest.TestCase):
+
     def setUp(self):
         device = paddle.set_device('npu')
 
@@ -62,6 +64,7 @@ class TestGetFloatStatusOp(unittest.TestCase):
 
 
 class TestClearFloatStatusOp(unittest.TestCase):
+
     def setUp(self):
         device = paddle.set_device('npu')
 

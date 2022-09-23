@@ -21,7 +21,7 @@ from paddle.fluid import unique_name
 from paddle.fluid import layers
 from paddle.fluid.layer_helper import LayerHelper
 import warnings
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['Momentum']
 
@@ -60,9 +60,9 @@ class Momentum(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
         rescale_grad (float, optional): Multiply the gradient with `rescale_grad` before updating. \
@@ -118,12 +118,11 @@ class Momentum(Optimizer):
         assert momentum is not None
         predicate = lambda regular: isinstance(regular, L2DecayRegularizer)
         py_regular = None if predicate(regularization) else regularization
-        super(Momentum, self).__init__(
-            learning_rate=learning_rate,
-            parameter_list=parameter_list,
-            regularization=py_regular,
-            grad_clip=grad_clip,
-            name=name)
+        super(Momentum, self).__init__(learning_rate=learning_rate,
+                                       parameter_list=parameter_list,
+                                       regularization=py_regular,
+                                       grad_clip=grad_clip,
+                                       name=name)
         self.type = "momentum"
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
@@ -141,21 +140,19 @@ class Momentum(Optimizer):
 
         var_name = param.name + "_fp32_master"
         var_name = unique_name.generate(var_name)
-        var = layers.create_global_var(
-            name=var_name,
-            shape=param.shape,
-            value=0,
-            dtype='float32',
-            persistable=True)
+        var = layers.create_global_var(name=var_name,
+                                       shape=param.shape,
+                                       value=0,
+                                       dtype='float32',
+                                       persistable=True)
         block = self.helper.startup_program.global_block()
-        block.append_op(
-            type="cast",
-            inputs={"X": [param]},
-            outputs={"Out": [var]},
-            attrs={
-                "in_dtype": param.dtype,
-                "out_dtype": core.VarDesc.VarType.FP32
-            })
+        block.append_op(type="cast",
+                        inputs={"X": [param]},
+                        outputs={"Out": [var]},
+                        attrs={
+                            "in_dtype": param.dtype,
+                            "out_dtype": core.VarDesc.VarType.FP32
+                        })
         self._master_weights[param.name] = var
         return var
 
@@ -175,10 +172,11 @@ class Momentum(Optimizer):
         target_param = self._master_weights[
             param.name] if find_master else param
         target_name = target_param.name
-        if (name not in self._accumulators or
-                target_name not in self._accumulators[name]):
-            raise Exception("Accumulator {} does not exist for parameter {}".
-                            format(name, target_name))
+        if (name not in self._accumulators
+                or target_name not in self._accumulators[name]):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name))
         return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
@@ -208,8 +206,8 @@ class Momentum(Optimizer):
         master_weight = (self._master_weights[param_and_grad[0].name]
                          if find_master else None)
 
-        if framework.in_dygraph_mode():
-            _, _, _ = _C_ops.momentum(
+        if framework._non_static_mode():
+            _, _, _ = _legacy_C_ops.momentum(
                 param_and_grad[0], param_and_grad[1], velocity_acc, lr,
                 master_weight, param_and_grad[0], velocity_acc, master_weight,
                 'mu', self._momentum, 'use_nesterov', self._use_nesterov,
@@ -242,11 +240,10 @@ class Momentum(Optimizer):
             outputs["MasterParamOut"] = master_weight
 
         # create the momentum optimize op
-        momentum_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True)
+        momentum_op = block.append_op(type=self.type,
+                                      inputs=inputs,
+                                      outputs=outputs,
+                                      attrs=attrs,
+                                      stop_gradient=True)
 
         return momentum_op

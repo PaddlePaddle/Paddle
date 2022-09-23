@@ -16,6 +16,7 @@ from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import eig  # noqa: F401
 from .tensor.linalg import cov  # noqa: F401
+from .tensor.linalg import corrcoef  # noqa: F401
 from .tensor.linalg import cond  # noqa: F401
 from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor.linalg import solve  # noqa: F401
@@ -41,6 +42,7 @@ __all__ = [
     'norm',
     'cond',
     'cov',
+    'corrcoef',
     'inv',
     'eig',
     'eigvals',

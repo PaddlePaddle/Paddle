@@ -36,11 +36,11 @@ __all__ = ["decorate"]
 
 class OptimizerWithMixedPrecision(object):
     """
-    Optimizer with mixed-precision (MP) training. This is a wrapper of a common 
+    Optimizer with mixed-precision (MP) training. This is a wrapper of a common
     optimizer, plus the support of mixed-precision pre-training. The object
-    of this class almost has the same behavior as the common optimizer, with the 
-    methods `minimize()`, `backward()`, `apply_gradients()` implemented. 
-    Additionally, it enables the MP training automatically, i.e, the creation 
+    of this class almost has the same behavior as the common optimizer, with the
+    methods `minimize()`, `backward()`, `apply_gradients()` implemented.
+    Additionally, it enables the MP training automatically, i.e, the creation
     and maintenance of master parameters, scaling of loss, etc.
 
     Args:
@@ -48,14 +48,14 @@ class OptimizerWithMixedPrecision(object):
         amp_lists (CustomOpLists): An CustomOpLists object.
         init_loss_scaling (float): The initial loss scaling factor.
         use_dynamic_loss_scaling (bool): Whether to use dynamic loss scaling.
-        incr_every_n_steps(int): Increases loss scaling every n consecutive 
+        incr_every_n_steps(int): Increases loss scaling every n consecutive
                                  steps with finite gradients.
-        decr_every_n_nan_or_inf(int): Decreases loss scaling every n 
-                                      accumulated steps with nan or 
+        decr_every_n_nan_or_inf(int): Decreases loss scaling every n
+                                      accumulated steps with nan or
                                       inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
+        incr_ratio(float): The multiplier to use when increasing the loss
                            scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
+        decr_ratio(float): The less-than-one-multiplier to use when decreasing
                            the loss scaling.
         use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
         use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
@@ -155,7 +155,7 @@ class OptimizerWithMixedPrecision(object):
 
         Args:
             loss (Variable): The loss Variable to minimize.
-            startup_program (Program|None): The startup Program for initializing 
+            startup_program (Program|None): The startup Program for initializing
                                        parameters in `parameter_list`.
             parameter_list (list|None): A list of Variables to update.
             no_grad_set (set|None): A set of Variables should be ignored.
@@ -163,7 +163,7 @@ class OptimizerWithMixedPrecision(object):
                                    backward operator for one parameter.
 
         Returns:
-            A list of (param, grad), which is a tuple of a parameter and its 
+            A list of (param, grad), which is a tuple of a parameter and its
             gradient respectively, and the scaled loss.
         """
         train_program = loss.block.program
@@ -171,15 +171,18 @@ class OptimizerWithMixedPrecision(object):
 
         # NOTE(zhiqiu): _float_status is only used for NPU.
         if core.is_compiled_with_npu():
-            float_status = paddle.static.data(
-                name="float_status", shape=[8], dtype='float32')
+            float_status = paddle.static.data(name="float_status",
+                                              shape=[8],
+                                              dtype='float32')
             self._train_program.global_block().append_op(
                 type="alloc_float_status",
-                outputs={"FloatStatus": float_status}, )
+                outputs={"FloatStatus": float_status},
+            )
             self._train_program.global_block().append_op(
                 type="clear_float_status",
                 inputs={"FloatStatus": float_status},
-                outputs={"FloatStatusOut": float_status}, )
+                outputs={"FloatStatusOut": float_status},
+            )
             self._float_status = float_status
         else:
             self._float_status = None
@@ -202,9 +205,10 @@ class OptimizerWithMixedPrecision(object):
             else:
                 self._scaled_loss = loss
 
-            params_grads = self._optimizer.backward(
-                self._scaled_loss, startup_program, parameter_list, no_grad_set,
-                callbacks)
+            params_grads = self._optimizer.backward(self._scaled_loss,
+                                                    startup_program,
+                                                    parameter_list, no_grad_set,
+                                                    callbacks)
             if self._supports_check_nan_inf():
                 self._add_cast_ops_to_startup_program(startup_program)
         return params_grads
@@ -221,16 +225,16 @@ class OptimizerWithMixedPrecision(object):
                 continue
 
             tmp = block.create_var(dtype=core.VarDesc.VarType.FP32)
-            block.append_op(
-                type='assign', inputs={'X': [name]}, outputs={'Out': [tmp]})
-            block.append_op(
-                type='cast',
-                inputs={'X': [tmp]},
-                outputs={'Out': [name]},
-                attrs={
-                    'in_dtype': core.VarDesc.VarType.FP32,
-                    'out_dtype': core.VarDesc.VarType.FP16,
-                })
+            block.append_op(type='assign',
+                            inputs={'X': [name]},
+                            outputs={'Out': [tmp]})
+            block.append_op(type='cast',
+                            inputs={'X': [tmp]},
+                            outputs={'Out': [name]},
+                            attrs={
+                                'in_dtype': core.VarDesc.VarType.FP32,
+                                'out_dtype': core.VarDesc.VarType.FP16,
+                            })
         self._to_fp16_var_names = None
 
     def amp_init(self,
@@ -240,9 +244,9 @@ class OptimizerWithMixedPrecision(object):
                  use_fp16_test=False):
         """
         Init the amp training, such as cast fp32 parameters to fp16 type.
-  
+
         Args:
-            place(CUDAPlace): place is used to initialize 
+            place(CUDAPlace): place is used to initialize
                 fp16 parameters with fp32 values.
             scope(Scope): The scope is used to find fp32 parameters.
             test_program(Program): The program is used for testing.
@@ -269,7 +273,7 @@ class OptimizerWithMixedPrecision(object):
                         loss = paddle.mean(hidden)
                     # 2) Create the optimizer and set `multi_precision` to True.
                     # Setting `multi_precision` to True can avoid the poor accuracy
-                    # or the slow convergence in a way. 
+                    # or the slow convergence in a way.
                     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
                     amp_list = paddle.static.amp.CustomOpLists(
@@ -289,9 +293,9 @@ class OptimizerWithMixedPrecision(object):
                     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                     optimizer.amp_init(place, scope=paddle.static.global_scope())
-                    
+
                 if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-                    run_example_code()       
+                    run_example_code()
         """
         assert self._train_program is not None, \
             "Please call the minimize method first."
@@ -307,12 +311,12 @@ class OptimizerWithMixedPrecision(object):
 
     def apply_gradients(self, params_grads):
         """
-        Check scaled gradients to determine whether to update loss scaling and update 
+        Check scaled gradients to determine whether to update loss scaling and update
         parameters by their scaled gradients.
-  
+
         Args:
             params_grads (list): A list of params and scaled grads.
-    
+
         Returns:
             A list of optimize operators.
         """
@@ -342,13 +346,13 @@ class OptimizerWithMixedPrecision(object):
         real_optimizer = self._optimizer
         while hasattr(real_optimizer, "inner_opt"):
             real_optimizer = real_optimizer.inner_opt
-        if isinstance(real_optimizer, (paddle.fluid.optimizer.Adam,
-                                       paddle.optimizer.AdamW)):
+        if isinstance(real_optimizer,
+                      (paddle.fluid.optimizer.Adam, paddle.optimizer.AdamW)):
             # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we
             # copy it in advance to avoid multiple time copies.
             with self._train_program._optimized_guard([]):
-                found_inf = paddle.tensor.creation._memcpy(found_inf,
-                                                           paddle.CPUPlace())
+                found_inf = paddle.tensor.creation._memcpy(
+                    found_inf, paddle.CPUPlace())
             real_optimizer._set_auxiliary_var('found_inf', found_inf)
         elif hasattr(real_optimizer, "_set_auxiliary_var"):
             real_optimizer._set_auxiliary_var('found_inf', found_inf)
@@ -382,7 +386,9 @@ class OptimizerWithMixedPrecision(object):
                 for p, g in params_grads:
                     with self._train_program._optimized_guard([p, g]):
                         _, found_inf = check_finite_and_unscale(
-                            [g, ],
+                            [
+                                g,
+                            ],
                             self._loss_scaling,
                             name="find_infinite_scale",
                             float_status=self._float_status)
@@ -432,7 +438,7 @@ class OptimizerWithMixedPrecision(object):
                     self._decr_every_n_nan_or_inf,
                     self._incr_ratio,
                     self._decr_ratio,
-                    stop_update=False,
+                    stop_update=self._optimizer._get_stop_update_var(),
                     name="update_loss_scaling")
             return
 
@@ -441,45 +447,42 @@ class OptimizerWithMixedPrecision(object):
             stop_update = False
             with self._train_program._optimized_guard([]):
                 if fp32_grads:
-                    update_loss_scaling(
-                        fp32_grads,
-                        found_inf,
-                        self._loss_scaling,
-                        self._num_good_steps,
-                        self._num_bad_steps,
-                        self._incr_every_n_steps,
-                        self._decr_every_n_nan_or_inf,
-                        self._incr_ratio,
-                        self._decr_ratio,
-                        stop_update=stop_update,
-                        name="update_loss_scaling_fp32")
+                    update_loss_scaling(fp32_grads,
+                                        found_inf,
+                                        self._loss_scaling,
+                                        self._num_good_steps,
+                                        self._num_bad_steps,
+                                        self._incr_every_n_steps,
+                                        self._decr_every_n_nan_or_inf,
+                                        self._incr_ratio,
+                                        self._decr_ratio,
+                                        stop_update=stop_update,
+                                        name="update_loss_scaling_fp32")
                     stop_update = True
                 if fp16_grads:
-                    update_loss_scaling(
-                        fp16_grads,
-                        found_inf,
-                        self._loss_scaling,
-                        self._num_good_steps,
-                        self._num_bad_steps,
-                        self._incr_every_n_steps,
-                        self._decr_every_n_nan_or_inf,
-                        self._incr_ratio,
-                        self._decr_ratio,
-                        stop_update=stop_update,
-                        name="update_loss_scaling_fp16")
+                    update_loss_scaling(fp16_grads,
+                                        found_inf,
+                                        self._loss_scaling,
+                                        self._num_good_steps,
+                                        self._num_bad_steps,
+                                        self._incr_every_n_steps,
+                                        self._decr_every_n_nan_or_inf,
+                                        self._incr_ratio,
+                                        self._decr_ratio,
+                                        stop_update=stop_update,
+                                        name="update_loss_scaling_fp16")
         else:
             with self._train_program._optimized_guard([]):
-                update_loss_scaling(
-                    grads,
-                    found_inf,
-                    self._loss_scaling,
-                    self._num_good_steps,
-                    self._num_bad_steps,
-                    self._incr_every_n_steps,
-                    self._decr_every_n_nan_or_inf,
-                    self._incr_ratio,
-                    self._decr_ratio,
-                    name="update_loss_scaling")
+                update_loss_scaling(grads,
+                                    found_inf,
+                                    self._loss_scaling,
+                                    self._num_good_steps,
+                                    self._num_bad_steps,
+                                    self._incr_every_n_steps,
+                                    self._decr_every_n_nan_or_inf,
+                                    self._incr_ratio,
+                                    self._decr_ratio,
+                                    name="update_loss_scaling")
 
     def apply_optimize(self, loss, startup_program, params_grads):
         program = loss.block.program
@@ -514,11 +517,10 @@ class OptimizerWithMixedPrecision(object):
                 "The decorated optimizer has its own `minimize` method, but it will not be executed."
             )
 
-        scaled_params_grads = self.backward(
-            loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set)
+        scaled_params_grads = self.backward(loss,
+                                            startup_program=startup_program,
+                                            parameter_list=parameter_list,
+                                            no_grad_set=no_grad_set)
 
         optimize_ops = self.apply_optimize(loss, startup_program,
                                            scaled_params_grads)
@@ -536,21 +538,21 @@ def decorate(optimizer,
              use_dynamic_loss_scaling=True,
              use_pure_fp16=False,
              use_fp16_guard=None):
-    """ 
+    """
     Decorate the given optimizer to adapt to the mixed-precision training.
 
     Args:
         optimizer(Optimizer): A common Optimizer.
         amp_lists (CustomOpLists): An CustomOpLists object.
         init_loss_scaling(float): The initial loss scaling factor.
-        incr_every_n_steps(int): Increases loss scaling every n consecutive 
+        incr_every_n_steps(int): Increases loss scaling every n consecutive
                                  steps with finite gradients.
-        decr_every_n_nan_or_inf(int): Decreases loss scaling every n 
-                                      accumulated steps with nan or 
+        decr_every_n_nan_or_inf(int): Decreases loss scaling every n
+                                      accumulated steps with nan or
                                       inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
+        incr_ratio(float): The multiplier to use when increasing the loss
                            scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
+        decr_ratio(float): The less-than-one-multiplier to use when decreasing
                            the loss scaling.
         use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling.
         use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
@@ -558,7 +560,7 @@ def decorate(optimizer,
                            Default None, which means that its value equals to `use_pure_fp16`.
 
     Returns:
-        An optimizer acting like a normal one but with mixed-precision training 
+        An optimizer acting like a normal one but with mixed-precision training
         enabled.
 
     Examples 1:
@@ -602,7 +604,7 @@ def decorate(optimizer,
                     loss = paddle.mean(hidden)
                 # 2) Create the optimizer and set `multi_precision` to True.
                 # Setting `multi_precision` to True can avoid the poor accuracy
-                # or the slow convergence in a way. 
+                # or the slow convergence in a way.
                 optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                 # 3) These ops in `custom_black_list` will keep in the float32 computation type.
                 amp_list = paddle.static.amp.CustomOpLists(
@@ -622,7 +624,7 @@ def decorate(optimizer,
                 # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                 # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                 optimizer.amp_init(place, scope=paddle.static.global_scope())
-                
+
             if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
                 run_example_code()
     """

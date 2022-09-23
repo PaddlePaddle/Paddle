@@ -13,29 +13,34 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/callback_manager.h"
+
+#include <ThreadPool.h>
+
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/device_guard.h"
 
 namespace phi {
 
 CallbackManager::CallbackManager(stream::Stream *stream)
-    : stream_(stream), thread_pool_(1) {}
+    : stream_(stream), thread_pool_(new ::ThreadPool(1)) {}
 
 void CallbackManager::AddCallback(std::function<void()> callback) const {
   auto *callback_func = new std::function<void()>(std::move(callback));
   auto *func = new std::function<void()>([this, callback_func] {
     std::lock_guard<std::mutex> lock(mtx_);
-    last_future_ = thread_pool_.enqueue([callback_func] {
+    last_future_ = thread_pool_->enqueue([callback_func] {
       std::unique_ptr<std::function<void()>> releaser(callback_func);
       (*callback_func)();
     });
   });
-
+  phi::DeviceGuard guard(stream_->GetPlace());
   phi::DeviceManager::GetDeviceWithPlace(stream_->GetPlace())
       ->AddCallback(stream_, func);
 }
 
 void CallbackManager::Wait() const {
+  phi::DeviceGuard guard(stream_->GetPlace());
   phi::DeviceManager::GetDeviceWithPlace(stream_->GetPlace())
       ->SynchronizeStream(stream_);
 

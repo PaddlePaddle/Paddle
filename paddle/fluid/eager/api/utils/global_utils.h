@@ -17,10 +17,13 @@
 
 #include <atomic>
 #include <memory>
+
+#include "paddle/fluid/eager/hooks.h"
+#include "paddle/fluid/eager/type_defs.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/utils/small_vector.h"
 namespace egr {
-
 class UniqueNameGenerator {
  public:
   explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
@@ -52,9 +55,26 @@ class Controller {
   paddle::imperative::AmpLevel GetAMPLevel() const {
     return tracer_->GetAmpLevel();
   }
+
+  bool UseLayoutAutoTune() {
+    bool use_autotune = false;
+#if defined(PADDLE_WITH_CUDA)
+    auto place = tracer_->ExpectedPlace();
+    bool is_gpu_place = paddle::platform::is_gpu_place(place);
+    if (is_gpu_place) {
+      use_autotune = tracer_->UseLayoutAutoTune();
+    }
+#endif
+    return use_autotune;
+  }
+
+  void DisableLayoutAutoTune() { tracer_->DisableLayoutAutoTune(); }
+
+  void EnableLayoutAutoTune() { tracer_->EnableLayoutAutoTune(); }
+
   bool HasGrad() const { return tracer_->HasGrad(); }
   void SetHasGrad(bool has_grad) { tracer_->SetHasGrad(has_grad); }
-  std::string GenerateUniqueName(std::string key = "eager_tmp") {
+  std::string GenerateUniqueName(std::string key = "eager_in_tmp") {
     return tracer_->GenerateUniqueName(key);
   }
   const std::shared_ptr<paddle::imperative::Tracer>& GetCurrentTracer() {
@@ -66,37 +86,52 @@ class Controller {
     VLOG(6) << "Set current tracer for Controller: " << tracer_;
   }
 
-  bool InEagerMode() const { return in_eager_mode_; }
-
-  void SetInEagerMode(bool in_eager_mode) { in_eager_mode_ = in_eager_mode; }
-
   const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
   GetOpMetaInfoMap() {
     return op_meta_info_map_;
   }
 
-  void MergeOpMetaInfoMap(const std::unordered_map<
-                          std::string, std::vector<paddle::OpMetaInfo>>& map) {
+  void MergeOpMetaInfoMap(
+      const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
+          map) {
     op_meta_info_map_.insert(map.begin(), map.end());
   }
 
-  std::unordered_map<std::string, std::vector<std::unordered_map<int, int>>>&
+  std::unordered_map<std::string,
+                     std::vector<std::vector<std::unordered_map<int, int>>>>&
   GetCustomEdgesSlotMap() {
     return custom_edges_slot_map_;
   }
+  // For Cpp Hook
+  void RegisterBackwardFinalHook(const std::function<void()>& call_back) {
+    VLOG(6) << "RegisterBackwardFinalHook";
+    final_backward_hooks_.emplace_back(
+        std::make_shared<CppVoidHook>(std::move(call_back)));
+    VLOG(6) << "Size: " << final_backward_hooks_.size();
+  }
+  // For Python hook
+  void RegisterBackwardFinalHook(const std::shared_ptr<VoidHook>& call_back) {
+    final_backward_hooks_.emplace_back(call_back);
+  }
+  const std::vector<std::shared_ptr<VoidHook>>& FinalBackwardHooks() const {
+    return final_backward_hooks_;
+  }
+
+  void ClearFinalBackwardHooks() { final_backward_hooks_.clear(); }
 
  private:
   Controller() = default;
   static Controller* controller_;
   std::shared_ptr<paddle::imperative::Tracer> tracer_{
       new paddle::imperative::Tracer()};
-  // TODO(jiabin): remove when we don't need imperative.
-  bool in_eager_mode_{false};
   std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>
       op_meta_info_map_;
-  /* op_type : {{grad_outputs}, {grad_inputs}, {input}, {output}, {attrs}}*/
-  std::unordered_map<std::string, std::vector<std::unordered_map<int, int>>>
+  /* op_type : {{{grad_outputs}, {grad_inputs}, {input}, {output}, {attrs}},
+   * {{grad_outputs}, {grad_inputs}, {input}, {output}, {attrs}}}*/
+  std::unordered_map<std::string,
+                     std::vector<std::vector<std::unordered_map<int, int>>>>
       custom_edges_slot_map_;
+  std::vector<std::shared_ptr<VoidHook>> final_backward_hooks_;
   DISABLE_COPY_AND_ASSIGN(Controller);
 };
 

@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/funcs/gather.h"
+
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/kernels/funcs/gather.h"
 
 TEST(Gather, GatherData) {
   paddle::framework::Tensor* src = new paddle::framework::Tensor();
@@ -38,7 +39,7 @@ TEST(Gather, GatherData) {
                                             paddle::platform::CPUPlace());
 
   auto* cpu_place = new paddle::platform::CPUPlace();
-  paddle::platform::CPUDeviceContext ctx(*cpu_place);
+  phi::CPUContext ctx(*cpu_place);
   phi::funcs::CPUGather<int>(ctx, *src, *index, output);
   delete cpu_place;
   cpu_place = NULL;

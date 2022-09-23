@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker_factory.h"
 
 #include <stdlib.h>
+
 #include <memory>
 #include <string>
 
@@ -45,7 +46,8 @@ device_workerMap g_device_worker_map;
 std::string DeviceWorkerFactory::DeviceWorkerTypeList() {
   std::string device_worker_types;
   for (auto iter = g_device_worker_map.begin();
-       iter != g_device_worker_map.end(); ++iter) {
+       iter != g_device_worker_map.end();
+       ++iter) {
     if (iter != g_device_worker_map.begin()) {
       device_worker_types += ", ";
     }
@@ -67,6 +69,7 @@ REGISTER_DEVICE_WORKER_CLASS(DownpourWorker);
 REGISTER_DEVICE_WORKER_CLASS(DownpourWorkerOpt);
 
 #if defined(PADDLE_WITH_PSCORE)
+REGISTER_DEVICE_WORKER_CLASS(DownpourLiteWorker);
 REGISTER_DEVICE_WORKER_CLASS(HeterSectionWorker);
 #endif
 
@@ -74,7 +77,8 @@ REGISTER_DEVICE_WORKER_CLASS(HeterSectionWorker);
 REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
 #endif
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
+     defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 REGISTER_DEVICE_WORKER_CLASS(PSGPUWorker);
 #endif

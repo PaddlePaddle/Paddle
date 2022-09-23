@@ -15,6 +15,7 @@
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -36,7 +37,7 @@ void UnfoldKernel(const Context& ctx,
   paddle::operators::math::
       Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
           im2col;
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
 
   int out_height = phi::funcs::CalcOutputSize(x_dims[2],
                                               kernel_sizes[0],

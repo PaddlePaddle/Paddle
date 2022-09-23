@@ -17,11 +17,12 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
 from ..fluid.dygraph import no_grad
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import warnings
 from ..fluid.layer_helper import LayerHelper
 from ..fluid import unique_name
 from ..fluid import layers
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -53,8 +54,8 @@ class SGD(Optimizer):
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
-                :ref:`api_guide_Name` . 
-        
+                :ref:`api_guide_Name` .
+
     Examples:
         .. code-block:: python
 
@@ -81,12 +82,11 @@ class SGD(Optimizer):
                  name=None):
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
-        super(SGD, self).__init__(
-            learning_rate=learning_rate,
-            parameters=parameters,
-            weight_decay=weight_decay,
-            grad_clip=grad_clip,
-            name=name)
+        super(SGD, self).__init__(learning_rate=learning_rate,
+                                  parameters=parameters,
+                                  weight_decay=weight_decay,
+                                  grad_clip=grad_clip,
+                                  name=name)
         self.type = "sgd"
         self._multi_precision = multi_precision
         self._master_weights = {}
@@ -99,21 +99,19 @@ class SGD(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True)
+            var = layers.create_global_var(name=var_name,
+                                           shape=param.shape,
+                                           value=0,
+                                           dtype='float32',
+                                           persistable=True)
             block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32
-                })
+            block.append_op(type="cast",
+                            inputs={"X": [param]},
+                            outputs={"Out": [var]},
+                            attrs={
+                                "in_dtype": param.dtype,
+                                "out_dtype": core.VarDesc.VarType.FP32
+                            })
             self._master_weights[param.name] = var
         return var
 
@@ -144,9 +142,13 @@ class SGD(Optimizer):
                          if find_master else None)
 
         lr = self._create_param_lr(param_and_grad)
-        if framework.in_dygraph_mode():
-            _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
-                       param_and_grad[0], master_weight)
+        if in_dygraph_mode():
+            _C_ops.sgd_(param_and_grad[0], lr, param_and_grad[1], master_weight,
+                        find_master)
+            return None
+        if _in_legacy_dygraph():
+            _legacy_C_ops.sgd(param_and_grad[0], lr, param_and_grad[1],
+                              master_weight, param_and_grad[0], master_weight)
             return None
 
         assert isinstance(block, framework.Block)
@@ -165,12 +167,11 @@ class SGD(Optimizer):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
-        sgd_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True)
+        sgd_op = block.append_op(type=self.type,
+                                 inputs=inputs,
+                                 outputs=outputs,
+                                 attrs=attrs,
+                                 stop_gradient=True)
 
         return sgd_op
 

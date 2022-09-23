@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_constant_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
@@ -65,28 +65,19 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
       tensor_value.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_value, value);
       NpuOpRunner runner;
-#if (CANN_VERSION_CODE >= 503003 && CANN_VERSION_CODE < 504001)
-      runner.SetType("FillD")
-          .AddInput(tensor_value)
-          .AddOutput(*out_var)
-          .AddAttrs(
-              {{ "dims",
-                 phi::vectorize(shape) }})
-          .Run(stream);
-#else
       runner.SetType("Fill")
           .AddInput(phi::vectorize(shape))
           .AddInput(tensor_value)
           .AddOutput(*out_var)
           .Run(stream);
-#endif
     } else {
       const auto &dev_ctx =
           ctx.template device_context<paddle::platform::NPUDeviceContext>();
       auto op_func = [&shape, &value](
-          const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
-          const NPUAttributeMap &attrs,
-          const platform::NPUDeviceContext &dev_ctx) {
+                         const std::vector<Tensor> &inputs,
+                         const std::vector<Tensor> &outputs,
+                         const NPUAttributeMap &attrs,
+                         const platform::NPUDeviceContext &dev_ctx) {
         Tensor tensor_value;
         tensor_value.mutable_data<uint8_t>({1}, dev_ctx.GetPlace());
         FillNpuTensorWithConstant<uint8_t>(&tensor_value,
@@ -99,7 +90,12 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
             .AddOutput(outputs[0])
             .Run(dev_ctx.stream());
       };
-      NpuOpRunner::TypeAdapter({}, {*out_var}, {}, dev_ctx, op_func, {},
+      NpuOpRunner::TypeAdapter({},
+                               {*out_var},
+                               {},
+                               dev_ctx,
+                               op_func,
+                               {},
                                {framework::proto::VarType::UINT8});
     }
   }
@@ -108,7 +104,8 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_NPU_KERNEL(
-    fill_constant, paddle::operators::FillConstantNPUKernel<float>,
+    fill_constant,
+    paddle::operators::FillConstantNPUKernel<float>,
     paddle::operators::FillConstantNPUKernel<bool>,
     paddle::operators::FillConstantNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64

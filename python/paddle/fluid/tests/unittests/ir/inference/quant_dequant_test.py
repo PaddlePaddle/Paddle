@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,6 +34,7 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class QuantDequantTest(unittest.TestCase):
+
     def __init__(self, methodName='runTest'):
         super(QuantDequantTest, self).__init__(methodName)
         paddle.enable_static()
@@ -46,7 +47,7 @@ class QuantDequantTest(unittest.TestCase):
         self.enable_mkldnn = False
         self.enable_mkldnn_bfloat16 = False
         self.enable_trt = False
-        self.enable_tensorrt_oss = True
+        self.enable_tensorrt_varseqlen = True
         self.trt_parameters = None
         self.dynamic_shape_params = None
         self.enable_lite = False
@@ -58,7 +59,7 @@ class QuantDequantTest(unittest.TestCase):
         np.random.seed(1)
         random.seed(1)
 
-    # from Paddle release2.1 
+    # from Paddle release2.1
     def _normalize_program(self, program, feed_vars, fetch_vars):
         if not isinstance(program, Program):
             raise TypeError(
@@ -111,17 +112,16 @@ class QuantDequantTest(unittest.TestCase):
     def _save_models(self, dirname, feeded_var_names, target_vars, executor,
                      program, scope):
         with fluid.scope_guard(scope):
-            fluid.io.save_inference_model(
-                dirname,
-                feeded_var_names,
-                target_vars,
-                executor,
-                program,
-                clip_extra=True)
+            fluid.io.save_inference_model(dirname,
+                                          feeded_var_names,
+                                          target_vars,
+                                          executor,
+                                          program,
+                                          clip_extra=True)
 
     def _get_paddle_outs(self, feed, fetch_list, executor, program, scope):
         '''
-        Return PaddlePaddle outputs. 
+        Return PaddlePaddle outputs.
         '''
         with fluid.scope_guard(scope):
             outs = executor.run(program=program,
@@ -132,7 +132,7 @@ class QuantDequantTest(unittest.TestCase):
 
     def _get_inference_outs(self, config):
         '''
-        Return AnalysisPredictor outputs. 
+        Return AnalysisPredictor outputs.
         '''
         predictor = create_paddle_predictor(config)
         tensor_shapes = predictor.get_input_tensor_shape()
@@ -160,7 +160,7 @@ class QuantDequantTest(unittest.TestCase):
                              use_trt=False,
                              use_mkldnn=False):
         '''
-        Return a new object of AnalysisConfig. 
+        Return a new object of AnalysisConfig.
         '''
         config = AnalysisConfig(self.path)
         config.disable_gpu()
@@ -184,8 +184,8 @@ class QuantDequantTest(unittest.TestCase):
                         self.dynamic_shape_params.max_input_shape,
                         self.dynamic_shape_params.optim_input_shape,
                         self.dynamic_shape_params.disable_trt_plugin_fp16)
-                if self.enable_tensorrt_oss:
-                    config.enable_tensorrt_oss()
+                if self.enable_tensorrt_varseqlen:
+                    config.enable_tensorrt_varseqlen()
 
         elif use_mkldnn:
             config.enable_mkldnn()
@@ -201,9 +201,9 @@ class QuantDequantTest(unittest.TestCase):
                                  quant=False,
                                  rtol=1e-5):
         '''
-        Check whether calculating on CPU and GPU, enable TensorRT 
-        or disable TensorRT, enable MKLDNN or disable MKLDNN 
-        are all the same. 
+        Check whether calculating on CPU and GPU, enable TensorRT
+        or disable TensorRT, enable MKLDNN or disable MKLDNN
+        are all the same.
         '''
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         executor = fluid.Executor(place)
@@ -214,8 +214,8 @@ class QuantDequantTest(unittest.TestCase):
             executor.run(self.startup_program)
             executor.run(self.test_startup_program)
         main_graph = IrGraph(core.Graph(self.main_program.desc), for_test=False)
-        test_graph = IrGraph(
-            core.Graph(self.test_main_program.desc), for_test=True)
+        test_graph = IrGraph(core.Graph(self.test_main_program.desc),
+                             for_test=True)
 
         transform_pass = QuantizationTransformPass(
             scope=scope,
@@ -240,12 +240,11 @@ class QuantDequantTest(unittest.TestCase):
 
         iters = 10
         batch_size = 1
-        train_reader = paddle.batch(
-            paddle.reader.shuffle(
-                paddle.dataset.mnist.train(), buf_size=500),
-            batch_size=batch_size)
-        feeder = fluid.DataFeeder(
-            feed_list=[self.data, self.label], place=place)
+        train_reader = paddle.batch(paddle.reader.shuffle(
+            paddle.dataset.mnist.train(), buf_size=500),
+                                    batch_size=batch_size)
+        feeder = fluid.DataFeeder(feed_list=[self.data, self.label],
+                                  place=place)
         with fluid.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
@@ -266,23 +265,23 @@ class QuantDequantTest(unittest.TestCase):
         self.main_program = test_graph.to_program()
 
         with fluid.scope_guard(scope):
-            self.main_program = self._normalize_program(
-                self.main_program, self.data, self.fetch_list)
+            self.main_program = self._normalize_program(self.main_program,
+                                                        self.data,
+                                                        self.fetch_list)
 
-        self._save_models(self.path,
-                          list(self.feeds.keys()), self.fetch_list, executor,
-                          self.main_program, scope)
+        self._save_models(self.path, list(self.feeds.keys()), self.fetch_list,
+                          executor, self.main_program, scope)
 
         paddle_outs = self._get_paddle_outs(self.feeds, self.fetch_list,
                                             executor, self.main_program, scope)
         inference_outs = self._get_inference_outs(
             self._get_analysis_config(use_gpu=use_gpu))
 
-        # Check whether the results calculated on CPU and on GPU are the same. 
+        # Check whether the results calculated on CPU and on GPU are the same.
         self.assertTrue(
             len(paddle_outs) == len(inference_outs),
-            "The number of outputs is different between inference and training forward at {}".
-            format(device))
+            "The number of outputs is different between inference and training forward at {}"
+            .format(device))
 
         for out, inference_out in zip(paddle_outs, inference_outs):
             paddle_out = np.array(out)
@@ -291,23 +290,26 @@ class QuantDequantTest(unittest.TestCase):
                 paddle_out = paddle_out.flatten()
                 inference_out = inference_out.flatten()
 
-            self.assertTrue(
-                np.allclose(
-                    paddle_out, inference_out, atol=atol),
-                "Output has diff between inference and training forward at {} ".
+            np.testing.assert_allclose(
+                paddle_out,
+                inference_out,
+                rtol=1e-05,
+                atol=atol,
+                err_msg=
+                'Output has diff between inference and training forward at {} '.
                 format(device))
 
-        # Check whether the trt results and the GPU results are the same. 
+        # Check whether the trt results and the GPU results are the same.
         if use_gpu and self.enable_trt:
             tensorrt_outputs = self._get_inference_outs(
-                self._get_analysis_config(
-                    use_gpu=use_gpu, use_trt=self.enable_trt))
+                self._get_analysis_config(use_gpu=use_gpu,
+                                          use_trt=self.enable_trt))
 
             if self.trt_parameters.use_static:
                 #deserialize
                 tensorrt_outputs = self._get_inference_outs(
-                    self._get_analysis_config(
-                        use_gpu=use_gpu, use_trt=self.enable_trt))
+                    self._get_analysis_config(use_gpu=use_gpu,
+                                              use_trt=self.enable_trt))
 
             self.assertTrue(
                 len(tensorrt_outputs) == len(paddle_outs),
@@ -321,16 +323,18 @@ class QuantDequantTest(unittest.TestCase):
                     paddle_out = paddle_out.flatten()
                     tensorrt_output = tensorrt_output.flatten()
 
-                self.assertTrue(
-                    np.allclose(
-                        paddle_out, tensorrt_output, rtol=rtol, atol=atol),
-                    "Output has diff between GPU and TensorRT. ")
+                np.testing.assert_allclose(
+                    paddle_out,
+                    tensorrt_output,
+                    rtol=rtol,
+                    atol=atol,
+                    err_msg='Output has diff between GPU and TensorRT. ')
 
-        # Check whether the mkldnn results and the CPU results are the same. 
+        # Check whether the mkldnn results and the CPU results are the same.
         if (not use_gpu) and self.enable_mkldnn:
             mkldnn_outputs = self._get_inference_outs(
-                self._get_analysis_config(
-                    use_gpu=use_gpu, use_mkldnn=self.enable_mkldnn))
+                self._get_analysis_config(use_gpu=use_gpu,
+                                          use_mkldnn=self.enable_mkldnn))
 
             self.assertTrue(
                 len(paddle_outs) == len(mkldnn_outputs),
@@ -339,14 +343,16 @@ class QuantDequantTest(unittest.TestCase):
             if self.enable_mkldnn_bfloat16:
                 atol = 0.01
             for paddle_out, mkldnn_output in zip(paddle_outs, mkldnn_outputs):
-                self.assertTrue(
-                    np.allclose(
-                        np.array(paddle_out), mkldnn_output, atol=atol),
-                    "Output has diff between CPU and MKLDNN. ")
+                np.testing.assert_allclose(
+                    np.array(paddle_out),
+                    mkldnn_output,
+                    rtol=1e-05,
+                    atol=atol,
+                    err_msg='Output has diff between CPU and MKLDNN. ')
 
     class TensorRTParam:
         '''
-        Prepare TensorRT subgraph engine parameters. 
+        Prepare TensorRT subgraph engine parameters.
         '''
 
         def __init__(self, workspace_size, max_batch_size, min_subgraph_size,
@@ -360,7 +366,7 @@ class QuantDequantTest(unittest.TestCase):
 
     class DynamicShapeParam:
         '''
-        Prepare TensorRT subgraph engine dynamic shape parameters. 
+        Prepare TensorRT subgraph engine dynamic shape parameters.
         '''
 
         def __init__(self, min_input_shape, max_input_shape, optim_input_shape,

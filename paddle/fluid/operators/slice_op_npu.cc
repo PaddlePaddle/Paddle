@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/slice_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -21,9 +22,12 @@ namespace operators {
 using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
-void UpdateAttr(const framework::DDim& in_dims, const std::vector<int> axes,
-                const std::vector<int> starts, const std::vector<int> ends,
-                std::vector<int>* offsets, std::vector<int>* size) {
+void UpdateAttr(const framework::DDim& in_dims,
+                const std::vector<int> axes,
+                const std::vector<int> starts,
+                const std::vector<int> ends,
+                std::vector<int>* offsets,
+                std::vector<int>* size) {
   int cnt = 0;
   for (int i = 0; i < in_dims.size(); ++i) {
     int start = 0;
@@ -85,11 +89,13 @@ class SliceNPUKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_EQ(
-        starts.size(), axes.size(),
+        starts.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of starts must be equal to the size of axes."));
     PADDLE_ENFORCE_EQ(
-        ends.size(), axes.size(),
+        ends.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of ends must be equal to the size of axes."));
 
@@ -109,10 +115,10 @@ class SliceNPUKernel : public framework::OpKernel<T> {
         }
       }
 
-      CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-      slice_dims =
-          GetSliceDims<int>(in_dims, axes, starts, ends, nullptr, nullptr);
-      out_dims = GetDecreasedDims(slice_dims, decrease_axis);
+      phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+      slice_dims = phi::funcs::GetSliceDims<int>(
+          in_dims, axes, starts, ends, nullptr, nullptr);
+      out_dims = phi::funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
       out->Resize(out_dims);
     }
@@ -124,9 +130,22 @@ class SliceNPUKernel : public framework::OpKernel<T> {
 
     UpdateAttr(in_dims, axes, starts, ends, &offsets, &size);
 
-    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
-    const auto& runner = NpuOpRunner("SliceD", {*input}, {*out},
-                                     {{"offsets", offsets}, {"size", size}});
+    auto& dev_ctx = ctx.template device_context<NPUDeviceContext>();
+    auto stream = dev_ctx.stream();
+#if CANN_VERSION_CODE < 512000
+    const auto& runner =
+        NpuOpRunner("SliceD", {*input}, {*out}, {{"offsets", offsets}, {
+                                                   "size",
+                                                   size
+                                                 }});
+#else
+    NpuOpRunner runner;
+    runner.SetType("Slice")
+        .AddInput(*input)
+        .AddInput(std::move(offsets))
+        .AddInput(std::move(size))
+        .AddOutput(*out);
+#endif
     runner.Run(stream);
   }
 };
@@ -214,13 +233,15 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(slice, ops::SliceNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(slice,
+                       ops::SliceNPUKernel<float>,
                        ops::SliceNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        ops::SliceNPUKernel<int64_t>,
 #endif
                        ops::SliceNPUKernel<paddle::platform::float16>);
 
-REGISTER_OP_NPU_KERNEL(slice_grad, ops::SliceGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(slice_grad,
+                       ops::SliceGradNPUKernel<float>,
                        ops::SliceGradNPUKernel<int>,
                        ops::SliceGradNPUKernel<paddle::platform::float16>);

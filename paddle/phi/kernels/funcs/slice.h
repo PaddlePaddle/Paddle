@@ -123,5 +123,56 @@ DenseTensor Slice(const Context& dev_ctx,
   return ret;
 }
 
+// Use in conv_transpose kernel
+template <typename Context, typename T, size_t D>
+static void Slice(const Context& ctx,
+                  const DenseTensor* input,
+                  DenseTensor* out,
+                  const std::vector<int64_t>& begin_vec,
+                  const std::vector<int64_t>& end_vec,
+                  const std::vector<int64_t>& axes_vec) {
+  auto& place = *ctx.eigen_device();
+  auto in_dims = input->dims();
+  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  for (size_t i = 0; i < D; ++i) {
+    offsets[i] = 0;
+    extents[i] = in_dims[i];
+  }
+
+  std::vector<int64_t> out_shape_vec = vectorize(in_dims);
+  for (size_t i = 0; i < axes_vec.size(); ++i) {
+    offsets[axes_vec[i]] = begin_vec[i];
+    extents[axes_vec[i]] = end_vec[i] - begin_vec[i];
+    out_shape_vec[axes_vec[i]] = end_vec[i] - begin_vec[i];
+  }
+
+  DDim out_dims(make_ddim(out_shape_vec));
+  out->Resize(out_dims);
+  ctx.template Alloc<T>(out);
+
+  auto in_t =
+      EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
+  auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+      *out, out_dims);
+
+  funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
+      place, out_t, in_t, offsets, extents);
+  out->Resize(out_dims);
+}
+
+template <typename Context, typename T, size_t D>
+static void Slice(const Context& ctx,
+                  const DenseTensor* input,
+                  DenseTensor* out,
+                  int64_t begin_idx,
+                  int64_t end_idx,
+                  int64_t axes) {
+  std::vector<int64_t> begin_vec = {begin_idx};
+  std::vector<int64_t> end_vec = {end_idx};
+  std::vector<int64_t> axes_vec = {axes};
+  Slice<Context, T, D>(ctx, input, out, begin_vec, end_vec, axes_vec);
+}
+
 }  // namespace funcs
 }  // namespace phi

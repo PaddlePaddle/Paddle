@@ -37,16 +37,15 @@ def set_printoptions(precision=None,
                      sci_mode=None,
                      linewidth=None):
     """Set the printing options for Tensor.
-    NOTE: The function is similar with numpy.set_printoptions()
 
     Args:
         precision (int, optional): Number of digits of the floating number, default 8.
         threshold (int, optional): Total number of elements printed, default 1000.
-        edgeitems (int, optional): Number of elements in summary at the begining and ending of each dimension, default 3.
+        edgeitems (int, optional): Number of elements in summary at the beginning and ending of each dimension, default 3.
         sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
         linewidth (int, optional): Number of characters each line, default 80.
-       
-    
+
+
     Returns:
         None.
 
@@ -59,7 +58,7 @@ def set_printoptions(precision=None,
             a = paddle.rand([10, 20])
             paddle.set_printoptions(4, 100, 3)
             print(a)
-            
+
             '''
             Tensor(shape=[10, 20], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                    [[0.0002, 0.8503, 0.0135, ..., 0.9508, 0.2621, 0.6661],
@@ -197,8 +196,8 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
             items[i:i + items_per_line]
             for i in range(0, len(items), items_per_line)
         ]
-        s = (',\n' + ' ' *
-             (indent + 1)).join([', '.join(line) for line in lines])
+        s = (',\n' + ' ' * (indent + 1)).join(
+            [', '.join(line) for line in lines])
         return '[' + s + ']'
     else:
         # recursively handle all dimensions
@@ -250,26 +249,24 @@ def to_string(var, prefix='Tensor'):
 
     max_width, signed = _get_max_width(_to_summary(np_var))
 
-    data = _format_tensor(
-        np_var, summary, indent=indent, max_width=max_width, signed=signed)
+    data = _format_tensor(np_var,
+                          summary,
+                          indent=indent,
+                          max_width=max_width,
+                          signed=signed)
 
-    return _template.format(
-        prefix=prefix,
-        shape=var.shape,
-        dtype=dtype,
-        place=var._place_str,
-        stop_gradient=var.stop_gradient,
-        indent=' ' * indent,
-        data=data)
+    return _template.format(prefix=prefix,
+                            shape=var.shape,
+                            dtype=dtype,
+                            place=var._place_str,
+                            stop_gradient=var.stop_gradient,
+                            indent=' ' * indent,
+                            data=data)
 
 
-def tensor_to_string(tensor, prefix='Tensor'):
-    indent = len(prefix) + 1
-
-    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
-
-    if not tensor._is_initialized():
-        return "Tensor(Not initialized)"
+def _format_dense_tensor(tensor, indent):
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        tensor = tensor.astype('float32')
 
     np_tensor = tensor.numpy()
 
@@ -286,14 +283,75 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     max_width, signed = _get_max_width(_to_summary(np_tensor))
 
-    data = _format_tensor(
-        np_tensor, sumary, indent=indent, max_width=max_width, signed=signed)
+    data = _format_tensor(np_tensor,
+                          sumary,
+                          indent=indent,
+                          max_width=max_width,
+                          signed=signed)
+    return data
 
-    return _template.format(
-        prefix=prefix,
-        shape=tensor.shape,
-        dtype=tensor.dtype,
-        place=tensor._place_str,
-        stop_gradient=tensor.stop_gradient,
-        indent=' ' * indent,
-        data=data)
+
+def sparse_tensor_to_string(tensor, prefix='Tensor'):
+    indent = len(prefix) + 1
+    if tensor.is_sparse_coo():
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{indices}, \n{indent}{values})"
+        indices_tensor = tensor.indices()
+        values_tensor = tensor.values()
+        indices_data = 'indices=' + _format_dense_tensor(
+            indices_tensor, indent + len('indices='))
+        values_data = 'values=' + _format_dense_tensor(values_tensor,
+                                                       indent + len('values='))
+        return _template.format(prefix=prefix,
+                                shape=tensor.shape,
+                                dtype=tensor.dtype,
+                                place=tensor._place_str,
+                                stop_gradient=tensor.stop_gradient,
+                                indent=' ' * indent,
+                                indices=indices_data,
+                                values=values_data)
+    else:
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{crows}, \n{indent}{cols}, \n{indent}{values})"
+        crows_tensor = tensor.crows()
+        cols_tensor = tensor.cols()
+        elements_tensor = tensor.values()
+        crows_data = 'crows=' + _format_dense_tensor(crows_tensor,
+                                                     indent + len('crows='))
+        cols_data = 'cols=' + _format_dense_tensor(cols_tensor,
+                                                   indent + len('cols='))
+        values_data = 'values=' + _format_dense_tensor(elements_tensor,
+                                                       indent + len('values='))
+
+        return _template.format(prefix=prefix,
+                                shape=tensor.shape,
+                                dtype=tensor.dtype,
+                                place=tensor._place_str,
+                                stop_gradient=tensor.stop_gradient,
+                                indent=' ' * indent,
+                                crows=crows_data,
+                                cols=cols_data,
+                                values=values_data)
+
+
+def tensor_to_string(tensor, prefix='Tensor'):
+    indent = len(prefix) + 1
+
+    dtype = convert_dtype(tensor.dtype)
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        dtype = 'bfloat16'
+
+    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
+
+    if tensor.is_sparse():
+        return sparse_tensor_to_string(tensor, prefix)
+
+    if not tensor._is_dense_tensor_hold_allocation():
+        return "Tensor(Not initialized)"
+    else:
+        data = _format_dense_tensor(tensor, indent)
+        return _template.format(prefix=prefix,
+                                shape=tensor.shape,
+                                dtype=dtype,
+                                place=tensor._place_str,
+                                stop_gradient=tensor.stop_gradient,
+                                indent=' ' * indent,
+                                data=data)

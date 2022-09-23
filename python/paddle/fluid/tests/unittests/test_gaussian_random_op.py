@@ -23,12 +23,15 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
+from paddle.fluid.framework import _test_eager_guard
 import paddle
 
 
 class TestGaussianRandomOp(OpTest):
+
     def setUp(self):
         self.op_type = "gaussian_random"
+        self.python_api = paddle.normal
         self.set_attrs()
         self.inputs = {}
         self.use_mkldnn = False
@@ -50,6 +53,10 @@ class TestGaussianRandomOp(OpTest):
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
 
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_check_output()
+
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
         hist, _ = np.histogram(outs[0], range=(-3, 5))
@@ -59,17 +66,16 @@ class TestGaussianRandomOp(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
-        self.assertTrue(
-            np.allclose(
-                hist, hist2, rtol=0, atol=0.01),
-            "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestGaussianRandomBF16Op(OpTest):
+
     def setUp(self):
         self.op_type = "gaussian_random"
+        self.python_api = paddle.normal
         self.set_attrs()
         self.inputs = {}
         self.use_mkldnn = False
@@ -90,8 +96,12 @@ class TestGaussianRandomBF16Op(OpTest):
         self.std = 2.
 
     def test_check_output(self):
-        self.check_output_with_place_customized(
-            self.verify_output, place=core.CUDAPlace(0))
+        self.check_output_with_place_customized(self.verify_output,
+                                                place=core.CUDAPlace(0))
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_check_output()
 
     def verify_output(self, outs):
         outs = convert_uint16_to_float(outs)
@@ -103,13 +113,11 @@ class TestGaussianRandomBF16Op(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
-        self.assertTrue(
-            np.allclose(
-                hist, hist2, rtol=0, atol=0.05),
-            "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.05)
 
 
 class TestMeanStdAreInt(TestGaussianRandomOp):
+
     def set_attrs(self):
         self.mean = 1
         self.std = 2
@@ -117,6 +125,7 @@ class TestMeanStdAreInt(TestGaussianRandomOp):
 
 # Situation 2: Attr(shape) is a list(with tensor)
 class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
+
     def setUp(self):
         '''Test gaussian_random op with specified value
         '''
@@ -150,8 +159,9 @@ class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
         self.check_output_customized(self.verify_output)
 
 
-class TestGaussianRandomOp2_ShapeTensorList(
-        TestGaussianRandomOp_ShapeTensorList):
+class TestGaussianRandomOp2_ShapeTensorList(TestGaussianRandomOp_ShapeTensorList
+                                            ):
+
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [-1, -1]
@@ -161,8 +171,9 @@ class TestGaussianRandomOp2_ShapeTensorList(
         self.seed = 10
 
 
-class TestGaussianRandomOp3_ShapeTensorList(
-        TestGaussianRandomOp_ShapeTensorList):
+class TestGaussianRandomOp3_ShapeTensorList(TestGaussianRandomOp_ShapeTensorList
+                                            ):
+
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [123, -1]
@@ -172,8 +183,9 @@ class TestGaussianRandomOp3_ShapeTensorList(
         self.seed = 10
 
 
-class TestGaussianRandomOp4_ShapeTensorList(
-        TestGaussianRandomOp_ShapeTensorList):
+class TestGaussianRandomOp4_ShapeTensorList(TestGaussianRandomOp_ShapeTensorList
+                                            ):
+
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [123, -1]
@@ -185,6 +197,7 @@ class TestGaussianRandomOp4_ShapeTensorList(
 
 # Situation 3: shape is a tensor
 class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
+
     def setUp(self):
         '''Test gaussian_random op with specified value
         '''
@@ -211,53 +224,54 @@ class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
 
 # Test python API
 class TestGaussianRandomAPI(unittest.TestCase):
+
     def test_api(self):
         positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2000)
 
         positive_2_int64 = fluid.layers.fill_constant([1], "int64", 500)
-        shape_tensor_int32 = fluid.data(
-            name="shape_tensor_int32", shape=[2], dtype="int32")
+        shape_tensor_int32 = fluid.data(name="shape_tensor_int32",
+                                        shape=[2],
+                                        dtype="int32")
 
-        shape_tensor_int64 = fluid.data(
-            name="shape_tensor_int64", shape=[2], dtype="int64")
+        shape_tensor_int64 = fluid.data(name="shape_tensor_int64",
+                                        shape=[2],
+                                        dtype="int64")
 
-        out_1 = fluid.layers.gaussian_random(
-            shape=[2000, 500], dtype="float32", mean=0.0, std=1.0, seed=10)
+        out_1 = fluid.layers.gaussian_random(shape=[2000, 500],
+                                             dtype="float32",
+                                             mean=0.0,
+                                             std=1.0,
+                                             seed=10)
 
-        out_2 = fluid.layers.gaussian_random(
-            shape=[2000, positive_2_int32],
-            dtype="float32",
-            mean=0.,
-            std=1.0,
-            seed=10)
+        out_2 = fluid.layers.gaussian_random(shape=[2000, positive_2_int32],
+                                             dtype="float32",
+                                             mean=0.,
+                                             std=1.0,
+                                             seed=10)
 
-        out_3 = fluid.layers.gaussian_random(
-            shape=[2000, positive_2_int64],
-            dtype="float32",
-            mean=0.,
-            std=1.0,
-            seed=10)
+        out_3 = fluid.layers.gaussian_random(shape=[2000, positive_2_int64],
+                                             dtype="float32",
+                                             mean=0.,
+                                             std=1.0,
+                                             seed=10)
 
-        out_4 = fluid.layers.gaussian_random(
-            shape=shape_tensor_int32,
-            dtype="float32",
-            mean=0.,
-            std=1.0,
-            seed=10)
+        out_4 = fluid.layers.gaussian_random(shape=shape_tensor_int32,
+                                             dtype="float32",
+                                             mean=0.,
+                                             std=1.0,
+                                             seed=10)
 
-        out_5 = fluid.layers.gaussian_random(
-            shape=shape_tensor_int64,
-            dtype="float32",
-            mean=0.,
-            std=1.0,
-            seed=10)
+        out_5 = fluid.layers.gaussian_random(shape=shape_tensor_int64,
+                                             dtype="float32",
+                                             mean=0.,
+                                             std=1.0,
+                                             seed=10)
 
-        out_6 = fluid.layers.gaussian_random(
-            shape=shape_tensor_int64,
-            dtype=np.float32,
-            mean=0.,
-            std=1.0,
-            seed=10)
+        out_6 = fluid.layers.gaussian_random(shape=shape_tensor_int64,
+                                             dtype=np.float32,
+                                             mean=0.,
+                                             std=1.0,
+                                             seed=10)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
@@ -307,6 +321,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
 
 
 class TestStandardNormalDtype(unittest.TestCase):
+
     def test_default_dtype(self):
         paddle.disable_static()
 
@@ -333,6 +348,7 @@ class TestStandardNormalDtype(unittest.TestCase):
 
 
 class TestRandomValue(unittest.TestCase):
+
     def test_fixed_random_number(self):
         # Test GPU Fixed random number, which is generated by 'curandStatePhilox4_32_10_t'
         if not paddle.is_compiled_with_cuda():
@@ -342,13 +358,12 @@ class TestRandomValue(unittest.TestCase):
         if not "V100" in paddle.device.cuda.get_device_name():
             return
 
-        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
-            return
-
         def _check_random_value(dtype, expect, expect_mean, expect_std):
             x = paddle.randn([32, 3, 1024, 1024], dtype=dtype)
             actual = x.numpy()
-            self.assertTrue(np.allclose(actual[2, 1, 512, 1000:1010], expect))
+            np.testing.assert_allclose(actual[2, 1, 512, 1000:1010],
+                                       expect,
+                                       rtol=1e-05)
             self.assertTrue(np.mean(actual), expect_mean)
             self.assertTrue(np.std(actual), expect_std)
 

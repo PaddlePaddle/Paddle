@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
-
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
@@ -49,10 +50,6 @@ TEST(ONNXRuntimePredictor, onnxruntime_on) {
 
   ASSERT_TRUE(predictor);
   ASSERT_TRUE(!predictor->Clone());
-  ASSERT_TRUE(predictor->scope_);
-  ASSERT_TRUE(predictor->sub_scope_);
-  ASSERT_EQ(predictor->scope_->parent(), nullptr);
-  ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
   // Dummy Input Data
   std::vector<int64_t> input_shape = {-1, 3, 224, 224};
   std::vector<float> input_data(1 * 3 * 224 * 224, 1.0);

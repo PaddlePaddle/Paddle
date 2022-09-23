@@ -22,8 +22,9 @@ from six.moves import zip, range, xrange
 import multiprocessing
 import warnings
 
-from .framework import Variable, default_main_program, _current_expected_place, in_dygraph_mode, _in_eager_mode
+from .framework import Variable, default_main_program, _current_expected_place, _non_static_mode, _in_eager_without_dygraph_check
 from .framework import _cpu_num, _cuda_ids
+
 __all__ = ['DataFeeder']
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
@@ -48,7 +49,7 @@ def convert_dtype(dtype):
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
         if dtype in [
-                np.bool, np.float16, np.uint16, np.float32, np.float64, np.int8,
+                bool, np.float16, np.uint16, np.float32, np.float64, np.int8,
                 np.int16, np.int32, np.int64, np.uint8, np.complex64,
                 np.complex128
         ]:
@@ -93,7 +94,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     # in dynamic graph mode.
     # 2. Performance considerations. Because these checks are executed at
     # each step in dynamic graph mode, it will bring a heavy performance burden.
-    if in_dygraph_mode():
+    if _non_static_mode():
         return
 
     # NOTE: `in_declarative_mode` is used to determined whether this op is called under
@@ -105,9 +106,8 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         if not isinstance(expected_type, tuple):
             expected_type = (expected_type, )
         expected_type += (core.VarBase, )
-        #  TODO(jiabin): uncomment it when we support declarative mode in eager
-        # if _in_eager_mode():
-        #     expected_type += (core.eager.Tensor, )
+        if _in_eager_without_dygraph_check():
+            expected_type += (core.eager.Tensor, )
     elif isinstance(input, core.VarBase):
         raise TypeError(
             "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
@@ -131,7 +131,7 @@ def check_dtype(input_dtype,
                 op_name,
                 extra_message=''):
     # See NOTE [ Why skip dynamic graph check ]
-    if in_dygraph_mode():
+    if _non_static_mode():
         return
     if convert_dtype(input_dtype) in ['float16']:
         warnings.warn(
@@ -156,7 +156,7 @@ def check_shape(shape,
                 expected_element_type=(int, Variable),
                 expected_tensor_dtype=('int32', 'int64')):
     # See NOTE [ Why skip dynamic graph check ]
-    if in_dygraph_mode():
+    if _non_static_mode():
         return
     check_type(shape, 'shape', expected_shape_type, op_name)
     if expected_element_type is not None and not isinstance(shape, Variable):
@@ -173,6 +173,7 @@ def check_shape(shape,
 
 
 class DataToLoDTensorConverter(object):
+
     def __init__(self, place, lod_level, shape, dtype):
         self.place = place
         self.lod_level = lod_level
@@ -206,8 +207,8 @@ class DataToLoDTensorConverter(object):
         for s1, s2 in zip(self.shape, shape):
             if s1 != s2 and s1 >= 0 and s2 >= 0:
                 raise ValueError(
-                    "Shape not match. What is defined in data layer is {}, but receive {}".
-                    format(self.shape, shape))
+                    "Shape not match. What is defined in data layer is {}, but receive {}"
+                    .format(self.shape, shape))
 
     def done(self):
         arr = np.array(self.data, dtype=self.dtype)
@@ -228,6 +229,7 @@ class DataToLoDTensorConverter(object):
 
 
 class BatchedTensorProvider(object):
+
     def __init__(self, feed_list, place, batch_size, generator, drop_last):
         self.place = place
         self.batch_size = batch_size
@@ -238,11 +240,10 @@ class BatchedTensorProvider(object):
         for var in feed_list:
             assert var.lod_level == 0, "lod_level must be 0"
             self.converters.append(
-                DataToLoDTensorConverter(
-                    place=self.place,
-                    lod_level=0,
-                    shape=var.shape,
-                    dtype=var.dtype))
+                DataToLoDTensorConverter(place=self.place,
+                                         lod_level=0,
+                                         shape=var.shape,
+                                         dtype=var.dtype))
 
     def _done(self):
         return [c.done() for c in self.converters]
@@ -250,8 +251,8 @@ class BatchedTensorProvider(object):
     def __call__(self):
         idx = 0
         for each_sample in self.generator():
-            for each_slot, each_converter in six.moves.zip(each_sample,
-                                                           self.converters):
+            for each_slot, each_converter in six.moves.zip(
+                    each_sample, self.converters):
                 each_converter.data.append(each_slot)
 
             idx += 1
@@ -268,21 +269,21 @@ class BatchedTensorProvider(object):
 class DataFeeder(object):
     """
     :api_attr: Static Graph
-    
+
     DataFeeder converts the data that returned by a reader into a data
-    structure that can feed into Executor. The reader is usually a 
-    python generator that returns a list of mini-batch data entries. 
+    structure that can feed into Executor. The reader is usually a
+    python generator that returns a list of mini-batch data entries.
 
     Parameters:
         feed_list (list): Variables or names of Variables that need
             to feed.
-        place (:ref:`api_fluid_CPUPlace` | :ref:`api_fluid_CUDAPlace` ): 
-            place indicates the device (CPU | GPU) the data will be fed into, if 
-            you want to feed data into GPU, please using :code:`fluid.CUDAPlace(i)` 
-            (:code:`i` represents the GPU id), or if you want to feed data into CPU, 
+        place (:ref:`api_fluid_CPUPlace` | :ref:`api_fluid_CUDAPlace` ):
+            place indicates the device (CPU | GPU) the data will be fed into, if
+            you want to feed data into GPU, please using :code:`fluid.CUDAPlace(i)`
+            (:code:`i` represents the GPU id), or if you want to feed data into CPU,
             please using :code:`fluid.CPUPlace()`.
-        program (:ref:`api_fluid_Program` , optional): The Program that will 
-            feed data into, if program is None, it will use default_main_program(). 
+        program (:ref:`api_fluid_Program` , optional): The Program that will
+            feed data into, if program is None, it will use default_main_program().
             Default None.
 
     Raises:
@@ -294,31 +295,31 @@ class DataFeeder(object):
             import numpy as np
             import paddle
             import paddle.fluid as fluid
-            
+
             place = fluid.CPUPlace()
             def reader():
                 for _ in range(4):
                     yield np.random.random([4]).astype('float32'), np.random.random([3]).astype('float32'),
-            
+
             main_program = fluid.Program()
             startup_program = fluid.Program()
-            
+
             with fluid.program_guard(main_program, startup_program):
                 data_1 = fluid.data(name='data_1', shape=[None, 2, 2], dtype='float32')
                 data_2 = fluid.data(name='data_2', shape=[None, 1, 3], dtype='float32')
                 out = fluid.layers.fc(input=[data_1, data_2], size=2)
                 # ...
             feeder = fluid.DataFeeder([data_1, data_2], place)
-            
+
             exe = fluid.Executor(place)
             exe.run(startup_program)
-            
+
             feed_data = feeder.feed(reader())
-            
+
             # print feed_data to view feed results
             # print(feed_data['data_1'])
             # print(feed_data['data_2'])
-            
+
             outs = exe.run(program=main_program,
                             feed=feed_data,
                             fetch_list=[out])
@@ -347,13 +348,13 @@ class DataFeeder(object):
 
     def feed(self, iterable):
         """
-        According to :code:`feed_list` of :code:`DataFeeder` and :code:`iterable` , converts 
+        According to :code:`feed_list` of :code:`DataFeeder` and :code:`iterable` , converts
         the input into a data structure that can feed into Executor.
 
         Parameters:
             iterable (generator): user defined python generator to read the raw input data
 
-        Returns: 
+        Returns:
             :code:`dict`: a :code:`dict` that contains (variable name - converted tensor) pairs
 
         Example:
@@ -366,17 +367,17 @@ class DataFeeder(object):
                 # result['data_2'], result['data_3'] are similar.
                 import numpy as np
                 import paddle.fluid as fluid
-                
+
                 def reader(limit=5):
                     for i in range(1, limit + 1):
                         yield np.ones([6]).astype('float32') * i , np.ones([1]).astype('int64') * i, np.random.random([9]).astype('float32')
-                
+
                 data_1 = fluid.data(name='data_1', shape=[None, 2, 1, 3])
                 data_2 = fluid.data(name='data_2', shape=[None, 1], dtype='int64')
                 data_3 = fluid.data(name='data_3', shape=[None, 3, 3], dtype='float32')
                 feeder = fluid.DataFeeder(['data_1','data_2', 'data_3'], fluid.CPUPlace())
-                
-                
+
+
                 result = feeder.feed(reader())
                 print(result['data_1'])
                 print(result['data_2'])
@@ -384,21 +385,21 @@ class DataFeeder(object):
 
         """
         converter = []
-        for lod_level, shape, dtype in six.moves.zip(
-                self.feed_lod_level, self.feed_shapes, self.feed_dtypes):
+        for lod_level, shape, dtype in six.moves.zip(self.feed_lod_level,
+                                                     self.feed_shapes,
+                                                     self.feed_dtypes):
             converter.append(
-                DataToLoDTensorConverter(
-                    place=self.place,
-                    lod_level=lod_level,
-                    shape=shape,
-                    dtype=dtype))
+                DataToLoDTensorConverter(place=self.place,
+                                         lod_level=lod_level,
+                                         shape=shape,
+                                         dtype=dtype))
 
         for each_sample in iterable:
             assert len(each_sample) == len(converter), (
                 "The number of fields in data (%d) does not match " +
                 "len(feed_list) (%d)") % (len(each_sample), len(converter))
-            for each_converter, each_slot in six.moves.zip(converter,
-                                                           each_sample):
+            for each_converter, each_slot in six.moves.zip(
+                    converter, each_sample):
                 each_converter.feed(each_slot)
         ret_dict = {}
         for each_name, each_converter in six.moves.zip(self.feed_names,
@@ -409,20 +410,20 @@ class DataFeeder(object):
     def feed_parallel(self, iterable, num_places=None):
         """
         Similar with feed function, feed_parallel is used with multiple devices (CPU|GPU).
-        Here :code:`iterable` is a list of python generators. The data return by each 
-        generator in the list will be fed into a separate device.        
+        Here :code:`iterable` is a list of python generators. The data return by each
+        generator in the list will be fed into a separate device.
 
         Parameters:
-            iterable (list|tuple): list of user-defined python generators. The element 
+            iterable (list|tuple): list of user-defined python generators. The element
                 number should match the :code:`num_places`.
-            num_places (int, optional): the number of devices. If not provided (None), 
+            num_places (int, optional): the number of devices. If not provided (None),
                 all available devices on the machine will be used. Default None.
 
-        Returns: 
-            :code:`generator`: a :code:`generator` that generate dict which contains (variable name - converted tensor) pairs, 
+        Returns:
+            :code:`generator`: a :code:`generator` that generate dict which contains (variable name - converted tensor) pairs,
             the total number of dicts will be generated matches with the :code:`num_places`
 
-        .. note::        
+        .. note::
             The number of devices - :code:`num_places` should equal to the generator (element of :code:`iterable` ) number
 
         Example:
@@ -462,14 +463,12 @@ class DataFeeder(object):
         """
         if isinstance(self.place, core.CUDAPlace):
             places = [
-                core.CUDAPlace(i)
-                for i in six.moves.xrange(
+                core.CUDAPlace(i) for i in six.moves.xrange(
                     self._get_number_of_places_(num_places))
             ]
         else:
             places = [
-                core.CPUPlace()
-                for _ in six.moves.xrange(
+                core.CPUPlace() for _ in six.moves.xrange(
                     self._get_number_of_places_(num_places))
             ]
 
@@ -504,18 +503,18 @@ class DataFeeder(object):
 
         Parameters:
             reader(generator): a user defined python generator used to get :code:`mini-batch` of data.
-                A :code:`mini-batch` can be regarded as a python generator that returns batches of input 
-                entities, just like the below :code:`_mini_batch` in the code example.                      
+                A :code:`mini-batch` can be regarded as a python generator that returns batches of input
+                entities, just like the below :code:`_mini_batch` in the code example.
             multi_devices(bool): indicate whether to use multiple devices or not.
             num_places(int, optional): if :code:`multi_devices` is True, you can specify the number
                 of devices(CPU|GPU) to use, if multi_devices is None, the function will use all the
                 devices of the current machine. Default None.
-            drop_last(bool, optional): whether to drop the last round of data if it is not enough to 
+            drop_last(bool, optional): whether to drop the last round of data if it is not enough to
                 feed all devices. Default True.
 
-        Returns: 
+        Returns:
             :code:`generator`: a new :code:`generator` which return converted dicts that can be fed into Executor
-            
+
         Raises:
             :code:`ValueError`: If drop_last is False and the data cannot fit devices perfectly.
 
@@ -526,7 +525,7 @@ class DataFeeder(object):
                 import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.compiler as compiler
-                
+
                 def reader():
                     def _mini_batch(batch_size):
                         for i in range(batch_size):
@@ -534,23 +533,23 @@ class DataFeeder(object):
 
                     for _ in range(10):
                         yield _mini_batch(np.random.randint(1, 10))
-                
+
                 place_num = 3
                 places = [fluid.CPUPlace() for _ in range(place_num)]
-                
+
                 # a simple network sample
                 data = fluid.data(name='data', shape=[None, 4, 4], dtype='float32')
                 label = fluid.data(name='label', shape=[None, 1], dtype='int64')
                 hidden = fluid.layers.fc(input=data, size=10)
-                
+
                 feeder = fluid.DataFeeder(place=places[0], feed_list=[data, label])
                 reader = feeder.decorate_reader(reader, multi_devices=True, num_places=3, drop_last=True)
-                
+
                 exe = fluid.Executor(places[0])
                 exe.run(fluid.default_startup_program())
                 compiled_prog = compiler.CompiledProgram(
                          fluid.default_main_program()).with_data_parallel(places=places)
-                
+
                 for i,data in enumerate(reader()):
                     # print data if you like
                     # print(i, data)

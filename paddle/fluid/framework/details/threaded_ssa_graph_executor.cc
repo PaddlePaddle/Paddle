@@ -25,18 +25,24 @@ namespace paddle {
 namespace framework {
 namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
-    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const ExecutionStrategy &strategy,
+    const std::vector<Scope *> &local_scopes,
     const std::vector<Scope *> &local_exec_scopes,
-    const std::vector<platform::Place> &places, ir::Graph *graph)
+    const std::vector<platform::Place> &places,
+    ir::Graph *graph)
     : graph_(graph),
       local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
       places_(places),
-      fetch_ctxs_(places),
       strategy_(strategy),
       prepare_pool_(1),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
                                        : nullptr) {
+  platform::EmplaceDeviceContexts(
+      &fetch_ctxs_,
+      places,
+      /*disable_setting_default_stream_for_allocator=*/true);
+
   if (strategy_.num_iteration_per_run_ > 1) {
     int read_op_num = 0;
     for (auto *node : graph_->Nodes()) {
@@ -57,7 +63,8 @@ inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare",
-                                platform::TracerEventType::UserDefined, 2));
+                                platform::TracerEventType::UserDefined,
+                                2));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
   CopyOpDeps();
 
@@ -79,8 +86,14 @@ inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
     fetch_data = FetchUnmergedList(fetch_tensors.size());
   }
 
-  InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &ready_ops,
-                 &pending_ops, &pending_vars, &fetch_data, return_merged);
+  InsertFetchOps(fetch_tensors,
+                 &fetch_ops,
+                 &fetch_dependencies,
+                 &ready_ops,
+                 &pending_ops,
+                 &pending_vars,
+                 &fetch_data,
+                 return_merged);
 
   exception_holder_.Clear();
   event.reset(nullptr);
@@ -141,7 +154,8 @@ inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
       }
     }
     PADDLE_ENFORCE_EQ(
-        ready_ops.empty(), true,
+        ready_ops.empty(),
+        true,
         platform::errors::Fatal("After the execution of computation graph, "
                                 "there are unexecuted operators left."));
   }
@@ -167,7 +181,8 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     std::unordered_set<OpHandleBase *> *ready_ops,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
     std::unordered_set<VarHandleBase *> *pending_vars,
-    FetchResultType *fetch_data, bool return_merged) {
+    FetchResultType *fetch_data,
+    bool return_merged) {
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::unordered_set<VarHandleBase *> local_ready_vars;
 
@@ -184,7 +199,8 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     auto &var_name = fetch_tensors[i];
     auto fetched_var_it = fetched_vars.find(var_name);
     PADDLE_ENFORCE_NE(
-        fetched_var_it, fetched_vars.end(),
+        fetched_var_it,
+        fetched_vars.end(),
         platform::errors::PreconditionNotMet(
             "Cannot find fetched variable(%s) in current computation graph. "
             "Possible reasons are:\n"
@@ -196,18 +212,23 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
             "when using `executor.run` method. In other words, the format of "
             "`executor.run(fetch_list=[fetch_var])`(fetch_var is a Variable) "
             "is recommended.",
-            var_name, var_name));
+            var_name,
+            var_name));
 
     auto &vars = fetched_var_it->second;
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetch_data, i, &local_scopes_,
-                                 &local_exec_scopes_, return_merged);
+    auto *op = new FetchOpHandle(fetch_node,
+                                 fetch_data,
+                                 i,
+                                 &local_scopes_,
+                                 &local_exec_scopes_,
+                                 return_merged);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
-      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
+      op->SetDeviceContext(p, fetch_ctxs_[p].get().get());
     }
 
     for (auto *var : vars) {
@@ -236,7 +257,8 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     }
   }
   PADDLE_ENFORCE_EQ(
-      local_ready_vars.size(), 0,
+      local_ready_vars.size(),
+      0,
       platform::errors::Fatal(
           "The number of ready variables should be 0, but got %d.",
           local_ready_vars.size()));
@@ -250,7 +272,8 @@ void ThreadedSSAGraphExecutor::InsertPendingOp(
 
 void ThreadedSSAGraphExecutor::InsertPendingVar(
     std::unordered_set<VarHandleBase *> *pending_vars,
-    std::unordered_set<VarHandleBase *> *ready_vars, VarHandleBase *var) const {
+    std::unordered_set<VarHandleBase *> *ready_vars,
+    VarHandleBase *var) const {
   pending_vars->insert(var);
   if (var->GeneratedOp() == nullptr) {
     ready_vars->insert(var);
@@ -286,7 +309,8 @@ void ThreadedSSAGraphExecutor::PrepareOpDeps() {
   }
   op_deps_->num_ops_ = ready_ops.size() + pending_ops.size();
   PADDLE_ENFORCE_GT(
-      op_deps_->num_ops_, 0,
+      op_deps_->num_ops_,
+      0,
       platform::errors::InvalidArgument("The graph doesn't have operators."));
 
   for (auto ready_var : ready_vars) {

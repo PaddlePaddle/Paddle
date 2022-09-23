@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/p_norm_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -54,7 +54,9 @@ class PnormNPUKernel : public framework::OpKernel<T> {
     }
 
     if (!combine_op) {
-      const auto& runner = NpuOpRunner("LpNorm", {*in_x}, {*out_norm},
+      const auto& runner = NpuOpRunner("LpNorm",
+                                       {*in_x},
+                                       {*out_norm},
                                        {{"p", p},
                                         {"axes", std::vector<int32_t>({axis})},
                                         {"keep_dims", keepdim}});
@@ -64,17 +66,23 @@ class PnormNPUKernel : public framework::OpKernel<T> {
       tmp_x.mutable_data<T>(xdim, ctx.GetPlace());
 
       const auto& power_runner1 =
-          NpuOpRunner("Power", {*in_x}, {tmp_x},
+          NpuOpRunner("Power",
+                      {*in_x},
+                      {tmp_x},
                       {{"power", porder}, {"scale", 1.0f}, {"shift", 0.0f}});
       power_runner1.Run(stream);
 
       const auto& reduce_runner = NpuOpRunner(
-          "ReduceSumD", {tmp_x}, {*out_norm},
+          "ReduceSumD",
+          {tmp_x},
+          {*out_norm},
           {{"axes", std::vector<int32_t>({axis})}, {"keep_dims", keepdim}});
       reduce_runner.Run(stream);
 
       const auto& power_runner2 = NpuOpRunner(
-          "Power", {*out_norm}, {*out_norm},
+          "Power",
+          {*out_norm},
+          {*out_norm},
           {{"power", 1 / porder}, {"scale", 1.0f}, {"shift", 0.0f}});
       power_runner2.Run(stream);
     }
@@ -163,12 +171,16 @@ class PnormGradNPUKernel : public framework::OpKernel<T> {
       y_pow.mutable_data<T>(ydim, place);
       if (porder >= 1) {
         const auto& r_pow1 = NpuOpRunner(
-            "Power", {x_abs}, {x_abs},
+            "Power",
+            {x_abs},
+            {x_abs},
             {{"power", (porder - 1)}, {"scale", 1.0f}, {"shift", 0.0f}});
         r_pow1.Run(stream);
 
         const auto& r_pow2 = NpuOpRunner(
-            "Power", {y_share}, {y_pow},
+            "Power",
+            {y_share},
+            {y_pow},
             {{"power", (porder - 1)}, {"scale", 1.0f}, {"shift", 0.0f}});
         r_pow2.Run(stream);
 
@@ -176,12 +188,16 @@ class PnormGradNPUKernel : public framework::OpKernel<T> {
         r_div.Run(stream);
       } else {
         const auto& r_pow1 = NpuOpRunner(
-            "Power", {x_abs}, {x_abs},
+            "Power",
+            {x_abs},
+            {x_abs},
             {{"power", (1 - porder)}, {"scale", 1.0f}, {"shift", 0.0f}});
         r_pow1.Run(stream);
 
         const auto& r_pow2 = NpuOpRunner(
-            "Power", {y_share}, {y_pow},
+            "Power",
+            {y_share},
+            {y_pow},
             {{"power", (1 - porder)}, {"scale", 1.0f}, {"shift", 0.0f}});
         r_pow2.Run(stream);
 
@@ -204,9 +220,11 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    p_norm, ops::PnormNPUKernel<plat::NPUDeviceContext, float>,
+    p_norm,
+    ops::PnormNPUKernel<plat::NPUDeviceContext, float>,
     ops::PnormNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    p_norm_grad, ops::PnormGradNPUKernel<plat::NPUDeviceContext, float>,
+    p_norm_grad,
+    ops::PnormGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::PnormGradNPUKernel<plat::NPUDeviceContext, plat::float16>);

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -23,9 +24,6 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -40,10 +38,12 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "The input 'X' of LabelSmoothOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "The output 'Out' of LabelSmoothOp is not found."));
     auto in_dims = ctx->GetInputDim("X");
@@ -51,13 +51,15 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
       auto noise_dims = ctx->GetInputDim("PriorDist");
       auto noise_numel = phi::product(noise_dims);
       PADDLE_ENFORCE_EQ(
-          in_dims[in_dims.size() - 1], noise_numel,
+          in_dims[in_dims.size() - 1],
+          noise_numel,
           platform::errors::InvalidArgument(
               "The number of elements in input 'PriorDist' must be equal to "
               "the "
               "dimension of each label. But received each label's "
               "dimension=[%d], number of elements in input 'PriorDist' is [%d]",
-              in_dims[in_dims.size() - 1], noise_numel));
+              in_dims[in_dims.size() - 1],
+              noise_numel));
     }
     ctx->ShareLoD("X", /*->*/ "Out");
     ctx->SetOutputDim("Out", in_dims);
@@ -90,23 +92,23 @@ class LabelSmoothOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LabelSmooth Operator.
 
-Label smoothing is a mechanism to regularize the classifier layer. In machine 
-learning, optimizing the log-likelihood of the correct label directly may 
-cause two problems. First, it may result in overfitting: if the model learns 
+Label smoothing is a mechanism to regularize the classifier layer. In machine
+learning, optimizing the log-likelihood of the correct label directly may
+cause two problems. First, it may result in overfitting: if the model learns
 to assign full probability to the ground-truth label for each training example,
-it is not guaranteed to generalize. Second, it encourages the differences 
-between the largest logit and all others to become large, reducing the ability 
-of the model to adapt. Label smoothing is proposed to encourage the model to 
-be less confident, which replaces the ground-truth label $y$ with the weighted 
+it is not guaranteed to generalize. Second, it encourages the differences
+between the largest logit and all others to become large, reducing the ability
+of the model to adapt. Label smoothing is proposed to encourage the model to
+be less confident, which replaces the ground-truth label $y$ with the weighted
 sum of itself and some fixed distribution $\mu$, i.e.
 
 $$
     \tilde{y} = (1 - \epsilon) * y + \epsilon * \mu,
 $$
 
-where $(1 - \epsilon)$ and $\epsilon$ are the weights respectively, and 
-$\tilde{y}$ is the smoothed label. Usually uniform distribution is used for 
-$\mu$. This change in the ground-truth label is called label-smoothing 
+where $(1 - \epsilon)$ and $\epsilon$ are the weights respectively, and
+$\tilde{y}$ is the smoothed label. Usually uniform distribution is used for
+$\mu$. This change in the ground-truth label is called label-smoothing
 regularization or LSR.
 
 See more details about label smoothing in https://arxiv.org/abs/1512.00567.
@@ -147,7 +149,9 @@ class LabelSmoothGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
+REGISTER_OPERATOR(label_smooth,
+                  ops::LabelSmoothOp,
+                  ops::LabelSmoothOpMaker,
                   ops::LabelSmoothGradMaker<paddle::framework::OpDesc>,
                   ops::LabelSmoothGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(label_smooth_grad, ops::LabelSmoothGradOp);

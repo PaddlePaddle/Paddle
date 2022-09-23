@@ -21,6 +21,7 @@ import numpy as np
 
 
 class TestMultiheadAttention(unittest.TestCase):
+
     def gen_random_input(self):
         """Generate random input data.
         """
@@ -32,25 +33,22 @@ class TestMultiheadAttention(unittest.TestCase):
     def set_program(self):
         """Build the test program.
         """
-        queries = fluid.layers.data(
-            name="queries",
-            shape=self.input_shape,
-            dtype="float32",
-            append_batch_size=False)
+        queries = fluid.layers.data(name="queries",
+                                    shape=self.input_shape,
+                                    dtype="float32",
+                                    append_batch_size=False)
         queries.stop_gradient = False
-        keys = fluid.layers.data(
-            name="keys",
-            shape=self.input_shape,
-            dtype="float32",
-            append_batch_size=False)
+        keys = fluid.layers.data(name="keys",
+                                 shape=self.input_shape,
+                                 dtype="float32",
+                                 append_batch_size=False)
         keys.stop_gradient = False
 
-        contexts = fluid.nets.scaled_dot_product_attention(
-            queries=queries,
-            keys=keys,
-            values=keys,
-            num_heads=8,
-            dropout_rate=0.)
+        contexts = fluid.nets.scaled_dot_product_attention(queries=queries,
+                                                           keys=keys,
+                                                           values=keys,
+                                                           num_heads=8,
+                                                           dropout_rate=0.)
         out = fluid.layers.reduce_sum(contexts, dim=None)
         fluid.backward.append_backward(loss=out)
 

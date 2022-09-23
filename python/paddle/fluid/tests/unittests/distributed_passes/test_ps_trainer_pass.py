@@ -26,6 +26,7 @@ from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 
 
 class TestPsTrainerPass(PsPassTestBase):
+
     def setUp(self):
         pass
 
@@ -57,8 +58,8 @@ class TestPsTrainerPass(PsPassTestBase):
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch()
 
-        file1 = '/ps_log/async_run_minimize_debug:_0_worker_main.prototxt'
-        file2 = '/ps_log/async_run_minimize_debug:_1_worker_main.prototxt'
+        file1 = './ps_log/async_run_minimize_debug:_0_worker_main.prototxt'
+        file2 = './ps_log/async_run_minimize_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
             logger.info('test_ps_optimizer_minimize_cpu_async passed!')
         else:
@@ -79,8 +80,8 @@ class TestPsTrainerPass(PsPassTestBase):
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch()
         '''
-        file1 = '/ps_log/sync_run_minimize_debug:_0_worker_main.prototxt'
-        file2 = '/ps_log/sync_run_minimize_debug:_1_worker_main.prototxt'
+        file1 = './ps_log/sync_run_minimize_debug:_0_worker_main.prototxt'
+        file2 = './ps_log/sync_run_minimize_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
             logger.info('test_ps_optimizer_minimize_cpu_sync passed!')
         else:
@@ -102,8 +103,8 @@ class TestPsTrainerPass(PsPassTestBase):
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch()
 
-        file1 = '/ps_log/geo_run_minimize_debug:_0_worker_main.prototxt'
-        file2 = '/ps_log/geo_run_minimize_debug:_1_worker_main.prototxt'
+        file1 = './ps_log/geo_run_minimize_debug:_0_worker_main.prototxt'
+        file2 = './ps_log/geo_run_minimize_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
             logger.info('test_ps_optimizer_minimize_cpu_geo passed!')
         else:
@@ -130,10 +131,10 @@ class TestPsTrainerPass(PsPassTestBase):
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch('heter-ps')
         '''
-        file1 = '/ps_log/heter_run_minimize_debug:_0_worker_main.prototxt'
-        file2 = '/ps_log/heter_run_minimize_debug:_1_worker_main.prototxt'
-        file3 = '/ps_log/heter_run_minimize_debug:_0_heter_worker_main.prototxt'
-        file4 = '/ps_log/heter_run_minimize_debug:_1_heter_worker_main.prototxt'
+        file1 = './ps_log/heter_run_minimize_debug:_0_worker_main.prototxt'
+        file2 = './ps_log/heter_run_minimize_debug:_1_worker_main.prototxt'
+        file3 = './ps_log/heter_run_minimize_debug:_0_heter_worker_main.prototxt'
+        file4 = './ps_log/heter_run_minimize_debug:_1_heter_worker_main.prototxt'
         if self.check(file1, file2) and self.check(file3, file4):
             logger.info('test_ps_optimizer_minimize_heter passed!')
         else:
@@ -148,19 +149,19 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['debug_new_minimize'] = '0'
         self.config['log_dir'] = ps_log_root_dir + "gpubox_log_old_minimize"
         remove_path_if_exists(self.config['log_dir'])
-        self.ps_launch("gpu-ps")
+        #self.ps_launch("gpu-ps")
 
         self.config['debug_new_minimize'] = '1'
         self.config['log_dir'] = ps_log_root_dir + "gpubox_log_new_minimize"
         remove_path_if_exists(self.config['log_dir'])
-        self.ps_launch("gpu-ps")
+        # self.ps_launch("gpu-ps")
 
-        file1 = '/ps_log/gpubox_run_minimize_debug:_0_worker_main.prototxt'
-        file2 = '/ps_log/gpubox_run_minimize_debug:_1_worker_main.prototxt'
-        if self.check(file1, file2):
-            logger.info('test_ps_optimizer_minimize_gpu passed!')
-        else:
-            logger.error('test_ps_optimizer_minimize_gpu failed!')
+        # file1 = './ps_log/gpubox_run_minimize_debug:_0_worker_main.prototxt'
+        # file2 = './ps_log/gpubox_run_minimize_debug:_1_worker_main.prototxt'
+        # if self.check(file1, file2):
+        #     logger.info('test_ps_optimizer_minimize_gpu passed!')
+        # else:
+        #     logger.error('test_ps_optimizer_minimize_gpu failed!')
 
     def test_append_send_ops_pass(self):
         self.init()
@@ -180,8 +181,8 @@ class TestPsTrainerPass(PsPassTestBase):
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch("cpu-ps")
 
-        file1 = '/ps_log/async_append_send_ops_pass_debug:_0_worker_main.prototxt'
-        file2 = '/ps_log/async_append_send_ops_pass_debug:_1_worker_main.prototxt'
+        file1 = './ps_log/async_append_send_ops_pass_debug:_0_worker_main.prototxt'
+        file2 = './ps_log/async_append_send_ops_pass_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
             logger.info('test_append_send_ops_pass passed!')
         else:
@@ -192,5 +193,5 @@ class TestPsTrainerPass(PsPassTestBase):
 
 
 if __name__ == '__main__':
-    remove_path_if_exists('/ps_log')
+    remove_path_if_exists('./ps_log')
     unittest.main()

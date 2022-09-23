@@ -25,8 +25,23 @@ limitations under the License. */
 
 namespace phi {
 
-using DDim = phi::DDim;
+/*
+ * LoD is short for Level of Details.
+ *
+ * - in a level, each element indicates relative offset of the lower level
+ * - the first element should be 0 and that indicates that this sequence start
+ * from 0
+ * - each sequence's begin and end(no-inclusive) is level[id, id+1]
+ *
+ * For example:
+ *    3-level LoD stores
+ *
+ *    0 2 3
+ *    0 2 4 7
+ *    0 2 5 7 10 12 15 20
+ */
 using LoD = std::vector<std::vector<size_t>>;
+
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
 ///
@@ -62,6 +77,46 @@ inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
   return (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
          (lhs.dtype == rhs.dtype) && (lhs.layout == rhs.layout) &&
          (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
+}
+
+struct StringTensorMeta {
+  StringTensorMeta() = default;
+  explicit StringTensorMeta(const DDim& dims);
+  /// \brief Test whether the metadata is valid. Does not throw exceptions.
+  /// \return Whether the metadata is valid.
+  bool valid() const noexcept;
+
+  /// During the entire life cycle of a DenseTensor, the following attributes
+  /// marked with `const` are expected to remain unchanged.
+  bool is_scalar{false};
+  DDim dims;
+  size_t offset{0};
+};
+
+inline bool operator==(const StringTensorMeta& lhs,
+                       const StringTensorMeta& rhs) {
+  return (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
+         (lhs.offset == rhs.offset);
+}
+
+struct SparseTensorMeta {
+  using DataLayout = paddle::experimental::DataLayout;
+
+  SparseTensorMeta() = default;
+  explicit SparseTensorMeta(const DDim& dims);
+  explicit SparseTensorMeta(const DDim& dims, const DataLayout& layout);
+  /// \brief Test whether the metadata is valid. Does not throw exceptions.
+  /// \return Whether the metadata is valid.
+  bool valid() const noexcept;
+
+  DDim dims;
+  DataType dtype;
+  DataLayout layout{DataLayout::NCHW};
+};
+
+inline bool operator==(const SparseTensorMeta& lhs,
+                       const SparseTensorMeta& rhs) {
+  return (lhs.dims == rhs.dims) && (lhs.layout == rhs.layout);
 }
 
 }  // namespace phi

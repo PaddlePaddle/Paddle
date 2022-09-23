@@ -29,7 +29,7 @@ namespace operators {
 
 // FeedVariableVisitor is to feed the variable data
 // according to data type (LoDTensor or  Strings).
-class FeedVariableVisitor : public boost::static_visitor<void> {
+class FeedVariableVisitor {
  public:
   explicit FeedVariableVisitor(framework::Variable *out_var,
                                const platform::Place &place)
@@ -40,6 +40,13 @@ class FeedVariableVisitor : public boost::static_visitor<void> {
         out_var_->GetMutable<framework::LoDTensor>();
     if (platform::is_same_place(in_tensor.place(), place_)) {
       out_tensor->ShareDataWith(in_tensor);
+#ifdef PADDLE_WITH_IPU
+    } else if (platform::is_ipu_place(place_)) {
+      // For ipu, both in_tensor and out_tensor are allocated on cpu,
+      // PopART will copy tensor from host automatically,
+      // no TensorCopy() is required here.
+      out_tensor->ShareDataWith(in_tensor);
+#endif
     } else {
       platform::DeviceContext *context =
           platform::DeviceContextPool::Instance().Get(place_);
@@ -61,7 +68,8 @@ class FeedVariableVisitor : public boost::static_visitor<void> {
 
 class FeedOp : public framework::OperatorBase {
  public:
-  FeedOp(const std::string &type, const framework::VariableNameMap &inputs,
+  FeedOp(const std::string &type,
+         const framework::VariableNameMap &inputs,
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -89,7 +97,8 @@ class FeedOp : public framework::OperatorBase {
             out_name));
 
     auto col = Attr<int>("col");
-    PADDLE_ENFORCE_GE(col, 0,
+    PADDLE_ENFORCE_GE(col,
+                      0,
                       platform::errors::InvalidArgument(
                           "Expected the column index (the attribute 'col' of "
                           "operator 'Feed') of current feeding variable to be "
@@ -101,17 +110,19 @@ class FeedOp : public framework::OperatorBase {
 
     auto &feed_list = feed_var->Get<framework::FeedList>();
     PADDLE_ENFORCE_LT(
-        static_cast<size_t>(col), feed_list.size(),
+        static_cast<size_t>(col),
+        feed_list.size(),
         platform::errors::InvalidArgument(
             "The column index of current feeding variable is expected to be "
             "less than the length of feeding list. But received column index = "
             "%d, the length of feeding list = %d",
-            col, feed_list.size()));
+            col,
+            feed_list.size()));
 
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
 
     FeedVariableVisitor visitor(out_var, place);
-    boost::apply_visitor(visitor, feed_item);
+    paddle::visit(visitor, feed_item);
   }
 };
 
@@ -138,7 +149,8 @@ It should not be configured by users directly.
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    feed, paddle::operators::FeedOp,
+    feed,
+    paddle::operators::FeedOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);

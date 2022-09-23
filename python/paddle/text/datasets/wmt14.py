@@ -55,8 +55,10 @@ class WMT14(Dataset):
             :attr:`data_file` is not set. Default True
 
     Returns:
-        Dataset: instance of WMT14 dataset
-
+        Dataset: Instance of WMT14 dataset
+            - src_ids (np.array) - The sequence of token ids of source language.
+            - trg_ids (np.array) - The sequence of token ids of target language.
+            - trg_ids_next (np.array) - The next sequence of token ids of target language.
     Examples:
 
         .. code-block:: python
@@ -97,8 +99,9 @@ class WMT14(Dataset):
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(
-                data_file, URL_TRAIN, MD5_TRAIN, 'wmt14', download)
+            self.data_file = _check_exists_and_download(data_file, URL_TRAIN,
+                                                        MD5_TRAIN, 'wmt14',
+                                                        download)
 
         # read dataset into memory
         assert dict_size > 0, "dict_size should be set as positive number"
@@ -106,6 +109,7 @@ class WMT14(Dataset):
         self._load_data()
 
     def _load_data(self):
+
         def __to_dict(fd, size):
             out_dict = dict()
             for line_count, line in enumerate(fd):
@@ -178,14 +182,14 @@ class WMT14(Dataset):
         Args:
             reverse (bool): wether to reverse key and value in dictionary,
                 i.e. key: value to value: key.
-    
+
         Returns:
             Two dictionaries, the source and target dictionary.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 from paddle.text.datasets import WMT14
                 wmt14 = WMT14(mode='train', dict_size=50)
                 src_dict, trg_dict = wmt14.get_dict()

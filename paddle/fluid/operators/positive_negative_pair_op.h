@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -71,7 +72,8 @@ class PositiveNegativePairKernel : public framework::OpKernel<T> {
         predictions.emplace(
             std::make_pair(query[i], std::vector<PredictionResult>()));
       }
-      predictions[query[i]].emplace_back(score[i * width + column], label[i],
+      predictions[query[i]].emplace_back(score[i * width + column],
+                                         label[i],
                                          weight_t != nullptr ? weight[i] : 1.0);
     }
 
@@ -83,23 +85,23 @@ class PositiveNegativePairKernel : public framework::OpKernel<T> {
       neg = acc_negative_t->data<T>()[0];
       neu = acc_neutral_t->data<T>()[0];
     }
-    auto evaluate_one_list = [&pos, &neg,
-                              &neu](std::vector<PredictionResult> vec) {
-      for (auto ite1 = vec.begin(); ite1 != vec.end(); ++ite1) {
-        for (auto ite2 = ite1 + 1; ite2 != vec.end(); ++ite2) {
-          if (ite1->label == ite2->label) {  // labels are equal, ignore.
-            continue;
+    auto evaluate_one_list =
+        [&pos, &neg, &neu](std::vector<PredictionResult> vec) {
+          for (auto ite1 = vec.begin(); ite1 != vec.end(); ++ite1) {
+            for (auto ite2 = ite1 + 1; ite2 != vec.end(); ++ite2) {
+              if (ite1->label == ite2->label) {  // labels are equal, ignore.
+                continue;
+              }
+              T w = (ite1->weight + ite2->weight) * 0.5;
+              if (ite1->score == ite2->score) {
+                neu += w;
+              }
+              (ite1->score - ite2->score) * (ite1->label - ite2->label) > 0.0
+                  ? pos += w
+                  : neg += w;
+            }
           }
-          T w = (ite1->weight + ite2->weight) * 0.5;
-          if (ite1->score == ite2->score) {
-            neu += w;
-          }
-          (ite1->score - ite2->score) * (ite1->label - ite2->label) > 0.0
-              ? pos += w
-              : neg += w;
-        }
-      }
-    };
+        };
     for (auto prediction : predictions) {
       evaluate_one_list(prediction.second);
     }

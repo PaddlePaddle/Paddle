@@ -15,5 +15,6 @@
 from .lookahead import LookAhead  # noqa: F401
 from .modelaverage import ModelAverage  # noqa: F401
 from .distributed_fused_lamb import DistributedFusedLamb  # noqa: F401
+from . import functional  # noqa: F401
 
 __all__ = []

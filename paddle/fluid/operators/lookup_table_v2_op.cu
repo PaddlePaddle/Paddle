@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/lookup_table_v2_op.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/lookup_table_v2_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -22,8 +22,12 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename IdT, bool PaddingFlag>
-__global__ void LookupTableV2(T *output, const T *table, const IdT *ids,
-                              const int64_t N, const int64_t K, const int64_t D,
+__global__ void LookupTableV2(T *output,
+                              const T *table,
+                              const IdT *ids,
+                              const int64_t N,
+                              const int64_t K,
+                              const int64_t D,
                               const int64_t padding_idx) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
@@ -47,8 +51,11 @@ __global__ void LookupTableV2(T *output, const T *table, const IdT *ids,
 }
 
 template <typename T, typename IdT>
-__global__ void LookupTableV2Grad(T *table, const T *output, const IdT *ids,
-                                  const int64_t N, const int64_t K,
+__global__ void LookupTableV2Grad(T *table,
+                                  const T *output,
+                                  const IdT *ids,
+                                  const int64_t N,
+                                  const int64_t K,
                                   const int64_t D) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
@@ -119,7 +126,8 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
 };
 
 template <typename InT, typename OutT>
-__global__ void InputTypeConvert(const InT *in_ids, const int64_t K,
+__global__ void InputTypeConvert(const InT *in_ids,
+                                 const int64_t K,
                                  OutT *out_ids) {
   for (int i = 0; i < K; i++) {
     out_ids[i] = static_cast<OutT>(in_ids[i]);
@@ -134,8 +142,7 @@ struct LookupTableV2GradCUDAFunctor {
 
   template <typename IdT>
   void apply() {
-    auto &dev_ctx =
-        context_.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = context_.template device_context<phi::GPUContext>();
     bool is_sparse = context_.Attr<bool>("is_sparse");
 
     // Since paddings are not trainable and fixed in forward, the gradient of
@@ -161,8 +168,12 @@ struct LookupTableV2GradCUDAFunctor {
         InputTypeConvert<<<grids, threads, 0, stream>>>(
             ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));
       } else {
-        memory::Copy(gpu_place, mixv_new_rows.CUDAMutableData(gpu_place),
-                     gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
+        memory::Copy(gpu_place,
+                     mixv_new_rows.CUDAMutableData(gpu_place),
+                     gpu_place,
+                     ids_data,
+                     ids_num * sizeof(int64_t),
+                     stream);
       }
 
       mixv_new_rows.CopyToCPU();
@@ -177,15 +188,21 @@ struct LookupTableV2GradCUDAFunctor {
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
           phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
-      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
+      PADDLE_ENFORCE_EQ(d_table_value->dims(),
+                        d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
                             "output@Grad should be same. "
                             "But received lookup_table@Grad's shape = [%s], "
                             "output@Grad's shape = [%s].",
-                            d_table_value->dims(), d_output_dims_2d));
-      memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
-                   d_output->numel() * sizeof(T), stream);
+                            d_table_value->dims(),
+                            d_output_dims_2d));
+      memory::Copy(gpu_place,
+                   d_table_data,
+                   gpu_place,
+                   d_output_data,
+                   d_output->numel() * sizeof(T),
+                   stream);
 
     } else {
       auto d_output_t =
@@ -235,13 +252,3 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(lookup_table_v2, ops::LookupTableV2CUDAKernel<float>,
-                        ops::LookupTableV2CUDAKernel<double>,
-                        ops::LookupTableV2CUDAKernel<plat::float16>);
-REGISTER_OP_CUDA_KERNEL(lookup_table_v2_grad,
-                        ops::LookupTableV2GradCUDAKernel<float>,
-                        ops::LookupTableV2GradCUDAKernel<double>,
-                        ops::LookupTableV2GradCUDAKernel<plat::float16>);

@@ -45,10 +45,12 @@ class RollGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(X@GRAD) should be not null."));
 
@@ -83,10 +85,10 @@ class RollOpMaker : public framework::OpProtoAndCheckerMaker {
         "with shifts or size == 0")
         .SetDefault({});
     AddComment(R"DOC(
-    Roll the tensor along the given dimension(s). 
+    Roll the tensor along the given dimension(s).
     Elements that are shifted beyond the last position
     are re-introduced at the first position. If a dimension
-    is not specified, the tensor will be flattened before 
+    is not specified, the tensor will be flattened before
     rolling and then restored to the original shape.
     )DOC");
   }
@@ -115,14 +117,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(RollGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(roll, RollInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(roll,
+                            RollInferShapeFunctor,
                             PD_INFER_META(phi::RollInferMeta));
 
-REGISTER_OPERATOR(roll, ops::RollOp, ops::RollOpMaker,
+REGISTER_OPERATOR(roll,
+                  ops::RollOp,
+                  ops::RollOpMaker,
                   ops::RollGradMaker<paddle::framework::OpDesc>,
                   ops::RollGradMaker<paddle::imperative::OpBase>,
                   RollInferShapeFunctor);
-REGISTER_OPERATOR(roll_grad, ops::RollGradOp,
+REGISTER_OPERATOR(roll_grad,
+                  ops::RollGradOp,
                   ops::RollGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_VERSION(roll)

@@ -16,12 +16,13 @@ from __future__ import print_function
 
 import unittest
 import time
+import paddle
 import paddle.fluid as fluid
 import copy
 import os
 import subprocess
 
-from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
 
 def get_cluster_from_args(selected_gpus):
@@ -69,6 +70,9 @@ def start_local_trainers(cluster,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "MASTER_ADDR": "127.0.0.1",
+            "MASTER_PORT": "6170",
+            "NCCL_DEBUG": "INFO",
             "PADDLE_DISTRI_BACKEND":
             "gloo",  # make init_parallel_env get 'gloo' argument.
         }
@@ -100,6 +104,7 @@ def start_local_trainers(cluster,
 
 
 class TestMultipleGpus(unittest.TestCase):
+
     def run_mnist_2gpu(self, target_file_name):
         #if not fluid.core.is_compiled_with_cuda(
         #) or fluid.core.get_cuda_device_count() == 0:
@@ -110,11 +115,10 @@ class TestMultipleGpus(unittest.TestCase):
         pod = None
 
         cluster, pod = get_cluster_from_args(selected_gpus)
-        procs = start_local_trainers(
-            cluster,
-            pod,
-            training_script=target_file_name,
-            training_script_args=[])
+        procs = start_local_trainers(cluster,
+                                     pod,
+                                     training_script=target_file_name,
+                                     training_script_args=[])
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_nranks())
@@ -126,8 +130,15 @@ class TestMultipleGpus(unittest.TestCase):
 
 
 class TestDataParallelGradientCheck(TestMultipleGpus):
+
     def test_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('parallel_dygraph_gradient_check.py')
+
+
+class TestDataParallelGradientCheckInEagerMode(TestMultipleGpus):
+
+    def test_multiple_gpus_dynamic(self):
+        self.run_mnist_2gpu('parallel_dygraph_gradient_check_in_eager_mode.py')
 
 
 if __name__ == "__main__":

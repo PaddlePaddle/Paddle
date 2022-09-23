@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -23,64 +25,16 @@ class TopkV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "topk_v2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "topk_v2");
-    OP_INOUT_CHECK(ctx->HasOutput("Indices"), "Output", "Indices", "topk_v2");
-
-    auto input_dims = ctx->GetInputDim("X");
-    const int& dim_size = input_dims.size();
-    int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
-    PADDLE_ENFORCE_EQ(
-        (axis < dim_size) && (axis >= (-1 * dim_size)), true,
-        paddle::platform::errors::InvalidArgument(
-            "the axis of topk must be [-%d, %d), but you set axis is %d",
-            dim_size, dim_size, axis));
-
-    if (axis < 0) axis += dim_size;
-
-    int k;
-    auto k_is_tensor = ctx->HasInput("K");
-    if (k_is_tensor) {
-      k = -1;
-    } else {
-      k = static_cast<int>(ctx->Attrs().Get<int>("k"));
-      PADDLE_ENFORCE_EQ(k >= 1, true,
-                        paddle::platform::errors::InvalidArgument(
-                            "the attribute of k in the topk must >= 1 or be a "
-                            "Tensor, but received %d .",
-                            k));
-    }
-
-    PADDLE_ENFORCE_GE(input_dims.size(), 1,
-                      paddle::platform::errors::InvalidArgument(
-                          "input of topk must have >= 1d shape"));
-
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_GE(
-          input_dims[axis], k,
-          paddle::platform::errors::InvalidArgument(
-              "input of topk op must have >= %d columns in axis of %d", k,
-              axis));
-    }
-
-    framework::DDim dims = input_dims;
-
-    dims[axis] = k;
-    ctx->SetOutputDim("Out", dims);
-    ctx->SetOutputDim("Indices", dims);
-    ctx->ShareLoD("X", "Out");
-    ctx->ShareLoD("X", "Indices");
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context(),
-        layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context(),
+        layout_,
+        library_);
   }
 };
 
@@ -97,8 +51,8 @@ class TopkV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Top K operator
 
-If the input is a vector (1d tensor), this operator finds the k largest 
-entries in the vector and outputs their values and indices as vectors. 
+If the input is a vector (1d tensor), this operator finds the k largest
+entries in the vector and outputs their values and indices as vectors.
 Thus values[j] is the j-th largest entry in input, and its index is indices[j].
 
 For matrices, this operator computes the top k entries in each row. )DOC");
@@ -124,16 +78,20 @@ class TopkV2OpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::InvalidArgument("Input(X) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Indices"), true,
+        ctx->HasInput("Indices"),
+        true,
         platform::errors::InvalidArgument("Input(Indices) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Grad Input(Out) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::InvalidArgument("Grad Output(X) should be not null"));
 
     auto x_dims = ctx->GetInputDim("X");
@@ -169,8 +127,14 @@ class TopkV2GradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(top_k_v2, ops::TopkV2Op, ops::TopkV2OpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(top_k_v2,
+                            TopKInferShapeFunctor,
+                            PD_INFER_META(phi::TopKInferMeta));
+REGISTER_OPERATOR(top_k_v2,
+                  ops::TopkV2Op,
+                  ops::TopkV2OpMaker,
                   ops::TopkV2GradOpMaker<paddle::framework::OpDesc>,
-                  ops::TopkV2GradOpMaker<paddle::imperative::OpBase>);
+                  ops::TopkV2GradOpMaker<paddle::imperative::OpBase>,
+                  TopKInferShapeFunctor);
 
 REGISTER_OPERATOR(top_k_v2_grad, ops::TopkV2OpGrad);

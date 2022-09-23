@@ -16,11 +16,13 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/elementwise_divide_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
-#include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 

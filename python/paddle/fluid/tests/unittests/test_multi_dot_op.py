@@ -18,6 +18,7 @@ from op_test import OpTest, skip_check_grad_ci
 from numpy.linalg import multi_dot
 from op_test import OpTest
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -25,8 +26,10 @@ paddle.enable_static()
 #the unittest of multi_dot
 #compare the result of paddle multi_dot and numpy multi_dot
 class TestMultiDotOp(OpTest):
+
     def setUp(self):
         self.op_type = "multi_dot"
+        self.python_api = paddle.linalg.multi_dot
         self.dtype = self.get_dtype()
         self.get_inputs_and_outputs()
 
@@ -40,15 +43,16 @@ class TestMultiDotOp(OpTest):
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
 
 
 #(A*B)*C
 class TestMultiDotOp3Mat(TestMultiDotOp):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((2, 10)).astype(self.dtype)
         self.B = np.random.random((10, 4)).astype(self.dtype)
@@ -57,13 +61,14 @@ class TestMultiDotOp3Mat(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+        self.check_grad(['x2'], 'Out', check_eager=True)
 
 
 #A*(B*C)
 class TestMultiDotOp3Mat2(TestMultiDotOp):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((3, 4)).astype(self.dtype)
         self.B = np.random.random((4, 8)).astype(self.dtype)
@@ -72,31 +77,33 @@ class TestMultiDotOp3Mat2(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+        self.check_grad(['x2'], 'Out', check_eager=True)
 
 
 class TestMultiDotOp4Mat(TestMultiDotOp):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((8, 6)).astype(self.dtype)
         self.B = np.random.random((6, 3)).astype(self.dtype)
         self.C = np.random.random((3, 4)).astype(self.dtype)
         self.D = np.random.random((4, 5)).astype(self.dtype)
         self.inputs = {
-            'X':
-            [('x0', self.A), ('x1', self.B), ('x2', self.C), ('x3', self.D)]
+            'X': [('x0', self.A), ('x1', self.B), ('x2', self.C),
+                  ('x3', self.D)]
         }
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
-        self.check_grad(['x3'], 'Out')
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+        self.check_grad(['x2'], 'Out', check_eager=True)
+        self.check_grad(['x3'], 'Out', check_eager=True)
 
 
 class TestMultiDotOpFirst1D(TestMultiDotOp):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((4)).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
@@ -105,6 +112,7 @@ class TestMultiDotOpFirst1D(TestMultiDotOp):
 
 
 class TestMultiDotOp3MatFirst1D(TestMultiDotOp3Mat):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((4)).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
@@ -114,19 +122,21 @@ class TestMultiDotOp3MatFirst1D(TestMultiDotOp3Mat):
 
 
 class TestMultiDotOp4MatFirst1D(TestMultiDotOp4Mat):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((4)).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
         self.C = np.random.random((3, 4)).astype(self.dtype)
         self.D = np.random.random((4, 5)).astype(self.dtype)
         self.inputs = {
-            'X':
-            [('x0', self.A), ('x1', self.B), ('x2', self.C), ('x3', self.D)]
+            'X': [('x0', self.A), ('x1', self.B), ('x2', self.C),
+                  ('x3', self.D)]
         }
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
 
 class TestMultiDotOpLast1D(TestMultiDotOp):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((3, 6)).astype(self.dtype)
         self.B = np.random.random((6)).astype(self.dtype)
@@ -135,6 +145,7 @@ class TestMultiDotOpLast1D(TestMultiDotOp):
 
 
 class TestMultiDotOp3MatLast1D(TestMultiDotOp3Mat):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((2, 4)).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
@@ -143,25 +154,27 @@ class TestMultiDotOp3MatLast1D(TestMultiDotOp3Mat):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+        self.check_grad(['x2'], 'Out', check_eager=True)
 
 
 class TestMultiDotOp4MatLast1D(TestMultiDotOp4Mat):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((2, 3)).astype(self.dtype)
         self.B = np.random.random((3, 2)).astype(self.dtype)
         self.C = np.random.random((2, 3)).astype(self.dtype)
         self.D = np.random.random((3)).astype(self.dtype)
         self.inputs = {
-            'X':
-            [('x0', self.A), ('x1', self.B), ('x2', self.C), ('x3', self.D)]
+            'X': [('x0', self.A), ('x1', self.B), ('x2', self.C),
+                  ('x3', self.D)]
         }
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
 
 class TestMultiDotOpFirstAndLast1D(TestMultiDotOp):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((4, )).astype(self.dtype)
         self.B = np.random.random((4)).astype(self.dtype)
@@ -170,6 +183,7 @@ class TestMultiDotOpFirstAndLast1D(TestMultiDotOp):
 
 
 class TestMultiDotOp3MatFirstAndLast1D(TestMultiDotOp3Mat):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((6, )).astype(self.dtype)
         self.B = np.random.random((6, 4)).astype(self.dtype)
@@ -179,20 +193,22 @@ class TestMultiDotOp3MatFirstAndLast1D(TestMultiDotOp3Mat):
 
 
 class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp4Mat):
+
     def get_inputs_and_outputs(self):
         self.A = np.random.random((3, )).astype(self.dtype)
         self.B = np.random.random((3, 4)).astype(self.dtype)
         self.C = np.random.random((4, 2)).astype(self.dtype)
         self.D = np.random.random((2)).astype(self.dtype)
         self.inputs = {
-            'X':
-            [('x0', self.A), ('x1', self.B), ('x2', self.C), ('x3', self.D)]
+            'X': [('x0', self.A), ('x1', self.B), ('x2', self.C),
+                  ('x3', self.D)]
         }
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
 
 #####python API test#######
 class TestMultiDotOpError(unittest.TestCase):
+
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -202,8 +218,9 @@ class TestMultiDotOpError(unittest.TestCase):
                               [input1, input1])
 
             # The inputs dtype of multi_dot must be float64, float64 or float16.
-            input2 = paddle.static.data(
-                name='input2', shape=[10, 10], dtype="int32")
+            input2 = paddle.static.data(name='input2',
+                                        shape=[10, 10],
+                                        dtype="int32")
             self.assertRaises(TypeError, paddle.linalg.multi_dot,
                               [input2, input2])
 
@@ -229,6 +246,7 @@ class TestMultiDotOpError(unittest.TestCase):
 
 
 class APITestMultiDot(unittest.TestCase):
+
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -238,16 +256,20 @@ class APITestMultiDot(unittest.TestCase):
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.random.rand(3, 2).astype("float64")
             data2 = np.random.rand(2, 3).astype("float64")
-            np_res = exe.run(feed={'x0': data1,
-                                   'x1': data2},
-                             fetch_list=[result])
+            np_res, = exe.run(feed={
+                'x0': data1,
+                'x1': data2
+            },
+                              fetch_list=[result])
             expected_result = np.linalg.multi_dot([data1, data2])
 
-        self.assertTrue(
-            np.allclose(
-                np_res, expected_result, atol=1e-5),
-            "two value is\
-            {}\n{}, check diff!".format(np_res, expected_result))
+        np.testing.assert_allclose(
+            np_res,
+            expected_result,
+            rtol=1e-05,
+            atol=1e-05,
+            err_msg='two value is            {}\n{}, check diff!'.format(
+                np_res, expected_result))
 
     def test_dygraph_without_out(self):
         paddle.disable_static()
@@ -258,7 +280,11 @@ class APITestMultiDot(unittest.TestCase):
         data2 = paddle.to_tensor(input_array2)
         out = paddle.linalg.multi_dot([data1, data2])
         expected_result = np.linalg.multi_dot([input_array1, input_array2])
-        self.assertTrue(np.allclose(expected_result, out.numpy()))
+        np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
+
+    def test_dygraph_api(self):
+        with _test_eager_guard():
+            self.test_dygraph_without_out()
 
 
 if __name__ == "__main__":

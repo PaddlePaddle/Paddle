@@ -30,10 +30,10 @@ class RealOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of real op.");
     AddOutput("Out", "(Tensor), The output tensor of real op.");
-    AddComment(R"DOC( 
-Real Operator. 
+    AddComment(R"DOC(
+Real Operator.
 
-This operator is used to get a new tensor containing real values 
+This operator is used to get a new tensor containing real values
 from a tensor with complex data type.
 
 )DOC");
@@ -44,10 +44,14 @@ class RealGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "RealGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "RealGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "RealGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "RealGrad");
 
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
@@ -82,12 +86,15 @@ DECLARE_INPLACE_OP_INFERER(RealGradOpInplaceInferer,
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(real, RealInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(real,
+                            RealInferShapeFunctor,
                             PD_INFER_META(phi::RealAndImagInferMeta));
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(real, ops::RealOp, ops::RealOpMaker,
+REGISTER_OPERATOR(real,
+                  ops::RealOp,
+                  ops::RealOpMaker,
                   ops::RealGradOpMaker<::paddle::framework::OpDesc>,
                   ops::RealGradOpMaker<::paddle::imperative::OpBase>,
                   RealInferShapeFunctor);

@@ -22,18 +22,23 @@ import scipy.stats
 from paddle.distribution import kl
 
 import config
+import parameterize as param
 import mock_data as mock
 
+np.random.seed(2022)
+paddle.seed(2022)
 paddle.enable_static()
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'), [
-    ('test_regular_input', 6.0 * np.random.random((4, 5)) + 1e-4,
-     6.0 * np.random.random((4, 5)) + 1e-4, 6.0 * np.random.random(
-         (4, 5)) + 1e-4, 6.0 * np.random.random((4, 5)) + 1e-4),
+@param.place(config.DEVICES)
+@param.param_cls((param.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'), [
+    ('test_regular_input', 6.0 * np.random.random(
+        (4, 5)) + 1e-4, 6.0 * np.random.random(
+            (4, 5)) + 1e-4, 6.0 * np.random.random(
+                (4, 5)) + 1e-4, 6.0 * np.random.random((4, 5)) + 1e-4),
 ])
 class TestKLBetaBeta(unittest.TestCase):
+
     def setUp(self):
         self.mp = paddle.static.Program()
         self.sp = paddle.static.Program()
@@ -62,11 +67,11 @@ class TestKLBetaBeta(unittest.TestCase):
                                       feed=self.feeds,
                                       fetch_list=[out])
 
-            np.testing.assert_allclose(
-                out,
-                self.scipy_kl_beta_beta(self.a1, self.b1, self.a2, self.b2),
-                rtol=config.RTOL.get(str(self.a1.dtype)),
-                atol=config.ATOL.get(str(self.a1.dtype)))
+            np.testing.assert_allclose(out,
+                                       self.scipy_kl_beta_beta(
+                                           self.a1, self.b1, self.a2, self.b2),
+                                       rtol=config.RTOL.get(str(self.a1.dtype)),
+                                       atol=config.ATOL.get(str(self.a1.dtype)))
 
     def scipy_kl_beta_beta(self, a1, b1, a2, b2):
         return (scipy.special.betaln(a2, b2) - scipy.special.betaln(a1, b1) +
@@ -75,12 +80,13 @@ class TestKLBetaBeta(unittest.TestCase):
                 (a2 - a1 + b2 - b1) * scipy.special.digamma(a1 + b1))
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'conc1', 'conc2'), [
-    ('test-regular-input', np.random.random((5, 7, 8, 10)), np.random.random(
-        (5, 7, 8, 10))),
+@param.place(config.DEVICES)
+@param.param_cls((param.TEST_CASE_NAME, 'conc1', 'conc2'), [
+    ('test-regular-input', np.random.random(
+        (5, 7, 8, 10)), np.random.random((5, 7, 8, 10))),
 ])
 class TestKLDirichletDirichlet(unittest.TestCase):
+
     def setUp(self):
         self.mp = paddle.static.Program()
         self.sp = paddle.static.Program()
@@ -113,20 +119,21 @@ class TestKLDirichletDirichlet(unittest.TestCase):
             scipy.special.gammaln(np.sum(conc1, -1)) -
             scipy.special.gammaln(np.sum(conc2, -1)) - np.sum(
                 scipy.special.gammaln(conc1) - scipy.special.gammaln(conc2), -1)
-            + np.sum((conc1 - conc2) *
-                     (scipy.special.digamma(conc1) -
-                      scipy.special.digamma(np.sum(conc1, -1, keepdims=True))),
-                     -1))
+            + np.sum(
+                (conc1 - conc2) *
+                (scipy.special.digamma(conc1) -
+                 scipy.special.digamma(np.sum(conc1, -1, keepdims=True))), -1))
 
 
 class DummyDistribution(paddle.distribution.Distribution):
     pass
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'p', 'q'),
-                     [('test-dispatch-exception')])
+@param.place(config.DEVICES)
+@param.param_cls((param.TEST_CASE_NAME, 'p', 'q'),
+                 [('test-dispatch-exception')])
 class TestDispatch(unittest.TestCase):
+
     def setUp(self):
         self.mp = paddle.static.Program()
         self.sp = paddle.static.Program()
@@ -143,21 +150,24 @@ class TestDispatch(unittest.TestCase):
                 self.executor.run(self.mp, feed={}, fetch_list=[out])
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'rate1', 'rate2'),
-                     [('test-diff-dist', np.random.rand(100, 200, 100) + 1.0,
-                       np.random.rand(100, 200, 100) + 2.0),
-                      ('test-same-dist', np.array([1.0]), np.array([1.0]))])
+@param.place(config.DEVICES)
+@param.param_cls((config.TEST_CASE_NAME, 'rate1', 'rate2'),
+                 [('test-diff-dist', np.random.rand(100, 200, 100) + 1.0,
+                   np.random.rand(100, 200, 100) + 2.0),
+                  ('test-same-dist', np.array([1.0]), np.array([1.0]))])
 class TestKLExpfamilyExpFamily(unittest.TestCase):
+
     def setUp(self):
         self.mp = paddle.static.Program()
         self.sp = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
         with paddle.static.program_guard(self.mp, self.sp):
-            rate1 = paddle.static.data(
-                'rate1', shape=self.rate1.shape, dtype=self.rate1.dtype)
-            rate2 = paddle.static.data(
-                'rate2', shape=self.rate2.shape, dtype=self.rate2.dtype)
+            rate1 = paddle.static.data('rate1',
+                                       shape=self.rate1.shape,
+                                       dtype=self.rate1.dtype)
+            rate2 = paddle.static.data('rate2',
+                                       shape=self.rate2.shape,
+                                       dtype=self.rate2.dtype)
             self.p = mock.Exponential(rate1)
             self.q = mock.Exponential(rate2)
             self.feeds = {'rate1': self.rate1, 'rate2': self.rate2}
@@ -176,3 +186,7 @@ class TestKLExpfamilyExpFamily(unittest.TestCase):
                 out2,
                 rtol=config.RTOL.get(config.DEFAULT_DTYPE),
                 atol=config.ATOL.get(config.DEFAULT_DTYPE))
+
+
+if __name__ == '__main__':
+    unittest.main()

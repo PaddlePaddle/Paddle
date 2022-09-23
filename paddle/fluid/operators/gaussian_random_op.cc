@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -59,31 +58,30 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.device_context(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
 
-    return framework::OpKernelType(data_type, ctx.device_context(), layout,
-                                   library);
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -142,11 +140,14 @@ Used to initialize tensors with gaussian random generator.
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random, GaussianRandomInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random,
+                            GaussianRandomInferShapeFunctor,
                             PD_INFER_META(phi::GaussianRandomInferMeta));
 
 REGISTER_OPERATOR(
-    gaussian_random, ops::GaussianRandomOp, ops::GaussianRandomOpMaker,
+    gaussian_random,
+    ops::GaussianRandomOp,
+    ops::GaussianRandomOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     GaussianRandomInferShapeFunctor);
@@ -158,7 +159,7 @@ REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
 REGISTER_OP_VERSION(gaussian_random)
     .AddCheckpoint(
         R"ROC(
-               Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList] 
+               Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList]
                and modify the attribute of [shape])ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewInput("ShapeTensor",

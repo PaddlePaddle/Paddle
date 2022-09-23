@@ -106,8 +106,8 @@ def prepare_batch_input(insts, src_pad_idx, trg_pad_idx, n_head):
             if is_target:
                 # This is used to avoid attention on paddings and subsequent
                 # words.
-                slf_attn_bias_data = np.ones((inst_data.shape[0], max_len,
-                                              max_len))
+                slf_attn_bias_data = np.ones(
+                    (inst_data.shape[0], max_len, max_len))
                 slf_attn_bias_data = np.triu(slf_attn_bias_data, 1).reshape(
                     [-1, 1, max_len, max_len])
                 slf_attn_bias_data = np.tile(slf_attn_bias_data,
@@ -161,10 +161,9 @@ def get_feed_data_reader():
     if feed_data_reader is not None:
         return feed_data_reader
 
-    reader = paddle.batch(
-        wmt16.train(ModelHyperParams.src_vocab_size,
-                    ModelHyperParams.trg_vocab_size),
-        batch_size=transformer_model.batch_size)
+    reader = paddle.batch(wmt16.train(ModelHyperParams.src_vocab_size,
+                                      ModelHyperParams.trg_vocab_size),
+                          batch_size=transformer_model.batch_size)
     all_batch_tensors = []
     for batch in reader():
         tensors = []
@@ -178,15 +177,15 @@ def get_feed_data_reader():
         for t in all_batch_tensors:
             yield t
 
-    feed_data_reader = FeedDataReader(
-        feed_list=transformer_model.build_inputs(
-            ModelHyperParams.max_length + 1, ModelHyperParams.n_head),
-        reader=__reader__)
+    feed_data_reader = FeedDataReader(feed_list=transformer_model.build_inputs(
+        ModelHyperParams.max_length + 1, ModelHyperParams.n_head),
+                                      reader=__reader__)
 
     return feed_data_reader
 
 
 class TestTransformer(TestParallelExecutorBase):
+
     def test_main(self):
         if core.is_compiled_with_cuda():
             self.check_network_convergence(
@@ -198,11 +197,10 @@ class TestTransformer(TestParallelExecutorBase):
                 use_device=DeviceType.CUDA,
                 enable_sequential_execution=True,
                 feed_data_reader=get_feed_data_reader())
-        self.check_network_convergence(
-            transformer,
-            use_device=DeviceType.CPU,
-            iter=2,
-            feed_data_reader=get_feed_data_reader())
+        self.check_network_convergence(transformer,
+                                       use_device=DeviceType.CPU,
+                                       iter=2,
+                                       feed_data_reader=get_feed_data_reader())
 
 
 if __name__ == '__main__':

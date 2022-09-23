@@ -13,15 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 
-PADDLE_DEFINE_EXPORTED_int32(rpc_send_thread_num, 12,
+PADDLE_DEFINE_EXPORTED_int32(rpc_send_thread_num,
+                             12,
                              "number of threads for rpc send");
 
 namespace paddle {
 namespace operators {
 
-static void split(const std::string &str, char sep,
+static void split(const std::string &str,
+                  char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
   if (str.empty()) {
@@ -40,7 +43,8 @@ static void split(const std::string &str, char sep,
 }
 
 HeterListenAndServOp::HeterListenAndServOp(
-    const std::string &type, const framework::VariableNameMap &inputs,
+    const std::string &type,
+    const framework::VariableNameMap &inputs,
     const framework::VariableNameMap &outputs,
     const framework::AttributeMap &attrs)
     : OperatorBase(type, inputs, outputs, attrs) {}
@@ -60,12 +64,14 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
     std::vector<std::string> pieces;
     split(grad_and_id, ':', &pieces);
     VLOG(3) << "after split, key = " << pieces[0] << ", id=" << pieces[1];
-    PADDLE_ENFORCE_EQ(pieces.size(), 2,
+    PADDLE_ENFORCE_EQ(pieces.size(),
+                      2,
                       platform::errors::PreconditionNotMet(
                           "Invalid format of message_and_id argument. "
-                          "Expected \"message:block_id\". Recieved %s",
+                          "Expected \"message:block_id\". Received %s",
                           grad_and_id.c_str()));
-    PADDLE_ENFORCE_EQ(out_map->count(pieces[0]), 0,
+    PADDLE_ENFORCE_EQ(out_map->count(pieces[0]),
+                      0,
                       platform::errors::AlreadyExists(
                           "The message name %s has already existed in out_map",
                           pieces[0].c_str()));
@@ -79,30 +85,32 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
   }
 
   size_t num_blocks = program->Size();
-  PADDLE_ENFORCE_GE(num_blocks, 1,
+  PADDLE_ENFORCE_GE(num_blocks,
+                    1,
                     platform::errors::PreconditionNotMet(
                         "Invalid number of blocks in server program. Expected "
-                        "equal or greater than 1. Recieved %zu",
+                        "equal or greater than 1. Received %zu",
                         num_blocks));
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
   }
-
   for (size_t i = 0; i < block_list.size(); ++i) {
     auto blkid = block_list[i];
     auto it = message_to_block_id.find_value(blkid);
-    rpc_service_->RegisterServiceHandler(
-        it->first, [&](const MultiVarMsg *request, MultiVarMsg *response,
-                       brpc::Controller *cntl) -> int {
-          return request_send_and_recv_handler_->Handle(request, response,
-                                                        cntl);
+    heter_server_->RegisterServiceHandler(
+        it->first,
+        [&](const MultiVarMsg *request,
+            MultiVarMsg *response,
+            brpc::Controller *cntl) -> int {
+          return send_and_recv_variable_handler_->Handle(
+              request, response, cntl);
         });
   }
 
   while (true) {
-    if (rpc_service_->IsExit() || rpc_service_->IsStop()) {
-      rpc_service_->Stop();
+    if (heter_server_->IsExit() || heter_server_->IsStop()) {
+      heter_server_->Stop();
       VLOG(0) << "get exit. rpc_processor stop!";
       break;
     }
@@ -110,8 +118,9 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
   }  // while(true)
 }
 
-void RunServer(std::shared_ptr<paddle::distributed::HeterServer> service) {
-  service->StartHeterService();
+void RunServer(
+    std::shared_ptr<paddle::distributed::HeterServer> heter_server_ptr) {
+  heter_server_ptr->StartHeterService();
 }
 
 void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
@@ -126,40 +135,40 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   auto fan_in = Attr<int>("fanin");
   auto inputs = Inputs("X");
 
-  PADDLE_ENFORCE_EQ(rpc_service_, nullptr,
+  PADDLE_ENFORCE_EQ(heter_server_,
+                    nullptr,
                     platform::errors::PreconditionNotMet(
                         "RPC service has been created unexpectedly."));
 
   std::string endpoint = Attr<std::string>("endpoint");
   VLOG(4) << "pserver_id: " << pserver_id << ", end_point:" << endpoint;
 
-  rpc_service_ = distributed::HeterServer::GetInstance();
-  rpc_service_->SetEndPoint(endpoint);
-  rpc_service_->SetFanin(fan_in);
+  heter_server_ = distributed::HeterServer::GetInstance();
+  heter_server_->SetEndPoint(endpoint);
+  heter_server_->SetFanin(fan_in);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>("optimize_blocks");
-  PADDLE_ENFORCE_GE(optimize_blocks.size(), 1,
+  PADDLE_ENFORCE_GE(optimize_blocks.size(),
+                    1,
                     platform::errors::PreconditionNotMet(
                         "optimize blocks is less than 1. Optimize blocks "
                         "should be 1 at least on the pserver side."));
 
   auto *program = optimize_blocks[0]->Program();
 
-  request_send_and_recv_handler_.reset(
-      new distributed::RequestSendAndRecvHandler());
-  request_send_and_recv_handler_->SetScope(&scope);
-  request_send_and_recv_handler_->SetDevCtx(&dev_ctx);
-  rpc_service_->SetRequestHandler(request_send_and_recv_handler_);
+  send_and_recv_variable_handler_.reset(
+      new distributed::SendAndRecvVariableHandler());
+  send_and_recv_variable_handler_->SetScope(&scope);
+  send_and_recv_variable_handler_->SetDevCtx(&dev_ctx);
+  heter_server_->SetServiceHandler(send_and_recv_variable_handler_);
 
   VLOG(2) << "RunAsyncLoop";
-  auto message_to_block_id_str =
-      Attr<std::vector<std::string>>("message_to_block_id");
 
   // start the server listening after all member initialized.
-  server_thread_.reset(new std::thread(RunServer, rpc_service_));
+  server_thread_.reset(new std::thread(RunServer, heter_server_));
   VLOG(3) << "wait server thread to become ready...";
-  rpc_service_->WaitServerReady();
+  heter_server_->WaitServerReady();
   RunAsyncLoop(program);
   VLOG(3) << "Wait for Server_thread_ stop";
   (server_thread_.get())->join();
@@ -206,5 +215,6 @@ class HeterListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(heter_listen_and_serv, ops::HeterListenAndServOp,
+REGISTER_OPERATOR(heter_listen_and_serv,
+                  ops::HeterListenAndServOp,
                   ops::HeterListenAndServOpMaker);

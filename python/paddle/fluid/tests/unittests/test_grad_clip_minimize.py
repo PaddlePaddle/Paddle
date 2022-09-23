@@ -29,6 +29,7 @@ from paddle.fluid.clip import GradientClipByValue, GradientClipByNorm, GradientC
 
 
 class TestGradClipByGlobalNorm(unittest.TestCase):
+
     def init_value(self):
         self.max_global_norm = 5.0
         self.init_scale = 1.0
@@ -87,7 +88,7 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_global_norm_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
     def test_clip_by_global_norm_2(self):
         self.init_value()
@@ -99,10 +100,11 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_global_norm_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
 
 class TestGradClipByNorm(unittest.TestCase):
+
     def init_value(self):
         self.max_norm = 5.0
         self.init_scale = 1.0
@@ -157,7 +159,7 @@ class TestGradClipByNorm(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_norm_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
     def test_clip_by_norm_2(self):
         self.init_value()
@@ -169,10 +171,11 @@ class TestGradClipByNorm(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_norm_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
 
 class TestGradClipByValue(unittest.TestCase):
+
     def init_value(self):
         self.max_value = 0.8
         self.min_value = -0.1
@@ -200,8 +203,8 @@ class TestGradClipByValue(unittest.TestCase):
 
     def get_dygrap_clip_result(self):
         with fluid.dygraph.guard():
-            value_clip = GradientClipByValue(
-                max=self.max_value, min=self.min_value)
+            value_clip = GradientClipByValue(max=self.max_value,
+                                             min=self.min_value)
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)
@@ -223,7 +226,7 @@ class TestGradClipByValue(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_clip_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
     def test_clip_by_value_2(self):
         self.init_value()
@@ -234,7 +237,7 @@ class TestGradClipByValue(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_clip_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
     def test_clip_by_value_3(self):
         self.init_value()
@@ -247,7 +250,7 @@ class TestGradClipByValue(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_clip_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
 
 if __name__ == '__main__':

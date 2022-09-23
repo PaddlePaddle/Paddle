@@ -106,7 +106,7 @@ export SSL_CERT_FILE=/opt/_internal/certs.pem
 # tar -xzf patchelf-0.9njs2.tar.gz
 # (cd patchelf-0.9njs2 && ./configure && make && make install)
 # rm -rf patchelf-0.9njs2.tar.gz patchelf-0.9njs2
-yum install -y patchelf
+sh "$MY_DIR/install_patchelf.sh"
 
 # Install latest pypi release of auditwheel
 #LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY35_BIN})/lib" $PY35_BIN/pip install auditwheel
@@ -149,7 +149,7 @@ LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}"
 
 # According to ar issues: https://lists.gnu.org/archive/html/bug-binutils/2016-05/msg00211.html
 # we should install new version ar with 64-bit supported here
-wget https://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.gz
+wget --no-check-certificate https://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.gz
 tar xzf binutils-2.27.tar.gz && cd binutils-2.27
 ./configure --prefix=/opt/rh/devtoolset-2/root/usr/ --enable-64-bit-archive && make -j `nproc` && make install
 cd .. && rm binutils-2.27.tar.gz && rm -rf binutils-2.27

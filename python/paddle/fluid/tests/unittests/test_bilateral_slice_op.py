@@ -20,6 +20,7 @@ import math
 
 
 class Gsz:
+
     def __init__(self, h, w, gd, gh, gw, input_chans):
         self.h = h
         self.w = w
@@ -98,7 +99,10 @@ def naive_bilateral_slice_forward(output, grid, guide, input, gsz, has_offset,
                         wz = weight_z(zz + 0.5 - gz)
                         c_ = coeff_stride * out_c + in_c
 
-                        coeff_sample += grid[int(b), int(c_), int(z_), int(y_),
+                        coeff_sample += grid[int(b),
+                                             int(c_),
+                                             int(z_),
+                                             int(y_),
                                              int(x_)] * wx * wy * wz
 
             if in_c < input_chans:
@@ -136,6 +140,7 @@ def naive_bilateral_slice(x, guide, grid, has_offset):
 @unittest.skipIf(not paddle.fluid.is_compiled_with_cuda(),
                  'CPU testing is not supported')
 class TestBilateralSliceOp(OpTest):
+
     def setUp(self):
         self.initTestCase()
         self.op_type = 'bilateral_slice'
@@ -153,7 +158,9 @@ class TestBilateralSliceOp(OpTest):
         output_np = naive_bilateral_slice(x, guide, grid, self.has_offset)
 
         self.inputs = {'X': x, 'Grid': grid, 'Guide': guide}
-        self.attrs = {'has_offset': self.has_offset, }
+        self.attrs = {
+            'has_offset': self.has_offset,
+        }
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
@@ -173,19 +180,24 @@ class TestBilateralSliceOp(OpTest):
 @unittest.skipIf(not paddle.fluid.is_compiled_with_cuda(),
                  'CPU testing is not supported')
 class TestBilateralSliceOp1(TestBilateralSliceOp):
+
     def initTestCase(self):
         self.has_offset = True
         self.data_type = 'float32'
 
 
 class TestBilateralSliceApi(unittest.TestCase):
+
     def test_api(self):
-        x = paddle.fluid.data(
-            name='x', shape=[None, 3, 25, 15], dtype='float32')
-        guide = paddle.fluid.data(
-            name='guide', shape=[None, 25, 15], dtype='float32')
-        grid = paddle.fluid.data(
-            name='grid', shape=[None, None, 8, 5, 3], dtype='float32')
+        x = paddle.fluid.data(name='x',
+                              shape=[None, 3, 25, 15],
+                              dtype='float32')
+        guide = paddle.fluid.data(name='guide',
+                                  shape=[None, 25, 15],
+                                  dtype='float32')
+        grid = paddle.fluid.data(name='grid',
+                                 shape=[None, None, 8, 5, 3],
+                                 dtype='float32')
         paddle.fluid.contrib.layers.bilateral_slice(x, guide, grid, False)
 
         if not paddle.fluid.is_compiled_with_cuda():

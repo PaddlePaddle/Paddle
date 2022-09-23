@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/layout_utils.h"
@@ -52,7 +53,8 @@ class BatchNormOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
@@ -66,7 +68,8 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
@@ -111,24 +114,6 @@ class BatchNormOpInferVarType
     static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Y"}};
     return m;
   }
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormDoubleGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
 };
 
 }  // namespace operators

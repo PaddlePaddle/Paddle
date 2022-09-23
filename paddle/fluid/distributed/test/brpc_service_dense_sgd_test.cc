@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <unistd.h>
+
 #include <string>
 #include <thread>  // NOLINT
 
@@ -50,20 +51,22 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   x_var->GetMutable<framework::LoDTensor>();
 }
 
-void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
-  for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0 * (float)i;
+  for (int64_t i = 0; i < rows_numel; ++i)
+    x_ptr[i] = 1.0 * static_cast<float>(i);
 }
 
 void GetDownpourDenseTableProto(
     ::paddle::distributed::TableParameter* dense_table_proto) {
   dense_table_proto->set_table_id(0);
-  dense_table_proto->set_table_class("CommonDenseTable");
+  dense_table_proto->set_table_class("MemoryDenseTable");
   dense_table_proto->set_shard_num(256);
   dense_table_proto->set_type(::paddle::distributed::PS_DENSE_TABLE);
   ::paddle::distributed::TableAccessorParameter* accessor_proto =
@@ -141,7 +144,7 @@ void GetDownpourDenseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
-std::string ip_ = "127.0.0.1";
+const char* ip_ = "127.0.0.1";
 uint32_t port_ = 4214;
 
 std::vector<std::string> host_sign_list_;
@@ -155,16 +158,16 @@ void RunServer() {
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
   LOG(INFO) << "RUN set_ps_servers";
-  _ps_env.set_ps_servers(&host_sign_list_, 1);
+  _ps_env.SetPsServers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
-      paddle::distributed::PSServerFactory::create(server_proto));
+      paddle::distributed::PSServerFactory::Create(server_proto));
   LOG(INFO) << "RUN configure";
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;
   empty_vec.push_back(empty_prog);
-  pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
+  pserver_ptr_->Configure(server_proto, _ps_env, 0, empty_vec);
   LOG(INFO) << "RUN start";
-  pserver_ptr_->start(ip_, port_);
+  pserver_ptr_->Start(ip_, port_);
   LOG(INFO) << "End start";
 }
 
@@ -175,19 +178,19 @@ void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
   auto servers_ = host_sign_list_.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
   LOG(INFO) << "Run set_ps_servers";
-  _ps_env.set_ps_servers(&host_sign_list_, servers_);
+  _ps_env.SetPsServers(&host_sign_list_, servers_);
   LOG(INFO) << "Run Create PSClient";
   worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
-      paddle::distributed::PSClientFactory::create(worker_proto));
+      paddle::distributed::PSClientFactory::Create(worker_proto));
   LOG(INFO) << "Run configure";
-  worker_ptr_->configure(worker_proto, dense_regions, _ps_env, 0);
+  worker_ptr_->Configure(worker_proto, dense_regions, _ps_env, 0);
 }
 
 void RunBrpcPushDense() {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
-  host_sign_list_.push_back(ph_host.serialize_to_string());
+  host_sign_list_.push_back(ph_host.SerializeToString());
 
   // Srart Server
   std::thread server_thread(RunServer);
@@ -218,10 +221,10 @@ void RunBrpcPushDense() {
   paddle::distributed::Region temp_reg(temp, tensor->numel());
   temp_region.emplace_back(std::move(temp_reg));
   auto pull_status =
-      worker_ptr_->pull_dense(temp_region.data(), temp_region.size(), 0);
+      worker_ptr_->PullDense(temp_region.data(), temp_region.size(), 0);
   pull_status.wait();
 
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
+  for (int64_t idx = 0; idx < tensor->numel(); ++idx) {
     EXPECT_FLOAT_EQ(temp[idx], 1.0);
   }
 
@@ -229,14 +232,14 @@ void RunBrpcPushDense() {
 
   LOG(INFO) << "Run push_dense_param";
   auto push_status =
-      worker_ptr_->push_dense_param(regions.data(), regions.size(), 0);
+      worker_ptr_->PushDenseParam(regions.data(), regions.size(), 0);
   push_status.wait();
 
-  pull_status = worker_ptr_->pull_dense(regions.data(), regions.size(), 0);
+  pull_status = worker_ptr_->PullDense(regions.data(), regions.size(), 0);
   pull_status.wait();
 
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
-    EXPECT_FLOAT_EQ(w[idx], float(idx));
+  for (int64_t idx = 0; idx < tensor->numel(); ++idx) {
+    EXPECT_FLOAT_EQ(w[idx], static_cast<float>(idx));
   }
 
   /*-----------------------Test Push Grad----------------------------------*/
@@ -257,21 +260,21 @@ void RunBrpcPushDense() {
 
   LOG(INFO) << "Run pull_dense_grad";
   auto push_grad_status =
-      worker_ptr_->push_dense_raw_gradient(0, temp, tensor->numel(), closure);
+      worker_ptr_->PushDenseRawGradient(0, temp, tensor->numel(), closure);
   push_grad_status.wait();
 
   auto pull_update_status =
-      worker_ptr_->pull_dense(regions.data(), regions.size(), 0);
+      worker_ptr_->PullDense(regions.data(), regions.size(), 0);
   pull_update_status.wait();
 
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
-    EXPECT_FLOAT_EQ(w[idx], float(idx) - 1.0);
+  for (int64_t idx = 0; idx < tensor->numel(); ++idx) {
+    EXPECT_FLOAT_EQ(w[idx], static_cast<float>(idx) - 1.0);
   }
 
   LOG(INFO) << "Run stop_server";
-  worker_ptr_->stop_server();
+  worker_ptr_->StopServer();
   LOG(INFO) << "Run finalize_worker";
-  worker_ptr_->finalize_worker();
+  worker_ptr_->FinalizeWorker();
   server_thread.join();
 }
 

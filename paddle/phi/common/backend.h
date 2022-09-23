@@ -32,7 +32,7 @@ namespace experimental {
  * more specific, we need to distinguish the calculation method.
  *
  * Such as the kernel for CPU device, it can be a native CPU kernel,
- * or a kernel implemented by MKLDNN library.
+ * or a kernel implemented by oneDNN library.
  *
  * Note(chenweihang): HIP is not needed now, we can added it if needed
  * in the future
@@ -47,9 +47,11 @@ enum class Backend : uint8_t {
   GPU,
   XPU,  // XPU currently does not exist at the same time as CUDA
   NPU,  // NPU currently does not exist at the same time as CUDA
+  MLU,  // MLU currently does not exist at the same time as CUDA
+  IPU,
 
   // the third library backend
-  MKLDNN,
+  ONEDNN,
   GPUDNN,  // cuDNN and hipDNN
 
   // paddle kernel primitives backend
@@ -59,7 +61,7 @@ enum class Backend : uint8_t {
   NUM_BACKENDS,
 
   /**
-   * [ Why we need ALL in baisc kernel key member? ]
+   * [ Why we need ALL in basic kernel key member? ]
    *
    * For Tensor, ALL represents an illegal Backend, but for Kernel, some
    * kernels may be device-independent by nature, such as reshape; and when
@@ -112,14 +114,20 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::NPU:
       os << "NPU";
       break;
-    case Backend::MKLDNN:
-      os << "MKLDNN";
+    case Backend::MLU:
+      os << "MLU";
+      break;
+    case Backend::ONEDNN:
+      os << "ONEDNN";
       break;
     case Backend::GPUDNN:
       os << "GPUDNN";
       break;
     case Backend::KPS:
       os << "KPS";
+      break;
+    case Backend::IPU:
+      os << "IPU";
       break;
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
@@ -149,12 +157,23 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::XPU;
   } else if (s == std::string("NPU")) {
     return Backend::NPU;
-  } else if (s == std::string("MKLDNN")) {
-    return Backend::MKLDNN;
+  } else if (s == std::string("MLU")) {
+    return Backend::MLU;
+  } else if (s == std::string("OneDNN")) {
+    return Backend::ONEDNN;
   } else if (s == std::string("GPUDNN")) {
     return Backend::GPUDNN;
   } else if (s == std::string("KPS")) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    // NOTE(chenweihang) KPS is not yet a complete backend, and it still needs
+    // to be converted
+    // to GPU in the GPU environment
+    return Backend::GPU;
+#else
     return Backend::KPS;
+#endif
+  } else if (s == std::string("IPU")) {
+    return Backend::IPU;
   } else {
     return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
                                 phi::GetOrRegisterGlobalDeviceTypeId(s));

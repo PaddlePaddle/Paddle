@@ -15,6 +15,7 @@
 from __future__ import print_function
 import numpy as np
 import sys
+
 sys.path.append("..")
 import paddle
 from op_test import OpTest, skip_check_grad_ci
@@ -22,12 +23,14 @@ from op_test_xpu import XPUOpTest
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+
 paddle.enable_static()
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp(XPUOpTest):
+
     def setUp(self):
         self.op_type = "elementwise_add"
         self.init_dtype()
@@ -92,6 +95,7 @@ class TestElementwiseAddOp(XPUOpTest):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -103,6 +107,7 @@ class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
 class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1, 1).astype(self.dtype)
@@ -112,6 +117,7 @@ class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.random((100, )).astype(self.dtype)
         self.y = np.random.random((100, )).astype(self.dtype)
@@ -121,6 +127,7 @@ class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -133,6 +140,7 @@ class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 100, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -145,6 +153,7 @@ class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -154,6 +163,7 @@ class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -166,6 +176,7 @@ class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(100, 1).astype(self.dtype)
@@ -178,6 +189,7 @@ class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_broadcast_5(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 12).astype(self.dtype)
         self.y = np.random.rand(10, 1, 12).astype(self.dtype)
@@ -187,6 +199,7 @@ class TestElementwiseAddOp_broadcast_5(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
         self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
@@ -196,6 +209,7 @@ class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_broadcast_7(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(1, 1, 20, 5).astype(self.dtype)
         self.y = np.random.rand(20, 5, 1, 1).astype(self.dtype)
@@ -205,6 +219,7 @@ class TestElementwiseAddOp_broadcast_7(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -219,6 +234,7 @@ class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -231,6 +247,7 @@ class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100, 1, 1).astype(self.dtype)
@@ -243,6 +260,7 @@ class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(1, 1, 100).astype(self.dtype)
@@ -255,6 +273,7 @@ class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 1, 4).astype(self.dtype)
         self.y = np.random.rand(10, 1, 12, 1).astype(self.dtype)
@@ -267,6 +286,7 @@ class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(10, 12).astype(self.dtype)
         self.y = np.random.rand(2, 3, 10, 12).astype(self.dtype)
@@ -279,13 +299,14 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestElementwiseAddOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of elementwise_add must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0))
-            y1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0))
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.XPUPlace(0))
+            y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.XPUPlace(0))
             self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
 
             # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
@@ -298,6 +319,7 @@ class TestElementwiseAddOpError(unittest.TestCase):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestAddOp(unittest.TestCase):
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")

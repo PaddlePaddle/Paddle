@@ -12,6 +12,7 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -59,12 +60,14 @@ template <typename DeviceContext, typename T>
 class MatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto &x = GET_DATA_SAFELY(context.Input<framework::Tensor>("X"), "Input",
-                              "X", "MatMul");
-    auto &y = GET_DATA_SAFELY(context.Input<framework::Tensor>("Y"), "Input",
-                              "Y", "MatMul");
+    auto &x = GET_DATA_SAFELY(
+        context.Input<framework::Tensor>("X"), "Input", "X", "MatMul");
+    auto &y = GET_DATA_SAFELY(
+        context.Input<framework::Tensor>("Y"), "Input", "Y", "MatMul");
     auto *out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
+
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
@@ -93,8 +96,15 @@ class MatMulKernel : public framework::OpKernel<T> {
     bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
 
     if (head_number > 1) {
-      blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, scale, head_number, out,
-                          T(0), split_vertical_y);
+      blas.MatMulWithHead(x,
+                          mat_dim_a,
+                          y,
+                          mat_dim_b,
+                          scale,
+                          head_number,
+                          out,
+                          T(0),
+                          split_vertical_y);
     } else {
       blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
     }
@@ -173,7 +183,8 @@ static void ReshapeTensorIntoMatrixSequence(
  */
 static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
                                            framework::Tensor *y,
-                                           framework::Tensor *out, bool trans_x,
+                                           framework::Tensor *out,
+                                           bool trans_x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
@@ -183,7 +194,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
     out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
-                 mat_dim_x.height_, mat_dim_y.width_});
+                 mat_dim_x.height_,
+                 mat_dim_y.width_});
   }
 
   ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
@@ -219,8 +231,10 @@ template <typename DeviceContext, typename T>
 class MatMulGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext &context,
-              const framework::Tensor &a, bool trans_a,
-              const framework::Tensor &b, bool trans_b,
+              const framework::Tensor &a,
+              bool trans_a,
+              const framework::Tensor &b,
+              bool trans_b,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
@@ -242,14 +256,22 @@ class MatMulGradKernel : public framework::OpKernel<T> {
         mat_dim_a.batch_size_ = 0;
       }
     }
-    blas.MatMul(a, mat_dim_a, b, mat_dim_b,
-                static_cast<T>(context.Attr<float>("alpha")), out, T(0));
+    blas.MatMul(a,
+                mat_dim_a,
+                b,
+                mat_dim_b,
+                static_cast<T>(context.Attr<float>("alpha")),
+                out,
+                T(0));
   }
 
   void CalcInputGrad(const framework::ExecutionContext &context,
-                     const framework::Tensor &a, bool trans_a,
-                     bool is_fold_init_dims_a, const framework::Tensor &b,
-                     bool trans_b, bool is_fold_init_dims_b,
+                     const framework::Tensor &a,
+                     bool trans_a,
+                     bool is_fold_init_dims_a,
+                     const framework::Tensor &b,
+                     bool trans_b,
+                     bool is_fold_init_dims_b,
                      framework::Tensor *out) const {
     if (out == nullptr) return;
     bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
@@ -258,13 +280,15 @@ class MatMulGradKernel : public framework::OpKernel<T> {
       MatMul(context, a, trans_a, b, trans_b, out);
     } else {
       auto &ctx = context.template device_context<DeviceContext>();
-      MatMul(context, is_fold_init_dims_a
-                          ? FoldInitDims(a)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
-             trans_a, is_fold_init_dims_b
-                          ? FoldInitDims(b)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
-             trans_b, out);
+      MatMul(
+          context,
+          is_fold_init_dims_a ? FoldInitDims(a)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
+          trans_a,
+          is_fold_init_dims_b ? FoldInitDims(b)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
+          trans_b,
+          out);
     }
   }
 
@@ -329,69 +353,14 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
       ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
   auto dim = ctx.GetInputDim(input_name);
 
-  PADDLE_ENFORCE_GT(dim.size(), 0,
+  PADDLE_ENFORCE_GT(dim.size(),
+                    0,
                     platform::errors::InvalidArgument(
                         "The Input(%s) has not been initialized properly. The "
                         "shape of Input(%s) = [%s].",
                         dim));
 
-  // if mkldnn reshape+transpose+matmul fuse activated
   if (!shape.empty() && !axis.empty()) {
-    PADDLE_ENFORCE_GE(
-        shape.size(), 2,
-        platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_LE(
-        shape.size(), 4,
-        platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_EQ(
-        shape.size(), axis.size(),
-        platform::errors::InvalidArgument(
-            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
-            "must be equal.",
-            input_name, input_name));
-
-    int num_negative = std::count(shape.begin(), shape.end(), -1);
-    PADDLE_ENFORCE_LE(num_negative, 1,
-                      platform::errors::InvalidArgument(
-                          "The max number of -1 in fused_reshape_%s is 1 "
-                          "but received %d.",
-                          input_name, num_negative));
-
-    auto it_zero = std::find(shape.begin(), shape.end(), 0);
-    if (it_zero != shape.end()) {
-      for (uint64_t i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-          PADDLE_ENFORCE_LT(i, dim.size(),
-                            platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_%s ",
-                                "should be less than output dim size, ",
-                                "but the index is %d and output dim size is %d",
-                                input_name, i, dim.size()));
-          shape[i] = dim.at(i);
-        }
-      }
-    }
-
-    // if "-1" is present then one of reshape dims must be infered
-    auto it_negative = std::find(shape.begin(), shape.end(), -1);
-    if (it_negative != shape.end()) {
-      int64_t dim_product = 1;
-      for (int i = 0; i < dim.size(); i++) {
-        dim_product *= dim.at(i);
-      }
-
-      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
-                                              std::multiplies<int>());
-      int index = std::distance(shape.begin(), it_negative);
-      shape[index] = dim_product / shape_product;
-    }
-
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -401,8 +370,11 @@ template <typename DeviceContext, typename T>
 class MatMulDoubleGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext &context,
-              const framework::Tensor &a, bool trans_a,
-              const framework::Tensor &b, bool trans_b, bool flag,
+              const framework::Tensor &a,
+              bool trans_a,
+              const framework::Tensor &b,
+              bool trans_b,
+              bool flag,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
@@ -422,15 +394,23 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
         mat_dim_a.batch_size_ = 0;
       }
     }
-    blas.MatMul(a, mat_dim_a, b, mat_dim_b,
-                static_cast<T>(context.Attr<float>("alpha")), out,
+    blas.MatMul(a,
+                mat_dim_a,
+                b,
+                mat_dim_b,
+                static_cast<T>(context.Attr<float>("alpha")),
+                out,
                 static_cast<T>(flag));
   }
 
   void CalcInputGrad(const framework::ExecutionContext &context,
-                     const framework::Tensor &a, bool trans_a,
-                     bool is_fold_init_dims_a, const framework::Tensor &b,
-                     bool trans_b, bool is_fold_init_dims_b, bool flag,
+                     const framework::Tensor &a,
+                     bool trans_a,
+                     bool is_fold_init_dims_a,
+                     const framework::Tensor &b,
+                     bool trans_b,
+                     bool is_fold_init_dims_b,
+                     bool flag,
                      framework::Tensor *out) const {
     if (out == nullptr) return;
     bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
@@ -439,13 +419,16 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
       MatMul(context, a, trans_a, b, trans_b, flag, out);
     } else {
       auto &ctx = context.template device_context<DeviceContext>();
-      MatMul(context, is_fold_init_dims_a
-                          ? FoldInitDims(a)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
-             trans_a, is_fold_init_dims_b
-                          ? FoldInitDims(b)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
-             trans_b, flag, out);
+      MatMul(
+          context,
+          is_fold_init_dims_a ? FoldInitDims(a)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
+          trans_a,
+          is_fold_init_dims_b ? FoldInitDims(b)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
+          trans_b,
+          flag,
+          out);
     }
   }
 
@@ -498,26 +481,33 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
       if (dy) {
         if (transpose_x && transpose_y) {
           // dy = dout' * ddx'
-          CalcInputGrad(context, dout, true, true, ddx_mat, true, false, false,
-                        dy);
+          CalcInputGrad(
+              context, dout, true, true, ddx_mat, true, false, false, dy);
         } else if (transpose_x) {
           // dy = ddx * dout
-          CalcInputGrad(context, ddx_mat, false, false, dout, false, true,
-                        false, dy);
+          CalcInputGrad(
+              context, ddx_mat, false, false, dout, false, true, false, dy);
         } else if (transpose_y) {
           // dy = dout' * ddx
-          CalcInputGrad(context, dout, true, true, ddx_mat, false, true, false,
-                        dy);
+          CalcInputGrad(
+              context, dout, true, true, ddx_mat, false, true, false, dy);
         } else {
           // dy = ddx' * dout
-          CalcInputGrad(context, ddx_mat, true, true, dout, false, true, false,
-                        dy);
+          CalcInputGrad(
+              context, ddx_mat, true, true, dout, false, true, false, dy);
         }
       }
 
       if (ddout) {
-        CalcInputGrad(context, ddx_mat, transpose_x, true, y, transpose_y,
-                      false, ddout_flag, ddout);
+        CalcInputGrad(context,
+                      ddx_mat,
+                      transpose_x,
+                      true,
+                      y,
+                      transpose_y,
+                      false,
+                      ddout_flag,
+                      ddout);
         ddout_flag = true;
       }
     }
@@ -530,26 +520,33 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
       if (dx) {
         if (transpose_x && transpose_y) {
           // dx = ddy' * dout'
-          CalcInputGrad(context, ddy_mat, true, true, dout, true, false, false,
-                        dx);
+          CalcInputGrad(
+              context, ddy_mat, true, true, dout, true, false, false, dx);
         } else if (transpose_x) {
           // dx = ddy * dout'
-          CalcInputGrad(context, ddy_mat, false, false, dout, true, false,
-                        false, dx);
+          CalcInputGrad(
+              context, ddy_mat, false, false, dout, true, false, false, dx);
         } else if (transpose_y) {
           // dx = dout * ddy
-          CalcInputGrad(context, dout, false, false, ddy_mat, false, true,
-                        false, dx);
+          CalcInputGrad(
+              context, dout, false, false, ddy_mat, false, true, false, dx);
         } else {
           // dx = dout * ddy'
-          CalcInputGrad(context, dout, false, false, ddy_mat, true, false,
-                        false, dx);
+          CalcInputGrad(
+              context, dout, false, false, ddy_mat, true, false, false, dx);
         }
       }
 
       if (ddout) {
-        CalcInputGrad(context, x, transpose_x, true, ddy_mat, transpose_y,
-                      false, ddout_flag, ddout);
+        CalcInputGrad(context,
+                      x,
+                      transpose_x,
+                      true,
+                      ddy_mat,
+                      transpose_y,
+                      false,
+                      ddout_flag,
+                      ddout);
       }
     }
 
@@ -585,11 +582,26 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     auto dim_x = GetDimForInput(*context, "X");
     auto dim_y = GetDimForInput(*context, "Y");
+
+#ifdef PADDLE_WITH_MKLDNN
+    // (jczaja): For NHWC execution output shape needs
+    // to be computed like instead x*y we are to do y*x
+    bool channelwise_onednn =
+        context->IsRunMKLDNNKernel() &&
+        (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+         framework::DataLayout::kNHWC);
+    if (channelwise_onednn) {
+      std::swap(dim_x, dim_y);
+    }
+#endif
+
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-        RowMatrixFromVector(dim_x), 0,
+        RowMatrixFromVector(dim_x),
+        0,
         context->Attrs().Get<bool>("transpose_X"));
     auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(
-        ColumnMatrixFromVector(dim_y), 0,
+        ColumnMatrixFromVector(dim_y),
+        0,
         context->Attrs().Get<bool>("transpose_Y"));
 
     if (mat_dim_x.width_ == -1) {
@@ -603,12 +615,13 @@ class MatMulOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
-          true, platform::errors::InvalidArgument(
-                    "The batch size of the two matrices should be equal, or "
-                    "at least one is zero.\n"
-                    "But received X's shape: %s, Y's shape: %s.",
-                    DumpMatrixShape(mat_dim_x).c_str(),
-                    DumpMatrixShape(mat_dim_y).c_str()));
+          true,
+          platform::errors::InvalidArgument(
+              "The batch size of the two matrices should be equal, or "
+              "at least one is zero.\n"
+              "But received X's shape: %s, Y's shape: %s.",
+              DumpMatrixShape(mat_dim_x).c_str(),
+              DumpMatrixShape(mat_dim_y).c_str()));
     }
     int64_t dim_out_y = mat_dim_y.width_;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
@@ -617,24 +630,28 @@ class MatMulOp : public framework::OperatorWithKernel {
     bool split_vertical_y = (mat_dim_x.width_ != mat_dim_y.height_);
     if (context->IsRuntime()) {
       PADDLE_ENFORCE_LE(
-          head_number, mat_dim_x.width_,
+          head_number,
+          mat_dim_x.width_,
           platform::errors::InvalidArgument(
               "Unsatisfied mkl acceleration library requirements: "
               "The number of heads "
               "(%d) must be equal to X's width. But received X's shape: %s.",
-              head_number, DumpMatrixShape(mat_dim_x).c_str()));
+              head_number,
+              DumpMatrixShape(mat_dim_x).c_str()));
 
       if (!split_vertical_y && head_number > 0) {
         dim_out_y = head_number * mat_dim_y.width_;
       }
     }
 #else
-    PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_,
+    PADDLE_ENFORCE_EQ(mat_dim_x.width_,
+                      mat_dim_y.height_,
                       platform::errors::InvalidArgument(
                           "Input X's width should be equal to the Y's height, "
                           "but received X's shape: [%s], "
                           "Y's shape: [%s].",
-                          dim_x, dim_y));
+                          dim_x,
+                          dim_y));
 #endif
 
     std::vector<int64_t> dim_out;
@@ -666,83 +683,15 @@ class MatMulOp : public framework::OperatorWithKernel {
     framework::DDim ddim_out = phi::make_ddim(dim_out);
 
 #ifdef PADDLE_WITH_MKLDNN
-    //  if mkldnn matmul+transpose+reshape fuse activated
-    auto reshape_out =
-        context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto transpose_out =
-        context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+    auto shape = context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+    auto axis = context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
 
-    if (!reshape_out.empty() && !transpose_out.empty()) {
-      auto reshape_out_size = reshape_out.size();
-      auto transpose_out_size = transpose_out.size();
-      PADDLE_ENFORCE_EQ(transpose_out_size, 4,
-                        platform::errors::InvalidArgument(
-                            "transpose_out supported rank is 4, "
-                            "received %d",
-                            transpose_out_size));
-      const std::vector<int> supported_axis{0, 2, 1, 3};
-      const bool supported_transpose_axis = std::equal(
-          transpose_out.begin(), transpose_out.end(), supported_axis.begin());
-      PADDLE_ENFORCE_EQ(
-          supported_transpose_axis, true,
-          platform::errors::InvalidArgument(
-              "supported transpose axis for the fuse are {0, 2, 1, 3}"));
-      PADDLE_ENFORCE_EQ(
-          reshape_out_size, 3,
-          platform::errors::InvalidArgument("reshape_out supported rank is 3, "
-                                            "received %d",
-                                            reshape_out_size));
-
-      // int num_negative = std::count(reshape_out.begin(), reshape_out.end(),
-      // -1);
-      // PADDLE_ENFORCE_LE(num_negative, 1,
-      //                   platform::errors::InvalidArgument(
-      //                       "The max number of -1 in fused_reshape_Out is 1 "
-      //                       "but received %d.",
-      //                       num_negative));
-
-      // auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
-      // if (it_zero != reshape_out.end()) {
-      //   for (uint64_t i = 0; i < reshape_out.size(); i++) {
-      //     if (reshape_out[i] == 0) {
-      //       PADDLE_ENFORCE_LT(
-      //           i, ddim_out.size(),
-      //           platform::errors::InvalidArgument(
-      //               "The index of 0 in fused_reshape_Out ",
-      //               "should be less than output dim size, ",
-      //               "but the index is %d and output dim size is %d", i,
-      //               ddim_out.size()));
-      //       reshape_out[i] = ddim_out.at(i);
-      //     }
-      //   }
-      // }
-
-      // if "-1" is present then one of reshape dims must be infered
-      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
-      if (it != reshape_out.end()) {
-        int index = std::distance(reshape_out.begin(), it);
-
-        auto ddim_out_vec = phi::vectorize(ddim_out);
-
-        int ddim_out_product =
-            std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
-                            std::multiplies<int>());
-        int reshape_out_product = std::accumulate(
-            reshape_out.begin(), reshape_out.end(), -1, std::multiplies<int>());
-
-        reshape_out[index] = ddim_out_product / reshape_out_product;
-      }
-
-      framework::DDim shape_out =
-          ddim_out.transpose(transpose_out).reshape(reshape_out);
-      context->SetOutputDim("Out", shape_out);
-    } else {
-      context->SetOutputDim("Out", ddim_out);
+    if (!shape.empty() && !axis.empty()) {
+      ddim_out = ddim_out.transpose(axis).reshape(shape);
     }
-#else
-    context->SetOutputDim("Out", ddim_out);
 #endif
-    context->ShareLoD("X", /*->*/ "Out");
+    context->SetOutputDim("Out", ddim_out);
+    context->ShareLoD("X", "Out");
   }
 
   framework::OpKernelType GetExpectedKernelType(
@@ -751,9 +700,9 @@ class MatMulOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using dnnl::memory;
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -762,16 +711,33 @@ class MatMulOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
           tensor.layout());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+#ifdef PADDLE_WITH_MKLDNN
+      // When matmul is first oneDNN op in a chain (there was some non oneDNN op
+      // previously)
+      // then we also need to rotate shape NHWC -> NCWH
+      if ((expected_kernel_type.data_layout_ ==
+           framework::DataLayout::kMKLDNN) &&
+          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+          paddle::platform::MKLDNNDeviceContext::tls()
+                  .get_cur_paddle_data_layout() ==
+              framework::DataLayout::kNHWC) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(),
+                                       framework::DataLayout::kNHWC);
+      }
+#endif
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -902,8 +868,10 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul");
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
-    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "matmul");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "matmul");
     auto x_dims = context->GetInputDim("X");
     auto y_dims = context->GetInputDim("Y");
 
@@ -925,7 +893,8 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -1009,51 +978,49 @@ class MatMulOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(matmul, ops::MatMulOp, ops::MatMulOpMaker,
+REGISTER_OPERATOR(matmul,
+                  ops::MatMulOp,
+                  ops::MatMulOpMaker,
                   ops::MatMulOpGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(matmul_grad, ops::MatMulOpGrad,
+REGISTER_OPERATOR(matmul_grad,
+                  ops::MatMulOpGrad,
                   ops::MatMulOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulOpDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(matmul_grad_grad, ops::MatMulOpDoubleGrad);
-REGISTER_OP_CPU_KERNEL(
-    matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    matmul_grad,
-    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(matmul,
+                       ops::MatMulKernel<phi::CPUContext, float>,
+                       ops::MatMulKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(matmul_grad,
+                       ops::MatMulGradKernel<phi::CPUContext, float>,
+                       ops::MatMulGradKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    matmul_grad_grad,
-    ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(matmul_grad_grad,
+                       ops::MatMulDoubleGradKernel<phi::CPUContext, float>,
+                       ops::MatMulDoubleGradKernel<phi::CPUContext, double>);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
-    matmul, ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MatMulKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MatMulKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::float16>);
+    matmul,
+    ops::MatMulKernel<phi::GPUContext, float>,
+    ops::MatMulKernel<phi::GPUContext, double>,
+    ops::MatMulKernel<phi::GPUContext, paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
     matmul_grad,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    matmul_grad_grad,
-    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::MatMulGradKernel<phi::GPUContext, float>,
+    ops::MatMulGradKernel<phi::GPUContext, double>,
+    ops::MatMulGradKernel<phi::GPUContext, paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(matmul_grad_grad,
+                        ops::MatMulDoubleGradKernel<phi::GPUContext, float>,
+                        ops::MatMulDoubleGradKernel<phi::GPUContext, double>);
 #endif
 
-REGISTER_OP_VERSION(matmul)
-    .AddCheckpoint(
-        R"ROC(Register matmul for adding the attribute of
+REGISTER_OP_VERSION(matmul).AddCheckpoint(
+    R"ROC(Register matmul for adding the attribute of
        fused_reshape_Y)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "fused_reshape_Y",
-            "In order to support the function of fused the input Y "
-            " and input X into the input X when "
-            "using the operator of matmul, and get raw shape of input Y.",
-            std::vector<int>{}));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "fused_reshape_Y",
+        "In order to support the function of fused the input Y "
+        " and input X into the input X when "
+        "using the operator of matmul, and get raw shape of input Y.",
+        std::vector<int>{}));

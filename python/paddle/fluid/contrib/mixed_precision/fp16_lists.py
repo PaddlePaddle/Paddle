@@ -107,6 +107,11 @@ black_list = {
     # fp16 is slower than fp32, though fp16 is supported.
     'lookup_table',
     'lookup_table_v2',
+    'linear_interp_v2',
+    'nearest_interp_v2',
+    'bilinear_interp_v2',
+    'bicubic_interp_v2',
+    'trilinear_interp_v2',
     # default fp32 can avoid return inf when the sum value large than 65504
     'reduce_sum',
 }
@@ -162,6 +167,7 @@ gray_list = {
     'split',
     'fused_feedforward',
     'fused_attention',
+    'fused_multi_transformer',
 }
 
 # The set of ops that don't support fp16 calculation

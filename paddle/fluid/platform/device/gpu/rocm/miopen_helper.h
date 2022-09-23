@@ -217,17 +217,22 @@ class ScopedTensorDescriptor {
     }
 
     // MIOPEN ONLY support data layout of NCHW
-    PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
+    PADDLE_ENFORCE_EQ(format,
+                      MIOPEN_TENSOR_NCHW,
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
     if (dims.size() == 4) {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-          desc_, type, dims_with_group.size(),
+          desc_,
+          type,
+          dims_with_group.size(),
           const_cast<int*>(dims_with_group.data()),
           const_cast<int*>(strides.data())));
     } else if (dims.size() == 5) {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-          desc_, type, dims_with_group.size(),
+          desc_,
+          type,
+          dims_with_group.size(),
           const_cast<int*>(dims_with_group.data()),
           const_cast<int*>(strides.data())));
     }
@@ -238,16 +243,19 @@ class ScopedTensorDescriptor {
   inline miopenTensorDescriptor_t descriptor(const DataLayout& order,
                                              const std::vector<int>& dims,
                                              const int groups = 1) {
-    return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims,
-                      groups);
+    return descriptor(
+        GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims, groups);
   }
 
   inline miopenTensorDescriptor_t descriptor(const miopenDataType_t miopen_type,
                                              const std::vector<int>& dim,
                                              const std::vector<int>& stride) {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        desc_, miopen_type, dim.size(), const_cast<int*>(dim.data()),
-        const_cast<int*>(stride.data())));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::miopenSetTensorDescriptor(desc_,
+                                           miopen_type,
+                                           dim.size(),
+                                           const_cast<int*>(dim.data()),
+                                           const_cast<int*>(stride.data())));
     return desc_;
   }
 
@@ -278,24 +286,46 @@ class ScopedDropoutDescriptor {
                                               bool initialized,
                                               float dropout_prob_,
                                               framework::Tensor* dropout_state_,
-                                              int seed, size_t state_size) {
+                                              int seed,
+                                              size_t state_size) {
     if (dropout_state_ == nullptr) {  // for no dropout or test
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetDropoutDescriptor(
-          desc_, handle, 0 /* dropout */, nullptr, 0 /* state_size */,
-          0 /* seed */, false, false, MIOPEN_RNG_PSEUDO_XORWOW));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::miopenSetDropoutDescriptor(desc_,
+                                              handle,
+                                              0 /* dropout */,
+                                              nullptr,
+                                              0 /* state_size */,
+                                              0 /* seed */,
+                                              false,
+                                              false,
+                                              MIOPEN_RNG_PSEUDO_XORWOW));
       return desc_;
     }
     auto* dropout_state_data = dropout_state_->data<uint8_t>();
     if (!initialized) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetDropoutDescriptor(
-          desc_, handle, dropout_prob_, dropout_state_data, state_size, seed,
-          false, false, MIOPEN_RNG_PSEUDO_XORWOW));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::miopenSetDropoutDescriptor(desc_,
+                                              handle,
+                                              dropout_prob_,
+                                              dropout_state_data,
+                                              state_size,
+                                              seed,
+                                              false,
+                                              false,
+                                              MIOPEN_RNG_PSEUDO_XORWOW));
     } else {
       auto dropout_state_dims = dropout_state_->dims();
       state_size = dropout_state_dims[0];
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenRestoreDropoutDescriptor(
-          desc_, handle, dropout_prob_, dropout_state_data, state_size, 0,
-          false, false, MIOPEN_RNG_PSEUDO_XORWOW));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::miopenRestoreDropoutDescriptor(desc_,
+                                                  handle,
+                                                  dropout_prob_,
+                                                  dropout_state_data,
+                                                  state_size,
+                                                  0,
+                                                  false,
+                                                  false,
+                                                  MIOPEN_RNG_PSEUDO_XORWOW));
     }
     return desc_;
   }
@@ -350,7 +380,9 @@ class ScopedFilterDescriptor {
       stride_dim[k] = stride_dim[k + 1] * kernel_with_group[k + 1];
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        desc_, type, kernel_with_group.size(),
+        desc_,
+        type,
+        kernel_with_group.size(),
         const_cast<int*>(kernel_with_group.data()),
         const_cast<int*>(stride_dim.data())));
     return desc_;
@@ -360,8 +392,8 @@ class ScopedFilterDescriptor {
   inline miopenTensorDescriptor_t descriptor(const DataLayout& order,
                                              const std::vector<int>& kernel,
                                              const int groups = 1) {
-    return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type,
-                      kernel, groups);
+    return descriptor(
+        GetCudnnTensorFormat(order), CudnnDataType<T>::type, kernel, groups);
   }
 
   inline miopenTensorDescriptor_t desc() { return desc_; }
@@ -383,29 +415,39 @@ class ScopedConvolutionDescriptor {
   }
 
   inline miopenConvolutionDescriptor_t descriptor(
-      miopenDataType_t type, const std::vector<int>& pads,
-      const std::vector<int>& strides, const std::vector<int>& dilations) {
-    PADDLE_ENFORCE_EQ(pads.size(), strides.size(),
+      miopenDataType_t type,
+      const std::vector<int>& pads,
+      const std::vector<int>& strides,
+      const std::vector<int>& dilations) {
+    PADDLE_ENFORCE_EQ(pads.size(),
+                      strides.size(),
                       platform::errors::InvalidArgument(
                           "The size of pads and strides should be equal. But "
                           "received size of pads is %d, size of strides is %d.",
-                          pads.size(), strides.size()));
+                          pads.size(),
+                          strides.size()));
     PADDLE_ENFORCE_EQ(
-        pads.size(), dilations.size(),
+        pads.size(),
+        dilations.size(),
         platform::errors::InvalidArgument(
             "The size of pads and dilations should be equal. But received size "
             "of pads is %d, size of dilations is %d.",
-            pads.size(), dilations.size()));
+            pads.size(),
+            dilations.size()));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenInitConvolutionNdDescriptor(
-        desc_, pads.size(), const_cast<int*>(pads.data()),
-        const_cast<int*>(strides.data()), const_cast<int*>(dilations.data()),
+        desc_,
+        pads.size(),
+        const_cast<int*>(pads.data()),
+        const_cast<int*>(strides.data()),
+        const_cast<int*>(dilations.data()),
         miopenConvolution));
     return desc_;
   }
 
   template <typename T>
   inline miopenConvolutionDescriptor_t descriptor(
-      const std::vector<int>& pads, const std::vector<int>& strides,
+      const std::vector<int>& pads,
+      const std::vector<int>& strides,
       const std::vector<int>& dilations) {
     return descriptor(CudnnDataType<T>::type, pads, strides, dilations);
   }
@@ -428,20 +470,27 @@ class ScopedPoolingDescriptor {
                                               const std::vector<int>& kernel,
                                               const std::vector<int>& pads,
                                               const std::vector<int>& strides) {
-    PADDLE_ENFORCE_EQ(kernel.size(), pads.size(),
+    PADDLE_ENFORCE_EQ(kernel.size(),
+                      pads.size(),
                       platform::errors::InvalidArgument(
                           "The size of kernel and pads should be equal. But "
                           "received size of kernel is %d, size of pads is %d.",
-                          kernel.size(), pads.size()));
+                          kernel.size(),
+                          pads.size()));
     PADDLE_ENFORCE_EQ(
-        kernel.size(), strides.size(),
+        kernel.size(),
+        strides.size(),
         platform::errors::InvalidArgument(
             "The size of kernel and strides should be equal. But "
             "received size of kernel is %d, size of strides is %d.",
-            kernel.size(), strides.size()));
+            kernel.size(),
+            strides.size()));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetNdPoolingDescriptor(
-        desc_, GetPoolingMode(mode), kernel.size(),
-        const_cast<int*>(kernel.data()), const_cast<int*>(pads.data()),
+        desc_,
+        GetPoolingMode(mode),
+        kernel.size(),
+        const_cast<int*>(kernel.data()),
+        const_cast<int*>(pads.data()),
         const_cast<int*>(strides.data())));
     return desc_;
   }
@@ -509,7 +558,7 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
   use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_HIP
   if (use_cudnn) {
-    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
   }
 #endif

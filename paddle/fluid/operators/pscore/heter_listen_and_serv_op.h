@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
 #include <atomic>
 #include <memory>
 #include <set>
@@ -34,7 +35,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace distributed {
-class HeterRequestHandler;
+class ServiceHandlerBase;
 class HeterServer;
 }  // namespace distributed
 }  // namespace paddle
@@ -57,7 +58,8 @@ template <class TKey, class TValue>
 class DoubleFindMap : public std::unordered_map<TKey, TValue> {
  public:
   typename std::unordered_map<TKey, TValue>::iterator find_value(TValue v) {
-    return std::find_if(this->begin(), this->end(),
+    return std::find_if(this->begin(),
+                        this->end(),
                         [&v](const std::pair<const std::string, int> p) {
                           return p.second == v;
                         });
@@ -82,10 +84,10 @@ class HeterListenAndServOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override;
 
  protected:
-  mutable std::shared_ptr<paddle::distributed::HeterServer> rpc_service_;
+  mutable std::shared_ptr<paddle::distributed::HeterServer> heter_server_;
   mutable std::shared_ptr<std::thread> server_thread_;
-  mutable std::shared_ptr<paddle::distributed::RequestSendAndRecvHandler>
-      request_send_and_recv_handler_;
+  mutable std::shared_ptr<paddle::distributed::SendAndRecvVariableHandler>
+      send_and_recv_variable_handler_;
 };
 
 }  // namespace operators

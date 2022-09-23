@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <thrust/device_vector.h>
+
 #include <sstream>
 
 #include "gtest/gtest.h"

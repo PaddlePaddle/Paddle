@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/data_norm_op.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/data_layout.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -46,11 +48,11 @@ class DataNormOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DataNorm");
-    OP_INOUT_CHECK(ctx->HasInput("BatchSize"), "Input", "BatchSize",
-                   "DataNorm");
+    OP_INOUT_CHECK(
+        ctx->HasInput("BatchSize"), "Input", "BatchSize", "DataNorm");
     OP_INOUT_CHECK(ctx->HasInput("BatchSum"), "Input", "BatchSum", "DataNorm");
-    OP_INOUT_CHECK(ctx->HasInput("BatchSquareSum"), "Input", "BatchSquareSum",
-                   "DataNorm");
+    OP_INOUT_CHECK(
+        ctx->HasInput("BatchSquareSum"), "Input", "BatchSquareSum", "DataNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Means"), "Output", "Means", "DataNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Scales"), "Output", "Scales", "DataNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "DataNorm");
@@ -58,10 +60,12 @@ class DataNormOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<bool>("enable_scale_and_shift");
     if (enable_scale_and_shift) {
       PADDLE_ENFORCE_EQ(
-          ctx->HasInput("scale_w"), true,
+          ctx->HasInput("scale_w"),
+          true,
           platform::errors::InvalidArgument(
               "Input(scale_w) of DataNormOp should not be null."));
-      PADDLE_ENFORCE_EQ(ctx->HasInput("bias"), true,
+      PADDLE_ENFORCE_EQ(ctx->HasInput("bias"),
+                        true,
                         platform::errors::InvalidArgument(
                             "Input(bias) of DataNormOp should not be null."));
     }
@@ -70,7 +74,8 @@ class DataNormOp : public framework::OperatorWithKernel {
     const DataLayout data_layout = framework::StringToDataLayout(
         ctx->Attrs().Get<std::string>("data_layout"));
 
-    PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5, true,
+    PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5,
+                      true,
                       platform::errors::InvalidArgument(
                           "Input X must have 2 to 5 dimensions."));
 
@@ -78,23 +83,29 @@ class DataNormOp : public framework::OperatorWithKernel {
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
 
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize").size(), 1UL,
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "The input dim of BatchSize shouold be 1"));
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum").size(), 1UL,
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "The input dim of BatchSum shouold be 1"));
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum").size(), 1UL,
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "The input dim of BatchSquareSum shouold be 1"));
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize")[0], C,
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize")[0],
+                        C,
                         platform::errors::InvalidArgument(
                             "The input dim[0] of BatchSize shouold be C"));
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum")[0], C,
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum")[0],
+                        C,
                         platform::errors::InvalidArgument(
                             "The input dim[0] of BatchSum shouold be C"));
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum")[0], C,
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum")[0],
+                        C,
                         platform::errors::InvalidArgument(
                             "The input dim[0] of BatchSqureSum shouold be C"));
     }
@@ -104,19 +115,23 @@ class DataNormOp : public framework::OperatorWithKernel {
       auto bias_dim = ctx->GetInputDim("bias");
 
       PADDLE_ENFORCE_EQ(
-          scale_dim.size(), 1UL,
+          scale_dim.size(),
+          1UL,
           platform::errors::InvalidArgument("the dimensionof scale"
                                             "must equal to 1. But received: "
                                             "the shape of scale is [%s], "
                                             "the dimensionof scale is [%d]",
-                                            scale_dim, scale_dim.size()));
+                                            scale_dim,
+                                            scale_dim.size()));
       PADDLE_ENFORCE_EQ(
-          bias_dim.size(), 1UL,
+          bias_dim.size(),
+          1UL,
           platform::errors::InvalidArgument("the dimension of bias"
                                             "must equal to 1. But received: "
                                             "the shape of bias is [%s],"
                                             "the dimension of bias is [%d]",
-                                            bias_dim, bias_dim.size()));
+                                            bias_dim,
+                                            bias_dim.size()));
 
       bool check = true;
       if ((!ctx->IsRuntime()) &&
@@ -125,16 +140,20 @@ class DataNormOp : public framework::OperatorWithKernel {
       }
 
       if (check) {
-        PADDLE_ENFORCE_EQ(scale_dim[0], C,
+        PADDLE_ENFORCE_EQ(scale_dim[0],
+                          C,
                           platform::errors::InvalidArgument(
                               "the shape of scale must equal to [%d]"
                               "But received: the shape of scale is [%d]",
-                              C, scale_dim[0]));
-        PADDLE_ENFORCE_EQ(bias_dim[0], C,
+                              C,
+                              scale_dim[0]));
+        PADDLE_ENFORCE_EQ(bias_dim[0],
+                          C,
                           platform::errors::InvalidArgument(
                               "the shape of bias must equal to [%d]"
                               "But received: the shape of bias is [%d]",
-                              C, bias_dim[0]));
+                              C,
+                              bias_dim[0]));
       }
     }
 
@@ -163,10 +182,11 @@ class DataNormOp : public framework::OperatorWithKernel {
                       OperatorWithKernel::IndicateVarDataType(ctx, "BatchSum"),
                       platform::errors::InvalidArgument(
                           "BatchSum input should be of float type"));
-    PADDLE_ENFORCE_EQ(dn_param_type, OperatorWithKernel::IndicateVarDataType(
-                                         ctx, "BatchSquareSum"),
-                      platform::errors::InvalidArgument(
-                          "BatchSquareSum input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        dn_param_type,
+        OperatorWithKernel::IndicateVarDataType(ctx, "BatchSquareSum"),
+        platform::errors::InvalidArgument(
+            "BatchSquareSum input should be of float type"));
 
     bool enable_scale_and_shift = ctx.Attr<bool>("enable_scale_and_shift");
     if (enable_scale_and_shift) {
@@ -180,18 +200,16 @@ class DataNormOp : public framework::OperatorWithKernel {
                             "bias input should be of float type"));
     }
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library);
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -202,7 +220,8 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("epsilon", "")
         .SetDefault(1e-4)
         .AddCustomChecker([](const float &epsilon) {
-          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
+          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' should be between 0.0 and 0.001."));
         });
@@ -230,10 +249,6 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddAttr<bool>("sync_stats", "(bool, default false) only used in multi-GPU")
         .SetDefault(false);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddInput("X", "The input tensor");
     AddInput("BatchSize",
              "BatchSize is a 1-dimensional tensor of size C "
@@ -266,8 +281,7 @@ The required data format for this layer is one of the following:
 };
 
 template <typename T>
-class DataNormKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+class DataNormKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     // const bool is_test = ctx.Attr<bool>("is_test");
@@ -277,8 +291,10 @@ class DataNormKernel<platform::CPUDeviceContext, T>
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::InvalidArgument(
-                                            "The Input dim size should be 2"));
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(),
+        2,
+        platform::errors::InvalidArgument("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -403,18 +419,23 @@ class DataNormGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     // check input
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DataNormGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
-                   framework::GradVarName("Y"), "DataNormGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input",
+                   framework::GradVarName("Y"),
+                   "DataNormGrad");
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("BatchSize"), true,
+        ctx->HasOutput("BatchSize"),
+        true,
         platform::errors::NotFound(
             "Output(BatchSize) of DataNormGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("BatchSum"), true,
+        ctx->HasOutput("BatchSum"),
+        true,
         platform::errors::NotFound(
             "Output(BatchSum) of DataNormGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("BatchSquareSum"), true,
+        ctx->HasOutput("BatchSquareSum"),
+        true,
         platform::errors::NotFound(
             "Output(BatchSquareSum) of DataNormGradOp should not be null."));
     OP_INOUT_CHECK(ctx->HasInput("Means"), "Input", "Means", "DataNormGrad");
@@ -423,12 +444,16 @@ class DataNormGradOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<bool>("enable_scale_and_shift");
     // check output
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BatchSize")),
-                   "Output", framework::GradVarName("BatchSize"),
+                   "Output",
+                   framework::GradVarName("BatchSize"),
                    "DataNormGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BatchSum")), "Output",
-                   framework::GradVarName("BatchSum"), "DataNormGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BatchSum")),
+                   "Output",
+                   framework::GradVarName("BatchSum"),
+                   "DataNormGrad");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BatchSquareSum")),
-                   "Output", framework::GradVarName("BatchSquareSum"),
+                   "Output",
+                   framework::GradVarName("BatchSquareSum"),
                    "DataNormGrad");
 
     const auto x_dims = ctx->GetInputDim("X");
@@ -449,12 +474,14 @@ class DataNormGradOp : public framework::OperatorWithKernel {
           ctx->HasOutput(framework::GradVarName("scale_w"));
       const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("bias"));
 
-      PADDLE_ENFORCE_EQ((has_scale_grad == has_bias_grad), true,
+      PADDLE_ENFORCE_EQ((has_scale_grad == has_bias_grad),
+                        true,
                         platform::errors::InvalidArgument(
                             "Output(Scale@GRAD) and Output(Bias@GRAD)"
                             "must be null or not be null at same time. "
                             "But now, has Scale@Grad=[%d], has Bias@GRAD=[%d]",
-                            has_scale_grad, has_bias_grad));
+                            has_scale_grad,
+                            has_bias_grad));
       if (has_scale_grad) {
         ctx->SetOutputDim(framework::GradVarName("scale_w"), {C});
         ctx->SetOutputDim(framework::GradVarName("bias"), {C});
@@ -482,25 +509,23 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     }
 
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
 
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 };
 
 template <typename T>
-class DataNormGradKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+class DataNormGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
@@ -515,8 +540,10 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::InvalidArgument(
-                                            "The Input dim size should be 2"));
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(),
+        2,
+        platform::errors::InvalidArgument("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -745,22 +772,22 @@ class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(data_norm, ops::DataNormOp, ops::DataNormOpMaker,
+REGISTER_OPERATOR(data_norm,
+                  ops::DataNormOp,
+                  ops::DataNormOpMaker,
                   ops::DataNormGradMaker<paddle::framework::OpDesc>,
                   ops::DataNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(data_norm_grad, ops::DataNormGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    data_norm, ops::DataNormKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DataNormKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    data_norm_grad,
-    ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_VERSION(data_norm)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_CPU_KERNEL(data_norm,
+                       ops::DataNormKernel<phi::CPUContext, float>,
+                       ops::DataNormKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(data_norm_grad,
+                       ops::DataNormGradKernel<phi::CPUContext, float>,
+                       ops::DataNormGradKernel<phi::CPUContext, double>);
+REGISTER_OP_VERSION(data_norm).AddCheckpoint(
+    R"ROC(
               upgrad data_norm op by adding scale_w to support scale and shift.)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewInput(
-            "scale_w",
-            "scale_w is used to do scale duirng data_norm like batchnorm "));
+    paddle::framework::compatible::OpVersionDesc().NewInput(
+        "scale_w",
+        "scale_w is used to do scale duirng data_norm like batchnorm "));

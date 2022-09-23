@@ -37,15 +37,16 @@ TEST(utils, registry) {
   CHECK_EQ(count, 2U);
 }
 
-class FancyAllocator : public phi::Allocator {
+class FancyAllocator : public ::phi::Allocator {
  public:
-  static void Delete(phi::Allocation* allocation) {
+  static void Delete(::phi::Allocation* allocation) {
     ::operator delete(allocation->ptr());
   }
 
   AllocationPtr Allocate(size_t bytes_size) override {
     void* data = ::operator new(bytes_size);
-    auto* allocation = new phi::Allocation(data, bytes_size, phi::CPUPlace());
+    auto* allocation =
+        new ::phi::Allocation(data, bytes_size, ::phi::CPUPlace());
     return AllocationPtr(allocation, Delete);
   }
 };
@@ -56,20 +57,20 @@ TEST(ElementwiseAdd, launcher_registry) {
   ASSERT_GE(registry.size(), 1UL);
   auto creator = registry.GetKernel("phi_cpu.add.float32.any");
 
-  const phi::DDim dims({1, 2});
-  const phi::DataType dtype{phi::DataType::FLOAT32};
-  const phi::DataLayout layout{phi::DataLayout::NHWC};
-  const phi::LoD lod{};
-  phi::DenseTensorMeta meta(dtype, dims, layout, lod);
+  const ::phi::DDim dims({1, 2});
+  const ::phi::DataType dtype{::phi::DataType::FLOAT32};
+  const ::phi::DataLayout layout{::phi::DataLayout::NHWC};
+  const ::phi::LoD lod{};
+  ::phi::DenseTensorMeta meta(dtype, dims, layout, lod);
 
-  auto fancy_allocator = std::unique_ptr<phi::Allocator>(new FancyAllocator);
+  auto fancy_allocator = std::unique_ptr<::phi::Allocator>(new FancyAllocator);
   auto* alloc = fancy_allocator.get();
 
-  phi::DenseTensor a(alloc, meta);
-  phi::DenseTensor b(alloc, meta);
-  phi::DenseTensor c(alloc, meta);
+  ::phi::DenseTensor a(alloc, meta);
+  ::phi::DenseTensor b(alloc, meta);
+  ::phi::DenseTensor c(alloc, meta);
 
-  auto place = phi::CPUPlace();
+  auto place = ::phi::CPUPlace();
   float* a_data = a.mutable_data<float>(place);
   float* b_data = b.mutable_data<float>(place);
   float* c_data = c.mutable_data<float>(place);
@@ -78,9 +79,8 @@ TEST(ElementwiseAdd, launcher_registry) {
     b_data[i] = 2.f;
   }
 
-  phi::CPUContext context;
+  ::phi::CPUContext context;
   context.SetAllocator(alloc);
-  context.Init();
 
   host_context::KernelFrameBuilder kernel_frame_builder;
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(context)));

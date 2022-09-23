@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
+
 #include <cmath>
 #include <iostream>
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
@@ -31,22 +33,22 @@ TEST(sparse_value_naive_sgd_test, init_and_update) {
   naive_param->add_weight_bounds(-10.0);
   naive_param->add_weight_bounds(10.0);
 
-  rule.load_config(param, 10);
+  rule.LoadConfig(param, 10);
 
   // check init_value for zero
   const int kItemSize = 10;
   float w[kItemSize];
   float grad[kItemSize];
-  rule.init_value(w, w + 9, true);
+  rule.InitValue(w, w + 9, true);
 
   for (auto i = 0u; i < kItemSize; ++i) {
     ASSERT_FLOAT_EQ(w[i], 0);
   }
 
   // check init_value for random
-  rule.init_value(w, w + 9, false);
+  rule.InitValue(w, w + 9, false);
   for (auto i = 0u; i < kItemSize; ++i) {
-    ASSERT_TRUE(w[i] >= rule.min_bound() && w[i] <= rule.max_bound());
+    ASSERT_TRUE(w[i] >= rule.MinBound() && w[i] <= rule.MaxBound());
   }
 
   // check update_value for one field
@@ -56,10 +58,18 @@ TEST(sparse_value_naive_sgd_test, init_and_update) {
   for (auto i = 0u; i < kItemSize; ++i) {
     grad[i] = (i + 1) * 1.0;
   }
-  float label[] = {-0.100000, -0.200000, -0.300000, -0.400000, -0.500000,
-                   -0.600000, -0.700000, -0.800000, -0.900000, -1.000000};
+  float label[] = {-0.100000,
+                   -0.200000,
+                   -0.300000,
+                   -0.400000,
+                   -0.500000,
+                   -0.600000,
+                   -0.700000,
+                   -0.800000,
+                   -0.900000,
+                   -1.000000};
   const float* ptr_grad = grad;
-  rule.update_value(w, w + 9, ptr_grad);
+  rule.UpdateValue(w, w + 9, ptr_grad);
 
   for (auto i = 0u; i < kItemSize; ++i) {
     VLOG(3) << w[i] << "\n";
@@ -78,42 +88,50 @@ TEST(downpour_sparse_adagrad_test, test_init_and_update) {
   adagrad_param->add_weight_bounds(-10.0);
   adagrad_param->add_weight_bounds(10.0);
 
-  rule.load_config(param, 10);
+  rule.LoadConfig(param, 10);
 
   // check init_value for zero
   const int kValueSize = 11;
   int kEmbSize = 10;
   float w[kValueSize];
 
-  rule.init_value(w, w + 10, true);
+  rule.InitValue(w, w + 10, true);
 
-  for (auto i = 0u; i < kEmbSize; ++i) {
+  for (int i = 0; i < kEmbSize; ++i) {
     ASSERT_FLOAT_EQ(w[i], 0);
   }
   ASSERT_FLOAT_EQ(w[kEmbSize], 0);
 
   // check init_value for random
-  rule.init_value(w, w + 10, false);
-  for (auto i = 0u; i < kEmbSize; ++i) {
-    ASSERT_TRUE(w[i] >= rule.min_bound() && w[i] <= rule.max_bound());
+  rule.InitValue(w, w + 10, false);
+  for (int i = 0; i < kEmbSize; ++i) {
+    ASSERT_TRUE(w[i] >= rule.MinBound() && w[i] <= rule.MaxBound());
   }
   ASSERT_FLOAT_EQ(w[kEmbSize], 0);
 
   // check update_value for one field
-  for (auto i = 0u; i < kEmbSize; ++i) {
+  for (int i = 0; i < kEmbSize; ++i) {
     w[i] = 0;
   }
   w[kEmbSize] = 0;
   float grad[kEmbSize];
-  for (auto i = 0u; i < kEmbSize; ++i) {
+  for (int i = 0; i < kEmbSize; ++i) {
     grad[i] = (i + 1) * 1.0;
   }
 
   const float* ptr_grad = grad;
-  rule.update_value(w, w + 10, ptr_grad);
-  float label[] = {-0.100000, -0.200000, -0.300000, -0.400000,
-                   -0.500000, -0.600000, -0.700000, -0.800000,
-                   -0.900000, -1.000000, 38.500000};
+  rule.UpdateValue(w, w + 10, ptr_grad);
+  float label[] = {-0.100000,
+                   -0.200000,
+                   -0.300000,
+                   -0.400000,
+                   -0.500000,
+                   -0.600000,
+                   -0.700000,
+                   -0.800000,
+                   -0.900000,
+                   -1.000000,
+                   38.500000};
   for (auto i = 0u; i < kValueSize; ++i) {
     ASSERT_FLOAT_EQ(w[i], label[i]);
   }
@@ -140,33 +158,33 @@ TEST(downpour_sparse_adam_test, test_init_and_update) {
 
   SparseAdamSGDRule rule;
 
-  rule.load_config(param, embed_dim);
+  rule.LoadConfig(param, embed_dim);
 
   // check init_value for zero
   const int rule_dim =
-      rule.dim();  // dims of gsum + g2sum + beta1_pow + beta2_pow in adam
+      rule.Dim();  // dims of gsum + g2sum + beta1_pow + beta2_pow in adam
   const int value_dim = embed_dim + rule_dim;  // total dims of w + rule
   float* value = new float[value_dim];
-  rule.init_value(value, value + embed_dim, true);
-  for (auto i = 0u; i < rule.beta1_pow_index(); ++i) {
+  rule.InitValue(value, value + embed_dim, true);
+  for (auto i = 0u; i < rule.Beta1PowIndex(); ++i) {
     ASSERT_FLOAT_EQ(value[i], 0);
   }
-  ASSERT_FLOAT_EQ(*(value + embed_dim + rule.beta1_pow_index()), 0.9);
-  ASSERT_FLOAT_EQ(*(value + embed_dim + rule.beta2_pow_index()), 0.999);
+  ASSERT_FLOAT_EQ(*(value + embed_dim + rule.Beta1PowIndex()), 0.9);
+  ASSERT_FLOAT_EQ(*(value + embed_dim + rule.Beta2PowIndex()), 0.999);
 
   // check init_value for random
-  rule.init_value(value, value + embed_dim, false);
+  rule.InitValue(value, value + embed_dim, false);
   for (auto i = 0u; i < embed_dim; ++i) {
-    ASSERT_TRUE(value[i] >= rule.min_bound() && value[i] <= rule.max_bound());
+    ASSERT_TRUE(value[i] >= rule.MinBound() && value[i] <= rule.MaxBound());
   }
-  for (auto i = rule.gsum_index(); i < rule.beta1_pow_index(); ++i) {
+  for (auto i = rule.GSumIndex(); i < rule.Beta1PowIndex(); ++i) {
     ASSERT_FLOAT_EQ(value[i + embed_dim], 0);
   }
-  ASSERT_FLOAT_EQ(*(value + embed_dim + rule.beta1_pow_index()), 0.9);
-  ASSERT_FLOAT_EQ(*(value + embed_dim + rule.beta2_pow_index()), 0.999);
+  ASSERT_FLOAT_EQ(*(value + embed_dim + rule.Beta1PowIndex()), 0.9);
+  ASSERT_FLOAT_EQ(*(value + embed_dim + rule.Beta2PowIndex()), 0.999);
 
   // check update_value
-  rule.init_value(value, value + embed_dim, true);
+  rule.InitValue(value, value + embed_dim, true);
   float* grad = new float[embed_dim];
   for (auto i = 0u; i < embed_dim; ++i) {
     grad[i] = (i + 1) * 1.0;
@@ -181,9 +199,9 @@ TEST(downpour_sparse_adam_test, test_init_and_update) {
                    0.0249996781,   0.0359995365, 0.0489993691,  0.063999176,
                    0.0809989572,   0.0999987125, 0.809999943,   0.998001039};
 
-  rule.update_value(value, value + embed_dim, grad);
+  rule.UpdateValue(value, value + embed_dim, grad);
 
-  for (auto i = 0u; i < value_dim; ++i) {  // check update
+  for (int i = 0; i < value_dim; ++i) {  // check update
     ASSERT_FLOAT_EQ(value[i], label[i]) << "i is " << i;
   }
 }

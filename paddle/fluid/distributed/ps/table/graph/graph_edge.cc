@@ -13,17 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/graph/graph_edge.h"
+
 #include <cstring>
 namespace paddle {
 namespace distributed {
 
-void GraphEdgeBlob::add_edge(uint64_t id, float weight = 1) {
+void GraphEdgeBlob::add_edge(int64_t id, float weight = 1) {
   id_arr.push_back(id);
 }
 
-void WeightedGraphEdgeBlob::add_edge(uint64_t id, float weight = 1) {
+void WeightedGraphEdgeBlob::add_edge(int64_t id, float weight = 1) {
   id_arr.push_back(id);
   weight_arr.push_back(weight);
 }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

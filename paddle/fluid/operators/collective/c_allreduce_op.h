@@ -16,12 +16,14 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/api/include/tensor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||          \
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU_BKCL) || \
@@ -39,6 +41,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allreduce.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -73,6 +76,18 @@ class CAllReduceOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (var_name == "Cond") {
+      return expected_kernel_type;
+    } else {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    }
+  }
 };
 
 template <ReduceType red_type, typename T>
@@ -80,6 +95,7 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
+
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
@@ -89,7 +105,8 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
     T* recv_buff = out->mutable_data<T>(in->dims(), place);
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(), true,
+        gloo->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::AllreduceOptions opts(gloo->GetContext());
@@ -117,7 +134,8 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
                 &gloo::product<T>));
         break;
       default:
-        PADDLE_ENFORCE_EQ(true, false,
+        PADDLE_ENFORCE_EQ(true,
+                          false,
                           platform::errors::InvalidArgument(
                               "Invalid reduce type: %d.", red_type));
     }
@@ -175,6 +193,23 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
+    if (ctx.HasInput("Cond")) {
+      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto place = cond->place();
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` tensor should be on cpu place"));
+      PADDLE_ENFORCE_EQ(cond->numel(),
+                        1,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` should be shape [1]"));
+      if (!cond->data<bool>()[0]) {
+        VLOG(4) << "Skip all reduce Op since cond is 0";
+        return;
+      }
+    }
+
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     auto place = ctx.GetPlace();
@@ -269,9 +304,14 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             << ", sendbuff:" << sendbuff << ", recvbuff:" << recvbuff
             << ", out_size:" << out->memory_size();
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
-        reinterpret_cast<void*>(stream)));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclAllReduce(sendbuff,
+                                         recvbuff,
+                                         numel,
+                                         dtype,
+                                         hccl_red_type,
+                                         comm->comm(),
+                                         reinterpret_cast<void*>(stream)));
 
     out->Resize(in->dims());
 #else
@@ -286,6 +326,23 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_XPU_BKCL)
+    if (ctx.HasInput("Cond")) {
+      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto place = cond->place();
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` tensor should be on cpu place"));
+      PADDLE_ENFORCE_EQ(cond->numel(),
+                        1,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` should be shape [1]"));
+      if (!cond->data<bool>()[0]) {
+        VLOG(4) << "Skip all reduce Op since cond is 0";
+        return;
+      }
+    }
+
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
@@ -333,10 +390,16 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    PADDLE_ENFORCE_EQ(bkcl_all_reduce(comm->comm(), sendbuff, recvbuff, numel,
-                                      dtype, bkcl_red_type, stream),
-                      BKCL_SUCCESS, platform::errors::PreconditionNotMet(
-                                        "BKCL all reduce failed"));
+    PADDLE_ENFORCE_EQ(
+        bkcl_all_reduce(comm->comm(),
+                        sendbuff,
+                        recvbuff,
+                        numel,
+                        dtype,
+                        bkcl_red_type,
+                        stream),
+        BKCL_SUCCESS,
+        platform::errors::PreconditionNotMet("BKCL all reduce failed"));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU."));
@@ -348,9 +411,27 @@ template <ReduceType red_type, typename T>
 class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    if (ctx.HasInput("Cond")) {
+      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto place = cond->place();
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` tensor should be on cpu place"));
+      PADDLE_ENFORCE_EQ(cond->numel(),
+                        1,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` should be shape [1]"));
+      if (!cond->data<bool>()[0]) {
+        VLOG(4) << "Skip all reduce Op since cond is 0";
+        return;
+      }
+    }
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
+    int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
     ncclDataType_t dtype =
@@ -360,16 +441,56 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    int rid = ctx.Attr<int>("ring_id");
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(rid);
+      std::vector<phi::DenseTensor> in_tensor;
+      std::vector<phi::DenseTensor> out_tensor;
+      in_tensor.push_back(*in);
+      out_tensor.push_back(*out);
+
+      distributed::AllreduceOptions opts;
+      switch (red_type) {
+        case kRedSum:
+          opts.reduce_op = distributed::ReduceOp::SUM;
+          break;
+
+        case kRedMax:
+          opts.reduce_op = distributed::ReduceOp::MAX;
+          break;
+
+        case kRedMin:
+          opts.reduce_op = distributed::ReduceOp::MIN;
+          break;
+
+        case kRedProd:
+          opts.reduce_op = distributed::ReduceOp::PRODUCT;
+          break;
+
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Invalid reduce type: %d", red_type));
+      }
+
+      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+      task->Wait();
+      return;
+    }
+
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
+    VLOG(10) << "all reduce buffer:" << sendbuff << ", numel:" << numel
+             << ", redtype:" << static_cast<int>(red_type)
+             << ", dtype:" << dtype << ", comm:" << comm
+             << ", stream:" << stream;
 
     ncclRedOp_t nccl_red_type = ncclSum;
     switch (red_type) {
@@ -410,6 +531,23 @@ class CAllReduceOpMLUKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CNCL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
+
+    if (ctx.HasInput("Cond")) {
+      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto place = cond->place();
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` tensor should be on cpu place"));
+      PADDLE_ENFORCE_EQ(cond->numel(),
+                        1,
+                        platform::errors::PreconditionNotMet(
+                            "The input `cond` should be shape [1]"));
+      if (!cond->data<bool>()[0]) {
+        VLOG(4) << "Skip all reduce Op since cond is 0";
+        return;
+      }
+    }
 
     auto place = ctx.GetPlace();
     cnclDataType_t dtype =
@@ -490,11 +628,14 @@ Call collective AllReduce with reduce type %s. If input and output are
 the same variable, in-place allreduce will be used.
 Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/usage/operations.html#allreduce
 )DOC",
-                               GetName(), GetName()));
+                               GetName(),
+                               GetName()));
+    ExtraMake();
   }
 
  protected:
   virtual std::string GetName() const = 0;
+  virtual void ExtraMake() {}
 };
 
 }  // namespace operators

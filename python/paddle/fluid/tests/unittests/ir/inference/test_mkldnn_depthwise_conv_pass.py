@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,9 +30,9 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
     '''
     conv_input   conv_weight_var(persistable)
       \       /
-         conv_op     
+         conv_op
           |
-      conv_out_var  
+      conv_out_var
     '''
 
     def test(self):
@@ -48,24 +48,24 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
 
         random_groups = draw(st.integers(min_value=1, max_value=3))
         random_dilations = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=3), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=3),
+                     min_size=2,
+                     max_size=2))
         random_strides = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
         random_paddings = draw(
-            st.lists(
-                st.integers(
-                    min_value=0, max_value=4), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=0, max_value=4),
+                     min_size=2,
+                     max_size=2))
         random_padding_algorithm = draw(
             st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
         random_data_layout = draw(st.sampled_from(["NCHW", "NHWC"]))
         random_filter = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
 
         def generate_conv2d_Input():
             shape = [random_input_dim1, random_input_dim2]
@@ -84,22 +84,23 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
             return np.random.random(shape).astype(np.float32)
 
         # define op
-        conv2d_op = OpConfig(
-            type="depthwise_conv2d",
-            inputs={
-                "Input": ["conv2d_Input"],
-                "Filter": ["conv2d_Filter"],
-            },
-            outputs={"Output": ["conv2d_Out"], },
-            attrs={
-                'groups': random_groups,
-                'dilations': random_dilations,
-                'strides': random_strides,
-                'paddings': random_paddings,
-                'padding_algorithm': random_padding_algorithm,
-                'data_format': random_data_layout,
-                'use_mkldnn': True,
-            })
+        conv2d_op = OpConfig(type="depthwise_conv2d",
+                             inputs={
+                                 "Input": ["conv2d_Input"],
+                                 "Filter": ["conv2d_Filter"],
+                             },
+                             outputs={
+                                 "Output": ["conv2d_Out"],
+                             },
+                             attrs={
+                                 'groups': random_groups,
+                                 'dilations': random_dilations,
+                                 'strides': random_strides,
+                                 'paddings': random_paddings,
+                                 'padding_algorithm': random_padding_algorithm,
+                                 'data_format': random_data_layout,
+                                 'use_mkldnn': True,
+                             })
 
         # define model_net
         model_net = [conv2d_op]
@@ -124,8 +125,7 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         if attrs[0]['data_format'] == "NHWC":
@@ -134,6 +134,7 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
         return True
 
     def add_ignore_pass_case(self):
+
         def teller1(program_config, predictor_config):
             if program_config.ops[0].attrs['data_format'] == "NHWC":
                 return True

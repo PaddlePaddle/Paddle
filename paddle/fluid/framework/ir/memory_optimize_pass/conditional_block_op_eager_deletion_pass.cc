@@ -28,7 +28,8 @@ class ConditionalOpEagerDeletionPass : public Pass {
 
     // Find all conditional_op and conditional_grad_op
     std::unordered_map<
-        size_t, std::pair<std::vector<OpVariant>, std::vector<OpVariant>>>
+        size_t,
+        std::pair<std::vector<OpVariant>, std::vector<OpVariant>>>
         target_ops;
     for (auto *op : all_ops) {
       auto compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
@@ -47,7 +48,8 @@ class ConditionalOpEagerDeletionPass : public Pass {
     // forward graph, some necessaray variable in step_scope of controlflow_op
     // should be kept for backward graph.
     if (graph->IsConstructedByPartialProgram()) {
-      PADDLE_ENFORCE_LE(target_ops.size(), 1,
+      PADDLE_ENFORCE_LE(target_ops.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Unsupported multi devices if graph is constructed "
                             "with partial program."));
@@ -72,6 +74,22 @@ class ConditionalOpEagerDeletionPass : public Pass {
       auto &ifelse_grad_ops = ops_pair.second.second;
       operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
           graph->OriginProgram(), ifelse_ops, ifelse_grad_ops);
+    }
+
+    for (auto op_hander : all_ops) {
+      auto *compute_op =
+          dynamic_cast<details::ComputationOpHandle *>(op_hander);
+      if (compute_op == nullptr) continue;
+      if (compute_op->Name() == "conditional_block" ||
+          compute_op->Name() == "conditional_block_grad") {
+        ir::Node *op_node = op_hander->Node();
+        auto *op_base = compute_op->GetOp();
+        if (op_base->Attrs().count("skip_eager_deletion_vars")) {
+          op_node->Op()->SetAttr(
+              "skip_eager_deletion_vars",
+              op_base->Attrs().at("skip_eager_deletion_vars"));
+        }
+      }
     }
   }
 };

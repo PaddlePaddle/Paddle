@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -22,7 +23,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-inline int MaxPoolOutputSize(int input_size, int filter_size, int padding,
+inline int MaxPoolOutputSize(int input_size,
+                             int filter_size,
+                             int padding,
                              int stride) {
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
   return output_size;
@@ -116,7 +119,7 @@ MaxPool2d Operator.
 The maxPooling2d with index operation calculates the output and the mask
 based on the input, ksize, strides, and paddings parameters. Input(X) and
 output(Out, Mask) are in NCHW format, where N is batch size, C is the
-number of channels, H is the height of the feature, 
+number of channels, H is the height of the feature,
 and W is the width of the feature.
 Parameters(ksize, strides, paddings) are two elements.
 These two elements represent height and width, respectively.
@@ -133,12 +136,12 @@ Example:
        H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
        W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
        $$
-  
+
   For adaptive = true:
        $$
        H_{out} = ksize[0]   W_{out} = ksize[1]
        $$
-      
+
 
 )DOC");
   }
@@ -207,7 +210,7 @@ The maxpooling3d with index operation calculates the output and the mask
 based on the input and ksize, strides, paddings parameters.
 Input(X) and output(Out, Mask) are in NCDHW format, where N is batch
 size, C is the number of channels, and D, H and W are the depth, height and
-width of the feature, respectively. 
+width of the feature, respectively.
 Parameters(ksize, strides, paddings) are three elements.
 These three elements represent depth, height and width, respectively.
 The input(X) size and output(Out, Mask) size may be different.
@@ -224,7 +227,7 @@ Example:
        H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1 \\
        W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2])}{strides[2]} + 1
        $$
-  
+
   For adaptive = true:
        $$
        D_{out} = ksize[0]   H_{out} = ksize[1]   W_{out} = ksize[2]
@@ -265,12 +268,14 @@ DECLARE_INFER_SHAPE_FUNCTOR(max_pool2d_with_index_grad,
                             MaxPool2dWithIndexGradInferShapeFunctor,
                             PD_INFER_META(phi::MaxPoolWithIndexGradInferMeta));
 
-REGISTER_OPERATOR(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
+REGISTER_OPERATOR(max_pool2d_with_index,
+                  ops::MaxPoolWithIndexOp,
                   ops::MaxPool2dWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>,
                   MaxPool2dWithIndexInferShapeFunctor);
-REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
+REGISTER_OPERATOR(max_pool2d_with_index_grad,
+                  ops::MaxPoolWithIndexOpGrad,
                   ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer,
                   MaxPool2dWithIndexGradInferShapeFunctor);
 
@@ -281,11 +286,13 @@ DECLARE_INFER_SHAPE_FUNCTOR(max_pool3d_with_index_grad,
                             MaxPool3dWithIndexGradInferShapeFunctor,
                             PD_INFER_META(phi::MaxPoolWithIndexGradInferMeta));
 
-REGISTER_OPERATOR(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
+REGISTER_OPERATOR(max_pool3d_with_index,
+                  ops::MaxPoolWithIndexOp,
                   ops::MaxPool3dWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>,
                   MaxPool3dWithIndexInferShapeFunctor);
-REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
+REGISTER_OPERATOR(max_pool3d_with_index_grad,
+                  ops::MaxPoolWithIndexOpGrad,
                   ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer,
                   MaxPool3dWithIndexGradInferShapeFunctor);

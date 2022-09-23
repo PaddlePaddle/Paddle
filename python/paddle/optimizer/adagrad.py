@@ -22,7 +22,7 @@ __all__ = []
 
 class Adagrad(Optimizer):
     r"""
-    The Adaptive Gradient optimizer (Adagrad for short) use an optimization described 
+    The Adaptive Gradient optimizer (Adagrad for short) use an optimization described
     in paper: `Adaptive Subgradient Methods for Online Learning and
     Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
 
@@ -58,9 +58,9 @@ class Adagrad(Optimizer):
 	    the regularization setting here in optimizer will be ignored for this parameter. \
 	    Otherwise, the regularization setting here in optimizer will take effect. \
 	    Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies, 
-            ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None, 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies,
+            ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None,
             meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -100,7 +100,7 @@ class Adagrad(Optimizer):
                     'weight_decay': 0.001,
                     'learning_rate': 0.1,
                 }],
-                weight_decay=0.01)                   
+                weight_decay=0.01)
             out.backward()
             adagrad.step()
             adagrad.clear_grad()
@@ -118,12 +118,11 @@ class Adagrad(Optimizer):
                  initial_accumulator_value=0.0):
         assert learning_rate is not None
         assert epsilon is not None
-        super(Adagrad, self).__init__(
-            learning_rate=learning_rate,
-            parameters=parameters,
-            weight_decay=weight_decay,
-            grad_clip=grad_clip,
-            name=name)
+        super(Adagrad, self).__init__(learning_rate=learning_rate,
+                                      parameters=parameters,
+                                      weight_decay=weight_decay,
+                                      grad_clip=grad_clip,
+                                      name=name)
         self.type = "adagrad"
         self._epsilon = epsilon
         self.initial_accumulator_value = initial_accumulator_value
@@ -139,10 +138,9 @@ class Adagrad(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
-            self._add_accumulator(
-                self._moment_acc_str,
-                p,
-                fill_value=self.initial_accumulator_value)
+            self._add_accumulator(self._moment_acc_str,
+                                  p,
+                                  fill_value=self.initial_accumulator_value)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -153,18 +151,23 @@ class Adagrad(Optimizer):
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
         # Create the adagrad optimizer op
-        adagrad_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Moment": moment_acc,
-                "LearningRate": self._create_param_lr(param_and_grad)
-            },
-            outputs={"ParamOut": param_and_grad[0],
-                     "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon},
-            stop_gradient=True)
+        adagrad_op = block.append_op(type=self.type,
+                                     inputs={
+                                         "Param":
+                                         param_and_grad[0],
+                                         "Grad":
+                                         param_and_grad[1],
+                                         "Moment":
+                                         moment_acc,
+                                         "LearningRate":
+                                         self._create_param_lr(param_and_grad)
+                                     },
+                                     outputs={
+                                         "ParamOut": param_and_grad[0],
+                                         "MomentOut": moment_acc
+                                     },
+                                     attrs={"epsilon": self._epsilon},
+                                     stop_gradient=True)
 
         return adagrad_op
 

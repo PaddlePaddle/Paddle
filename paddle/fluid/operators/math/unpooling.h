@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -21,13 +22,16 @@ namespace math {
 template <typename DeviceContext, typename T>
 class Unpool2dMaxFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  const framework::Tensor& indices, framework::Tensor* output);
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& input,
+                  const framework::Tensor& indices,
+                  framework::Tensor* output);
 };
 template <typename DeviceContext, class T>
 class Unpool2dMaxGradFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,
@@ -37,13 +41,16 @@ class Unpool2dMaxGradFunctor {
 template <typename DeviceContext, typename T>
 class Unpool3dMaxFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  const framework::Tensor& indices, framework::Tensor* output);
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& input,
+                  const framework::Tensor& indices,
+                  framework::Tensor* output);
 };
 template <typename DeviceContext, class T>
 class Unpool3dMaxGradFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,

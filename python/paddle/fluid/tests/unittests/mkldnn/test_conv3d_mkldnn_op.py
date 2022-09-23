@@ -20,6 +20,7 @@ from paddle.fluid.tests.unittests.test_conv3d_op import TestConv3DOp, TestCase1,
 
 
 class TestMKLDNN(TestConv3DOp):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -27,6 +28,7 @@ class TestMKLDNN(TestConv3DOp):
 
 
 class TestMKLDNNCase1(TestCase1):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -34,6 +36,7 @@ class TestMKLDNNCase1(TestCase1):
 
 
 class TestMKLDNNGroup1(TestWithGroup1):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -41,6 +44,7 @@ class TestMKLDNNGroup1(TestWithGroup1):
 
 
 class TestMKLDNNGroup2(TestWithGroup2):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -48,6 +52,7 @@ class TestMKLDNNGroup2(TestWithGroup2):
 
 
 class TestMKLDNNWith1x1(TestWith1x1):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -55,6 +60,7 @@ class TestMKLDNNWith1x1(TestWith1x1):
 
 
 class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -62,6 +68,7 @@ class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
 
 
 class TestConv3DOp_AsyPadding_MKLDNN(TestConv3DOp):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -73,6 +80,7 @@ class TestConv3DOp_AsyPadding_MKLDNN(TestConv3DOp):
 
 
 class TestConv3DOp_Same_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
+
     def init_paddings(self):
         self.pad = [0, 0, 0]
         self.padding_algorithm = "SAME"
@@ -84,6 +92,7 @@ class TestConv3DOp_Same_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
 
 
 class TestConv3DOp_Valid_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
+
     def init_paddings(self):
         self.pad = [1, 1, 1]
         self.padding_algorithm = "VALID"

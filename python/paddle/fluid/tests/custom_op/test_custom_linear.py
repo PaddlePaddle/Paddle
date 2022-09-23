@@ -22,7 +22,7 @@ import paddle.nn.functional as F
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -40,68 +40,98 @@ custom_ops = load(
     verbose=True)
 
 
-def linear_dynamic(func, dtype, np_x, np_weight, np_bias):
-    paddle.set_device("cpu")
-    x = paddle.to_tensor(np_x, dtype=dtype)
-    weight = paddle.to_tensor(np_weight, dtype=dtype)
-    bias = paddle.to_tensor(np_bias, dtype=dtype)
+def linear_dynamic(func, device, dtype, np_x, np_weight, np_bias):
+    paddle.set_device(device)
+    x = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
+    weight = paddle.to_tensor(np_weight, dtype=dtype, stop_gradient=False)
+    bias = paddle.to_tensor(np_bias, dtype=dtype, stop_gradient=False)
     out = func(x, weight, bias)
-    return out.numpy()
+    out.backward()
+    return out.numpy(), x.grad.numpy(), weight.grad.numpy(), bias.grad.numpy()
 
 
-def linear_static(func, dtype, np_x, np_weight, np_bias):
+def linear_static(func, device, dtype, np_x, np_weight, np_bias):
     paddle.enable_static()
-    paddle.set_device("cpu")
+    paddle.set_device(device)
     with static.scope_guard(static.Scope()):
         with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=np_x.shape, dtype=dtype)
-            weight = static.data(
-                name="weight", shape=np_weight.shape, dtype=dtype)
+            x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
+            weight = static.data(name="weight",
+                                 shape=np_weight.shape,
+                                 dtype=dtype)
             bias = static.data(name="bias", shape=np_bias.shape, dtype=dtype)
+            x.stop_gradient = False
+            weight.stop_gradient = False
+            bias.stop_gradient = False
             out = func(x, weight, bias)
+            mean_out = paddle.mean(out)
+            static.append_backward(mean_out)
 
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
-            out_v, = exe.run(static.default_main_program(),
-                             feed={
-                                 "x": np_x.astype(dtype),
-                                 "weight": np_weight.astype(dtype),
-                                 "bias": np_bias.astype(dtype)
-                             },
-                             fetch_list=[out.name])
+            out_v, x_grad_v, weight_grad_v, bias_grad_v = exe.run(
+                static.default_main_program(),
+                feed={
+                    "x": np_x.astype(dtype),
+                    "weight": np_weight.astype(dtype),
+                    "bias": np_bias.astype(dtype)
+                },
+                fetch_list=[
+                    out.name, x.name + "@GRAD", weight.name + "@GRAD",
+                    bias.name + "@GRAD"
+                ])
     paddle.disable_static()
-    return out_v
+    return out_v, x_grad_v, weight_grad_v, bias_grad_v
 
 
 class TestCustomLinearJit(unittest.TestCase):
+
     def setUp(self):
         self.dtypes = ['float32', 'float64']
+        self.devices = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            self.devices.append('gpu')
         self.np_x = np.random.random((3, 2)).astype("float32")
         self.np_weight = np.full([2, 4], fill_value=0.5, dtype="float32")
         self.np_bias = np.ones([4], dtype="float32")
 
     def check_output(self, out, pd_out, name):
-        self.assertTrue(
-            np.array_equal(out, pd_out),
-            "custom op {}: {},\n paddle api {}: {}".format(name, out, name,
-                                                           pd_out))
+        np.testing.assert_array_equal(
+            out,
+            pd_out,
+            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
+                name, out, name, pd_out))
 
     def test_static(self):
-        for dtype in self.dtypes:
-            pten_out = linear_static(custom_ops.pten_linear, dtype, self.np_x,
-                                     self.np_weight, self.np_bias)
-            pd_out = linear_static(F.linear, dtype, self.np_x, self.np_weight,
-                                   self.np_bias)
-            self.check_output(pten_out, pd_out, "pten_out")
+        for device in self.devices:
+            for dtype in self.dtypes:
+                phi_out, phi_x_grad, phi_weight_grad, phi_bias_grad = linear_static(
+                    custom_ops.phi_linear, device, dtype, self.np_x,
+                    self.np_weight, self.np_bias)
+                pd_out, pd_x_grad, pd_weight_grad, pd_bias_grad = linear_static(
+                    F.linear, device, dtype, self.np_x, self.np_weight,
+                    self.np_bias)
+                self.check_output(phi_out, pd_out, "out")
+                self.check_output(phi_x_grad, pd_x_grad, "x_grad")
+                self.check_output(phi_weight_grad, pd_weight_grad,
+                                  "weight_grad")
+                self.check_output(phi_bias_grad, pd_bias_grad, "bias_grad")
 
     def func_dynamic(self):
-        for dtype in self.dtypes:
-            pten_out = linear_dynamic(custom_ops.pten_linear, dtype, self.np_x,
-                                      self.np_weight, self.np_bias)
-            pd_out = linear_dynamic(F.linear, dtype, self.np_x, self.np_weight,
-                                    self.np_bias)
-            self.check_output(pten_out, pd_out, "pten_out")
+        for device in self.devices:
+            for dtype in self.dtypes:
+                phi_out, phi_x_grad, phi_weight_grad, phi_bias_grad = linear_dynamic(
+                    custom_ops.phi_linear, device, dtype, self.np_x,
+                    self.np_weight, self.np_bias)
+                pd_out, pd_x_grad, pd_weight_grad, pd_bias_grad = linear_dynamic(
+                    F.linear, device, dtype, self.np_x, self.np_weight,
+                    self.np_bias)
+                self.check_output(phi_out, pd_out, "phi_out")
+                self.check_output(phi_x_grad, pd_x_grad, "x_grad")
+                self.check_output(phi_weight_grad, pd_weight_grad,
+                                  "weight_grad")
+                self.check_output(phi_bias_grad, pd_bias_grad, "bias_grad")
 
     def test_dynamic(self):
         with _test_eager_guard():

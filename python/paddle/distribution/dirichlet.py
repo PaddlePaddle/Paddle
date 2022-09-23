@@ -13,43 +13,42 @@
 # limitations under the License.
 
 import paddle
+from paddle.distribution import exponential_family
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.layer_helper import LayerHelper
 
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.layer_helper import LayerHelper
-from .exponential_family import ExponentialFamily
 
-
-class Dirichlet(ExponentialFamily):
+class Dirichlet(exponential_family.ExponentialFamily):
     r"""
     Dirichlet distribution with parameter "concentration".
 
-    The Dirichlet distribution is defined over the `(k-1)-simplex` using a 
+    The Dirichlet distribution is defined over the `(k-1)-simplex` using a
     positive, lenght-k vector concentration(`k > 1`).
     The Dirichlet is identically the Beta distribution when `k = 2`.
 
-    For independent and identically distributed continuous random variable 
-    :math:`\boldsymbol X \in R_k` , and support 
-    :math:`\boldsymbol X \in (0,1), ||\boldsymbol X|| = 1` , 
+    For independent and identically distributed continuous random variable
+    :math:`\boldsymbol X \in R_k` , and support
+    :math:`\boldsymbol X \in (0,1), ||\boldsymbol X|| = 1` ,
     The probability density function (pdf) is
 
     .. math::
-    
-        f(\boldsymbol X; \boldsymbol \alpha) = \frac{1}{B(\boldsymbol \alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1} 
 
-    where :math:`\boldsymbol \alpha = {\alpha_1,...,\alpha_k}, k \ge 2` is 
+        f(\boldsymbol X; \boldsymbol \alpha) = \frac{1}{B(\boldsymbol \alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1}
+
+    where :math:`\boldsymbol \alpha = {\alpha_1,...,\alpha_k}, k \ge 2` is
     parameter, the normalizing constant is the multivariate beta function.
 
     .. math::
 
         B(\boldsymbol \alpha) = \frac{\prod_{i=1}^{k} \Gamma(\alpha_i)}{\Gamma(\alpha_0)}
 
-    :math:`\alpha_0=\sum_{i=1}^{k} \alpha_i` is the sum of parameters, 
+    :math:`\alpha_0=\sum_{i=1}^{k} \alpha_i` is the sum of parameters,
     :math:`\Gamma(\alpha)` is gamma function.
 
     Args:
-        concentration (Tensor): "Concentration" parameter of dirichlet 
-            distribution, also called :math:`\alpha`. When it's over one 
+        concentration (Tensor): "Concentration" parameter of dirichlet
+            distribution, also called :math:`\alpha`. When it's over one
             dimension, the last axis denotes the parameter of distribution,
             ``event_shape=concentration.shape[-1:]`` , axes other than last are
             condsider batch dimensions with ``batch_shape=concentration.shape[:-1]`` .
@@ -126,8 +125,8 @@ class Dirichlet(ExponentialFamily):
         Args:
             value (Tensor): Value to be evaluated.
         """
-        return ((paddle.log(value) * (self.concentration - 1.0)
-                 ).sum(-1) + paddle.lgamma(self.concentration.sum(-1)) -
+        return ((paddle.log(value) * (self.concentration - 1.0)).sum(-1) +
+                paddle.lgamma(self.concentration.sum(-1)) -
                 paddle.lgamma(self.concentration).sum(-1))
 
     def entropy(self):
@@ -140,9 +139,9 @@ class Dirichlet(ExponentialFamily):
         k = self.concentration.shape[-1]
         return (paddle.lgamma(self.concentration).sum(-1) -
                 paddle.lgamma(concentration0) -
-                (k - concentration0) * paddle.digamma(concentration0) - (
-                    (self.concentration - 1.0
-                     ) * paddle.digamma(self.concentration)).sum(-1))
+                (k - concentration0) * paddle.digamma(concentration0) -
+                ((self.concentration - 1.0) *
+                 paddle.digamma(self.concentration)).sum(-1))
 
     @property
     def _natural_parameters(self):
@@ -160,14 +159,14 @@ def _dirichlet(concentration, name=None):
 
     if in_dygraph_mode():
         return paddle._C_ops.dirichlet(concentration)
-
+    elif _in_legacy_dygraph():
+        return paddle._legacy_C_ops.dirichlet(concentration)
     else:
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(
             dtype=concentration.dtype)
-        helper.append_op(
-            type=op_type,
-            inputs={"Alpha": concentration},
-            outputs={'Out': out},
-            attrs={})
+        helper.append_op(type=op_type,
+                         inputs={"Alpha": concentration},
+                         outputs={'Out': out},
+                         attrs={})
         return out

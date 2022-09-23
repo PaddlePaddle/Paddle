@@ -16,6 +16,7 @@
 
 #include <thrust/execution_policy.h>
 #include <thrust/reduce.h>
+
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -94,15 +95,14 @@ void AccuracyRawKernel(const Context& dev_ctx,
     return;
   }
 
-  AccuracyCudaKernel<
-      PADDLE_CUDA_NUM_THREADS><<<1, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-      num_samples,
-      infer_width,
-      indices_data,
-      label_data,
-      correct_data,
-      accuracy_data,
-      total_data);
+  AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS>
+      <<<1, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(num_samples,
+                                                  infer_width,
+                                                  indices_data,
+                                                  label_data,
+                                                  correct_data,
+                                                  accuracy_data,
+                                                  total_data);
 }
 }  // namespace phi
 
@@ -114,4 +114,7 @@ PD_REGISTER_KERNEL(accuracy,
                    phi::AccuracyRawKernel,
                    phi::dtype::float16,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->InputAt(2).SetDataType(phi::DataType::INT64);
+}

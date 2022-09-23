@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -27,6 +28,7 @@ SEED = 2021
 
 
 class TestReshape2(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "reshape2"
@@ -56,6 +58,7 @@ class TestReshape2(OpTest):
 
 
 class TestReshape2_case2(TestReshape2):
+
     def init_data(self):
         self.ori_shape = (2, 100)
         self.new_shape = (-1, 10)
@@ -63,6 +66,7 @@ class TestReshape2_case2(TestReshape2):
 
 
 class TestReshape2_case3(TestReshape2):
+
     def init_data(self):
         self.ori_shape = (100, 5, 6)
         self.new_shape = (-1, 0, 3)

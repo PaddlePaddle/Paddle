@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -104,36 +105,33 @@ $$
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    momentum, ops::MomentumOp, ops::MomentumOpMaker,
+    momentum,
+    ops::MomentumOp,
+    ops::MomentumOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::MomentumOpInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    momentum, ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_VERSION(momentum)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(momentum).AddCheckpoint(
+    R"ROC(
       Upgrade momentum add 4 attributes [regularization_method, regularization_coeff,
       multi_precision, rescale_grad].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewInput("MasterParam", "FP32 master weight for AMP.")
-            .NewOutput("MasterParamOut",
-                       "The updated FP32 master weight for AMP. "
-                       "It shared memory with Input(MasterParam).")
-            .NewAttr("regularization_method",
-                     "(string) regularization_method, right now only support "
-                     "l2decay or none",
-                     std::string(""))
-            .NewAttr("regularization_coeff", "(float) regularization_coeff",
-                     0.0f)
-            .NewAttr(
-                "multi_precision",
-                "(bool) Whether to use multi-precision during weight updating.",
-                false)
-            .NewAttr("rescale_grad",
-                     "(float) Multiply the gradient with `rescale_grad`"
-                     "before updating. Often choose to be `1.0/batch_size`.",
-                     1.0f));
+    paddle::framework::compatible::OpVersionDesc()
+        .NewInput("MasterParam", "FP32 master weight for AMP.")
+        .NewOutput("MasterParamOut",
+                   "The updated FP32 master weight for AMP. "
+                   "It shared memory with Input(MasterParam).")
+        .NewAttr("regularization_method",
+                 "(string) regularization_method, right now only support "
+                 "l2decay or none",
+                 std::string(""))
+        .NewAttr("regularization_coeff", "(float) regularization_coeff", 0.0f)
+        .NewAttr(
+            "multi_precision",
+            "(bool) Whether to use multi-precision during weight updating.",
+            false)
+        .NewAttr("rescale_grad",
+                 "(float) Multiply the gradient with `rescale_grad`"
+                 "before updating. Often choose to be `1.0/batch_size`.",
+                 1.0f));

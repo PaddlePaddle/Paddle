@@ -18,6 +18,7 @@
 #include <NvInferRuntime.h>
 #include <NvInferRuntimeCommon.h>
 #include <glog/logging.h>
+
 #include "paddle/phi/backends/dynload/tensorrt.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
@@ -33,19 +34,21 @@ namespace tensorrt {
 static nvinfer1::IBuilder* createInferBuilder(
     nvinfer1::ILogger& logger) {  // NOLINT
   return static_cast<nvinfer1::IBuilder*>(
-      phi::dynload::createInferBuilder_INTERNAL(&logger, NV_TENSORRT_VERSION));
+      ::phi::dynload::createInferBuilder_INTERNAL(&logger,
+                                                  NV_TENSORRT_VERSION));
 }
 static nvinfer1::IRuntime* createInferRuntime(
     nvinfer1::ILogger& logger) {  // NOLINT
   return static_cast<nvinfer1::IRuntime*>(
-      phi::dynload::createInferRuntime_INTERNAL(&logger, NV_TENSORRT_VERSION));
+      ::phi::dynload::createInferRuntime_INTERNAL(&logger,
+                                                  NV_TENSORRT_VERSION));
 }
 
 TrtEngine::TrtEngine(int device_id) : device_id_(device_id) {
   FreshDeviceId();
   logger_.reset(new TrtLogger());
   builder_.reset(createInferBuilder(logger_->GetTrtLogger()));
-  phi::dynload::initLibNvInferPlugins(&logger_->GetTrtLogger(), "");
+  ::phi::dynload::initLibNvInferPlugins(&logger_->GetTrtLogger(), "");
 }
 
 nvinfer1::IBuilder* TrtEngine::GetTrtBuilder() {
@@ -208,11 +211,15 @@ bool TrtEngine::SetupNetworkAndConfig(const BuildOptions& build,
     case PrecisionConstraints::kNONE:
       // It's the default for TensorRT.
       break;
+#if IS_TRT_VERSION_GE(8200)
     case PrecisionConstraints::kOBEY:
       config.setFlag(BuilderFlag::kOBEY_PRECISION_CONSTRAINTS);
       break;
     case PrecisionConstraints::kPREFER:
       config.setFlag(BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
+      break;
+#endif  // IS_TRT_VERSION_GE(8200)
+    default:
       break;
   }
 
@@ -237,11 +244,11 @@ bool TrtEngine::SetupNetworkAndConfig(const BuildOptions& build,
 }
 
 void TrtEngine::PrepareOutputHandle(const std::string& out_name) {
-  phi::DenseTensor t;
+  ::phi::DenseTensor t;
   outputs_.emplace(out_name, t);
 }
 
-phi::DenseTensor* TrtEngine::GetOutput(const std::string& name) {
+::phi::DenseTensor* TrtEngine::GetOutput(const std::string& name) {
   return &outputs_[name];
 }
 
@@ -249,7 +256,7 @@ size_t TrtEngine::GetOutputNum() const { return outputs_.size(); }
 
 bool TrtEngine::SetUpInference(
     const InferenceOptions& inference,
-    const std::unordered_map<std::string, phi::DenseTensor*>& inputs) {
+    const std::unordered_map<std::string, ::phi::DenseTensor*>& inputs) {
   // TODO(wilber): now only create one exec_context
   FreshDeviceId();
   CHECK(engine_ != nullptr);
@@ -272,7 +279,7 @@ bool TrtEngine::SetUpInference(
   return true;
 }
 
-void TrtEngine::Run(const phi::GPUContext& ctx) {
+void TrtEngine::Run(const ::phi::GPUContext& ctx) {
   if (is_dynamic_shape_) {
     DynamicRun(ctx);
   } else {
@@ -280,7 +287,7 @@ void TrtEngine::Run(const phi::GPUContext& ctx) {
   }
 }
 
-void TrtEngine::StaticRun(const phi::GPUContext& ctx) {
+void TrtEngine::StaticRun(const ::phi::GPUContext& ctx) {
   const int num_bindings = engine_->getNbBindings();
   std::vector<void*> buffers(num_bindings, nullptr);
 
@@ -291,7 +298,8 @@ void TrtEngine::StaticRun(const phi::GPUContext& ctx) {
     buffers[bind_index] =
         const_cast<void*>(static_cast<const void*>(bind.buffer->data<float>()));
     if (runtime_batch != -1) {
-      CHECK_EQ(runtime_batch, phi::vectorize<int64_t>(bind.buffer->dims())[0]);
+      CHECK_EQ(runtime_batch,
+               ::phi::vectorize<int64_t>(bind.buffer->dims())[0]);
     }
     runtime_batch = bind.buffer->dims()[0];
   }
@@ -306,7 +314,7 @@ void TrtEngine::StaticRun(const phi::GPUContext& ctx) {
     for (int i = 0; i < dims.nbDims; ++i) {
       ddim.push_back(dims.d[i]);
     }
-    bind.buffer->Resize(phi::make_ddim(ddim));
+    bind.buffer->Resize(::phi::make_ddim(ddim));
     // TODO(wilber): now only support float output.
     ctx.Alloc<float>(bind.buffer, sizeof(float) * bind.buffer->numel());
     buffers[bind_index] = static_cast<void*>(bind.buffer->data<float>());
@@ -316,7 +324,7 @@ void TrtEngine::StaticRun(const phi::GPUContext& ctx) {
       runtime_batch, buffers.data(), ctx.stream(), nullptr);
 }
 
-void TrtEngine::DynamicRun(const phi::GPUContext& ctx) {
+void TrtEngine::DynamicRun(const ::phi::GPUContext& ctx) {
   const int num_bindings = engine_->getNbBindings();
   std::vector<void*> buffers(num_bindings, nullptr);
 
@@ -344,7 +352,7 @@ void TrtEngine::DynamicRun(const phi::GPUContext& ctx) {
     for (int i = 0; i < dims.nbDims; ++i) {
       ddim[i] = dims.d[i];
     }
-    bind.buffer->Resize(phi::make_ddim(ddim));
+    bind.buffer->Resize(::phi::make_ddim(ddim));
     ctx.Alloc<float>(bind.buffer, sizeof(float) * bind.buffer->numel());
     buffers[bind_index] = static_cast<void*>(bind.buffer->data<float>());
   }
@@ -356,7 +364,7 @@ void TrtEngine::FreshDeviceId() {
   int count;
   cudaGetDeviceCount(&count);
   CHECK_LT(device_id_, count);
-  phi::backends::gpu::SetDeviceId(device_id_);
+  ::phi::backends::gpu::SetDeviceId(device_id_);
 }
 
 void TrtEngine::GetEngineInfo() {

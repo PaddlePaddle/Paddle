@@ -53,6 +53,7 @@ DEFAULT_DEVICE = 'cpu'
 
 
 def delete_optimizer_pass(program, config):
+
     def _delete_optimizer_op_and_vars(_program, optimize_ops):
         optimize_vars = []
         optimize_op_role_vars = []
@@ -77,15 +78,14 @@ def delete_optimizer_pass(program, config):
 
     def _add_lr_var(main_program, compiled_config):
         # Todo: hard code for pe
-        lr_var = compiled_config.origin_main_program.global_block().vars[
-            "learning_rate_0"]
-        main_program.global_block().create_var(
-            name=lr_var.name,
-            shape=lr_var.shape,
-            dtype=lr_var.dtype,
-            type=lr_var.type,
-            lod_level=lr_var.lod_level,
-            persistable=True)
+        lr_var = compiled_config.origin_main_program.global_block(
+        ).vars["learning_rate_0"]
+        main_program.global_block().create_var(name=lr_var.name,
+                                               shape=lr_var.shape,
+                                               dtype=lr_var.dtype,
+                                               type=lr_var.type,
+                                               lod_level=lr_var.lod_level,
+                                               persistable=True)
 
     optimizer_ops = _get_optimize_ops(program)
     lr_ops = _get_lr_ops(program)
@@ -126,14 +126,15 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
         for op in _program.global_block().ops:
             if op.type in SPARSE_GRAD_OP_TYPE_DICT.keys():
                 param_name = op.input(SPARSE_GRAD_OP_TYPE_DICT[op.type])[0]
-                if param_name in pull_sparse_ids and op.input("Ids")[
-                        0] in pull_sparse_ids[param_name]:
+                if param_name in pull_sparse_ids and op.input(
+                        "Ids")[0] in pull_sparse_ids[param_name]:
                     ops = push_sparse_ops.get(param_name, [])
                     ops.append(op)
                     push_sparse_ops[param_name] = ops
         return pull_sparse_ops, push_sparse_ops
 
     def _pull_sparse_fuse(_program, pull_sparse_ops, use_ps_gpu):
+
         def dag_check_up_and_reorder(program, inputs, outputs):
             global_block = program.global_block()
             min_output_index = len(global_block.ops)
@@ -293,12 +294,14 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                 if use_ps_gpu:
                     program.global_block()._insert_op(
                         index=distributed_idx,
-                        type="pull_box_sparse",
-                        inputs={"Ids": inputs,
-                                'W': w},
+                        type="pull_gpups_sparse",
+                        inputs={
+                            "Ids": inputs,
+                            'W': w
+                        },
                         outputs={"Out": outputs},
                         attrs={
-                            "size": w.shape[1],
+                            "size": [w.shape[1] for i in inputs],
                             "is_distributed": True,
                             "is_sparse": True
                         })
@@ -306,8 +309,10 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     program.global_block()._insert_op(
                         index=distributed_idx,
                         type="distributed_lookup_table",
-                        inputs={"Ids": inputs,
-                                'W': w},
+                        inputs={
+                            "Ids": inputs,
+                            'W': w
+                        },
                         outputs={"Outputs": outputs},
                         attrs={
                             "is_distributed": is_distributed,
@@ -323,8 +328,10 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     program.global_block()._insert_op(
                         index=distributed_idx,
                         type="distributed_lookup_table",
-                        inputs={"Ids": [inputs[i]],
-                                'W': w},
+                        inputs={
+                            "Ids": [inputs[i]],
+                            'W': w
+                        },
                         outputs={"Outputs": [outputs[i]]},
                         attrs={
                             "is_distributed": is_distributed,
@@ -419,6 +426,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             for idx in op_idxs[::-1]:
                 program.global_block()._remove_op(idx)
 
+
 #            if use_ps_gpu:
 #                program.global_block().append_op(
 #                    type="push_box_sparse",
@@ -431,22 +439,22 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
 #                        "is_sparse": True
 #                    })
 #            else:
-            program.global_block().append_op(
-                type="distributed_push_sparse",
-                inputs={
-                    "Ids": inputs,
-                    'W': w,
-                    "Outputs": outputs,
-                    "Shows": show,
-                    "Clicks": clk
-                },
-                outputs={"Outputs": outputs},
-                attrs={
-                    "is_distributed": is_distributed,
-                    "padding_idx": padding_idx,
-                    "table_id": table_id,
-                    "size": emb_size[param]
-                })
+            program.global_block().append_op(type="distributed_push_sparse",
+                                             inputs={
+                                                 "Ids": inputs,
+                                                 'W': w,
+                                                 "Outputs": outputs,
+                                                 "Shows": show,
+                                                 "Clicks": clk
+                                             },
+                                             outputs={"Outputs": outputs},
+                                             attrs={
+                                                 "is_distributed":
+                                                 is_distributed,
+                                                 "padding_idx": padding_idx,
+                                                 "table_id": table_id,
+                                                 "size": emb_size[param]
+                                             })
 
     pull_sparse_ops, push_sparse_ops = _get_pull_sparse_ops(program)
     _pull_sparse_fuse(program, pull_sparse_ops, use_ps_gpu)
@@ -473,29 +481,33 @@ def append_send_ops_pass(program, config):
             dummy_output = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
 
-        program.global_block().append_op(
-            type="send",
-            inputs={"X": send_input_vars},
-            outputs={"Out": dummy_output},
-            attrs={
-                "send_varnames": [queue],
-                "is_sparse": is_sparse,
-                "table_id": table_id,
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        program.global_block().append_op(type="send",
+                                         inputs={"X": send_input_vars},
+                                         outputs={"Out": dummy_output},
+                                         attrs={
+                                             "send_varnames": [queue],
+                                             "is_sparse":
+                                             is_sparse,
+                                             "table_id":
+                                             table_id,
+                                             RPC_OP_ROLE_ATTR_NAME:
+                                             RPC_OP_ROLE_ATTR_VALUE
+                                         })
 
         return dummy_output
 
     def _append_barrier_op(dummys):
-        program.global_block().append_op(
-            type="send_barrier",
-            inputs={"X": dummys},
-            outputs={"Out": []},
-            attrs={
-                "trainer_id": trainer_id,
-                "half_async": True,
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        program.global_block().append_op(type="send_barrier",
+                                         inputs={"X": dummys},
+                                         outputs={"Out": []},
+                                         attrs={
+                                             "trainer_id":
+                                             trainer_id,
+                                             "half_async":
+                                             True,
+                                             RPC_OP_ROLE_ATTR_NAME:
+                                             RPC_OP_ROLE_ATTR_VALUE
+                                         })
 
     dummys = []
 
@@ -525,15 +537,17 @@ def init_from_server_pass(program, config):
     fetch_barrier_out = program.global_block().create_var(
         name=framework.generate_control_dev_var_name())
 
-    program.global_block().append_op(
-        type="fetch_barrier",
-        inputs={},
-        outputs={"Out": fetch_barrier_out},
-        attrs={
-            "endpoints": config.get_ps_endpoints(),
-            "trainer_id": config.get_role_id(),
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-        })
+    program.global_block().append_op(type="fetch_barrier",
+                                     inputs={},
+                                     outputs={"Out": fetch_barrier_out},
+                                     attrs={
+                                         "endpoints":
+                                         config.get_ps_endpoints(),
+                                         "trainer_id":
+                                         config.get_role_id(),
+                                         RPC_OP_ROLE_ATTR_NAME:
+                                         RPC_OP_ROLE_ATTR_VALUE
+                                     })
     return program
 
 
@@ -555,8 +569,8 @@ def fake_init_ops_pass(program, config):
                     table_param_init_op.append(op)
             init_op_num = len(table_param_init_op)
             if init_op_num != 1:
-                raise ValueError("table init op num should be 1, now is " + str(
-                    init_op_num))
+                raise ValueError("table init op num should be 1, now is " +
+                                 str(init_op_num))
             table_init_op = table_param_init_op[0]
             program.global_block().append_op(
                 type="fake_init",
@@ -572,11 +586,12 @@ def fake_init_ops_pass(program, config):
 
 
 def ps_gpu_pass(program):
+
     def _add_push_box_sparse_op(program):
         op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
         backward = core.op_proto_and_checker_maker.OpRole.Backward
         for op in program.global_block().ops:
-            if op.type != "pull_box_sparse":
+            if op.type != "pull_box_sparse" and op.type != "pull_gpups_sparse":
                 continue
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(set()), [])
@@ -599,7 +614,7 @@ def ps_gpu_pass(program):
                     lookup_table_grad_var[name] = 1
 
         for idx, op in list(enumerate(program.global_block().ops)):
-            if op.type == "pull_box_sparse":
+            if op.type == "pull_box_sparse" or op.type == "pull_gpups_sparse":
                 continue
             for key_name in op.input_names:
                 for var in op.input(key_name):
@@ -744,10 +759,8 @@ def find_heter_ops(program, default_device="cpu"):
                     op_list = list(block.ops)
                     sum_op = op_list[var2idx[param_name]]
                     sum_op_inputs = {
-                        sum_op.input_names[0]: [
-                            block.vars[input]
-                            for input in sum_op.input_arg_names
-                        ]
+                        sum_op.input_names[0]:
+                        [block.vars[input] for input in sum_op.input_arg_names]
                     }
                     sum_op_outputs = {
                         sum_op.output_names[0]: [
@@ -755,12 +768,11 @@ def find_heter_ops(program, default_device="cpu"):
                             for output in sum_op.output_arg_names
                         ]
                     }
-                    block._insert_op(
-                        index=i + 1,
-                        type=sum_op.type,
-                        inputs=sum_op_inputs,
-                        outputs=sum_op_outputs,
-                        attrs=sum_op.all_attrs())
+                    block._insert_op(index=i + 1,
+                                     type=sum_op.type,
+                                     inputs=sum_op_inputs,
+                                     outputs=sum_op_outputs,
+                                     attrs=sum_op.all_attrs())
                     block._remove_op(var2idx[param_name] + 1)
                     var2idx.pop(param_name)
                     for var_ in var2idx:
@@ -782,7 +794,7 @@ def find_heter_ops(program, default_device="cpu"):
                     if no_grad_var in var2idx:
                         """
                        insert sum op & remove sum op from var2idx and origin place
-  
+
                        """
                         op_list = list(block.ops)
                         sum_op = op_list[var2idx[no_grad_var]]
@@ -798,12 +810,11 @@ def find_heter_ops(program, default_device="cpu"):
                                 for output in sum_op.output_arg_names
                             ]
                         }
-                        block._insert_op(
-                            index=i + 1,
-                            type=sum_op.type,
-                            inputs=sum_op_inputs,
-                            outputs=sum_op_outputs,
-                            attrs=sum_op.all_attrs())
+                        block._insert_op(index=i + 1,
+                                         type=sum_op.type,
+                                         inputs=sum_op_inputs,
+                                         outputs=sum_op_outputs,
+                                         attrs=sum_op.all_attrs())
                         block._remove_op(var2idx[no_grad_var] + 1)
                         var2idx.pop(no_grad_var)
                         for var_ in var2idx:
@@ -818,8 +829,8 @@ def find_heter_ops(program, default_device="cpu"):
                         forward_op_type = pre_op.type.split("_grad")[0]
                         if forward_op_type in SPARSE_OP_TYPE_DICT.keys() \
                             and pre_op.attr('remote_prefetch') is True:
-                            param_name = pre_op.input(SPARSE_OP_TYPE_DICT[
-                                forward_op_type])[0]
+                            param_name = pre_op.input(
+                                SPARSE_OP_TYPE_DICT[forward_op_type])[0]
                             if param_name == origin_var and op.attr(
                                     "op_device") == pre_op.attr("op_device"):
                                 continue
@@ -919,7 +930,8 @@ def find_heter_ops(program, default_device="cpu"):
     if len(heter_ops) == 0:
         warnings.warn(
             "No heterogeneous OP was found in your program , "
-            " please using fluid.device_guard() to run OPs on different device.")
+            " please using fluid.device_guard() to run OPs on different device."
+        )
 
     total_heter_ops = 0
     heter_blocks = 0
@@ -929,8 +941,8 @@ def find_heter_ops(program, default_device="cpu"):
         for _, heter_block in heter_block_dict.items():
             total_heter_ops += len(heter_block)
     print(
-        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".
-        format(len(block.ops), total_heter_ops, heter_blocks))
+        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks."
+        .format(len(block.ops), total_heter_ops, heter_blocks))
 
     return origin_porgram, heter_ops, default_ops, program_block_ops
 
@@ -984,25 +996,27 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
         for _, op in enumerate(heter_block_ops_backward):
             block_append_op(heter_program, program, heter_block_bp, op)
 
-        bp_entrance_vars = block_var_detail[stage_id - 1]["backward"][
-            "entrance"]
+        bp_entrance_vars = block_var_detail[stage_id -
+                                            1]["backward"]["entrance"]
         add_vars_by_var_list(bp_entrance_vars, program, heter_program,
                              heter_block_bp)
         bp_exit_vars = block_var_detail[stage_id - 1]["backward"]["exit"]
         add_vars_by_var_list(bp_exit_vars, program, heter_program,
                              heter_block_bp)
-        backward_comm_info = get_communicate_var_info(
-            program, stage_id, bp_entrance_vars, type="backward")
+        backward_comm_info = get_communicate_var_info(program,
+                                                      stage_id,
+                                                      bp_entrance_vars,
+                                                      type="backward")
 
-        grad_to_block_id.append(backward_comm_info["block_input_var_name"] + ":"
-                                + str(heter_block_bp.idx))
+        grad_to_block_id.append(backward_comm_info["block_input_var_name"] +
+                                ":" + str(heter_block_bp.idx))
 
     else:
         for _, op in enumerate(heter_block_ops_backward):
             block_append_op(heter_program, program, heter_block, op)
 
-        bp_entrance_vars = block_var_detail[stage_id - 1]["backward"][
-            "entrance"]
+        bp_entrance_vars = block_var_detail[stage_id -
+                                            1]["backward"]["entrance"]
         add_vars_by_var_list(bp_entrance_vars, program, heter_program,
                              heter_block)
         bp_exit_vars = block_var_detail[stage_id - 1]["backward"]["exit"]
@@ -1010,8 +1024,10 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
 
         heter_block_bp = heter_block
 
-    forward_comm_info = get_communicate_var_info(
-        program, stage_id, entrance_vars, type="forward")
+    forward_comm_info = get_communicate_var_info(program,
+                                                 stage_id,
+                                                 entrance_vars,
+                                                 type="forward")
 
     grad_to_block_id.append(forward_comm_info["block_input_var_name"] + ":" +
                             str(heter_block.idx))
@@ -1022,13 +1038,15 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
         static_var = insert_communicate_op(program, config, heter_block,
                                            stage_id, first_op_index_fp,
                                            block_var_detail, current_device)
-    static_var_bp = insert_communicate_op(
-        program, config, heter_block_bp, stage_id, first_op_index_bp,
-        block_var_detail, current_device, False)
+    static_var_bp = insert_communicate_op(program, config, heter_block_bp,
+                                          stage_id, first_op_index_bp,
+                                          block_var_detail, current_device,
+                                          False)
 
     # add send op
-    send_grad_var_list = add_heter_send_op(
-        program, heter_program, heter_block_bp, block_var_detail[stage_id - 1])
+    send_grad_var_list = add_heter_send_op(program, heter_program,
+                                           heter_block_bp,
+                                           block_var_detail[stage_id - 1])
 
     # ---------------
     # add step conter
@@ -1063,8 +1081,10 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
     }
     # append the listen_and_serv op
-    heter_program.global_block().append_op(
-        type="heter_listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs)
+    heter_program.global_block().append_op(type="heter_listen_and_serv",
+                                           inputs={'X': []},
+                                           outputs={},
+                                           attrs=attrs)
     check_heter_compile_time_strategy(program, config, send_grad_var_list)
 
 
@@ -1098,8 +1118,9 @@ def create_trainer_program(program, origin_program, config,
     for heter_block_index in range(1, len(program_block_ops_list)):
         ops_list = program_block_ops_list[heter_block_index][
             "forward"] + program_block_ops_list[heter_block_index]["backward"]
-        static_var += replace_ops_by_communicate_op(
-            program, config, heter_block_index, ops_list, block_var_detail)
+        static_var += replace_ops_by_communicate_op(program, config,
+                                                    heter_block_index, ops_list,
+                                                    block_var_detail)
         remove_trainer_send_op(program, config, heter_block_index,
                                block_var_detail)
 
@@ -1113,8 +1134,10 @@ def create_trainer_program(program, origin_program, config,
                                            bp_ops_list, block_var_detail)
 
     bp_entrance_vars = block_var_detail[0]["backward"]["entrance"]
-    backward_comm_info = get_communicate_var_info(
-        origin_program, 1, bp_entrance_vars, type="backward")
+    backward_comm_info = get_communicate_var_info(origin_program,
+                                                  1,
+                                                  bp_entrance_vars,
+                                                  type="backward")
 
     grad_to_block_id.append(backward_comm_info["block_input_var_name"] + ":" +
                             str(backward_block.idx))
@@ -1135,12 +1158,11 @@ def create_trainer_program(program, origin_program, config,
         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
     }
     # append the listen_and_serv op
-    program.global_block()._insert_op(
-        index=0,
-        type="heter_listen_and_serv",
-        inputs={'X': []},
-        outputs={},
-        attrs=attrs)
+    program.global_block()._insert_op(index=0,
+                                      type="heter_listen_and_serv",
+                                      inputs={'X': []},
+                                      outputs={},
+                                      attrs=attrs)
 
     ## TODO add check for bp block
     check_op_device(program.global_block(), DEFAULT_DEVICE)
@@ -1171,22 +1193,24 @@ def insert_communicate_op(orign_program,
         comm_info = get_communicate_var_info(orign_program, stage_id - 1,
                                              entrance_var, "backward")
 
-    heter_block._insert_op(
-        index=first_op_index,
-        type="send_and_recv",
-        inputs={"X": heter_block.vars[entrance_var[0]]},
-        outputs={"Out": []},
-        attrs={
-            "mode": "forward" if is_forward else "backward",
-            "send_var_name": entrance_var + ["microbatch_id"],
-            "recv_var_name": [],
-            "message_name": comm_info["block_input_var_name"],
-            "next_endpoints": next_heter_worker_endpoints,
-            "previous_endpoints": previous_heter_worker_endpoints,
-            "trainer_id": config.get_role_id(),
-            "op_device": device,
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-        })
+    heter_block._insert_op(index=first_op_index,
+                           type="send_and_recv",
+                           inputs={"X": heter_block.vars[entrance_var[0]]},
+                           outputs={"Out": []},
+                           attrs={
+                               "mode": "forward" if is_forward else "backward",
+                               "send_var_name":
+                               entrance_var + ["microbatch_id"],
+                               "recv_var_name": [],
+                               "message_name":
+                               comm_info["block_input_var_name"],
+                               "next_endpoints": next_heter_worker_endpoints,
+                               "previous_endpoints":
+                               previous_heter_worker_endpoints,
+                               "trainer_id": config.get_role_id(),
+                               "op_device": device,
+                               RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                           })
 
     return entrance_var
 
@@ -1269,8 +1293,8 @@ def remove_trainer_send_op(program, config, heter_block_index,
     need_remove_send_op = []
     need_remove_grad_var = []
     for op in find_send_op(program):
-        input_list, _ = find_op_input_output(program,
-                                             program.global_block(), op)
+        input_list, _ = find_op_input_output(program, program.global_block(),
+                                             op)
         for var_name in input_list:
             origin_var_name = var_name.split("@GRAD")[0]
             if origin_var_name in persistables:
@@ -1283,6 +1307,7 @@ def remove_trainer_send_op(program, config, heter_block_index,
 
 
 def add_heter_send_op(program, heter_program, block, block_var_detail):
+
     def _get_send_op_dict():
         send_op_dict = {}
         send_op_list = find_send_op(program)
@@ -1328,16 +1353,16 @@ def add_heter_send_op(program, heter_program, block, block_var_detail):
             block.vars[union_var]
             for union_var in table_dict[table_id]['var_list']
         ]
-        block.append_op(
-            type="send",
-            inputs={"X": send_input_vars},
-            outputs={"Out": dummy_output},
-            attrs={
-                "send_varnames": table_dict[table_id]['send_varnames'],
-                "is_sparse": is_sparse,
-                "table_id": table_id,
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        block.append_op(type="send",
+                        inputs={"X": send_input_vars},
+                        outputs={"Out": dummy_output},
+                        attrs={
+                            "send_varnames":
+                            table_dict[table_id]['send_varnames'],
+                            "is_sparse": is_sparse,
+                            "table_id": table_id,
+                            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                        })
 
     return send_grad_var_list
 
@@ -1407,7 +1432,7 @@ def get_communicate_var_info(program,
 def union_forward_gradient_op(program_block_ops_list):
     """
     before analyzing the input & output of each block in program_block_list, we should
-    union the forward op and corresponding gradient op to elimincate the uneccessary variable
+    union the forward op and corresponding gradient op to elimincate the unnecessary variable
     transmit
     """
     """
@@ -1417,7 +1442,7 @@ def union_forward_gradient_op(program_block_ops_list):
     block_length = len(program_block_ops_list)
     '''
     ## get the final part
-    final_part_idx = -1 
+    final_part_idx = -1
     for i in range(block_length):
         op_list = program_block_ops_list[i]
         for op in op_list:
@@ -1426,7 +1451,7 @@ def union_forward_gradient_op(program_block_ops_list):
               break
         if final_part_idx != -1:
             break
-    
+
     ## eliminate wrong partition because of sum op
     ## lookup_table_v2_grad
     ## every looup_table_v2_grad op block should follow a sum op
@@ -1445,18 +1470,17 @@ def union_forward_gradient_op(program_block_ops_list):
                 if forward_op_type in SPARSE_OP_TYPE_DICT.keys() \
                     and op.attr('remote_prefetch') is True:
                     param_name = op.input(SPARSE_OP_TYPE_DICT[forward_op_type])[0]
-                    
-                    var2idx[] = [i,j] ## 
-    
+
+                    var2idx[] = [i,j] ##
+
     '''
 
     union_program_block_ops_list = []
     assert block_length % 2 != 0, "the length of program_block_ops_list should be odd"
     for i in range(0, block_length // 2):
         block_op_list = {"forward": program_block_ops_list[i]}
-        block_op_list.update({
-            "backward": program_block_ops_list[block_length - 1 - i]
-        })
+        block_op_list.update(
+            {"backward": program_block_ops_list[block_length - 1 - i]})
         union_program_block_ops_list.append(block_op_list)
 
     block_op_list = {"forward": [], "backward": []}
@@ -1474,8 +1498,9 @@ def find_block_joints(program, program_block_ops_list, heter_ops):
                                                   program_block_ops_list)
     block_var_detail = entrance_exit_check(program, program_block_ops_list,
                                            block_var_detail, heter_ops)
-    block_var_detail = delete_block_useless_exit(
-        program, program_block_ops_list, block_var_detail)
+    block_var_detail = delete_block_useless_exit(program,
+                                                 program_block_ops_list,
+                                                 block_var_detail)
 
     return block_var_detail
 
@@ -1506,8 +1531,8 @@ def find_entrance_exit_private(program, program_block_ops_list):
         bp_block_input, bp_block_output = find_ops_list_input_output(
             program, block_op_list["backward"])
         bp_persistables = screen_persistables(
-            program, bp_block_input) + screen_persistables(program,
-                                                           bp_block_output)
+            program, bp_block_input) + screen_persistables(
+                program, bp_block_output)
         # find entrance & exit
         bp_block_private_vars = list(set(bp_block_input) & set(bp_block_output))
         bp_block_entrance = list(
@@ -1555,10 +1580,10 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
         #need_add_vars = find_need_var_from_previous_block(
         #    need_add_vars, block_var_detail, index, heter_ops)
 
-        previous_block_private = block_var_detail[index - 1]["forward"][
-            "private"]
-        previous_block_entrance = block_var_detail[index - 1]["forward"][
-            "entrance"]
+        previous_block_private = block_var_detail[index -
+                                                  1]["forward"]["private"]
+        previous_block_entrance = block_var_detail[index -
+                                                   1]["forward"]["entrance"]
         for var in need_add_vars:
             if var not in previous_block_private and var not in previous_block_entrance:
                 previous_block_entrance.append(var)
@@ -1584,10 +1609,10 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
                 need_ignore_vars.append(var)
         need_add_vars = list(
             set(need_add_vars).difference(set(need_ignore_vars)))
-        previous_block_private = block_var_detail[index + 1]["backward"][
-            "private"]
-        previous_block_entrance = block_var_detail[index + 1]["backward"][
-            "entrance"]
+        previous_block_private = block_var_detail[index +
+                                                  1]["backward"]["private"]
+        previous_block_entrance = block_var_detail[index +
+                                                   1]["backward"]["entrance"]
         for var in need_add_vars:
             if var not in previous_block_private and var not in previous_block_entrance:
                 previous_block_entrance.append(var)
@@ -1648,8 +1673,8 @@ def delete_block_useless_exit(program, program_block_ops_list,
         if index - 1 < 0:
             break
         current_block_exit = block_var_detail[index]["backward"]["exit"]
-        next_block_entrance = block_var_detail[index - 1]["backward"][
-            "entrance"]
+        next_block_entrance = block_var_detail[index -
+                                               1]["backward"]["entrance"]
         need_delete_var = []
         for var in current_block_exit:
             if var not in next_block_entrance:
@@ -1693,61 +1718,62 @@ def insert_reshape_op(program,
     input_var = block.vars[var_name]
 
     if new_var_name not in block.vars:
-        out = block.create_var(
-            name=new_var_name,
-            shape=new_var_shape,
-            dtype=input_var.dtype,
-            type=input_var.type)
+        out = block.create_var(name=new_var_name,
+                               shape=new_var_shape,
+                               dtype=input_var.dtype,
+                               type=input_var.type)
     else:
         out = block.vars[new_var_name]
         new_var_shape = out.shape
 
-    x_shape = block.create_var(
-        name="{}.xshape@Heter".format(var_name), dtype=input_var.dtype)
-    block._insert_op(
-        index=index,
-        type="reshape2",
-        inputs={"X": input_var},
-        attrs={'shape': new_var_shape},
-        outputs={"Out": out,
-                 "XShape": x_shape})
+    x_shape = block.create_var(name="{}.xshape@Heter".format(var_name),
+                               dtype=input_var.dtype)
+    block._insert_op(index=index,
+                     type="reshape2",
+                     inputs={"X": input_var},
+                     attrs={'shape': new_var_shape},
+                     outputs={
+                         "Out": out,
+                         "XShape": x_shape
+                     })
 
 
 def insert_send_concat_op(program, block, index, var_name_list, new_var_name,
                           new_var_shape):
     input_var_list = [block.vars[var_name] for var_name in var_name_list]
 
-    out = program.global_block().create_var(
-        name=new_var_name,
-        shape=new_var_shape,
-        dtype=input_var_list[0].dtype,
-        type=input_var_list[0].type)
+    out = program.global_block().create_var(name=new_var_name,
+                                            shape=new_var_shape,
+                                            dtype=input_var_list[0].dtype,
+                                            type=input_var_list[0].type)
 
-    block._insert_op(
-        index=index,
-        type='concat',
-        inputs={"X": input_var_list},
-        outputs={'Out': [out]},
-        attrs={'axis': -1,
-               'use_stack': False})
+    block._insert_op(index=index,
+                     type='concat',
+                     inputs={"X": input_var_list},
+                     outputs={'Out': [out]},
+                     attrs={
+                         'axis': -1,
+                         'use_stack': False
+                     })
 
 
 def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype,
                          type, new_var_name_list, new_var_shape_list):
     if var_name not in program.global_block().vars:
-        input_var = program.global_block().create_var(
-            name=var_name, shape=var_shape, dtype=dtype, type=type)
+        input_var = program.global_block().create_var(name=var_name,
+                                                      shape=var_shape,
+                                                      dtype=dtype,
+                                                      type=type)
     else:
         input_var = program.global_block().vars[var_name]
 
     out_list = []
     for i in range(len(new_var_name_list)):
         if new_var_name_list[i] not in block.vars:
-            out = block.create_var(
-                name=new_var_name_list[i],
-                shape=new_var_shape_list[i],
-                dtype=input_var.dtype,
-                type=input_var.type)
+            out = block.create_var(name=new_var_name_list[i],
+                                   shape=new_var_shape_list[i],
+                                   dtype=input_var.dtype,
+                                   type=input_var.type)
         else:
             out = block.vars[new_var_name_list[i]]
         out_list.append(out)
@@ -1764,12 +1790,11 @@ def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype,
         attrs['starts'] = starts
         attrs['ends'] = ends
 
-        block._insert_op(
-            index=index,
-            type='slice',
-            inputs={'Input': input_var},
-            attrs=attrs,
-            outputs={'Out': out_list[i]})
+        block._insert_op(index=index,
+                         type='slice',
+                         inputs={'Input': input_var},
+                         attrs=attrs,
+                         outputs={'Out': out_list[i]})
         start_index = end_index
         index += 1
 
@@ -1838,8 +1863,10 @@ def block_append_op(program, origin_program, block, op):
 
     if "_grad" not in op.type:
         # for forward op
-        return block.append_op(
-            type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
+        return block.append_op(type=op.type,
+                               inputs=inputs,
+                               outputs=outputs,
+                               attrs=op.all_attrs())
     else:
         # for grad op
         op_desc = op.desc
@@ -1865,8 +1892,8 @@ def add_vars_by_var_list(var_name_list, origin_program, program, block):
         ).vars and var_name not in block.vars:
             var = origin_program.global_block().vars[var_name]
             if var.persistable:
-                program.global_block()._clone_variable(
-                    var, force_persistable=False)
+                program.global_block()._clone_variable(var,
+                                                       force_persistable=False)
             else:
                 block._clone_variable(var, force_persistable=False)
 

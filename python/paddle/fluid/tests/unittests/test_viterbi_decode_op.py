@@ -14,10 +14,12 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 import unittest
 import paddle
+
 paddle.enable_static()
 
 
 class Decoder(object):
+
     def __init__(self, transitions, use_tag=True):
         self.transitions = transitions
         self.use_tag = use_tag
@@ -67,6 +69,7 @@ class Decoder(object):
 
 
 class TestViterbiOp(OpTest):
+
     def set_attr(self):
         self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
         self.use_tag = True
@@ -74,6 +77,7 @@ class TestViterbiOp(OpTest):
 
     def setUp(self):
         self.op_type = "viterbi_decode"
+        self.python_api = paddle.text.viterbi_decode
         self.set_attr()
         bz, length, ntags = self.bz, self.len, self.ntags
         self.input = np.random.randn(bz, length, ntags).astype(self.dtype)
@@ -86,14 +90,17 @@ class TestViterbiOp(OpTest):
             'Transition': self.trans,
             'Length': self.length
         }
-        self.attrs = {'include_bos_eos_tag': self.use_tag, }
+        self.attrs = {
+            'include_bos_eos_tag': self.use_tag,
+        }
         self.outputs = {'Scores': scores, 'Path': path}
 
     def test_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestViterbiAPI(unittest.TestCase):
+
     def set_attr(self):
         self.use_tag = True
         self.bz, self.len, self.ntags = 4, 8, 10
@@ -112,10 +119,12 @@ class TestViterbiAPI(unittest.TestCase):
     def check_static_result(self, place):
         bz, length, ntags = self.bz, self.len, self.ntags
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            Input = fluid.data(
-                name="Input", shape=[bz, length, ntags], dtype="float32")
-            Transition = fluid.data(
-                name="Transition", shape=[ntags, ntags], dtype="float32")
+            Input = fluid.data(name="Input",
+                               shape=[bz, length, ntags],
+                               dtype="float32")
+            Transition = fluid.data(name="Transition",
+                                    shape=[ntags, ntags],
+                                    dtype="float32")
             Length = fluid.data(name="Length", shape=[bz], dtype="int64")
             decoder = paddle.text.ViterbiDecoder(Transition, self.use_tag)
             score, path = decoder(Input, Length)
@@ -132,3 +141,8 @@ class TestViterbiAPI(unittest.TestCase):
     def test_static_net(self):
         for place in self.places:
             self.check_static_result(place)
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()

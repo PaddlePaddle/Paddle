@@ -24,73 +24,45 @@ template <typename T>
 class SoftplusMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
-  SoftplusMKLDNNHandler(const framework::ExecutionContext& ctx, const Tensor* x,
-                        const float beta, const dnnl::engine engine)
+  SoftplusMKLDNNHandler(const framework::ExecutionContext& ctx,
+                        const Tensor* x,
+                        const float beta,
+                        const dnnl::engine engine)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine,
                                                            ctx.GetPlace()) {
     auto x_tz = phi::vectorize(x->dims());
-    auto x_md =
-        dnnl::memory::desc(x_tz, platform::MKLDNNGetDataType<T>(), x->format());
 
     auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
-    auto beta_md = dnnl::memory::desc(beta_tz, platform::MKLDNNGetDataType<T>(),
-                                      x->format());
+    auto beta_md =
+        dnnl::memory::desc(beta_tz,
+                           platform::MKLDNNGetDataType<T>(),
+                           platform::GetPlainMKLDNNFormat(x_tz.size()));
 
     dnnl::post_ops post_ops;
-    post_ops.append_eltwise(1.0f, dnnl::algorithm::eltwise_soft_relu, 0.0f,
-                            0.0f);
+    post_ops.append_eltwise(
+        1.0f, dnnl::algorithm::eltwise_soft_relu, 0.0f, 0.0f);
     if (beta != 1.0f) {
-      post_ops.append_eltwise(1.0f, dnnl::algorithm::eltwise_linear,
-                              1.0f / beta, 0.0f);
+      post_ops.append_eltwise(
+          1.0f, dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
     }
 
-    AppendFusedActivationIfExists(ctx, &post_ops);
+    platform::AppendActivation(ctx, post_ops);
 
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
 
-    this->AcquireForwardPrimitiveDescriptor(attrs, dnnl::algorithm::binary_mul,
-                                            x_md, beta_md, x_md);
+    this->AcquireForwardPrimitiveDescriptor(attrs,
+                                            dnnl::algorithm::binary_mul,
+                                            x->mem_desc(),
+                                            beta_md,
+                                            x->mem_desc());
   }
 
   std::shared_ptr<dnnl::memory> AcquireBetaMemory(const float* beta) {
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->src1_desc(), platform::to_void_cast<float>(beta));
   }
-
- private:
-  void AppendFusedActivationIfExists(const framework::ExecutionContext& ctx,
-                                     dnnl::post_ops* post_ops) {
-    const auto& fused_activation_type =
-        algo_map.find(ctx.Attr<std::string>("fuse_activation_type"));
-
-    if (fused_activation_type != algo_map.end()) {
-      auto scale_out =
-          ctx.Attr<float>("fuse_activation_scale");  // for future int8 support
-      post_ops->append_eltwise(scale_out, fused_activation_type->second,
-                               ctx.Attr<float>("fuse_activation_alpha"),
-                               ctx.Attr<float>("fuse_activation_beta"));
-    }
-  }
-
-  static const std::unordered_map<std::string, dnnl::algorithm> algo_map;
 };
-
-template <typename T>
-const std::unordered_map<std::string, dnnl::algorithm>
-    SoftplusMKLDNNHandler<T>::algo_map = {
-        {"relu", dnnl::algorithm::eltwise_relu},
-        {"tanh", dnnl::algorithm::eltwise_tanh},
-        {"leaky_relu", dnnl::algorithm::eltwise_relu},
-        {"swish", dnnl::algorithm::eltwise_swish},
-        {"hardswish", dnnl::algorithm::eltwise_hardswish},
-        {"sqrt", dnnl::algorithm::eltwise_sqrt},
-        {"abs", dnnl::algorithm::eltwise_abs},
-        {"clip", dnnl::algorithm::eltwise_clip},
-        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-        {"sigmoid", dnnl::algorithm::eltwise_logistic}};
 
 template <typename T>
 void custom_softplus_eltwise_forward(const framework::ExecutionContext& ctx) {
@@ -129,8 +101,7 @@ void custom_softplus_eltwise_forward(const framework::ExecutionContext& ctx) {
   binary_p->execute(astream, args);
   astream.wait();
 
-  out->set_layout(framework::DataLayout::kMKLDNN);
-  out->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+  out->set_mem_desc(dst_memory_p->get_desc());
 }
 }  // namespace operators
 }  // namespace paddle

@@ -14,6 +14,7 @@
 
 #pragma once
 #include <unsupported/Eigen/SpecialFunctions>
+
 #include "paddle/phi/kernels/funcs/for_range.h"
 namespace phi {
 template <typename T>
@@ -33,8 +34,8 @@ struct LgammaGradFunctor {
 };
 template <typename T, typename Context>
 void LgammaGradKernel(const Context& dev_ctx,
-                      const DenseTensor& d_out,
                       const DenseTensor& x,
+                      const DenseTensor& d_out,
                       DenseTensor* d_x) {
   auto numel = d_out.numel();
   auto* dout_data = d_out.data<T>();

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -192,6 +193,7 @@ OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name, size_t index) {
       break;
     case 2:
       name_ = name_ + "_grad_grad";
+      break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Not support index `%d` when construct OpMetaInfoBuilder, "

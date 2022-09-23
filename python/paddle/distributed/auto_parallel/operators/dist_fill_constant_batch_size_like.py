@@ -24,13 +24,19 @@ from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from ..utils import set_dist_op_desc_original_id
 from paddle.fluid import core, unique_name
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from .dist_default import DistributedDefaultImpl0
+from ..cost import FillConstantBatchSizeLikeOpCost
+from ..cost import build_comp_desc_from_dist_op, build_dp_costs
+from ..cost import build_comp_costs_from_descs
+from paddle.distributed.auto_parallel.cost.comm_op_cost import AllreduceSumOpCost
 
 
 class DistributedFillConstantBatchSizeLike(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedFillConstantBatchSizeLike, self).__init__(op_type)
 
@@ -40,10 +46,34 @@ register_distributed_operator_impl_container(
 
 
 class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedFillConstantBatchSizeLikeImpl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Backward):
+            raise ValueError(
+                "The fill_constant_batch_size_like has no grad op.")
+        else:
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        op_type = dist_op.serial_op.type
+        cost_mapping = build_comp_costs_from_descs(
+            FillConstantBatchSizeLikeOpCost, ctx, processes, desc_mapping,
+            cluster)
+
+        res_cost = [cost_mapping]
+        return res_cost
 
     def is_input_compatible(self, dist_op):
 
@@ -65,7 +95,8 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         if (not self.is_input_compatible(dist_op)) or \
             (not self.is_output_compatible(dist_op)):
             return False
-
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         in_name = op_desc.input('Input')[0]
@@ -78,7 +109,7 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         changed = False
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
-        x_name = op_desc.input('X')[0]
+        x_name = op_desc.input('Input')[0]
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
@@ -115,7 +146,6 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
                 shape_list[idx] = shape_list[idx] // process_mesh_shape[axis]
 
         op._set_attr("shape", shape_list)
-        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

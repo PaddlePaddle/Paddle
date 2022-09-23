@@ -14,7 +14,11 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,44 +28,6 @@ using Tensor = framework::Tensor;
 class MultiplexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Ids"), "Input", "Ids", "Multiplex");
-    PADDLE_ENFORCE_NE(
-        ctx->Inputs("X").empty(), true,
-        platform::errors::InvalidArgument("MultiInput(X) shouldn't be empty."));
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Multiplex");
-    auto ids_dim = ctx->GetInputDim("Ids");
-    PADDLE_ENFORCE_EQ(
-        ids_dim.size(), 2,
-        platform::errors::PreconditionNotMet(
-            "The index tensor must be a vector with 2 dimensions"));
-    PADDLE_ENFORCE_EQ(
-        ids_dim[1], 1,
-        platform::errors::PreconditionNotMet(
-            "The index tensor must be a vector with batchSize x 1."));
-
-    auto ins_dims = ctx->GetInputsDim("X");
-    auto num_ins = ins_dims.size();
-    PADDLE_ENFORCE_GT(num_ins, 1,
-                      platform::errors::InvalidArgument(
-                          "multiplex operator should have more than "
-                          "one candidate input tensors."));
-
-    auto in_dim = ins_dims[0];
-    PADDLE_ENFORCE_GE(
-        in_dim.size(), 2,
-        platform::errors::InvalidArgument(
-            "The rank of candidate tensors must be not less than 2."));
-    for (size_t i = 1; i < num_ins; i++) {
-      auto dim = ins_dims[i];
-      PADDLE_ENFORCE_EQ(
-          in_dim, dim,
-          platform::errors::PreconditionNotMet(
-              "All the candidate tensors must have the same size."));
-    }
-    ctx->SetOutputDim("Out", in_dim);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -126,11 +92,14 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto dxs = ctx->Outputs(framework::GradVarName("X"));
-    PADDLE_ENFORCE_NE(dxs.empty(), true,
+    PADDLE_ENFORCE_NE(dxs.empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(X@Grad) should not be null."));
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "MultiplexGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "MultiplexGrad");
     auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputsDim(framework::GradVarName("X"),
                        std::vector<framework::DDim>(dxs.size(), dout_dim));
@@ -164,8 +133,14 @@ class MultiplexGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(multiplex,
+                            MultiplexInferShapeFunctor,
+                            PD_INFER_META(phi::MultiplexInferMeta));
 
-REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
+REGISTER_OPERATOR(multiplex,
+                  ops::MultiplexOp,
+                  ops::MultiplexOpMaker,
                   ops::MultiplexGradMaker<paddle::framework::OpDesc>,
-                  ops::MultiplexGradMaker<paddle::imperative::OpBase>);
+                  ops::MultiplexGradMaker<paddle::imperative::OpBase>,
+                  MultiplexInferShapeFunctor);
 REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);

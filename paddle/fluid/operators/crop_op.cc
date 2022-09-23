@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/crop_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -33,12 +34,14 @@ class CropOp : public framework::OperatorWithKernel {
     if (!ctx->HasInput("Y")) {
       auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
-          int64_t(shape.size()), x_dim.size(),
+          int64_t(shape.size()),
+          x_dim.size(),
           platform::errors::InvalidArgument(
               "The number of elements (%d) of CropOp's "
               "'shape' attribute should be equal to the number of dimensions "
               "(%d) of the Input(X).",
-              shape.size(), x_dim.size()));
+              shape.size(),
+              x_dim.size()));
       std::vector<int64_t> tensor_shape(shape.size());
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
@@ -46,11 +49,13 @@ class CropOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Out", phi::make_ddim(tensor_shape));
     } else {
       auto y_dim = ctx->GetInputDim("Y");
-      PADDLE_ENFORCE_EQ(phi::arity(x_dim), phi::arity(y_dim),
+      PADDLE_ENFORCE_EQ(phi::arity(x_dim),
+                        phi::arity(y_dim),
                         platform::errors::InvalidArgument(
                             "The number of dimensions (%d) of CropOp's input(X)"
                             " must be equal to that (%d) of input(Y).",
-                            phi::arity(x_dim), phi::arity(y_dim)));
+                            phi::arity(x_dim),
+                            phi::arity(y_dim)));
       ctx->SetOutputDim("Out", y_dim);
     }
   }
@@ -97,14 +102,14 @@ Crop Operator.
 Crop input into output, as specified by offsets and shape.
 
 There are two ways to set the offsets:
-1. In runtime: Using the input 'Offsets', which is a Vairbale and can be 
-               output of other operators. This way is suitable for 
+1. In runtime: Using the input 'Offsets', which is a Variable and can be
+               output of other operators. This way is suitable for
                dynamic offsets.
-2. In network configuration: Using the attribute 'offsets', which will be 
-                             set in Python configure script. This way is 
+2. In network configuration: Using the attribute 'offsets', which will be
+                             set in Python configure script. This way is
                              suitable for fixed offsets.
-You CANNOT use these two ways at the same time. An exception will be raised 
-if input 'Offset' is configured and meanwhile the attribute 'offsets' is 
+You CANNOT use these two ways at the same time. An exception will be raised
+if input 'Offset' is configured and meanwhile the attribute 'offsets' is
 not empty.
 
 There are two ways to set shape:
@@ -168,8 +173,10 @@ class CropOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CropGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "CropGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "CropGrad");
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -209,21 +216,23 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(GropNoNeedBufferVarInferer, "Y");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(crop, ops::CropOp, ops::CropOpMaker,
+REGISTER_OPERATOR(crop,
+                  ops::CropOp,
+                  ops::CropOpMaker,
                   ops::CropGradOpMaker<paddle::framework::OpDesc>,
                   ops::CropGradOpMaker<paddle::imperative::OpBase>,
                   ops::GropNoNeedBufferVarInferer);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    crop, ops::CropKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CropKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    crop_grad, ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CropGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(crop,
+                       ops::CropKernel<phi::CPUContext, float>,
+                       ops::CropKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(crop_grad,
+                       ops::CropGradKernel<phi::CPUContext, float>,
+                       ops::CropGradKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(
-    crop, ops::CropKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CropKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    crop_grad, ops::CropGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CropGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(crop,
+                        ops::CropKernel<phi::GPUContext, float>,
+                        ops::CropKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(crop_grad,
+                        ops::CropGradKernel<phi::GPUContext, float>,
+                        ops::CropGradKernel<phi::GPUContext, double>);

@@ -19,41 +19,21 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/phi/api/lib/ext_compat_utils.h"
+
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/storage.h"
-#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
-/**
- * [ Why still include the fluid headers? ]
- *
- * We hope to organize the basic implementation of Tensor and the logic related
- * to Tensor computation into an independent library, which we call
- * [Tensor Operation Library, phi], so we extract or rewrite the original
- * Kernels.
- *
- * In the future, the training library, inference library and custom operators
- * will link to this Tensor Operation library.
- *
- * However, if we directly split the link relation, we need to make too many
- * changes, which will affect the stability of the framework, so here we still
- * rely on the implementation of the framework, which is a intermediate state.
- *
- * In the future, the necessary components will be moved to the this library,
- * or the corresponding components will be re-implemented.
- */
-
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace experimental {
@@ -69,51 +49,68 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
       phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
 }
 
-Tensor::Tensor(const PlaceType &place)
-    : impl_(std::move(std::make_shared<phi::DenseTensor>(
-          std::move(phi::make_intrusive<SharedStorage>(
-              ConvertExtPlaceToInnerPlace(place))),
-          std::move(phi::DenseTensorMeta(phi::DataType::UNDEFINED,
-                                         phi::make_ddim({}),
-                                         phi::DataLayout::NCHW))))),
-      place_{place} {}
+Tensor::Tensor(const Place &place) {
+  LOG_FIRST_N(WARNING, 1)
+      << "The Tensor(place) constructor is deprecated since version "
+         "2.3, and will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor instead. "
+         "Reason: A legal tensor cannot be constructed only based on "
+         "the `place`, and datatype, shape, layout, etc. is also "
+         "required.";
+  DefaultAllocator alloc(place);
+  impl_ = std::move(std::make_shared<phi::DenseTensor>(
+      &alloc,
+      std::move(phi::DenseTensorMeta(
+          phi::DataType::FLOAT32, phi::make_ddim({}), phi::DataLayout::NCHW))));
+}
 
-Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
-    : impl_(std::move(std::make_shared<phi::DenseTensor>(
-          std::move(phi::make_intrusive<SharedStorage>(
-              ConvertExtPlaceToInnerPlace(place))),
-          std::move(phi::DenseTensorMeta(phi::DataType::UNDEFINED,
-                                         phi::make_ddim(shape),
-                                         phi::DataLayout::NCHW))))),
-      place_{place} {}
+Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
+  LOG_FIRST_N(WARNING, 1)
+      << "The Tensor(place, shape) constructor is deprecated since "
+         "version 2.3, and will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor instead. "
+         "Reason: A legal tensor cannot be constructed only based on "
+         "the `place` and `shape`, and datatype, layout, etc. is also "
+         "required.";
+  DefaultAllocator alloc(place);
+  impl_ = std::move(std::make_shared<phi::DenseTensor>(
+      &alloc,
+      std::move(phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                     phi::make_ddim({shape}),
+                                     phi::DataLayout::NCHW))));
+}
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
                const std::string &name)
     : impl_(std::move(tensor_impl)), name_(std::move(name)) {}
+
 /* Part 2: Dimension, DataType and DataLayout methods */
 
 int64_t Tensor::numel() const { return impl_->numel(); }
 
 int64_t Tensor::size() const { return impl_->numel(); }
 
-phi::DDim Tensor::dims() const { return impl_->dims(); }
+const phi::DDim &Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
-  return phi::vectorize<int64_t>(impl_->dims());
+  auto dims = impl_->dims();
+  return phi::vectorize<int64_t>(dims);
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
-  LOG(WARNING) << "The function of resetting the shape of the uninitialized "
-                  "Tensor of the `reshape` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4, please use "
-                  "`paddle::experimental::full` method to create a new Tensor "
-                  "instead. "
-                  "reason: `reshape` means changing the tensor shape without "
-                  "touching underlying data, this requires the total size of "
-                  "the tensor to remain constant.";
+  LOG_FIRST_N(WARNING, 1)
+      << "The function of resetting the shape of the uninitialized "
+         "Tensor of the `reshape` method is deprecated since version "
+         "2.3, and will be removed in version 2.4, please use "
+         "`paddle::empty/full` method to create a new Tensor "
+         "instead. "
+         "reason: `reshape` means changing the tensor shape without "
+         "touching underlying data, this requires the total size of "
+         "the tensor to remain constant.";
   if (is_dense_tensor()) {
-    std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->Resize(
-        phi::make_ddim(shape));
+    static_cast<phi::DenseTensor *>(impl_.get())->Resize(phi::make_ddim(shape));
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));
@@ -132,40 +129,55 @@ bool Tensor::is_dense_tensor() const {
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());
 }
+bool Tensor::is_sparse_coo_tensor() const {
+  return phi::SparseCooTensor::classof(impl_.get());
+}
+bool Tensor::is_sparse_csr_tensor() const {
+  return phi::SparseCsrTensor::classof(impl_.get());
+}
+bool Tensor::is_string_tensor() const {
+  return phi::StringTensor::classof(impl_.get());
+}
 /* Part 3: Device and Backend methods */
 
-PlaceType Tensor::place() const {
-  if (!impl_->initialized()) {
-    return place_;
-  } else {
-    return ConvertInnerPlaceToExtPlace(impl_->place());
-  }
-}
-
-paddle::platform::Place Tensor::inner_place() const {
+const Place &Tensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
       impl_,
       phi::errors::PermissionDenied(
           "Null pointer error, the impl_ of Tensor should not be "
-          "Null when calling Tensor::inner_place()."));
+          "Null when calling Tensor::place()."));
   return impl_->place();
 }
 
-bool Tensor::is_cpu() const {
-  return paddle::platform::is_cpu_place(inner_place());
+bool Tensor::is_cpu() const { return paddle::platform::is_cpu_place(place()); }
+
+bool Tensor::is_gpu() const { return paddle::platform::is_gpu_place(place()); }
+
+bool Tensor::is_gpu_pinned() const {
+  return paddle::platform::is_cuda_pinned_place(place());
 }
 
-bool Tensor::is_cuda() const {
-  return paddle::platform::is_gpu_place(inner_place());
+bool Tensor::is_custom_device() const {
+  return paddle::platform::is_custom_place(place());
 }
 
 /* Part 4: Data Access methods */
 
 template <typename T>
 T *Tensor::mutable_data() {
+  LOG_FIRST_N(WARNING, 1)
+      << "Allocating memory through `mutable_data` method is "
+         "deprecated since version 2.3, and `mutable_data` method "
+         "will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor with allocated memory, and use data<T>() method "
+         "to get the memory pointer of tensor instead. "
+         "Reason: When calling `mutable_data` to allocate memory, "
+         "the place, datatype, and data layout of tensor may be in "
+         "an illegal state.";
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->mutable_data<T>(
-        ConvertExtPlaceToInnerPlace(place()));
+    return static_cast<phi::DenseTensor *>(impl_.get())
+        ->mutable_data<T>(place());
   }
   return nullptr;
 }
@@ -186,51 +198,44 @@ template PADDLE_API phi::dtype::float16 *
 Tensor::mutable_data<phi::dtype::float16>();
 
 template <typename T>
-T *Tensor::mutable_data(const PlaceType &place) {
-  auto inner_place = ConvertExtPlaceToInnerPlace(place);
-  if (impl_->initialized()) {
-    PADDLE_ENFORCE_EQ(
-        platform::is_same_place(inner_place, impl_->place()),
-        true,
-        phi::errors::Unimplemented("Modification of tensor place through "
-                                   "mutable_data is not supported now"));
-  }
+T *Tensor::mutable_data(const Place &place) {
+  LOG_FIRST_N(WARNING, 1)
+      << "Allocating memory through `mutable_data` method is "
+         "deprecated since version 2.3, and `mutable_data` method "
+         "will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor with allocated memory, and use data<T>() method "
+         "to get the memory pointer of tensor instead. "
+         "Reason: When calling `mutable_data` to allocate memory, "
+         "the datatype, and data layout of tensor may be in "
+         "an illegal state.";
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->mutable_data<T>(
-        inner_place);
+    return static_cast<phi::DenseTensor *>(impl_.get())->mutable_data<T>(place);
   }
   return nullptr;
 }
 
-template PADDLE_API float *Tensor::mutable_data<float>(const PlaceType &place);
-template PADDLE_API double *Tensor::mutable_data<double>(
-    const PlaceType &place);
-template PADDLE_API int64_t *Tensor::mutable_data<int64_t>(
-    const PlaceType &place);
-template PADDLE_API int32_t *Tensor::mutable_data<int32_t>(
-    const PlaceType &place);
-template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>(
-    const PlaceType &place);
-template PADDLE_API int8_t *Tensor::mutable_data<int8_t>(
-    const PlaceType &place);
-template PADDLE_API int16_t *Tensor::mutable_data<int16_t>(
-    const PlaceType &place);
-template PADDLE_API bool *Tensor::mutable_data<bool>(const PlaceType &place);
+template PADDLE_API float *Tensor::mutable_data<float>(const Place &place);
+template PADDLE_API double *Tensor::mutable_data<double>(const Place &place);
+template PADDLE_API int64_t *Tensor::mutable_data<int64_t>(const Place &place);
+template PADDLE_API int32_t *Tensor::mutable_data<int32_t>(const Place &place);
+template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>(const Place &place);
+template PADDLE_API int8_t *Tensor::mutable_data<int8_t>(const Place &place);
+template PADDLE_API int16_t *Tensor::mutable_data<int16_t>(const Place &place);
+template PADDLE_API bool *Tensor::mutable_data<bool>(const Place &place);
 template PADDLE_API phi::dtype::complex<float>
-    *Tensor::mutable_data<phi::dtype::complex<float>>(const PlaceType &place);
+    *Tensor::mutable_data<phi::dtype::complex<float>>(const Place &place);
 template PADDLE_API phi::dtype::complex<double>
-    *Tensor::mutable_data<phi::dtype::complex<double>>(const PlaceType &place);
+    *Tensor::mutable_data<phi::dtype::complex<double>>(const Place &place);
 template PADDLE_API phi::dtype::float16 *
-Tensor::mutable_data<phi::dtype::float16>(const PlaceType &place);
+Tensor::mutable_data<phi::dtype::float16>(const Place &place);
 
 template <typename T>
 const T *Tensor::data() const {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->data<T>();
-  } else if (phi::SelectedRows::classof(impl_.get())) {
-    return std::dynamic_pointer_cast<phi::SelectedRows>(impl_)
-        ->value()
-        .data<T>();
+    return static_cast<phi::DenseTensor *>(impl_.get())->data<T>();
+  } else if (is_selected_rows()) {
+    return static_cast<phi::SelectedRows *>(impl_.get())->value().data<T>();
   }
   return nullptr;
 }
@@ -255,9 +260,9 @@ Tensor::data<phi::dtype::bfloat16>() const;
 template <typename T>
 T *Tensor::data() {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->data<T>();
-  } else if (phi::SelectedRows::classof(impl_.get())) {
-    return std::dynamic_pointer_cast<phi::SelectedRows>(impl_)
+    return static_cast<phi::DenseTensor *>(impl_.get())->data<T>();
+  } else if (is_selected_rows()) {
+    return static_cast<phi::SelectedRows *>(impl_.get())
         ->mutable_value()
         ->data<T>();
   }
@@ -283,7 +288,7 @@ Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   if (is_dense_tensor()) {
     return Tensor(std::make_shared<phi::DenseTensor>(
         std::move(phi::DenseTensorUtils::Slice(
-            *(std::dynamic_pointer_cast<phi::DenseTensor>(impl_).get()),
+            *(static_cast<phi::DenseTensor *>(impl_.get())),
             begin_idx,
             end_idx))));
   } else {
@@ -304,7 +309,10 @@ void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuStream_t Tensor::stream() const {
-  return platform::stream::get_current_stream(-1)->raw_stream();
+  int device_id = phi::backends::gpu::GetCurrentDeviceId();
+  auto *gpu_context = DeviceContextPool::Instance().Get<AllocationType::GPU>(
+      GPUPlace(device_id));
+  return gpu_context->stream();
 }
 #endif
 
@@ -315,10 +323,18 @@ bool Tensor::defined() const { return impl_ != nullptr; }
 bool Tensor::initialized() const { return defined() && impl_->initialized(); }
 
 bool Tensor::is_initialized() const {
+  LOG_FIRST_N(WARNING, 1)
+      << "The `is_initialized` method is deprecated since version "
+         "2.3, and will be removed in version 2.4! "
+         "Please use `initialized` method instead.";
   return defined() && impl_->initialized();
 }
 
-void Tensor::reset() { impl_.reset(); }
+void Tensor::reset() {
+  impl_.reset();
+  autograd_meta_.reset();
+  name_ = "";
+}
 
 /* Part 6: Operator overloading */
 
@@ -326,7 +342,6 @@ Tensor &Tensor::operator=(const Tensor &x) & {
   impl_ = x.impl_;
   autograd_meta_ = x.autograd_meta_;
   name_ = x.name_;
-  place_ = x.place_;
   return *this;
 }
 
@@ -334,7 +349,6 @@ Tensor &Tensor::operator=(Tensor &&x) & {
   impl_ = std::move(x.impl_);
   autograd_meta_ = std::move(x.autograd_meta_);
   name_ = std::move(x.name_);
-  place_ = std::move(x.place_);
   return *this;
 }
 
@@ -342,9 +356,47 @@ AbstractAutogradMeta *Tensor::get_autograd_meta() const {
   return autograd_meta_.get();
 }
 
+const std::shared_ptr<AbstractAutogradMeta> &Tensor::mutable_autograd_meta()
+    const {
+  return autograd_meta_;
+}
+
 void Tensor::set_autograd_meta(
     std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
   autograd_meta_ = std::move(autograd_meta);
+}
+
+void Tensor::bump_inplace_version() {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
+    inplace_version_counter.Bump();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "bump_inplace_version is only supported on DenseTensor now."));
+  }
+}
+
+uint32_t Tensor::current_inplace_version() {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
+    return inplace_version_counter.CurrentVersion();
+  } else {
+    LOG_FIRST_N(WARNING, 1)
+        << "current_inplace_version is only supported on DenseTensor now.";
+  }
+  return 0;
+}
+
+void Tensor::reset_inplace_version(bool set_to_zero) {
+  if (set_to_zero) {
+    if (is_dense_tensor()) {
+      auto &inplace_version_counter =
+          static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
+      inplace_version_counter.SetInplaceVersionToZero();
+    }
+  }
 }
 
 }  // namespace experimental

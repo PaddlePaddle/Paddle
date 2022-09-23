@@ -24,9 +24,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void DepthwiseConvGradKernel(const Context& dev_ctx,
-                             const DenseTensor& out_grad,
                              const DenseTensor& input,
                              const DenseTensor& filter,
+                             const DenseTensor& out_grad,
                              const std::vector<int>& strides_t,
                              const std::vector<int>& paddings_t,
                              const std::string& padding_algorithm,
@@ -139,4 +139,5 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    ALL_LAYOUT,
                    phi::DepthwiseConvGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}

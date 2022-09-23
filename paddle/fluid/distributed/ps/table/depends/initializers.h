@@ -20,8 +20,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 
@@ -117,13 +117,9 @@ class TruncatedGaussianInitializer : public Initializer {
     seed_ = static_cast<unsigned int>(std::stoi(attrs[1]));
     mean_ = std::stof(attrs[2]);
     std_ = std::stof(attrs[3]);
-    auto normal_cdf = [](float x) {
-      return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
-    };
-    float a_normal_cdf = normal_cdf((-2.0 - mean_) / std_);
-    float b_normal_cdf = normal_cdf((2.0 - mean_) / std_);
-    std::uniform_real_distribution<float> dist_(2.0 * a_normal_cdf - 1.0,
-                                                2.0 * b_normal_cdf - 1.0);
+
+    std::uniform_real_distribution<float> dist_(
+        std::numeric_limits<float>::min(), 1.0);
     random_engine_ = framework::GetCPURandomEngine(seed_);
   }
 

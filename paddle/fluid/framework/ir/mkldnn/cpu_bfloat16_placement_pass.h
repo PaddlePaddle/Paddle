@@ -26,14 +26,11 @@ namespace ir {
  */
 class CPUBfloat16PlacementPass : public Pass {
  protected:
-  void SetMkldnnDataType(ir::Graph* graph, int* bfloat16_operators) const;
-
-  void RemoveOrphanedOperators(ir::Graph* graph, int* bfloat16_operators) const;
-
-  void RemoveUnsupportedOperators(ir::Graph* graph,
-                                  int* bfloat16_operators) const;
-
   void ApplyImpl(ir::Graph* graph) const override;
+
+  int SetMkldnnDataType(ir::Graph* graph) const;
+  int RemoveOrphanedOperators(ir::Graph* graph) const;
+  int RemoveUnsupportedOperators(ir::Graph* graph) const;
 };
 
 }  // namespace ir

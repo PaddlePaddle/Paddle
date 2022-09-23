@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.jit import to_static
 from paddle.jit import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 
 import unittest
 import numpy as np
@@ -201,11 +202,77 @@ def test_return_without_paddle_cond(x):
     return y
 
 
+def two_value(x):
+    return x * 2, x + 1
+
+
+def diff_return_hepler(x):
+    if False:
+        y = x + 1
+        z = x - 1
+        return y, z
+    else:
+        return two_value(x)
+
+
+@to_static
+def test_diff_return(x):
+    x = paddle.to_tensor(x)
+    y, z = diff_return_hepler(x)
+    if y.shape[0] > 1:
+        y = y + 1
+    return y, z
+
+
+@to_static
+def test_return_if_else_2(x):
+    rr = 0
+    if True:
+        rr = 1
+        return 1
+    else:
+        a = 0
+
+
+@to_static
+def test_return_in_while_2(x):
+    while True:
+        a = 12
+        return 12
+    return 10
+
+
+@to_static
+def test_return_in_for_2(x):
+    a = 12
+    for i in range(10):
+        return 12
+    return 10
+
+
+@to_static
+def test_return_nested(x):
+
+    def func():
+        rr = 0
+        if True:
+            rr = 1
+            return 1
+            rr = 2
+        else:
+            a = 0
+            return 4
+        return 3
+
+    return func()
+
+
 class TestReturnBase(unittest.TestCase):
+
     def setUp(self):
         self.input = np.ones((1)).astype('int32')
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
         self.init_dygraph_func()
         self.program_translator = ProgramTranslator()
 
@@ -218,108 +285,162 @@ class TestReturnBase(unittest.TestCase):
             res = self.dygraph_func(self.input)
             if isinstance(res, (tuple, list)):
                 return tuple(r.numpy() for r in res)
-            elif isinstance(res, core.VarBase):
+            elif isinstance(res, (core.VarBase, core.eager.Tensor)):
                 return res.numpy()
             return res
 
-    def test_transformed_static_result(self):
+    def _test_value_impl(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         if isinstance(dygraph_res, tuple):
             self.assertTrue(isinstance(static_res, tuple))
             self.assertEqual(len(dygraph_res), len(static_res))
             for i in range(len(dygraph_res)):
-                self.assertTrue(
-                    np.allclose(dygraph_res[i], static_res[i]),
-                    msg='dygraph res is {}\nstatic_res is {}'.format(
-                        dygraph_res[i], static_res[i]))
-
+                np.testing.assert_allclose(dygraph_res[i],
+                                           static_res[i],
+                                           rtol=1e-05)
         elif isinstance(dygraph_res, np.ndarray):
-            self.assertTrue(
-                np.allclose(dygraph_res, static_res),
-                msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
-                                                                 static_res))
+            np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
         else:
             self.assertEqual(dygraph_res, static_res)
 
+    def test_transformed_static_result(self):
+        if hasattr(self, "error"):
+            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
+                self._test_value_impl()
+        else:
+            self._test_value_impl()
+
 
 class TestInsideFuncBase(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_inside_func_base
 
 
 class TestReturnIf(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_if
 
 
-class TestReturnIfElse(TestReturnBase):
-    def init_dygraph_func(self):
-        self.dygraph_func = test_return_if_else
+class TestReturnOnlyIf(TestReturnBase):
 
-
-class TestReturnInWhile(TestReturnBase):
     def init_dygraph_func(self):
-        self.dygraph_func = test_return_in_while
+        self.dygraph_func = test_return_if_else_2
 
 
 class TestReturnInFor(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_in_for
 
 
+class TestReturnInWhile(TestReturnBase):
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_in_while
+
+
+class TestReturnIfDiff(TestReturnBase):
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_diff_return
+
+
+class TestReturnIfElse(TestReturnBase):
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_if_else
+
+
+class TestReturnInWhile2(TestReturnBase):
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_in_while_2
+        self.error = "Found return statement in While or For body and loop"
+
+
+class TestReturnInFor2(TestReturnBase):
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_in_for_2
+        self.error = "Found return statement in While or For body and loop"
+
+
 class TestRecursiveReturn(TestReturnBase):
+
     def init_dygraph_func(self):
         self.input = self.input.astype(np.float32)
         self.dygraph_func = test_recursive_return
 
 
 class TestReturnDifferentLengthIfBody(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_different_length_if_body
+        self.error = "Your if/else have different number of return value."
 
 
 class TestReturnDifferentLengthElse(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_different_length_else
+        self.error = "Your if/else have different number of return value."
 
 
 class TestNoReturn(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_no_return
 
 
 class TestReturnNone(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_none
+        self.error = "Your if/else have different number of return value."
 
 
 class TestReturnNoVariable(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_no_variable
+        self.error = "Your if/else have different number of return value."
 
 
 class TestReturnListOneValue(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_list_one_value
 
 
 class TestReturnListManyValue(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_list_many_values
 
 
 class TestReturnTupleOneValue(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_tuple_one_value
 
 
 class TestReturnTupleManyValue(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_tuple_many_values
 
 
+class TestReturnNested(TestReturnBase):
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_nested
+
+
 class TestReturnSpecial(TestReturnBase):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_without_paddle_cond
 

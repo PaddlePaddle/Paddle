@@ -20,12 +20,12 @@ import paddle
 from paddle.utils.cpp_extension import load, get_build_directory
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard
 
-# Because Windows don't use docker, the shared lib already exists in the 
+# Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_attrs_jit\\custom_attrs_jit.pyd'.format(get_build_directory(
-))
+file = '{}\\custom_attrs_jit\\custom_attrs_jit.pyd'.format(
+    get_build_directory())
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
@@ -41,6 +41,7 @@ custom_attrs = load(
 
 
 class TestJitCustomAttrs(unittest.TestCase):
+
     def setUp(self):
         paddle.set_device('cpu')
         # prepare test value
@@ -57,14 +58,15 @@ class TestJitCustomAttrs(unittest.TestCase):
     def func_attr_value(self):
         x = paddle.ones([2, 2], dtype='float32')
         x.stop_gradient = False
-        out = custom_attrs.attr_test(
-            x, self.bool_attr, self.int_attr, self.float_attr, self.int64_attr,
-            self.str_attr, self.int_vec_attr, self.float_vec_attr,
-            self.int64_vec_attr, self.str_vec_attr)
+        out = custom_attrs.attr_test(x, self.bool_attr, self.int_attr,
+                                     self.float_attr, self.int64_attr,
+                                     self.str_attr, self.int_vec_attr,
+                                     self.float_vec_attr, self.int64_vec_attr,
+                                     self.str_vec_attr)
         out.stop_gradient = False
         out.backward()
 
-        self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
+        np.testing.assert_array_equal(x.numpy(), out.numpy())
 
     def test_attr_value(self):
         with _test_eager_guard():
@@ -74,14 +76,16 @@ class TestJitCustomAttrs(unittest.TestCase):
     def func_const_attr_value(self):
         x = paddle.ones([2, 2], dtype='float32')
         x.stop_gradient = False
-        out = custom_attrs.const_attr_test(
-            x, self.bool_attr, self.int_attr, self.float_attr, self.int64_attr,
-            self.str_attr, self.int_vec_attr, self.float_vec_attr,
-            self.int64_vec_attr, self.str_vec_attr)
+        out = custom_attrs.const_attr_test(x, self.bool_attr, self.int_attr,
+                                           self.float_attr, self.int64_attr,
+                                           self.str_attr, self.int_vec_attr,
+                                           self.float_vec_attr,
+                                           self.int64_vec_attr,
+                                           self.str_vec_attr)
         out.stop_gradient = False
         out.backward()
 
-        self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
+        np.testing.assert_array_equal(x.numpy(), out.numpy())
 
     def test_const_attr_value(self):
         with _test_eager_guard():

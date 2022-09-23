@@ -29,7 +29,7 @@ from paddle.jit import to_static
 
 def dyfunc_generator():
     for i in range(100):
-        yield paddle.to_tensor([i] * 10)
+        yield paddle.fluid.dygraph.to_variable([i] * 10)
 
 
 def main_func():
@@ -40,6 +40,7 @@ def main_func():
 
 
 class TestConvertGenerator(unittest.TestCase):
+
     def test_raise_error(self):
         with self.assertRaises(Exception):
             to_static(main_func)()

@@ -25,6 +25,7 @@ namespace host_context {
 class KernelFrame;
 
 using KernelImplementation = std::function<void(KernelFrame *frame)>;
+using KernelLauncher = std::function<KernelImplementation()>;
 
 /**
  * Hold the kernels registered in the system.
@@ -33,10 +34,12 @@ class KernelRegistry {
  public:
   KernelRegistry();
 
-  void AddKernel(const std::string &key, KernelImplementation fn);
-  void AddKernelWithAttrs(const std::string &key,
-                          KernelImplementation fn,
-                          std::vector<const char *> &&attrs_order);
+  void AddKernel(const std::string &key,
+                 KernelImplementation fn,
+                 const std::vector<const char *> &attrs_order = {});
+  void AddKernel(const std::string &key,
+                 KernelLauncher fn,
+                 const std::vector<const char *> &attrs_order = {});
 
   KernelImplementation GetKernel(const std::string &key) const;
   const std::vector<const char *> &GetAttrNameList(

@@ -16,7 +16,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
@@ -53,7 +53,7 @@ template <typename T, typename Context>
 void TileGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
-                    const ScalarArray& repeat_times,
+                    const IntArray& repeat_times,
                     DenseTensor* x_grad) {
   auto x_dims = x.dims();
   auto vec_x_dims = phi::vectorize<int>(x_dims);
@@ -90,8 +90,7 @@ void TileGradKernel(const Context& dev_ctx,
   if (just_copy) {
     dev_ctx.template Alloc<T>(x_grad);
 
-    paddle::framework::TensorCopy(
-        out_grad, dev_ctx.GetPlace(), dev_ctx, x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     // TensorCopy may change the dims of dx
     x_grad->Resize(x_dims);
   } else {

@@ -21,10 +21,8 @@ KernelSignature MaxoutArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature MaxoutGradArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("maxout_grad",
-                         {"X", "Out", GradVarName("Out")},
-                         {"groups", "axis"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "maxout_grad", {"X", "Out", "Out@GRAD"}, {"groups", "axis"}, {"X@GRAD"});
 }
 
 }  // namespace phi

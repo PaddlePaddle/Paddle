@@ -65,6 +65,8 @@ def make_dataset(dir, class_to_idx, extensions, is_valid_file=None):
 class DatasetFolder(Dataset):
     """A generic data loader where the samples are arranged in this way:
 
+    .. code-block:: text
+
         root/class_a/1.ext
         root/class_a/2.ext
         root/class_a/3.ext
@@ -74,55 +76,127 @@ class DatasetFolder(Dataset):
         root/class_b/789.ext
 
     Args:
-        root (string): Root directory path.
-        loader (callable|optional): A function to load a sample given its path.
-        extensions (list[str]|tuple[str]|optional): A list of allowed extensions.
-            both extensions and is_valid_file should not be passed.
-        transform (callable|optional): A function/transform that takes in
-            a sample and returns a transformed version.
-        is_valid_file (callable|optional): A function that takes path of a file
-            and check if the file is a valid file (used to check of corrupt files)
-            both extensions and is_valid_file should not be passed.
+        root (str): Root directory path.
+        loader (Callable, optional): A function to load a sample given its path. Default: None.
+        extensions (list[str]|tuple[str], optional): A list of allowed extensions.
+            Both :attr:`extensions` and :attr:`is_valid_file` should not be passed.
+            If this value is not set, the default is to use ('.jpg', '.jpeg', '.png',
+            '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp'). Default: None.
+        transform (Callable, optional): A function/transform that takes in
+            a sample and returns a transformed version. Default: None.
+        is_valid_file (Callable, optional): A function that takes path of a file
+            and check if the file is a valid file. Both :attr:`extensions` and
+            :attr:`is_valid_file` should not be passed. Default: None.
 
-     Attributes:
-        classes (list): List of the class names.
-        class_to_idx (dict): Dict with items (class_name, class_index).
-        samples (list): List of (sample path, class_index) tuples
-        targets (list): The class_index value for each image in the dataset
+    Returns:
+        :ref:`api_paddle_io_Dataset`. An instance of DatasetFolder.
+
+    Attributes:
+        classes (list[str]): List of the class names.
+        class_to_idx (dict[str, int]): Dict with items (class_name, class_index).
+        samples (list[tuple[str, int]]): List of (sample_path, class_index) tuples.
+        targets (list[int]): The class_index value for each image in the dataset.
 
     Example:
 
         .. code-block:: python
 
-            import os
-            import cv2
-            import tempfile
             import shutil
+            import tempfile
+            import cv2
             import numpy as np
+            import paddle.vision.transforms as T
+            from pathlib import Path
             from paddle.vision.datasets import DatasetFolder
 
-            def make_fake_dir():
-                data_dir = tempfile.mkdtemp()
 
-                for i in range(2):
-                    sub_dir = os.path.join(data_dir, 'class_' + str(i))
-                    if not os.path.exists(sub_dir):
-                        os.makedirs(sub_dir)
-                    for j in range(2):
-                        fake_img = (np.random.random((32, 32, 3)) * 255).astype('uint8')
-                        cv2.imwrite(os.path.join(sub_dir, str(j) + '.jpg'), fake_img)
-                return data_dir
+            def make_fake_file(img_path: str):
+                if img_path.endswith((".jpg", ".png", ".jpeg")):
+                    fake_img = np.random.randint(0, 256, (32, 32, 3), dtype=np.uint8)
+                    cv2.imwrite(img_path, fake_img)
+                elif img_path.endswith(".txt"):
+                    with open(img_path, "w") as f:
+                        f.write("This is a fake file.")
 
-            temp_dir = make_fake_dir()
-            # temp_dir is root dir
-            # temp_dir/class_1/img1_1.jpg
-            # temp_dir/class_2/img2_1.jpg
-            data_folder = DatasetFolder(temp_dir)
+            def make_directory(root, directory_hierarchy, file_maker=make_fake_file):
+                root = Path(root)
+                root.mkdir(parents=True, exist_ok=True)
+                for subpath in directory_hierarchy:
+                    if isinstance(subpath, str):
+                        filepath = root / subpath
+                        file_maker(str(filepath))
+                    else:
+                        dirname = list(subpath.keys())[0]
+                        make_directory(root / dirname, subpath[dirname])
 
-            for items in data_folder:
-                break
-                
-            shutil.rmtree(temp_dir)
+            directory_hirerarchy = [
+                {"class_0": [
+                    "abc.jpg",
+                    "def.png"]},
+                {"class_1": [
+                    "ghi.jpeg",
+                    "jkl.png",
+                    {"mno": [
+                        "pqr.jpeg",
+                        "stu.jpg"]}]},
+                "this_will_be_ignored.txt",
+            ]
+
+            # You can replace this with any directory to explore the structure
+            # of generated data. e.g. fake_data_dir = "./temp_dir"
+            fake_data_dir = tempfile.mkdtemp()
+            make_directory(fake_data_dir, directory_hirerarchy)
+            data_folder_1 = DatasetFolder(fake_data_dir)
+            print(data_folder_1.classes)
+            # ['class_0', 'class_1']
+            print(data_folder_1.class_to_idx)
+            # {'class_0': 0, 'class_1': 1}
+            print(data_folder_1.samples)
+            # [('./temp_dir/class_0/abc.jpg', 0), ('./temp_dir/class_0/def.png', 0),
+            #  ('./temp_dir/class_1/ghi.jpeg', 1), ('./temp_dir/class_1/jkl.png', 1),
+            #  ('./temp_dir/class_1/mno/pqr.jpeg', 1), ('./temp_dir/class_1/mno/stu.jpg', 1)]
+            print(data_folder_1.targets)
+            # [0, 0, 1, 1, 1, 1]
+            print(len(data_folder_1))
+            # 6
+
+            for i in range(len(data_folder_1)):
+                img, label = data_folder_1[i]
+                # do something with img and label
+                print(type(img), img.size, label)
+                # <class 'PIL.Image.Image'> (32, 32) 0
+
+
+            transform = T.Compose(
+                [
+                    T.Resize(64),
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[0.5, 0.5, 0.5],
+                        std=[0.5, 0.5, 0.5],
+                        to_rgb=True,
+                    ),
+                ]
+            )
+
+            data_folder_2 = DatasetFolder(
+                fake_data_dir,
+                loader=lambda x: cv2.imread(x),  # load image with OpenCV
+                extensions=(".jpg",),  # only load *.jpg files
+                transform=transform,  # apply transform to every image
+            )
+
+            print([img_path for img_path, label in data_folder_2.samples])
+            # ['./temp_dir/class_0/abc.jpg', './temp_dir/class_1/mno/stu.jpg']
+            print(len(data_folder_2))
+            # 2
+
+            for img, label in iter(data_folder_2):
+                # do something with img and label
+                print(type(img), img.shape, label)
+                # <class 'paddle.Tensor'> [3, 64, 64] 0
+
+            shutil.rmtree(fake_data_dir)
     """
 
     def __init__(self,
@@ -139,9 +213,10 @@ class DatasetFolder(Dataset):
         samples = make_dataset(self.root, class_to_idx, extensions,
                                is_valid_file)
         if len(samples) == 0:
-            raise (RuntimeError(
-                "Found 0 directories in subfolders of: " + self.root + "\n"
-                "Supported extensions are: " + ",".join(extensions)))
+            raise (RuntimeError("Found 0 directories in subfolders of: " +
+                                self.root + "\n"
+                                "Supported extensions are: " +
+                                ",".join(extensions)))
 
         self.loader = default_loader if loader is None else loader
         self.extensions = extensions
@@ -161,7 +236,7 @@ class DatasetFolder(Dataset):
             dir (string): Root directory path.
 
         Returns:
-            tuple: (classes, class_to_idx) where classes are relative to (dir), 
+            tuple: (classes, class_to_idx) where classes are relative to (dir),
                     and class_to_idx is a dictionary.
 
         """
@@ -222,54 +297,121 @@ def default_loader(path):
 class ImageFolder(Dataset):
     """A generic data loader where the samples are arranged in this way:
 
+    .. code-block:: text
+
         root/1.ext
         root/2.ext
         root/sub_dir/3.ext
 
     Args:
-        root (string): Root directory path.
-        loader (callable, optional): A function to load a sample given its path.
+        root (str): Root directory path.
+        loader (Callable, optional): A function to load a sample given its path. Default: None.
         extensions (list[str]|tuple[str], optional): A list of allowed extensions.
-            both extensions and is_valid_file should not be passed.
-        transform (callable, optional): A function/transform that takes in
-            a sample and returns a transformed version.
-        is_valid_file (callable, optional): A function that takes path of a file
-            and check if the file is a valid file (used to check of corrupt files)
-            both extensions and is_valid_file should not be passed.
+            Both :attr:`extensions` and :attr:`is_valid_file` should not be passed.
+            If this value is not set, the default is to use ('.jpg', '.jpeg', '.png',
+            '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp'). Default: None.
+        transform (Callable, optional): A function/transform that takes in
+            a sample and returns a transformed version. Default: None.
+        is_valid_file (Callable, optional): A function that takes path of a file
+            and check if the file is a valid file. Both :attr:`extensions` and
+            :attr:`is_valid_file` should not be passed. Default: None.
 
-     Attributes:
-        samples (list): List of sample path
+    Returns:
+        :ref:`api_paddle_io_Dataset`. An instance of ImageFolder.
+
+    Attributes:
+        samples (list[str]): List of sample path.
 
     Example:
 
         .. code-block:: python
 
-            import os
-            import cv2
-            import tempfile
             import shutil
+            import tempfile
+            import cv2
             import numpy as np
+            import paddle.vision.transforms as T
+            from pathlib import Path
             from paddle.vision.datasets import ImageFolder
 
-            def make_fake_dir():
-                data_dir = tempfile.mkdtemp()
 
-                for i in range(2):
-                    sub_dir = os.path.join(data_dir, 'class_' + str(i))
-                    if not os.path.exists(sub_dir):
-                        os.makedirs(sub_dir)
-                    for j in range(2):
-                        fake_img = (np.random.random((32, 32, 3)) * 255).astype('uint8')
-                        cv2.imwrite(os.path.join(sub_dir, str(j) + '.jpg'), fake_img)
-                return data_dir
+            def make_fake_file(img_path: str):
+                if img_path.endswith((".jpg", ".png", ".jpeg")):
+                    fake_img = np.random.randint(0, 256, (32, 32, 3), dtype=np.uint8)
+                    cv2.imwrite(img_path, fake_img)
+                elif img_path.endswith(".txt"):
+                    with open(img_path, "w") as f:
+                        f.write("This is a fake file.")
 
-            temp_dir = make_fake_dir()
-            data_folder = ImageFolder(temp_dir)
+            def make_directory(root, directory_hierarchy, file_maker=make_fake_file):
+                root = Path(root)
+                root.mkdir(parents=True, exist_ok=True)
+                for subpath in directory_hierarchy:
+                    if isinstance(subpath, str):
+                        filepath = root / subpath
+                        file_maker(str(filepath))
+                    else:
+                        dirname = list(subpath.keys())[0]
+                        make_directory(root / dirname, subpath[dirname])
 
-            for items in data_folder:
-                break
-                
-            shutil.rmtree(temp_dir)
+            directory_hirerarchy = [
+                "abc.jpg",
+                "def.png",
+                {"ghi": [
+                    "jkl.jpeg",
+                    {"mno": [
+                        "pqr.jpg"]}]},
+                "this_will_be_ignored.txt",
+            ]
+
+            # You can replace this with any directory to explore the structure
+            # of generated data. e.g. fake_data_dir = "./temp_dir"
+            fake_data_dir = tempfile.mkdtemp()
+            make_directory(fake_data_dir, directory_hirerarchy)
+            image_folder_1 = ImageFolder(fake_data_dir)
+            print(image_folder_1.samples)
+            # ['./temp_dir/abc.jpg', './temp_dir/def.png',
+            #  './temp_dir/ghi/jkl.jpeg', './temp_dir/ghi/mno/pqr.jpg']
+            print(len(image_folder_1))
+            # 4
+
+            for i in range(len(image_folder_1)):
+                (img,) = image_folder_1[i]
+                # do something with img
+                print(type(img), img.size)
+                # <class 'PIL.Image.Image'> (32, 32)
+
+
+            transform = T.Compose(
+                [
+                    T.Resize(64),
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[0.5, 0.5, 0.5],
+                        std=[0.5, 0.5, 0.5],
+                        to_rgb=True,
+                    ),
+                ]
+            )
+
+            image_folder_2 = ImageFolder(
+                fake_data_dir,
+                loader=lambda x: cv2.imread(x),  # load image with OpenCV
+                extensions=(".jpg",),  # only load *.jpg files
+                transform=transform,  # apply transform to every image
+            )
+
+            print(image_folder_2.samples)
+            # ['./temp_dir/abc.jpg', './temp_dir/ghi/mno/pqr.jpg']
+            print(len(image_folder_2))
+            # 2
+
+            for (img,) in iter(image_folder_2):
+                # do something with img
+                print(type(img), img.shape)
+                # <class 'paddle.Tensor'> [3, 64, 64]
+
+            shutil.rmtree(fake_data_dir)
      """
 
     def __init__(self,
@@ -297,9 +439,10 @@ class ImageFolder(Dataset):
                     samples.append(f)
 
         if len(samples) == 0:
-            raise (RuntimeError(
-                "Found 0 files in subfolders of: " + self.root + "\n"
-                "Supported extensions are: " + ",".join(extensions)))
+            raise (RuntimeError("Found 0 files in subfolders of: " + self.root +
+                                "\n"
+                                "Supported extensions are: " +
+                                ",".join(extensions)))
 
         self.loader = default_loader if loader is None else loader
         self.extensions = extensions

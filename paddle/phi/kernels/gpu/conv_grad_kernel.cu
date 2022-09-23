@@ -13,18 +13,18 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
-#include "paddle/phi/kernels/impl/conv_grad_kernel_impl.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/conv_grad_kernel_impl.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void Conv3DGradKernel(const Context& dev_ctx,
-                      const DenseTensor& out_grad,
                       const DenseTensor& input,
                       const DenseTensor& filter,
+                      const DenseTensor& out_grad,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
                       const std::string& paddding_algorithm,
@@ -37,9 +37,9 @@ void Conv3DGradKernel(const Context& dev_ctx,
                       DenseTensor* input_grad,
                       DenseTensor* filter_grad) {
   ConvGradKernel<T>(dev_ctx,
-                    out_grad,
                     input,
                     filter,
+                    out_grad,
                     strides,
                     paddings,
                     paddding_algorithm,

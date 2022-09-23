@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <ThreadPool.h>
 #include <stdint.h>
+
 #include <atomic>
 #include <deque>
 #include <map>
@@ -30,6 +31,8 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
+#include "paddle/fluid/distributed/ps/service/coordinator_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_client.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
@@ -41,8 +44,6 @@ limitations under the License. */
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/distributed/ps/service/ps_client.h"
 
 namespace paddle {
 namespace distributed {
@@ -63,7 +64,8 @@ template <typename T>
 class BlockingQueue {
  public:
   explicit BlockingQueue(size_t capacity) : capacity_(capacity) {
-    PADDLE_ENFORCE_GT(capacity_, 0,
+    PADDLE_ENFORCE_GT(capacity_,
+                      0,
                       platform::errors::InvalidArgument(
                           "The capacity must be greater than 0."));
   }
@@ -149,16 +151,20 @@ class BlockingQueue {
   mutable std::mutex mutex_;
 };
 
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 inline void MergeVars(const std::string &var_name,
                       const std::vector<std::shared_ptr<Variable>> &vars,
-                      Scope *scope, bool merge_add = true) {
-  PADDLE_ENFORCE_NE(vars.empty(), true, platform::errors::InvalidArgument(
-                                            "vector vars are empty."));
+                      Scope *scope,
+                      bool merge_add = true) {
+  PADDLE_ENFORCE_NE(
+      vars.empty(),
+      true,
+      platform::errors::InvalidArgument("vector vars are empty."));
   auto cpu_place = platform::CPUPlace();
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
@@ -174,14 +180,14 @@ inline void MergeVars(const std::string &var_name,
     for (auto &var : vars) {
       auto &var_t = var->Get<framework::LoDTensor>();
       PADDLE_ENFORCE_EQ(
-          var_t.dims(), dims,
+          var_t.dims(),
+          dims,
           platform::errors::InvalidArgument("vars should have the same dims."));
     }
 
     // set output tensor to 0.
-    paddle::platform::CPUDeviceContext cpu_ctx;
-    phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, T>
-        constant_functor;
+    phi::CPUContext cpu_ctx;
+    phi::funcs::SetConstant<phi::CPUContext, T> constant_functor;
     constant_functor(cpu_ctx, out_t, static_cast<T>(0));
     // sum all vars to out
     auto result = EigenVector<T>::Flatten(*out_t);
@@ -204,15 +210,12 @@ inline void MergeVars(const std::string &var_name,
     for (auto &var : vars) {
       inputs.push_back(&var->Get<phi::SelectedRows>());
     }
-    paddle::platform::CPUDeviceContext dev_ctx;
+    phi::CPUContext dev_ctx;
     if (merge_add) {
-      paddle::operators::math::scatter::MergeAdd<
-          paddle::platform::CPUDeviceContext, T>
-          merge_add;
+      paddle::operators::math::scatter::MergeAdd<phi::CPUContext, T> merge_add;
       merge_add(dev_ctx, inputs, out_slr);
     } else {
-      paddle::operators::math::scatter::MergeAverage<
-          paddle::platform::CPUDeviceContext, T>
+      paddle::operators::math::scatter::MergeAverage<phi::CPUContext, T>
           merge_average;
       merge_average(dev_ctx, inputs, out_slr);
     }
@@ -239,9 +242,11 @@ class Communicator {
       envs[iter.first] = iter.second;
       VLOG(3) << iter.first << ": " << iter.second;
     }
-    barrier_table_id_ = std::stoi(envs.at("barrier_table_id"));
-    trainer_id_ = std::stoi(envs.at("trainer_id"));
-    trainers_ = std::stoi(envs.at("trainers"));
+    if (!envs.empty()) {
+      barrier_table_id_ = std::stoi(envs.at("barrier_table_id"));
+      trainer_id_ = std::stoi(envs.at("trainer_id"));
+      trainers_ = std::stoi(envs.at("trainers"));
+    }
   }
 
   virtual void InitBrpcClient(const std::string &dist_desc,
@@ -253,24 +258,39 @@ class Communicator {
 
   // 1. recv dense param
   virtual void RpcRecvDense(const std::vector<std::string> &varnames,
-                            int table_id, Scope *scope);
+                            int table_id,
+                            Scope *scope);
   // 2. send dense param
   virtual void RpcSendDenseParam(const std::vector<std::string> &varnames,
-                                 int table_id, const Scope &scope);
+                                 int table_id,
+                                 const Scope &scope);
   // 3. send dense grad
   virtual void RpcSendDense(const CommContext &ctx, const Scope &scope);
   // 4. send sparse grad
-  virtual void RpcSendSparse(const std::string &var_name, int table_id,
+  virtual void RpcSendSparse(const std::string &var_name,
+                             int table_id,
                              const Scope &scope);
   // 5. send sparse param
-  virtual void RpcSendSparseParam(const std::string &varname, int table_id,
+  virtual void RpcSendSparseParam(const std::string &varname,
+                                  int table_id,
                                   const Scope &scope);
   // 6. recv sparse param
-  virtual void RpcRecvSparse(const std::string &varname, int table_id,
+  virtual void RpcRecvSparse(const std::string &varname,
+                             int table_id,
                              Scope *scope);
   // 7. send gloabl step
-  virtual void SendGlobalStep(const CommContext &ctx, int batches,
+  virtual void SendGlobalStep(const CommContext &ctx,
+                              int batches,
                               Scope *send_scope);
+
+  virtual std::unordered_map<uint32_t, std::string> QueryFLClientsInfo() {
+    return {};
+  }
+  virtual void SaveFLStrategy(
+      const std::unordered_map<uint32_t, std::string> &fl_strategy) {}
+  virtual void StartCoordinator(
+      const std::string &self_endpoint,
+      const std::vector<std::string> &trainer_endpoints) {}
 
   virtual ~Communicator() {}
   virtual void RpcProfilerControl();
@@ -299,10 +319,11 @@ class Communicator {
   virtual void Barrier() {}
 
   virtual void BarrierWithTable(uint32_t barrier_type) {
-    auto rets = _worker_ptr->barrier(barrier_table_id_, barrier_type);
+    auto rets = _worker_ptr->Barrier(barrier_table_id_, barrier_type);
     rets.wait();
     int status = rets.get();
-    PADDLE_ENFORCE_EQ(status, 0,
+    PADDLE_ENFORCE_EQ(status,
+                      0,
                       platform::errors::InvalidArgument(
                           "The ret status must be 0 when barrier with table"));
   }
@@ -310,7 +331,7 @@ class Communicator {
   virtual void CreateC2CConnection(int pserver_timeout_ms,
                                    int pserver_connect_timeout_ms,
                                    int max_retry) {
-    _worker_ptr->create_client2client_connection(
+    _worker_ptr->CreateClient2ClientConnection(
         pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
   }
 
@@ -332,17 +353,24 @@ class Communicator {
 
   template <typename T>
   static Communicator *InitInstance(
-      const RpcCtxMap &send_ctx, const RecvCtxMap &recv_ctx,
+      const RpcCtxMap &send_ctx,
+      const RecvCtxMap &recv_ctx,
       const std::string &dist_desc,
-      const std::vector<std::string> &host_sign_list, Scope *recv_scope,
+      const std::vector<std::string> &host_sign_list,
+      Scope *recv_scope,
       const std::map<std::string, std::string> &envs) {
-    std::call_once(init_flag_, &Communicator::InitWithRpcCtx<T>, send_ctx,
-                   recv_ctx, dist_desc, host_sign_list, recv_scope,
+    std::call_once(init_flag_,
+                   &Communicator::InitWithRpcCtx<T>,
+                   send_ctx,
+                   recv_ctx,
+                   dist_desc,
+                   host_sign_list,
+                   recv_scope,
                    std::ref(envs));
     return communicator_.get();
   }
 
-  // Init is called by InitInstance.
+  // called by InitInstance.
   template <typename T>
   static void InitWithRpcCtx(const RpcCtxMap &send_ctx,
                              const RecvCtxMap &recv_ctx,
@@ -350,6 +378,7 @@ class Communicator {
                              const std::vector<std::string> &host_sign_list,
                              Scope *recv_scope,
                              const std::map<std::string, std::string> &envs) {
+    VLOG(0) << "Communicator type is: " << typeid(T).name();
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T(std::ref(envs)));
       communicator_->InitEnvs();
@@ -360,13 +389,9 @@ class Communicator {
 
   PSClient *GetPsClient() { return _worker_ptr.get(); }
 
-  std::unique_ptr<paddle::distributed::PSClient> GetPsClientPtr() {
-    return std::move(_worker_ptr);
-  }
-
   RecvCtxMap &GetRecvCtxMap() { return recv_varname_to_ctx_; }
 
-  std::unique_ptr<PSClient> _worker_ptr;  // pointer to worker
+  std::shared_ptr<PSClient> _worker_ptr;  // pointer to worker
 
  protected:
   bool running_ = false;
@@ -379,12 +404,12 @@ class Communicator {
   std::unordered_map<std::string, std::string> envs;
 
   // 计算每个shard 对 dense的存储量
-  inline uint32_t dense_dim_per_shard(uint32_t dense_dim_total,
-                                      uint32_t shard_num) {
+  inline uint32_t DenseDimPerShard(uint32_t dense_dim_total,
+                                   uint32_t shard_num) {
     return dense_dim_total / shard_num + 1;
   }
 
-  void init_gflag(const std::string &gflags);
+  void InitGFlag(const std::string &gflags);
   paddle::distributed::PSParameter _ps_param;
   paddle::distributed::PaddlePSEnvironment _ps_env;
   int servers_ = 0;
@@ -455,15 +480,22 @@ class AsyncCommunicator : public Communicator {
   void PushDensePostProcessing();
 
   void PullSparseToTensorSync(
-      const uint64_t table_id, int fea_dim, uint64_t padding_id,
-      platform::Place place, bool is_training,
+      const uint64_t table_id,
+      int fea_dim,
+      uint64_t padding_id,
+      platform::Place place,
+      bool is_training,
       std::vector<const framework::LoDTensor *> *inputs,  // NOLINT
       std::vector<framework::LoDTensor *> *outputs);      // NOLINT
 
   void PushSparseFromTensorAsync(
-      const uint64_t table_id, int fea_dim, uint64_t padding_id,
-      platform::Place place, std::vector<const framework::LoDTensor *> *inputs,
-      const framework::LoDTensor *shows, const framework::LoDTensor *clicks,
+      const uint64_t table_id,
+      int fea_dim,
+      uint64_t padding_id,
+      platform::Place place,
+      std::vector<const framework::LoDTensor *> *inputs,
+      const framework::LoDTensor *shows,
+      const framework::LoDTensor *clicks,
       std::vector<framework::LoDTensor *> *outputs);
 
  protected:
@@ -570,10 +602,6 @@ class GeoCommunicator : public AsyncCommunicator {
   explicit GeoCommunicator(const std::map<std::string, std::string> &envs)
       : AsyncCommunicator(envs) {}
 
-  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
-                const RecvCtxMap &recv_varname_to_ctx,
-                Scope *recv_scope) override;
-
   void InitParams(const RecvCtxMap &recv_varname_to_ctx) override;
   void InitDense(std::vector<std::string> &varnames, int table_id);  // NOLINT
   void InitSparse(const std::string &var_name, int table_id);
@@ -584,12 +612,13 @@ class GeoCommunicator : public AsyncCommunicator {
   std::vector<int64_t> MergeSparseIds(const std::string &varname);
   void SendSparse(const std::string &varname,
                   std::vector<int64_t> &sparse_ids,  // NOLINT
-                  int table_id, int ep_idx);
+                  int table_id,
+                  int ep_idx);
   void RecvSparse(const std::string &varname, int table_id, int ep_idx);
 
   void MainThread() override;
 
-  void InitEnvs() {
+  virtual void InitEnvs() {
     independent_recv_ = false;
     min_send_grad_num_before_recv_ = 0;
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
@@ -599,6 +628,10 @@ class GeoCommunicator : public AsyncCommunicator {
     send_queue_size_ = max_merge_var_num_;
     VLOG(1) << "GeoCommunicator Initialized";
   }
+
+  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                const RecvCtxMap &recv_varname_to_ctx,
+                Scope *recv_scope) override;
 
   void Send(const std::vector<std::string> &var_names,
             const framework::Scope &scope) override;
@@ -619,7 +652,7 @@ class GeoCommunicator : public AsyncCommunicator {
     return param_name;
   }
 
- private:
+ public:
   // parameter for delta calc and send
   std::shared_ptr<Scope> delta_scope_;
   // parameter for storage the pserver param after last recv
@@ -627,9 +660,55 @@ class GeoCommunicator : public AsyncCommunicator {
   // parameter on pserver
   std::shared_ptr<Scope> pserver_scope_;
 
-  std::unordered_map<std::string, paddle::framework::Channel<
-                                      std::shared_ptr<std::vector<int64_t>>>>
+  std::unordered_map<
+      std::string,
+      paddle::framework::Channel<std::shared_ptr<std::vector<int64_t>>>>
       sparse_id_queues_;
+};
+
+class FLCommunicator : public GeoCommunicator {
+ public:
+  FLCommunicator() : GeoCommunicator() {}
+
+  ~FLCommunicator() {
+    is_running_ = false;
+    async_send_thread_->join();
+  }
+
+  explicit FLCommunicator(const std::map<std::string, std::string> &envs)
+      : GeoCommunicator(envs) {}
+
+  void InitEnvs() override {}
+
+  virtual void InitBrpcClient(const std::string &dist_desc,
+                              const std::vector<std::string> &host_sign_list);
+
+  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                const RecvCtxMap &recv_varname_to_ctx,
+                Scope *recv_scope) {}
+
+  void StartCoordinatorClient(
+      const std::vector<std::string> &trainer_endpoints);
+
+  void StartCoordinatorServer();
+
+  void StartCoordinator(
+      const std::string &self_endpoint,
+      const std::vector<std::string> &trainer_endpoints) override;
+
+  std::unordered_map<uint32_t, std::string> QueryFLClientsInfo();
+  void SaveFLStrategy(
+      const std::unordered_map<uint32_t, std::string> &fl_strategy);
+
+  void SendThreadAsync();
+  void RpcSendFLStrategy();
+
+ private:
+  int thread_pool_size_ = 1;
+  bool is_running_ = true;
+  PaddlePSEnvironment ps_env_;
+  std::shared_ptr<CoordinatorClient> coordinator_client_ptr_{nullptr};
+  std::unique_ptr<std::thread> async_send_thread_{nullptr};
 };
 
 }  // namespace distributed

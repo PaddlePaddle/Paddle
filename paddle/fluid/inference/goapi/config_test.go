@@ -54,7 +54,7 @@ func TestNewConfig(t *testing.T) {
 	}
 	config.SetTRTDynamicShapeInfo(minInputShape, maxInputShape, optInputShape, false)
 
-	config.EnableTensorRtOSS()
+	config.EnableVarseqlen()
 	t.Logf("TensorrtOssEnabled:%+v", config.TensorrtOssEnabled())
 
 	config.EnableTensorRtDLA(0)

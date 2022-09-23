@@ -42,6 +42,7 @@
 #include <cstdint>
 #include <mutex>
 #include <vector>
+
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 
@@ -76,9 +77,8 @@ class RunQueue {
     unsigned front = front_.load(std::memory_order_relaxed);
     Elem* e = &array_[front & kMask];
     uint8_t s = e->state.load(std::memory_order_relaxed);
-    if (s != kEmpty ||
-        !e->state.compare_exchange_strong(s, kBusy,
-                                          std::memory_order_acquire)) {
+    if (s != kEmpty || !e->state.compare_exchange_strong(
+                           s, kBusy, std::memory_order_acquire)) {
       return w;
     }
     front_.store(front + 1 + (kSize << 1), std::memory_order_relaxed);
@@ -93,9 +93,8 @@ class RunQueue {
     unsigned front = front_.load(std::memory_order_relaxed);
     Elem* e = &array_[(front - 1) & kMask];
     uint8_t s = e->state.load(std::memory_order_relaxed);
-    if (s != kReady ||
-        !e->state.compare_exchange_strong(s, kBusy,
-                                          std::memory_order_acquire)) {
+    if (s != kReady || !e->state.compare_exchange_strong(
+                           s, kBusy, std::memory_order_acquire)) {
       return Work();
     }
     Work w = std::move(e->w);
@@ -112,9 +111,8 @@ class RunQueue {
     unsigned back = back_.load(std::memory_order_relaxed);
     Elem* e = &array_[(back - 1) & kMask];
     uint8_t s = e->state.load(std::memory_order_relaxed);
-    if (s != kEmpty ||
-        !e->state.compare_exchange_strong(s, kBusy,
-                                          std::memory_order_acquire)) {
+    if (s != kEmpty || !e->state.compare_exchange_strong(
+                           s, kBusy, std::memory_order_acquire)) {
       return w;
     }
     back = ((back - 1) & kMask2) | (back & ~kMask2);
@@ -134,9 +132,8 @@ class RunQueue {
     unsigned back = back_.load(std::memory_order_relaxed);
     Elem* e = &array_[back & kMask];
     uint8_t s = e->state.load(std::memory_order_relaxed);
-    if (s != kReady ||
-        !e->state.compare_exchange_strong(s, kBusy,
-                                          std::memory_order_acquire)) {
+    if (s != kReady || !e->state.compare_exchange_strong(
+                           s, kBusy, std::memory_order_acquire)) {
       return Work();
     }
     Work w = std::move(e->w);
@@ -163,9 +160,8 @@ class RunQueue {
       Elem* e = &array_[mid & kMask];
       uint8_t s = e->state.load(std::memory_order_relaxed);
       if (n == 0) {
-        if (s != kReady ||
-            !e->state.compare_exchange_strong(s, kBusy,
-                                              std::memory_order_acquire))
+        if (s != kReady || !e->state.compare_exchange_strong(
+                               s, kBusy, std::memory_order_acquire))
           continue;
         start = mid;
       } else {

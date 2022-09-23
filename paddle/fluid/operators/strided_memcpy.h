@@ -33,10 +33,12 @@ namespace operators {
 // NOTE: When use GPU, the memcpy is async. To sync memcpy, please invoke
 // `dev_ctx.Wait()`.
 template <typename T>
-inline void StridedMemcpy(const platform::DeviceContext& dev_ctx, const T* src,
+inline void StridedMemcpy(const platform::DeviceContext& dev_ctx,
+                          const T* src,
                           const framework::DDim& src_stride,
                           const framework::DDim& dst_dim,
-                          const framework::DDim& dst_stride, T* dst) {
+                          const framework::DDim& dst_stride,
+                          T* dst) {
   paddle::operators::detail::StridedCopyDimVisitor<T> func(
       dev_ctx, src, src_stride, dst_stride, dst);
   dst_dim.apply_visitor(func);
@@ -51,7 +53,8 @@ inline void StridedMemcpy(const platform::DeviceContext& dev_ctx, const T* src,
 // except the specified axis.
 template <typename T>
 inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
-                                     int64_t axis, T* dst,
+                                     int64_t axis,
+                                     T* dst,
                                      const framework::DDim& dst_stride_numel,
                                      const T* src,
                                      const framework::DDim& src_stride_numel,
@@ -61,12 +64,14 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
   int64_t dst_after = dst_stride_numel[axis];
   auto place = ctx.GetPlace();
 
-  PADDLE_ENFORCE_EQ(src_stride_numel.size(), dst_stride_numel.size(),
+  PADDLE_ENFORCE_EQ(src_stride_numel.size(),
+                    dst_stride_numel.size(),
                     platform::errors::InvalidArgument(
                         "Source and destination tensor should have the same "
                         "dimension size, but source tensor dimension size is "
                         "%u, destination tensor size is %u.",
-                        src_stride_numel.size(), dst_stride_numel.size()));
+                        src_stride_numel.size(),
+                        dst_stride_numel.size()));
 
   for (int64_t i = 0; i < axis; ++i) {
     if (i < axis) {
@@ -83,37 +88,53 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
       continue;
     } else {
       PADDLE_ENFORCE_EQ(
-          src_stride_numel[i], dst_stride_numel[i],
+          src_stride_numel[i],
+          dst_stride_numel[i],
           platform::errors::InvalidArgument(
               "Source and destination tensor should have the same number of "
               "elements except the specified axis, but the source elements "
               "number is %d, destination elements number is %d.",
-              src_stride_numel[i], dst_stride_numel[i]));
+              src_stride_numel[i],
+              dst_stride_numel[i]));
     }
   }
 
   for (int64_t i = 0; i < before; ++i) {
     if (platform::is_cpu_place(place)) {
       auto& cpu_place = place;
-      memory::Copy(cpu_place, dst + i * dst_after, cpu_place,
-                   src + i * src_after, sizeof(T) * size);
+      memory::Copy(cpu_place,
+                   dst + i * dst_after,
+                   cpu_place,
+                   src + i * src_after,
+                   sizeof(T) * size);
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto& gpu_place = place;
-      auto& cuda_ctx =
-          reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
-      memory::Copy(gpu_place, dst + i * dst_after, gpu_place,
-                   src + i * src_after, sizeof(T) * size, cuda_ctx.stream());
+      auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(ctx);
+      memory::Copy(gpu_place,
+                   dst + i * dst_after,
+                   gpu_place,
+                   src + i * src_after,
+                   sizeof(T) * size,
+                   cuda_ctx.stream());
 #elif defined(PADDLE_WITH_ASCEND_CL)
       auto& npu_place = place;
       auto& npu_ctx = reinterpret_cast<const platform::NPUDeviceContext&>(ctx);
-      memory::Copy(npu_place, dst + i * dst_after, npu_place,
-                   src + i * src_after, sizeof(T) * size, npu_ctx.stream());
+      memory::Copy(npu_place,
+                   dst + i * dst_after,
+                   npu_place,
+                   src + i * src_after,
+                   sizeof(T) * size,
+                   npu_ctx.stream());
 #elif defined(PADDLE_WITH_MLU)
       auto& mlu_place = place;
       auto& mlu_ctx = reinterpret_cast<const platform::MLUDeviceContext&>(ctx);
-      memory::Copy(mlu_place, dst + i * dst_after, mlu_place,
-                   src + i * src_after, sizeof(T) * size, mlu_ctx.stream());
+      memory::Copy(mlu_place,
+                   dst + i * dst_after,
+                   mlu_place,
+                   src + i * src_after,
+                   sizeof(T) * size,
+                   mlu_ctx.stream());
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "Paddle is not compiled with GPU."));
@@ -124,7 +145,8 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
 
 template <typename T>
 inline void StridedMemcpyWithAxis0(
-    const platform::DeviceContext& dev_ctx, const framework::Tensor& input,
+    const platform::DeviceContext& dev_ctx,
+    const framework::Tensor& input,
     const std::vector<const framework::Tensor*>& shape_refer,
     std::vector<framework::Tensor*>* outputs) {
   const framework::DDim in_stride = stride_numel(input.dims());
@@ -134,9 +156,13 @@ inline void StridedMemcpyWithAxis0(
   for (size_t i = 0; i < outputs->size(); ++i) {
     auto out_stride = stride_numel(shape_refer[i]->dims());
     auto out = outputs->at(i);
-    if (out != nullptr) {
-      StridedNumelCopyWithAxis<T>(dev_ctx, axis, out->data<T>(), out_stride,
-                                  input.data<T>() + input_offset, in_stride,
+    if (out != nullptr && out->initialized() && out->numel() > 0) {
+      StridedNumelCopyWithAxis<T>(dev_ctx,
+                                  axis,
+                                  out->data<T>(),
+                                  out_stride,
+                                  input.data<T>() + input_offset,
+                                  in_stride,
                                   out_stride[axis]);
     }
     input_offset += out_stride[axis];

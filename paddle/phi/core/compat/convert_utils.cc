@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
@@ -26,18 +27,29 @@ limitations under the License. */
 namespace phi {
 
 Backend TransToPhiBackend(const phi::Place& place) {
-  if (place.GetType() == phi::AllocationType::CPU) {
-    return Backend::CPU;
-  } else if (place.GetType() == phi::AllocationType::GPU) {
-    return Backend::GPU;
-  } else if (place.GetType() == phi::AllocationType::XPU) {
-    return Backend::XPU;
-  } else if (place.GetType() == phi::AllocationType::CUSTOM) {
-    return static_cast<Backend>(
-        static_cast<size_t>(Backend::NUM_BACKENDS) +
-        GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
-  } else {
-    return Backend::UNDEFINED;
+  auto allocation_type = place.GetType();
+  switch (allocation_type) {
+    case phi::AllocationType::GPU:
+      return Backend::GPU;
+    case AllocationType::CPU:
+      return Backend::CPU;
+    case AllocationType::GPUPINNED:
+      return Backend::GPU;
+    case AllocationType::XPU:
+      return Backend::XPU;
+    case AllocationType::NPU:
+      return Backend::NPU;
+    case AllocationType::IPU:
+      return Backend::IPU;
+    case AllocationType::MLU:
+      return Backend::MLU;
+    case AllocationType::CUSTOM:
+      return static_cast<Backend>(
+          static_cast<size_t>(Backend::NUM_BACKENDS) +
+          GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Unsupported transform %s to phi Backend.", place));
   }
 }
 
@@ -54,7 +66,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #ifdef PADDLE_WITH_MKLDNN
-    case phi::Backend::MKLDNN:
+    case phi::Backend::ONEDNN:
       return phi::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -93,7 +105,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   }
 }
 
-std::string TransToPhiKernelName(const std::string& fluid_op_name) {
+const std::string& TransToPhiKernelName(const std::string& fluid_op_name) {
   return OpUtilsMap::Instance().GetBaseKernelName(fluid_op_name);
 }
 
@@ -109,5 +121,25 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
   }
   return phi_kernel_name;
 }
+
+#ifdef PADDLE_WITH_MKLDNN
+dnnl::memory::data_type TransToOneDNNDataType(
+    const paddle::experimental::DataType& dtype) {
+  switch (dtype) {
+    case DataType::FLOAT32:
+      return dnnl::memory::data_type::f32;
+    case DataType::BFLOAT16:
+      return dnnl::memory::data_type::bf16;
+    case DataType::INT8:
+      return dnnl::memory::data_type::s8;
+    case DataType::UINT8:
+      return dnnl::memory::data_type::u8;
+    case DataType::INT32:
+      return dnnl::memory::data_type::s32;
+    default:
+      return dnnl::memory::data_type::undef;
+  }
+}
+#endif
 
 }  // namespace phi

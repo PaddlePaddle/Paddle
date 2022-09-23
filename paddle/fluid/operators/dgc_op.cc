@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/dgc_op.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -29,22 +31,23 @@ class DGCOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "DGCOp");
     OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCOp");
     OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasInput("current_step"), "Input", "current_step",
-                   "DGCOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("current_step"), "Input", "current_step", "DGCOp");
     OP_INOUT_CHECK(ctx->HasInput("nranks"), "Input", "nranks", "DGCOp");
 
     OP_INOUT_CHECK(ctx->HasOutput("U_out"), "Output", "U_out", "DGCOp");
     OP_INOUT_CHECK(ctx->HasOutput("V_out"), "Output", "V_out", "DGCOp");
     OP_INOUT_CHECK(ctx->HasOutput("k"), "Output", "k", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasOutput("EncodeGrad"), "Output", "EncodeGrad",
-                   "DGCOp");
-    OP_INOUT_CHECK(ctx->HasOutput("GatherBuff"), "Output", "GatherBuff",
-                   "DGCOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("EncodeGrad"), "Output", "EncodeGrad", "DGCOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("GatherBuff"), "Output", "GatherBuff", "DGCOp");
   }
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "current_step" || var_name == "k" || var_name == "nranks") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
@@ -123,10 +126,10 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
     This optimizer will do two things:
-        
+
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
-    
+
         2. Call momentum to optimize on the cost.
 
 )DOC");

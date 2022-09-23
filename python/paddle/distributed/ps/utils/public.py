@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,9 +23,7 @@ import logging
 import six
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.core import CommContext
 import paddle.fluid.framework as framework
-import paddle.distributed.fleet as fleet
 
 #logging.basicConfig(
 #    format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s', level=logging.INFO)
@@ -39,10 +37,12 @@ LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
+op_role = core.op_proto_and_checker_maker.OpRole
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 backward = core.op_proto_and_checker_maker.OpRole.Backward
+OP_DEVICE_KEY = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
 DEVICE_LIST = ["cpu", "gpu", "xpu"]
 COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
@@ -60,8 +60,11 @@ DATA_NORM_GRAD_NAME = [x + "@GRAD" for x in DATA_NORM_NAME]
 
 def logger_config(log_path, logging_name):
     logger = logging.getLogger(logging_name)
-    logger.setLevel(level=logging.DEBUG)
-    handler = logging.FileHandler(log_path, mode='a', encoding='UTF-8')
+    logger.setLevel(level=logging.WARNING)
+    handler = logging.FileHandler(log_path,
+                                  mode='a',
+                                  encoding='UTF-8',
+                                  delay=True)
     handler.setLevel(logging.INFO)
     formatter = logging.Formatter(
         '%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s')
@@ -73,9 +76,9 @@ def logger_config(log_path, logging_name):
     return logger
 
 
-ps_log_root_dir = '/ps_log/'
-logger = logger_config(
-    log_path='/ps_usr_print_log', logging_name='ps_usr_print_log')
+ps_log_root_dir = './ps_log/'
+logger = logger_config(log_path='./ps_usr_print_log',
+                       logging_name='ps_usr_print_log')
 
 
 class DistributedMode:
@@ -84,16 +87,17 @@ class DistributedMode:
     HALF_ASYNC = 2
     GEO = 3
     FL = 4
+    NU = 5
 
 
 class TrainerRuntimeConfig(object):
+
     def __init__(self, valid_strategy):
         self.mode = None
         num_threads = os.getenv("CPU_NUM", "1")
         send_queue_size = num_threads
         k_steps = valid_strategy.a_sync_configs["k_steps"]
-        logger.info("ps mode in strategy: {}, {}".format(
-            valid_strategy.a_sync, valid_strategy.a_sync_configs["k_steps"]))
+
         if not valid_strategy.a_sync and k_steps == 0:
             self.mode = DistributedMode.SYNC
 
@@ -151,21 +155,22 @@ class TrainerRuntimeConfig(object):
             send_queue_size = self.runtime_configs[
                 'communicator_send_queue_size']
             if max_merge_var_num != num_threads:
-                print('WARNING: In {} mode, communicator_max_merge_var_num '
-                      'must be equal to CPU_NUM. But received, '
-                      'communicator_max_merge_var_num = {}, CPU_NUM = '
-                      '{}. communicator_max_merge_var_num will be forced to {}.'
-                      .format(mode_str, max_merge_var_num, num_threads,
-                              num_threads))
+                print(
+                    'WARNING: In {} mode, communicator_max_merge_var_num '
+                    'must be equal to CPU_NUM. But received, '
+                    'communicator_max_merge_var_num = {}, CPU_NUM = '
+                    '{}. communicator_max_merge_var_num will be forced to {}.'.
+                    format(mode_str, max_merge_var_num, num_threads,
+                           num_threads))
                 self.runtime_configs[
                     'communicator_max_merge_var_num'] = num_threads
             if send_queue_size != num_threads:
                 print('WARNING: In {} mode, communicator_send_queue_size '
                       'must be equal to CPU_NUM. But received, '
                       'communicator_send_queue_size = {}, CPU_NUM = '
-                      '{}. communicator_send_queue_size will be forced to {}.'
-                      .format(mode_str, send_queue_size, num_threads,
-                              num_threads))
+                      '{}. communicator_send_queue_size will be forced to {}.'.
+                      format(mode_str, send_queue_size, num_threads,
+                             num_threads))
                 self.runtime_configs[
                     'communicator_send_queue_size'] = num_threads
 
@@ -183,11 +188,15 @@ def get_lr_ops(program):
     return lr_ops
 
 
-def get_optimize_ops(_program):
+def get_optimize_ops(_program, remote_sparse=[]):
     block = _program.global_block()
     opt_ops = []
     for op in block.ops:
         if _is_opt_role_op(op):
+            if len(remote_sparse) > 0 and op.input(
+                    "Param"
+            )[0] not in remote_sparse:  # for fl: only delete remote sparse optimize
+                continue
             # delete clip op from opt_ops when run in Parameter Server mode
             if OP_NAME_SCOPE in op.all_attrs() \
                     and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
@@ -195,6 +204,15 @@ def get_optimize_ops(_program):
                     "op_role",
                     int(core.op_proto_and_checker_maker.OpRole.Backward))
                 continue
+            opt_ops.append(op)
+    return opt_ops
+
+
+def get_datanorm_ops(_program):
+    block = _program.global_block()
+    opt_ops = []
+    for op in block.ops:
+        if op.type == 'data_norm':
             opt_ops.append(op)
     return opt_ops
 
@@ -239,17 +257,15 @@ def get_ps_endpoints(role_maker):
 
 
 def get_heter_worker_endpoint(role_maker):
-    try:
-        return role_maker._get_heter_worker_endpoint()
-    except Exception:
-        return role_maker.get_heter_worker_endpoint()
+    return role_maker._get_heter_worker_endpoint()
 
 
 def get_trainer_endpoint(role_maker):
-    try:
-        return role_maker._get_trainer_endpoint()
-    except Exception:
-        return role_maker.get_trainer_endpoint()
+    return role_maker._get_trainer_endpoint()
+
+
+def get_trainer_endpoints(role_maker):
+    return role_maker._get_trainer_endpoints()
 
 
 def get_previous_stage_trainers(role_maker):
@@ -340,12 +356,13 @@ def get_dense_send_context(program,
             var_numel += reduce(lambda x, y: x * y, var.shape)
         grad_name = "Dense@GRAD_" + str(idx)
         aggregate = True
-        print("public get_dense_send_context dense_table:", grad_name,
-              var_numel, origin_varnames)
+        # print("public get_dense_send_context dense_table:", grad_name,
+        #      var_numel, origin_varnames)
+        from paddle.fluid.core import CommContext
         dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                 [var_numel], origin_varnames, trainer_id,
                                 aggregate, False, False, idx, False, False,
-                                id(program))
+                                id(program), [])
         send_ctx[grad_name] = dense_ctx
         idx += 1
 
@@ -362,12 +379,13 @@ def get_dense_send_context(program,
             var_numel += reduce(lambda x, y: x * y, var.shape)
         grad_name = "DataNorm@GRAD_" + str(idx)
         aggregate = True
-        print("public get_dense_send_context data_norm table:", grad_name,
-              var_numel, origin_varnames)
+        # print("public get_dense_send_context data_norm table:", grad_name,
+        #      var_numel, origin_varnames)
+        from paddle.fluid.core import CommContext
         data_norm_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
                                     aggregate, False, False, idx, False, True,
-                                    id(program))
+                                    id(program), [])
         send_ctx[grad_name] = data_norm_ctx
         idx += 1
     else:
@@ -378,49 +396,53 @@ def get_dense_send_context(program,
             var_numel = reduce(lambda x, y: x * y, var.shape)
             grad_name = origin_varname
             aggregate = True
+            from paddle.fluid.core import CommContext
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], [origin_varname], trainer_id,
                                     aggregate, False, False, idx, False, False,
-                                    id(program))
+                                    id(program), [])
             send_ctx[grad_name] = dense_ctx
             idx += 1
     return idx
 
 
-def get_geo_trainer_send_context(context):
-    if context['ps_mode'] != DistributedMode.GEO:
+def get_geo_trainer_send_context(attrs):
+    if attrs['ps_mode'] != DistributedMode.GEO:
         raise ValueError("ps mode: {} not matched {}",
                          format(ps_mode, "get_geo_trainer_send_context"))
     send_ctx = {}
-    trainer_id = get_role_id(context['role_maker'])
-    origin_programs = context['origin_main_programs']
-    idx = 0
+    trainer_id = get_role_id(attrs['role_maker'])
+    origin_programs = attrs['origin_main_programs']
+    idx = 0  # table idx
 
     distibuted_varnames = get_sparse_tablenames(origin_programs, True)
     for i, program in enumerate(origin_programs):
-        merged_sparse_pairs = context['merged_sparse_pairs'][i]
+        merged_sparse_pairs = attrs['merged_sparse_pairs'][i]
         for merged in merged_sparse_pairs:
             param, grad = merged
             grad_name = grad.merged_var.name
             param_name = param.merged_var.name
-            is_distributed = True if param_name in distibuted_varnames else False
+            if param_name in attrs['remote_sparse']:  # for recall/ncf model
+                continue
 
+            is_distributed = True if param_name in distibuted_varnames else False
             var = program.global_block().vars[grad.merged_var.name]
             var_numel = reduce(lambda x, y: x * y, var.shape[1:])
-
-            sparse_ctx = CommContext(grad_name, [grad_name],
-                                     ["127.0.0.1:6071"], [var_numel],
-                                     [grad_name], trainer_id, True, True,
-                                     is_distributed, idx, False, False,
-                                     id(program))
+            from paddle.fluid.core import CommContext
+            print("public get_the_geo_send_context sparse: ", grad_name,
+                  var_numel)
+            sparse_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
+                                     [var_numel], [grad_name], trainer_id, True,
+                                     True, is_distributed, idx, False, False,
+                                     id(program), [])
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
     if len(send_ctx) == 0:
         raise ValueError("GeoSGD require sparse parameters in your net.")
 
-    if len(context['tensor_table']) > 0 and context['is_worker']:
-        name, ctx = _step_ctx(idx, context['role_maker'])
+    if len(attrs['tensor_table']) > 0 and attrs['is_worker']:
+        name, ctx = _step_ctx(idx, attrs['role_maker'])
         send_ctx[name] = ctx
 
     return send_ctx
@@ -432,36 +454,35 @@ def _step_ctx(idx, role_maker):
     endpoints = get_ps_endpoints(role_maker)
     sections = [1] * len(endpoints)
     names = [name] * len(endpoints)
+    from paddle.fluid.core import CommContext
     ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
-                      True, False, False, idx, True, False, -1)
+                      True, False, False, idx, True, False, -1, [])
     return name, ctx
 
 
-def get_the_one_send_context(context,
-                             split_dense_table=False,
-                             use_origin_program=False,
-                             ep_list=None):
+def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
     if ep_list is None:
         ep_list = ["127.0.0.1:6071"]
     send_ctx = {}
-    trainer_id = get_role_id(context['role_maker'])
-    origin_programs = context['origin_main_programs']
+    trainer_id = get_role_id(attrs['role_maker'])
+    origin_programs = attrs['origin_main_programs']
+    print("is_heter_ps_mode? {}".format(split_dense_table))
 
     idx = 0
-    for i, program in enumerate(origin_programs):
-        merged_dense_pairs = context['merged_dense_pairs'][i]
-        idx = get_dense_send_context(program, send_ctx, idx, merged_dense_pairs,
-                                     trainer_id, split_dense_table)
     distibuted_varnames = get_sparse_tablenames(origin_programs, True)
-    print("public distibuted_varnames:", distibuted_varnames)
+    # print("public distibuted_varnames:", distibuted_varnames)
     for i, program in enumerate(origin_programs):
-        merged_sparse_pairs = context['merged_sparse_pairs'][i]
+        merged_sparse_pairs = attrs['merged_sparse_pairs'][i]
         for merged in merged_sparse_pairs:
             param, grad = merged
             grad_name = grad.merged_var.name
             param_name = param.merged_var.name
-            splited_varname = []
 
+            remote_sparse_ids = []
+            if param_name in attrs['remote_sparse']:  # for recall/ncf model
+                remote_sparse_ids.append(idx)
+
+            splited_varname = []
             for i in range(len(ep_list)):
                 splited_varname.append("{}.block{}".format(param_name, i))
 
@@ -472,20 +493,26 @@ def get_the_one_send_context(context,
             shape = list(var.shape)
             shape[0] = 0 if is_distributed else shape[0]
 
-            print("public get_the_one_send_context sparse:", grad_name,
-                  splited_varname, shape)
             if grad_name in send_ctx:
                 continue
+            from paddle.fluid.core import CommContext
+            print("public get_the_one_send_context sparse: ", grad_name,
+                  splited_varname, shape)
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
                                      is_distributed, idx, False, False,
-                                     id(program))
+                                     id(program), remote_sparse_ids)
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
-    if len(context['tensor_table']) > 0 and context['is_worker']:
-        name, ctx = _step_ctx(idx, context['role_maker'])
+    for i, program in enumerate(origin_programs):
+        merged_dense_pairs = attrs['merged_dense_pairs'][i]
+        idx = get_dense_send_context(program, send_ctx, idx, merged_dense_pairs,
+                                     trainer_id, split_dense_table)
+
+    if len(attrs['tensor_table']) > 0 and attrs['is_worker']:
+        name, ctx = _step_ctx(idx, attrs['role_maker'])
         send_ctx[name] = ctx
 
     return send_ctx
@@ -549,10 +576,8 @@ def find_heter_ops(program, default_device="cpu"):
                     op_list = list(block.ops)
                     sum_op = op_list[var2idx[param_name]]
                     sum_op_inputs = {
-                        sum_op.input_names[0]: [
-                            block.vars[input]
-                            for input in sum_op.input_arg_names
-                        ]
+                        sum_op.input_names[0]:
+                        [block.vars[input] for input in sum_op.input_arg_names]
                     }
                     sum_op_outputs = {
                         sum_op.output_names[0]: [
@@ -560,12 +585,11 @@ def find_heter_ops(program, default_device="cpu"):
                             for output in sum_op.output_arg_names
                         ]
                     }
-                    block._insert_op(
-                        index=i + 1,
-                        type=sum_op.type,
-                        inputs=sum_op_inputs,
-                        outputs=sum_op_outputs,
-                        attrs=sum_op.all_attrs())
+                    block._insert_op(index=i + 1,
+                                     type=sum_op.type,
+                                     inputs=sum_op_inputs,
+                                     outputs=sum_op_outputs,
+                                     attrs=sum_op.all_attrs())
                     block._remove_op(var2idx[param_name] + 1)
                     var2idx.pop(param_name)
                     for var_ in var2idx:
@@ -587,7 +611,7 @@ def find_heter_ops(program, default_device="cpu"):
                     if no_grad_var in var2idx:
                         """
                        insert sum op & remove sum op from var2idx and origin place
-  
+
                        """
                         op_list = list(block.ops)
                         sum_op = op_list[var2idx[no_grad_var]]
@@ -603,12 +627,11 @@ def find_heter_ops(program, default_device="cpu"):
                                 for output in sum_op.output_arg_names
                             ]
                         }
-                        block._insert_op(
-                            index=i + 1,
-                            type=sum_op.type,
-                            inputs=sum_op_inputs,
-                            outputs=sum_op_outputs,
-                            attrs=sum_op.all_attrs())
+                        block._insert_op(index=i + 1,
+                                         type=sum_op.type,
+                                         inputs=sum_op_inputs,
+                                         outputs=sum_op_outputs,
+                                         attrs=sum_op.all_attrs())
                         block._remove_op(var2idx[no_grad_var] + 1)
                         var2idx.pop(no_grad_var)
                         for var_ in var2idx:
@@ -623,8 +646,8 @@ def find_heter_ops(program, default_device="cpu"):
                         forward_op_type = pre_op.type.split("_grad")[0]
                         if forward_op_type in SPARSE_OP_TYPE_DICT.keys() \
                             and pre_op.attr('remote_prefetch') is True:
-                            param_name = pre_op.input(SPARSE_OP_TYPE_DICT[
-                                forward_op_type])[0]
+                            param_name = pre_op.input(
+                                SPARSE_OP_TYPE_DICT[forward_op_type])[0]
                             if param_name == origin_var and op.attr(
                                     "op_device") == pre_op.attr("op_device"):
                                 continue
@@ -724,7 +747,8 @@ def find_heter_ops(program, default_device="cpu"):
     if len(heter_ops) == 0:
         warnings.warn(
             "No heterogeneous OP was found in your program , "
-            " please using fluid.device_guard() to run OPs on different device.")
+            " please using fluid.device_guard() to run OPs on different device."
+        )
 
     total_heter_ops = 0
     heter_blocks = 0
@@ -734,8 +758,8 @@ def find_heter_ops(program, default_device="cpu"):
         for _, heter_block in heter_block_dict.items():
             total_heter_ops += len(heter_block)
     print(
-        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".
-        format(len(block.ops), total_heter_ops, heter_blocks))
+        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks."
+        .format(len(block.ops), total_heter_ops, heter_blocks))
 
     return origin_porgram, heter_ops, default_ops, program_block_ops
 
@@ -743,7 +767,7 @@ def find_heter_ops(program, default_device="cpu"):
 def union_forward_gradient_op(program_block_ops_list):
     """
     before analyzing the input & output of each block in program_block_list, we should
-    union the forward op and corresponding gradient op to elimincate the uneccessary variable
+    union the forward op and corresponding gradient op to elimincate the unnecessary variable
     transmit
     """
     """
@@ -755,9 +779,8 @@ def union_forward_gradient_op(program_block_ops_list):
     assert block_length % 2 != 0, "the length of program_block_ops_list should be odd"
     for i in range(0, block_length // 2):
         block_op_list = {"forward": program_block_ops_list[i]}
-        block_op_list.update({
-            "backward": program_block_ops_list[block_length - 1 - i]
-        })
+        block_op_list.update(
+            {"backward": program_block_ops_list[block_length - 1 - i]})
         union_program_block_ops_list.append(block_op_list)
 
     block_op_list = {"forward": [], "backward": []}
@@ -775,8 +798,9 @@ def find_block_joints(program, program_block_ops_list, heter_ops):
                                                   program_block_ops_list)
     block_var_detail = entrance_exit_check(program, program_block_ops_list,
                                            block_var_detail, heter_ops)
-    block_var_detail = delete_block_useless_exit(
-        program, program_block_ops_list, block_var_detail)
+    block_var_detail = delete_block_useless_exit(program,
+                                                 program_block_ops_list,
+                                                 block_var_detail)
 
     return block_var_detail
 
@@ -821,8 +845,8 @@ def find_entrance_exit_private(program, program_block_ops_list):
         bp_block_input, bp_block_output = find_ops_list_input_output(
             program, block_op_list["backward"])
         bp_persistables = screen_persistables(
-            program, bp_block_input) + screen_persistables(program,
-                                                           bp_block_output)
+            program, bp_block_input) + screen_persistables(
+                program, bp_block_output)
         # find entrance & exit
         bp_block_private_vars = list(set(bp_block_input) & set(bp_block_output))
         bp_block_entrance = list(
@@ -870,10 +894,10 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
         #need_add_vars = find_need_var_from_previous_block(
         #    need_add_vars, block_var_detail, index, heter_ops)
 
-        previous_block_private = block_var_detail[index - 1]["forward"][
-            "private"]
-        previous_block_entrance = block_var_detail[index - 1]["forward"][
-            "entrance"]
+        previous_block_private = block_var_detail[index -
+                                                  1]["forward"]["private"]
+        previous_block_entrance = block_var_detail[index -
+                                                   1]["forward"]["entrance"]
         for var in need_add_vars:
             if var not in previous_block_private and var not in previous_block_entrance:
                 previous_block_entrance.append(var)
@@ -899,10 +923,10 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
                 need_ignore_vars.append(var)
         need_add_vars = list(
             set(need_add_vars).difference(set(need_ignore_vars)))
-        previous_block_private = block_var_detail[index + 1]["backward"][
-            "private"]
-        previous_block_entrance = block_var_detail[index + 1]["backward"][
-            "entrance"]
+        previous_block_private = block_var_detail[index +
+                                                  1]["backward"]["private"]
+        previous_block_entrance = block_var_detail[index +
+                                                   1]["backward"]["entrance"]
         for var in need_add_vars:
             if var not in previous_block_private and var not in previous_block_entrance:
                 previous_block_entrance.append(var)
@@ -930,8 +954,8 @@ def delete_block_useless_exit(program, program_block_ops_list,
         if index - 1 < 0:
             break
         current_block_exit = block_var_detail[index]["backward"]["exit"]
-        next_block_entrance = block_var_detail[index - 1]["backward"][
-            "entrance"]
+        next_block_entrance = block_var_detail[index -
+                                               1]["backward"]["entrance"]
         need_delete_var = []
         for var in current_block_exit:
             if var not in next_block_entrance:
@@ -981,8 +1005,8 @@ def add_vars_by_var_list(var_name_list, origin_program, program, block):
         ).vars and var_name not in block.vars:
             var = origin_program.global_block().vars[var_name]
             if var.persistable:
-                program.global_block()._clone_variable(
-                    var, force_persistable=False)
+                program.global_block()._clone_variable(var,
+                                                       force_persistable=False)
             else:
                 block._clone_variable(var, force_persistable=False)
 
@@ -1084,19 +1108,20 @@ def block_append_op(program, origin_program, block, op):
 
     if "_grad" not in op.type:
         # for forward op
-        return block.append_op(
-            type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
+        return block.append_op(type=op.type,
+                               inputs=inputs,
+                               outputs=outputs,
+                               attrs=op.all_attrs())
     else:
         # for grad op
         op_desc = op.desc
-        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
         backward = core.op_proto_and_checker_maker.OpRole.Backward
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
         # append grad op
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(op_desc)
-        new_op_desc._set_attr(op_role_attr_name, backward)
+        new_op_desc._set_attr(RPC_OP_ROLE_ATTR_NAME, backward)
 
         # set device gard
         if op.desc.has_attr(device_attr_name):
@@ -1137,37 +1162,34 @@ def insert_communicate_op(orign_program,
         comm_info = get_communicate_var_info(orign_program, stage_id - 1,
                                              entrance_var, "backward")
 
-    heter_block._insert_op(
-        index=first_op_index,
-        type="send_and_recv",
-        inputs={"X": heter_block.vars[entrance_var[0]]},
-        outputs={"Out": []},
-        attrs={
-            "mode": "forward" if is_forward else "backward",
-            "send_var_name": entrance_var + ["microbatch_id"],
-            "recv_var_name": [],
-            "message_name": comm_info["block_input_var_name"],
-            "next_endpoints": next_heter_worker_endpoints,
-            "previous_endpoints": previous_heter_worker_endpoints,
-            "trainer_id": get_role_id(role_maker),
-            "op_device": device,
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-        })
+    heter_block._insert_op(index=first_op_index,
+                           type="send_and_recv",
+                           inputs={"X": heter_block.vars[entrance_var[0]]},
+                           outputs={"Out": []},
+                           attrs={
+                               "mode": "forward" if is_forward else "backward",
+                               "send_var_name":
+                               entrance_var + ["microbatch_id"],
+                               "recv_var_name": [],
+                               "message_name":
+                               comm_info["block_input_var_name"],
+                               "next_endpoints": next_heter_worker_endpoints,
+                               "previous_endpoints":
+                               previous_heter_worker_endpoints,
+                               "trainer_id": get_role_id(role_maker),
+                               "op_device": device,
+                               RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                           })
 
     return entrance_var
 
 
-def get_the_one_recv_context(context,
-                             is_dense=True,
-                             split_dense_table=False,
-                             use_origin_program=False):
+def get_the_one_recv_context(context, is_dense=True, split_dense_table=False):
     recv_id_maps = {}
     grad_name_to_param_name = {}
     if is_dense:
-        send_ctx = get_the_one_send_context(
-            context,
-            split_dense_table=split_dense_table,
-            use_origin_program=use_origin_program)
+        send_ctx = get_the_one_send_context(context,
+                                            split_dense_table=split_dense_table)
         for idx, (name, ctx) in enumerate(send_ctx.items()):
             if ctx.is_sparse():
                 continue
@@ -1182,11 +1204,9 @@ def get_the_one_recv_context(context,
                 param_names.append(param_name)
             recv_id_maps[ctx.table_id()] = param_names
     else:
-        send_ctx = get_the_one_send_context(
-            context,
-            split_dense_table=False,
-            use_origin_program=False,
-            ep_list=None)
+        send_ctx = get_the_one_send_context(context,
+                                            split_dense_table=False,
+                                            ep_list=None)
         for idx, (name, ctx) in enumerate(send_ctx.items()):
             if not ctx.is_sparse():
                 continue
@@ -1239,6 +1259,7 @@ def get_var_mem_size(var):
 
 
 class MergedVariable:
+
     def __init__(self, merged, ordered, offsets):
         self.merged_var = merged
         self.ordered_vars = ordered
@@ -1258,8 +1279,8 @@ def build_var_distributed(context):
     context["merged_variable_map"] = {}
     for origin_program in origin_programs:
         sparse_pairs, dense_pairs = get_param_grads(origin_program)
-        print("public build_var_distributed sparse_pairs:", sparse_pairs)
-        print("public build_var_distributed dense_pairs:", dense_pairs)
+        #print("public build_var_distributed sparse_pairs:", sparse_pairs)
+        #print("public build_var_distributed dense_pairs:", dense_pairs)
         origin_for_sparse = []
         origin_for_dense = []
         merged_sparse_pairs = []
@@ -1279,8 +1300,8 @@ def build_var_distributed(context):
             m_grad = MergedVariable(grad, [grad], [0])
             merged_variables_pairs.append((m_param, m_grad))
             merged_dense_pairs.append((m_param, m_grad))
-        print("public build_var_distributed merged_dense_pairs:",
-              merged_dense_pairs)
+        #print("public build_var_distributed merged_dense_pairs:",
+        #       merged_dense_pairs)
 
         for sparse_pair in origin_for_sparse:
             param, grad = sparse_pair
@@ -1289,8 +1310,8 @@ def build_var_distributed(context):
             m_grad = MergedVariable(grad, [grad], [0])
             merged_variables_pairs.append((m_param, m_grad))
             merged_sparse_pairs.append((m_param, m_grad))
-        print("public build_var_distributed merged_sparse_pairs:",
-              merged_sparse_pairs)
+        #print("public build_var_distributed merged_sparse_pairs:",
+        #       merged_sparse_pairs)
 
         for merged in merged_variables_pairs:
             m_param, m_grad = merged
@@ -1314,19 +1335,20 @@ def build_var_distributed(context):
 
     context["param_name_to_grad_name"] = param_name_to_grad_name
     context["grad_name_to_param_name"] = grad_name_to_param_name
-
+    '''
     print("public build_var_distributed origin_sparse_pairs:",
-          context["origin_sparse_pairs"])
+        context["origin_sparse_pairs"])
     print("public build_var_distributed origin_for_dense:",
-          context["origin_dense_pairs"])
+        context["origin_dense_pairs"])
     print("public build_var_distributed merged_sparse_pairs:",
-          context["merged_sparse_pairs"])
+        context["merged_sparse_pairs"])
     print("public build_var_distributed merged_dense_pairs:",
-          context['merged_dense_pairs'])
+        context['merged_dense_pairs'])
     print("public build_var_distributed param_name_to_grad_name:",
-          param_name_to_grad_name)
+        param_name_to_grad_name)
     print("public build_var_distributed grad_name_to_param_name:",
-          grad_name_to_param_name)
+        grad_name_to_param_name)
+    '''
 
 
 def _is_opt_role_op(op):
@@ -1341,6 +1363,7 @@ def _is_opt_role_op(op):
 
 
 def get_param_grads(origin_program):
+
     def _get_params_grads(sparse_varnames):
         block = origin_program.global_block()
 
@@ -1416,7 +1439,8 @@ def find_op_input_output(program, block, op):
     return input_var_list, output_var_list
 
 
-def add_heter_send_op(program, heter_program, block, block_var_detail):
+def add_send_op(program, block, _vars):
+
     def _get_send_op_dict():
         send_op_dict = {}
         send_op_list = find_send_op(program)
@@ -1430,7 +1454,7 @@ def add_heter_send_op(program, heter_program, block, block_var_detail):
     send_grad_var_list = []
     send_op_dict = _get_send_op_dict()
     table_dict = {}
-    for persistable_var in block_var_detail["backward"]["persistables"]:
+    for persistable_var in _vars:
         if "@GRAD" not in persistable_var:
             continue
         if "GRAD" != persistable_var.split("@")[-1]:
@@ -1456,16 +1480,16 @@ def add_heter_send_op(program, heter_program, block, block_var_detail):
             block.vars[union_var]
             for union_var in table_dict[table_id]['var_list']
         ]
-        block.append_op(
-            type="send",
-            inputs={"X": send_input_vars},
-            outputs={"Out": dummy_output},
-            attrs={
-                "send_varnames": table_dict[table_id]['send_varnames'],
-                "is_sparse": is_sparse,
-                "table_id": table_id,
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        block.append_op(type="send",
+                        inputs={"X": send_input_vars},
+                        outputs={"Out": dummy_output},
+                        attrs={
+                            "send_varnames":
+                            table_dict[table_id]['send_varnames'],
+                            "is_sparse": is_sparse,
+                            "table_id": table_id,
+                            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                        })
 
     return send_grad_var_list
 
@@ -1476,6 +1500,7 @@ def get_vars_name_in_block(block):
     return vars_name_list
 
 
+# reserve static_var
 def delete_trainer_useless_var(program, static_var):
     static_var = list(set(static_var))
     program_useful_var_list = []
@@ -1519,6 +1544,75 @@ def create_backward_block(program, origin_program, bp_ops_list,
     return heter_block
 
 
+def is_backward_op(op):
+    return op_role_attr_name in op.attr_names and (
+        int(op.attr(op_role_attr_name)) & int(op_role.Backward))
+
+
+def is_forward_op(op):
+    return op_role_attr_name in op.attr_names and (int(
+        op.attr(op_role_attr_name)) == int(op_role.Forward))
+
+
+def is_push_sparse_op(op):
+    return op.type == 'distributed_push_sparse'
+
+
+def get_distributed_push_sparse_op_list(block):
+    push_sparse_op_list = []
+    for op_idx in range(block.desc.op_size()):
+        op = block.ops[op_idx]
+        if is_push_sparse_op(op):
+            push_sparse_op_list.append(op)
+    return push_sparse_op_list
+
+
+def get_bp_op_list(block):
+    bp_op_list = []
+    for op_idx in range(block.desc.op_size()):
+        op = block.ops[op_idx]
+        if is_backward_op(op):
+            bp_op_list.append(op)
+    return bp_op_list
+
+
+def delete_same_ops(block, ops):
+    for op in ops:
+        try:
+            for origin_op in block.ops:
+                if str(origin_op) == str(op):
+                    idx = list(block.ops).index(origin_op)
+                    block._remove_op(idx)
+                    break
+        except Exception as e:
+            print(e)
+
+
+def check_program(program):
+    block_idx = 0
+    for block in program.blocks:
+        for op in block.ops:
+            input_var_names = op.desc.input_arg_names()
+            output_var_names = op.desc.output_arg_names()
+            for var_name in (input_var_names + output_var_names):
+                if not block._find_var_recursive(str(var_name)):
+                    raise ValueError(
+                        'var: {} needed by op is not found in block: {}'.format(
+                            str(var_name), block_idx))
+        block_idx += 1
+    print('program checked valid')
+
+
 def debug_program(file, program):
+    # py >= 3.2
+    os.makedirs(os.path.dirname(file), exist_ok=True)
     with open(file, 'w+') as f:
         f.write(str(program))
+
+
+def is_distributed_env():
+    node_role = os.getenv("TRAINING_ROLE")
+    if node_role is None:
+        return False
+    else:
+        return True

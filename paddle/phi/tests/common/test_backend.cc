@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <iostream>
 
 #include "paddle/phi/api/ext/exception.h"
@@ -38,8 +39,8 @@ TEST(Backend, OStream) {
   oss << phi::Backend::NPU;
   EXPECT_EQ(oss.str(), "NPU");
   oss.str("");
-  oss << phi::Backend::MKLDNN;
-  EXPECT_EQ(oss.str(), "MKLDNN");
+  oss << phi::Backend::ONEDNN;
+  EXPECT_EQ(oss.str(), "ONEDNN");
   oss.str("");
   oss << phi::Backend::GPUDNN;
   EXPECT_EQ(oss.str(), "GPUDNN");
@@ -62,9 +63,13 @@ TEST(Backend, StringToBackend) {
   EXPECT_EQ(phi::Backend::GPU, pexp::StringToBackend("GPU"));
   EXPECT_EQ(phi::Backend::XPU, pexp::StringToBackend("XPU"));
   EXPECT_EQ(phi::Backend::NPU, pexp::StringToBackend("NPU"));
-  EXPECT_EQ(phi::Backend::MKLDNN, pexp::StringToBackend("MKLDNN"));
+  EXPECT_EQ(phi::Backend::ONEDNN, pexp::StringToBackend("OneDNN"));
   EXPECT_EQ(phi::Backend::GPUDNN, pexp::StringToBackend("GPUDNN"));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  EXPECT_EQ(phi::Backend::GPU, pexp::StringToBackend("KPS"));
+#else
   EXPECT_EQ(phi::Backend::KPS, pexp::StringToBackend("KPS"));
+#endif
   EXPECT_EQ(static_cast<phi::Backend>(
                 static_cast<size_t>(phi::Backend::NUM_BACKENDS) + 1),
             pexp::StringToBackend("CustomBackend"));

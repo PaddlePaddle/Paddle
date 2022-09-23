@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,7 +21,7 @@ import paddle.static as static
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -48,8 +48,7 @@ custom_ops = load(
 def concat_dynamic(func, dtype, np_inputs, axis_v, with_attr=False):
     paddle.set_device("cpu")
     inputs = [
-        paddle.to_tensor(
-            x, dtype=dtype, stop_gradient=False) for x in np_inputs
+        paddle.to_tensor(x, dtype=dtype, stop_gradient=False) for x in np_inputs
     ]
     if with_attr:
         axis = axis_v
@@ -103,6 +102,7 @@ def concat_static(func, dtype, np_inputs, axis_v, with_attr=False):
 
 
 class TestCustomConcatDynamicAxisJit(unittest.TestCase):
+
     def setUp(self):
         self.dtypes = ['float32', 'float64', 'int32', 'int64']
         self.np_inputs = [
@@ -112,10 +112,11 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
         self.axises = [0, 1]
 
     def check_output(self, out, pd_out, name):
-        self.assertTrue(
-            np.array_equal(out, pd_out),
-            "custom op {}: {},\n paddle api {}: {}".format(name, out, name,
-                                                           pd_out))
+        np.testing.assert_array_equal(
+            out,
+            pd_out,
+            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
+                name, out, name, pd_out))
 
     def func_dynamic(self):
         for dtype in self.dtypes:
@@ -137,8 +138,9 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
     def test_static(self):
         for dtype in self.dtypes:
             for axis in self.axises:
-                out, x1_grad, x2_grad = concat_static(
-                    custom_ops.custom_concat, dtype, self.np_inputs, axis)
+                out, x1_grad, x2_grad = concat_static(custom_ops.custom_concat,
+                                                      dtype, self.np_inputs,
+                                                      axis)
                 pd_out, pd_x1_grad, pd_x2_grad = concat_static(
                     paddle.concat, dtype, self.np_inputs, axis)
 
@@ -152,8 +154,9 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
                 out, grad_inputs = concat_dynamic(
                     custom_ops.custom_concat_with_attr, dtype, self.np_inputs,
                     axis, True)
-                pd_out, pd_grad_inputs = concat_dynamic(
-                    paddle.concat, dtype, self.np_inputs, axis, True)
+                pd_out, pd_grad_inputs = concat_dynamic(paddle.concat, dtype,
+                                                        self.np_inputs, axis,
+                                                        True)
 
                 self.check_output(out, pd_out, "out")
                 for x_grad, pd_x_grad in zip(grad_inputs, pd_grad_inputs):

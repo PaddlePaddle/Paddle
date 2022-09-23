@@ -15,7 +15,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -51,27 +54,13 @@ y = \frac{x}{ \sqrt{\sum {x^2} + epsion }}
 $$
 
 where, $\sum {x^2}$ is calculated along the `axis` dimension.
-        
+
 )DOC");
   }
 };
 
 class NormOp : public framework::OperatorWithKernel {
- public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NormOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "NormOp");
-    auto xdim = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", xdim);
-
-    if (ctx->Attrs().Get<bool>("is_test") == false) {
-      int axis = ctx->Attrs().Get<int>("axis");
-      if (axis < 0) axis = xdim.size() + axis;
-      xdim[axis] = 1;
-      ctx->SetOutputDim("Norm", xdim);
-    }
-  }
 };
 
 class NormOpGrad : public framework::OperatorWithKernel {
@@ -79,8 +68,10 @@ class NormOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NormOpGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
-                   "X@GRAD", "NormOpGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Input",
+                   "X@GRAD",
+                   "NormOpGrad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -109,9 +100,16 @@ class NormOpGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
-REGISTER_OPERATOR(norm, ops::NormOp, ops::NormOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(norm,
+                            NormInferShapeFunctor,
+                            PD_INFER_META(phi::NormInferMeta));
+
+REGISTER_OPERATOR(norm,
+                  ops::NormOp,
+                  ops::NormOpMaker,
                   ops::NormOpGradOpMaker<paddle::framework::OpDesc>,
-                  ops::NormOpGradOpMaker<paddle::imperative::OpBase>);
+                  ops::NormOpGradOpMaker<paddle::imperative::OpBase>,
+                  NormInferShapeFunctor);
 REGISTER_OPERATOR(norm_grad, ops::NormOpGrad);

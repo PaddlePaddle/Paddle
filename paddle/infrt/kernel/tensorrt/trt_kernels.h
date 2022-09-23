@@ -19,7 +19,6 @@
 #include <utility>
 
 #include "mlir/IR/Operation.h"
-
 #include "paddle/infrt/backends/tensorrt/trt_engine.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
@@ -41,8 +40,8 @@ struct MlirOperationWithInfrtSymbol {
 
 void PrintTrtLayer(backends::tensorrt::TrtEngine* engine);
 
-std::vector<phi::DenseTensor*> TrtEngineCompute(
-    backends::tensorrt::TrtEngine* engine, const phi::GPUContext& context);
+std::vector<::phi::DenseTensor*> TrtEngineCompute(
+    backends::tensorrt::TrtEngine* engine, const ::phi::GPUContext& context);
 
 }  // namespace tensorrt
 }  // namespace kernel

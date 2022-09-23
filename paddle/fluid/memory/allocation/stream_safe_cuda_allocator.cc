@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
+#include <thread>
+
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -24,16 +26,18 @@ namespace memory {
 namespace allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
-    DecoratedAllocationPtr underlying_allocation, gpuStream_t owning_stream,
+    DecoratedAllocationPtr underlying_allocation,
+    gpuStream_t owning_stream,
     StreamSafeCUDAAllocator* allocator)
     : Allocation(underlying_allocation->ptr(),
                  underlying_allocation->base_ptr(),
-                 underlying_allocation->size(), underlying_allocation->place()),
+                 underlying_allocation->size(),
+                 underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
       owning_stream_(std::move(owning_stream)),
       allocator_(allocator->shared_from_this()) {}
 
-void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
+void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
   VLOG(8) << "Try record stream " << stream << " for address " << ptr();
   if (stream == owning_stream_) {
     return;
@@ -62,7 +66,8 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
   RecordGraphCapturingStreams();
 
   for (auto it = outstanding_event_map_.begin();
-       it != outstanding_event_map_.end(); ++it) {
+       it != outstanding_event_map_.end();
+       ++it) {
     gpuEvent_t& event = it->second;
 #ifdef PADDLE_WITH_CUDA
     gpuError_t err = cudaEventQuery(event);
@@ -90,7 +95,7 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
   return true;
 }
 
-const gpuStream_t& StreamSafeCUDAAllocation::GetOwningStream() const {
+gpuStream_t StreamSafeCUDAAllocation::GetOwningStream() const {
   return owning_stream_;
 }
 
@@ -102,7 +107,7 @@ void StreamSafeCUDAAllocation::RecordGraphCapturingStreams() {
 }
 
 void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
-    const gpuStream_t& stream) {
+    gpuStream_t stream) {
   gpuEvent_t record_event;
   auto it = outstanding_event_map_.find(stream);
   if (it == outstanding_event_map_.end()) {
@@ -131,8 +136,10 @@ void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
 }
 
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
-    std::shared_ptr<Allocator> underlying_allocator, platform::CUDAPlace place,
-    gpuStream_t default_stream, bool in_cuda_graph_capturing)
+    std::shared_ptr<Allocator> underlying_allocator,
+    platform::CUDAPlace place,
+    gpuStream_t default_stream,
+    bool in_cuda_graph_capturing)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(std::move(place)),
       default_stream_(std::move(default_stream)),
@@ -154,9 +161,18 @@ StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
+gpuStream_t StreamSafeCUDAAllocator::GetDefaultStream() const {
+  return default_stream_;
+}
+
+void StreamSafeCUDAAllocator::SetDefaultStream(gpuStream_t stream) {
+  default_stream_ = stream;
+}
+
 phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
-  platform::RecordEvent("StreamSafeCUDAAllocator::Allocate",
-                        platform::TracerEventType::UserDefined, 9 /*level*/);
+  platform::RecordEvent record("StreamSafeCUDAAllocator::Allocate",
+                               platform::TracerEventType::UserDefined,
+                               9 /*level*/);
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
@@ -177,22 +193,21 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   }
   StreamSafeCUDAAllocation* allocation = new StreamSafeCUDAAllocation(
       static_unique_ptr_cast<Allocation>(std::move(underlying_allocation)),
-      default_stream_, this);
-  VLOG(8) << "Allocate " << allocation->size() << " bytes at address "
-          << allocation->ptr();
+      default_stream_,
+      this);
+  VLOG(8) << "Thread " << std::this_thread::get_id() << " Allocate "
+          << allocation->size() << " bytes at address " << allocation->ptr()
+          << "  , stream: " << default_stream_;
   return allocation;
 }
 
 void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
-  platform::RecordEvent("StreamSafeCUDAAllocator::Free",
-                        platform::TracerEventType::UserDefined, 9 /*level*/);
+  platform::RecordEvent record("StreamSafeCUDAAllocator::Free",
+                               platform::TracerEventType::UserDefined,
+                               9 /*level*/);
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
-      dynamic_cast<StreamSafeCUDAAllocation*>(allocation);
-  PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,
-                          platform::errors::InvalidArgument(
-                              "Failed to dynamic cast %p from Allocation* to "
-                              "StreamSafeCUDAAllocation*",
-                              allocation));
+      static_cast<StreamSafeCUDAAllocation*>(allocation);
+
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
   if (stream_safe_cuda_allocation->CanBeFreed()) {
     VLOG(9) << "Directly delete allocation";
@@ -221,6 +236,12 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
 }
 
 void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {
+  // NOTE(Ruibiao): This condition is to reduce lock competion. It does not need
+  // to be thread-safe since here occasional misjudgments are permissible.
+  if (unfreed_allocations_.empty()) {
+    return;
+  }
+
   std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
   for (auto it = unfreed_allocations_.begin();
        it != unfreed_allocations_.end();) {

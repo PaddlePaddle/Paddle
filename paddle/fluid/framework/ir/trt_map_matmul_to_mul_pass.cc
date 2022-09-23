@@ -16,9 +16,9 @@
 
 #include <cmath>
 #include <string>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -272,8 +272,8 @@ void TrtMapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
     bool flag = true;
 
     bool transpose_X =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
-    float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
+    float alpha = PADDLE_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     flag = flag && !transpose_X && std::abs(alpha - 1.0) < 1e-5;
 
     std::vector<int64_t> x_shape = matmul_in_x->Var()->GetShape();
@@ -297,11 +297,24 @@ void TrtMapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("transpose_Y", matmul_op->Op()->GetAttr("transpose_Y"));
       if (matmul_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
-        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+        desc.SetAttr("Input_scale", matmul_op->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold",
                      matmul_op->Op()->GetAttr("out_threshold"));
       }
+
+      bool inscale_flag = false;
+      bool outscale_flag = false;
+
+      if (matmul_op->Op()->HasAttr("X")) {
+        desc.SetAttr("X", matmul_op->Op()->GetAttr("X"));
+        inscale_flag = true;
+      }
+      if (matmul_op->Op()->HasAttr("Out")) {
+        desc.SetAttr("Out", matmul_op->Op()->GetAttr("Out"));
+        outscale_flag = true;
+      }
+      desc.SetAttr("support_int8", inscale_flag && outscale_flag);
+
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(matmul_in_x, mul_node);
       IR_NODE_LINK_TO(matmul_in_y, mul_node);
@@ -335,18 +348,18 @@ void TrtMapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(3) << "trt map matmul_v2 to mul";
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_x, matmul_v2_in_x,
-                              matmul_v2_weight_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_y, matmul_v2_in_y,
-                              matmul_v2_weight_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_op, matmul_v2_op,
-                              matmul_v2_weight_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_out, matmul_v2_out,
-                              matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_x, matmul_v2_in_x, matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_y, matmul_v2_in_y, matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_op, matmul_v2_op, matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_out, matmul_v2_out, matmul_v2_weight_pattern);
 
     bool flag = true;
     bool trans_x =
-        BOOST_GET_CONST(bool, matmul_v2_op->Op()->GetAttr("trans_x"));
+        PADDLE_GET_CONST(bool, matmul_v2_op->Op()->GetAttr("trans_x"));
     flag = flag && !trans_x;
 
     std::vector<int64_t> x_shape = matmul_v2_in_x->Var()->GetShape();
@@ -370,12 +383,23 @@ void TrtMapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("transpose_Y", matmul_v2_op->Op()->GetAttr("trans_y"));
       if (matmul_v2_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("X_scale", matmul_v2_op->Op()->GetAttr("X_scale"));
-        desc.SetAttr("weight_scale",
-                     matmul_v2_op->Op()->GetAttr("weight_scale"));
+        desc.SetAttr("Input_scale", matmul_v2_op->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold",
                      matmul_v2_op->Op()->GetAttr("out_threshold"));
       }
+
+      bool inscale_flag = false;
+      bool outscale_flag = false;
+      if (matmul_v2_op->Op()->HasAttr("X")) {
+        desc.SetAttr("X", matmul_v2_op->Op()->GetAttr("X"));
+        inscale_flag = true;
+      }
+      if (matmul_v2_op->Op()->HasAttr("Out")) {
+        desc.SetAttr("Out", matmul_v2_op->Op()->GetAttr("Out"));
+        outscale_flag = true;
+      }
+      desc.SetAttr("support_int8", inscale_flag && outscale_flag);
+
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(matmul_v2_in_x, mul_node);
       IR_NODE_LINK_TO(matmul_v2_in_y, mul_node);
@@ -408,10 +432,10 @@ void TrtMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "trt map matmul_v2 to matmul";
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_x, matmul_v2_in_x,
-                              matmul_v2_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_y, matmul_v2_in_y,
-                              matmul_v2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_x, matmul_v2_in_x, matmul_v2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_y, matmul_v2_in_y, matmul_v2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_op, matmul_v2_op, matmul_v2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_out, matmul_v2_out, matmul_v2_pattern);
     if (!IsCompat(subgraph, g)) {
@@ -448,11 +472,23 @@ void TrtMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
     }
     if (matmul_v2_op->Op()->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));
-      desc.SetAttr("X_scale", matmul_v2_op->Op()->GetAttr("X_scale"));
-      desc.SetAttr("weight_scale", matmul_v2_op->Op()->GetAttr("weight_scale"));
+      desc.SetAttr("Input_scale", matmul_v2_op->Op()->GetAttr("Input_scale"));
       desc.SetAttr("out_threshold",
                    matmul_v2_op->Op()->GetAttr("out_threshold"));
     }
+
+    bool inscale_flag = false;
+    bool outscale_flag = false;
+    if (matmul_v2_op->Op()->HasAttr("X")) {
+      desc.SetAttr("X", matmul_v2_op->Op()->GetAttr("X"));
+      inscale_flag = true;
+    }
+    if (matmul_v2_op->Op()->HasAttr("Out")) {
+      desc.SetAttr("Out", matmul_v2_op->Op()->GetAttr("Out"));
+      outscale_flag = true;
+    }
+    desc.SetAttr("support_int8", inscale_flag && outscale_flag);
+
     auto matmul_node = g->CreateOpNode(&desc);
     IR_NODE_LINK_TO(matmul_v2_in_x, matmul_node);
     IR_NODE_LINK_TO(matmul_v2_in_y, matmul_node);
@@ -495,16 +531,17 @@ void TrtSqueeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
 
     size_t squeeze2_in_x_rank = (squeeze2_in_x->Var()->GetShape()).size();
     std::vector<int> squeeze2_op_axes =
-        BOOST_GET_CONST(std::vector<int>, squeeze2_op->Op()->GetAttr("axes"));
+        PADDLE_GET_CONST(std::vector<int>, squeeze2_op->Op()->GetAttr("axes"));
     flag = flag && squeeze2_in_x_rank == 4 &&
            squeeze2_op_axes == std::vector<int>{2, 3} &&
-           (matmul_in_x->outputs).size() == 1;
+           (matmul_in_x->outputs).size() == 1 &&
+           matmul_in_y->Var()->Persistable();
 
     bool transpose_X =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
     bool transpose_Y =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
-    float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
+    float alpha = PADDLE_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
     flag = flag && !transpose_X && !transpose_Y &&
@@ -529,11 +566,24 @@ void TrtSqueeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("y_num_col_dims", 1);
       if (matmul_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
-        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+        desc.SetAttr("Input_scale", matmul_op->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold",
                      matmul_op->Op()->GetAttr("out_threshold"));
       }
+
+      bool inscale_flag_x = false;
+      bool outscale_flag = false;
+
+      if (squeeze2_op->Op()->HasAttr("X")) {
+        desc.SetAttr("X", squeeze2_op->Op()->GetAttr("X"));
+        inscale_flag_x = true;
+      }
+      if (matmul_op->Op()->HasAttr("Out")) {
+        desc.SetAttr("Out", matmul_op->Op()->GetAttr("Out"));
+        outscale_flag = true;
+      }
+      desc.SetAttr("support_int8", inscale_flag_x && outscale_flag);
+
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(squeeze2_in_x, mul_node);
       IR_NODE_LINK_TO(matmul_in_y, mul_node);
@@ -640,21 +690,21 @@ void TrtReshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     auto reshape2_in_x_shape = reshape2_in_x->Var()->GetShape();
     size_t reshape2_in_x_rank = reshape2_in_x_shape.size();
     std::vector<int> reshape2_op_shape =
-        BOOST_GET_CONST(std::vector<int>, reshape2_op->Op()->GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int>, reshape2_op->Op()->GetAttr("shape"));
     flag = flag && reshape2_in_nums == 1 && reshape2_in_x_rank == 4 &&
            reshape2_in_x_shape[2] == 1 && reshape2_in_x_shape[3] == 1 &&
            reshape2_op_shape.size() == 2 && (matmul_in_x->outputs).size() == 1;
 
     bool transpose_X =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
     bool transpose_Y =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
-    float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
+    float alpha = PADDLE_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
     flag = flag && !transpose_X && !transpose_Y &&
            std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
-           matmul_in_y_rank == 2;
+           matmul_in_y_rank == 2 && matmul_in_y->Var()->Persistable();
 
     std::vector<Node*>& next_ops = matmul_out->outputs;
     flag = flag && next_ops.size() == 1 &&
@@ -674,11 +724,24 @@ void TrtReshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("y_num_col_dims", 1);
       if (matmul_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
-        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+        desc.SetAttr("Input_scale", matmul_op->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold",
                      matmul_op->Op()->GetAttr("out_threshold"));
       }
+
+      bool inscale_flag_x = false;
+      bool outscale_flag = false;
+
+      if (reshape2_op->Op()->HasAttr("X")) {
+        desc.SetAttr("X", reshape2_op->Op()->GetAttr("X"));
+        inscale_flag_x = true;
+      }
+      if (matmul_op->Op()->HasAttr("Out")) {
+        desc.SetAttr("Out", matmul_op->Op()->GetAttr("Out"));
+        outscale_flag = true;
+      }
+      desc.SetAttr("support_int8", inscale_flag_x && outscale_flag);
+
       if (!IsCompat(desc)) {
         LOG(WARNING)
             << "TrtReshape2MatmulFusePass in out mul op compat failed.";
@@ -723,7 +786,7 @@ void TrtFlatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     auto flatten2_in_x_shape = flatten2_in_x->Var()->GetShape();
     size_t flatten2_in_x_rank = flatten2_in_x_shape.size();
     int flatten2_axis =
-        BOOST_GET_CONST(int, flatten2_op->Op()->GetAttr("axis"));
+        PADDLE_GET_CONST(int, flatten2_op->Op()->GetAttr("axis"));
     // only convert matmul to mul when the flatten2 has a single input
     // and the rank of input is 4 and the size of the output of matmul
     // is 1.
@@ -732,15 +795,15 @@ void TrtFlatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
                     (matmul_in_x->outputs).size() == 1;
 
     bool transpose_X =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
     bool transpose_Y =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
-    float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
+    float alpha = PADDLE_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
     pattern_found = pattern_found && !transpose_X && !transpose_Y &&
                     std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
-                    matmul_in_y_rank == 2;
+                    matmul_in_y_rank == 2 && matmul_in_y->Var()->Persistable();
 
     std::vector<Node*>& next_ops = matmul_out->outputs;
     // we further require the matmul op is followed by one elementwise
@@ -762,11 +825,24 @@ void TrtFlatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("y_num_col_dims", 1);
       if (matmul_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
-        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+        desc.SetAttr("Input_scale", matmul_op->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold",
                      matmul_op->Op()->GetAttr("out_threshold"));
       }
+
+      bool inscale_flag_x = false;
+      bool outscale_flag = false;
+
+      if (flatten2_op->Op()->HasAttr("X")) {
+        desc.SetAttr("X", flatten2_op->Op()->GetAttr("X"));
+        inscale_flag_x = true;
+      }
+      if (matmul_op->Op()->HasAttr("Out")) {
+        desc.SetAttr("Out", matmul_op->Op()->GetAttr("Out"));
+        outscale_flag = true;
+      }
+      desc.SetAttr("support_int8", inscale_flag_x && outscale_flag);
+
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(flatten2_in_x, mul_node);
       IR_NODE_LINK_TO(matmul_in_y, mul_node);

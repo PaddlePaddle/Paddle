@@ -1,37 +1,38 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import unittest
+from itertools import product
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
-import unittest
+import numpy as np
+import paddle.inference as paddle_infer
+from program_config import TensorConfig, ProgramConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
 
 
 class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[
-                1] * attrs[0]['groups']:
+        if inputs['input_data'].shape[
+                1] != weights['conv2d_weight'].shape[1] * attrs[0]['groups']:
             return False
 
         if attrs[0]['groups'] <= 1:
@@ -49,10 +50,8 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            if attrs[0]['groups'] == 2:
-                return np.ones([batch, 6, 64, 64]).astype(np.float32)
-            else:
-                return np.ones([batch, 9, 64, 64]).astype(np.float32)
+            return np.ones([batch, attrs[0]['groups'] * 3, 64,
+                            64]).astype(np.float32)
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
@@ -60,98 +59,96 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         def generate_weight2(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 1, 1]).astype(np.float32)
 
-        for batch in [1, 2, 4]:
-            for strides in [[1, 1], [2, 2], [1, 2]]:
-                for paddings in [[0, 3], [1, 2, 3, 4]]:
-                    for groups in [2, 3]:
-                        for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
-                            for dilations in [[1, 1], [2, 2], [1, 2]]:
-                                for data_format in ['NCHW']:
+        batch_options = [1, 2]
+        strides_options = [[1, 2], [2, 2]]
+        paddings_options = [[0, 3], [1, 2, 3, 4]]
+        groups_options = [2, 3]
+        padding_algorithm_options = ['EXPLICIT', 'SAME', 'VALID']
+        dilations_options = [[1, 2]]
+        data_format_options = ['NCHW']
 
-                                    dics = [{
-                                        "data_fromat": data_format,
-                                        "dilations": dilations,
-                                        "padding_algorithm": padding_algorithm,
-                                        "groups": groups,
-                                        "paddings": paddings,
-                                        "strides": strides,
-                                        "data_format": data_format
-                                    }, {
-                                        "axis": 1
-                                    }]
+        configurations = [
+            batch_options,
+            strides_options,
+            paddings_options,
+            groups_options,
+            padding_algorithm_options,
+            dilations_options,
+            data_format_options,
+        ]
 
-                                    ops_config = [{
-                                        "op_type": "conv2d",
-                                        "op_inputs": {
-                                            "Input": ["input_data"],
-                                            "Filter": ["conv2d_weight"]
-                                        },
-                                        "op_outputs": {
-                                            "Output": ["conv_output_data"]
-                                        },
-                                        "op_attrs": dics[0]
-                                    }, {
-                                        "op_type": "elementwise_add",
-                                        "op_inputs": {
-                                            "X": ["conv_output_data"],
-                                            "Y": ["elementwise_weight"]
-                                        },
-                                        "op_outputs": {
-                                            "Out": ["output_data"]
-                                        },
-                                        "op_attrs": dics[1]
-                                    }]
+        for (batch, strides, paddings, groups, padding_algorithm, dilations,
+             data_format) in product(*configurations):
 
-                                    ops = self.generate_op_config(ops_config)
+            attrs = [{
+                "strides": strides,
+                "paddings": paddings,
+                "groups": groups,
+                "padding_algorithm": padding_algorithm,
+                "dilations": dilations,
+                "data_format": data_format,
+            }, {
+                "axis": 1
+            }]
 
-                                    program_config = ProgramConfig(
-                                        ops=ops,
-                                        weights={
-                                            "conv2d_weight":
-                                            TensorConfig(data_gen=partial(
-                                                generate_weight1, dics)),
-                                            "elementwise_weight": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_weight2, dics))
-                                        },
-                                        inputs={
-                                            "input_data":
-                                            TensorConfig(data_gen=partial(
-                                                generate_input1, batch, dics))
-                                        },
-                                        outputs=["output_data"])
+            ops_config = [{
+                "op_type": "conv2d",
+                "op_inputs": {
+                    "Input": ["input_data"],
+                    "Filter": ["conv2d_weight"]
+                },
+                "op_outputs": {
+                    "Output": ["conv_output_data"]
+                },
+                "op_attrs": attrs[0]
+            }, {
+                "op_type": "elementwise_add",
+                "op_inputs": {
+                    "X": ["conv_output_data"],
+                    "Y": ["elementwise_weight"]
+                },
+                "op_outputs": {
+                    "Out": ["output_data"]
+                },
+                "op_attrs": attrs[1]
+            }]
 
-                                    yield program_config
+            ops = self.generate_op_config(ops_config)
+
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={
+                    "conv2d_weight":
+                    TensorConfig(data_gen=partial(generate_weight1, attrs)),
+                    "elementwise_weight":
+                    TensorConfig(data_gen=partial(generate_weight2, attrs))
+                },
+                inputs={
+                    "input_data":
+                    TensorConfig(
+                        data_gen=partial(generate_input1, batch, attrs))
+                },
+                outputs=["output_data"])
+
+            yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
-            if attrs[0]['groups'] == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 6, 32, 32],
-                    "output_data": [1, 24, 32, 32]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 6, 64, 64],
-                    "output_data": [4, 24, 64, 64]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 6, 64, 64],
-                    "output_data": [1, 24, 64, 64]
-                }
-            else:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 9, 32, 32],
-                    "output_data": [1, 24, 32, 32]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 9, 64, 64],
-                    "output_data": [4, 24, 64, 64]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 9, 64, 64],
-                    "output_data": [1, 24, 64, 64]
-                }
+            input_groups = attrs[0]['groups'] * 3
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [1, input_groups, 32, 32],
+                "output_data": [1, 24, 32, 32]
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [2, input_groups, 64, 64],
+                "output_data": [2, 24, 64, 64]
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [1, input_groups, 64, 64],
+                "output_data": [1, 24, 64, 64]
+            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -162,8 +159,7 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
             return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -173,22 +169,22 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-5, 1e-5)
+            attrs, False), (1e-3, 1e-3)
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-5, 1e-5)
+            attrs, False), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-5, 1e-5)
+            attrs, True), (1e-3, 1e-3)
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-5, 1e-5)
+            attrs, True), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()

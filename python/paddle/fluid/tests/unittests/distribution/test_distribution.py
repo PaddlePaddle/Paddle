@@ -22,11 +22,13 @@ from paddle.distribution import *
 from paddle.fluid import layers
 
 import config
+import parameterize
 
 paddle.enable_static()
 
 
 class DistributionNumpy():
+
     def sample(self):
         raise NotImplementedError
 
@@ -44,6 +46,7 @@ class DistributionNumpy():
 
 
 class DistributionTestName(unittest.TestCase):
+
     def get_prefix(self, string):
         return (string.split('.')[0])
 
@@ -132,12 +135,14 @@ class DistributionTestName(unittest.TestCase):
         self.assertEqual(self.get_prefix(lp.name), name + '_log_prob')
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'batch_shape', 'event_shape'),
-                     [('test-tuple', (10, 20),
-                       (10, 20)), ('test-list', [100, 100], [100, 200, 300]),
-                      ('test-null-eventshape', (100, 100), ())])
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'batch_shape', 'event_shape'),
+    [('test-tuple', (10, 20), (10, 20)),
+     ('test-list', [100, 100], [100, 200, 300]),
+     ('test-null-eventshape', (100, 100), ())])
 class TestDistributionShape(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
         self.dist = paddle.distribution.Distribution(
@@ -156,7 +161,7 @@ class TestDistributionShape(unittest.TestCase):
 
     def test_prob(self):
         with self.assertRaises(NotImplementedError):
-            self.dist.prob(paddle.to_tensor(config.xrand()))
+            self.dist.prob(paddle.to_tensor(parameterize.xrand()))
 
     def test_extend_shape(self):
         shapes = [(34, 20), (56, ), ()]
@@ -164,3 +169,25 @@ class TestDistributionShape(unittest.TestCase):
             self.assertTrue(
                 self.dist._extend_shape(shape),
                 shape + self.dist.batch_shape + self.dist.event_shape)
+
+
+class TestDistributionException(unittest.TestCase):
+
+    def setUp(self):
+        self._d = paddle.distribution.Distribution()
+
+    def test_mean(self):
+        with self.assertRaises(NotImplementedError):
+            self._d.mean
+
+    def test_variance(self):
+        with self.assertRaises(NotImplementedError):
+            self._d.variance
+
+    def test_rsample(self):
+        with self.assertRaises(NotImplementedError):
+            self._d.rsample(())
+
+
+if __name__ == '__main__':
+    unittest.main()

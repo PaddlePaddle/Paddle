@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lstmp_op.h"
+
 #include <memory>
 #include <string>
 
@@ -29,19 +30,22 @@ class LSTMPOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("ProjWeight"), "Input", "ProjWeight", "LSTMP");
     OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "LSTMP");
 
-    OP_INOUT_CHECK(ctx->HasOutput("Projection"), "Output", "Projection",
-                   "LSTMP");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Projection"), "Output", "Projection", "LSTMP");
     OP_INOUT_CHECK(ctx->HasOutput("Cell"), "Output", "Cell", "LSTMP");
     OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate", "LSTMP");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"), "Output",
-                   "BatchCellPreAct", "LSTMP");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchHidden"), "Output", "BatchHidden",
+    OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"),
+                   "Output",
+                   "BatchCellPreAct",
                    "LSTMP");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("BatchHidden"), "Output", "BatchHidden", "LSTMP");
 
     auto in_dims = ctx->GetInputDim("Input");
 
     PADDLE_ENFORCE_EQ(
-        in_dims.size(), 2,
+        in_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(X)'s rank of LSTMP operator must be 2, but received %d.",
             in_dims.size()));
@@ -50,66 +54,81 @@ class LSTMPOp : public framework::OperatorWithKernel {
     auto w_dims = ctx->GetInputDim("Weight");
     auto proj_dims = ctx->GetInputDim("ProjWeight");
     PADDLE_ENFORCE_EQ(
-        w_dims.size(), 2,
+        w_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of Input(Weight) should be 2, but received %d.",
             w_dims.size()));
     PADDLE_ENFORCE_EQ(
-        w_dims[0], proj_dims[1],
+        w_dims[0],
+        proj_dims[1],
         platform::errors::InvalidArgument(
             "The first dimension of Input(Weight) and the second dimension of "
             "Input(ProjWeight) should be the same, but received %d vs %d.",
-            w_dims[0], proj_dims[1]));
-    PADDLE_ENFORCE_EQ(w_dims[1], 4 * frame_size,
+            w_dims[0],
+            proj_dims[1]));
+    PADDLE_ENFORCE_EQ(w_dims[1],
+                      4 * frame_size,
                       platform::errors::InvalidArgument(
                           "The second dimension of Input(Weight) should be 4 * "
                           "%d, but received %d.",
-                          frame_size, w_dims[1]));
+                          frame_size,
+                          w_dims[1]));
 
     PADDLE_ENFORCE_EQ(
-        proj_dims.size(), 2,
+        proj_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of Input(ProjWeight) should be 2, but received %d.",
             proj_dims.size()));
-    PADDLE_ENFORCE_EQ(proj_dims[0], frame_size,
+    PADDLE_ENFORCE_EQ(proj_dims[0],
+                      frame_size,
                       platform::errors::InvalidArgument(
                           "The first dimension of Input(ProjWeight) should be "
                           "%d, but received %d.",
-                          frame_size, proj_dims[0]));
+                          frame_size,
+                          proj_dims[0]));
 
     if (ctx->HasInput("H0")) {
       PADDLE_ENFORCE_EQ(
-          ctx->HasInput("C0"), true,
+          ctx->HasInput("C0"),
+          true,
           platform::errors::NotFound("Input(C0) of LSTMP operator should not "
                                      "be null after Input(H0) provided."));
     }
 
     auto b_dims = ctx->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(
-        b_dims.size(), 2,
+        b_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of Input(Bias) should be 2, but received %d.",
             b_dims.size()));
     PADDLE_ENFORCE_EQ(
-        b_dims[0], 1,
+        b_dims[0],
+        1,
         platform::errors::InvalidArgument(
             "The first dimension of Input(Bias) should be 1, but received %d.",
             b_dims[0]));
 
     if (ctx->Attrs().Get<bool>("use_peepholes")) {
       PADDLE_ENFORCE_EQ(
-          b_dims[1], 7 * frame_size,
+          b_dims[1],
+          7 * frame_size,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Bias) should be 7 * %d if enable "
               "peepholes connection, but received %d.",
-              frame_size, b_dims[1]));
+              frame_size,
+              b_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          b_dims[1], 4 * frame_size,
+          b_dims[1],
+          4 * frame_size,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Bias) should be 4 * %d if disable "
               "peepholes connection, but received %d.",
-              frame_size, b_dims[1]));
+              frame_size,
+              b_dims[1]));
     }
 
     framework::DDim out_dims({in_dims[0], frame_size});
@@ -240,11 +259,11 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Long-Short Term Memory with recurrent Projection layer (LSTMP) Operator.
 
-LSTMP has a separate projection layer after the LSTM layer, projecting the 
-original hidden state to a lower-dimensional one, which is proposed to reduce 
-the number of total parameters and furthermore computational complexity for 
-the LSTM, espeacially for the case that the size of output units is relative 
-large (https://research.google.com/pubs/archive/43905.pdf). 
+LSTMP has a separate projection layer after the LSTM layer, projecting the
+original hidden state to a lower-dimensional one, which is proposed to reduce
+the number of total parameters and furthermore computational complexity for
+the LSTM, espeacially for the case that the size of output units is relative
+large (https://research.google.com/pubs/archive/43905.pdf).
 
 The formula is as follows:
 
@@ -272,14 +291,14 @@ denote bias vectors ($b_i$ is the input gate bias vector), $\sigma$
 is the activation, such as logistic sigmoid function, and
 $i, f, o$ and $c$ are the input gate, forget gate, output gate,
 and cell activation vectors, respectively, all of which have the same size as
-the cell output activation vector $h$. Here $h$ is usually called the hidden 
-state and $r$ denotes its recurrent projection. And $\tilde{c_t}$ is also 
-called the candidate hidden state, whose computation is based on the current 
+the cell output activation vector $h$. Here $h$ is usually called the hidden
+state and $r$ denotes its recurrent projection. And $\tilde{c_t}$ is also
+called the candidate hidden state, whose computation is based on the current
 input and previous hidden state.
 
 The $\odot$ is the element-wise product of the vectors. $act_g$ and $act_h$
 are the cell input and cell output activation functions and `tanh` is usually
-used for them. $\overline{act_h}$ is the activation function for the 
+used for them. $\overline{act_h}$ is the activation function for the
 projection output, usually using `identity` or same as $act_h$.
 
 Note that these $W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}$
@@ -332,17 +351,19 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Projection"), "Input", "Projection",
-                   "LSTMP@Grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Projection"), "Input", "Projection", "LSTMP@Grad");
     OP_INOUT_CHECK(ctx->HasInput("Cell"), "Input", "Cell", "LSTMP@Grad");
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "LSTMP@Grad");
-    OP_INOUT_CHECK(ctx->HasInput("ProjWeight"), "Input", "ProjWeight",
-                   "LSTMP@Grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ProjWeight"), "Input", "ProjWeight", "LSTMP@Grad");
     OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "LSTMP@Grad");
 
-    OP_INOUT_CHECK(ctx->HasInput("BatchGate"), "Input", "BatchGate",
-                   "LSTMP@Grad");
-    OP_INOUT_CHECK(ctx->HasInput("BatchCellPreAct"), "Input", "BatchCellPreAct",
+    OP_INOUT_CHECK(
+        ctx->HasInput("BatchGate"), "Input", "BatchGate", "LSTMP@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("BatchCellPreAct"),
+                   "Input",
+                   "BatchCellPreAct",
                    "LSTMP@Grad");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
@@ -373,13 +394,15 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lstmp, ops::LSTMPOp, ops::LSTMPOpMaker,
+REGISTER_OPERATOR(lstmp,
+                  ops::LSTMPOp,
+                  ops::LSTMPOpMaker,
                   ops::LSTMPGradMaker<paddle::framework::OpDesc>,
                   ops::LSTMPGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstmp_grad, ops::LSTMPGradOp);
-REGISTER_OP_CPU_KERNEL(
-    lstmp, ops::LSTMPKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LSTMPKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    lstmp_grad, ops::LSTMPGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LSTMPGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(lstmp,
+                       ops::LSTMPKernel<phi::CPUContext, float>,
+                       ops::LSTMPKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(lstmp_grad,
+                       ops::LSTMPGradKernel<phi::CPUContext, float>,
+                       ops::LSTMPGradKernel<phi::CPUContext, double>);

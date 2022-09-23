@@ -19,9 +19,9 @@ import warnings
 """
     Class of all kinds of Average.
 
-    All Averages are accomplished via Python totally. 
+    All Averages are accomplished via Python totally.
     They do not change Paddle's Program, nor do anything to
-    modify NN model's configuration. They are completely 
+    modify NN model's configuration. They are completely
     wrappers of Python functions.
 """
 
@@ -29,8 +29,8 @@ __all__ = ["WeightedAverage"]
 
 
 def _is_number_(var):
-    return isinstance(var, int) or isinstance(var, float) or (isinstance(
-        var, np.ndarray) and var.shape == (1, ))
+    return isinstance(var, int) or isinstance(
+        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
 
 
 def _is_number_or_matrix_(var):
@@ -41,9 +41,9 @@ class WeightedAverage(object):
     """
     Calculate weighted average.
 
-    The average calculating is accomplished via Python totally. 
+    The average calculating is accomplished via Python totally.
     They do not change Paddle's Program, nor do anything to
-    modify NN model's configuration. They are completely 
+    modify NN model's configuration. They are completely
     wrappers of Python functions.
 
     Examples:

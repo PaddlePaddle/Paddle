@@ -20,6 +20,7 @@
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
+
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -37,8 +38,10 @@ class MLIRModelGenImpl {
  public:
   MLIRModelGenImpl();
   mlir::ModuleOp ImportPaddleModel(const std::string &model_file,
-                                   const std::string &param_file);
-  mlir::ModuleOp ImportPaddleModel(const std::string &model_dir);
+                                   const std::string &param_file,
+                                   bool arg_has_map = true);
+  mlir::ModuleOp ImportPaddleModel(const std::string &model_dir,
+                                   bool arg_has_map = true);
 
  private:
   // parse paddle model file
@@ -47,11 +50,13 @@ class MLIRModelGenImpl {
 
   // convert paddle model proto into paddle dialect module
   mlir::ModuleOp ImportPaddleModel(
-      const infrt::paddle::framework_proto::ProgramDesc &program);
+      const infrt::paddle::framework_proto::ProgramDesc &program,
+      bool arg_has_map);
 
   // get inputs and outputs info from program_desc
   llvm::SmallVector<mlir::Type, 4> GetModelInputsType(
-      const infrt::paddle::framework_proto::ProgramDesc &program);
+      const infrt::paddle::framework_proto::ProgramDesc &program,
+      bool arg_has_map);
   llvm::SmallVector<mlir::Type, 4> GetModelOutputsType(
       const infrt::paddle::framework_proto::ProgramDesc &program);
   // create main function module
@@ -63,7 +68,8 @@ class MLIRModelGenImpl {
   // convert persistable params and inputs variable into mlir domain
   void UpdateModelParams(
       const infrt::paddle::framework_proto::ProgramDesc &program,
-      mlir::FuncOp *mainFunc);
+      mlir::FuncOp *mainFunc,
+      bool arg_has_map);
   // register model outpus into params_map_
   void UpdateModelOutputs(
       const infrt::paddle::framework_proto::ProgramDesc &program);
@@ -80,10 +86,15 @@ class MLIRModelGenImpl {
   void RegisterOpOutputVars(const infrt::paddle::framework_proto::OpDesc &op_,
                             mlir::Operation *mlir_op_);
 
+ private:
   mlir::MLIRContext *context_;
   mlir::OpBuilder builder_;
   mlir::ModuleOp module_;
   infrt::paddle::framework_proto::BlockDesc main_block_;
+
+  std::string model_dir_{};
+  std::string model_file_{};
+  std::string params_file_{};
 
   std::map<std::string, mlir::Value> params_map_;
 };
@@ -102,4 +113,7 @@ inline std::vector<T> RepeatedToVector(
 bool ConvertDataType(infrt::paddle::framework_proto::VarType::Type dtype,
                      mlir::Builder builder,
                      mlir::Type *type);
+bool ConvertDataTypeToInfrt(infrt::paddle::framework_proto::VarType::Type dtype,
+                            infrt::PrecisionType *type);
+
 #endif  // PADDLE_INFRT_HOST_CONTEXT_PADDLE_MLIR_H_

@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -37,6 +38,7 @@ def huber_loss_forward(val, delta):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestHuberLossOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = 'huber_loss'
@@ -81,45 +83,41 @@ class TestHuberLossOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(
-            self.place, ['Y'],
-            'Out',
-            max_relative_error=0.008,
-            no_grad_set=set("residual"))
+        self.check_grad_with_place(self.place, ['Y'],
+                                   'Out',
+                                   max_relative_error=0.008,
+                                   no_grad_set=set("residual"))
 
     def test_check_grad_ingore_y(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(
-            self.place, ['X'],
-            'Out',
-            max_relative_error=0.008,
-            no_grad_set=set('residual'))
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.008,
+                                   no_grad_set=set('residual'))
 
 
 def TestHuberLossOp1(TestHuberLossOp):
+
     def set_shape(self):
         return (64)
 
 
 def TestHuberLossOp2(TestHuberLossOp):
+
     def set_shape(self):
         return (6, 6)
 
 
 def TestHuberLossOp3(TestHuberLossOp):
+
     def set_shape(self):
         return (6, 6, 1)
 
 
 def TestHuberLossOpFP16(TestHuberLossOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -127,6 +125,7 @@ def TestHuberLossOpFP16(TestHuberLossOp):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestHuberLossOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input and label must be Variable

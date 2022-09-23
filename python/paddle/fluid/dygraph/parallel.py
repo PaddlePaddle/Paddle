@@ -22,6 +22,7 @@ import warnings
 from contextlib import contextmanager
 
 import paddle
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
@@ -30,7 +31,7 @@ from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.framework import ParamBase, _in_eager_mode
+from paddle.fluid.framework import ParamBase, _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -50,7 +51,7 @@ def prepare_context(strategy=None):
         strategy.current_endpoint = Env().current_endpoint
     if strategy.nranks < 2:
         return
-    assert framework.in_dygraph_mode() is True, \
+    assert framework._non_static_mode() is True, \
         "dygraph.prepare_context should be used with dygraph mode."
     place = framework._current_expected_place()
     assert place is not None, \
@@ -75,11 +76,11 @@ def prepare_context(strategy=None):
 class ParallelEnv(object):
     """
     .. note::
-        This API is not recommended, if you need to get rank and world_size, 
-        it is recommended to use ``paddle.distributed.get_rank()`` and 
+        This API is not recommended, if you need to get rank and world_size,
+        it is recommended to use ``paddle.distributed.get_rank()`` and
         ``paddle.distributed.get_world_size()`` .
 
-    This class is used to obtain the environment variables required for 
+    This class is used to obtain the environment variables required for
     the parallel execution of ``paddle.nn.Layer`` in dynamic mode.
 
     The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch``
@@ -117,20 +118,28 @@ class ParallelEnv(object):
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+        self._device_type = str(os.getenv("PADDLE_XCCL_BACKEND", ""))
 
         # imperative only support one gpu or xpu
-        if core.is_compiled_with_cuda():
-            selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
-            self._device_id = int(selected_gpus[0])
-        elif core.is_compiled_with_xpu():
-            selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
-            self._device_id = int(selected_xpus[0])
-        elif core.is_compiled_with_npu():
-            selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
-            self._device_id = int(selected_npus[0])
-        elif core.is_compiled_with_mlu():
-            selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
-            self._device_id = int(selected_mlus[0])
+        if self._device_type != "":
+            FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
+                self._device_type)
+            selected_custom_devices = os.getenv(FLAGS_selected_custom_devices,
+                                                "0").split(",")
+            self._device_id = int(selected_custom_devices[0])
+        else:
+            if core.is_compiled_with_cuda():
+                selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+                self._device_id = int(selected_gpus[0])
+            elif core.is_compiled_with_xpu():
+                selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
+                self._device_id = int(selected_xpus[0])
+            elif core.is_compiled_with_npu():
+                selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
+                self._device_id = int(selected_npus[0])
+            elif core.is_compiled_with_mlu():
+                selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
+                self._device_id = int(selected_mlus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
@@ -153,7 +162,7 @@ class ParallelEnv(object):
 
             # execute this command in terminal: export PADDLE_TRAINER_ID=0
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The rank is %d" % env.rank)
             # The rank is 0
@@ -172,7 +181,7 @@ class ParallelEnv(object):
 
             # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The world_size is %d" % env.world_size)
             # The world_size is 4
@@ -191,12 +200,22 @@ class ParallelEnv(object):
 
             # execute this command in terminal: export FLAGS_selected_gpus=1
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The device id are %d" % env.device_id)
             # The device id are 1
         """
         return self._device_id
+
+    @property
+    def device_type(self):
+        """
+        The type of custom device for parallel training.
+
+        Its value is equal to the value of the environment variable ``PADDLE_XCCL_BACKEND`` . The default value is None.
+
+        """
+        return self._device_type
 
     @property
     def current_endpoint(self):
@@ -207,10 +226,10 @@ class ParallelEnv(object):
 
         Examples:
           .. code-block:: python
-            
+
             # execute this command in terminal: export PADDLE_CURRENT_ENDPOINT=127.0.0.1:6170
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The current endpoint are %s" % env.current_endpoint)
             # The current endpoint are 127.0.0.1:6170
@@ -220,7 +239,7 @@ class ParallelEnv(object):
     @property
     def trainer_endpoints(self):
         """
-        The endpoints of all trainer nodes in the task, 
+        The endpoints of all trainer nodes in the task,
         which are used to broadcast the NCCL ID when NCCL2 is initialized.
 
         Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ENDPOINTS`` . The default value is "".
@@ -230,7 +249,7 @@ class ParallelEnv(object):
 
             # execute this command in terminal: export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The trainer endpoints are %s" % env.trainer_endpoints)
             # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
@@ -249,7 +268,7 @@ class ParallelEnv(object):
 
             # execute this command in terminal: export FLAGS_nccl_nrings=1
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The nrings is %d" % env.nrings)
             # the number of ring is 1
@@ -286,8 +305,7 @@ def _coalesce_tensors(var_groups):
         for g_var in grad_vars:
             g_var_shapes.append(g_var.shape)
             flattened_vars.append(
-                nn.reshape(
-                    x=g_var, shape=[np.prod(g_var.shape)]))
+                nn.reshape(x=g_var, shape=[np.prod(g_var.shape)]))
         coalesced_grad = nn.concat(flattened_vars)
         coalesced_grads_and_grad_vars.append(
             [coalesced_grad, grad_vars, g_var_shapes])
@@ -297,27 +315,41 @@ def _coalesce_tensors(var_groups):
 @framework.dygraph_only
 def _reshape_inplace(x, shape):
     x_shape = framework._varbase_creator(dtype=x.dtype)
-    framework._dygraph_tracer().trace_op(
-        type="reshape2",
-        inputs={'X': x},
-        outputs={'Out': x,
-                 'XShape': x_shape},
-        attrs={'shape': shape})
+    framework._dygraph_tracer().trace_op(type="reshape2",
+                                         inputs={'X': x},
+                                         outputs={
+                                             'Out': x,
+                                             'XShape': x_shape
+                                         },
+                                         attrs={'shape': shape})
 
 
 @framework.dygraph_only
 def _split_tensors(coalesced_grads_and_grad_vars):
-    for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
-        grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
-        framework._dygraph_tracer().trace_op(
-            type='split',
-            inputs={'X': coalesced_grad},
-            outputs={'Out': origin_grad_vars},
-            attrs={'sections': grad_var_len,
-                   'axis': 0})
-        for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
-            _reshape_inplace(x=g_var, shape=g_shape)
-            assert g_var.shape == g_shape
+    if _in_legacy_dygraph():
+        for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
+            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
+            framework._dygraph_tracer().trace_op(
+                type='split',
+                inputs={'X': coalesced_grad},
+                outputs={'Out': origin_grad_vars},
+                attrs={
+                    'sections': grad_var_len,
+                    'axis': 0
+                })
+            for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
+                _reshape_inplace(x=g_var, shape=g_shape)
+                assert g_var.shape == g_shape
+    elif in_dygraph_mode():
+        for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
+            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
+            attrs = ()
+            attrs += ('sections', grad_var_len)
+            attrs += ('axis', 0)
+            _legacy_C_ops.split(coalesced_grad, origin_grad_vars, *attrs)
+            for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
+                g_var.reshape_(shape=g_shape)
+                assert g_var.shape == g_shape
 
 
 def scale_loss(loss):
@@ -360,16 +392,17 @@ def sync_params_buffers(model,
                         is_model_parallel=False):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
-        if not isinstance(param, core.VarBase):
-            raise TypeError("The data type of '%s' must be Varbase" %
-                            param.name)
+        if not isinstance(param, (core.VarBase, core.eager.Tensor)):
+            raise TypeError(
+                "The data type of '%s' must be Varbase or eager.Tensor" %
+                param.name)
 
         # is_distributed param not need to sync when in mp mode
-        if isinstance(param, ParamBase):
+        if isinstance(param, (ParamBase, core.eager.Tensor)):
             if is_model_parallel and param.is_distributed:
                 continue
 
-            # NOTE(shenliang03): Support situations that do not require synchronization parameters, 
+            # NOTE(shenliang03): Support situations that do not require synchronization parameters,
             # such as moe's expert parameters
             if getattr(param, "no_sync", False):
                 continue
@@ -384,8 +417,10 @@ def sync_params_buffers(model,
     coalesced_vars = build_groups(model_vars, 128 * 1024 * 1024)
 
     for coalesced_var, _, _ in coalesced_vars:
-        paddle.distributed.broadcast(
-            coalesced_var, src=src_rank, group=comm_group, use_calc_stream=True)
+        paddle.distributed.broadcast(coalesced_var,
+                                     src=src_rank,
+                                     group=comm_group,
+                                     sync_op=True)
 
     for coalesced_var, origin_vars, var_shapes in coalesced_vars:
         var_len = [np.prod(v_shape) for v_shape in var_shapes]
@@ -393,18 +428,10 @@ def sync_params_buffers(model,
             type='split',
             inputs={'X': coalesced_var},
             outputs={'Out': origin_vars},
-            attrs={'sections': var_len,
-                   'axis': 0})
-
-
-@imperative_base.no_grad
-@framework.dygraph_only
-def sync_eager_params(model, comm_group=None, src_rank=0):
-    for _, param in model._obtain_parameters_buffers().items():
-        if not isinstance(param, core.eager.Tensor):
-            raise TypeError("The data type of '%s' must be '%s'" %
-                            (param.name, core.eager.Tensor))
-        comm_group.broadcast(param, src_rank).synchronize()
+            attrs={
+                'sections': var_len,
+                'axis': 0
+            })
 
 
 class DataParallel(layers.Layer):
@@ -412,43 +439,43 @@ class DataParallel(layers.Layer):
     Run the dygraph module with data parallelism.
 
     Currently, DataParallel class only supports to run the dynamic graph
-    with multi-process. 
-    
+    with multi-process.
+
     Now supports two ways to start training:
 
     1. start by ``paddle.distributed.spawn`` method, for example:
 
         ``python demo.py`` (spawn need to be called in ``__main__`` method)
-    
+
     2. start by ``paddle.distributed.launch`` module, for example:
-    
+
         ``python -m paddle.distributed.launch --gpus=0,1 demo.py`` .
 
     And the content of `demo.py` is the code of examples.
 
     Args:
         layers(Layer): The module that should be executed by data parallel.
-        strategy(ParallelStrategy, optional): (deprecated) The strategy of data parallelism, 
+        strategy(ParallelStrategy, optional): (deprecated) The strategy of data parallelism,
             contains environment configuration related to parallel execution. Default: None.
-        comm_buffer_size(int, optional):  It limits the memory size(MB) of one buffer  
-                                          parameters' gradient which is the input of communication 
+        comm_buffer_size(int, optional):  It limits the memory size(MB) of one buffer
+                                          parameters' gradient which is the input of communication
                                           calling(e.g NCCLAllReduce). Default: 25.
         last_comm_buffer_size(float, optional): It limits memory size(MB) of last buffer in communication
-                                         calling. Making the last communication buffer size small is useful to 
+                                         calling. Making the last communication buffer size small is useful to
                                          improve performance. Default: 1.
         find_unused_parameters(bool, optional): Whether to traverse the entire backward graph from the
-                                                all tensors in the return value of the wrapped model's 
-                                                forward function. For parameters not involved in loss 
-                                                calculation, their gradients will be marked as ready in 
-                                                advance to prepare reduce. Please note that all forward 
-                                                outputs derived from the wrapped model parameters must 
-                                                participate in the calculation of loss and subsequent 
+                                                all tensors in the return value of the wrapped model's
+                                                forward function. For parameters not involved in loss
+                                                calculation, their gradients will be marked as ready in
+                                                advance to prepare reduce. Please note that all forward
+                                                outputs derived from the wrapped model parameters must
+                                                participate in the calculation of loss and subsequent
                                                 gradient calculations. If not, serious error will occur.
-                                                Note that setting the find_unused_parameters to True 
+                                                Note that setting the find_unused_parameters to True
                                                 will affect computing performance. Therefore, if all parameters
-                                                are sure to participate in the loss calculation and the 
+                                                are sure to participate in the loss calculation and the
                                                 autograd graph construction, please set it False. Default: False.
-            
+
     Returns:
         Layer: The data paralleled module.
 
@@ -468,7 +495,7 @@ class DataParallel(layers.Layer):
                     super(LinearNet, self).__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
-                    
+
                 def forward(self, x):
                     return self._linear2(self._linear1(x))
 
@@ -489,7 +516,7 @@ class DataParallel(layers.Layer):
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
                 loss = loss_fn(outputs, labels)
-                
+
                 loss.backward()
 
                 adam.step()
@@ -503,9 +530,9 @@ class DataParallel(layers.Layer):
 
 
     .. note::
-        ``PyLayer`` is not supported in DataParallel. To solve problems of this kind, 
-        it's recommended to skip gradient synchronization among multiple cards by 'no_sync', 
-        and manually implement 'all_reduce' before model optimization. There is an example 
+        ``PyLayer`` is not supported in DataParallel. To solve problems of this kind,
+        it's recommended to skip gradient synchronization among multiple cards by 'no_sync',
+        and manually implement 'all_reduce' before model optimization. There is an example
         showing specific implemetation processing.
 
     Examples:
@@ -574,22 +601,22 @@ class DataParallel(layers.Layer):
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
                  find_unused_parameters=False,
-                 process_group=None,
-                 gradient_as_buffer_view=False,
-                 static_graph=False):
+                 group=None):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
+
+        assert _non_static_mode(), \
+            "It's not supported to construct DataParallel in static mode."
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
         self.grad_need_sync = True
-        self.process_group = process_group
-        self.gradient_as_buffer_view = gradient_as_buffer_view
-        self.static_graph = static_graph
-        self.var_dtype = core.eager.Tensor if _in_eager_mode() else core.VarBase
+        self.group = group
+        self.var_dtype = core.eager.Tensor if in_dygraph_mode(
+        ) else core.VarBase
 
-        # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
-        # It just stores some environment variables, which can be constructed by 
+        # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy.
+        # It just stores some environment variables, which can be constructed by
         # ParallelEnv. Here it is set as an optional argument.
         # This parameter is not removed because of compatibility with 1.x writing.
         if strategy is not None:
@@ -603,25 +630,23 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
-            if self.process_group is None and _in_eager_mode():
-                raise RuntimeError(
-                    "Process group should be built in DataParallel of eager mode."
-                )
+            if in_dygraph_mode():
+                self.group = paddle.distributed.collective._get_default_group(
+                ) if self.group is None else self.group
+
+                assert isinstance(self.group, paddle.distributed.collective.Group), \
+                    "ProcessGroup must be an instance of Group in DataParallel."
 
             # sync buffer and params
-            # TODO(liuyuhui) Currently not support xpu. xpu is 
+            # TODO(liuyuhui) Currently not support xpu. xpu is
             # still broadcasting parameters when calling layer
             if not paddle.is_compiled_with_xpu():
-                if _in_eager_mode():
-                    sync_eager_params(
-                        self._layers, comm_group=self.process_group)
-                else:
-                    sync_params_buffers(self._layers)
+                sync_params_buffers(self._layers)
 
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
-            # NOTE(shenliang03): We can set environment variables to control 
-            # the size of the group, Default: 1MB. The role of this small group is: 
-            # when the last group allreduce, the overlap cannot work. Making the 
+            # NOTE(shenliang03): We can set environment variables to control
+            # the size of the group, Default: 1MB. The role of this small group is:
+            # when the last group allreduce, the overlap cannot work. Making the
             # the last group small is useful to improve performance.
             self.last_comm_buffer_size = int(last_comm_buffer_size * 1024 *
                                              1024)
@@ -659,7 +684,7 @@ class DataParallel(layers.Layer):
         def check_layer_sparse(sublayer):
             if isinstance(sublayer, paddle.nn.layer.common.Embedding):
                 return sublayer._sparse
-            # NOTE(shenliang03):This is for compatibility. If paddle.fluid.dygraph.Embedding 
+            # NOTE(shenliang03):This is for compatibility. If paddle.fluid.dygraph.Embedding
             # is removed in the future, the check will also be removed here.
             if isinstance(sublayer, paddle.fluid.dygraph.Embedding):
                 return sublayer._is_sparse
@@ -669,31 +694,29 @@ class DataParallel(layers.Layer):
             check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
 
-        if _in_eager_mode():
+        if in_dygraph_mode():
             self.group_indices = core.eager_assign_group_by_size(
                 trainable_parameters, is_sparse_gradient,
                 [self.last_comm_buffer_size, self.comm_buffer_size])
 
             self._reducer = core.EagerReducer(
-                trainable_parameters,
-                list(reversed(self.group_indices)), is_sparse_gradient,
-                self.process_group,
+                trainable_parameters, list(reversed(self.group_indices)),
+                is_sparse_gradient, self.group.process_group,
                 [self.last_comm_buffer_size, self.comm_buffer_size],
                 self.find_unused_parameters)
-        else:
+        elif _in_legacy_dygraph():
             self.group_indices = core.assign_group_by_size(
                 trainable_parameters, is_sparse_gradient,
                 [self.last_comm_buffer_size, self.comm_buffer_size])
 
             self._reducer = core.Reducer(
-                trainable_parameters,
-                list(reversed(self.group_indices)), is_sparse_gradient,
-                parallel_helper.__parallel_ctx__clz__,
+                trainable_parameters, list(reversed(self.group_indices)),
+                is_sparse_gradient, parallel_helper.__parallel_ctx__clz__,
                 [self.last_comm_buffer_size, self.comm_buffer_size],
                 self.find_unused_parameters)
 
     def _find_varbase(self, obj):
-        var_type = core.eager.Tensor if _in_eager_mode() else core.VarBase
+        var_type = core.eager.Tensor if in_dygraph_mode() else core.VarBase
         if isinstance(obj, var_type):
             return [obj]
         if isinstance(obj, (list, tuple)):
@@ -705,8 +728,8 @@ class DataParallel(layers.Layer):
     @contextmanager
     def no_sync(self):
         """
-        A context manager to stop gradient synchronization. Within no_sync(), 
-        gradients of parameters will only be accumulated on model and not 
+        A context manager to stop gradient synchronization. Within no_sync(),
+        gradients of parameters will only be accumulated on model and not
         synchronized util the first forward-backward out of this context.
 
         Examples:
@@ -721,7 +744,7 @@ class DataParallel(layers.Layer):
                     def __init__(self):
                         super(SimpleNet, self).__init__()
                         self._linear = nn.Linear(10, 1)
-                        
+
                     def forward(self, x):
                         return self._linear(x)
 
@@ -751,24 +774,24 @@ class DataParallel(layers.Layer):
         outputs = self._layers(*inputs, **kwargs)
         if self._strategy.nranks > 1 and framework._dygraph_tracer(
         )._has_grad and self.grad_need_sync:
-            self._reducer.prepare_for_backward(
-                list(self._find_varbase(outputs)))
+            self._reducer.prepare_for_backward(list(
+                self._find_varbase(outputs)))
         return outputs
 
-    @deprecated(
-        since="2.0.0", reason="This method does not need to be called anymore.")
+    @deprecated(since="2.0.0",
+                reason="This method does not need to be called anymore.")
     def scale_loss(self, loss):
         """
-        Deprecated method, now ``scale_loss`` is an empty method,  
+        Deprecated method, now ``scale_loss`` is an empty method,
         keep this method just for compatibility.
         """
         return loss
 
-    @deprecated(
-        since="2.0.0", reason="This method does not need to be called anymore.")
+    @deprecated(since="2.0.0",
+                reason="This method does not need to be called anymore.")
     def apply_collective_grads(self):
         """
-        Deprecated method, now ``apply_collective_grads`` is an empty method, 
+        Deprecated method, now ``apply_collective_grads`` is an empty method,
         keep this method just for compatibility.
         """
         return
@@ -815,7 +838,7 @@ class DataParallel(layers.Layer):
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True
         Returns:
             None
@@ -839,8 +862,8 @@ class DataParallel(layers.Layer):
 
         '''
 
-        self._layers.set_state_dict(
-            state_dict, use_structured_name=use_structured_name)
+        self._layers.set_state_dict(state_dict,
+                                    use_structured_name=use_structured_name)
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict

@@ -13,12 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
-#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
+#include "paddle/fluid/platform/device/ipu/ipu_executor.h"
 
 namespace paddle {
 namespace platform {
@@ -32,6 +30,7 @@ IpuBackend* IpuBackend::GetInstance() {
 IpuBackend::IpuBackend() {
   compiler_ = std::make_unique<Compiler>();
   executor_ = std::make_unique<Executor>();
+  timer_ = std::make_unique<platform::Timer>();
 }
 
 IpuBackend::~IpuBackend() {
@@ -39,10 +38,11 @@ IpuBackend::~IpuBackend() {
   executor_.reset();
 }
 
-void IpuBackend::Compile(Graph* graph,
+void IpuBackend::Compile(framework::ir::Graph* graph,
                          const std::vector<std::string>& feed_list,
                          const std::vector<std::string>& fetch_list) {
   VLOG(10) << "enter IpuBackend::Compile";
+  is_compiled_ = false;
   compiler_->Prepare(graph);
   compiler_->InitInputs(feed_list);
   compiler_->LowerConstants(scope_);
@@ -52,41 +52,31 @@ void IpuBackend::Compile(Graph* graph,
   if (ipu_strategy_->is_training) {
     compiler_->LowerOptimizer(scope_);
   }
+  if (!ipu_strategy_->onnx_dump_path.empty()) {
+    SaveModelProto(ipu_strategy_->onnx_dump_path);
+  }
   executor_->SetCompilerResources(compiler_->GetResources());
-
+  executor_->Prepare(compiler_->GetModelProto());
   is_compiled_ = true;
-  // when call compile, means a new graph
-  is_prepared_ = false;
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
-void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
-                     const std::vector<Tensor*>& outputs,
+void IpuBackend::Run(const std::vector<const framework::Tensor*>& inputs,
+                     const std::vector<framework::Tensor*>& outputs,
                      const framework::ExecutionContext& ctx) {
-  Prepare();
   timer_->Start();
   executor_->Run(inputs, outputs, ctx);
   timer_->Pause();
   VLOG(10) << "[IPU Run]: " << timer_->ElapsedMS() << " (ms)";
 }
 
-void IpuBackend::Prepare() {
-  if (!is_prepared_) {
-    executor_->Prepare(compiler_->GetModelProto());
-    timer_.reset(new platform::Timer());
-    is_prepared_ = true;
-  }
-}
+void IpuBackend::WeightsToHost() { executor_->WeightsToHost(); }
 
 void IpuBackend::Detach() { executor_->Detach(); }
 
-void IpuBackend::Reset() {
-  executor_->Detach();
-  compiler_.reset();
-  executor_.reset();
-}
+void IpuBackend::Reset() { executor_->Reset(); }
 
-void IpuBackend::SetScope(const Scope& scope) {
+void IpuBackend::SetScope(const framework::Scope& scope) {
   scope_ = &scope;
   executor_->SetScope(&scope);
 }
@@ -101,12 +91,10 @@ void IpuBackend::SetIpuStrategy(const IpuStrategy& strategy) {
 }
 
 void IpuBackend::SaveModelProto(const std::string& path) {
-  if (ipu_strategy_->is_training && is_prepared_) {
+  if (ipu_strategy_->is_training && is_compiled_) {
     executor_->SaveModelToHost(path);
-  } else if (is_compiled_) {
-    compiler_->SaveModelProtoNoCheck(path);
   } else {
-    LOG(WARNING) << "Model is empty";
+    compiler_->SaveModelProtoNoCheck(path);
   }
 }
 

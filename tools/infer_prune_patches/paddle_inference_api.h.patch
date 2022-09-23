@@ -1,0 +1,16 @@
+diff --git a/paddle/fluid/inference/api/paddle_inference_api.h b/paddle/fluid/inference/api/paddle_inference_api.h
+index 35b90bfa54..ba8220d06a 100644
+--- a/paddle/fluid/inference/api/paddle_inference_api.h
++++ b/paddle/fluid/inference/api/paddle_inference_api.h
+@@ -41,6 +41,11 @@ limitations under the License. */
+ /// \since 2.0.0-beta
+ ///
+ 
++namespace paddle {
++std::unique_ptr<PaddlePredictor> CreateTensorRTPredictor(
++    const AnalysisConfig& config);
++}
++
+ namespace paddle_infer {
+ 
+ using PrecisionType = paddle::AnalysisConfig::Precision;

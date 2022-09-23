@@ -61,9 +61,12 @@ class BprLossOpKernel : public framework::OpKernel<T> {
     const int64_t* label_data = labels->data<int64_t>();
     for (int i = 0; i < step_size; ++i) {
       int lbl_pos = label_data[i];
-      PADDLE_ENFORCE_GE(lbl_pos, 0, platform::errors::InvalidArgument(
-                                        "label data %d is illegal.", lbl_pos));
-      PADDLE_ENFORCE_LT(lbl_pos, class_num,
+      PADDLE_ENFORCE_GE(lbl_pos,
+                        0,
+                        platform::errors::InvalidArgument(
+                            "label data %d is illegal.", lbl_pos));
+      PADDLE_ENFORCE_LT(lbl_pos,
+                        class_num,
                         platform::errors::InvalidArgument(
                             "label data %d is illegal.", lbl_pos));
       int index_pos = i * class_num + lbl_pos;
@@ -98,7 +101,8 @@ class BprLossGradientOpKernel : public framework::OpKernel<T> {
 
     for (size_t sample_id = 0; sample_id < step_size; sample_id++) {
       for (size_t x_offset = sample_id * num_classes;
-           x_offset < (sample_id + 1) * num_classes; x_offset++) {
+           x_offset < (sample_id + 1) * num_classes;
+           x_offset++) {
         dx_data[x_offset] = static_cast<T>(0);
       }
       auto p_index = sample_id * num_classes + label_data[sample_id];

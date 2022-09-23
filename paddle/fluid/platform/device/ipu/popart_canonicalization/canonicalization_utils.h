@@ -23,9 +23,36 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-#define REGISTER_HANDLER(name, func) \
-  static bool __UNUSED_##name =      \
-      paddle::platform::ipu::RegisterHandler(#name, func)
+#define STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                        \
+  struct __test_global_namespace_##uniq_name##__ {};                          \
+  static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
+                             __test_global_namespace_##uniq_name##__>::value, \
+                msg)
+
+#define REGISTER_HANDLER(op_type, handler)                         \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                  \
+      __reg_ipu_op_handler__##op_type,                             \
+      "REGISTER_HANDLER must be called in global namespace");      \
+  struct __PaddleRegisterIpuOpHandler_##op_type {                  \
+    __PaddleRegisterIpuOpHandler_##op_type() {                     \
+      ::paddle::platform::ipu::RegisterHandler(                    \
+          #op_type, paddle::platform::ipu::handler);               \
+    }                                                              \
+    int Touch() const { return 0; }                                \
+  };                                                               \
+  static __PaddleRegisterIpuOpHandler_##op_type                    \
+      __PaddleRegisterIpuOpHandler_instance##op_type;              \
+  int TouchPaddleIpuOpHandlerRegister_##op_type() {                \
+    return __PaddleRegisterIpuOpHandler_instance##op_type.Touch(); \
+  }
+
+#define USE_HANDLER(op_type)                              \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                         \
+      __use_ipu_op_handler__##op_type,                    \
+      "USE_HANDLER must be called in global namespace");  \
+  extern int TouchPaddleIpuOpHandlerRegister_##op_type(); \
+  UNUSED static int use_handler__itself_##op_type##_ =    \
+      TouchPaddleIpuOpHandlerRegister_##op_type()
 
 using SymbolHandler = std::function<Node *(Graph *, Node *)>;
 
@@ -38,15 +65,16 @@ SymbolHandler GetHandler(const std::string &);
 void ConnectNodes(Node *first_node, Node *next_node);
 void DisConnectNodes(Node *first_node, Node *next_node);
 void ClearNode(Node *node);
-void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
+void CopyOpAttr(const std::string &attr_name,
+                OpDesc *op,
+                OpDesc *new_op,
                 bool override = false);
 
-const int VarType2OnnxDtype(const int type);
-const std::string VarType2PopStr(const int type);
-
-Node *GetInputVarNode(const std::string &input_name, const Node *op_node,
+Node *GetInputVarNode(const std::string &input_name,
+                      const Node *op_node,
                       const int id = 0);
-Node *GetOutputVarNode(const std::string &output_name, const Node *op_node,
+Node *GetOutputVarNode(const std::string &output_name,
+                       const Node *op_node,
                        const int id = 0);
 Node *GetInputVarNodeByVarName(const std::string &var_name,
                                const Node *op_node);
@@ -54,8 +82,16 @@ Node *GetOutputVarNodeByVarName(const std::string &var_name,
                                 const Node *op_node);
 
 const bool is_float_equal(float a, float b, float eps = 1e-8);
-const int GetOutputVarDtype(const Node *node,
-                            const std::string &output_name = "Out");
+const ONNXDataType GetVarDType(const Node *node);
+const ONNXDataType GetOutputVarDType(const Node *node,
+                                     const std::string &output_name = "Out");
+void MarkNodeForDeletion(Node *node);
+bool IsMarkedForDeletion(Node *node);
+bool IsLastVarNode(Node *node);
+int RemoveTailReduction(Graph *graph,
+                        Node *loss_op,
+                        const std::string &output_var_name);
+int ConvertToPopartReduction(const std::string &reduction);
 
 }  // namespace ipu
 }  // namespace platform

@@ -1,0 +1,19 @@
+// RUN: infrtexec -i %s
+module  {
+  func @main_graph(%arg0: !phi.dense_tensor_map, %arg1: !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW> {
+    %0 = phi_dt.tensor_map_get_tensor(%arg0) {name = "linear_0.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %1 = phi_dt.tensor_map_get_tensor(%arg0) {name = "linear_0.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %2 = "phi_dt.create_context.cpu"() : () -> !phi.context<CPU>
+    %5 = "phi_cpu.matmul.float32.any"(%2, %arg1, %0) {trans_x = false, trans_y = false} : (!phi.context<CPU>, !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %7 = "phi_cpu.add.float32.any"(%2, %5, %1): (!phi.context<CPU>, !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    infrt.return %7 : !infrt.dense_tensor<CPU, FP32, NCHW>
+  }
+  func @main() {
+    %ctx = "phi_dt.create_context.cpu" (): () -> !phi.context<CPU>
+    %1 = "phi_dt.create_dense_tensor.cpu" (%ctx) {precision=#infrt.precision<FP32>, layout=#infrt.layout<NCHW>, lod=[1:i64], dims=[16:i64, 784:i64]}: (!phi.context<CPU>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>)
+    %map = phi_dt.load_combined_params(){model_path="@CMAKE_BINARY_DIR@/linear/linear.pdmodel",params_path="@CMAKE_BINARY_DIR@/linear/linear.pdiparams"}
+    %2 = infrt.call@main_graph(%map, %1) : (!phi.dense_tensor_map, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    phi_dt.print_tensor (%2 : !infrt.dense_tensor<CPU, FP32, NCHW>)
+    infrt.return
+  }
+}

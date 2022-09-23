@@ -39,7 +39,8 @@ AlignedAllocator::AlignedAllocator(
     const std::shared_ptr<Allocator>& underlyning_allocator, size_t alignment)
     : underlying_allocator_(underlyning_allocator), alignment_(alignment) {
   PADDLE_ENFORCE_GT(
-      alignment_, 0,
+      alignment_,
+      0,
       platform::errors::InvalidArgument(
           "Alignment should be larger than 0, but got %d", alignment_));
   if (alignment_ & (alignment_ - 1)) {

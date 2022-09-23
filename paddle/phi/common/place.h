@@ -16,6 +16,12 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/phi/api/include/dll_decl.h"
+
+namespace paddle {
+enum class PlaceType;
+}
+
 namespace phi {
 
 enum class AllocationType : int8_t {
@@ -34,10 +40,11 @@ enum class AllocationType : int8_t {
 const char* AllocationTypeStr(AllocationType type);
 
 size_t GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
+
 std::string GetGlobalDeviceType(size_t device_type_id_);
 
 /// \brief The place is used to specify where the data is stored.
-class Place {
+class PADDLE_API Place {
  public:
   Place() : device(0), alloc_type_(AllocationType::UNDEFINED) {}
 
@@ -52,6 +59,9 @@ class Place {
       : device(0),
         alloc_type_(type),
         device_type_id_(GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
+
+  // See NOTE [ Why need to temporarily adapt to PlaceType? ]
+  Place(paddle::PlaceType type);  // NOLINT
 
   void Reset(AllocationType type,
              int8_t device_id = 0,
@@ -73,31 +83,23 @@ class Place {
 
   std::string DebugString() const;
 
+  struct Hash {
+    // Note: Now the number of bits we need does not exceed 32 bits, so there is
+    // no need to use 64 bits. If needed in the future, it can be expanded,
+    // but now we don’t over-design.
+    uint32_t operator()(const Place& place) const;
+  };
+
+  uint32_t HashValue() const { return Hash()(*this); }
+
   inline bool operator==(const Place& rhs) const {
-    if (alloc_type_ != rhs.GetType()) {
-      return false;
-    }
-    if (alloc_type_ == AllocationType::CPU ||
-        alloc_type_ == AllocationType::GPUPINNED ||
-        alloc_type_ == AllocationType::NPUPINNED) {
-      return true;
-    }
-    if (alloc_type_ == AllocationType::CUSTOM) {
-      return device_type_id_ == rhs.device_type_id_ &&
-             device == rhs.GetDeviceId();
-    }
-    return device == rhs.GetDeviceId();
+    return HashValue() == rhs.HashValue();
   }
-  inline bool operator!=(const Place& rhs) const { return !(*this == rhs); }
+  inline bool operator!=(const Place& rhs) const {
+    return HashValue() != rhs.HashValue();
+  }
   inline bool operator<(const Place& rhs) const {
-    if (alloc_type_ != rhs.GetType()) {
-      return static_cast<int>(alloc_type_) < static_cast<int>(rhs.GetType());
-    }
-    if (alloc_type_ == AllocationType::CUSTOM &&
-        device_type_id_ != rhs.device_type_id_) {
-      return device_type_id_ < rhs.device_type_id_;
-    }
-    return device < rhs.GetDeviceId();
+    return HashValue() < rhs.HashValue();
   }
 
  public:
@@ -205,4 +207,56 @@ class CustomPlace : public Place {
 
 std::ostream& operator<<(std::ostream&, const Place&);
 
+Place GetPinnedPlace(const Place& place);
+
 }  // namespace phi
+
+namespace paddle {
+namespace experimental {
+using AllocationType = phi::AllocationType;
+using GPUPinnedPlace = phi::GPUPinnedPlace;
+using XPUPlace = phi::XPUPlace;
+using NPUPlace = phi::NPUPlace;
+}  // namespace experimental
+
+using AllocationType = phi::AllocationType;
+using Place = phi::Place;
+using CPUPlace = phi::CPUPlace;
+using GPUPlace = phi::GPUPlace;
+
+/* NOTE [ Why need to temporarily adapt to PlaceType? ]
+
+`PlaceType` emum class is the place type used by custom operators since the
+release of 2.0. Since 2.3, we have refactored the operator library and designed
+a new external Place type. The original PlaceType is no longer suitable for use
+as an internal type of the framework, but immediately delete the PlaceType,
+it will cause the previous custom operators to be incompatible, so it cannot be
+deleted in the short term. We'd better delete this abandoned data type in 2.4.
+
+Note: This type cannot add any new type!!! It is only used for compatibility
+with
+historical writing and we will remove this temporary type in the future.
+This Type cannot be used in framework! only used for custom operator!
+
+The original PlaceType define:
+
+- enum class PlaceType { kUNK = -1, kCPU, kGPU };
+
+The historical PlaceType using:
+
+- PD_CHECK(x.place() == paddle::PlaceType::kCPU)
+- auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+
+*/
+enum class PlaceType {
+  kUNK = static_cast<int>(phi::AllocationType::UNDEFINED),
+  kCPU = static_cast<int>(phi::AllocationType::CPU),
+  kGPU = static_cast<int>(phi::AllocationType::GPU),
+};
+
+PADDLE_API bool operator==(const Place& place, PlaceType place_type);
+PADDLE_API bool operator==(PlaceType place_type, const Place& place);
+
+PADDLE_API GPUPlace DefaultGPUPlace();
+
+}  // namespace paddle

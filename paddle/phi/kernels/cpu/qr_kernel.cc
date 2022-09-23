@@ -12,36 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <Eigen/Dense>
-
 #include "paddle/phi/kernels/qr_kernel.h"
+
+#include <Eigen/Dense>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 
 namespace phi {
-
-static inline std::tuple<bool, bool> ParseQrMode(const std::string& mode) {
-  bool compute_q;
-  bool reduced;
-  if (mode == "reduced") {
-    compute_q = true;
-    reduced = true;
-  } else if (mode == "complete") {
-    compute_q = true;
-    reduced = false;
-  } else if (mode == "r") {
-    compute_q = false;
-    reduced = true;
-  } else {
-    PADDLE_THROW(errors::InvalidArgument(
-        "QR received unrecognized mode '%s'"
-        " but expected one of 'reduced' (default), 'r', or 'complete'",
-        mode));
-  }
-  return std::make_tuple(compute_q, reduced);
-}
 
 template <typename T, typename Context>
 void QrKernel(const Context& ctx,
@@ -51,7 +31,7 @@ void QrKernel(const Context& ctx,
               DenseTensor* r) {
   bool compute_q;
   bool reduced_mode;
-  std::tie(compute_q, reduced_mode) = ParseQrMode(mode);
+  std::tie(compute_q, reduced_mode) = phi::funcs::ParseQrMode(mode);
   auto numel = x.numel();
   PADDLE_ENFORCE_GT(
       numel, 0, errors::PreconditionNotMet("The input of QR is empty."));

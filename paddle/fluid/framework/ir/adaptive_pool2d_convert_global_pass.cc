@@ -67,6 +67,7 @@ AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
 
 void AdaptivePool2dConvertGlobalPass::ApplyImpl(ir::Graph* graph) const {
   std::string name_scope = "adaptive_pool2d_convert_global_pass";
+
   FusePassBase::Init(name_scope, graph);
   int num = 0;
   for (const Node* n : graph->Nodes()) {
@@ -76,17 +77,17 @@ void AdaptivePool2dConvertGlobalPass::ApplyImpl(ir::Graph* graph) const {
           op->HasAttr("ksize")) {
         if (op->HasAttr("global_pooling")) {
           bool global_pooling =
-              BOOST_GET_CONST(bool, op->GetAttr("global_pooling"));
-          if (global_pooling) return;
+              PADDLE_GET_CONST(bool, op->GetAttr("global_pooling"));
+          if (global_pooling) continue;
         }
-        if (!op->HasAttr("pooling_type")) return;
+        if (!op->HasAttr("pooling_type")) continue;
         std::string type =
-            BOOST_GET_CONST(std::string, op->GetAttr("pooling_type"));
+            PADDLE_GET_CONST(std::string, op->GetAttr("pooling_type"));
         // adaptive has no effect on max pooling
-        if (type == "max") return;
-        bool adaptive = BOOST_GET_CONST(bool, op->GetAttr("adaptive"));
+        if (type == "max") continue;
+        bool adaptive = PADDLE_GET_CONST(bool, op->GetAttr("adaptive"));
         std::vector<int> ksize =
-            BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
+            PADDLE_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
         if (adaptive && ksize.size() == 2 && ksize[0] == 1 && ksize[1] == 1) {
           op->SetAttr("adaptive", false);
           op->SetAttr("global_pooling", true);

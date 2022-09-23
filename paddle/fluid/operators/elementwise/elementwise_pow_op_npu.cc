@@ -16,7 +16,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
-#include "paddle/fluid/operators/elementwise/elementwise_pow_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -58,8 +57,8 @@ class ElementwisePowNPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     } else {
       Tensor transformed_x, transformed_y;
-      NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                   &transformed_y);
+      NpuElementWiseOpBroadcast<T>(
+          dev_ctx, x, y, axis, &transformed_x, &transformed_y);
       const auto& runner =
           NpuOpRunner("Pow", {transformed_x, transformed_y}, {*out}, {});
       runner.Run(stream);
@@ -86,8 +85,8 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
     axis =
         (axis < 0 ? std::abs(x_dims.size() - y_dims.size()) + axis + 1 : axis);
     Tensor transformed_x, transformed_y;
-    NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                 &transformed_y);
+    NpuElementWiseOpBroadcast<T>(
+        dev_ctx, x, y, axis, &transformed_x, &transformed_y);
 
     auto dout_dims = dout->dims();
     auto stream = dev_ctx.stream();
@@ -143,7 +142,9 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
         }
         if (!reduce_axes.empty()) {
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {tmp_dx}, {*dx},
+              NpuOpRunner("ReduceSumD",
+                          {tmp_dx},
+                          {*dx},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }
@@ -206,7 +207,9 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
         }
         if (!reduce_axes.empty()) {
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {tmp_dy}, {*dy},
+              NpuOpRunner("ReduceSumD",
+                          {tmp_dy},
+                          {*dy},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }

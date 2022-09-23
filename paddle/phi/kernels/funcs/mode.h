@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
 #include <thrust/extrema.h>
@@ -35,7 +35,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -143,7 +143,7 @@ static void ModeAssign(const Type& input_height,
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
 static void GetModebySort(const phi::GPUContext& dev_ctx,
                           const DenseTensor* input_tensor,

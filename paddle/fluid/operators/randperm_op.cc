@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/randperm_op.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -24,15 +27,18 @@ class RandpermOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "The output(Out) of randperm op must not be null."));
     int n = ctx->Attrs().Get<int>("n");
     PADDLE_ENFORCE_GT(
-        n, 0, platform::errors::InvalidArgument(
-                  "The input 'n' of randperm op should be greater than 0. "
-                  "But received %d.",
-                  n));
+        n,
+        0,
+        platform::errors::InvalidArgument(
+            "The input 'n' of randperm op should be greater than 0. "
+            "But received %d.",
+            n));
 
     ctx->SetOutputDim("Out", phi::make_ddim({n}));
   }
@@ -65,7 +71,7 @@ class RandpermOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Default: 0.")
         .SetDefault(0);
 
-    AddComment(R"DOC( 
+    AddComment(R"DOC(
 This operator returns a random permutation of integers from 0 to n-1.
 )DOC");
   }
@@ -75,7 +81,7 @@ class RandpermOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
+        PADDLE_GET_CONST(int, ctx->GetAttr("dtype")));
     ctx->SetOutputDataType("Out", var_data_type);
   }
 };
@@ -84,7 +90,9 @@ class RandpermOpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    randperm, paddle::operators::RandpermOp, paddle::operators::RandpermOpMaker,
+    randperm,
+    paddle::operators::RandpermOp,
+    paddle::operators::RandpermOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::RandpermOpVarTypeInference);

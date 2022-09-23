@@ -66,9 +66,10 @@ class TestCVMOpWithLodTensor(OpTest):
         lod = [[1]]
         self.inputs = {
             'X': (np.random.uniform(
-                0, 1, [self.batch_size, self.item_width]).astype("float32"),
-                  lod),
-            'CVM': np.array([[0.6, 0.4]]).astype("float32"),
+                0, 1,
+                [self.batch_size, self.item_width]).astype("float32"), lod),
+            'CVM':
+            np.array([[0.6, 0.4]]).astype("float32"),
         }
         self.attrs = {'use_cvm': False}
         out = []
@@ -85,8 +86,10 @@ class TestCVMOpWithLodTensor(OpTest):
                 (self.batch_size, self.item_width)).astype("float32")
         user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
         user_grads = [user_grads]
-        self.check_grad(
-            ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False)
+        self.check_grad(['X'],
+                        'Y',
+                        user_defined_grads=user_grads,
+                        check_dygraph=False)
 
 
 class TestCVMOpWithOutLodTensor1(OpTest):
@@ -120,8 +123,10 @@ class TestCVMOpWithOutLodTensor1(OpTest):
             (self.batch_size, self.item_width)).astype("float32")
         user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
         user_grads = [user_grads]
-        self.check_grad(
-            ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False)
+        self.check_grad(['X'],
+                        'Y',
+                        user_defined_grads=user_grads,
+                        check_dygraph=False)
 
 
 class TestCVMOpWithOutLodTensor2(OpTest):
@@ -156,8 +161,10 @@ class TestCVMOpWithOutLodTensor2(OpTest):
                 (self.batch_size, self.item_width)).astype("float32")
         user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
         user_grads = [user_grads]
-        self.check_grad(
-            ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False)
+        self.check_grad(['X'],
+                        'Y',
+                        user_defined_grads=user_grads,
+                        check_dygraph=False)
 
 
 if __name__ == '__main__':

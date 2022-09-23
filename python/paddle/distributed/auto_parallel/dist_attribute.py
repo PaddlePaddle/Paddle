@@ -51,8 +51,9 @@ def append_op_output_suffix(name):
 
 
 class TensorDistributedAttribute:
+
     def __init__(self):
-        # The process mesh of distributed operator attribute must is the same as 
+        # The process mesh of distributed operator attribute must is the same as
         # the process meshes of all input and output distributed attributed
         self._process_mesh = None
         self._dims_mapping = None
@@ -123,8 +124,8 @@ class TensorDistributedAttribute:
                             key, dist_attr)
         elif isinstance(dist_attr, TensorDistributedAttribute):
             for key in get_tensor_dist_attr_field_keys():
-                field_property = TensorDistributedAttribute.__dict__.get(key,
-                                                                         None)
+                field_property = TensorDistributedAttribute.__dict__.get(
+                    key, None)
                 if field_property:
                     field_property.fset(self, field_property.fget(dist_attr))
                 else:
@@ -132,11 +133,30 @@ class TensorDistributedAttribute:
                         key, dist_attr)
             self._is_annotated = copy.deepcopy(dist_attr._is_annotated)
 
+    def reset(self, skip_dist_attr_field_names=None):
+        if skip_dist_attr_field_names is None or \
+            (skip_dist_attr_field_names is not None \
+                and "process_mesh" not in skip_dist_attr_field_names):
+            self._process_mesh = None
+        if skip_dist_attr_field_names is None or \
+            (skip_dist_attr_field_names is not None \
+                and "dims_mapping" not in skip_dist_attr_field_names):
+            for i, _ in enumerate(self._dims_mapping):
+                self._dims_mapping[i] = -1
+        self._is_annotated = {}
+
     def is_annotated(self, dist_attr_field_name):
         return self._is_annotated.get(dist_attr_field_name, False)
 
+    # def mark_annotated_all(self):
+    #     for key in get_tensor_dist_attr_field_keys():
+    #         self.mark_annotated(key)
+
     def mark_annotated(self, dist_attr_field_name):
         self._is_annotated[dist_attr_field_name] = True
+
+    # def unmark_annotated(self, dist_attr_field_name):
+    #     self._is_annotated[dist_attr_field_name] = False
 
     def mark_annotated_as(self, dist_attr):
         if dist_attr is None:
@@ -152,6 +172,17 @@ class TensorDistributedAttribute:
 
     def clear_annotated(self):
         self._is_annotated.clear()
+
+    def __eq__(self, other):
+        if not isinstance(other, TensorDistributedAttribute):
+            return False
+        if self.process_mesh != other.process_mesh:
+            return False
+        if self.dims_mapping != other.dims_mapping:
+            return False
+        if self._is_annotated != other._is_annotated:
+            return False
+        return True
 
     def __str__(self):
         str = "\n\ttensor_dist_attr = {"
@@ -173,6 +204,7 @@ class TensorDistributedAttribute:
 
 
 class OperatorDistributedAttribute:
+
     def __init__(self):
         self._process_mesh = None
         self._op_type = None
@@ -195,7 +227,7 @@ class OperatorDistributedAttribute:
             if isinstance(process_mesh, list):
                 process_mesh = ProcessMesh(process_mesh)
             self._process_mesh = copy.deepcopy(process_mesh)
-            # In while op, the proess mesh is not shared by all inputs and outputs 
+            # In while op, the proess mesh is not shared by all inputs and outputs
             if self._op_type == "while":
                 return None
             for dist_attr in self._inputs_dist_attrs.values():
@@ -255,6 +287,9 @@ class OperatorDistributedAttribute:
         dist_attr_object.init(dist_attr)
         self._inputs_dist_attrs[name] = dist_attr_object
 
+    def del_input_dist_attr(self, name):
+        del self._inputs_dist_attrs[name]
+
     def get_output_dist_attr(self, name):
         return self._outputs_dist_attrs.get(name, None)
 
@@ -262,6 +297,9 @@ class OperatorDistributedAttribute:
         dist_attr_object = TensorDistributedAttribute()
         dist_attr_object.init(dist_attr)
         self._outputs_dist_attrs[name] = dist_attr_object
+
+    def del_output_dist_attr(self, name):
+        del self._outputs_dist_attrs[name]
 
     def get_input_dims_mapping(self, name):
         input_dist_attr = self.get_input_dist_attr(name)
@@ -331,8 +369,8 @@ class OperatorDistributedAttribute:
                     tensor_name, dist_attr.get_output_dist_attr(tensor_name))
             self._is_annotated = copy.deepcopy(dist_attr._is_annotated)
             for key in get_op_dist_attr_field_keys():
-                field_property = OperatorDistributedAttribute.__dict__.get(key,
-                                                                           None)
+                field_property = OperatorDistributedAttribute.__dict__.get(
+                    key, None)
                 if field_property:
                     field_property.fset(self, field_property.fget(dist_attr))
                 else:
@@ -357,8 +395,25 @@ class OperatorDistributedAttribute:
                         "ProcessMeshes in DistributedOperator must be the same."
         self.process_mesh = shared_process_mesh
 
+    def reset(self, skip_dist_attr_field_names=None):
+        for tensor_dist_attr in self.inputs_dist_attrs.values():
+            tensor_dist_attr.reset(skip_dist_attr_field_names)
+        for tensor_dist_attr in self.outputs_dist_attrs.values():
+            tensor_dist_attr.reset(skip_dist_attr_field_names)
+        if skip_dist_attr_field_names is None or \
+            (skip_dist_attr_field_names is not None \
+                and "process_mesh" not in skip_dist_attr_field_names):
+            self._process_mesh = None
+        self.impl_type = "default"
+        self.impl_idx = 0
+        self._is_annotated = {}
+
     def is_annotated(self, attr_name):
         return self._is_annotated.get(attr_name, False)
+
+    # def mark_annotated_all(self):
+    #     for key in get_op_dist_attr_field_keys():
+    #         self.mark_annotated(key)
 
     def mark_annotated(self, attr_name):
         if attr_name == "process_mesh":
@@ -442,6 +497,27 @@ class OperatorDistributedAttribute:
         else:
             return False
 
+    def __eq__(self, other):
+        if not isinstance(other, OperatorDistributedAttribute):
+            return False
+        if self.process_mesh != other.process_mesh:
+            return False
+        if self.op_type != other.op_type:
+            return False
+        if self.impl_type != other.impl_type:
+            return False
+        if self.impl_idx != other.impl_idx:
+            return False
+        if self._is_annotated != other._is_annotated:
+            return False
+        if self._is_recompute != other._is_recompute:
+            return False
+        if self.inputs_dist_attrs != other.inputs_dist_attrs:
+            return False
+        if self.outputs_dist_attrs != other.outputs_dist_attrs:
+            return False
+        return True
+
     def __str__(self):
         str = "\n\top_dist_attr = {"
         if self.is_annotated("process_mesh"):
@@ -452,10 +528,10 @@ class OperatorDistributedAttribute:
                                                      self.process_mesh)
 
         for arg_name, tensor_dist_attr in self.inputs_dist_attrs.items():
-            str += "\n\t\t{}'s: {},".format(arg_name, tensor_dist_attr)
+            str += "\n\t\t{}'s (input): {},".format(arg_name, tensor_dist_attr)
 
         for arg_name, tensor_dist_attr in self.outputs_dist_attrs.items():
-            str += "\n\t\t{}'s: {},".format(arg_name, tensor_dist_attr)
+            str += "\n\t\t{}'s (output): {},".format(arg_name, tensor_dist_attr)
 
         str += "\n\t\timpl type: {}, ".format(self._impl_type)
         str += "impl idx: {}".format(self._impl_idx)

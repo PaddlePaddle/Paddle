@@ -14,9 +14,8 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/maxout_kernel.h"
-
 #include "paddle/fluid/operators/math/maxouting.h"
+#include "paddle/phi/kernels/maxout_kernel.h"
 
 namespace phi {
 

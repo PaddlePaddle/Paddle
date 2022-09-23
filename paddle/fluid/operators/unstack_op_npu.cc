@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/unstack_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -77,9 +77,11 @@ namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    unstack, ops::UnStackNPUKernel<plat::NPUDeviceContext, float>,
+    unstack,
+    ops::UnStackNPUKernel<plat::NPUDeviceContext, float>,
     ops::UnStackNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    unstack_grad, ops::UnStackGradNPUKernel<plat::NPUDeviceContext, float>,
+    unstack_grad,
+    ops::UnStackGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::UnStackGradNPUKernel<plat::NPUDeviceContext, plat::float16>);

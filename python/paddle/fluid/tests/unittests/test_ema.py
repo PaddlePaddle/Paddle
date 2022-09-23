@@ -16,10 +16,12 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 
 
 class TestExponentialMovingAverage(unittest.TestCase):
+
     def setUp(self):
         self._places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -35,7 +37,7 @@ class TestExponentialMovingAverage(unittest.TestCase):
                 hidden = fluid.layers.fc(input=data,
                                          size=10,
                                          param_attr=self._param_name)
-                cost = fluid.layers.mean(hidden)
+                cost = paddle.mean(hidden)
 
                 self._test_program = fluid.default_main_program().clone(
                     for_test=True)
@@ -63,8 +65,8 @@ class TestExponentialMovingAverage(unittest.TestCase):
                 params.append(tmp_param)
 
         with self._ema.apply(exe):
-            final_ema = np.array(fluid.global_scope().find_var(self._param_name)
-                                 .get_tensor())
+            final_ema = np.array(fluid.global_scope().find_var(
+                self._param_name).get_tensor())
             data = np.random.random(size=(10, 5)).astype('float32')
             exe.run(program=self._test_program, feed={'x': data})
         return params, final_ema
@@ -75,10 +77,10 @@ class TestExponentialMovingAverage(unittest.TestCase):
             manu_ema = np.zeros_like(final_ema)
             if len(params) > 0:
                 for param in params:
-                    manu_ema = self._ema_decay * manu_ema + (1 - self._ema_decay
-                                                             ) * param
+                    manu_ema = self._ema_decay * manu_ema + (
+                        1 - self._ema_decay) * param
                 manu_ema = manu_ema / (1.0 - self._ema_decay**len(params))
-            self.assertTrue(np.allclose(manu_ema, final_ema))
+            np.testing.assert_allclose(manu_ema, final_ema, rtol=1e-05)
 
 
 if __name__ == '__main__':

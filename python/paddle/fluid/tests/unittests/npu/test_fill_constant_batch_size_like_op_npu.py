@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -28,6 +29,7 @@ SEED = 2021
 
 
 class TestFillConstantBatchSizeLike(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -84,6 +86,7 @@ class TestFillConstantBatchSizeLike(OpTest):
 
 
 class TestFillConstantBatchSizeLike2(TestFillConstantBatchSizeLike):
+
     def init_shape(self):
         # test shape
         self.input_shape = [4, 5, 6, 7]
@@ -92,6 +95,7 @@ class TestFillConstantBatchSizeLike2(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLike3(TestFillConstantBatchSizeLike):
+
     def init_value(self):
         # use 'str_value' rather than 'value'
         self.value = 3.8
@@ -100,6 +104,7 @@ class TestFillConstantBatchSizeLike3(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLike4(TestFillConstantBatchSizeLike):
+
     def init_value(self):
         # str_value = 'inf'
         self.value = 3.8
@@ -108,6 +113,7 @@ class TestFillConstantBatchSizeLike4(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLike5(TestFillConstantBatchSizeLike):
+
     def init_value(self):
         # str_value = '-inf'
         self.value = 3.8
@@ -116,6 +122,7 @@ class TestFillConstantBatchSizeLike5(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLike6(TestFillConstantBatchSizeLike):
+
     def init_dtype(self):
         self.dtype = core.VarDesc.VarType.FP16
         self.output_dtype = np.float16
@@ -125,17 +132,20 @@ class TestFillConstantBatchSizeLike6(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLike7(TestFillConstantBatchSizeLike):
+
     def init_dtype(self):
         self.dtype = core.VarDesc.VarType.INT32
         self.output_dtype = np.int32
 
 
 class TestFillConstantBatchSizeLike8(TestFillConstantBatchSizeLike):
+
     def init_force_cpu(self):
         self.force_cpu = True
 
 
 class TestFillConstantBatchSizeLike9(TestFillConstantBatchSizeLike):
+
     def init_shape(self):
         self.input_shape = [4, 5]
         self.shape = [123, 92]

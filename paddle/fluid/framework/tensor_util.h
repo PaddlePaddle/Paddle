@@ -22,7 +22,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -34,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif
 
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -59,13 +59,17 @@ class PrintOptions {
   PrintOptions() {}
 };
 
-void TensorToStream(std::ostream& os, const Tensor& tensor,
+void TensorToStream(std::ostream& os,
+                    const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx);
-void TensorFromStream(std::istream& is, Tensor* tensor,
+void TensorFromStream(std::istream& is,
+                      Tensor* tensor,
                       const platform::DeviceContext& dev_ctx);
-void TensorFromStream(std::istream& is, Tensor* tensor,
+void TensorFromStream(std::istream& is,
+                      Tensor* tensor,
                       const platform::DeviceContext& dev_ctx,
-                      const size_t& seek, const std::vector<int64_t>& shape);
+                      const size_t& seek,
+                      const std::vector<int64_t>& shape);
 
 // NOTE(zcd): Because TensorCopy is an async operation, when the src_place
 // and dst_place are two different GPU, to ensure that the operation can
@@ -73,8 +77,10 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
 // If ctx_place and src_place are the same, src_ctx.Wait() is added
 // after memory::Copy; if ctx_place and dst_place are the same,
 // src_ctx.Wait() is added before memory::Copy.
-void TensorCopy(const Tensor& src, const platform::Place& dst_place,
-                const platform::DeviceContext& ctx, Tensor* dst);
+void TensorCopy(const Tensor& src,
+                const platform::Place& dst_place,
+                const platform::DeviceContext& ctx,
+                Tensor* dst);
 
 // NOTE(zcd): If the src.place() and dst_place are two different GPU,
 // the copy operation is carried out on the dst_place's stream. This is
@@ -83,48 +89,27 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 // stream, if this copy operation is carried out on the src_place's stream,
 // when dst is used in dst_place's stream the copy operation may be
 // not completed.
-void TensorCopy(const Tensor& src, const platform::Place& dst_place,
+void TensorCopy(const Tensor& src,
+                const platform::Place& dst_place,
                 Tensor* dst);
 
-void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
+void TensorCopySync(const Tensor& src,
+                    const platform::Place& dst_place,
                     Tensor* dst);
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
-                      const platform::DeviceContext& ctx, Tensor* dst);
+                      const platform::DeviceContext& ctx,
+                      Tensor* dst);
 template <typename T>
 void TensorFromVector(const std::vector<T>& src, Tensor* dst);
 
 template <typename T>
-void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
+void TensorToVector(const Tensor& src,
+                    const platform::DeviceContext& ctx,
                     std::vector<T>* dst);
 template <typename T>
 void TesnorToVector(const Tensor& src, std::vector<T>* dst);
-
-// copy the result bool to cpu
-bool TensorContainsNAN(const framework::Tensor& tensor);
-bool TensorContainsInf(const framework::Tensor& tensor);
-bool TensorIsfinite(const framework::Tensor& tensor);
-
-// store the result bool in gpu tensor, async operation. Faster than above ones.
-void TensorContainsNAN(const framework::Tensor& tensor, framework::Tensor* out);
-void TensorContainsInf(const framework::Tensor& tensor, framework::Tensor* out);
-void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out);
-
-void TensorToStream(std::ostream& os, const Tensor& tensor,
-                    const platform::DeviceContext& dev_ctx);
-void TensorFromStream(std::istream& is, Tensor* tensor,
-                      const platform::DeviceContext& dev_ctx);
-void TensorFromStream(std::istream& is, Tensor* tensor,
-                      const platform::DeviceContext& dev_ctx,
-                      const size_t& seek, const std::vector<int64_t>& shape);
-
-// store the bool result tensor in out tensor
-void TensorContainsNANV2(const framework::Tensor& tensor,
-                         framework::Tensor* out);
-void TensorContainsInfV2(const framework::Tensor& tensor,
-                         framework::Tensor* out);
-void TensorIsfiniteV2(const framework::Tensor& tensor, framework::Tensor* out);
 
 // convert dlpack's DLTensor to tensor
 void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);
@@ -134,8 +119,10 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);
 //
 
 template <typename T>
-void TensorFromArray(const T* src, const size_t& array_size,
-                     const platform::DeviceContext& ctx, Tensor* dst) {
+void TensorFromArray(const T* src,
+                     const size_t& array_size,
+                     const platform::DeviceContext& ctx,
+                     Tensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src);
   platform::CPUPlace src_place;
@@ -148,9 +135,12 @@ void TensorFromArray(const T* src, const size_t& array_size,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, src_place, src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -165,7 +155,11 @@ void TensorFromArray(const T* src, const size_t& array_size,
 
     //  2. async copy npu pinned tensor -> npu tensor
     memory::Copy(
-        dst_place, dst_ptr, npu_pinned_place, npu_pinned_ptr, size,
+        dst_place,
+        dst_ptr,
+        npu_pinned_place,
+        npu_pinned_ptr,
+        size,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
 
     //  3. record event
@@ -180,10 +174,19 @@ void TensorFromArray(const T* src, const size_t& array_size,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(dst_place)) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
+  }
+#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(dst_place)) {  // NOLINT
     memory::Copy(
-        dst_place, dst_ptr, src_place, src_ptr, size,
+        dst_place,
+        dst_ptr,
+        src_place,
+        src_ptr,
+        size,
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
   }
 #endif
@@ -195,7 +198,8 @@ void TensorFromArray(const T* src, const size_t& array_size,
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
-                      const platform::DeviceContext& ctx, Tensor* dst) {
+                      const platform::DeviceContext& ctx,
+                      Tensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src.data());
   platform::CPUPlace src_place;
@@ -208,9 +212,12 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, src_place, src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -230,7 +237,11 @@ void TensorFromVector(const std::vector<T>& src,
 
     //  2. async copy npu pinned tensor -> npu tensor
     memory::Copy(
-        dst_place, dst_ptr, npu_pinned_place, npu_pinned_ptr, size,
+        dst_place,
+        dst_ptr,
+        npu_pinned_place,
+        npu_pinned_ptr,
+        size,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
 
     //  3. record event
@@ -247,16 +258,23 @@ void TensorFromVector(const std::vector<T>& src,
 #endif
 #ifdef PADDLE_WITH_MLU
   else if (platform::is_mlu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, src_place, src_ptr, size,
-        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(dst_place)) {  // NOLINT
     memory::Copy(
-        dst_place, dst_ptr, src_place, src_ptr, size,
+        dst_place,
+        dst_ptr,
+        src_place,
+        src_ptr,
+        size,
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT
@@ -269,7 +287,8 @@ void TensorFromVector(const std::vector<T>& src,
 // multi-definition.
 template <>
 inline void TensorFromVector(const std::vector<bool>& src,
-                             const platform::DeviceContext& ctx, Tensor* dst) {
+                             const platform::DeviceContext& ctx,
+                             Tensor* dst) {
   // vector<bool> has no data() member, use array instead.
   // See details:
   // https://stackoverflow.com/questions/46115669/why-does-stdvectorbool-have-no-data/46115714
@@ -290,9 +309,12 @@ inline void TensorFromVector(const std::vector<bool>& src,
   }
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, src_place, src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -307,7 +329,11 @@ inline void TensorFromVector(const std::vector<bool>& src,
 
     //  2. async copy npu pinned tensor -> npu tensor
     memory::Copy(
-        dst_place, dst_ptr, npu_pinned_place, npu_pinned_ptr, size,
+        dst_place,
+        dst_ptr,
+        npu_pinned_place,
+        npu_pinned_ptr,
+        size,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
 
     //  3. record event
@@ -327,6 +353,11 @@ inline void TensorFromVector(const std::vector<bool>& src,
     auto stream =
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT
@@ -366,7 +397,8 @@ inline void TensorFromVector(const std::vector<bool>& src, Tensor* dst) {
 }
 
 template <typename T>
-void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
+void TensorToVector(const Tensor& src,
+                    const platform::DeviceContext& ctx,
                     std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
   auto size = src.numel() * sizeof(T);
@@ -380,9 +412,12 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, src.place(), src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src.place(),
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
@@ -398,7 +433,11 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
 #ifdef PADDLE_WITH_MLU
   else if (platform::is_mlu_place(src.place())) {  // NOLINT
     memory::Copy(
-        dst_place, dst_ptr, src.place(), src_ptr, size,
+        dst_place,
+        dst_ptr,
+        src.place(),
+        src_ptr,
+        size,
         reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
   }
 #endif
@@ -431,9 +470,12 @@ inline void TensorToVector(const Tensor& src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, src.place(), src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src.place(),
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
@@ -448,9 +490,7 @@ inline void TensorToVector(const Tensor& src,
 #endif
 #ifdef PADDLE_WITH_MLU
   else if (platform::is_mlu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, src.place(), src_ptr, size,
-        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -474,7 +514,8 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
   auto dst_ptr = static_cast<void*>(dst->data());
 
   PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(src.place()), true,
+      platform::is_cpu_place(src.place()),
+      true,
       platform::errors::InvalidArgument(
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
@@ -494,7 +535,8 @@ inline void TensorToVector(const Tensor& src, std::vector<bool>* dst) {
   auto dst_ptr = static_cast<void*>(array);
 
   PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(src.place()), true,
+      platform::is_cpu_place(src.place()),
+      true,
       platform::errors::InvalidArgument(
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
@@ -508,6 +550,44 @@ inline void TensorToVector(const Tensor& src, std::vector<bool>* dst) {
 }
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
+
+inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
+  int rank = src.dims().size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      2,
+      platform::errors::InvalidArgument(
+          "'ReshapeToMatrix()' is only used for flatten high rank "
+          "tensors to matrixs. The dimensions of Tensor must be "
+          "greater or equal than 2. "
+          "But received dimensions of Tensor is %d",
+          rank));
+  if (rank == 2) {
+    return src;
+  }
+  Tensor res;
+  res.ShareDataWith(src);
+  res.Resize(phi::flatten_to_2d(src.dims(), num_col_dims));
+  return res;
+}
+
+template <typename T>
+inline T GetValue(const framework::Tensor* x) {
+  T value = static_cast<T>(0);
+  if (!platform::is_cpu_place(x->place())) {
+    framework::Tensor cpu_x;
+    framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    const platform::DeviceContext* dev_ctx = pool.Get(x->place());
+    dev_ctx->Wait();
+#endif
+    value = cpu_x.data<T>()[0];
+  } else {
+    value = x->data<T>()[0];
+  }
+  return value;
+}
 
 }  // namespace framework
 }  // namespace paddle

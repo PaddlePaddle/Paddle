@@ -25,14 +25,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define normalization api  
+# TODO: define normalization api
 
 import six
 
 from ...fluid.dygraph import BatchNorm  # noqa: F401
 from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
-from ...framework import get_default_dtype, set_default_dtype
+from ...framework import get_default_dtype, set_default_dtype, _non_static_mode
 
 from ..initializer import Constant
 from ...framework import ParamAttr
@@ -46,16 +46,17 @@ import numbers
 import warnings
 from ...framework import no_grad
 from .. import functional as F
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from .. import Layer
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
 
 class _InstanceNormBase(Layer):
     """
-    This class is based class for InstanceNorm1D, 2d, 3d. 
+    This class is based class for InstanceNorm1D, 2d, 3d.
 
     See InstaceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
     """
@@ -83,11 +84,10 @@ class _InstanceNormBase(Layer):
                 shape=[num_features],
                 default_initializer=Constant(1.0),
                 is_bias=False)
-            self.bias = self.create_parameter(
-                attr=self._bias_attr,
-                shape=[num_features],
-                default_initializer=Constant(0.0),
-                is_bias=True)
+            self.bias = self.create_parameter(attr=self._bias_attr,
+                                              shape=[num_features],
+                                              default_initializer=Constant(0.0),
+                                              is_bias=True)
         else:
             self.scale = None
             self.bias = None
@@ -98,8 +98,10 @@ class _InstanceNormBase(Layer):
     def forward(self, input):
         self._check_input_dim(input)
 
-        return instance_norm(
-            input, weight=self.scale, bias=self.bias, eps=self._epsilon)
+        return instance_norm(input,
+                             weight=self.scale,
+                             bias=self.bias,
+                             eps=self._epsilon)
 
     def extra_repr(self):
         return 'num_features={}, epsilon={}'.format(self._num_features,
@@ -108,14 +110,14 @@ class _InstanceNormBase(Layer):
 
 class InstanceNorm1D(_InstanceNormBase):
     r"""
-    Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
+    Create a callable object of `InstanceNorm1D`. Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCL `[batch, in_channels, length]`
 
     :math:`input` is the input features over a mini-batch.
 
     ..  math::
-        
+
         \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//\
         \ mean\ of\ one\  feature\ map\ in\ mini-batch \\
         \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i - \
@@ -124,8 +126,7 @@ class InstanceNorm1D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    Note:
-        `H` means height of feature map, `W` means width of feature map.
+Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -135,14 +136,14 @@ class InstanceNorm1D(_InstanceNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the weight_attr is not set, the parameter is initialized 
+	     If the Initializer of the weight_attr is not set, the parameter is initialized
 	     one. If it is set to False, will not create weight_attr. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
              If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
              If it is set to False, will not create bias_attr. Default: None.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL". Defalut "NCL".
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL". Default "NCL".
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
 
@@ -159,11 +160,8 @@ class InstanceNorm1D(_InstanceNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 2, 3))
           instance_norm = paddle.nn.InstanceNorm1D(2)
           instance_norm_out = instance_norm(x)
 
@@ -179,7 +177,7 @@ class InstanceNorm1D(_InstanceNormBase):
 
 class InstanceNorm2D(_InstanceNormBase):
     r"""
-    Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
+    Create a callable object of `InstanceNorm2D`. Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
 
@@ -187,7 +185,7 @@ class InstanceNorm2D(_InstanceNormBase):
     :math:`input` is the input features over a mini-batch.
 
     ..  math::
-        
+
         \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//\
         \ mean\ of\ one\  feature\ map\ in\ mini-batch \\
         \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i - \
@@ -196,8 +194,7 @@ class InstanceNorm2D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    Note:
-        `H` means height of feature map, `W` means width of feature map.
+Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -207,12 +204,12 @@ class InstanceNorm2D(_InstanceNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the weight_attr is not set, the parameter is initialized 
+	     If the Initializer of the weight_attr is not set, the parameter is initialized
 	     one. If it is set to False, will not create weight_attr. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
              If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
              If it is set to False, will not create bias_attr. Default: None.
         data_format(str, optional): Specify the input data format, could be "NCHW". Default: NCHW.
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
@@ -230,11 +227,8 @@ class InstanceNorm2D(_InstanceNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 2, 2, 3))
           instance_norm = paddle.nn.InstanceNorm2D(2)
           instance_norm_out = instance_norm(x)
 
@@ -249,7 +243,7 @@ class InstanceNorm2D(_InstanceNormBase):
 
 class InstanceNorm3D(_InstanceNormBase):
     r"""
-    Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
+    Create a callable object of `InstanceNorm3D`. Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
 
@@ -257,7 +251,7 @@ class InstanceNorm3D(_InstanceNormBase):
     :math:`input` is the input features over a mini-batch.
 
     ..  math::
-        
+
         \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//\
         \ mean\ of\ one\  feature\ map\ in\ mini-batch \\
         \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i - \
@@ -266,8 +260,7 @@ class InstanceNorm3D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    Note:
-        `H` means height of feature map, `W` means width of feature map.
+Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -277,12 +270,12 @@ class InstanceNorm3D(_InstanceNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the weight_attr is not set, the parameter is initialized 
+	     If the Initializer of the weight_attr is not set, the parameter is initialized
 	     one. If it is set to False, will not create weight_attr. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
              If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
              If it is set to False, will not create bias_attr. Default: None.
         data_format(str, optional): Specify the input data format, could be "NCDHW". Default: NCDHW.
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
@@ -300,11 +293,8 @@ class InstanceNorm3D(_InstanceNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 2, 2, 2, 3))
           instance_norm = paddle.nn.InstanceNorm3D(2)
           instance_norm_out = instance_norm(x)
 
@@ -354,7 +344,7 @@ class GroupNorm(Layer):
           paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 6, 2, 2)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.to_tensor(x_data)
           group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
           group_norm_out = group_norm(x)
 
@@ -392,18 +382,45 @@ class GroupNorm(Layer):
             self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
 
         if bias_attr == False:
-            self.bias = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                default_initializer=Constant(0.0),
-                is_bias=True)
+            self.bias = self.create_parameter(attr=None,
+                                              shape=param_shape,
+                                              default_initializer=Constant(0.0),
+                                              is_bias=True)
             self.bias.stop_gradient = True
         else:
-            self.bias = self.create_parameter(
-                attr=self._bias_attr, shape=param_shape, is_bias=True)
+            self.bias = self.create_parameter(attr=self._bias_attr,
+                                              shape=param_shape,
+                                              is_bias=True)
             self.bias.stop_gradient = self._bias_attr != None and self._bias_attr.learning_rate == 0.
 
     def forward(self, input):
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True)
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True)
+
+        if in_dygraph_mode():
+            pre_act = _C_ops.group_norm(input, self.weight, self.bias,
+                                        self._epsilon, self._num_groups, "NCHW")
+
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               act=None)
+
+        elif _in_legacy_dygraph():
+            pre_act, _, _ = _legacy_C_ops.group_norm(
+                input,
+                self.weight,
+                self.bias,
+                mean_out,
+                variance_out,
+                'epsilon',
+                self._epsilon,
+                'groups',
+                self._num_groups,
+            )
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               act=None)
+
         inputs = {'X': input}
         if self.bias is not None:
             inputs['Bias'] = self.bias
@@ -411,23 +428,20 @@ class GroupNorm(Layer):
             inputs['Scale'] = self.weight
 
         # create output
-        mean_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True)
-        variance_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True)
         group_norm_out = self._helper.create_variable_for_type_inference(
             dtype=input.dtype)
 
-        self._helper.append_op(
-            type="group_norm",
-            inputs=inputs,
-            outputs={
-                "Y": group_norm_out,
-                "Mean": mean_out,
-                "Variance": variance_out,
-            },
-            attrs={"epsilon": self._epsilon,
-                   "groups": self._num_groups})
+        self._helper.append_op(type="group_norm",
+                               inputs=inputs,
+                               outputs={
+                                   "Y": group_norm_out,
+                                   "Mean": mean_out,
+                                   "Variance": variance_out,
+                               },
+                               attrs={
+                                   "epsilon": self._epsilon,
+                                   "groups": self._num_groups
+                               })
 
         return self._helper.append_activation(group_norm_out, None)
 
@@ -438,11 +452,7 @@ class GroupNorm(Layer):
 
 class LayerNorm(Layer):
     r"""
-    :alias_main: paddle.nn.LayerNorm
-	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
-	:old_api: paddle.fluid.dygraph.LayerNorm
-
-    This interface is used to construct a callable object of the ``LayerNorm`` class.
+    Construct a callable object of the ``LayerNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
     Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
@@ -490,12 +500,9 @@ class LayerNorm(Layer):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
-          layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
+          x = paddle.rand((2, 2, 2, 3))
+          layer_norm = paddle.nn.LayerNorm(x.shape[1:])
           layer_norm_out = layer_norm(x)
 
           print(layer_norm_out)
@@ -528,16 +535,16 @@ class LayerNorm(Layer):
         if bias_attr is False:
             self.bias = None
         else:
-            self.bias = self.create_parameter(
-                attr=self._bias_attr, shape=param_shape, is_bias=True)
+            self.bias = self.create_parameter(attr=self._bias_attr,
+                                              shape=param_shape,
+                                              is_bias=True)
 
     def forward(self, input):
-        return layer_norm(
-            input,
-            normalized_shape=self._normalized_shape,
-            weight=self.weight,
-            bias=self.bias,
-            epsilon=self._epsilon)
+        return layer_norm(input,
+                          normalized_shape=self._normalized_shape,
+                          weight=self.weight,
+                          bias=self.bias,
+                          epsilon=self._epsilon)
 
     def extra_repr(self):
         return 'normalized_shape={}, epsilon={}'.format(self._normalized_shape,
@@ -588,19 +595,17 @@ class _BatchNormBase(Layer):
             self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
 
         if bias_attr == False:
-            self.bias = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(0.0),
-                is_bias=True)
+            self.bias = self.create_parameter(attr=None,
+                                              shape=param_shape,
+                                              dtype=self._dtype,
+                                              default_initializer=Constant(0.0),
+                                              is_bias=True)
             self.bias.stop_gradient = True
         else:
-            self.bias = self.create_parameter(
-                attr=self._bias_attr,
-                shape=param_shape,
-                dtype=self._dtype,
-                is_bias=True)
+            self.bias = self.create_parameter(attr=self._bias_attr,
+                                              shape=param_shape,
+                                              dtype=self._dtype,
+                                              is_bias=True)
             self.bias.stop_gradient = self._bias_attr != None and self._bias_attr.learning_rate == 0.
 
         moving_mean_name = None
@@ -610,24 +615,22 @@ class _BatchNormBase(Layer):
             moving_mean_name = name + "_mean"
             moving_variance_name = name + "_variance"
 
-        self._mean = self.create_parameter(
-            dtype=self._dtype,
-            attr=ParamAttr(
-                name=moving_mean_name,
-                initializer=Constant(0.0),
-                trainable=False,
-                do_model_average=True),
-            shape=param_shape)
+        self._mean = self.create_parameter(dtype=self._dtype,
+                                           attr=ParamAttr(
+                                               name=moving_mean_name,
+                                               initializer=Constant(0.0),
+                                               trainable=False,
+                                               do_model_average=True),
+                                           shape=param_shape)
         self._mean.stop_gradient = True
 
-        self._variance = self.create_parameter(
-            dtype=self._dtype,
-            attr=ParamAttr(
-                name=moving_variance_name,
-                initializer=Constant(1.0),
-                trainable=False,
-                do_model_average=True),
-            shape=param_shape)
+        self._variance = self.create_parameter(dtype=self._dtype,
+                                               attr=ParamAttr(
+                                                   name=moving_variance_name,
+                                                   initializer=Constant(1.0),
+                                                   trainable=False,
+                                                   do_model_average=True),
+                                               shape=param_shape)
         self._variance.stop_gradient = True
 
         self._data_format = data_format
@@ -653,17 +656,16 @@ class _BatchNormBase(Layer):
             warnings.warn(
                 "When training, we now always track global mean and variance.")
 
-        return batch_norm(
-            input,
-            self._mean,
-            self._variance,
-            weight=self.weight,
-            bias=self.bias,
-            training=self.training,
-            momentum=self._momentum,
-            epsilon=self._epsilon,
-            data_format=self._data_format,
-            use_global_stats=self._use_global_stats)
+        return batch_norm(input,
+                          self._mean,
+                          self._variance,
+                          weight=self.weight,
+                          bias=self.bias,
+                          training=self.training,
+                          momentum=self._momentum,
+                          epsilon=self._epsilon,
+                          data_format=self._data_format,
+                          use_global_stats=self._use_global_stats)
 
     def extra_repr(self):
         main_str = 'num_features={}, momentum={}, epsilon={}'.format(
@@ -717,12 +719,12 @@ class BatchNorm1D(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
-            If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
+            If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Defalut "NCL".
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Default "NCL".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -733,17 +735,14 @@ class BatchNorm1D(_BatchNormBase):
 
     Returns:
         None.
-    
+
 
     Examples:
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 1, 3))
           batch_norm = paddle.nn.BatchNorm1D(1)
           batch_norm_out = batch_norm(x)
 
@@ -790,7 +789,7 @@ class BatchNorm2D(_BatchNormBase):
 
         \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//
         \ mini-batch\ mean \\
-        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - 
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i -
         \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
 
     When use_global_stats = True, the :math:`\mu_{\beta}`
@@ -820,7 +819,7 @@ class BatchNorm2D(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
-            If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
+            If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
@@ -841,11 +840,8 @@ class BatchNorm2D(_BatchNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 1, 2, 3))
           batch_norm = paddle.nn.BatchNorm2D(1)
           batch_norm_out = batch_norm(x)
 
@@ -908,7 +904,7 @@ class BatchNorm3D(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
-            If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
+            If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
@@ -929,11 +925,8 @@ class BatchNorm3D(_BatchNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 1, 2, 2, 3))
           batch_norm = paddle.nn.BatchNorm3D(1)
           batch_norm_out = batch_norm(x)
 
@@ -971,8 +964,8 @@ class BatchNorm3D(_BatchNormBase):
 class SyncBatchNorm(_BatchNormBase):
     r"""
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
-    It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
-    be used as a normalizer function for other operations, such as conv2d and fully connected 
+    It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can
+    be used as a normalizer function for other operations, such as conv2d and fully connected
     operations.
     The data is normalized by the mean and variance of the channel based on whole mini-batch
     , which including data in all gpus.
@@ -980,7 +973,7 @@ class SyncBatchNorm(_BatchNormBase):
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    When model in training mode, the :math:`\\mu_{\\beta}` 
+    When model in training mode, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of whole mini-batch data in all gpus.
     Calculated as follows:
 
@@ -995,7 +988,7 @@ class SyncBatchNorm(_BatchNormBase):
     - :math:`m` : the size of the whole mini-batch data
 
     When model in evaluation mode, the :math:`\\mu_{\\beta}`
-    and :math:`\sigma_{\beta}^{2}` are global statistics (moving_mean and moving_variance, 
+    and :math:`\sigma_{\beta}^{2}` are global statistics (moving_mean and moving_variance,
     which usually got from the pre-trained model). Global statistics calculated as follows:
 
     .. math::
@@ -1003,7 +996,7 @@ class SyncBatchNorm(_BatchNormBase):
         moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global \ variance \\
 
     The formula of normalization is as follows:
- 
+
     ..  math::
 
         \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
@@ -1012,12 +1005,12 @@ class SyncBatchNorm(_BatchNormBase):
 
     - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
     - :math:`\gamma` : trainable scale parameter vector
-    - :math:`\beta` : trainable shift parameter vector 
+    - :math:`\beta` : trainable shift parameter vector
 
     Note:
-        If you want to use container to pack your model and has ``SyncBatchNorm`` in the 
-        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of 
-        ``list`` to pack the model. 
+        If you want to use container to pack your model and has ``SyncBatchNorm`` in the
+        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of
+        ``list`` to pack the model.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -1026,12 +1019,12 @@ class SyncBatchNorm(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of this layer. If it is set to None or one attribute of ParamAttr, this layerr
              will create ParamAttr as param_attr. If the Initializer of the param_attr
-             is not set, the parameter is initialized with Xavier. If it is set to False, 
+             is not set, the parameter is initialized with ones. If it is set to False,
              this layer will not have trainable scale parameter. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of this layer.
              If it is set to None or one attribute of ParamAttr, this layer
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-             is not set, the bias is initialized zero. If it is set to False, this layer will not 
+             is not set, the bias is initialized zero. If it is set to False, this layer will not
              have trainable bias parameter. Default: None.
 
     Shapes:
@@ -1087,16 +1080,22 @@ class SyncBatchNorm(_BatchNormBase):
 
         ### train mode: use mini-batch stats, eval mode: use global stats
         ### use_global_stats only support False in sync_batch_norm
-        if in_dynamic_mode():
+        if in_dygraph_mode():
+            sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
+                x, self.weight, self.bias, self._mean, self._variance,
+                self._momentum, self._epsilon, self._data_format,
+                not self.training, False, False, False)
+            return sync_batch_norm_out
+
+        elif in_dynamic_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
                      self._data_format, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", False, 'trainable_statistics',
                      False)
-            sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm(
+            sync_batch_norm_out, _, _, _, _, _ = _legacy_C_ops.sync_batch_norm(
                 x, self.weight, self.bias, self._mean, self._variance, mean_out,
                 variance_out, *attrs)
-
             return sync_batch_norm_out
 
         check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
@@ -1136,8 +1135,10 @@ class SyncBatchNorm(_BatchNormBase):
             "SavedVariance": [saved_variance]
         }
 
-        self._helper.append_op(
-            type="sync_batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
+        self._helper.append_op(type="sync_batch_norm",
+                               inputs=inputs,
+                               outputs=outputs,
+                               attrs=attrs)
         return sync_batch_norm_out
 
     @classmethod

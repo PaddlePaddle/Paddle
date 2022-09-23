@@ -70,19 +70,29 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
       strides_vec[2] = strides[0];
       strides_vec[3] = strides[1];
     }
-    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
-                              padding_algorithm, data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings,
+                              global_pooling,
+                              adaptive,
+                              padding_algorithm,
+                              data_dims,
+                              strides,
+                              ksize);
+#if (CANN_VERSION_CODE < 512000)
     PADDLE_ENFORCE_LT(
-        std::max(paddings[0], paddings[1]), ksize[0],
+        std::max(paddings[0], paddings[1]),
+        ksize[0],
         platform::errors::InvalidArgument(
             "Paddings should be less than %d, but max(pads[0], pads[1]) is %d.",
-            ksize[0], std::max(paddings[0], paddings[1])));
+            ksize[0],
+            std::max(paddings[0], paddings[1])));
     PADDLE_ENFORCE_LT(
-        std::max(paddings[2], paddings[3]), ksize[1],
+        std::max(paddings[2], paddings[3]),
+        ksize[1],
         platform::errors::InvalidArgument(
             "Paddings should be less than %d, but max(pads[2], pads[3]) is %d.",
-            ksize[1], std::max(paddings[2], paddings[3])));
-
+            ksize[1],
+            std::max(paddings[2], paddings[3])));
+#endif
     if (adaptive) {
       std::string pooling_mode = "AdaptiveAvgPool2d";
       if (pooling_type == "max") {
@@ -93,15 +103,17 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
       Tensor transformed_input, transformed_output;
       if (pooling_type == "avg" && channel_last) {
         transformed_input.mutable_data<T>(
-            phi::make_dim(in_x_dims[0], in_x_dims[3], in_x_dims[1],
-                          in_x_dims[2]),
+            phi::make_dim(
+                in_x_dims[0], in_x_dims[3], in_x_dims[1], in_x_dims[2]),
             ctx.GetPlace());
         transformed_output.mutable_data<T>(
             phi::make_dim(out_dims[0], out_dims[3], out_dims[1], out_dims[2]),
             ctx.GetPlace());
 
         const auto &trans_runner =
-            NpuOpRunner("TransData", {in_x_tensor}, {transformed_input},
+            NpuOpRunner("TransData",
+                        {in_x_tensor},
+                        {transformed_input},
                         {{"src_format", std::string("NHWC")},
                          {"dst_format", std::string("NCHW")}});
         trans_runner.Run(dev_ctx.stream());
@@ -111,13 +123,17 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
       }
 
       const auto &runner =
-          NpuOpRunner(pooling_mode, {transformed_input}, {transformed_output},
+          NpuOpRunner(pooling_mode,
+                      {transformed_input},
+                      {transformed_output},
                       {{"output_size", phi::vectorize<int>(out_data_dims)}});
       runner.Run(dev_ctx.stream());
 
       if (pooling_type == "avg" && channel_last) {
         const auto &trans_runner =
-            NpuOpRunner("TransData", {transformed_output}, {out_tensor},
+            NpuOpRunner("TransData",
+                        {transformed_output},
+                        {out_tensor},
                         {{"src_format", std::string("NCHW")},
                          {"dst_format", std::string("NHWC")}});
         trans_runner.Run(dev_ctx.stream());
@@ -126,14 +142,17 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
       std::string pooling_mode = "AvgPoolV2";
       if (pooling_type == "max") {
         PADDLE_ENFORCE_EQ(
-            exclusive, true,
+            exclusive,
+            true,
             platform::errors::InvalidArgument(
                 "MaxPool only support exclusive=false, but got true"));
         pooling_mode = "MaxPoolV3";
       }
 
       const auto &runner =
-          NpuOpRunner(pooling_mode, {in_x_tensor}, {out_tensor},
+          NpuOpRunner(pooling_mode,
+                      {in_x_tensor},
+                      {out_tensor},
                       {{"ksize", ksize_vec},
                        {"strides", strides_vec},
                        {"padding_mode", std::string("CALCULATED")},
@@ -203,31 +222,44 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
       strides_vec[2] = strides[0];
       strides_vec[3] = strides[1];
     }
-    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
-                              padding_algorithm, data_dims, strides, ksize);
-
+    phi::funcs::UpdatePadding(&paddings,
+                              global_pooling,
+                              adaptive,
+                              padding_algorithm,
+                              data_dims,
+                              strides,
+                              ksize);
+#if (CANN_VERSION_CODE < 512000)
     PADDLE_ENFORCE_LT(
-        std::max(paddings[0], paddings[1]), ksize[0],
+        std::max(paddings[0], paddings[1]),
+        ksize[0],
         platform::errors::InvalidArgument(
             "Paddings should be less than %d, but max(pads[0], pads[1]) is %d.",
-            ksize[0], std::max(paddings[0], paddings[1])));
+            ksize[0],
+            std::max(paddings[0], paddings[1])));
     PADDLE_ENFORCE_LT(
-        std::max(paddings[2], paddings[3]), ksize[1],
+        std::max(paddings[2], paddings[3]),
+        ksize[1],
         platform::errors::InvalidArgument(
             "Paddings should be less than %d, but max(pads[2], pads[3]) is %d.",
-            ksize[1], std::max(paddings[2], paddings[3])));
-
+            ksize[1],
+            std::max(paddings[2], paddings[3])));
+#endif
     if (adaptive || (global_pooling && pooling_type == "max")) {
-      PADDLE_ENFORCE_EQ(data_dims[0] % out_data_dims[0], 0,
+      PADDLE_ENFORCE_EQ(data_dims[0] % out_data_dims[0],
+                        0,
                         platform::errors::InvalidArgument(
                             "When adaptive = True, H and W must be divisible, "
                             "but input dims is %s, output dims is %s",
-                            data_dims, out_data_dims));
-      PADDLE_ENFORCE_EQ(data_dims[1] % out_data_dims[1], 0,
+                            data_dims,
+                            out_data_dims));
+      PADDLE_ENFORCE_EQ(data_dims[1] % out_data_dims[1],
+                        0,
                         platform::errors::InvalidArgument(
                             "When adaptive = True, H and W must be divisible, "
                             "but input dims is %s, output dims is %s",
-                            data_dims, out_data_dims));
+                            data_dims,
+                            out_data_dims));
       if (channel_last) {
         strides_vec[1] = data_dims[0] / out_data_dims[0];
         strides_vec[2] = data_dims[1] / out_data_dims[1];
@@ -255,7 +287,8 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
         for (auto &s : strides_vec) {
           s = 1;
         }
-        PADDLE_ENFORCE_LT(std::max(data_dims[0], data_dims[1]), 255,
+        PADDLE_ENFORCE_LT(std::max(data_dims[0], data_dims[1]),
+                          255,
                           platform::errors::InvalidArgument(
                               "MaxPoolGrad H, W must be less than 255 when "
                               "global_pooling = True, but got %s",
@@ -263,16 +296,19 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
         attrs["global_pooling"] = false;
       }
 
-      const auto &runner = NpuOpRunner(
-          "MaxPoolV3Grad", {in_x_tensor, out_tensor, out_grad_tensor},
-          {in_x_grad_tensor}, attrs);  // 0: floor, 1: ceil
+      const auto &runner =
+          NpuOpRunner("MaxPoolV3Grad",
+                      {in_x_tensor, out_tensor, out_grad_tensor},
+                      {in_x_grad_tensor},
+                      attrs);  // 0: floor, 1: ceil
       runner.Run(dev_ctx.stream());
     } else if (pooling_type == "avg") {
       PADDLE_ENFORCE(strides[0] == strides[1],
                      platform::errors::InvalidArgument(
                          "AvgPoolGrad dose not support Asymmetric strides. but "
                          "strides = (%d, %d)",
-                         strides[0], strides[1]));
+                         strides[0],
+                         strides[1]));
 
       NpuOpRunner runner;
       runner.SetType("AvgPoolV2Grad");
@@ -289,7 +325,9 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_NPU_KERNEL(pool2d, ops::NPUPoolOpKernel<float>,
+REGISTER_OP_NPU_KERNEL(pool2d,
+                       ops::NPUPoolOpKernel<float>,
                        ops::NPUPoolOpKernel<plat::float16>);
-REGISTER_OP_NPU_KERNEL(pool2d_grad, ops::NPUPoolGradOpKernel<float>,
+REGISTER_OP_NPU_KERNEL(pool2d_grad,
+                       ops::NPUPoolGradOpKernel<float>,
                        ops::NPUPoolGradOpKernel<plat::float16>);

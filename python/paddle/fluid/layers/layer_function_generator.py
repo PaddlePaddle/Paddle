@@ -20,10 +20,11 @@ import string
 
 from six.moves import cStringIO
 from ..proto import framework_pb2
-from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, in_dygraph_mode, _in_eager_mode
+from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
-from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'generate_layer_fn', 'generate_activation_fn', 'generate_inplace_fn',
@@ -186,8 +187,8 @@ def generate_layer_fn(op_type):
 
             for each in val:
                 if not isinstance(each, Variable):
-                    raise ValueError("input of {0} must be variable".format(
-                        op_type))
+                    raise ValueError(
+                        "input of {0} must be variable".format(op_type))
 
                 if dtype is None:
                     dtype = each.dtype
@@ -226,8 +227,8 @@ def generate_layer_fn(op_type):
         outputs = dict()
         out = kwargs.pop(_convert_(o_name), [])
         if out:
-            out_var = out[0] if (isinstance(out, list) or
-                                 isinstance(out, tuple)) else out
+            out_var = out[0] if (isinstance(out, list)
+                                 or isinstance(out, tuple)) else out
         else:
             out_var = helper.create_variable_for_type_inference(dtype=dtype)
         outputs[o_name] = [out_var]
@@ -235,8 +236,10 @@ def generate_layer_fn(op_type):
             outputs[name] = [
                 helper.create_variable_for_type_inference(dtype=dtype)
             ]
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=kwargs)
         return helper.append_activation(out_var)
 
     func.__name__ = op_type
@@ -257,8 +260,13 @@ def generate_activation_fn(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
-        if in_dygraph_mode():
+        if in_dygraph_mode() and hasattr(_C_ops, op_type):
             op = getattr(_C_ops, op_type)
+            return op(x)
+        # TODO(dev): Because some ops' yaml has not been migrated.
+        # Replace it with _in_legacy_dygraph while all yaml work is done.
+        if _non_static_mode():
+            op = getattr(_legacy_C_ops, op_type)
             return op(x)
 
         if op_type not in ["abs", "exp", "square"]:
@@ -266,9 +274,10 @@ def generate_activation_fn(op_type):
                                      op_type)
         else:
             # abs exp square ops support dtype(int32, int64, float16, float32, float64)
-            check_variable_and_dtype(
-                x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
-                op_type)
+            check_variable_and_dtype(x, 'x', [
+                'int32', 'int64', 'float16', 'float32', 'float64', 'complex64',
+                'complex128'
+            ], op_type)
 
         helper = LayerHelper(op_type, **locals())
 
@@ -297,12 +306,12 @@ def generate_inplace_fn(inplace_op_type):
     origin_op_type = inplace_op_type[:-1]
 
     def func(x, name=None):
-        if in_dygraph_mode():
-            op = getattr(_C_ops, inplace_op_type)
+        if _non_static_mode():
+            op = getattr(_legacy_C_ops, inplace_op_type)
             return op(x)
         warnings.warn(
-            "In static mode, {}() is the same as {}() and does not perform inplace operation.".
-            format(inplace_op_type, origin_op_type))
+            "In static mode, {}() is the same as {}() and does not perform inplace operation."
+            .format(inplace_op_type, origin_op_type))
         return generate_activation_fn(origin_op_type)(x, name)
 
     func.__name__ = inplace_op_type
@@ -315,9 +324,10 @@ Please refer to :ref:`api_fluid_layers_{1}`.
 
 
 def autodoc(comment=""):
+
     def __impl__(func):
-        func.__doc__ = _generate_doc_string_(OpProtoHolder.instance(
-        ).get_op_proto(func.__name__)) + comment
+        func.__doc__ = _generate_doc_string_(
+            OpProtoHolder.instance().get_op_proto(func.__name__)) + comment
         return func
 
     return __impl__
@@ -383,7 +393,7 @@ def templatedoc(op_type=None):
 
 def add_sample_code(func, sample_code):
     """
-    Append sample code for dynamically generated functions. 
+    Append sample code for dynamically generated functions.
 
     Args:
        func: The function of the function to be append sample code to.

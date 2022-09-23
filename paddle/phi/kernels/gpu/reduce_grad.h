@@ -23,7 +23,7 @@
 #include <set>
 #include <vector>
 
-#include "paddle/phi/api/ext/dispatch.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace phi {
@@ -41,6 +41,45 @@ void ReduceGrad(const GPUContext& dev_ctx,
         funcs::BroadcastKernel<phi::ElementwiseType::kUnary, InT, data_t>(
             dev_ctx, inputs, &outputs, 0, functor);
       }));
+}
+
+template <typename T, typename OutT, typename Context, typename Functor>
+void ReduceGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& out_grad,
+                      const std::vector<int64_t>& dims,
+                      bool keep_dim,
+                      bool reduce_all,
+                      DenseTensor* x_grad,
+                      Functor functor) {
+  auto* in_x = &x;
+  auto* d_out = &out_grad;
+  auto* d_x = x_grad;
+
+  // get reduce_dim and reduce_num for reduce_mean_grad
+  int dim_size = in_x->dims().size();
+  std::vector<int> reduce_dims =
+      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
+
+  auto update_dims = vectorize(d_x->dims());
+  int reduce_num = 1;
+  for (auto i : reduce_dims) {
+    reduce_num *= (in_x->dims())[i];
+    update_dims[i] = 1;
+  }
+  // make new tensor
+  DenseTensor new_d_out(d_out->dtype());
+  new_d_out.ShareDataWith(*d_out);
+  new_d_out.Resize(phi::make_ddim(update_dims));
+
+  dev_ctx.Alloc(d_x, x.dtype());
+
+  auto pt_d_out = new_d_out;
+  auto pt_d_x = *d_x;
+  std::vector<const DenseTensor*> inputs = {&pt_d_out};
+  std::vector<DenseTensor*> outputs = {&pt_d_x};
+  funcs::BroadcastKernel<phi::ElementwiseType::kUnary, T, OutT>(
+      dev_ctx, inputs, &outputs, 0, functor);
 }
 
 }  // namespace phi

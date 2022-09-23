@@ -20,6 +20,14 @@ from .linalg import dot, matmul, transpose
 from .manipulation import squeeze, unsqueeze, reshape
 from .math import multiply
 from .math import sum as paddle_sum
+from ..fluid.framework import _in_legacy_dygraph
+from paddle import _C_ops, _legacy_C_ops
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+import collections
+import string
+import opt_einsum
 
 from paddle.common_ops_import import dygraph_only
 
@@ -39,8 +47,8 @@ def parse_op_labels(labelstr, operand):
 
     Returns
     -------
-    the input operand's full label string in which all anonymous dimensions are 
-    labeled in dots. 
+    the input operand's full label string in which all anonymous dimensions are
+    labeled in dots.
     '''
     # Sanity checks
     for c in labelstr.replace('.', ''):
@@ -66,14 +74,14 @@ def parse_op_labels(labelstr, operand):
 def parse_labels(labelstr, operands):
     '''
     Parse label strings for all input operands.
-    
+
     Parameters
     ----------
     labelstr:
         The equation's label string
     operands:
         The input operands
-    
+
     Returns
     -------
     list of full label strings for all input operands
@@ -89,7 +97,7 @@ def parse_labels(labelstr, operands):
 
 def validate_rhs(rhs, input_labels, n_bcast_dims):
     '''
-    Check whether the equation's right hand side is valid 
+    Check whether the equation's right hand side is valid
     '''
     # Sanity check.
     if n_bcast_dims > 0:
@@ -114,8 +122,8 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
 
 def build_view(in_labels, out_labels):
     '''
-    Build an inverse map of dimension indices. Three conditions must hold for 
-    the result to be meaningful. 
+    Build an inverse map of dimension indices. Three conditions must hold for
+    the result to be meaningful.
     First, no duplicate letter labels in each label string.
     Second, the number of dots in dimout_labels >= that in in_labels.
     Third, dots are contiguous in each label string.
@@ -126,7 +134,7 @@ def build_view(in_labels, out_labels):
         The dimension labels to map to
     out_labels:
         The dimension labels to map from
-    
+
     Returns
     -------
     The inverse map from out_labels to in_labels. The length of the inverse map equals that of
@@ -151,10 +159,11 @@ def build_view(in_labels, out_labels):
         # fill the broadcast dimension indices from right to left.
         if s:
             for ax, dim in zip(
-                    range(start, end)[::-1], range(s.start(), s.end())[::-1]):
+                    range(start, end)[::-1],
+                    range(s.start(), s.end())[::-1]):
                 inv_map[ax] = dim
 
-    # Now work on non-broadcast dimensions 
+    # Now work on non-broadcast dimensions
     if r:
         it = itertools.chain(range(start), range(end, len(out_labels)))
     else:
@@ -172,7 +181,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
     plus an index table that maps from the layout to the dimensions
     in each operand. In the global view, the dimensions are arranged
     such that output ones are put on the left and contraction ones
-    are put on the right.  
+    are put on the right.
 
     Parameters
     ----------
@@ -182,7 +191,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
         The equation right hand side
     n_bcast_dims:
         The maxium number of broadcast dimensions
-    
+
     Returns
     -------
     A tuple of g_labels, g_view, g_nout, g_count
@@ -228,7 +237,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
 
 def build_global_shape(g_view, g_labels, op_shapes):
     '''
-    The global shape is the shape of all dimensions rearranged and broadcasting 
+    The global shape is the shape of all dimensions rearranged and broadcasting
     to the global view. It's a reference data structure for einsum planning.
 
     Parameters
@@ -278,14 +287,14 @@ def has_duplicated_labels(labels):
 
 def diagonalize(labels, operand):
     '''
-    Merges dimensions with duplicate labels. 
-    
+    Merges dimensions with duplicate labels.
+
     For those dimensions with duplicate labels, merge them into one dimension
     which represents the diagonal elements. This requires the dimensions with
     duplicate labels are equal sized.
-    
+
     Examples
-    -------- 
+    --------
     'ijj...i' would be merged into 'ij...'
     '''
     assert not has_duplicated_labels(labels), (
@@ -376,7 +385,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
         step = matmul, [var1, var2], var2, False, True
         plan.add_step(step)
 
-    # In the rest cases we opt for ops other than matmul 
+    # In the rest cases we opt for ops other than matmul
     else:
         # unsqueeze operands include J1...J2... dimensions
         if j2:
@@ -402,14 +411,16 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
             plan.add_step(step)
             step = squeeze, [var2], var2, [-1, -2]
             plan.add_step(step)
-        elif j1 + j2 == 0 and not-1 in np.concatenate(
+        elif j1 + j2 == 0 and not -1 in np.concatenate(
             (op1_vshape[K], op2_vshape[K])):
             assert all(op1_vshape[K] == op2_vshape[K])
-            step = reshape, [var1], var1, list(op1_vshape[
-                I]) + [1] + [np.prod(op1_vshape[K])]
+            step = reshape, [
+                var1
+            ], var1, list(op1_vshape[I]) + [1] + [np.prod(op1_vshape[K])]
             plan.add_step(step)
-            step = reshape, [var2], var2, list(op2_vshape[
-                I]) + [1] + [np.prod(op2_vshape[K])]
+            step = reshape, [
+                var2
+            ], var2, list(op2_vshape[I]) + [1] + [np.prod(op2_vshape[K])]
             plan.add_step(step)
             step = matmul, [var1, var2], var2, False, True
             plan.add_step(step)
@@ -453,8 +464,8 @@ def plan_summation(plan, g_view, op1, op2, g_supports, g_shape, g_count,
 
     I, K, J1, J2 = list(range(n_bcast)), [], [], []
 
-    for ax, dim1, dim2 in zip(
-            range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]):
+    for ax, dim1, dim2 in zip(range(n_bcast, ndim), op1_view[n_bcast:],
+                              op2_view[n_bcast:]):
 
         if (dim1 != -1) != (dim2 != -1):
             if dim1 != -1:
@@ -520,6 +531,7 @@ def plan_broadcast(plan, operands, nop_axes):
 
 
 class Plan:
+
     def __init__(self):
         self.env = {}
         self.steps = []
@@ -605,8 +617,8 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
         # We'd like to arrange the dimensions in the following way:
         # [I...  J... K...]
         # [I...  J... K...]
-        # where  
-        #       I... are aligned and not to be combined immediately 
+        # where
+        #       I... are aligned and not to be combined immediately
         #       J... are not aligned and not to be combined immediately
         #       K... are aligned and should be immediately combined
         # At this point the non-trivial broadcast dimensinos in K are already reduced
@@ -660,6 +672,170 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     return plan
 
 
+def preprocess(equation, *operands):
+    """
+    check equation / raise error, default right labels generation
+    """
+    equation = equation.replace(" ", "")
+    nop = len(operands)
+    assert nop > 0, "Required at least one operand in Einsum API, but received %s " % nop
+
+    # Part the equation to left hand side and right hand side
+    lhs, *rhs = equation.lower().split('->')
+    assert len(rhs) < 2, "Invalid equation: multiple `->` were found."
+
+    labels = parse_labels(lhs, operands)
+    # Note, we distinguish between 'ij->' and 'ij' by setting rhs to '' and None
+    rhs = rhs[0] if rhs else None
+    if rhs is None:
+        rhs = rhs_inference(lhs)
+
+    assert len(lhs.split(',')) == len(operands), (
+        f"Invalid equation: the number of operands is {len(operands)}, "
+        f"but found {len(lhs.split(','))} segments in the label equation.")
+
+    assert not ('...' in lhs and '...' not in rhs
+                ), f'Invalid equation: missing ellipsis in output labels.'
+
+    assert not (len(list(filter(has_duplicated_labels, lhs.split(',')))) >
+                0), f'Duplicate labels are not supported.'
+
+    assert not has_duplicated_labels(
+        rhs), f'Invalid equation: duplicate output labels are found.'
+
+    return lhs, rhs, labels
+
+
+def parse_fake_shape(equation, operands, labels):
+    """
+    this shape is just used for operands planning. may differ with the original shape.
+    for example:
+    ... is replaced by 1
+    -1  is replaced by 1
+    Results
+    -------
+    list of shape
+    """
+    shaped = collections.namedtuple('shaped', ['shape'])
+
+    def fake_shape(label, op):
+        assert len(op.shape) == len(
+            label
+        ), "length of shape and length of label must be the same, but received %d != %d" % (
+            len(op.shape), len(label))
+        fakes = [s for i, (l, s) in enumerate(zip(label, op.shape)) if l != '.']
+        fakes = list(map(abs, fakes))  # make -1 -> 1
+        if '.' in label:
+            fakes.insert(label.index('.'), 1)
+        return shaped(fakes)
+
+    out = list(map(fake_shape, labels, operands))
+    return out
+
+
+def rhs_inference(lhs):
+
+    def is_free(key):
+        return cnt.get(key) == 1 and key not in ['.', ',']
+
+    cnt = collections.Counter(lhs)
+    rhs = "..." if '...' in lhs else ""
+    rhs = rhs + "".join(filter(is_free, sorted(cnt.elements())))
+    return rhs
+
+
+def gen_equation_for_opteinsum(lhs, rhs):
+    """
+    1. gen rhs if rhs is None
+    2. '...' -> 'A'
+    """
+
+    def get_used_label(counter):
+        used = set(counter.elements())
+        for c in string.ascii_lowercase:
+            if c not in used: return c
+        raise ValueError(
+            "You have used all `a` - `z`, there can't find a unused for einsum optimization"
+        )
+
+    cnt = collections.Counter(lhs)
+    broadcast_label = get_used_label(cnt)
+    if rhs is None:
+        rhs = rhs_inference(lhs)
+    lhs = lhs.replace("...", broadcast_label)
+    rhs = rhs.replace("...", broadcast_label)
+    return lhs + "->" + rhs, broadcast_label
+
+
+def einsum_v2(equation, *operands):
+    """
+    einsum v2 implementation.
+    1. Implement C++ EinsumOp.
+    2. V2 create the EinsumOp to calculate, so just a little verifty work in python.
+    3. V2 use opt_einsum.contract_path to optimize the multivariable einsum.
+    """
+    n_op = len(operands)
+    lhs, rhs, labels = preprocess(equation, *operands)
+
+    if n_op <= 2:
+        return gen_einsum_op(lhs + '->' + rhs, *operands)
+
+    shapes = parse_fake_shape(lhs, operands, labels)
+    opt_equation, broadcast_label = gen_equation_for_opteinsum(lhs, rhs)
+    _, cons = opt_einsum.contract_path(opt_equation, *shapes, einsum_call=True)
+    var_list = list(operands)
+    for path in cons:
+        (a, b), _, eq, *__ = path
+        assert a > b, "Assume the first var_idx is smaller than the second_idx. opt_einsum can guarantee it."
+        var_s = [var_list.pop(a), var_list.pop(b)]
+        eq = eq.replace(broadcast_label, "...")
+        var_list.append(gen_einsum_op(eq, *var_s))
+    assert len(
+        var_list
+    ) == 1, "There must be one elements in list, but received %d." % len(
+        var_list)
+    return var_list[0]
+
+
+def gen_einsum_op(equation, *operands):
+    """
+    EinsumOp Python Interface:
+    """
+    assert len(operands) <= 2, "Only support two operands in EinsumOp."
+    if in_dygraph_mode():
+        return _C_ops.einsum(operands, equation)[0]
+
+    if _in_legacy_dygraph():
+        # dygraph
+        return _legacy_C_ops.einsum(operands, len(operands), len(operands),
+                                    'equation', equation)[0]
+
+    for inp in operands:
+        check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
+    check_type(equation, 'equation', str, 'einsum')
+    helper = LayerHelper('einsum', **locals())
+    out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+    attrs = dict()
+    attrs['equation'] = equation
+    caches = [
+        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        for i in range(len(operands))
+    ]
+    xshape = [
+        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        for i in range(len(operands))
+    ]
+    helper.append_op(type='einsum',
+                     inputs={'Operands': operands},
+                     outputs={
+                         'Out': out,
+                         "InnerCache": caches,
+                         "XShape": xshape
+                     },
+                     attrs=attrs)
+    return out
+
+
 def einsum(equation, *operands):
     r"""
     einsum(equation, *operands)
@@ -686,7 +862,7 @@ def einsum(equation, *operands):
         - for many operads
             - broadcasting multiply
             - chained matrix multiply
-    
+
     **The summation notation**
 
         - The tensor dimensions are labeled using uncased English letters. E.g., `ijk`
@@ -694,7 +870,7 @@ def einsum(equation, *operands):
         - The equation is `,` separated into terms, each being a distinct input's
         dimension label string.
         - Ellipsis `...` enables broadcasting by automatically converting the unlabeled
-        dimensions into broadcasting dimensions. 
+        dimensions into broadcasting dimensions.
         - Singular labels are called free labels, duplicate are dummy labels. Dummy labeled
         dimensions will be reduced and removed in the output.
         - Output labels can be explicitly specified on the right hand side of `->` or omitted.
@@ -715,7 +891,7 @@ def einsum(equation, *operands):
         - Examples
             - '...ij, ...jk', where i and k are free labels, j is dummy. The output label
             string is '...ik'
-            - 'ij -> i', where i is a free label and j is a dummy label. 
+            - 'ij -> i', where i is a free label and j is a dummy label.
             - '...ij, ...jk -> ...ijk', where i, j and k are all free labels.
             - '...ij, ...jk -> ij', an invalid equation since `...` is not present for
             the output.
@@ -734,7 +910,7 @@ def einsum(equation, *operands):
 
     **On trace and diagonal**
 
-    The trace and diagonal are planned yet unimplemented features. 
+    The trace and diagonal are planned yet unimplemented features.
 
     Args:
         equation (`str`):
@@ -742,10 +918,10 @@ def einsum(equation, *operands):
         operands (`list|Tensor`):
             The input tensors over which to compute the Einstein summation. The number of
             operands should equal the number of input terms in the equation.
-    
+
     Returns:
         result (`Tensor`): the result tensor.
-    
+
     Examples:
         .. code-block:: python
 
@@ -763,7 +939,7 @@ def einsum(equation, *operands):
         print(paddle.einsum('i,i->', x, x))
         # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
         #   [1.45936954])
-        
+
         # outer
         print(paddle.einsum("i,j->ij", x, y))
         # Tensor(shape=[4, 5], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -771,10 +947,10 @@ def einsum(equation, *operands):
         #    [0.23455200, 0.35519385, 0.40186870, 0.54970956, 0.56441545],
         #    [0.11773264, 0.17828843, 0.20171674, 0.27592498, 0.28330654],
         #    [0.32897076, 0.49817693, 0.56364071, 0.77099484, 0.79162055]])
-        
+
         A = paddle.rand([2, 3, 2])
         B = paddle.rand([2, 2, 3])
-        
+
         # transpose
         print(paddle.einsum('ijk->kji', A))
         #  Tensor(shape=[2, 3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -785,7 +961,7 @@ def einsum(equation, *operands):
         #    [[0.07637714, 0.29374704],
         #     [0.51470858, 0.51907635],
         #     [0.99066722, 0.55802226]]])
-        
+
         # batch matrix multiplication
         print(paddle.einsum('ijk, ikl->ijl', A,B))
         # Tensor(shape=[2, 3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -796,7 +972,7 @@ def einsum(equation, *operands):
         #    [[0.32043904, 0.18164253, 0.27810261],
         #     [0.50226176, 0.24512935, 0.39881429],
         #     [0.51476848, 0.23367381, 0.39229113]]])
-        
+
         # Ellipsis transpose
         print(paddle.einsum('...jk->...kj', A))
         # Tensor(shape=[2, 2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -805,7 +981,7 @@ def einsum(equation, *operands):
         #
         #    [[0.49684682, 0.46258664, 0.33383518],
         #     [0.29374704, 0.51907635, 0.55802226]]])
-        
+
         # Ellipsis batch matrix multiplication
         print(paddle.einsum('...jk, ...kl->...jl', A,B))
         # Tensor(shape=[2, 3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -817,6 +993,9 @@ def einsum(equation, *operands):
         #     [0.50226176, 0.24512935, 0.39881429],
         #     [0.51476848, 0.23367381, 0.39229113]]])
     """
+    import os
+    if int(os.environ.get('FLAGS_new_einsum', "1")):
+        return einsum_v2(equation, *operands)
 
     nop = len(operands)
     assert nop > 0, "At least one operand is expected."
@@ -840,12 +1019,12 @@ def einsum(equation, *operands):
     n_bcast_dims = max(map(lambda s: s.count('.'), nop_labels))
 
     # Build the data structures for planning. It's helpful to think of all the operands
-    # broadcasting together from a global view. In this view, dimensions from multiple 
+    # broadcasting together from a global view. In this view, dimensions from multiple
     # operands are mapped to the same position if they are labeled uniquely. Broadcasting
     # dimensions are mapped to adjacent positions with the right bound fixed. Subject to
-    # each operand, the map is injective but for all operands the map is on-to.  
+    # each operand, the map is injective but for all operands the map is on-to.
     # g_labels:
-    #   The labels of the global view 
+    #   The labels of the global view
     # g_view:
     #   Includes a list of maps from each operand's dimensions to the global view's dimensions
     #   which we refer to as ax or axes in the code to distinguish from operand's dims
@@ -859,8 +1038,8 @@ def einsum(equation, *operands):
     # g_count
     #   Counting how many non-trivial dimensions remain for each ax
 
-    g_labels, g_view, g_nout, g_count = build_global_view(nop_labels, rhs,
-                                                          n_bcast_dims)
+    g_labels, g_view, g_nout, g_count = build_global_view(
+        nop_labels, rhs, n_bcast_dims)
     g_shape, g_supports = build_global_shape(g_view, g_labels,
                                              [op.shape for op in operands])
 

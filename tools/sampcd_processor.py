@@ -13,12 +13,12 @@
 # limitations under the License.
 """
 please make sure to run in the tools path
-usage: python sample_test.py {cpu or gpu} 
+usage: python sample_test.py {cpu or gpu}
     {cpu or gpu}: running in cpu version or gpu version
 
 for example, you can run cpu version python2 testing like this:
 
-    python sampcd_processor.py cpu 
+    python sampcd_processor.py cpu
 
 """
 import os
@@ -115,7 +115,7 @@ def extract_code_blocks_from_docstr(docstr):
     Args:
         docstr(str): docstring
     Return:
-        code_blocks: A list of code-blocks, indent removed. 
+        code_blocks: A list of code-blocks, indent removed.
                      element {'name': the code-block's name, 'id': sequence id.
                               'codes': codes, 'required': 'gpu'}
     """
@@ -149,10 +149,14 @@ def extract_code_blocks_from_docstr(docstr):
     def _append_code_block():
         # nonlocal code_blocks, cb_cur, cb_cur_name, cb_cur_seq_id, cb_required
         code_blocks.append({
-            'codes': inspect.cleandoc("\n".join(cb_info['cb_cur'])),
-            'name': cb_info['cb_cur_name'],
-            'id': cb_info['cb_cur_seq_id'],
-            'required': cb_info['cb_required'],
+            'codes':
+            inspect.cleandoc("\n".join(cb_info['cb_cur'])),
+            'name':
+            cb_info['cb_cur_name'],
+            'id':
+            cb_info['cb_cur_seq_id'],
+            'required':
+            cb_info['cb_required'],
         })
 
     for lineno, linecont in enumerate(ds_list):
@@ -233,7 +237,7 @@ def get_test_capacity():
 def is_required_match(requirestr, cbtitle='not-specified'):
     """
     search the required instruction in the code-block, and check it match the current running environment.
-    
+
     environment values of equipped: cpu, gpu, xpu, distributed, skip
     the 'skip' is the special flag to skip the test, so is_required_match will return False directly.
 
@@ -339,7 +343,9 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
 Please use '.. code-block:: python' to format the sample code.""")
                 return []
         else:
-            logger.warning("Error: No sample code!")
+            logger.error(
+                "Error: No sample code found! Please check if the API comment contais string 'Examples:' correctly"
+            )
             return []
 
     sample_code_filenames = []
@@ -351,9 +357,10 @@ Please use '.. code-block:: python' to format the sample code.""")
         # False - it need other special equipment or environment.
         # so, the following conditional statements are intentionally arranged.
         if matched == True:
-            tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(
-                name, '.py'
-                if len(codeblocks) == 1 else '_{}.py'.format(y + 1)))
+            tfname = os.path.join(
+                SAMPLECODE_TEMPDIR, '{}_example{}'.format(
+                    name,
+                    '.py' if len(codeblocks) == 1 else '_{}.py'.format(y + 1)))
             with open(tfname, 'w') as tempf:
                 sampcd = insert_codes_into_codeblock(cb, name)
                 tempf.write(sampcd)
@@ -364,9 +371,9 @@ Please use '.. code-block:: python' to format the sample code.""")
             SUMMARY_INFO['skiptest'].append("{}-{}".format(name, cb['id']))
         elif matched == False:
             logger.info(
-                '{}\' code block (name:{}, id:{}) required({}) not match capacity({}).'.
-                format(name, cb['name'], cb['id'], cb['required'],
-                       SAMPLE_CODE_TEST_CAPACITY))
+                '{}\' code block (name:{}, id:{}) required({}) not match capacity({}).'
+                .format(name, cb['name'], cb['id'], cb['required'],
+                        SAMPLE_CODE_TEST_CAPACITY))
             if cb['required'] not in SUMMARY_INFO:
                 SUMMARY_INFO[cb['required']] = []
             SUMMARY_INFO[cb['required']].append("{}-{}".format(name, cb['id']))
@@ -380,7 +387,7 @@ def execute_samplecode(tfname):
 
     Args:
         tfname: the filename of the sample code
-    
+
     Returns:
         result: success or not
         tfname: same as the input argument
@@ -399,8 +406,9 @@ def execute_samplecode(tfname):
     logger.info("----example code check----")
     logger.info("executing sample code: %s", tfname)
     start_time = time.time()
-    subprc = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprc = subprocess.Popen(cmd,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
     output, error = subprc.communicate()
     msg = "".join(output.decode(encoding='utf-8'))
     err = "".join(error.decode(encoding='utf-8'))
@@ -408,7 +416,8 @@ def execute_samplecode(tfname):
 
     if subprc.returncode != 0:
         with open(tfname, 'r') as f:
-            logger.warning("""Sample code error found in %s:
+            logger.warning(
+                """Sample code error found in %s:
 -----------------------
 %s
 -----------------------
@@ -460,8 +469,8 @@ def get_filenames(full_test=False):
                 # paddle.Tensor.<lambda>
                 continue
             if hasattr(api_obj, '__doc__') and api_obj.__doc__:
-                sample_code_filenames = sampcd_extract_to_file(api_obj.__doc__,
-                                                               api)
+                sample_code_filenames = sampcd_extract_to_file(
+                    api_obj.__doc__, api)
                 for tfname in sample_code_filenames:
                     all_sample_code_filenames[tfname] = api
     return all_sample_code_filenames
@@ -473,7 +482,7 @@ def get_api_md5(path):
 
     Args:
         path: the api spec file. ATTENTION the path relative
-    
+
     Returns:
         api_md5(dict): key is the api's real fullname, value is the md5sum.
     """
@@ -555,8 +564,9 @@ def exec_gen_doc():
     cmd = ["bash", "document_preview.sh"]
     logger.info("----exec gen_doc----")
     start_time = time.time()
-    subprc = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprc = subprocess.Popen(cmd,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
     output, error = subprc.communicate()
     msg = "".join(output.decode(encoding='utf-8'))
     err = "".join(error.decode(encoding='utf-8'))
@@ -606,14 +616,16 @@ def parse_args():
     parser.add_argument('--debug', dest='debug', action="store_true")
     parser.add_argument('--full-test', dest='full_test', action="store_true")
     parser.add_argument('mode', type=str, help='run on device', default='cpu')
-    parser.add_argument(
-        '--build-doc',
-        dest='build_doc',
-        action='store_true',
-        help='build doc if need.')
+    parser.add_argument('--build-doc',
+                        dest='build_doc',
+                        action='store_true',
+                        help='build doc if need.')
     for item in arguments:
-        parser.add_argument(
-            item[0], dest=item[1], help=item[4], type=item[2], default=item[3])
+        parser.add_argument(item[0],
+                            dest=item[1],
+                            help=item[4],
+                            type=item[2],
+                            default=item[3])
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['cpu'])
@@ -721,8 +733,8 @@ if __name__ == '__main__':
                         len(SUMMARY_INFO['success']))
         for k, v in SUMMARY_INFO.items():
             if k not in ['success', 'failed', 'skiptest', 'nocodes']:
-                logger.info("%d sample codes required not match for %s",
-                            len(v), k)
+                logger.info("%d sample codes required not match for %s", len(v),
+                            k)
         if len(SUMMARY_INFO['skiptest']):
             logger.info("%d sample codes skipped",
                         len(SUMMARY_INFO['skiptest']))

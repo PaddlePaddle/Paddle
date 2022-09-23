@@ -13,18 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <memory>
 
 #include "paddle/phi/api/include/api.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
-#endif
 
 namespace paddle {
 namespace tests {
@@ -69,10 +64,10 @@ TEST(API, copy_to) {
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = paddle::experimental::copy_to(x, phi::Backend::GPU, false);
-  auto out = paddle::experimental::copy_to(tmp, phi::Backend::CPU, true);
+  auto tmp = paddle::experimental::copy_to(x, phi::GPUPlace(), false);
+  auto out = paddle::experimental::copy_to(tmp, phi::CPUPlace(), true);
 #else
-  auto out = paddle::experimental::copy_to(x, phi::Backend::CPU, false);
+  auto out = paddle::experimental::copy_to(x, phi::CPUPlace(), false);
 #endif
 
   // 3. check result
@@ -85,10 +80,10 @@ TEST(Tensor, copy_to) {
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = x.copy_to(phi::Backend::GPU, false);
-  auto out = tmp.copy_to(phi::Backend::CPU, true);
+  auto tmp = x.copy_to(phi::GPUPlace(), false);
+  auto out = tmp.copy_to(phi::CPUPlace(), true);
 #else
-  auto out = x.copy_to(phi::Backend::CPU, false);
+  auto out = x.copy_to(phi::CPUPlace(), false);
 #endif
 
   // 3. check result

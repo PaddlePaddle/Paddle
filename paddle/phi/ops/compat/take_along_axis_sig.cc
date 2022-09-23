@@ -25,9 +25,9 @@ KernelSignature TakeAlongAxisArgumentMapping(
 KernelSignature TakeAlongAxisGradArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("take_along_axis_grad",
-                         {"Input", "Index", GradVarName("Result")},
+                         {"Input", "Index", "Result@GRAD"},
                          {"Axis"},
-                         {GradVarName("Input")});
+                         {"Input@GRAD"});
 }
 
 }  // namespace phi

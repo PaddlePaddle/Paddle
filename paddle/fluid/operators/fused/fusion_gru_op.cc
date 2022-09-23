@@ -13,13 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
+
 #include <cstring>  // for memcpy
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -39,74 +41,93 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
                         ? phi::flatten_to_2d(x_dims, 1)
                         : x_dims;
   PADDLE_ENFORCE_EQ(
-      x_mat_dims.size(), 2,
+      x_mat_dims.size(),
+      2,
       platform::errors::InvalidArgument("The size of input X dims should be 2, "
                                         "or 3 with second dimension equal to "
                                         "1, but now Input X dim is:[%s] ",
                                         x_dims));
 
   auto wx_dims = ctx->GetInputDim("WeightX");
-  PADDLE_ENFORCE_EQ(wx_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(wx_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "The rank of Input(WeightX) should be 2, but received "
                         "WeightX dim size is:%d, WeightX dim is:[%s] ",
-                        wx_dims.size(), wx_dims));
+                        wx_dims.size(),
+                        wx_dims));
   PADDLE_ENFORCE_EQ(
-      wx_dims[0], x_mat_dims[1],
+      wx_dims[0],
+      x_mat_dims[1],
       platform::errors::InvalidArgument(
           "The first dimension of flattened WeightX"
           "should equal to last dimension of flattened input X, but "
           "received fattened WeightX dimension is:%d, flattened X dimension "
           "is:%d",
-          wx_dims[0], x_mat_dims[1]));
+          wx_dims[0],
+          x_mat_dims[1]));
 
   int frame_size = wx_dims[1] / 3;
   auto wh_dims = ctx->GetInputDim("WeightH");
 
-  PADDLE_ENFORCE_EQ(wh_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(wh_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "The rank of Input(WeightH) should be 2, but received "
                         "WeightH dim size is:%d, WeightH dim is:[%s]",
-                        wh_dims.size(), wh_dims));
-  PADDLE_ENFORCE_EQ(wh_dims[0], frame_size,
+                        wh_dims.size(),
+                        wh_dims));
+  PADDLE_ENFORCE_EQ(wh_dims[0],
+                    frame_size,
                     platform::errors::InvalidArgument(
                         "The first dimension of WeightH "
                         "should equal to frame_size, but received WeightH's "
                         "first dimension is: "
                         "%d, frame size is:%d",
-                        wh_dims[0], frame_size));
-  PADDLE_ENFORCE_EQ(wh_dims[1], 3 * frame_size,
+                        wh_dims[0],
+                        frame_size));
+  PADDLE_ENFORCE_EQ(wh_dims[1],
+                    3 * frame_size,
                     platform::errors::InvalidArgument(
                         "The second dimension of Input(WeightH) "
                         "should equal to 3 * frame_size, but received WeightH "
                         "is:%d, frame size is:%d",
-                        wh_dims[1], frame_size));
+                        wh_dims[1],
+                        frame_size));
 
   if (ctx->HasInput("H0")) {
     auto h0_dims = ctx->GetInputDim("H0");
-    PADDLE_ENFORCE_EQ(h0_dims[1], frame_size,
+    PADDLE_ENFORCE_EQ(h0_dims[1],
+                      frame_size,
                       platform::errors::InvalidArgument(
                           "The width of H0 must be equal to frame_size, but "
                           "receiced the width of H0 is:%d, frame size is:%d",
-                          h0_dims[1], frame_size));
+                          h0_dims[1],
+                          frame_size));
   }
   if (ctx->HasInput("Bias")) {
     auto b_dims = ctx->GetInputDim("Bias");
-    PADDLE_ENFORCE_EQ(b_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(b_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of Input(Bias) should be 2, but received "
                           "Bias rank is:%d, Bias dim is:[%s]",
-                          b_dims.size(), b_dims));
-    PADDLE_ENFORCE_EQ(b_dims[0], 1,
+                          b_dims.size(),
+                          b_dims));
+    PADDLE_ENFORCE_EQ(b_dims[0],
+                      1,
                       platform::errors::InvalidArgument(
                           "The first dimension of Input(Bias) should be 1, but "
                           "received Bias first dim is:%d, Bias dim is:[%s]",
-                          b_dims[0], b_dims));
-    PADDLE_ENFORCE_EQ(b_dims[1], frame_size * 3,
+                          b_dims[0],
+                          b_dims));
+    PADDLE_ENFORCE_EQ(b_dims[1],
+                      frame_size * 3,
                       platform::errors::InvalidArgument(
                           "The shape of Bias must be [1, frame_size * 3], but "
                           "received bias dim is:[%s], frame size is:%d",
-                          b_dims, frame_size));
+                          b_dims,
+                          frame_size));
   }
   framework::DDim out_dims({x_mat_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
@@ -116,12 +137,12 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
     xx_width = wx_dims[1];
   } else {
     xx_width = x_mat_dims[1] > wx_dims[1] ? wx_dims[1] : x_mat_dims[1];
-    OP_INOUT_CHECK(ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0",
-                   "fusion_gru");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"), "Output", "BatchedInput",
-                   "fusion_gru");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedOut"), "Output", "BatchedOut",
-                   "fusion_gru");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0", "fusion_gru");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("BatchedInput"), "Output", "BatchedInput", "fusion_gru");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("BatchedOut"), "Output", "BatchedOut", "fusion_gru");
     ctx->SetOutputDim("BatchedInput", {x_mat_dims[0], wx_dims[1]});
     ctx->SetOutputDim("BatchedOut", out_dims);
   }
@@ -131,16 +152,16 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
   if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
+    return framework::OpKernelType(data_type,
+                                   ctx.GetPlace(),
+                                   framework::DataLayout::kMKLDNN,
+                                   framework::LibraryType::kMKLDNN);
   }
 #endif
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 void FusionGRUOpMaker::Make() {
@@ -230,7 +251,7 @@ void FusionGRUOpMaker::Make() {
       .SetDefault(false);
   AddComment(R"DOC(
 The Fusion complete GRU Operator.
-This operator fuse the fully-connected operator into GRU, 
+This operator fuse the fully-connected operator into GRU,
 more details can refer to GRU op.
 )DOC");
 }
@@ -269,7 +290,8 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   const int D = wh_dims[0];                                                  \
   const int D2 = D * 2;                                                      \
   const jit::gru_attr_t attr(                                                \
-      D, jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),       \
+      D,                                                                     \
+      jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),          \
       jit::to_kerneltype(ctx.Attr<std::string>("activation")));              \
   jit::gru_t one_step;                                                       \
   auto ComputeH1 =                                                           \
@@ -288,7 +310,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   T* xx_data = xx->mutable_data<T>(place)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     INIT_BASE_DEFINES;
     INIT_OTHER_DEFINES;
     const int N = x_lod[0].size() - 1;
@@ -298,8 +320,14 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
-    fc(dev_ctx, total_T, D3, M, x_data, wx_data, xx_data,
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx,
+       total_T,
+       D3,
+       M,
+       x_data,
+       wx_data,
+       xx_data,
        bias ? bias->data<T>() : nullptr);
 
     int xx_offset = D3;
@@ -332,17 +360,37 @@ class FusionGRUKernel : public framework::OpKernel<T> {
       }
       for (int step = tstart; step < seq_len; ++step) {
         // gemm prev * (Wu + Wr)
-        blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D2, D, static_cast<T>(1),
-                  prev_hidden_data, D, wh_data, D2, static_cast<T>(1), xx_data,
+        blas.GEMM(CblasNoTrans,
+                  CblasNoTrans,
+                  1,
+                  D2,
+                  D,
+                  static_cast<T>(1),
+                  prev_hidden_data,
+                  D,
+                  wh_data,
+                  D2,
+                  static_cast<T>(1),
+                  xx_data,
                   D3);
         one_step.gates = xx_data;
         one_step.ht_1 = prev_hidden_data;
         one_step.ht = hidden_out_data;
         ComputeHtPart1(&one_step, &attr);
         // gemm rt * Ws
-        blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D, D, static_cast<T>(1),
-                  hidden_out_data, D, wh_state_data, D, static_cast<T>(1),
-                  xx_data + D2, D3);
+        blas.GEMM(CblasNoTrans,
+                  CblasNoTrans,
+                  1,
+                  D,
+                  D,
+                  static_cast<T>(1),
+                  hidden_out_data,
+                  D,
+                  wh_state_data,
+                  D,
+                  static_cast<T>(1),
+                  xx_data + D2,
+                  D3);
         ComputeHtPart2(&one_step, &attr);
         // save prev
         prev_hidden_data = hidden_out_data;
@@ -352,7 +400,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     INIT_BASE_DEFINES;
     if (x_lod[0].size() == 2) {
       xx->Resize({total_T, D3});
@@ -370,15 +418,27 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     if (M > D3) {
-      fc(dev_ctx, total_T, D3, M, x_data, wx_data, xx_data,
+      fc(dev_ctx,
+         total_T,
+         D3,
+         M,
+         x_data,
+         wx_data,
+         xx_data,
          bias ? bias->data<T>() : nullptr);
       to_batch(dev_ctx, *xx, batched_input, true, is_reverse);
     } else {
       to_batch(dev_ctx, *x, xx, true, is_reverse);
       batched_input->set_lod(xx->lod());
-      fc(dev_ctx, total_T, D3, M, xx_data, wx_data, batched_input_data,
+      fc(dev_ctx,
+         total_T,
+         D3,
+         M,
+         xx_data,
+         wx_data,
+         batched_input_data,
          bias ? bias->data<T>() : nullptr);
     }
 
@@ -424,9 +484,19 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     for (int step = tstart; step < max_seq_len; ++step) {
       const int cur_bs = batch_starts[step + 1] - batch_starts[step];
       // gemm prev * (Wu + Wr)
-      blas.GEMM(CblasNoTrans, CblasNoTrans, cur_bs, D2, D, static_cast<T>(1),
-                prev_hidden_data, D, wh_data, D2, static_cast<T>(1),
-                batched_input_data, D3);
+      blas.GEMM(CblasNoTrans,
+                CblasNoTrans,
+                cur_bs,
+                D2,
+                D,
+                static_cast<T>(1),
+                prev_hidden_data,
+                D,
+                wh_data,
+                D2,
+                static_cast<T>(1),
+                batched_input_data,
+                D3);
 
       T* cur_batched_data = batched_input_data;
       T* cur_out_data = batched_out_data;
@@ -444,9 +514,19 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 
       cur_batched_data = batched_input_data;
       cur_out_data = batched_out_data;
-      blas.GEMM(CblasNoTrans, CblasNoTrans, cur_bs, D, D, static_cast<T>(1),
-                cur_out_data, D, wh_state_data, D, static_cast<T>(1),
-                cur_batched_data + D2, D3);
+      blas.GEMM(CblasNoTrans,
+                CblasNoTrans,
+                cur_bs,
+                D,
+                D,
+                static_cast<T>(1),
+                cur_out_data,
+                D,
+                wh_state_data,
+                D,
+                static_cast<T>(1),
+                cur_batched_data + D2,
+                D3);
 
       cur_prev_hidden_data = prev_hidden_data;
       for (int i = 0; i < cur_bs; ++i) {
@@ -477,7 +557,8 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_gru, ops::FusionGRUOp, ops::FusionGRUOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_gru, ops::FusionGRUKernel<float>,
+REGISTER_OP_CPU_KERNEL(fusion_gru,
+                       ops::FusionGRUKernel<float>,
                        ops::FusionGRUKernel<double>);
 
 /* ==========================  register checkpoint ===========================*/

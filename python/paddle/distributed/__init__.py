@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .spawn import spawn  # noqa: F401
-from .fleet.launch import launch  # noqa: F401
+from .launch.main import launch  # noqa: F401
 
 from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
@@ -25,11 +25,13 @@ from .parallel_with_gloo import gloo_release
 
 from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
+from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
 from .collective import broadcast  # noqa: F401
 from .collective import all_reduce  # noqa: F401
 from .collective import reduce  # noqa: F401
 from .collective import all_gather  # noqa: F401
+from .collective import all_gather_object  # noqa: F401
 from .collective import scatter  # noqa: F401
 from .collective import barrier  # noqa: F401
 from .collective import ReduceOp  # noqa: F401
@@ -40,6 +42,16 @@ from .collective import recv  # noqa: F401
 from .collective import get_group  # noqa: F401
 from .collective import send  # noqa: F401
 from .collective import wait  # noqa: F401
+from .collective import is_initialized  # noqa: F401
+from .collective import destroy_process_group  # noqa: F401
+from .collective import alltoall_single  # noqa: F401
+from .collective import isend  # noqa: F401
+from .collective import irecv  # noqa: F401
+from .collective import batch_isend_irecv  # noqa: F401
+from .collective import P2POp  # noqa: F401
+from .collective import reduce_scatter  # noqa: F401
+
+from .communication import *  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel import shard_tensor  # noqa: F401
@@ -53,37 +65,16 @@ from .entry_attr import ShowClickEntry  # noqa: F401
 from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
 from . import cloud_utils  # noqa: F401
-from . import utils  # noqa: F401
 
 from .sharding import *  # noqa: F401
 
 __all__ = [  # noqa
-      "spawn",
-      "launch",
-      "scatter",
-      "broadcast",
-      "ParallelEnv",
-      "new_group",
-      "init_parallel_env",
-      "gloo_init_parallel_env",
-      "gloo_barrier",
-      "gloo_release",
-      "QueueDataset",
-      "split",
-      "CountFilterEntry",
-      "ShowClickEntry",
-      "get_world_size",
-      "get_group",
-      "all_gather",
-      "InMemoryDataset",
-      "barrier",
-      "all_reduce",
-      "alltoall",
-      "send",
-      "reduce",
-      "recv",
-      "ReduceOp",
-      "wait",
-      "get_rank",
-      "ProbabilityEntry",
+    "spawn", "launch", "scatter", "broadcast", "ParallelEnv", "new_group",
+    "init_parallel_env", "gloo_init_parallel_env", "gloo_barrier",
+    "gloo_release", "QueueDataset", "split", "CountFilterEntry",
+    "ShowClickEntry", "get_world_size", "get_group", "all_gather",
+    "all_gather_object", "InMemoryDataset", "barrier", "all_reduce", "alltoall",
+    "send", "reduce", "recv", "ReduceOp", "wait", "get_rank",
+    "ProbabilityEntry", "ParallelMode", "is_initialized", "isend", "irecv",
+    "reduce_scatter"
 ]

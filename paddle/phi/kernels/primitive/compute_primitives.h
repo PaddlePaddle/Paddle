@@ -22,7 +22,6 @@
 #endif
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-// #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
 namespace phi {
@@ -201,7 +200,6 @@ __device__ inline int GetLastPow2(int n) {
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * OpFunc: Compute functor which has an operator() as following:
  *     template <typename InT, typename OutT>
@@ -216,12 +214,7 @@ __device__ inline int GetLastPow2(int n) {
  * in: The register pointer of in, the size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseUnary(OutT* out,
                                                  const InT* in,
                                                  OpFunc compute) {
@@ -240,7 +233,6 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out,
  * OutT: The data type of out.
  * NX: The number of data columns computed by each thread.
  * NY: The number of data rows computed by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * OpFunc: Compute functor which has an operator() as following:
  *     template <typename InT>
@@ -256,16 +248,20 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out,
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseBinary(OutT* out,
                                                   const InT* in1,
                                                   const InT* in2,
                                                   OpFunc compute) {
+#pragma unroll
+  for (int idx = 0; idx < NX * NY; ++idx) {
+    out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx]));
+  }
+}
+
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
+__device__ __forceinline__ void ElementwiseBinary(
+    OutT* out, const InT* in1, const InT* in2, OpFunc compute, int read_lens) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
     out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx]));
@@ -281,7 +277,6 @@ __device__ __forceinline__ void ElementwiseBinary(OutT* out,
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * OpFunc: Compute functor which has an operator() as following
  *     template <typename InT>
@@ -299,12 +294,7 @@ __device__ __forceinline__ void ElementwiseBinary(OutT* out,
  * in3: The register pointer of third input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseTernary(
     OutT* out, const InT* in1, const InT* in2, const InT* in3, OpFunc compute) {
 #pragma unroll
@@ -322,7 +312,6 @@ __device__ __forceinline__ void ElementwiseTernary(
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * Arity: The size of ins.
  * OpFunc: Compute functor which has an operator() as following:
@@ -338,13 +327,7 @@ __device__ __forceinline__ void ElementwiseTernary(
  * ins: A pointers of array consisting of multiple inputs.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Arity,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, int Arity, class OpFunc>
 __device__ __forceinline__ void ElementwiseAny(OutT* out,
                                                InT (*ins)[NX * NY],
                                                OpFunc compute) {
@@ -369,7 +352,6 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out,
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * OpFunc: Compute functor which has an operator() as following
  *     template <typename InT, typename OutT>
@@ -385,12 +367,7 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out,
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void CycleBinary(OutT* out,
                                             const InT* in1,
                                             const InT* in2,
@@ -415,7 +392,6 @@ __device__ __forceinline__ void CycleBinary(OutT* out,
  * T: The type of data.
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * ReduceFunctor: Compute functor which has an operator() as following
  *     template <typename InT>
@@ -435,7 +411,6 @@ __device__ __forceinline__ void CycleBinary(OutT* out,
 template <typename T,
           int NX,
           int NY,
-          int BlockSize,
           class ReduceFunctor,
           details::ReduceMode Mode>
 __device__ __forceinline__ void Reduce(T* out,
@@ -474,34 +449,28 @@ __device__ __forceinline__ void Reduce(T* out,
 }
 
 /*
-* @brief Fill register with a constant according to OpFunc
-*
-* @template paraments
-* InT: The data type of in1 and in2.
-* OutT: The data type of out.
-* NX: The number of data columns loaded by each thread.
-* NY: The number of data rows loaded by each thread.
-* BlockSize: Identifies the current device thread index method. Currently only
-* GPU was supported.
-* OpFunc: Compute functor which has an operator() as following
-*     template <typename InT>
-*     struct XxxFunctor {
-*       HOSTDEVICE InT operator()()
-* const {
-*         return a;
-*       }
-*     };
-*
-* @param
-* out: The register pointer of out, the size is NX * NY.
-* compute: Compute function which was declared like OpFunc<InT>().
-*/
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+ * @brief Fill register with a constant according to OpFunc
+ *
+ * @template paraments
+ * InT: The data type of in1 and in2.
+ * OutT: The data type of out.
+ * NX: The number of data columns loaded by each thread.
+ * NY: The number of data rows loaded by each thread.
+ * GPU was supported.
+ * OpFunc: Compute functor which has an operator() as following
+ *     template <typename InT>
+ *     struct XxxFunctor {
+ *       HOSTDEVICE InT operator()()
+ * const {
+ *         return a;
+ *       }
+ *     };
+ *
+ * @param
+ * out: The register pointer of out, the size is NX * NY.
+ * compute: Compute function which was declared like OpFunc<InT>().
+ */
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {
@@ -510,37 +479,32 @@ __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
 }
 
 /*
-* @brief Get ReturnsCount random data fromm compute according to state, state
-* can be curandStatePhilox4_32_10_t, hiprandStatePhilox4_32_10_t which has beed
-* initialized.
-*
-* @template paraments
-* StateType: the type of state, can be curandStatePhilox4_32_10_t or
-* hiprandStatePhilox4_32_10_t.
-* OutT: the type of out register.
-* ReturnsCount: The number of random data generated by OpFunc.
-* BlockSize: Identifies the current device thread index method. Currently only
-* GPU was supported.
-* OpFunc: Compute functor which has an operator() as following
-*     template <typename T>
-*     struct XxxFunctor {
-*       HOSTDEVICE InT operator()(StateType state)
-* const {
-*         return ranomd(state);  // Returns ReturnsCount random numbers with
-* data type T
-*       }
-*     };
-*
-* @param
-* out: The register pointer of out, the size is NX * NY.
-* compute: Compute function which was declared like OpFunc<T>().
-*/
+ * @brief Get ReturnsCount random data fromm compute according to state, state
+ * can be curandStatePhilox4_32_10_t, hiprandStatePhilox4_32_10_t which has beed
+ * initialized.
+ *
+ * @template paraments
+ * StateType: the type of state, can be curandStatePhilox4_32_10_t or
+ * hiprandStatePhilox4_32_10_t.
+ * OutT: the type of out register.
+ * ReturnsCount: The number of random data generated by OpFunc.
+ * GPU was supported.
+ * OpFunc: Compute functor which has an operator() as following
+ *     template <typename T>
+ *     struct XxxFunctor {
+ *       HOSTDEVICE InT operator()(StateType state)
+ * const {
+ *         return ranomd(state);  // Returns ReturnsCount random numbers with
+ * data type T
+ *       }
+ *     };
+ *
+ * @param
+ * out: The register pointer of out, the size is NX * NY.
+ * compute: Compute function which was declared like OpFunc<T>().
+ */
 
-template <typename StateType,
-          typename OutT,
-          int ReturnsCount,
-          int BlockSize,
-          class OpFunc>
+template <typename StateType, typename OutT, int ReturnsCount, class OpFunc>
 __device__ __forceinline__ void ElementwiseRandom(OutT* out,
                                                   OpFunc compute,
                                                   StateType* state) {
@@ -552,31 +516,30 @@ __device__ __forceinline__ void ElementwiseRandom(OutT* out,
 }
 
 /*
-* @brief Complete the prefix and in the block, each thread calculates 2 data,
-* the size of out and in is 2, and BlockDim.x must be less then 512.
-*
-* @template paraments
-* InT: the type of input register.
-* OutT: the type of out register.
-* BlockSize: Identifies the current device thread index method. Currently only
-* GPU was supported.
-* OpFunc: Compute functor which has an operator() as following
-*     template <typename T>
-*     struct XxxFunctor {
-*       HOSTDEVICE InT operator()(T a, T b)
-* const {
-*         return a + b;
-*       }
-*     };
-*
-* @param
-* out: The register pointer of out, the size is 2;
-* in: The register pointer of input, the size is 2;
-* compute: Compute function which was declared like OpFunc<T>().
-*/
+ * @brief Complete the prefix and in the block, each thread calculates 2 data,
+ * the size of out and in is 2, and BlockDim.x must be less then 512.
+ *
+ * @template paraments
+ * InT: the type of input register.
+ * OutT: the type of out register.
+ * GPU was supported.
+ * OpFunc: Compute functor which has an operator() as following
+ *     template <typename T>
+ *     struct XxxFunctor {
+ *       HOSTDEVICE InT operator()(T a, T b)
+ * const {
+ *         return a + b;
+ *       }
+ *     };
+ *
+ * @param
+ * out: The register pointer of out, the size is 2;
+ * in: The register pointer of input, the size is 2;
+ * compute: Compute function which was declared like OpFunc<T>().
+ */
 
 #define SHARED_SIZE_LIMIT 512
-template <typename InT, typename OutT, int BlockSize, class OpFunc>
+template <typename InT, typename OutT, class OpFunc>
 __device__ __forceinline__ void Cumsum(OutT* out,
                                        const InT* in,
                                        OpFunc compute) {
@@ -591,7 +554,7 @@ __device__ __forceinline__ void Cumsum(OutT* out,
     int index = (tidx + 1) * 2 * stride - 1;
     if (index < (blockDim.x * 2)) {
       temp[index + index / 32] =
-          compute(temp[index + index / 2],
+          compute(temp[index + index / 32],
                   temp[index - stride + (index - stride) / 32]);
     }
   }
@@ -613,26 +576,25 @@ __device__ __forceinline__ void Cumsum(OutT* out,
 #undef SHARED_SIZE_LIMIT
 
 /*
-* @brief Sort data in this block, each thread calculates 2 data, the size of out
-* and in is 2, and BlockDim.x must be less then 512.
-*
-* @template paraments
-* InT: the type of input register.
-* OutT: the type of out register.
-* BlockSize: Identifies the current device thread index method. Currently only
-* GPU was supported.
-*
-* @param
-* out: The register pointer of out, the size is 2.
-* in: The register pointer of input, the size is 2.
-* num: The num of this block
-* monotonic_type: if monotonic_type = 1 then sorted in ascending order, eles
-* sorted in escending.
-*/
+ * @brief Sort data in this block, each thread calculates 2 data, the size of
+ * out and in is 2, and BlockDim.x must be less then 512.
+ *
+ * @template paraments
+ * InT: the type of input register.
+ * OutT: the type of out register.
+ * GPU was supported.
+ *
+ * @param
+ * out: The register pointer of out, the size is 2.
+ * in: The register pointer of input, the size is 2.
+ * num: The num of this block
+ * monotonic_type: if monotonic_type = 1 then sorted in ascending order, eles
+ * sorted in escending.
+ */
 #define SHARED_SIZE_LIMIT 1024
 // each thread load 2 data from global memory so SHARED_SIZE_LIMIT must
 // larger than blockDim.x * 2
-template <typename InT, typename OutT, int BlockSize>
+template <typename InT, typename OutT>
 __device__ __forceinline__ void Sort(OutT* out,
                                      const InT* in,
                                      int num,
@@ -669,26 +631,25 @@ __device__ __forceinline__ void Sort(OutT* out,
 }
 
 /*
-* @brief Sort data with data_index in this block, each thread calculates 2 data,
-* the size of out and in is 2, and BlockDim.x must be less then 512.
-*
-* @template paraments
-* InT: The type of input register.
-* OutT: The type of out register.
-* IndexType: The type of index.
-* BlockSize: Identifies the current device thread index method. Currently only
-* GPU was supported.
-*
-* @param
-* out: The register pointer of out, the size is 2.
-* out_index: The register pointer of out_index, the size is 2.
-* in: The register pointer of input, the size is 2.
-* in_index: The register pointer of in_index, the size is 2.
-* num: The num of this block.
-* monotonic_type: if monotonic_type = 1 then sorted in ascending order, eles
-* sorted in escending.
-*/
-template <typename InT, typename OutT, typename IndexType, int BlockSize>
+ * @brief Sort data with data_index in this block, each thread calculates 2
+ * data, the size of out and in is 2, and BlockDim.x must be less then 512.
+ *
+ * @template paraments
+ * InT: The type of input register.
+ * OutT: The type of out register.
+ * IndexType: The type of index.
+ * GPU was supported.
+ *
+ * @param
+ * out: The register pointer of out, the size is 2.
+ * out_index: The register pointer of out_index, the size is 2.
+ * in: The register pointer of input, the size is 2.
+ * in_index: The register pointer of in_index, the size is 2.
+ * num: The num of this block.
+ * monotonic_type: if monotonic_type = 1 then sorted in ascending order, eles
+ * sorted in escending.
+ */
+template <typename InT, typename OutT, typename IndexType>
 __device__ __forceinline__ void Sort(OutT* out,
                                      IndexType* out_index,
                                      const InT* in,

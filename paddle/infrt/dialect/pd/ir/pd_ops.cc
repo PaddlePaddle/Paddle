@@ -24,7 +24,7 @@
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/pd/ir/pd_extra_ops.cpp.inc"  // NOLINT
 
-namespace mlir {
+namespace infrt {
 namespace pd {
 void PaddleDialect::initialize() {
   addOperations<
@@ -35,41 +35,5 @@ void PaddleDialect::initialize() {
 #include "paddle/infrt/dialect/pd/ir/pd_extra_ops.cpp.inc"  // NOLINT
       >();
 }
-
-mlir::Operation *PaddleDialect::materializeConstant(mlir::OpBuilder &builder,
-                                                    mlir::Attribute value,
-                                                    mlir::Type type,
-                                                    mlir::Location loc) {
-  return builder.create<ConstantOp>(loc, value);
-}
-
-void ConstantOp::build(OpBuilder &builder,
-                       OperationState &state,
-                       Attribute value) {
-  if (auto elem_attr = value.dyn_cast<ElementsAttr>()) {
-    return ConstantOp::build(builder, state, elem_attr);
-  } else if (value.isa<BoolAttr, FloatAttr, IntegerAttr>()) {
-    ShapedType type = RankedTensorType::get(/*shape=*/{}, value.getType());
-    state.addAttribute("value", DenseElementsAttr::get(type, value));
-    state.addTypes(type);
-    return;
-  }
-  llvm_unreachable("unsupported attribute type for building pd.constant");
-}
-
-LogicalResult ConstantOp::inferReturnTypes(
-    MLIRContext *context,
-    Optional<Location> location,
-    ValueRange operands,
-    DictionaryAttr attributes,
-    RegionRange regions,
-    SmallVectorImpl<Type> &inferredReturnTypes) {
-  inferredReturnTypes.push_back(attributes.get("value").getType());
-  return success();
-}
-mlir::OpFoldResult ConstantOp::fold(
-    ::llvm::ArrayRef<mlir::Attribute> operands) {
-  return value();
-}
 }  // namespace pd
-}  // namespace mlir
+}  // namespace infrt

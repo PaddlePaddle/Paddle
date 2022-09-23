@@ -15,6 +15,7 @@
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
 
 #include <mlir/Transforms/GreedyPatternRewriteDriver.h>
+
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 namespace {
@@ -38,7 +39,7 @@ void InfrtOpFusePass::runOnFunction() {
   ::mlir::RewritePatternSet patterns(&getContext());
   populateWithGenerated(patterns);
   (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
-  // Fuse pd.return Operation
+  // Fuse infrt.return Operation
   auto terminator_op = getFunction().front().getTerminator();
   if (nullptr == terminator_op) return;
   for (auto operand : terminator_op->getOperands()) {
@@ -53,7 +54,7 @@ void InfrtOpFusePass::runOnFunction() {
 
 }  // namespace
 
-std::unique_ptr<mlir::Pass> infrt::createInfrtOpFusePass() {
+std::unique_ptr<mlir::Pass> infrt::CreateInfrtOpFusePass() {
   return std::make_unique<InfrtOpFusePass>();
 }
 

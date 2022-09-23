@@ -43,22 +43,20 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
-taskkill /f /im eager_op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
 wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
-rem ------initialize common variable------
+rem variable to control building process
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
-if not defined BRANCH set BRANCH=develop
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
-if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 if not defined WITH_GPU set WITH_GPU=ON
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
@@ -69,31 +67,46 @@ if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_ONNXRUNTIME set WITH_ONNXRUNTIME=OFF
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
+if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
+if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
+if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
+if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
+
+rem variable to control pipeline process
 if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
-if not defined WITH_CLCACHE set WITH_CLCACHE=OFF
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_SCCACHE set WITH_SCCACHE=OFF
-if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
-if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
-if not defined retry_times set retry_times=3
+if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
+if not defined retry_times set retry_times=1
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
+if not defined TEST_INFERENCE set TEST_INFERENCE=ON
+
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
 
+set error_code=0
+type %cache_dir%\error_code.txt
+
+rem ------initialize set git config------
+git config --global core.longpaths true
+
 rem ------initialize the python environment------
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-set PATH=%PYTHON_ROOT%\Scripts;%PYTHON_ROOT%;%PATH%
+set PYTHON_VENV_ROOT=%cache_dir%\python_venv
+set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
+%PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
+call !PYTHON_VENV_ROOT!\Scripts\activate.bat
+
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
-    pip install wheel --user
-    pip install pyyaml --user
-    pip install wget --user
-    pip install -r %work_dir%\python\requirements.txt --user
+    pip install wheel
+    pip install pyyaml
+    pip install wget
+    pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 5
@@ -101,21 +114,17 @@ if "%WITH_PYTHON%" == "ON" (
 )
 
 rem -------Caching strategy 1: keep build directory for incremental compilation-----------
-rmdir %BUILD_DIR%\python /s/q
-rmdir %BUILD_DIR%\paddle\third_party\externalError /s/q
-rem rmdir %BUILD_DIR%\paddle\fluid\pybind /s/q
-rmdir %BUILD_DIR%\paddle_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
-del %BUILD_DIR%\CMakeCache.txt
-
 if "%WITH_CACHE%"=="OFF" (
     rmdir %BUILD_DIR% /s/q
     goto :mkbuild
 )
 
-set error_code=0
-type %cache_dir%\error_code.txt
+rmdir %BUILD_DIR%\python /s/q
+rmdir %BUILD_DIR%\paddle_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
+del %BUILD_DIR%\CMakeCache.txt
+
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
     rmdir %BUILD_DIR% /s/q
@@ -145,17 +154,6 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     rmdir %BUILD_DIR% /s/q
-
-    : clear third party cache every once in a while
-    if %day_now% EQU 21 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 11 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 01 (
-        rmdir %cache_dir%\third_party /s/q
-    )
     goto :mkbuild
 )
 
@@ -172,14 +170,15 @@ echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
 cd /d %BUILD_DIR%
 dir .
 dir %cache_dir%
-dir paddle\fluid\pybind\Release
 rem -------Caching strategy 1: End --------------------------------
 
 
 rem -------Caching strategy 2: sccache decorate compiler-----------
 if not defined SCCACHE_ROOT set SCCACHE_ROOT=D:\sccache
+set PATH=%SCCACHE_ROOT%;%PATH%
 if "%WITH_SCCACHE%"=="ON" (
     cmd /C sccache -V || call :install_sccache
+
     sccache --stop-server 2> NUL
     del %SCCACHE_ROOT%\sccache_log.txt
 
@@ -203,7 +202,7 @@ if "%WITH_SCCACHE%"=="ON" (
     sccache -z
     goto :CASE_%1
 ) else (
-    del %PYTHON_ROOT%\sccache.exe 2> NUL
+    del %SCCACHE_ROOT%\sccache.exe 2> NUL
     goto :CASE_%1
 )
 
@@ -211,7 +210,8 @@ if "%WITH_SCCACHE%"=="ON" (
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
-xcopy sccache.exe %PYTHON_ROOT%\ /Y
+xcopy sccache.exe %SCCACHE_ROOT%\ /Y
+del sccache.exe
 goto:eof
 rem -------Caching strategy 2: End --------------------------------
 
@@ -230,15 +230,16 @@ set WITH_MKL=ON
 set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
-set ON_INFER=OFF
+set ON_INFER=ON
 set WITH_TENSORRT=ON
+set WITH_INFERENCE_API_TEST=OFF
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
-:: call :test_inference || goto test_inference_error
-:: call :check_change_of_unittest || goto check_change_of_unittest_error
+call :test_inference || goto test_inference_error
 goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------
@@ -247,15 +248,13 @@ set WITH_MKL=OFF
 set WITH_GPU=OFF
 set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
-set retry_times=1
-set ON_INFER=OFF
+set ON_INFER=ON
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
-:: call :test_inference || goto test_inference_error
-:: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 rem ------PR CI windows check for unittests and inference in CUDA11-MKL-AVX----------
@@ -265,24 +264,25 @@ set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
-set WITH_TESTING=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
+set WITH_ONNXRUNTIME=ON
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
 ::call :test_inference || goto test_inference_error
-:: call :check_change_of_unittest || goto check_change_of_unittest_error
+::call :test_inference_ut || goto test_inference_ut_error
+::call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 rem ------Build windows avx whl package------
 :CASE_build_avx_whl
 set WITH_AVX=ON
-set ON_INFER=OFF
-set CUDA_ARCH_NAME=All
-set retry_times=4
+set ON_INFER=ON
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -292,9 +292,8 @@ goto:success
 rem ------Build windows no-avx whl package------
 :CASE_build_no_avx_whl
 set WITH_AVX=OFF
-set ON_INFER=OFF
-set CUDA_ARCH_NAME=All
-set retry_times=4
+set ON_INFER=ON
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -305,16 +304,21 @@ rem ------Build windows inference library------
 :CASE_build_inference_lib
 set ON_INFER=ON
 set WITH_PYTHON=OFF
-set CUDA_ARCH_NAME=All
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
+
 python %work_dir%\tools\remove_grad_op_and_kernel.py
 if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_inference || goto test_inference_error
-call :test_inference_ut || goto test_inference_ut_error
+if "%TEST_INFERENCE%"=="ON" call :test_inference
+if %errorlevel% NEQ 0 set error_code=%errorlevel%
+if "%TEST_INFERENCE%"=="ON" call :test_inference_ut
+if %errorlevel% NEQ 0 set error_code=%errorlevel%
+
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
+if %error_code% NEQ 0 goto test_inference_error
 goto:success
 
 rem "Other configurations are added here"
@@ -332,11 +336,9 @@ echo    ========================================
 rem set vs language to english to block showIncludes, this need vs has installed English language package.
 set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
-echo %task_name%|findstr wincheck_inference >nul && (
-    call "D:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
-) || (
-    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
-)
+if not defined vcvars64_dir set vcvars64_dir="C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+call %vcvars64_dir%
+
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
 set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
@@ -346,8 +348,12 @@ set PreferredToolArchitecture=x64
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2
-set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR%\bin;%CUDA_TOOLKIT_ROOT_DIR%\libnvvp;%PATH%
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2
+set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%
+
+rem CUDA_TOOLKIT_ROOT_DIR in cmake must use / rather than \
+set TENSORRT_ROOT=%TENSORRT_ROOT:\=/%
+set CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%
 
 rem install ninja if GENERATOR is Ninja
 if %GENERATOR% == "Ninja" (
@@ -365,23 +371,30 @@ if "%WITH_GPU%"=="ON" (
     nvidia-smi 2>NUL
 )
 
-rem ------pre install clcache and init config----------
-rem pip install clcache --user
-pip uninstall -y clcache
-:: set USE_CLCACHE to enable clcache
-rem set USE_CLCACHE=1
-:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
-rem set CLCACHE_HARDLINK=1
-:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
-rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
-:: set maximum cache size to 20G
-rem clcache.exe -M 21474836480
-
 rem ------set third_party cache dir------
 
 if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
     goto :cmake_impl
+)
+
+rem clear third party cache every ten days
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=< %cache_dir%\day_third_party.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > %cache_dir%\day_third_party.txt
+    type %cache_dir%\day_third_party.txt
+    if %day_now% EQU 21 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 11 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 01 (
+        rmdir %cache_dir%\third_party /s/q
+    )
 )
 
 echo set -ex > cache.sh
@@ -392,24 +405,21 @@ echo echo ${md5_content}^>md5.txt >> cache.sh
 %cache_dir%\tools\busybox64.exe bash cache.sh
 
 set /p md5=< md5.txt
-echo %task_name%|findstr build >nul && (
-    set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party
-    set THIRD_PARTY_PATH=!THIRD_PARTY_HOME!/%md5%
-    echo %task_name% is a whl-build task, will only reuse local third_party cache.
-    goto :cmake_impl
-) || ( 
-    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both. 
-)
-
 if "%WITH_GPU%"=="ON" (
-    for /F %%# in ('dir /b /d "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\"') do set cuda_version=%%#
-    set cuda_version=!cuda_version:~-4!
+    set cuda_version=%CUDA_TOOLKIT_ROOT_DIR:~-4%
     set sub_dir=cuda!cuda_version:.=!
 ) else (
     set sub_dir=cpu
 )
 set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
+
+echo %task_name%|findstr build >nul && (
+    echo %task_name% is a whl-build task, will only reuse local third_party cache.
+    goto :cmake_impl
+) || ( 
+    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both. 
+)
 
 if not exist %THIRD_PARTY_PATH% (
     echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
@@ -442,14 +452,18 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
+-DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME%
 
 cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
+-DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME%
 goto:eof
 
 :cmake_error
@@ -517,10 +531,10 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
-taskkill /f /im eager_op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
@@ -535,11 +549,7 @@ echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
     ninja all
 ) else (
-    if "%WITH_CLCACHE%"=="OFF" (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
-    ) else (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
-    )
+    MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
 )
 
 if %ERRORLEVEL% NEQ 0 (
@@ -628,7 +638,7 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 @ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
-pip install %PADDLE_WHL_FILE_WIN% --user
+pip install %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 (
     call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
@@ -652,10 +662,7 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
-: set CI_SKIP_CPP_TEST if only *.py changed
-git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
-
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
     exit /b 5
@@ -665,7 +672,6 @@ for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
 set FLAGS_call_stack_level=2
-set FLAGS_use_curand=True
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
@@ -677,7 +683,13 @@ pip install requests
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
-%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
+%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
+%THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;^
+%PATH%
+
+REM TODO: make ut find .dll in install\onnxruntime\lib
+xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
 
 if "%WITH_GPU%"=="ON" (
     call:parallel_test_base_gpu
@@ -718,7 +730,9 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% >> %work_dir%\win_cmake.sh
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
+-DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% >> %work_dir%\win_cmake.sh
 
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
@@ -758,13 +772,16 @@ for /F %%i in ("%libsize%") do (
 )
 
 cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
-%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT%
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
+
 goto:eof
 
 :test_inference_error
 ::echo 1 > %cache_dir%\error_code.txt
 ::type %cache_dir%\error_code.txt
-echo Testing fluid library for inference failed!
+echo    ==========================================
+echo    Testing inference library failed!
+echo    ==========================================
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
@@ -774,77 +791,8 @@ echo    ========================================
 echo    Step 6. Check whether deleting a unit test ...
 echo    ========================================
 
-cd /d %work_dir%\%BUILD_DIR%
-echo set -e>  check_change_of_unittest.sh
-echo set +x>> check_change_of_unittest.sh
-echo GITHUB_API_TOKEN=%GITHUB_API_TOKEN% >>  check_change_of_unittest.sh
-echo GIT_PR_ID=%AGILE_PULL_ID% >>  check_change_of_unittest.sh
-echo BRANCH=%BRANCH%>>  check_change_of_unittest.sh
-echo if [ "${GITHUB_API_TOKEN}" == "" ] ^|^| [ "${GIT_PR_ID}" == "" ];then>> check_change_of_unittest.sh
-echo     exit 0 >>  check_change_of_unittest.sh
-echo fi>>  check_change_of_unittest.sh
-echo set -x>> check_change_of_unittest.sh
-echo cat ^<^<EOF>>  check_change_of_unittest.sh
-echo     ============================================ >>  check_change_of_unittest.sh
-echo     Generate unit tests.spec of this PR.         >>  check_change_of_unittest.sh
-echo     ============================================ >>  check_change_of_unittest.sh
-echo EOF>>  check_change_of_unittest.sh
-echo spec_path=$(pwd)/UNITTEST_PR.spec>>  check_change_of_unittest.sh
-echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
-echo num=$(awk 'END{print NR}' ${spec_path})>> check_change_of_unittest.sh
-echo echo "Windows 1 card TestCases count is $num">> check_change_of_unittest.sh
-echo echo ipipe_log_param_Windows_1_Card_TestCases_Count: $num>> check_change_of_unittest.sh
-echo UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'>>  check_change_of_unittest.sh
-echo origin_upstream_url=`git remote -v ^| awk '{print $1, $2}' ^| uniq ^| grep upstream ^| awk '{print $2}'`>>  check_change_of_unittest.sh
-echo if [ "$origin_upstream_url" == "" ]; then>>  check_change_of_unittest.sh
-echo     git remote add upstream $UPSTREAM_URL.git>>  check_change_of_unittest.sh
-echo elif [ "$origin_upstream_url" ^!= "$UPSTREAM_URL" ] ^\>>  check_change_of_unittest.sh
-echo         ^&^& [ "$origin_upstream_url" ^!= "$UPSTREAM_URL.git" ]; then>>  check_change_of_unittest.sh
-echo     git remote remove upstream>>  check_change_of_unittest.sh
-echo     git remote add upstream $UPSTREAM_URL.git>>  check_change_of_unittest.sh
-echo fi>>  check_change_of_unittest.sh
-echo if [ ! -e "$(pwd)/../.git/refs/remotes/upstream/$BRANCH" ]; then>>  check_change_of_unittest.sh
-echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_unittest.sh
-echo fi>>  check_change_of_unittest.sh
-echo git checkout -b origin_pr >>  check_change_of_unittest.sh
-echo git checkout -f $BRANCH >>  check_change_of_unittest.sh
-echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
--DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
--DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
--DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME%  >>  check_change_of_unittest.sh
-echo cat ^<^<EOF>>  check_change_of_unittest.sh
-echo     ============================================       >>  check_change_of_unittest.sh
-echo     Generate unit tests.spec of develop.               >>  check_change_of_unittest.sh
-echo     ============================================       >>  check_change_of_unittest.sh
-echo EOF>>  check_change_of_unittest.sh
-echo spec_path=$(pwd)/UNITTEST_DEV.spec>>  check_change_of_unittest.sh
-echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
-echo unittest_spec_diff=`python $(pwd)/../tools/diff_unittest.py $(pwd)/UNITTEST_DEV.spec $(pwd)/UNITTEST_PR.spec`>>  check_change_of_unittest.sh
-echo if [ "$unittest_spec_diff" ^!= "" ]; then>>  check_change_of_unittest.sh
-echo     set +x>> check_change_of_unittest.sh
-echo     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`>>  check_change_of_unittest.sh
-echo     set -x>> check_change_of_unittest.sh
-echo     if [ "$approval_line" ^!= "" ]; then>>  check_change_of_unittest.sh
-echo         APPROVALS=`echo ${approval_line} ^|python $(pwd)/../tools/check_pr_approval.py 1 22165420 52485244 6836917`>>  check_change_of_unittest.sh
-echo         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}">>  check_change_of_unittest.sh
-echo         if [ "${APPROVALS}" == "FALSE" ]; then>>  check_change_of_unittest.sh
-echo             echo "************************************"                >>  check_change_of_unittest.sh
-echo             echo -e "It is forbidden to disable or delete the unit-test.\n"        >>  check_change_of_unittest.sh
-echo             echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."     >>  check_change_of_unittest.sh
-echo             echo -e "Then you must have one RD (kolinwei(recommended) or zhouwei25) approval for the deletion of unit-test. \n"                 >>  check_change_of_unittest.sh
-echo             echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"   >>  check_change_of_unittest.sh
-echo             echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"     >>  check_change_of_unittest.sh
-echo             echo "************************************"                >>  check_change_of_unittest.sh
-echo             exit 1 >>  check_change_of_unittest.sh
-echo          fi>>  check_change_of_unittest.sh
-echo     else>>  check_change_of_unittest.sh
-echo          exit 1 >>  check_change_of_unittest.sh
-echo     fi>>  check_change_of_unittest.sh
-echo fi>>  check_change_of_unittest.sh
-echo git checkout -f origin_pr >>  check_change_of_unittest.sh
-%cache_dir%\tools\busybox64.exe bash check_change_of_unittest.sh
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\check_change_of_unittest.sh
+
 goto:eof
 
 :check_change_of_unittest_error
@@ -858,7 +806,7 @@ echo    Step 7. Testing fluid library with infer_ut for inference ...
 echo    ========================================
 
 cd /d %work_dir%\paddle\fluid\inference\tests\infer_ut
-%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT%
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
 goto:eof
 
 :test_inference_ut_error
@@ -985,10 +933,10 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
-taskkill /f /im eager_op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL

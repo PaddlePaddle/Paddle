@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,9 @@ from ..fluid.framework import Variable
 from ..fluid import layers
 from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.executor import global_scope
+import paddle
 
 __all__ = []
 
@@ -78,7 +79,7 @@ class Lamb(Optimizer):
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             inp = paddle.uniform(shape=[10, 10], dtype='float32', min=-0.1, max=0.1)
@@ -107,17 +108,17 @@ class Lamb(Optimizer):
                  parameters=None,
                  grad_clip=None,
                  exclude_from_weight_decay_fn=None,
+                 multi_precision=False,
                  name=None):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(Lamb, self).__init__(
-            learning_rate=learning_rate,
-            parameters=parameters,
-            weight_decay=None,
-            grad_clip=grad_clip,
-            name=name)
+        super(Lamb, self).__init__(learning_rate=learning_rate,
+                                   parameters=parameters,
+                                   weight_decay=None,
+                                   grad_clip=grad_clip,
+                                   name=name)
         self.type = "lamb"
         self._beta1 = beta1
         self._beta2 = beta2
@@ -134,7 +135,7 @@ class Lamb(Optimizer):
         self._master_weights = {}
         self._used_master_weights = {}
         # TODO(zengjinle): expose API as soon as possible
-        self._multi_precision = False
+        self._multi_precision = multi_precision
 
     def _get_parameter(self, name, scope=None):
         if scope is None:
@@ -160,21 +161,19 @@ class Lamb(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True)
+            var = layers.create_global_var(name=var_name,
+                                           shape=param.shape,
+                                           value=0,
+                                           dtype='float32',
+                                           persistable=True)
             block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32
-                })
+            block.append_op(type="cast",
+                            inputs={"X": [param]},
+                            outputs={"Out": [var]},
+                            attrs={
+                                "in_dtype": param.dtype,
+                                "out_dtype": core.VarDesc.VarType.FP32
+                            })
             self._master_weights[param.name] = var
         return var
 
@@ -205,10 +204,11 @@ class Lamb(Optimizer):
         target_param = self._master_weights[
             param.name] if find_master else param
         target_name = target_param.name
-        if (name not in self._accumulators or
-                target_name not in self._accumulators[name]):
-            raise Exception("Accumulator {} does not exist for parameter {}".
-                            format(name, target_name))
+        if (name not in self._accumulators
+                or target_name not in self._accumulators[name]):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name))
         return self._accumulators[name][target_name]
 
     def _add_moments_pows(self, p):
@@ -269,13 +269,20 @@ class Lamb(Optimizer):
         found_inf = self._get_auxiliary_var('found_inf')
 
         if framework.in_dygraph_mode():
-            _C_ops.lamb(param_and_grad[0], param_and_grad[1], lr, moment1,
-                        moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
-                        param_and_grad[0], moment1, moment2, beta1_pow_acc,
-                        beta2_pow_acc, master_weight, 'beta1', self._beta1,
-                        'beta2', self._beta2, 'epsilon', self._epsilon,
-                        'weight_decay', weight_decay, 'multi_precision',
-                        find_master)
+            _C_ops.lamb_(param_and_grad[0], param_and_grad[1], lr, moment1,
+                         moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
+                         found_inf, weight_decay, self._beta1, self._beta2,
+                         self._epsilon, find_master)
+            return None
+        if framework._non_static_mode():
+            _legacy_C_ops.lamb(param_and_grad[0], param_and_grad[1], lr,
+                               moment1, moment2, beta1_pow_acc, beta2_pow_acc,
+                               master_weight, param_and_grad[0], moment1,
+                               moment2, beta1_pow_acc, beta2_pow_acc,
+                               master_weight, 'beta1', self._beta1, 'beta2',
+                               self._beta2, 'epsilon', self._epsilon,
+                               'weight_decay', weight_decay, 'multi_precision',
+                               find_master)
             return None
 
         # create the lamb optimize op
@@ -310,12 +317,11 @@ class Lamb(Optimizer):
         if found_inf:
             inputs["SkipUpdate"] = found_inf
 
-        lamb_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True)
+        lamb_op = block.append_op(type=self.type,
+                                  inputs=inputs,
+                                  outputs=outputs,
+                                  attrs=attrs,
+                                  stop_gradient=True)
 
         return lamb_op
 

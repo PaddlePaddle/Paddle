@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -32,8 +33,8 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     Tensor shape_tensor(experimental::DataType::INT32);
     shape_tensor.mutable_data<int32_t>({static_cast<int>(shape.size())},
                                        ctx.GetPlace());
-    paddle::framework::TensorFromVector(shape, ctx.device_context(),
-                                        &shape_tensor);
+    paddle::framework::TensorFromVector(
+        shape, ctx.device_context(), &shape_tensor);
     float mean = ctx.Attr<float>("mean");
     Tensor mean_tensor(experimental::DataType::FLOAT32);
     mean_tensor.mutable_data<float>({1}, ctx.GetPlace());
@@ -63,7 +64,8 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
             .stream();
     const auto& runner = NpuOpRunner(
         "ParameterizedTruncatedNormal",
-        {shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor}, {*out},
+        {shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor},
+        {*out},
         {{"seed", seed_var}});
     runner.Run(stream);
   }
@@ -84,13 +86,8 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     Tensor cpu_tensor(tensor->dtype());
     cpu_tensor.Resize(tensor->dims());
     T* cpu_data = cpu_tensor.mutable_data<T>(platform::CPUPlace());
-    auto normal_cdf = [](float x) {
-      return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
-    };
-    float a_normal_cdf = normal_cdf((-2.0 - mean) / std);
-    float b_normal_cdf = normal_cdf((2.0 - mean) / std);
-    std::uniform_real_distribution<float> dist(2.0 * a_normal_cdf - 1.0,
-                                               2.0 * b_normal_cdf - 1.0);
+    std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
+                                           1.0);
     TruncatedNormal<T> truncated_normal(mean, std);
     int64_t size = tensor->numel();
 
@@ -100,8 +97,10 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
       cpu_data[i] = truncated_normal(dist(*engine));
     }
     framework::TensorCopy(
-        cpu_tensor, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), tensor);
+        cpu_tensor,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        tensor);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
   }

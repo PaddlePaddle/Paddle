@@ -25,16 +25,18 @@ namespace ops = paddle::operators;
 
 template <typename T, typename Context>
 void TopkGradKernel(const Context& dev_ctx,
-                    const DenseTensor& out_grad,
                     const DenseTensor& x,
                     const DenseTensor& indices,
-                    int k,
+                    const DenseTensor& out_grad,
+                    const Scalar& k_scalar,
                     int axis,
                     bool largest,
                     bool sorted,
                     DenseTensor* x_grad) {
   const auto& in_dims = x.dims();
   const auto& out_dims = indices.dims();
+
+  int k = k_scalar.to<int>();
 
   // get the real the axis and the k
   if (axis < 0) {
@@ -69,9 +71,9 @@ void TopkGradKernel(const Context& dev_ctx,
   int grid_size = std::min(max_blocks, pre);
 
   // lanuch the cuda kernel to assign the grad
-  ops::AssignGradWithAxis<
-      T><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
-      out_grad_data, indices_data, x_grad_data, pre, post, n, k);
+  ops::AssignGradWithAxis<T>
+      <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
+          out_grad_data, indices_data, x_grad_data, pre, post, n, k);
 }
 
 }  // namespace phi

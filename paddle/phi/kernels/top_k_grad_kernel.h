@@ -14,16 +14,17 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void TopkGradKernel(const Context& dev_ctx,
-                    const DenseTensor& out_grad,
                     const DenseTensor& x,
                     const DenseTensor& indices,
-                    int k,
+                    const DenseTensor& out_grad,
+                    const Scalar& k,
                     int axis,
                     bool largest,
                     bool sorted,

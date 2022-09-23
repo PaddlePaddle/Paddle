@@ -14,10 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
-
-#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
@@ -504,6 +503,36 @@ void MatmulKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument("The Input(Y) dims size must not be equal 0,"
                                    " but reviced dims size is 0. "));
   MatMulFunction<Context, T>(dev_ctx, x, y, out, transpose_x, transpose_y);
+}
+
+template <typename T, typename Context>
+void MatmulWithFlattenKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& y,
+                             int x_num_col_dims,
+                             int y_num_col_dims,
+                             DenseTensor* out) {
+  const DenseTensor x_matrix =
+      x.dims().size() > 2
+          ? paddle::framework::ReshapeToMatrix(x, x_num_col_dims)
+          : x;
+  const DenseTensor y_matrix =
+      y.dims().size() > 2
+          ? paddle::framework::ReshapeToMatrix(y, y_num_col_dims)
+          : y;
+
+  dev_ctx.template Alloc<T>(out);
+  auto z_dim = out->dims();
+  if (z_dim.size() != 2) {
+    out->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
+  }
+
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+
+  blas.MatMul(x_matrix, y_matrix, out);
+  if (z_dim.size() != 2) {
+    out->Resize(z_dim);
+  }
 }
 
 }  // namespace phi

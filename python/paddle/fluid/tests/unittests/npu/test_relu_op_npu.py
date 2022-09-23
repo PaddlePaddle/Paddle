@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -27,6 +28,7 @@ SEED = 2021
 
 
 class TestRelu(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "relu"
@@ -34,11 +36,12 @@ class TestRelu(OpTest):
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.rand(3, 2).astype(self.dtype)
-        out = x
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {}
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.maximum(x, 0)
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def set_npu(self):
@@ -50,34 +53,23 @@ class TestRelu(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            self.check_grad_with_place(self.place, ['X'],
+                                       'Out',
+                                       max_relative_error=0.006)
+        else:
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
-class TestReluFp16(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "relu"
-        self.place = paddle.NPUPlace(0)
 
-        self.init_dtype()
-        np.random.seed(SEED)
-        x = np.random.rand(3, 2).astype(self.dtype)
-        out = x
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {}
-        self.outputs = {'Out': out}
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.__class__.no_need_check_grad = True
+class TestReluFp16(TestRelu):
 
     def init_dtype(self):
         self.dtype = np.float16
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5)
-
 
 class TestReluNeg(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "relu"
@@ -107,6 +99,7 @@ class TestReluNeg(OpTest):
 
 
 class TestReluNet(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -121,8 +114,9 @@ class TestReluNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
 
             sum = paddle.add(a, b)
             z = paddle.nn.functional.relu(sum)
@@ -146,12 +140,13 @@ class TestReluNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(
-                main_prog,
-                feed={"a": a_np,
-                      "b": b_np,
-                      "label": label_np},
-                fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
             if epoch % 10 == 0:
                 print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
                     epoch, pred_res[0], loss_res))
@@ -162,8 +157,8 @@ class TestReluNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 if __name__ == '__main__':

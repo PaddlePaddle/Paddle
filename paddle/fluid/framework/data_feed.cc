@@ -18,6 +18,8 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/framework/data_feed.h"
+
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #ifdef _LINUX
 #include <stdio_ext.h>
 #include <sys/mman.h>
@@ -204,7 +206,8 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
 }
 
 void DataFeed::SetBatchSize(int batch_size) {
-  PADDLE_ENFORCE_GT(batch_size, 0,
+  PADDLE_ENFORCE_GT(batch_size,
+                    0,
                     platform::errors::InvalidArgument(
                         "Batch size %d is illegal.", batch_size));
   default_batch_size_ = batch_size;
@@ -216,9 +219,11 @@ bool DataFeed::PickOneFile(std::string* filename) {
       platform::errors::PreconditionNotMet(
           "You should call SetFileListMutex before PickOneFile"));
   PADDLE_ENFORCE_NOT_NULL(
-      file_idx_, platform::errors::PreconditionNotMet(
-                     "You should call SetFileListIndex before PickOneFile"));
+      file_idx_,
+      platform::errors::PreconditionNotMet(
+          "You should call SetFileListIndex before PickOneFile"));
   std::unique_lock<std::mutex> lock(*mutex_for_pick_file_);
+  VLOG(4) << "filelist_ size: " << filelist_.size();
   if (*file_idx_ == filelist_.size()) {
     VLOG(3) << "DataFeed::PickOneFile no more file to pick";
     return false;
@@ -229,18 +234,22 @@ bool DataFeed::PickOneFile(std::string* filename) {
 }
 
 void DataFeed::CheckInit() {
-  PADDLE_ENFORCE_EQ(finish_init_, true, platform::errors::PreconditionNotMet(
-                                            "DataFeed initialization failed."));
+  PADDLE_ENFORCE_EQ(
+      finish_init_,
+      true,
+      platform::errors::PreconditionNotMet("DataFeed initialization failed."));
 }
 
 void DataFeed::CheckSetFileList() {
   PADDLE_ENFORCE_EQ(
-      finish_set_filelist_, true,
+      finish_set_filelist_,
+      true,
       platform::errors::PreconditionNotMet("DataFeed set filelist failed."));
 }
 
 void DataFeed::CheckStart() {
-  PADDLE_ENFORCE_EQ(finish_start_, true,
+  PADDLE_ENFORCE_EQ(finish_start_,
+                    true,
                     platform::errors::PreconditionNotMet(
                         "Datafeed has not started running yet."));
 }
@@ -260,6 +269,8 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
     cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
 #elif defined(PADDLE_WITH_HIP)
     hipMemcpy(dst, src, size, hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_XPU_KP)
+    xpu_memcpy(dst, src, size, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
 #else
     PADDLE_THROW(platform::errors::Unimplemented(
         "Not supported GPU/ROCM, please compile with option WITH_GPU=ON or "
@@ -271,7 +282,8 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
 template <typename T>
 void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
   PADDLE_ENFORCE_GT(
-      queue_size, 0,
+      queue_size,
+      0,
       platform::errors::InvalidArgument(
           "Queue size %d is illegal in PrivateQueueDataFeed.", queue_size));
   queue_size_ = queue_size;
@@ -281,6 +293,7 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
 
 template <typename T>
 bool PrivateQueueDataFeed<T>::Start() {
+  VLOG(4) << "entering PrivateQueueDataFeed<T>::Start()";
   CheckSetFileList();
   read_thread_ = std::thread(&PrivateQueueDataFeed::ReadThread, this);
   read_thread_.detach();
@@ -292,10 +305,11 @@ bool PrivateQueueDataFeed<T>::Start() {
 template <typename T>
 void PrivateQueueDataFeed<T>::ReadThread() {
 #ifdef _LINUX
+  VLOG(4) << "entering PrivateQueueDataFeed<T>::ReadThread()";
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
-    fp_ = fs_open_read(filename, &err_no, pipe_command_);
+    fp_ = fs_open_read(filename, &err_no, pipe_command_, true);
     __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
     T instance;
     while (ParseOneInstanceFromPipe(&instance)) {
@@ -353,6 +367,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
 template <typename T>
 bool InMemoryDataFeed<T>::Start() {
 #ifdef _LINUX
+  VLOG(4) << "entering InMemoryDataFeed<T>::Start()";
   this->CheckSetFileList();
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
     std::vector<T> data;
@@ -523,7 +538,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
     } else {
 #endif
       int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
 #ifdef PADDLE_WITH_BOX_PS
     }
 #endif
@@ -555,10 +570,13 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 
 template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
-#ifdef _LINUX
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
+    (defined PADDLE_WITH_PSLIB)
   VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
+  int buf_len = 1024 * 1024 * 10;
+  char* buf = reinterpret_cast<char*>(malloc(buf_len + 10));
+  auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
 
-  string::LineFileReader reader;
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, slot_conf_);
 
@@ -566,34 +584,34 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
   while (this->PickOneFile(&filename)) {
     VLOG(3) << "PickOneFile, filename=" << filename
             << ", thread_id=" << thread_id_;
-    int err_no = 0;
-    this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
-    CHECK(this->fp_ != nullptr);
-    __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
-
-    paddle::framework::ChannelWriter<T> writer(input_channel_);
-    T instance;
     platform::Timer timeline;
     timeline.Start();
-
-    while (1) {
-      if (!reader.getline(&*(fp_.get()))) {
-        break;
-      } else {
-        const char* str = reader.get();
-        ParseOneInstanceFromSo(str, &instance, parser);
+    if (ps_gpu_ptr->UseAfsApi()) {
+      auto afs_reader = ps_gpu_ptr->OpenReader(filename);
+      int read_len = 0;
+      char* cursor = buf;
+      int remain = 0;
+      while ((read_len = afs_reader->read(cursor, buf_len - remain)) > 0) {
+        std::vector<T> instances;
+        read_len += remain;
+        remain = ParseInstanceFromSo(read_len, buf, &instances, parser);
+        input_channel_->Write(std::move(instances));
+        instances = std::vector<T>();
+        if (remain) {
+          memmove(buf, buf + read_len - remain, remain);
+        }
+        cursor = buf + remain;
       }
-
-      writer << std::move(instance);
-      instance = T();
+    } else {
+      VLOG(0) << "Should Call InitAfsApi First";
     }
 
-    writer.Flush();
     timeline.Pause();
     VLOG(3) << "LoadIntoMemoryFromSo() read all lines, file=" << filename
             << ", cost time=" << timeline.ElapsedSec()
             << " seconds, thread_id=" << thread_id_;
   }
+  free(buf);
   VLOG(3) << "LoadIntoMemoryFromSo() end, thread_id=" << thread_id_;
 #endif
 }
@@ -608,7 +626,8 @@ void MultiSlotDataFeed::Init(
   finish_start_ = false;
 
   PADDLE_ENFORCE_EQ(
-      data_feed_desc.has_multi_slot_desc(), true,
+      data_feed_desc.has_multi_slot_desc(),
+      true,
       platform::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in MultiSlotDataFeed."));
   paddle::framework::MultiSlotDesc multi_slot_desc =
@@ -658,10 +677,11 @@ void MultiSlotDataFeed::Init(
 
 void MultiSlotDataFeed::ReadThread() {
 #ifdef _LINUX
+  VLOG(4) << "entering MultiSlotDataFeed::ReadThread()";
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
-    fp_ = fs_open_read(filename, &err_no, pipe_command_);
+    fp_ = fs_open_read(filename, &err_no, pipe_command_, true);
     CHECK(fp_ != nullptr);
     __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
     std::vector<MultiSlotType> instance;
@@ -825,7 +845,6 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
   } else {
     int use_slots_num = use_slots_.size();
     instance->resize(use_slots_num);
-
     const char* str = reader.get();
     std::string line = std::string(str);
 
@@ -900,7 +919,8 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
       PADDLE_ENFORCE_NE(
-          num, 0,
+          num,
+          0,
           platform::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
@@ -911,7 +931,9 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
               "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
-              str, i, num));
+              str,
+              i,
+              num));
 
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
@@ -942,7 +964,8 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
 
 void MultiSlotDataFeed::AddInstanceToInsVec(
     std::vector<MultiSlotType>* ins_vec,
-    const std::vector<MultiSlotType>& instance, int index) {
+    const std::vector<MultiSlotType>& instance,
+    int index) {
 #ifdef _LINUX
   if (index == 0) {
     ins_vec->resize(instance.size());
@@ -965,10 +988,13 @@ void MultiSlotDataFeed::PutToFeedVec(
     if (feed_vec_[i] == nullptr) {
       continue;
     }
+    VLOG(4) << "MultiSlotDataFeed::PutToFeedVec i: " << i;
     const auto& type = ins_vec[i].GetType();
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
-
+    VLOG(4) << "total_instance: " << total_instance;
+    // platform::CPUPlace()
+    VLOG(4) << "this->place_: " << this->place_;
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
       float* tensor_ptr =
@@ -979,8 +1005,8 @@ void MultiSlotDataFeed::PutToFeedVec(
       const auto& feasign = ins_vec[i].GetUint64Data();
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
           {total_instance, 1}, this->place_);
-      CopyToFeedTensor(tensor_ptr, &feasign[0],
-                       total_instance * sizeof(int64_t));
+      CopyToFeedTensor(
+          tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
     }
 
     if (!use_slots_is_dense_[i]) {
@@ -1005,7 +1031,8 @@ void MultiSlotInMemoryDataFeed::Init(
   finish_start_ = false;
 
   PADDLE_ENFORCE_EQ(
-      data_feed_desc.has_multi_slot_desc(), true,
+      data_feed_desc.has_multi_slot_desc(),
+      true,
       platform::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in MultiSlotInMemoryDataFeed."));
   paddle::framework::MultiSlotDesc multi_slot_desc =
@@ -1088,10 +1115,13 @@ void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
   *rank = (uint32_t)strtoul(rank_str.c_str(), NULL, 16);
 }
 
-void MultiSlotInMemoryDataFeed::ParseOneInstanceFromSo(const char* str,
-                                                       Record* instance,
-                                                       CustomParser* parser) {
-  parser->ParseOneInstance(str, instance);
+int MultiSlotInMemoryDataFeed::ParseInstanceFromSo(
+    int len,
+    const char* str,
+    std::vector<Record>* instances,
+    CustomParser* parser) {
+  // VLOG(0) << "parser: " << parser;
+  return parser->ParseInstance(len, str, instances);
 }
 
 bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
@@ -1155,7 +1185,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
       PADDLE_ENFORCE_NE(
-          num, 0,
+          num,
+          0,
           platform::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
@@ -1166,7 +1197,9 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
-              str, i, num));
+              str,
+              i,
+              num));
 #ifdef PADDLE_WITH_PSLIB
       if (parse_uid_ && all_slots_[i] == uid_slot_) {
         PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
@@ -1239,7 +1272,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
       PADDLE_ENFORCE_NE(
-          num, 0,
+          num,
+          0,
           platform::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
@@ -1250,7 +1284,9 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
               "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
-              str, i, num));
+              str,
+              i,
+              num));
 
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
@@ -1362,7 +1398,8 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(const Record* ins_vec, int num) {
     } else if (this->input_type_ == 1) {
       if (!use_slots_is_dense_[i]) {
         std::vector<size_t> tmp_offset;
-        PADDLE_ENFORCE_EQ(slot_offset.size(), 2,
+        PADDLE_ENFORCE_EQ(slot_offset.size(),
+                          2,
                           platform::errors::InvalidArgument(
                               "In batch reader, the sparse tensor lod size "
                               "must be 2, but received %d.",
@@ -1462,7 +1499,8 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     } else if (this->input_type_ == 1) {
       if (!use_slots_is_dense_[i]) {
         std::vector<size_t> tmp_offset;
-        PADDLE_ENFORCE_EQ(slot_offset.size(), 2,
+        PADDLE_ENFORCE_EQ(slot_offset.size(),
+                          2,
                           platform::errors::InvalidArgument(
                               "In batch reader, the sparse tensor lod size "
                               "must be 2, but received %d.",
@@ -1506,8 +1544,8 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
       const auto& feasign = ins_vec_[i].GetUint64Data();
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
           {total_instance, 1}, this->place_);
-      CopyToFeedTensor(tensor_ptr, &feasign[0],
-                       total_instance * sizeof(int64_t));
+      CopyToFeedTensor(
+          tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
     }
 
     LoD data_lod{offset};
@@ -1518,12 +1556,15 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
         total_dims *= e;
       }
       PADDLE_ENFORCE_EQ(
-          total_dims, total_instance,
+          total_dims,
+          total_instance,
           platform::errors::InvalidArgument(
               "The actual data size of slot[%s] doesn't match its declaration. "
               "The actual data size of slot is %lld"
               ", and its declaration is %lld.",
-              use_slots_[i].c_str(), total_dims, total_instance));
+              use_slots_[i].c_str(),
+              total_dims,
+              total_instance));
       feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
@@ -1546,7 +1587,8 @@ int PrivateInstantDataFeed<T>::Next() {
   }
 
   PADDLE_ENFORCE_EQ(
-      true, ParseOneMiniBatch(),
+      true,
+      ParseOneMiniBatch(),
       platform::errors::InvalidArgument("Fail to parse mini-batch data."));
   PutToFeedVec();
   return ins_vec_[0].GetBatchSize();
@@ -1559,7 +1601,8 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
   finish_start_ = false;
 
   PADDLE_ENFORCE_EQ(
-      data_feed_desc.has_multi_slot_desc(), true,
+      data_feed_desc.has_multi_slot_desc(),
+      true,
       platform::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in PrivateInstantDataFeed."));
   paddle::framework::MultiSlotDesc multi_slot_desc =
@@ -1605,9 +1648,11 @@ template class PrivateInstantDataFeed<std::vector<MultiSlotType>>;
 bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   fd_ = open(filename.c_str(), O_RDONLY);
   PADDLE_ENFORCE_NE(
-      fd_, -1, platform::errors::Unavailable(
-                   "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
-                   filename.c_str()));
+      fd_,
+      -1,
+      platform::errors::Unavailable(
+          "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
+          filename.c_str()));
 
   struct stat sb;
   fstat(fd_, &sb);
@@ -1616,7 +1661,8 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   buffer_ =
       reinterpret_cast<char*>(mmap(NULL, end_, PROT_READ, MAP_PRIVATE, fd_, 0));
   PADDLE_ENFORCE_NE(
-      buffer_, MAP_FAILED,
+      buffer_,
+      MAP_FAILED,
       platform::errors::Unavailable(
           "Memory map failed when create shared memory, error number is %s.",
           strerror(errno)));
@@ -1652,7 +1698,8 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
 
       uint16_t num = *reinterpret_cast<uint16_t*>(buffer_ + offset_);
       PADDLE_ENFORCE_NE(
-          num, 0,
+          num,
+          0,
           platform::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
@@ -1704,7 +1751,10 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
                      "the offset is not equal to end index."
                      "The batch size is %d, default batcch size is %d, offset "
                      "is %d, end index is %d.",
-                     batch_size_, default_batch_size_, offset_, end_));
+                     batch_size_,
+                     default_batch_size_,
+                     offset_,
+                     end_));
   return true;
 }
 #endif
@@ -2058,6 +2108,9 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   } else {
     so_parser_name_.clear();
   }
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  gpu_graph_data_generator_.SetConfig(data_feed_desc);
+#endif
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemory() {
@@ -2078,13 +2131,15 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
-#ifdef _LINUX
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
+    (defined PADDLE_WITH_PSLIB)
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
   CHECK(parser != nullptr);
   // get slotrecord object
   auto pull_record_func = [this](std::vector<SlotRecord>& record_vec,
-                                 int max_fetch_num, int offset) {
+                                 int max_fetch_num,
+                                 int offset) {
     if (offset > 0) {
       input_channel_->WriteMove(offset, &record_vec[0]);
       if (max_fetch_num > 0) {
@@ -2111,21 +2166,33 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
 
     int lines = 0;
     bool is_ok = true;
+    auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
     do {
-      int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      if (ps_gpu_ptr->UseAfsApi()) {
+        auto afs_reader = ps_gpu_ptr->OpenReader(filename);
+        is_ok = parser->ParseFileInstance(
+            [this, afs_reader](char* buf, int len) {
+              return afs_reader->read(buf, len);
+            },
+            pull_record_func,
+            lines);
+      } else {
+        int err_no = 0;
+        this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
 
-      CHECK(this->fp_ != nullptr);
-      __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
-      is_ok = parser->ParseFileInstance(
-          [this](char* buf, int len) {
-            return fread(buf, sizeof(char), len, this->fp_.get());
-          },
-          pull_record_func, lines);
+        CHECK(this->fp_ != nullptr);
+        __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
+        is_ok = parser->ParseFileInstance(
+            [this](char* buf, int len) {
+              return fread(buf, sizeof(char), len, this->fp_.get());
+            },
+            pull_record_func,
+            lines);
 
-      if (!is_ok) {
-        LOG(WARNING) << "parser error, filename=" << filename
-                     << ", lines=" << lines;
+        if (!is_ok) {
+          LOG(WARNING) << "parser error, filename=" << filename
+                       << ", lines=" << lines;
+        }
       }
     } while (!is_ok);
     timeline.Pause();
@@ -2157,7 +2224,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
     SlotRecordPool().get(&record_vec, OBJPOOL_BLOCK_SIZE);
     // get slotrecord object function
     auto record_func = [this, &offset, &record_vec, &old_offset](
-        std::vector<SlotRecord>& vec, int num) {
+                           std::vector<SlotRecord>& vec, int num) {
       vec.resize(num);
       if (offset + num > OBJPOOL_BLOCK_SIZE) {
         input_channel_->WriteMove(offset, &record_vec[0]);
@@ -2174,7 +2241,12 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
       offset = offset + num;
     };
 
-    line_func = [this, &parser, &record_vec, &offset, &filename, &record_func,
+    line_func = [this,
+                 &parser,
+                 &record_vec,
+                 &offset,
+                 &filename,
+                 &record_func,
                  &old_offset](const std::string& line) {
       old_offset = offset;
       if (!parser->ParseOneInstance(line, record_func)) {
@@ -2196,7 +2268,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
 
     do {
       int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
       CHECK(this->fp_ != nullptr);
       __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
       lines = line_reader.read_file(this->fp_.get(), line_func, lines);
@@ -2245,7 +2317,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand(void) {
 
     do {
       int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
       CHECK(this->fp_ != nullptr);
       __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
 
@@ -2292,8 +2364,10 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand(void) {
 #endif
 }
 
-static void parser_log_key(const std::string& log_key, uint64_t* search_id,
-                           uint32_t* cmatch, uint32_t* rank) {
+static void parser_log_key(const std::string& log_key,
+                           uint64_t* search_id,
+                           uint32_t* cmatch,
+                           uint32_t* rank) {
   std::string searchid_str = log_key.substr(16, 16);
   *search_id = static_cast<uint64_t>(strtoull(searchid_str.c_str(), NULL, 16));
   std::string cmatch_str = log_key.substr(11, 3);
@@ -2378,9 +2452,6 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
         for (int j = 0; j < num; ++j) {
           uint64_t feasign =
               static_cast<uint64_t>(strtoull(endptr, &endptr, 10));
-          if (feasign == 0 && !used_slots_info_[info.used_idx].dense) {
-            continue;
-          }
           slot_fea.push_back(feasign);
           ++uint64_total_slot_num;
         }
@@ -2403,8 +2474,21 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
   return (uint64_total_slot_num > 0);
 }
 
+void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
+  CheckInit();
+  for (int i = 0; i < use_slot_size_; ++i) {
+    feed_vec_[i] =
+        scope.FindVar(used_slots_info_[i].slot)->GetMutable<LoDTensor>();
+  }
+}
+
 void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
                                               int num) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  paddle::platform::SetDeviceId(place_.GetDeviceId());
+  pack_->pack_instance(ins_vec, num);
+  BuildSlotBatchGPU(pack_->ins_num());
+#else
   for (int j = 0; j < use_slot_size_; ++j) {
     auto& feed = feed_vec_[j];
     if (feed == nullptr) {
@@ -2429,8 +2513,8 @@ void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
         float* slot_values =
             r->slot_float_feasigns_.get_values(info.slot_value_idx, &fea_num);
         batch_fea.resize(total_instance + fea_num);
-        memcpy(&batch_fea[total_instance], slot_values,
-               sizeof(float) * fea_num);
+        memcpy(
+            &batch_fea[total_instance], slot_values, sizeof(float) * fea_num);
         total_instance += fea_num;
         slot_offset.push_back(total_instance);
       }
@@ -2451,7 +2535,8 @@ void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
             r->slot_uint64_feasigns_.get_values(info.slot_value_idx, &fea_num);
         if (fea_num > 0) {
           batch_fea.resize(total_instance + fea_num);
-          memcpy(&batch_fea[total_instance], slot_values,
+          memcpy(&batch_fea[total_instance],
+                 slot_values,
                  sizeof(uint64_t) * fea_num);
           total_instance += fea_num;
         }
@@ -2481,6 +2566,7 @@ void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
       feed_vec_[j]->set_lod(data_lod);
     }
   }
+#endif
 }
 
 void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
@@ -2544,6 +2630,7 @@ void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
 }
 
 bool SlotRecordInMemoryDataFeed::Start() {
+  VLOG(4) << "entering SlotRecordInMemoryDataFeed::Start";
 #ifdef _LINUX
   this->CheckSetFileList();
   if (input_channel_->Size() != 0) {
@@ -2557,39 +2644,380 @@ bool SlotRecordInMemoryDataFeed::Start() {
     this->offset_index_ = 0;
   }
   this->finish_start_ = true;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  CHECK(paddle::platform::is_gpu_place(this->place_));
+  pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
+#endif
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  gpu_graph_data_generator_.AllocResource(this->place_, feed_vec_);
+#endif
   return true;
 }
 
 int SlotRecordInMemoryDataFeed::Next() {
 #ifdef _LINUX
   this->CheckStart();
-
-  VLOG(3) << "enable heter next: " << offset_index_
-          << " batch_offsets: " << batch_offsets_.size();
-  if (offset_index_ >= batch_offsets_.size()) {
-    VLOG(3) << "offset_index: " << offset_index_
+  if (!gpu_graph_mode_) {
+    VLOG(3) << "enable heter next: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size();
-    return 0;
-  }
-  auto& batch = batch_offsets_[offset_index_++];
-  this->batch_size_ = batch.second;
-  VLOG(3) << "batch_size_=" << this->batch_size_
-          << ", thread_id=" << thread_id_;
-  if (this->batch_size_ != 0) {
-    PutToFeedVec(&records_[batch.first], this->batch_size_);
+    if (offset_index_ >= batch_offsets_.size()) {
+      VLOG(3) << "offset_index: " << offset_index_
+              << " batch_offsets: " << batch_offsets_.size();
+      return 0;
+    }
+    auto& batch = batch_offsets_[offset_index_++];
+    this->batch_size_ = batch.second;
+    VLOG(3) << "batch_size_=" << this->batch_size_
+            << ", thread_id=" << thread_id_;
+    if (this->batch_size_ != 0) {
+      PutToFeedVec(&records_[batch.first], this->batch_size_);
+    } else {
+      VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
+              << thread_id_;
+    }
+    VLOG(3) << "enable heter next: " << offset_index_
+            << " batch_offsets: " << batch_offsets_.size()
+            << " baych_size: " << this->batch_size_;
   } else {
-    VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
-            << thread_id_;
+    VLOG(3) << "datafeed in gpu graph mode";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    this->batch_size_ = gpu_graph_data_generator_.GenerateBatch();
+#endif
   }
-  VLOG(3) << "enable heter next: " << offset_index_
-          << " batch_offsets: " << batch_offsets_.size()
-          << " baych_size: " << this->batch_size_;
 
   return this->batch_size_;
 #else
   return 0;
 #endif
 }
+
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
+  int offset_cols_size = (ins_num + 1);
+  size_t slot_total_num = (use_slot_size_ * offset_cols_size);
+  pack_->resize_gpu_slot_offsets(slot_total_num * sizeof(size_t));
+
+  auto& value = pack_->value();
+  const UsedSlotGpuType* used_slot_gpu_types =
+      static_cast<const UsedSlotGpuType*>(pack_->get_gpu_slots());
+  FillSlotValueOffset(ins_num,
+                      use_slot_size_,
+                      reinterpret_cast<size_t*>(pack_->gpu_slot_offsets()),
+                      value.d_uint64_offset.data(),
+                      uint64_use_slot_size_,
+                      value.d_float_offset.data(),
+                      float_use_slot_size_,
+                      used_slot_gpu_types);
+  size_t* d_slot_offsets = reinterpret_cast<size_t*>(pack_->gpu_slot_offsets());
+
+  HostBuffer<size_t>& offsets = pack_->offsets();
+  offsets.resize(slot_total_num);
+  HostBuffer<void*>& h_tensor_ptrs = pack_->h_tensor_ptrs();
+  h_tensor_ptrs.resize(use_slot_size_);
+  // alloc gpu memory
+  pack_->resize_tensor();
+
+  LoDTensor& float_tensor = pack_->float_tensor();
+  LoDTensor& uint64_tensor = pack_->uint64_tensor();
+
+  int64_t float_offset = 0;
+  int64_t uint64_offset = 0;
+
+  // copy index
+  CUDA_CHECK(cudaMemcpy(offsets.data(),
+                        d_slot_offsets,
+                        slot_total_num * sizeof(size_t),
+                        cudaMemcpyDeviceToHost));
+  for (int j = 0; j < use_slot_size_; ++j) {
+    auto& feed = feed_vec_[j];
+    if (feed == nullptr) {
+      h_tensor_ptrs[j] = nullptr;
+      continue;
+    }
+
+    size_t* off_start_ptr = &offsets[j * offset_cols_size];
+
+    int total_instance = static_cast<int>(off_start_ptr[offset_cols_size - 1]);
+    CHECK(total_instance >= 0)
+        << "slot idx:" << j << ", total instance:" << total_instance;
+    auto& info = used_slots_info_[j];
+
+    // fill slot value with default value 0
+    if (info.type[0] == 'f') {  // float
+      if (total_instance > 0) {
+        feed->ShareDataWith(float_tensor.Slice(
+            static_cast<int64_t>(float_offset),
+            static_cast<int64_t>(float_offset + total_instance)));
+        feed->Resize({total_instance, 1});
+        float_offset += total_instance;
+        h_tensor_ptrs[j] = feed->mutable_data<float>(this->place_);
+      } else {
+        h_tensor_ptrs[j] =
+            feed->mutable_data<float>({total_instance, 1}, this->place_);
+      }
+    } else if (info.type[0] == 'u') {  // uint64
+      if (total_instance > 0) {
+        feed->ShareDataWith(uint64_tensor.Slice(
+            static_cast<int64_t>(uint64_offset),
+            static_cast<int64_t>(uint64_offset + total_instance)));
+        feed->Resize({total_instance, 1});
+        uint64_offset += total_instance;
+        h_tensor_ptrs[j] = feed->mutable_data<int64_t>(this->place_);
+      } else {
+        h_tensor_ptrs[j] =
+            feed->mutable_data<int64_t>({total_instance, 1}, this->place_);
+      }
+    }
+
+    if (info.dense) {
+      if (info.inductive_shape_index != -1) {
+        info.local_shape[info.inductive_shape_index] =
+            total_instance / info.total_dims_without_inductive;
+      }
+      feed->Resize(phi::make_ddim(info.local_shape));
+    } else {
+      LoD& lod = (*feed->mutable_lod());
+      lod.resize(1);
+      lod[0].resize(offset_cols_size);
+      paddle::framework::MixVector<size_t> mixv_lod(&lod[0]);
+      memcpy(mixv_lod.MutableData(platform::CPUPlace()),
+             off_start_ptr,
+             offset_cols_size * sizeof(size_t));
+    }
+  }
+  void** dest_gpu_p = reinterpret_cast<void**>(pack_->slot_buf_ptr());
+  CUDA_CHECK(cudaMemcpy(dest_gpu_p,
+                        h_tensor_ptrs.data(),
+                        use_slot_size_ * sizeof(void*),
+                        cudaMemcpyHostToDevice));
+
+  CopyForTensor(ins_num,
+                use_slot_size_,
+                dest_gpu_p,
+                (const size_t*)pack_->gpu_slot_offsets(),
+                (const uint64_t*)value.d_uint64_keys.data(),
+                (const int*)value.d_uint64_offset.data(),
+                (const int*)value.d_uint64_lens.data(),
+                uint64_use_slot_size_,
+                (const float*)value.d_float_keys.data(),
+                (const int*)value.d_float_offset.data(),
+                (const int*)value.d_float_lens.data(),
+                float_use_slot_size_,
+                used_slot_gpu_types);
+}
+
+MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
+                                   const std::vector<UsedSlotInfo>& infos) {
+  place_ = place;
+  stream_ = dynamic_cast<phi::GPUContext*>(
+                platform::DeviceContextPool::Instance().Get(place))
+                ->stream();
+
+  ins_num_ = 0;
+  pv_num_ = 0;
+  used_float_num_ = 0;
+  used_uint64_num_ = 0;
+
+  used_slot_size_ = static_cast<int>(infos.size());
+  for (int i = 0; i < used_slot_size_; ++i) {
+    auto& info = infos[i];
+    if (info.type[0] == 'u') {
+      gpu_used_slots_.push_back({1, info.slot_value_idx});
+      ++used_uint64_num_;
+    } else {
+      gpu_used_slots_.push_back({0, info.slot_value_idx});
+      ++used_float_num_;
+    }
+  }
+  copy_host2device(&gpu_slots_, gpu_used_slots_.data(), gpu_used_slots_.size());
+
+  slot_buf_ptr_ = memory::AllocShared(place_, used_slot_size_ * sizeof(void*));
+
+  int device_id = place_.GetDeviceId();
+  VLOG(3) << "begin get batch pack device id: " << device_id;
+  // sync
+  CUDA_CHECK(cudaStreamSynchronize(stream_));
+}
+
+MiniBatchGpuPack::~MiniBatchGpuPack() {}
+
+void MiniBatchGpuPack::reset(const paddle::platform::Place& place) {
+  place_ = place;
+  stream_ = dynamic_cast<phi::GPUContext*>(
+                platform::DeviceContextPool::Instance().Get(place))
+                ->stream();
+  ins_num_ = 0;
+  pv_num_ = 0;
+}
+
+void MiniBatchGpuPack::pack_all_data(const SlotRecord* ins_vec, int num) {
+  int uint64_total_num = 0;
+  int float_total_num = 0;
+
+  buf_.h_uint64_lens.resize(num + 1);
+  buf_.h_uint64_lens[0] = 0;
+  buf_.h_float_lens.resize(num + 1);
+  buf_.h_float_lens[0] = 0;
+
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    uint64_total_num += r->slot_uint64_feasigns_.slot_values.size();
+    buf_.h_uint64_lens[i + 1] = uint64_total_num;
+    float_total_num += r->slot_float_feasigns_.slot_values.size();
+    buf_.h_float_lens[i + 1] = float_total_num;
+  }
+
+  int uint64_cols = (used_uint64_num_ + 1);
+  buf_.h_uint64_offset.resize(uint64_cols * num);
+  buf_.h_uint64_keys.resize(uint64_total_num);
+
+  int float_cols = (used_float_num_ + 1);
+  buf_.h_float_offset.resize(float_cols * num);
+  buf_.h_float_keys.resize(float_total_num);
+
+  size_t fea_num = 0;
+  uint64_total_num = 0;
+  float_total_num = 0;
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    auto& uint64_feasigns = r->slot_uint64_feasigns_;
+    fea_num = uint64_feasigns.slot_values.size();
+    if (fea_num > 0) {
+      memcpy(&buf_.h_uint64_keys[uint64_total_num],
+             uint64_feasigns.slot_values.data(),
+             fea_num * sizeof(uint64_t));
+    }
+    uint64_total_num += fea_num;
+    // copy uint64 offset
+    memcpy(&buf_.h_uint64_offset[i * uint64_cols],
+           uint64_feasigns.slot_offsets.data(),
+           sizeof(int) * uint64_cols);
+
+    auto& float_feasigns = r->slot_float_feasigns_;
+    fea_num = float_feasigns.slot_values.size();
+    memcpy(&buf_.h_float_keys[float_total_num],
+           float_feasigns.slot_values.data(),
+           fea_num * sizeof(float));
+    float_total_num += fea_num;
+
+    // copy float offset
+    memcpy(&buf_.h_float_offset[i * float_cols],
+           float_feasigns.slot_offsets.data(),
+           sizeof(int) * float_cols);
+  }
+
+  CHECK(uint64_total_num == static_cast<int>(buf_.h_uint64_lens.back()))
+      << "uint64 value length error";
+  CHECK(float_total_num == static_cast<int>(buf_.h_float_lens.back()))
+      << "float value length error";
+}
+void MiniBatchGpuPack::pack_uint64_data(const SlotRecord* ins_vec, int num) {
+  int uint64_total_num = 0;
+
+  buf_.h_float_lens.clear();
+  buf_.h_float_keys.clear();
+  buf_.h_float_offset.clear();
+
+  buf_.h_uint64_lens.resize(num + 1);
+  buf_.h_uint64_lens[0] = 0;
+
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    uint64_total_num += r->slot_uint64_feasigns_.slot_values.size();
+    buf_.h_uint64_lens[i + 1] = uint64_total_num;
+  }
+
+  int uint64_cols = (used_uint64_num_ + 1);
+  buf_.h_uint64_offset.resize(uint64_cols * num);
+  buf_.h_uint64_keys.resize(uint64_total_num);
+
+  size_t fea_num = 0;
+  uint64_total_num = 0;
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    auto& uint64_feasigns = r->slot_uint64_feasigns_;
+    fea_num = uint64_feasigns.slot_values.size();
+    if (fea_num > 0) {
+      memcpy(&buf_.h_uint64_keys[uint64_total_num],
+             uint64_feasigns.slot_values.data(),
+             fea_num * sizeof(uint64_t));
+    }
+    uint64_total_num += fea_num;
+    // copy uint64 offset
+    memcpy(&buf_.h_uint64_offset[i * uint64_cols],
+           uint64_feasigns.slot_offsets.data(),
+           sizeof(int) * uint64_cols);
+  }
+  CHECK(uint64_total_num == static_cast<int>(buf_.h_uint64_lens.back()))
+      << "uint64 value length error";
+}
+void MiniBatchGpuPack::pack_float_data(const SlotRecord* ins_vec, int num) {
+  int float_total_num = 0;
+
+  buf_.h_uint64_lens.clear();
+  buf_.h_uint64_offset.clear();
+  buf_.h_uint64_keys.clear();
+
+  buf_.h_float_lens.resize(num + 1);
+  buf_.h_float_lens[0] = 0;
+
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    float_total_num += r->slot_float_feasigns_.slot_values.size();
+    buf_.h_float_lens[i + 1] = float_total_num;
+  }
+
+  int float_cols = (used_float_num_ + 1);
+  buf_.h_float_offset.resize(float_cols * num);
+  buf_.h_float_keys.resize(float_total_num);
+
+  size_t fea_num = 0;
+  float_total_num = 0;
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    auto& float_feasigns = r->slot_float_feasigns_;
+    fea_num = float_feasigns.slot_values.size();
+    memcpy(&buf_.h_float_keys[float_total_num],
+           float_feasigns.slot_values.data(),
+           fea_num * sizeof(float));
+    float_total_num += fea_num;
+
+    // copy float offset
+    memcpy(&buf_.h_float_offset[i * float_cols],
+           float_feasigns.slot_offsets.data(),
+           sizeof(int) * float_cols);
+  }
+  CHECK(float_total_num == static_cast<int>(buf_.h_float_lens.back()))
+      << "float value length error";
+}
+
+void MiniBatchGpuPack::pack_instance(const SlotRecord* ins_vec, int num) {
+  ins_num_ = num;
+  batch_ins_ = ins_vec;
+  CHECK(used_uint64_num_ > 0 || used_float_num_ > 0);
+  // uint64 and float
+  if (used_uint64_num_ > 0 && used_float_num_ > 0) {
+    pack_all_data(ins_vec, num);
+  } else if (used_uint64_num_ > 0) {  // uint64
+    pack_uint64_data(ins_vec, num);
+  } else {  // only float
+    pack_float_data(ins_vec, num);
+  }
+  // to gpu
+  transfer_to_gpu();
+}
+
+void MiniBatchGpuPack::transfer_to_gpu(void) {
+  copy_host2device(&value_.d_uint64_lens, buf_.h_uint64_lens);
+  copy_host2device(&value_.d_uint64_keys, buf_.h_uint64_keys);
+  copy_host2device(&value_.d_uint64_offset, buf_.h_uint64_offset);
+
+  copy_host2device(&value_.d_float_lens, buf_.h_float_lens);
+  copy_host2device(&value_.d_float_keys, buf_.h_float_keys);
+  copy_host2device(&value_.d_float_offset, buf_.h_float_offset);
+  CUDA_CHECK(cudaStreamSynchronize(stream_));
+}
+#endif
 
 }  // namespace framework
 }  // namespace paddle

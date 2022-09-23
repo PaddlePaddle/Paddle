@@ -26,7 +26,7 @@ using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename Context>
 void RollKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const ScalarArray& shifts,
+                const IntArray& shifts,
                 const std::vector<int64_t>& axis,
                 DenseTensor* out) {
   auto* in_data = x.data<T>();

@@ -21,7 +21,6 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
-export CI_SKIP_CPP_TEST=OFF
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
@@ -52,9 +51,10 @@ if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
     bash $PADDLE_ROOT/win_cmake.sh >prec_build.log 2>&1
 fi
-ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | grep 'test' > $PADDLE_ROOT/br-ut
+# remove line ended with .exe to get correct deleted_ut list
+ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | sed '/\.exe$/d' | grep 'test' > $PADDLE_ROOT/br-ut
 cd $PADDLE_ROOT/build
-ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | grep 'test' > $PADDLE_ROOT/pr-ut
+ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | sed '/\.exe$/d' | grep 'test' > $PADDLE_ROOT/pr-ut
 cd $PADDLE_ROOT
 grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut
 if [[ "$SYSTEM" == 'Linux' ]];then
@@ -66,10 +66,11 @@ rm -rf prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
+    # get the deleted ut list in windows, will be used in check_change_of_unittest.sh
+    grep -F -x -v -f pr-ut br-ut > $PADDLE_ROOT/deleted_ut
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/win_cmake.sh
 fi
 git checkout -f $CURBRANCH
 echo $CURBRANCH
 git branch -D prec_added_ut
 cd $CURDIR
-export CI_SKIP_CPP_TEST=

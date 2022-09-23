@@ -12,14 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/dense_tensor.h"
-
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
-
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_utils.h"
+#endif
 
 namespace phi {
 /* --------------------------- */
@@ -51,7 +53,7 @@ void DenseTensor::check_memory_size() const {
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
-          "But received Tensor's dimension is d%, memory's size is %d.",
+          "But received Tensor's dimension is %d, memory's size is %d.",
           numel() * SizeOf(dtype()),
           memory_size()));
 }
@@ -111,7 +113,7 @@ void* DenseTensor::mutable_data(const Place& place,
     size = requested_size;
   }
 
-  /* some versions of boost::variant don't have operator!= */
+  /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset) {
     holder_.reset();
@@ -140,7 +142,7 @@ void* DenseTensor::mutable_data(const Place& place,
           "] now"));
   size_t size = numel() * SizeOf(dtype());
 
-  /* some versions of boost::variant don't have operator!= */
+  /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset ||
       !(place.GetType() == phi::AllocationType::GPU &&
@@ -206,13 +208,6 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 /* ------------------------------ */
 /*   From framework::LoDTensor    */
 /* ------------------------------ */
-
-DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
-                         const DenseTensorMeta& meta)
-    : meta_(meta), holder_(storage->move_data_shared()) {}
-
-DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(storage->move_data_shared()) {}
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
 
@@ -354,12 +349,33 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
   return Split(split_size, axis);
 }
 
+#ifdef PADDLE_WITH_MKLDNN
+dnnl::memory::desc DenseTensor::mem_desc() const {
+  return mem_desc_ ? mem_desc_
+                   : dnnl::memory::desc(phi::vectorize(meta_.dims),
+                                        phi::TransToOneDNNDataType(meta_.dtype),
+                                        format_);
+}
+
+dnnl::memory::format_tag DenseTensor::format() const {
+  return mem_desc_ ? paddle::platform::GetMKLDNNFormat(mem_desc_) : format_;
+}
+#endif
+
+// NOTE: For historical reasons, this interface has a special behavior,
+// sharing other tensor members except lod
 DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   src.check_memory_size();
-  // Preserve LoD
-  auto lod = meta_.lod;
-  *this = src;
-  meta_.lod = lod;
+  holder_ = src.holder_;
+  meta_.is_scalar = src.meta_.is_scalar;
+  meta_.dims = src.meta_.dims;
+  meta_.dtype = src.meta_.dtype;
+  meta_.layout = src.meta_.layout;
+  meta_.offset = src.meta_.offset;
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = src.format_;
+  mem_desc_ = src.mem_desc_;
+#endif
   return *this;
 }
 

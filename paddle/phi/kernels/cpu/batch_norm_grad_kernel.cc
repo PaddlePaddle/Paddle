@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
@@ -37,15 +36,16 @@ using ConstEigenVectorArrayMap =
 
 template <typename T, typename Context>
 void BatchNormGradRawKernel(const Context& ctx,
-                            const DenseTensor& y_grad,
+
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const DenseTensor& bias,
+                            const paddle::optional<DenseTensor>& mean,
+                            const paddle::optional<DenseTensor>& variance,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
-                            paddle::optional<const DenseTensor&> reserve_space,
-                            paddle::optional<const DenseTensor&> mean,
-                            paddle::optional<const DenseTensor&> variance,
+                            const paddle::optional<DenseTensor>& reserve_space,
+                            const DenseTensor& y_grad,
                             float momentum,
                             float epsilon,
                             const std::string& data_layout_str,
@@ -122,8 +122,8 @@ void BatchNormGradRawKernel(const Context& ctx,
     ctx.template Alloc<T>(d_x);
   }
 
-  const T* mean_data = saved_mean.data<T>();
-  const T* inv_var_data = saved_variance.data<T>();
+  const T* mean_data = nullptr;
+  const T* inv_var_data = nullptr;
   DenseTensor inv_var_tensor;
   if (use_global_stats) {
     const auto* running_mean = mean.get_ptr();
@@ -136,6 +136,9 @@ void BatchNormGradRawKernel(const Context& ctx,
 
     inv_var_tmp = (var_arr + epsilon).sqrt().inverse();
     inv_var_data = running_inv_var_data;
+  } else {
+    mean_data = saved_mean.data<T>();
+    inv_var_data = saved_variance.data<T>();
   }
 
   ConstEigenVectorArrayMap<T> scale_arr(scale.data<T>(), C);
@@ -293,15 +296,15 @@ void BatchNormGradRawKernel(const Context& ctx,
 
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context& dev_ctx,
-                         const DenseTensor& y_grad,
                          const DenseTensor& x,
                          const DenseTensor& scale,
                          const DenseTensor& bias,
+                         const paddle::optional<DenseTensor>& mean,
+                         const paddle::optional<DenseTensor>& variance,
                          const DenseTensor& saved_mean,
                          const DenseTensor& saved_variance,
-                         paddle::optional<const DenseTensor&> reserve_space,
-                         paddle::optional<const DenseTensor&> mean,
-                         paddle::optional<const DenseTensor&> variance,
+                         const paddle::optional<DenseTensor>& reserve_space,
+                         const DenseTensor& y_grad,
                          float momentum,
                          float epsilon,
                          const std::string& data_layout,
@@ -313,15 +316,15 @@ void BatchNormGradKernel(const Context& dev_ctx,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
   BatchNormGradRawKernel<T, Context>(dev_ctx,
-                                     y_grad,
                                      x,
                                      scale,
                                      bias,
+                                     mean,
+                                     variance,
                                      saved_mean,
                                      saved_variance,
                                      reserve_space,
-                                     mean,
-                                     variance,
+                                     y_grad,
                                      momentum,
                                      epsilon,
                                      data_layout,
@@ -337,16 +340,16 @@ void BatchNormGradKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void BatchNormDoubleGradKernel(const Context& ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& scale,
+                               const paddle::optional<DenseTensor>& mean,
+                               const paddle::optional<DenseTensor>& variance,
+                               const DenseTensor& saved_mean,
+                               const DenseTensor& saved_variance,
+                               const DenseTensor& y_grad,
                                const DenseTensor& x_grad_grad,
                                const DenseTensor& scale_grad_grad,
                                const DenseTensor& bias_grad_grad,
-                               const DenseTensor& y_grad,
-                               const DenseTensor& x,
-                               const DenseTensor& scale,
-                               const DenseTensor& saved_mean,
-                               const DenseTensor& saved_variance,
-                               paddle::optional<const DenseTensor&> mean,
-                               paddle::optional<const DenseTensor&> variance,
                                float momentum,
                                float epsilon,
                                const std::string& data_layout_str,

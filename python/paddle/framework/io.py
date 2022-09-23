@@ -30,10 +30,14 @@ from paddle.fluid.io import _unpack_saved_dict, _pack_loaded_dict, _pickle_loads
 from paddle.fluid.io import _legacy_save as _legacy_static_save
 from paddle.fluid.io import _open_file_buffer, _is_file_path, _is_memory_buffer
 
-from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, EagerParamBase, _current_expected_place, Program
+from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, _non_static_mode, ParamBase, EagerParamBase, _current_expected_place, Program
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
 
 __all__ = []
 
@@ -92,7 +96,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
 
 
 def _load_state_dict_from_save_params(model_path):
-    # Try to load all the files in the directory in VarBase format, 
+    # Try to load all the files in the directory in VarBase format,
     # the file name is used as the name of VarBase
     load_var_list = []
 
@@ -153,7 +157,7 @@ def _build_load_path_and_config(path, config):
     elif not prefix_format_exist and not directory_format_exist:
         error_msg = "The ``path`` (%s) to load model not exists."
         # if current path is a prefix, and the path.pdparams or path.pdopt
-        # is exist, users may want use `paddle.load` load the result of 
+        # is exist, users may want use `paddle.load` load the result of
         # `fluid.save_dygraph`, we raise error here for users
         params_file_path = path + ".pdparams"
         opti_file_path = path + ".pdopt"
@@ -233,8 +237,9 @@ def _pickle_save(obj, f, protocol):
             type(protocol)))
 
     if protocol < 2 or protocol > 4:
-        raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
-                         format(protocol))
+        raise ValueError(
+            "Expected 1<'protocol'<5, but received protocol={}".format(
+                protocol))
 
     def reduce_varbase(self):
         data = self.numpy()
@@ -326,20 +331,20 @@ def _is_state_dict(obj):
     if isinstance(obj, dict):
 
         def condition(obj):
-            return isinstance(obj, (fluid.Layer, Program, core.VarBase,
-                                    core.eager.Tensor, core.LoDTensor,
-                                    core.SelectedRows))
+            return isinstance(
+                obj, (fluid.Layer, Program, core.VarBase, core.eager.Tensor,
+                      core.LoDTensor, core.SelectedRows))
 
-        # If the value of a dict is a core.VarBase/LoDTensor or a dict 
-        # that does not contain a paddle type(Layer, Program, VarBase, LoDTensor, SelectedRows), 
+        # If the value of a dict is a core.VarBase/LoDTensor or a dict
+        # that does not contain a paddle type(Layer, Program, VarBase, LoDTensor, SelectedRows),
         # the dict is considered to be a state_ dict.
         for key, value in obj.items():
             if isinstance(value, dict):
                 for k, v in value.items():
                     if _contain_x(v, condition):
                         return False
-            elif not isinstance(value, (core.VarBase, core.eager.Tensor,
-                                        core.LoDTensor)):
+            elif not isinstance(
+                    value, (core.VarBase, core.eager.Tensor, core.LoDTensor)):
                 return False
         return True
 
@@ -378,7 +383,7 @@ def _to_LodTensor(ndarray):
 def _tuple_to_tensor(obj, return_numpy):
     if return_numpy:
         return obj[1]
-    if in_dygraph_mode():
+    if _non_static_mode():
         t = paddle.to_tensor(obj[1])
         # This function does modify the name of return value.
         # Loading the same variable multiple times may cause the same name.
@@ -391,7 +396,7 @@ def _tuple_to_tensor(obj, return_numpy):
 def _ndarray_to_tensor(obj, return_numpy):
     if return_numpy:
         return obj
-    if in_dygraph_mode():
+    if _non_static_mode():
         return paddle.to_tensor(obj)
     else:
         return _to_LodTensor(obj)
@@ -424,16 +429,17 @@ def _parse_every_object(obj, condition_func, convert_func):
     elif type(obj) == set:
         return set(_parse_every_object(list(obj), condition_func, convert_func))
     else:
-        if isinstance(obj, collections.Iterable) and not isinstance(
+        if isinstance(obj, Iterable) and not isinstance(
                 obj,
             (str, np.ndarray, core.VarBase, core.eager.Tensor, core.LoDTensor)):
             raise NotImplementedError(
-                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".
-                format(type(obj)))
+                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}."
+                .format(type(obj)))
         return obj
 
 
 def _parse_load_result(obj, return_numpy):
+
     def is_layer(obj):
         return isinstance(obj, fluid.Layer)
 
@@ -443,7 +449,7 @@ def _parse_load_result(obj, return_numpy):
         return obj
 
     if _contain_x(obj, is_layer):
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             raise ValueError(
                 "Layer can only be loaded in dynamic graph mode, but now in static graph mode."
             )
@@ -456,12 +462,12 @@ def _parse_load_result(obj, return_numpy):
     def ndarray_to_tensor(obj):
         return _ndarray_to_tensor(obj, return_numpy=return_numpy)
 
-    # tuple(name, ndarry) was converted from varbase of paddle2.1, 
+    # tuple(name, ndarry) was converted from varbase of paddle2.1,
     # and all tuple(name, ndarry) are converted to tensor.
     if _contain_x(obj, _transformed_from_varbase):
         return _parse_every_object(obj, _transformed_from_varbase,
                                    tuple_to_tensor)
-    # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0 
+    # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0
     # or converted from LoDTensor, and all ndarrays are converted to tensor.
     else:
         return _parse_every_object(obj, _transformed_from_lodtensor,
@@ -561,34 +567,34 @@ def _save_binary_var(obj, path):
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
         raise NotImplementedError(
-            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}.".
-            format(type(obj)))
+            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}."
+            .format(type(obj)))
 
 
 def save(obj, path, protocol=4, **configs):
     '''
     Save an object to the specified path.
-    
-    .. note::
+
+    Note:
         Now supports saving ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
-    .. note::
-        Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file, 
-        there is no need to distinguish multiple saved files by adding a suffix. The argument ``path`` 
-        of ``paddle.save`` will be directly used as the saved file name instead of a prefix. 
+    Note:
+        Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file,
+        there is no need to distinguish multiple saved files by adding a suffix. The argument ``path``
+        of ``paddle.save`` will be directly used as the saved file name instead of a prefix.
         In order to unify the saved file name format, we recommend using the paddle standard suffix:
-        1. for ``Layer.state_dict`` , recommend to use ``.pdparams`` ; 
-        2. for ``Optimizer.state_dict`` , recommend to use ``.pdopt`` . 
+        1. for ``Layer.state_dict`` , recommend to use ``.pdparams`` ;
+        2. for ``Optimizer.state_dict`` , recommend to use ``.pdopt`` .
         For specific examples, please refer to API code examples.
-    
+
     Args:
         obj(Object) : The object to be saved.
-        path(str|BytesIO) : The path/buffer of the object to be saved. 
-          If saved in the current directory, the input path string will be used as the file name. 
+        path(str|BytesIO) : The path/buffer of the object to be saved.
+          If saved in the current directory, the input path string will be used as the file name.
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
                                  Default: 4
         **configs(dict, optional): optional keyword arguments. The following options are currently supported:
-          use_binary_format(bool): When the saved object is static graph variable, you can specify ``use_binary_for_var``. 
+          use_binary_format(bool): When the saved object is static graph variable, you can specify ``use_binary_for_var``.
           If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
           Default: False
 
@@ -681,7 +687,7 @@ def save(obj, path, protocol=4, **configs):
             paddle.save(state_dict, byio)
             tensor = paddle.randn([2, 3], dtype='float32')
             paddle.save(tensor, byio)
-    
+
     '''
     if _is_file_path(path):
         # 1. input check
@@ -724,7 +730,7 @@ def save(obj, path, protocol=4, **configs):
                 f.write(obj.desc.serialize_to_string())
 
         elif _is_state_dict(obj):
-            if in_dygraph_mode():
+            if _non_static_mode():
                 _legacy_save(obj, path, protocol)
             else:
                 _legacy_static_save(obj, path, protocol)
@@ -748,8 +754,9 @@ def _legacy_save(obj, path, protocol=2):
             type(protocol)))
 
     if protocol < 2 or protocol > 4:
-        raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
-                         format(protocol))
+        raise ValueError(
+            "Expected 1<'protocol'<5, but received protocol={}".format(
+                protocol))
 
     if _is_file_path(path):
         filename = os.path.basename(path)
@@ -785,46 +792,46 @@ def load(path, **configs):
     '''
     Load an object can be used in paddle from specified path.
 
-    .. note::
+    Note:
         Now supports loading ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
-    .. note::
-        In order to use the model parameters saved by paddle more efficiently, 
-        ``paddle.load`` supports loading ``state_dict`` of Layer from the result of 
-        other save APIs except ``paddle.save`` , but the argument ``path`` format is 
+    Note:
+        In order to use the model parameters saved by paddle more efficiently,
+        ``paddle.load`` supports loading ``state_dict`` of Layer from the result of
+        other save APIs except ``paddle.save`` , but the argument ``path`` format is
         different:
-        1. loading from ``paddle.static.save`` or ``paddle.Model().save(training=True)`` ,  
-        ``path`` needs to be a complete file name, such as ``model.pdparams`` or 
-        ``model.pdopt`` ; 
-        2. loading from ``paddle.jit.save`` or ``paddle.static.save_inference_model`` 
-        or ``paddle.Model().save(training=False)`` , ``path`` need to be a file prefix, 
-        such as ``model/mnist``, and ``paddle.load`` will get information from 
+        1. loading from ``paddle.static.save`` or ``paddle.Model().save(training=True)`` ,
+        ``path`` needs to be a complete file name, such as ``model.pdparams`` or
+        ``model.pdopt`` ;
+        2. loading from ``paddle.jit.save`` or ``paddle.static.save_inference_model``
+        or ``paddle.Model().save(training=False)`` , ``path`` need to be a file prefix,
+        such as ``model/mnist``, and ``paddle.load`` will get information from
         ``mnist.pdmodel`` and ``mnist.pdiparams`` ;
-        3. loading from paddle 1.x APIs ``paddle.fluid.io.save_inference_model`` or 
-        ``paddle.fluid.io.save_params/save_persistables`` , ``path`` need to be a 
+        3. loading from paddle 1.x APIs ``paddle.fluid.io.save_inference_model`` or
+        ``paddle.fluid.io.save_params/save_persistables`` , ``path`` need to be a
         directory, such as ``model`` and model is a directory.
 
-    .. note::
-        If you load ``state_dict`` from the saved result of static mode API such as 
-        ``paddle.static.save`` or ``paddle.static.save_inference_model`` , 
-        the structured variable name in dynamic mode will cannot be restored. 
-        You need to set the argument ``use_structured_name=False`` when using 
+    Note:
+        If you load ``state_dict`` from the saved result of static mode API such as
+        ``paddle.static.save`` or ``paddle.static.save_inference_model`` ,
+        the structured variable name in dynamic mode will cannot be restored.
+        You need to set the argument ``use_structured_name=False`` when using
         ``Layer.set_state_dict`` later.
 
     Args:
-        path(str|BytesIO) : The path/buffer to load the target object. Generally, the path is the target 
-            file path. When loading state_dict from the saved result of the API used to save 
+        path(str|BytesIO) : The path/buffer to load the target object. Generally, the path is the target
+            file path. When loading state_dict from the saved result of the API used to save
             the inference model, the path may be a file prefix or directory.
-        **configs (dict, optional): other load configuration options for compatibility. We do not 
-            recommend using these configurations, they may be removed in the future. If not necessary, 
+        **configs (dict, optional): other load configuration options for compatibility. We do not
+            recommend using these configurations, they may be removed in the future. If not necessary,
             DO NOT use them. Default None.
             The following options are currently supported:
-            (1) model_filename (str): The inference model file name of the paddle 1.x 
-            ``save_inference_model`` save format. Default file name is :code:`__model__` . 
-            (2) params_filename (str): The persistable variables file name of the paddle 1.x 
-            ``save_inference_model`` save format. No default file name, save variables separately 
-            by default.            
-            (3) return_numpy(bool): If specified as True, return tensor as numpy.ndarray, otherwise return tensor as paddle.Tensor. 
+            (1) model_filename (str): The inference model file name of the paddle 1.x
+            ``save_inference_model`` save format. Default file name is :code:`__model__` .
+            (2) params_filename (str): The persistable variables file name of the paddle 1.x
+            ``save_inference_model`` save format. No default file name, save variables separately
+            by default.
+            (3) return_numpy(bool): If specified as True, return tensor as numpy.ndarray, otherwise return tensor as paddle.Tensor.
             Default False.
 
     Returns:
@@ -964,8 +971,8 @@ def load(path, **configs):
                             del load_result["StructuredToParameterName@@"]
                     else:
                         # paddle2.1 static.save/load
-                        load_result = _parse_load_result(load_result,
-                                                         config.return_numpy)
+                        load_result = _parse_load_result(
+                            load_result, config.return_numpy)
 
                 else:
                     load_result = _parse_load_result(load_result,
@@ -981,7 +988,7 @@ def load(path, **configs):
                     if config.return_numpy:
                         return np.array(tensor)
                     else:
-                        if in_dygraph_mode():
+                        if _non_static_mode():
                             return _lod_tensor2varbase(tensor)
                         return tensor
                 except:
@@ -1026,18 +1033,18 @@ def _legacy_load(path, **configs):
         if os.path.exists(model_file_path):
             # Load state dict by `jit.save/io.save_inference_model` save format
             # NOTE(chenweihang): [ Compatibility of save_inference_model save format ]
-            # The model saved by `save_inference_model` does not completely correspond to 
-            # the information required by the `state_dict` under the dygraph. 
-            # `save_inference_model` not save structured name, we need to remind 
+            # The model saved by `save_inference_model` does not completely correspond to
+            # the information required by the `state_dict` under the dygraph.
+            # `save_inference_model` not save structured name, we need to remind
             # the user to configure the `use_structured_name` argument when `set_state_dict`
-            # NOTE(chenweihang): `jit.save` doesn't save optimizer state 
-            load_result = _load_state_dict_from_save_inference_model(model_path,
-                                                                     config)
+            # NOTE(chenweihang): `jit.save` doesn't save optimizer state
+            load_result = _load_state_dict_from_save_inference_model(
+                model_path, config)
         else:
             # load state dict by `io.save_params/persistables` save format
-            # TODO(chenweihang): [ Now only supports loading parameters seperately ]
+            # TODO(chenweihang): [ Now only supports loading parameters separately ]
             # If users save all parameters as one file, the [ variable.name -> variable ]
-            # mapping info will lost, so users need to give variable list, but users build 
+            # mapping info will lost, so users need to give variable list, but users build
             # variable list in dygraph mode is difficult, we recommend users to use
             # paddle.static.load_program_state in this case
             load_result = _load_state_dict_from_save_params(model_path)

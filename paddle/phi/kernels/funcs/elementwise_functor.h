@@ -18,6 +18,11 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
+#if defined(__xpu__)
+#include <xpu/runtime.h>
+
+#include "xpu/kernel/math_xpu2.h"  // pow()
+#endif
 
 namespace phi {
 namespace funcs {
@@ -419,6 +424,195 @@ struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
     ComplexType<InT> c_conj(c.real, -c.imag);
     outs[1] = a * c_conj;
     return outs;
+  }
+};
+
+// Maximum
+template <typename T>
+struct MaximumFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a > b ? a : b;
+  }
+};
+
+template <typename T>
+struct MaxGradXFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x > y);
+  }
+};
+
+template <typename T>
+struct MaxGradYFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x <= y);
+  }
+};
+
+template <typename InT, typename OutT>
+struct MaxGradXYFunctor {
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x,
+                                                   const InT y,
+                                                   const InT dout) {
+    phi::Array<OutT, 2> outs;
+    // dx = dout * (x > y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
+    // dy = dout * (x <= y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x <= y));
+    return outs;
+  }
+};
+
+// Minimum
+template <typename T>
+struct MinimumFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a < b ? a : b;
+  }
+};
+template <typename T>
+struct MinGradXFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x < y);
+  }
+};
+template <typename T>
+struct MinGradYFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x >= y);
+  }
+};
+
+template <typename InT, typename OutT>
+struct MinGradXYFunctor {
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x,
+                                                   const InT y,
+                                                   const InT dout) {
+    phi::Array<OutT, 2> outs;
+    // dx = dout * (x < y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
+    // dy = dout * (x >= y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x >= y));
+    return outs;
+  }
+};
+
+// Modulo
+template <typename T, typename Enable = void>
+struct RemainderFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = a % b;
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((b ^ res) < 0)) res += b;
+    return res;
+  }
+};
+
+template <typename T>
+struct RemainderFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = fmod(a, b);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((res < 0) != (b < 0))) res += b;
+    return res;
+  }
+};
+
+template <>
+struct RemainderFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float b_float = static_cast<float>(b);
+    float res = fmod(static_cast<float>(a), b_float);
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
+    return static_cast<dtype::float16>(res);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseRemainderFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = b % a;
+    if ((res != 0) && ((res < 0) != (a < 0))) res += a;
+    return res;
+  }
+};
+
+template <typename T>
+struct InverseRemainderFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = fmod(b, a);
+    if ((res != 0) && ((a < 0) != (res < 0))) res += a;
+    return res;
+  }
+};
+
+template <typename T>
+struct ElementwiseHeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a == static_cast<T>(0) ? b : static_cast<T>(a > static_cast<T>(0));
+  }
+};
+
+template <typename T>
+struct FloorDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+#endif
+    return static_cast<T>(std::trunc(a / b));
+  }
+};
+
+template <typename T>
+struct InverseFloorDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
+    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
+#endif
+    return static_cast<T>(std::trunc(b / a));
+  }
+};
+
+template <typename T>
+struct ElementwisePowFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+// TODO(wujionghao): A potential speed improvement is supporting different
+// types in C++.
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
+    // it will return a float number like 2.99... , which floor to 2
+    // when cast to int by default and it is wrong.
+    // Use llrint to cast it to the nearest integer, which is 3.
+    if (std::is_integral<T>::value) {
+      return std::llrint(
+          std::pow(static_cast<double>(a), static_cast<double>(b)));
+    }
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+    return pow(a, b);
+#endif
+    return std::pow(a, b);
+  }
+};
+
+template <>
+struct ElementwisePowFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float f_a = static_cast<float>(a);
+    float f_b = static_cast<float>(b);
+    return static_cast<dtype::float16>(std::pow(f_a, f_b));
   }
 };
 

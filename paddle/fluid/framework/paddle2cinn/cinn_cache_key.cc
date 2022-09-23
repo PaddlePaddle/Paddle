@@ -18,6 +18,7 @@
 #include <functional>
 #include <map>
 #include <set>
+#include <sstream>
 #include <string>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -36,7 +37,8 @@ CinnCacheKey::CinnCacheKey(GraphHashStrategy graph_hash)
 CinnCacheKey::CinnCacheKey(
     const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const std::string& arch_str, GraphHashStrategy graph_hash)
+    const std::string& arch_str,
+    GraphHashStrategy graph_hash)
     : graph_hash_(graph_hash) {
   this->SetKey(graph, input_tensors, arch_str);
 }
@@ -77,22 +79,17 @@ bool CinnCacheKey::operator==(const CinnCacheKey& other) const {
          input_shapes_ == other.input_shapes_ && arch_str_ == other.arch_str_;
 }
 
-size_t CinnCacheKey::Hash::hash_combine(size_t seed, size_t value) {
-  return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-}
-
 size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
-  std::size_t ret = 0;
+  std::ostringstream has_str;
 
-  std::hash<std::string> string_hasher;
   for (const auto& name_shape : key.input_shapes_) {
-    ret = hash_combine(ret, string_hasher(name_shape.first));
-    ret = hash_combine(ret, string_hasher(name_shape.second.to_str()));
+    has_str << name_shape.first;
+    has_str << name_shape.second.to_str();
   }
 
-  ret = hash_combine(ret, key.graph_hash_val_);
-  ret = hash_combine(ret, string_hasher(key.arch_str_));
-  return ret;
+  has_str << key.graph_hash_val_;
+  has_str << key.arch_str_;
+  return std::hash<std::string>()(has_str.str());
 }
 
 size_t CinnCacheKeyByStructure::HashGraph(const ir::Graph& graph) {
@@ -104,7 +101,7 @@ size_t CinnCacheKeyByStructure::HashGraph(const ir::Graph& graph) {
 
   // graph.Nodes() return unordered_set, here using set to avoid the same graph
   // may return different result
-  std::set<ir::Node *, bool (*)(ir::Node *, ir::Node *)> node_set(compare),
+  std::set<ir::Node*, bool (*)(ir::Node*, ir::Node*)> node_set(compare),
       output_set(compare);
   node_set.insert(graph.Nodes().begin(), graph.Nodes().end());
 

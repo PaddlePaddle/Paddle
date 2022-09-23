@@ -20,13 +20,19 @@ import paddle.static
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestIpuStrategy(unittest.TestCase):
+
     def test_set_options(self):
         ipu_strategy = paddle.static.IpuStrategy()
         all_option_names = ipu_strategy._ipu_strategy.get_all_option_names()
+        skip_options = []
+        skip_options.append(
+            'mean_accumulation_and_replication_reduction_strategy')
+        skip_options.append('random_seed')
+
         for option_name in all_option_names:
+            if option_name in skip_options:
+                continue
             option = ipu_strategy._ipu_strategy.get_option(option_name)
             option_type = option['type']
             option_value = option['value']
@@ -38,9 +44,13 @@ class TestIpuStrategy(unittest.TestCase):
                 set_value = not option_value
             else:
                 continue
-            ipu_strategy.set_options({option_name: set_value})
-            new_value = ipu_strategy.get_option(option_name)
-            assert new_value == set_value, f"set {option_name} to {set_value} failed"
+
+            try:
+                ipu_strategy.set_options({option_name: set_value})
+                new_value = ipu_strategy.get_option(option_name)
+                assert new_value == set_value, f"set {option_name} to {set_value} failed"
+            except:
+                raise Exception(f"set {option_name} to {set_value} failed")
 
     def test_set_string_options(self):
         ipu_strategy = paddle.static.IpuStrategy()
@@ -57,15 +67,26 @@ class TestIpuStrategy(unittest.TestCase):
     def test_set_other_options(self):
         ipu_strategy = paddle.static.IpuStrategy()
         options = {}
-        options['dot_checks'] = ['0', '1', '2', '3']
+        options['dot_checks'] = ['Fwd0', 'Fwd1', 'Bwd0', 'PreAlias', "Final"]
         options['engine_options'] = {
             'debug.allowOutOfMemory': 'true',
             'autoReport.directory': 'path',
             'autoReport.all': 'true'
         }
+        options['random_seed'] = 1234
         for k, v in options.items():
             ipu_strategy.set_options({k: v})
-            assert v == ipu_strategy.get_option(k), f"set {k} to {v} failed "
+            if (isinstance(v, list)):
+                assert v.sort() == ipu_strategy.get_option(
+                    k).sort(), f"set {k} to {v} failed "
+            else:
+                assert v == ipu_strategy.get_option(
+                    k), f"set {k} to {v} failed "
+
+        # The custom logger need 2 int as inputs
+        logger = lambda progress, total: print(
+            f"compile progrss: {progress}/{total}")
+        ipu_strategy.set_options({'compilation_progress_logger': logger})
 
 
 if __name__ == "__main__":

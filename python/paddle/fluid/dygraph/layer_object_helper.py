@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import copy
 import six
-from ..framework import Parameter, in_dygraph_mode, _global_flags
+from ..framework import Parameter, _non_static_mode, _global_flags
 from ..param_attr import ParamAttr
 from .. import core
 from six.moves import zip
@@ -25,6 +25,7 @@ from ..dygraph_utils import _append_activation_in_dygraph
 
 
 class LayerObjectHelper(LayerHelperBase):
+
     def __init__(self, name):
         super(LayerObjectHelper, self).__init__(name, layer_type=name)
 
@@ -163,17 +164,16 @@ class LayerObjectHelper(LayerHelperBase):
         if (use_mkldnn is not None) and use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
-        if in_dygraph_mode():
+        if _non_static_mode():
             res = _append_activation_in_dygraph(input_var, act_type, use_cudnn,
                                                 use_mkldnn)
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-            self.append_op(
-                type=act_type,
-                inputs={"X": [input_var]},
-                outputs={"Out": [tmp]},
-                attrs=act)
+            self.append_op(type=act_type,
+                           inputs={"X": [input_var]},
+                           outputs={"Out": [tmp]},
+                           attrs=act)
             return tmp
 
     def is_instance(self, param, cls):

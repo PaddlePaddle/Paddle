@@ -24,6 +24,7 @@ import paddle.fluid.core as core
 @OpTestTool.skip_if(not (isinstance(_current_expected_place(), core.CPUPlace)),
                     "GPU is not supported")
 class TestMKLDNNElementwiseSubOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.init_dtype()
@@ -65,6 +66,7 @@ class TestMKLDNNElementwiseSubOp(OpTest):
 
 
 class TestMKLDNNElementwiseSubOp2(TestMKLDNNElementwiseSubOp):
+
     def init_input_output(self):
         self.x = np.random.random((100, )).astype(self.dtype)
         self.y = np.random.random((100, )).astype(self.dtype)
@@ -72,6 +74,7 @@ class TestMKLDNNElementwiseSubOp2(TestMKLDNNElementwiseSubOp):
 
 
 class TestMKLDNNElementwiseSubOp3(TestMKLDNNElementwiseSubOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
@@ -79,13 +82,32 @@ class TestMKLDNNElementwiseSubOp3(TestMKLDNNElementwiseSubOp):
 
 
 class TestMKLDNNElementwiseSubOp4(TestMKLDNNElementwiseSubOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
 
+class TestMKLDNNElementwiseSubOp40(TestMKLDNNElementwiseSubOp):
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 2, [180, 1]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [1, 256]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+
+
 class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
@@ -93,6 +115,7 @@ class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
 
 
 class TestMKLDNNElementwiseSubOp_broadcast(TestMKLDNNElementwiseSubOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -103,6 +126,7 @@ class TestMKLDNNElementwiseSubOp_broadcast(TestMKLDNNElementwiseSubOp):
 
 
 class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
+
     def init_input_output(self):
         self.x = np.random.rand(10, 12).astype(self.dtype)
         self.y = np.random.rand(2, 2, 10, 12).astype(self.dtype)
@@ -123,6 +147,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestBf16(TestMKLDNNElementwiseSubOp):
+
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.init_dtype()
@@ -149,28 +174,26 @@ class TestBf16(TestMKLDNNElementwiseSubOp):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["X", "Y"],
-            "Out",
-            user_defined_grads=[self.x, -self.x],
-            user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(core.CPUPlace(), ["X", "Y"],
+                                   "Out",
+                                   user_defined_grads=[self.x, -self.x],
+                                   user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ignore_x(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["Y"],
-            "Out",
-            user_defined_grads=[-self.y],
-            user_defined_grad_outputs=[self.y_bf16])
+        self.check_grad_with_place(core.CPUPlace(), ["Y"],
+                                   "Out",
+                                   user_defined_grads=[-self.y],
+                                   user_defined_grad_outputs=[self.y_bf16])
 
     def test_check_grad_ignore_y(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["X"],
-            "Out",
-            user_defined_grads=[self.x],
-            user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(core.CPUPlace(), ["X"],
+                                   "Out",
+                                   user_defined_grads=[self.x],
+                                   user_defined_grad_outputs=[self.x_bf16])
 
 
 class TestBf16Broadcasting(TestBf16):
+
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
@@ -186,9 +209,8 @@ class TestBf16Broadcasting(TestBf16):
         self.check_grad_with_place(
             core.CPUPlace(), ["X", "Y"],
             "Out",
-            user_defined_grads=[
-                self.x, self.compute_reduced_gradients(self.x)
-            ],
+            user_defined_grads=[self.x,
+                                self.compute_reduced_gradients(self.x)],
             user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ignore_x(self):
@@ -200,6 +222,7 @@ class TestBf16Broadcasting(TestBf16):
 
 
 class TestInt8(TestMKLDNNElementwiseSubOp):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True

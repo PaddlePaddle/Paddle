@@ -14,7 +14,7 @@
 
 import paddle
 from ..fluid.core import LoDTensor
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import _non_static_mode
 from ..fluid.data_feeder import check_type, check_dtype, convert_dtype
 
 __all__ = [
@@ -34,7 +34,7 @@ def to_dlpack(x):
 
     Returns:
         dltensor, and the data type is PyCapsule.
-    
+
     Examples:
         .. code-block:: python
 
@@ -47,8 +47,8 @@ def to_dlpack(x):
             # <capsule object "dltensor" at 0x7f6103c681b0>
     """
 
-    if in_dygraph_mode():
-        if not isinstance(x, paddle.Tensor):
+    if _non_static_mode():
+        if not isinstance(x, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
             raise TypeError(
                 "The type of 'x' in to_dlpack must be paddle.Tensor,"
                 " but received {}.".format(type(x)))
@@ -62,12 +62,12 @@ def to_dlpack(x):
 def from_dlpack(dlpack):
     """
     Decodes a DLPack to a tensor.
-    
+
     Args:
         dlpack (PyCapsule): a PyCapsule object with the dltensor.
 
     Returns:
-        out (Tensor): a tensor decoded from DLPack. One thing to be noted, if we get 
+        out (Tensor): a tensor decoded from DLPack. One thing to be noted, if we get
                       an input dltensor with data type as `bool`, we return the decoded
                       tensor as `uint8`.
 
@@ -83,7 +83,7 @@ def from_dlpack(dlpack):
             print(x)
             # Tensor(shape=[2, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #  [[0.20000000, 0.30000001, 0.50000000, 0.89999998],
-            #  [0.10000000, 0.20000000, 0.60000002, 0.69999999]]) 
+            #  [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
     """
 
     t = type(dlpack)
@@ -93,7 +93,7 @@ def from_dlpack(dlpack):
             "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
             " but received {}.".format(type(dlpack)))
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         out = paddle.fluid.core.from_dlpack(dlpack)
         out = paddle.to_tensor(out)
         return out

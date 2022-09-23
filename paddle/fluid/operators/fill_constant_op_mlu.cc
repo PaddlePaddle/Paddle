@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_constant_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
@@ -51,30 +52,29 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
         }
       }
     }
+    const T *value_data = &value;
+    cnnlPointerMode_t pointer_mode = CNNL_POINTER_MODE_HOST;
     if (ctx.HasInput("ValueTensor")) {
       auto *value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
       PADDLE_ENFORCE_EQ(
-          value_tensor->numel(), 1,
+          value_tensor->numel(),
+          1,
           platform::errors::InvalidArgument(
               "When use Tensor as value to set Tensor value in fill_cosntant, "
               "value input(ValueTensor) size must be 1, but get %d",
               value_tensor->numel()));
-      const T *tensor_data = value_tensor->data<T>();
-      framework::Tensor mlu_tensor;
+      value_data = value_tensor->data<T>();
       auto tmp_place = value_tensor->place();
       if (platform::is_mlu_place(tmp_place)) {
-        framework::TensorCopySync(*value_tensor, platform::CPUPlace(),
-                                  &mlu_tensor);
-        tensor_data = mlu_tensor.data<T>();
+        pointer_mode = CNNL_POINTER_MODE_DEVICE;
       }
-      value = tensor_data[0];
     }
 
     auto shape = GetShape(ctx);
     out_var->mutable_data<T>(shape, ctx.GetPlace());
-    MLUCnnlTensorDesc output_desc(*out_var, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(out_var->dtype()));
-    MLUCnnl::Fill(ctx, value, output_desc.get(), GetBasePtr(out_var));
+    MLUCnnlTensorDesc output_desc(*out_var);
+    MLUCnnl::Fill(
+        ctx, pointer_mode, value_data, output_desc.get(), GetBasePtr(out_var));
   }
 };
 }  // namespace operators
@@ -83,7 +83,8 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_MLU_KERNEL(
-    fill_constant, paddle::operators::FillConstantMLUKernel<float>,
+    fill_constant,
+    paddle::operators::FillConstantMLUKernel<float>,
     paddle::operators::FillConstantMLUKernel<bool>,
     paddle::operators::FillConstantMLUKernel<int>,
     paddle::operators::FillConstantMLUKernel<uint8_t>,

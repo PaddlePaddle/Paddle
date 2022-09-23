@@ -20,9 +20,8 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -30,90 +29,82 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_op_attrs()
 
-    def set_atol(self):
-        self.atol = 1e-3
+    @property
+    def fp16_enabled(self):
+        return False
 
     def set_data_feed(self):
-        self.feed = {
-            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float32'),
-        }
+        data = np.random.uniform(size=[1, 3, 3, 3])
+        self.feed_fp32 = {'x': data.astype(np.float16)}
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed.values()]
-        self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [x.dtype for x in self.feed.values()]
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
         self.attrs = {}
-        self.attrs['dtype'] = 'float16'
+        self.attrs['dtype'] = 'float32'
 
-    def _test_base(self, run_ipu=True):
-        scope = paddle.static.Scope()
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        main_prog.random_seed = self.SEED
-        startup_prog.random_seed = self.SEED
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype=self.feed_dtype[0])
+        out = paddle.cast(x, **self.attrs)
+        self.fetch_list = [out.name]
 
-        with paddle.static.scope_guard(scope):
-            with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.static.data(
-                    name=self.feed_list[0],
-                    shape=self.feed_shape[0],
-                    dtype=self.feed_dtype[0])
-                out = paddle.cast(x, **self.attrs)
-                fetch_list = [out.name]
+    def run_model(self, exec_mode):
+        self.run_op_test(exec_mode)
 
-            if run_ipu:
-                place = paddle.IPUPlace()
-            else:
-                place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(startup_prog)
-
-            if run_ipu:
-                feed_list = self.feed_list
-                ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.set_graph_config(is_training=self.is_training)
-                program = paddle.static.IpuCompiledProgram(
-                    main_prog,
-                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
-            else:
-                program = main_prog
-
-            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
-            return result[0]
-
-    def test_base(self):
-        res0 = self._test_base(True)
-        res1 = self._test_base(False)
-
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
-
-        self.assertTrue(res0.shape == res1.shape)
+    def test(self):
+        for m in IPUOpTest.ExecutionMode:
+            if not self.skip_mode(m):
+                self.build_model()
+                self.run_model(m)
+        self.check()
 
 
-class TestCase2(TestBase):
-    def set_atol(self):
-        self.atol = 1e-10
+class TestEnableFp16(TestBase):
+
+    @property
+    def fp16_enabled(self):
+        return True
+
+    def run_model(self, exec_mode):
+        self.run_op_test(exec_mode)
 
     def set_data_feed(self):
-        self.feed = {
-            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float16'),
-        }
+        data = np.random.uniform(size=[1, 3, 3, 3])
+        self.feed_fp32 = {'x': data.astype(np.float32)}
+        self.feed_fp16 = {'x': data.astype(np.float16)}
 
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs['dtype'] = 'float32'
 
 
-class TestCase3(TestBase):
+class TestCase2(TestBase):
+
     def set_atol(self):
-        self.atol = 1e-10
+        super().set_atol()
+        self.atol = 1e-3
+        self.rtol = 1e-3
 
     def set_data_feed(self):
-        self.feed = {
+        self.feed_fp32 = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float32'),
+        }
+
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'float16'
+
+
+class TestCase3(TestBase):
+
+    def set_data_feed(self):
+        self.feed_fp32 = {
             "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float32'),
         }
 
@@ -123,11 +114,9 @@ class TestCase3(TestBase):
 
 
 class TestCase4(TestBase):
-    def set_atol(self):
-        self.atol = 1e-10
 
     def set_data_feed(self):
-        self.feed = {
+        self.feed_fp32 = {
             "x": np.random.uniform(size=[1, 3, 3, 3]).astype('int32'),
         }
 
@@ -137,11 +126,9 @@ class TestCase4(TestBase):
 
 
 class TestCase5(TestBase):
-    def set_atol(self):
-        self.atol = 1e-10
 
     def set_data_feed(self):
-        self.feed = {
+        self.feed_fp32 = {
             "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float16'),
         }
 
@@ -151,11 +138,9 @@ class TestCase5(TestBase):
 
 
 class TestCase6(TestBase):
-    def set_atol(self):
-        self.atol = 1e-10
 
     def set_data_feed(self):
-        self.feed = {
+        self.feed_fp32 = {
             "x": np.random.uniform(size=[1, 3, 3, 3]).astype('int32'),
         }
 
@@ -165,16 +150,18 @@ class TestCase6(TestBase):
 
 
 @unittest.skip('float64 is not supported')
-class TestCase2(TestBase):
+class TestCase7(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs['dtype'] = 'float64'
 
 
 @unittest.skip('skip float16 to float32')
-class TestCase3(TestBase):
+class TestCase8(TestBase):
+
     def set_data_feed(self):
-        self.feed = {
+        self.feed_fp32 = {
             "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float16'),
         }
 
@@ -184,14 +171,17 @@ class TestCase3(TestBase):
 
 
 @unittest.skip('int32 to int8 is not supported')
-class TestCase4(TestBase):
+class TestCase9(TestBase):
+
     def set_atol(self):
+        super().set_atol()
         self.atol = 1
 
     def set_data_feed(self):
-        self.feed = {
-            "x": np.random.randint(
-                low=1, high=100, size=[1, 3, 3, 3]).astype('int32'),
+        self.feed_fp32 = {
+            "x":
+            np.random.randint(low=1, high=100, size=[1, 3, 3,
+                                                     3]).astype('int32'),
         }
 
     def set_op_attrs(self):

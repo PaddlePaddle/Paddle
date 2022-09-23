@@ -18,8 +18,9 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/naive_executor.h"
-#include "paddle/fluid/framework/op_compatible_info.h"
+
+#include "onnxruntime_c_api.h"    // NOLINT
+#include "onnxruntime_cxx_api.h"  // NOLINT
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
@@ -27,9 +28,6 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/string/printf.h"
-
-#include "onnxruntime_c_api.h"    // NOLINT
-#include "onnxruntime_cxx_api.h"  // NOLINT
 #include "paddle2onnx/converter.h"
 
 #ifdef PADDLE_WITH_TESTING
@@ -94,14 +92,35 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   /// \param[in] AnalysisConfig config
   ///
   explicit ONNXRuntimePredictor(const AnalysisConfig &config)
-      : config_(config) {
+      : env_(std::make_shared<Ort::Env>(ORT_LOGGING_LEVEL_WARNING,
+                                        "paddle-ort")),
+        session_(nullptr),
+        binding_(nullptr),
+        config_(config) {
     predictor_id_ = inference::GetUniqueId();
-    env_ = Ort::Env(ORT_LOGGING_LEVEL_INFO, "onnx");
+  }
+  ///
+  /// \brief Clone a ONNXRuntime Predictor object
+  ///
+  /// \param[in] AnalysisConfig config
+  ///
+  explicit ONNXRuntimePredictor(const AnalysisConfig &config,
+                                std::shared_ptr<Ort::Env> env,
+                                std::shared_ptr<Ort::Session> session)
+      : env_(env), session_(session), binding_(nullptr), config_(config) {
+    predictor_id_ = inference::GetUniqueId();
   }
   ///
   /// \brief Destroy the ONNXRuntime Predictor object
   ///
   ~ONNXRuntimePredictor();
+
+  ///
+  /// \brief Initialize ORT Binding
+  ///
+  /// \return Whether the init function executed successfully
+  ///
+  bool InitBinding();
 
   ///
   /// \brief Initialize predictor
@@ -175,12 +194,25 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   /// \return get a new predictor
   ///
-  std::unique_ptr<PaddlePredictor> Clone() override;
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
 
   std::shared_ptr<framework::Scope> scope_;
 
+ protected:
+  const void *GetDeviceContexts() const override;
+
  private:
   ///
+  /// \brief Whether to find in/out by name.
+  ///
+  /// \param[in] name input or output name
+  ///
+  /// \param[in] is_input input(true) or output(false)
+  ///
+  /// \return Whether to find by name
+  ///
+  bool FindONNXDesc(const std::string &name, bool is_input);
+
   /// \brief get the Ort Value(input Tensor).
   ///
   /// \param[in] desc ONNXDesce(name、shape、dtype)
@@ -191,26 +223,15 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   Ort::Value GetOrtValue(const ONNXDesc &desc, const char *device_name);
 
-  ///
-  /// \brief Ort::Value to Paddle::ZeroCopyTensor.
-  ///
-  /// \param[in] value Ort::Value(output Tensor)
-  ///
-  /// \param[in] desc a ONNXDesce(name、shape、dtype)
-  ///
-  /// \return get a Ort::Value
-  ///
-  void AsTensor(const Ort::Value &value, const ONNXDesc &desc);
-
  private:
-  AnalysisConfig config_;
-
   // ONNXRuntime
-  Ort::Env env_;
-  Ort::Session session_{nullptr};
+  std::shared_ptr<Ort::Env> env_;
+  std::shared_ptr<Ort::Session> session_{nullptr};
+  std::shared_ptr<Ort::IoBinding> binding_;
 
+  AnalysisConfig config_;
+  std::mutex clone_mutex_;
   platform::Place place_;
-  framework::Scope *sub_scope_{nullptr};
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
   int predictor_id_;

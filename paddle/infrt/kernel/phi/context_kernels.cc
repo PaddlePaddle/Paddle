@@ -20,8 +20,10 @@ namespace phi {
 
 ::phi::CPUContext CreateCPUContext() {
   ::phi::CPUContext ctx{};
-  ctx.Init();
-  ctx.SetAllocator(new backends::CpuPhiAllocator{});
+  auto allocator = new backends::CpuPhiAllocator{};
+  ctx.SetAllocator(allocator);
+  ctx.SetHostAllocator(allocator);
+  ctx.SetZeroAllocator(allocator);
   return ctx;
 }
 
@@ -30,6 +32,7 @@ namespace phi {
   ::phi::GPUContext context;
   context.PartialInitWithoutAllocator();
   context.SetAllocator(new ::infrt::backends::GpuPhiAllocator{});
+  context.SetHostAllocator(new backends::CpuPhiAllocator{});
   context.PartialInitWithAllocator();
   return context;
 }

@@ -17,6 +17,7 @@
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
+#include "xpu/kernel/simd_header.h"
 
 namespace phi {
 namespace kps {
@@ -47,7 +48,7 @@ static inline __device__ void sync_all() {
 
 #define ncores 64
 template <typename T, typename OpFunc, int VecSize>
-__device__ void BlockXReduce(T* data, OpFunc reducer) {
+__device__ void BlockXReduce(T* out, const T* data, OpFunc reducer) {
   __shared__ T sum_array[ncores * VecSize];
   int core_idx = core_id() * VecSize;
   mfence();
@@ -56,21 +57,22 @@ __device__ void BlockXReduce(T* data, OpFunc reducer) {
 #pragma unroll
   for (int i = 0; i < VecSize; i++) {
     mfence();
-    sum_array[core_idx + i] = data[i];
+    sum_array[i * ncores + core_idx] = data[i];
     mfence();
-    data[i] = 0;
   }
   sync_all();
 #pragma unroll
   for (int i = 0; i < VecSize; i++) {
+    T start = data[i * ncores];
 #pragma unroll
-    for (int j = 0; j < ncores; j++) {
+    for (int j = 1; j < ncores; j++) {
       mfence();
-      T tmp = sum_array[j * VecSize + i];
+      T tmp = sum_array[i * ncores + j];
       mfence();
-      data[i] = reducer(data[i], tmp);
+      start = reducer(start, tmp);
       mfence();
     }
+    out[i] = start;
   }
   sync_all();
 }
@@ -87,7 +89,6 @@ __device__ void BlockXReduce(T* data, OpFunc reducer) {
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * OpFunc: Compute functor which has an operator() as following:
  *     template <typename InT, typename OutT>
@@ -102,12 +103,7 @@ __device__ void BlockXReduce(T* data, OpFunc reducer) {
  * in: The register pointer of in, the size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseUnary(OutT* out,
                                                  const InT* in,
                                                  OpFunc compute) {
@@ -126,7 +122,6 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out,
  * OutT: The data type of out.
  * NX: The number of data columns computed by each thread.
  * NY: The number of data rows computed by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * OpFunc: Compute functor which has an operator() as following:
  *     template <typename InT>
@@ -142,18 +137,21 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out,
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseBinary(OutT* out,
                                                   const InT* in1,
                                                   const InT* in2,
                                                   OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
+    out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx]));
+  }
+}
+
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
+__device__ __forceinline__ void ElementwiseBinary(
+    OutT* out, const InT* in1, const InT* in2, OpFunc compute, int read_lens) {
+  for (int idx = 0; idx < read_lens; ++idx) {
     out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx]));
   }
 }
@@ -167,7 +165,6 @@ __device__ __forceinline__ void ElementwiseBinary(OutT* out,
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * OpFunc: Compute functor which has an operator() as following
  *     template <typename InT>
@@ -185,12 +182,7 @@ __device__ __forceinline__ void ElementwiseBinary(OutT* out,
  * in3: The register pointer of third input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseTernary(
     OutT* out, const InT* in1, const InT* in2, const InT* in3, OpFunc compute) {
 #pragma unroll
@@ -208,7 +200,6 @@ __device__ __forceinline__ void ElementwiseTernary(
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * Arity: The size of ins
  * OpFunc: Compute functor which has an operator() as following:
@@ -224,13 +215,7 @@ __device__ __forceinline__ void ElementwiseTernary(
  * ins: A pointers of array consisting of multiple inputs.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Arity,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, int Arity, class OpFunc>
 __device__ __forceinline__ void ElementwiseAny(OutT* out,
                                                InT (*ins)[NX * NY],
                                                OpFunc compute) {
@@ -255,7 +240,6 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out,
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * OpFunc: Compute functor which has an operator() as following
  *     template <typename InT, typename OutT>
@@ -271,12 +255,7 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out,
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void CycleBinary(OutT* out,
                                             const InT* in1,
                                             const InT* in2,
@@ -301,7 +280,6 @@ __device__ __forceinline__ void CycleBinary(OutT* out,
  * T: The type of data.
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * ReduceFunctor: Compute functor which has an operator() as following
  *     template <typename InT>
@@ -321,7 +299,6 @@ __device__ __forceinline__ void CycleBinary(OutT* out,
 template <typename T,
           int NX,
           int NY,
-          int BlockSize,
           class ReduceFunctor,
           details::ReduceMode Mode>
 __device__ __forceinline__ void Reduce(T* out,
@@ -329,14 +306,12 @@ __device__ __forceinline__ void Reduce(T* out,
                                        ReduceFunctor reducer,
                                        bool reduce_last_dim) {
   if (Mode == details::kGlobalMode) {
+    if (reduce_last_dim) {
 #pragma unroll
-    for (int i = 0; i < NY; ++i) {
-#pragma unroll
-      for (int j = 0; j < NX; ++j) {
-        out[i] = reducer(out[i], in[i * NX + j]);
+      for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.x
+        details::BlockXReduce<T, ReduceFunctor, 1>(&out[i], &in[i], reducer);
       }
     }
-    BlockXReduce<T, ReduceFunctor, NY>(out, reducer);
   } else {  // else  kLocalMode
 #pragma unroll
     for (int i = 0; i < NY; ++i) {
@@ -349,34 +324,28 @@ __device__ __forceinline__ void Reduce(T* out,
 }
 
 /*
-* @brief Fill register with a constant according to OpFunc
-*
-* @template paraments
-* InT: The data type of in1 and in2.
-* OutT: The data type of out.
-* NX: The number of data columns loaded by each thread.
-* NY: The number of data rows loaded by each thread.
-* BlockSize: Identifies the current device thread index method. For xpu,
-* core_id() is used as the index.
-* OpFunc: Compute functor which has an operator() as following
-*     template <typename InT>
-*     struct XxxFunctor {
-*       HOSTDEVICE InT operator()()
-* const {
-*         return a;
-*       }
-*     };
-*
-* @param
-* out: The register pointer of out, the size is NX * NY.
-* compute: Compute function which was declared like OpFunc<InT>().
-*/
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+ * @brief Fill register with a constant according to OpFunc
+ *
+ * @template paraments
+ * InT: The data type of in1 and in2.
+ * OutT: The data type of out.
+ * NX: The number of data columns loaded by each thread.
+ * NY: The number of data rows loaded by each thread.
+ * core_id() is used as the index.
+ * OpFunc: Compute functor which has an operator() as following
+ *     template <typename InT>
+ *     struct XxxFunctor {
+ *       HOSTDEVICE InT operator()()
+ * const {
+ *         return a;
+ *       }
+ *     };
+ *
+ * @param
+ * out: The register pointer of out, the size is NX * NY.
+ * compute: Compute function which was declared like OpFunc<InT>().
+ */
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {

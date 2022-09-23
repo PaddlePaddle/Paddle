@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_constant_op.h"
 #include <string>
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace operators {
 
@@ -22,18 +24,21 @@ class FillConstantOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FillConstant");
 
-    auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     if (!ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList")) {
       for (size_t i = 0; i < shape.size(); ++i) {
         PADDLE_ENFORCE_GE(
-            shape[i], 0,
+            shape[i],
+            0,
             platform::errors::InvalidArgument(
                 "Each value of attribute 'shape' is expected to be no less "
-                "than 0. But recieved: shape[%u] = %d; shape = [%s].",
-                i, shape[i], phi::make_ddim(shape)));
+                "than 0. But received: shape[%u] = %d; shape = [%s].",
+                i,
+                shape[i],
+                phi::make_ddim(shape)));
       }
     }
     if (shape.empty() && ctx->HasInput("ShapeTensor")) {
@@ -52,18 +57,19 @@ class FillConstantOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const std::string &var_name,
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
@@ -97,15 +103,27 @@ class FillConstantOp : public framework::OperatorWithKernel {
       }
     }
 
+#ifdef PADDLE_WITH_MKLDNN
+    auto input_data_type =
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
+
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     return kt;
   }
 };
 
 class FillConstantOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext* ctx) const override {
+  void operator()(framework::InferVarTypeContext *ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
+        PADDLE_GET_CONST(int, ctx->GetAttr("dtype")));
     ctx->SetOutputDataType("Out", data_type);
   }
 };
@@ -173,7 +191,9 @@ Fill up a variable with specified constant value.
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    fill_constant, ops::FillConstantOp, ops::FillConstantOpMaker,
+    fill_constant,
+    ops::FillConstantOp,
+    ops::FillConstantOpMaker,
     ops::FillConstantOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
@@ -192,4 +212,5 @@ REGISTER_OP_VERSION(fill_constant)
     )ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "place_type",
-            "In order to support tensor in CUDAPinnedPlace and XPUPlace", -1));
+            "In order to support tensor in CUDAPinnedPlace and XPUPlace",
+            -1));

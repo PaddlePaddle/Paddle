@@ -34,13 +34,16 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
 
     const size_t level = lod.size() - 1;
     PADDLE_ENFORCE_EQ(
-        dims[0], static_cast<int64_t>(lod[level].back()),
+        dims[0],
+        static_cast<int64_t>(lod[level].back()),
         platform::errors::InvalidArgument(
             "The first dimension of Input(X) should be equal to the sum of all "
             "sequences' lengths. But received first dimension of Input(X) is "
             "%d, the sum of all sequences' lengths is %d.",
-            dims[0], static_cast<int64_t>(lod[level].back())));
-    PADDLE_ENFORCE_EQ(dims[0], x->numel(),
+            dims[0],
+            static_cast<int64_t>(lod[level].back())));
+    PADDLE_ENFORCE_EQ(dims[0],
+                      x->numel(),
                       platform::errors::InvalidArgument(
                           "The width of each timestep in Input(X) of "
                           "SequenceSoftmaxOp should be 1."));
@@ -58,9 +61,8 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
           phi::make_ddim({1UL, end_pos - start_pos});
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
-      math::SoftmaxCUDNNFunctor<T>()(
-          ctx.template device_context<platform::CUDADeviceContext>(), &x_i,
-          &out_i);
+      math::SoftmaxCUDNNFunctor<T, phi::GPUContext>()(
+          ctx.template device_context<phi::GPUContext>(), &x_i, &out_i);
     }
   }
 };
@@ -93,9 +95,11 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
       out_i.Resize(dims_i);
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);
-      math::SoftmaxGradCUDNNFunctor<T>()(
-          ctx.template device_context<platform::CUDADeviceContext>(), &out_i,
-          &out_grad_i, &x_grad_i);
+      math::SoftmaxGradCUDNNFunctor<T, phi::GPUContext>()(
+          ctx.template device_context<phi::GPUContext>(),
+          &out_i,
+          &out_grad_i,
+          &x_grad_i);
     }
   }
 };
@@ -107,15 +111,23 @@ namespace ops = paddle::operators;
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN not support float64
-REGISTER_OP_KERNEL(sequence_softmax, CUDNN, ::paddle::platform::CUDAPlace,
+REGISTER_OP_KERNEL(sequence_softmax,
+                   CUDNN,
+                   ::paddle::platform::CUDAPlace,
                    ops::SequenceSoftmaxCUDNNKernel<float>);
-REGISTER_OP_KERNEL(sequence_softmax_grad, CUDNN, ::paddle::platform::CUDAPlace,
+REGISTER_OP_KERNEL(sequence_softmax_grad,
+                   CUDNN,
+                   ::paddle::platform::CUDAPlace,
                    ops::SequenceSoftmaxGradCUDNNKernel<float>);
 #else
-REGISTER_OP_KERNEL(sequence_softmax, CUDNN, ::paddle::platform::CUDAPlace,
+REGISTER_OP_KERNEL(sequence_softmax,
+                   CUDNN,
+                   ::paddle::platform::CUDAPlace,
                    ops::SequenceSoftmaxCUDNNKernel<float>,
                    ops::SequenceSoftmaxCUDNNKernel<double>);
-REGISTER_OP_KERNEL(sequence_softmax_grad, CUDNN, ::paddle::platform::CUDAPlace,
+REGISTER_OP_KERNEL(sequence_softmax_grad,
+                   CUDNN,
+                   ::paddle::platform::CUDAPlace,
                    ops::SequenceSoftmaxGradCUDNNKernel<float>,
                    ops::SequenceSoftmaxGradCUDNNKernel<double>);
 #endif

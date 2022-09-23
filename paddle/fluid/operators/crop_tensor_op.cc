@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/crop_tensor_op.h"
-#include <memory>
-#include <string>
-#include <vector>
+#include "paddle/fluid/framework/op_registry.h"
+
+// TODO(freeliuzc): Delete old infershape
+// New infershape has already in unary.h and backward.h
 
 namespace paddle {
 namespace operators {
@@ -36,7 +36,8 @@ class CropTensorOp : public framework::OperatorWithKernel {
       // top prority shape
       auto inputs_name = ctx->Inputs("ShapeTensor");
       PADDLE_ENFORCE_GT(
-          inputs_name.size(), 0,
+          inputs_name.size(),
+          0,
           platform::errors::InvalidArgument(
               "The number of elements of the input 'ShapeTensor' for "
               "CropTensor must be greater than zero, "
@@ -59,18 +60,21 @@ class CropTensorOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("Shape")) {
       auto shape_dim = ctx->GetInputDim("Shape");
-      PADDLE_ENFORCE_EQ(shape_dim.size(), 1,
+      PADDLE_ENFORCE_EQ(shape_dim.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "The number of dimensions of the input "
                             "'Shape' for CropTensor must be 1, "
                             "but the value received is %d.",
                             shape_dim.size()));
-      PADDLE_ENFORCE_EQ(shape_dim[0], x_dim.size(),
+      PADDLE_ENFORCE_EQ(shape_dim[0],
+                        x_dim.size(),
                         platform::errors::InvalidArgument(
                             "The number of elements (%d) of the input 'Shape' "
                             "for CropTensor must be equal to the number of"
                             " dimensions (%d) of the input.",
-                            shape_dim[0], x_dim.size()));
+                            shape_dim[0],
+                            x_dim.size()));
       if (ctx->IsRuntime()) {
         // If true, set the shape of Output(Out) according to Input(Shape) in
         // CropTensorKernel with ExecutionContext. Also check LoD in
@@ -83,12 +87,14 @@ class CropTensorOp : public framework::OperatorWithKernel {
       return;
     }
     PADDLE_ENFORCE_EQ(
-        int64_t(shape.size()), x_dim.size(),
+        int64_t(shape.size()),
+        x_dim.size(),
         platform::errors::InvalidArgument(
             "The number of elements (%d) of attribute 'shape' for "
             "CropTensor must be equal to the number of "
             "dimensions (%d) of the input.",
-            shape.size(), x_dim.size()));
+            shape.size(),
+            x_dim.size()));
     std::vector<int64_t> out_shape(shape.size(), -1);
     for (size_t i = 0; i < shape.size(); ++i) {
       if (shape[i] > 0) {
@@ -110,15 +116,16 @@ class CropTensorOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "OffsetsTensor" ||
         var_name == "Shape" || var_name == "Offsets") {
       return expected_kernel_type;
     }
 
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -173,26 +180,26 @@ CropTensor Operator.
 Crop input into output, as specified by offsets and shape.
 
 There are three ways to set the offsets:
-1. Input 'OffsetsTensor: It is a tensor list. It should be set as a list that 
-                         contains tensor variable in python configure script. 
+1. Input 'OffsetsTensor: It is a tensor list. It should be set as a list that
+                         contains tensor variable in python configure script.
                          This way is suitable for dynamic offsets.
-2. Input 'Offsets': It is a variable and can be output of other operators. 
+2. Input 'Offsets': It is a variable and can be output of other operators.
                     This way is suitable for dynamic offsets.
-3. Attribute 'offsets': It will be set in python configure script. This way 
+3. Attribute 'offsets': It will be set in python configure script. This way
                         is suitable for fixed offsets.
 
-You CANNOT use these three ways at the same time. An exception will be raised 
-if input 'OffsetsTensor' or 'Offset' is configured and meanwhile the attribute 'offsets' is 
+You CANNOT use these three ways at the same time. An exception will be raised
+if input 'OffsetsTensor' or 'Offset' is configured and meanwhile the attribute 'offsets' is
 not empty.
 
 There are three ways to set shape:
 1. Input 'ShapeTensor': It is a tensor list. It should be set as a list that contains
-                        tensor variable in python configure script. This way is suitable 
+                        tensor variable in python configure script. This way is suitable
                         for dynamic shape.
-2. Input 'Shape': It is a Variable and can be output of other operators. This way is suitable 
+2. Input 'Shape': It is a Variable and can be output of other operators. This way is suitable
                   for dynamic shape.
-2. Attribute 'shape': crop input X into the shape described by a list<int>. The size of shape 
-                      list should be the same as the dimension size of input X. This way is 
+2. Attribute 'shape': crop input X into the shape described by a list<int>. The size of shape
+                      list should be the same as the dimension size of input X. This way is
                       suitable for fixed shape.
 
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
@@ -249,8 +256,10 @@ class CropTensorOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CropTensorGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "CropTensorGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "CropTensorGrad");
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -266,15 +275,16 @@ class CropTensorOpGrad : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "OffsetsTensor" ||
         var_name == "Shape" || var_name == "Offsets") {
       return expected_kernel_type;
     }
 
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -286,8 +296,8 @@ class CropTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("crop_tensor_grad");
-    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     if (this->HasInput("OffsetsTensor")) {
       op->SetInput("OffsetsTensor", this->Input("OffsetsTensor"));
     }
@@ -303,32 +313,10 @@ class CropTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(crop_tensor, ops::CropTensorOp, ops::CropTensorOpMaker,
+
+REGISTER_OPERATOR(crop_tensor,
+                  ops::CropTensorOp,
+                  ops::CropTensorOpMaker,
                   ops::CropTensorGradOpMaker<paddle::framework::OpDesc>,
                   ops::CropTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(crop_tensor_grad, ops::CropTensorOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    crop_tensor,
-    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    crop_tensor_grad,
-    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(
-    crop_tensor,
-    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    crop_tensor_grad,
-    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, int64_t>);

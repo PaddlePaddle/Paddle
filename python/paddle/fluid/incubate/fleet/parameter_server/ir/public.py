@@ -109,6 +109,7 @@ def get_sparse_tablenames(program, is_distributed):
 
 
 class MergedVariable:
+
     def __init__(self, merged, ordered, offsets):
         self.merged_var = merged
         self.ordered_vars = ordered
@@ -128,6 +129,7 @@ def Singleton(cls):
 
 @Singleton
 class CompileTimeStrategy(object):
+
     def __init__(self, main_program, startup_program, strategy, role_maker):
         self.min_block_size = 81920
 
@@ -356,6 +358,7 @@ class CompileTimeStrategy(object):
                   is_sparse,
                   is_send,
                   is_distributed=False):
+
         def get_grad_var_ep(slices):
             names = []
             eps = []
@@ -367,8 +370,8 @@ class CompileTimeStrategy(object):
                         names.append("{}.delta".format(slice.name))
                     else:
                         names.append(slice.name)
-                elif is_grad and self.is_sync_mode() and self.get_trainers(
-                ) > 1:
+                elif is_grad and self.is_sync_mode(
+                ) and self.get_trainers() > 1:
                     names.append("{}.trainer_{}".format(slice.name,
                                                         self.get_role_id()))
                 else:
@@ -399,7 +402,7 @@ class CompileTimeStrategy(object):
         trainer_id = self.get_role_id()
         aggregate = True
         ctx = CommContext(name, names, eps, sections, origin_varnames,
-                          trainer_id, aggregate, is_sparse, is_distributed)
+                          trainer_id, aggregate, is_sparse, is_distributed, [])
         return ctx
 
     def get_trainer_send_context(self):
@@ -447,10 +450,9 @@ class CompileTimeStrategy(object):
                                   param_ctx.split_endpoints(),
                                   param_ctx.sections(),
                                   grad_ctx.origin_varnames(),
-                                  param_ctx.trainer_id(),
-                                  param_ctx.aggregate(),
+                                  param_ctx.trainer_id(), param_ctx.aggregate(),
                                   param_ctx.is_sparse(),
-                                  param_ctx.is_distributed())
+                                  param_ctx.is_distributed(), [])
 
                 send_ctx[ctx.var_name()] = ctx
                 idx += 1
@@ -577,7 +579,8 @@ class CompileTimeStrategy(object):
                 sparse_ctx = CommContext(grad_name, [grad_name],
                                          ["127.0.0.1:6071"], [var_numel],
                                          [grad_name], trainer_id, True, True,
-                                         is_distributed, idx, False, False, -1)
+                                         is_distributed, idx, False, False, -1,
+                                         [])
                 idx += 1
                 send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
@@ -616,22 +619,22 @@ class CompileTimeStrategy(object):
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
                                     aggregate, False, False, idx, False, False,
-                                    -1)
+                                    -1, [])
             send_ctx[grad_name] = dense_ctx
             idx += 1
         else:
             for merged in merged_dense_pairs:
                 grad = merged[1]
                 origin_varname = grad.merged_var.name
-                var = self.origin_main_program.global_block().vars[
-                    origin_varname]
+                var = self.origin_main_program.global_block(
+                ).vars[origin_varname]
                 var_numel = reduce(lambda x, y: x * y, var.shape)
                 grad_name = origin_varname
                 aggregate = True
                 dense_ctx = CommContext(grad_name, [grad_name],
                                         ["127.0.0.1:6071"], [var_numel],
                                         [origin_varname], trainer_id, aggregate,
-                                        False, False, idx, False, False, -1)
+                                        False, False, idx, False, False, -1, [])
                 send_ctx[grad_name] = dense_ctx
                 idx += 1
         return idx
@@ -673,7 +676,7 @@ class CompileTimeStrategy(object):
 
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
-                                     is_distributed, idx, False, False, -1)
+                                     is_distributed, idx, False, False, -1, [])
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
@@ -751,7 +754,7 @@ class CompileTimeStrategy(object):
         sections = [1] * len(endpoints)
         names = [name] * len(endpoints)
         ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
-                          True, False, False, idx, True, False, -1)
+                          True, False, False, idx, True, False, -1, [])
         return name, ctx
 
     def _create_vars_from_blocklist(self, block_list):
@@ -782,13 +785,12 @@ class CompileTimeStrategy(object):
 
             if len(split) == 1:
                 var_mapping[varname] = [orig_var]
-                self.var_distributed.add_distributed_var(
-                    origin_var=orig_var,
-                    slice_var=orig_var,
-                    block_id=0,
-                    offset=0,
-                    is_slice=False,
-                    vtype="Param")
+                self.var_distributed.add_distributed_var(origin_var=orig_var,
+                                                         slice_var=orig_var,
+                                                         block_id=0,
+                                                         offset=0,
+                                                         is_slice=False,
+                                                         vtype="Param")
             else:
                 var_mapping[varname] = []
                 orig_shape = orig_var.shape
@@ -921,8 +923,8 @@ class CompileTimeStrategy(object):
                         # update split_count after aligning
                 split_count = int(math.ceil(var_numel / float(block_size)))
                 for block_id in range(split_count):
-                    curr_block_size = min(block_size, var_numel - (
-                        (block_id) * block_size))
+                    curr_block_size = min(block_size,
+                                          var_numel - ((block_id) * block_size))
                     block = vars_metatools.VarBlock(var.name, block_id,
                                                     curr_block_size)
                     blocks.append(str(block))
@@ -1010,12 +1012,10 @@ class CompileTimeStrategy(object):
         # create mapping of endpoint->split var to create pserver side program
         self.param_grad_ep_mapping = collections.OrderedDict()
         [
-            self.param_grad_ep_mapping.update({
-                ep: {
-                    "params": [],
-                    "grads": []
-                }
-            }) for ep in self.get_ps_endpoints()
+            self.param_grad_ep_mapping.update({ep: {
+                "params": [],
+                "grads": []
+            }}) for ep in self.get_ps_endpoints()
         ]
 
     def _build_var_distributed(self):
@@ -1193,9 +1193,10 @@ def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
         lr_decay_main_program, lr_decay_startup_program, lr_name = _get_lr_sheduler_program(
             compiled_config.origin_main_program.lr_sheduler, lr_param_dict,
             lr_decay_steps)
-        compiled_config.add_tensor_table(
-            "@LR_DECAY_COUNTER@", lr_name, lr_decay_startup_program,
-            lr_decay_main_program, "GlobalStepTable")
+        compiled_config.add_tensor_table("@LR_DECAY_COUNTER@", lr_name,
+                                         lr_decay_startup_program,
+                                         lr_decay_main_program,
+                                         "GlobalStepTable")
 
 
 def _get_lr_param_dict(opt_ops):
@@ -1260,8 +1261,8 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
                 % lr_decay_steps)
     else:
         raise ValueError(
-            "Not supported current LearningRate strategy, please use follow decay strategy: {}".
-            format(schedler_decay))
+            "Not supported current LearningRate strategy, please use follow decay strategy: {}"
+            .format(schedler_decay))
 
     return decay_main_program, decay_startup_program, lr_name
 

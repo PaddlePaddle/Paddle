@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/platform/macros.h"  // import FLT_MAX
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -43,7 +44,7 @@ template <class T>
 class MaxPool {
  public:
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
-  DEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
+  HOSTDEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
   DEVICE inline void finalize(const T& pool_field, T* y) {}
 };
 
@@ -91,12 +92,12 @@ class AvgPoolGrad {
  */
 HOSTDEVICE inline int AdaptStartIndex(int ph, int input_size, int output_size) {
   return static_cast<int>(
-      floor(static_cast<double>(ph * input_size) / output_size));
+      floor(static_cast<float>(ph * input_size) / output_size));
 }
 
 HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
   return static_cast<int>(
-      ceil(static_cast<double>((ph + 1) * input_size) / output_size));
+      ceil(static_cast<float>((ph + 1) * input_size) / output_size));
 }
 
 /*

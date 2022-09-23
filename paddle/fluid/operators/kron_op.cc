@@ -17,7 +17,9 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,27 +27,6 @@ namespace operators {
 class KronOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "kron");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "kron");
-
-    auto dim_x = ctx->GetInputDim("X");
-    auto dim_y = ctx->GetInputDim("Y");
-    auto rank_x = dim_x.size();
-    auto rank_y = dim_y.size();
-    auto rank = (rank_x > rank_y) ? rank_x : rank_y;
-
-    std::vector<int64_t> dim_out;
-    dim_out.reserve(rank);
-    for (int i = 0; i < rank; i++) {
-      int64_t dim_xi = (i < rank - rank_x) ? 1 : dim_x.at(i - (rank - rank_x));
-      int64_t dim_yi = (i < rank - rank_y) ? 1 : dim_y.at(i - (rank - rank_y));
-      dim_out.push_back(dim_xi == -1 || dim_yi == -1 ? -1 : dim_xi * dim_yi);
-    }
-    ctx->SetOutputDim("Out", phi::make_ddim(dim_out));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -56,16 +37,18 @@ class KronOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
           tensor.layout());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -80,14 +63,14 @@ class KronOpMaker : public framework::OpProtoAndCheckerMaker {
           Kron Operator.
 
           This operator computes the Kronecker product of two tensors, a
-          composite tensor made of blocks of the second tensor scaled by the 
+          composite tensor made of blocks of the second tensor scaled by the
           first.
 
           This operator assumes that the rank of the two tensors, $X$ and $Y$
-          are the same, if necessary prepending the smallest with ones. If the 
-          shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is 
-          [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is 
-          [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are 
+          are the same, if necessary prepending the smallest with ones. If the
+          shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is
+          [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is
+          [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are
           products of elements from $X$ and $Y$.
 
           The equation is:
@@ -111,8 +94,10 @@ class KronGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "kron_grad");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "kron_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "kron_grad");
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
@@ -134,16 +119,18 @@ class KronGradOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
           tensor.layout());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -173,7 +160,13 @@ class KronGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(kron, ops::KronOp, ops::KronOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(kron,
+                            KronInferShapeFunctor,
+                            PD_INFER_META(phi::KronInferMeta));
+REGISTER_OPERATOR(kron,
+                  ops::KronOp,
+                  ops::KronOpMaker,
                   ops::KronGradOpMaker<paddle::framework::OpDesc>,
-                  ops::KronGradOpMaker<paddle::imperative::OpBase>);
+                  ops::KronGradOpMaker<paddle::imperative::OpBase>,
+                  KronInferShapeFunctor);
 REGISTER_OPERATOR(kron_grad, ops::KronGradOp);

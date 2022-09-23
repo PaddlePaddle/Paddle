@@ -74,7 +74,9 @@ def Pmat_to_perm(Pmat_org, cut):
             sP[idx, :] = tmp
 
         permmat.append(permlst)
-    Pivot = np.array(permmat).reshape(list(shape[:-2]) + [rows, ]) + 1
+    Pivot = np.array(permmat).reshape(list(shape[:-2]) + [
+        rows,
+    ]) + 1
 
     return Pivot[..., :cut]
 
@@ -118,6 +120,8 @@ class TestLU_UnpackOp(OpTest):
 
     def setUp(self):
         self.op_type = "lu_unpack"
+        self.python_api = paddle.tensor.linalg.lu_unpack
+        self.python_out_sig = ["Pmat", "L", "U"]
         self.config()
         x = np.random.random(self.x_shape).astype(self.dtype)
         if paddle.in_dynamic_mode():
@@ -130,8 +134,9 @@ class TestLU_UnpackOp(OpTest):
                 place = fluid.CPUPlace()
                 if core.is_compiled_with_cuda():
                     place = fluid.CUDAPlace(0)
-                xv = paddle.fluid.data(
-                    name="input", shape=self.x_shape, dtype=self.dtype)
+                xv = paddle.fluid.data(name="input",
+                                       shape=self.x_shape,
+                                       dtype=self.dtype)
                 lu, p = paddle.linalg.lu(xv)
                 exe = fluid.Executor(place)
                 fetches = exe.run(fluid.default_main_program(),
@@ -153,10 +158,10 @@ class TestLU_UnpackOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['L', 'U'])
+        self.check_grad(['X'], ['L', 'U'], check_eager=True)
 
 
 # m = n
@@ -186,7 +191,12 @@ class TestLU_UnpackOp3(TestLU_UnpackOp):
 
 
 class TestLU_UnpackAPI(unittest.TestCase):
+
+    def setUp(self):
+        np.random.seed(2022)
+
     def test_dygraph(self):
+
         def run_lu_unpack_dygraph(shape, dtype):
             if dtype == "float32":
                 np_dtype = np.float32
@@ -208,14 +218,14 @@ class TestLU_UnpackAPI(unittest.TestCase):
                 LU, P = paddle.linalg.lu(x)
                 pP, pL, pU = paddle.linalg.lu_unpack(LU, P)
 
-                self.assertTrue(np.allclose(sU, pU, atol=1e-5))
-                self.assertTrue(np.allclose(sL, pL, atol=1e-5))
-                self.assertTrue(np.allclose(sP, pP, atol=1e-5))
+                np.testing.assert_allclose(sU, pU, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(sL, pL, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(sP, pP, rtol=1e-05, atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors
@@ -247,22 +257,32 @@ class TestLU_UnpackAPI(unittest.TestCase):
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
                     sP, sL, sU = scipy_lu_unpack(a)
 
-                    x = paddle.fluid.data(
-                        name="input", shape=shape, dtype=dtype)
+                    x = paddle.fluid.data(name="input",
+                                          shape=shape,
+                                          dtype=dtype)
                     lu, p = paddle.linalg.lu(x)
                     pP, pL, pU = paddle.linalg.lu_unpack(lu, p)
                     exe = fluid.Executor(place)
                     fetches = exe.run(fluid.default_main_program(),
                                       feed={"input": a},
                                       fetch_list=[pP, pL, pU])
-                    self.assertTrue(np.allclose(fetches[0], sP, atol=1e-5))
-                    self.assertTrue(np.allclose(fetches[1], sL, atol=1e-5))
-                    self.assertTrue(np.allclose(fetches[2], sU, atol=1e-5))
+                    np.testing.assert_allclose(fetches[0],
+                                               sP,
+                                               rtol=1e-05,
+                                               atol=1e-05)
+                    np.testing.assert_allclose(fetches[1],
+                                               sL,
+                                               rtol=1e-05,
+                                               atol=1e-05)
+                    np.testing.assert_allclose(fetches[2],
+                                               sU,
+                                               rtol=1e-05,
+                                               atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors

@@ -30,7 +30,7 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-USE_OP(gelu);
+USE_OP_ITSELF(gelu);
 USE_OP_DEVICE_KERNEL(gelu, NPU);
 
 template <typename T>
@@ -57,8 +57,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // run
   auto place = ctx.GetPlace();
 
-  auto op = f::OpRegistry::CreateOp("gelu", {{"X", {"X"}}}, {{"Out", {"Out"}}},
-                                    attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "gelu", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   op->Run(*scope, place);
 
   ctx.Wait();
@@ -123,7 +123,8 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto op = f::OpRegistry::CreateOp("gelu_grad",
                                     {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}},
-                                    {{"X@GRAD", {"DX"}}}, attrs);
+                                    {{"X@GRAD", {"DX"}}},
+                                    attrs);
   op->Run(*scope, place);
 
   ctx.Wait();

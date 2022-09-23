@@ -49,8 +49,8 @@ class PSCore;
 
 using framework::LoDTensor;
 using framework::Scope;
-using phi::SelectedRows;
 using framework::Variable;
+using phi::SelectedRows;
 
 using RpcCtxMap = std::unordered_map<std::string, CommContext>;
 
@@ -69,14 +69,26 @@ class FleetWrapper {
     client2client_max_retry_ = 3;
   }
 
+  // TODO(zhaocaibei123: later)
+  int32_t CopyTable(const uint64_t src_table_id, const uint64_t dest_table_id);
+
+  int32_t CopyTableByFeasign(const uint64_t src_table_id,
+                             const uint64_t dest_table_id,
+                             const std::vector<uint64_t>& feasign_list);
+
+  typedef std::function<void(int, int)> HeterCallBackFunc;
+  int RegisterHeterCallback(HeterCallBackFunc handler);
+
   // set client to client communication config
-  void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
+  void SetClient2ClientConfig(int request_timeout_ms,
+                              int connect_timeout_ms,
                               int max_retry);
 
   // Pull sparse variables from server in sync mode
   // Param<in>: scope, table_id, var_names, fea_keys, fea_dim, var_emb_names
   // Param<out>: fea_values
-  void PullSparseVarsSync(const Scope& scope, const uint64_t table_id,
+  void PullSparseVarsSync(const Scope& scope,
+                          const uint64_t table_id,
                           const std::vector<std::string>& var_names,
                           std::vector<uint64_t>* fea_keys,
                           std::vector<std::vector<float>>* fea_values,
@@ -87,18 +99,22 @@ class FleetWrapper {
   // Param<in>: scope, table_id, var_names, fea_keys, fea_dim
   // Param<out>: fea_values std::future
   std::future<int32_t> PullSparseVarsAsync(
-      const Scope& scope, const uint64_t table_id,
+      const Scope& scope,
+      const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<uint64_t>* fea_keys,
-      std::vector<std::vector<float>>* fea_values, int fea_dim);
+      std::vector<std::vector<float>>* fea_values,
+      int fea_dim);
 
   // Pull sparse variables from server in sync mode
   // pull immediately to tensors
   // is_training is true means training, false means inference, the behavior is
   // different on pserver
 
-  void PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
-                              uint64_t padding_id, platform::Place place,
+  void PullSparseToTensorSync(const uint64_t table_id,
+                              int fea_dim,
+                              uint64_t padding_id,
+                              platform::Place place,
                               bool is_training,
                               std::vector<const LoDTensor*>* inputs,  // NOLINT
                               std::vector<LoDTensor*>* outputs);      // NOLINT
@@ -106,83 +122,105 @@ class FleetWrapper {
   // pull dense variables from server in sync mod
   // Param<in>: scope, table_id, var_names
   // Param<out>: void
-  void PullDenseVarsSync(const Scope& scope, const uint64_t table_id,
+  void PullDenseVarsSync(const Scope& scope,
+                         const uint64_t table_id,
                          const std::vector<std::string>& var_names);
 
   // pull dense variables from server in async mod
   // Param<in>: scope, table_id, var_names
   // Param<out>: pull_dense_status
-  void PullDenseVarsAsync(const Scope& scope, const uint64_t table_id,
+  void PullDenseVarsAsync(const Scope& scope,
+                          const uint64_t table_id,
                           const std::vector<std::string>& var_names,
                           std::vector<std::future<int32_t>>* pull_dense_status,
                           bool in_cpu);
 
   // push dense parameters(not gradients) to server in sync mode
-  void PushDenseParamSync(const Scope& scope, const uint64_t table_id,
+  void PushDenseParamSync(const Scope& scope,
+                          const uint64_t table_id,
                           const std::vector<std::string>& var_names);
 
-  void PushDenseVarsAsync(const Scope& scope, const uint64_t table_id,
+  void PushDenseVarsAsync(const Scope& scope,
+                          const uint64_t table_id,
                           const std::vector<std::string>& var_names,
                           std::vector<std::future<int32_t>>* push_sparse_status,
-                          float scale_datanorm, int batch_size);
+                          float scale_datanorm,
+                          int batch_size);
 
   // push dense variables to server in sync mode
-  void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
+  void PushDenseVarsSync(Scope* scope,
+                         const uint64_t table_id,
                          const std::vector<std::string>& var_names);
 
   void PushSparseVarsAsync(
-      const Scope& scope, const uint64_t table_id, const std::string& grad,
+      const Scope& scope,
+      const uint64_t table_id,
+      const std::string& grad,
       std::vector<std::future<int32_t>>* push_sparse_status);
   // This is specially designed for click/show stats in server
   // Param<in>: scope, table_id, fea_keys, fea_labels, sparse_key_names,
   //            sparse_grad_names, batch_size, use_cvm, dump_slot
   // Param<out>: push_values, push_sparse_status
   void PushSparseVarsWithLabelAsync(
-      const Scope& scope, const uint64_t table_id,
+      const Scope& scope,
+      const uint64_t table_id,
       const std::vector<uint64_t>& fea_keys,
       const std::vector<float>& fea_labels,
       const std::vector<std::string>& sparse_key_names,
-      const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+      const std::vector<std::string>& sparse_grad_names,
+      const int emb_dim,
       std::vector<std::vector<float>>* push_values,
       std::vector<std::future<int32_t>>* push_sparse_status,
-      const int batch_size, const bool use_cvm, const bool dump_slot,
-      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm);
+      const int batch_size,
+      const bool use_cvm,
+      const bool dump_slot,
+      std::vector<uint64_t>* sparse_push_keys,
+      const bool no_cvm);
 
   // Push sparse variables to server in async mode
   void PushSparseFromTensorWithLabelAsync(
-      const Scope& scope, const uint64_t table_id, int fea_dim,
-      uint64_t padding_id, bool scale_sparse, const std::string& accesor,
-      const std::string& click_name, platform::Place place,
+      const Scope& scope,
+      const uint64_t table_id,
+      int fea_dim,
+      uint64_t padding_id,
+      bool scale_sparse,
+      const std::string& accesor,
+      const std::string& click_name,
+      platform::Place place,
       const std::vector<std::string>& input_names,
       std::vector<const LoDTensor*>* inputs,    // NOLINT
       std::vector<const LoDTensor*>* outputs);  // NOLINT
-  void PushSparseFromTensorAsync(const uint64_t table_id, int fea_dim,
-                                 uint64_t padding_id, platform::Place place,
+
+  void PushSparseFromTensorAsync(const uint64_t table_id,
+                                 int fea_dim,
+                                 uint64_t padding_id,
+                                 platform::Place place,
                                  std::vector<const LoDTensor*>* inputs,
+                                 std::vector<int>& slots,  // NOLINT
                                  const LoDTensor* shows,
                                  const LoDTensor* clicks,
-                                 std::vector<LoDTensor*>* outputs);
+                                 std::vector<LoDTensor*>* outputs,
+                                 bool use_cvm_op = false);
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
   // Param<Out>: push_values, push_sparse_status
 
   // init server
-  void LoadSparseOnServer(const std::string& path, const std::string& meta,
+  void LoadSparseOnServer(const std::string& path,
+                          const std::string& meta,
                           uint32_t table_id);
   // init server
   // void InitServer(const std::string& dist_desc,
   //                 const std::vector<uint64_t>& host_sign_list, int index);
   void InitServer(
       const std::string& dist_desc,
-      const std::vector<std::string>& host_sign_list, int index, int trainers,
+      const std::vector<std::string>& host_sign_list,
+      int index,
+      int trainers,
       const std::vector<framework::ProgramDesc>& server_sub_program = {});
   // init trainer
   void InitWorker(const std::string& dist_desc,
-                  const std::vector<std::string>& host_sign_list, Scope* scope,
-                  const RpcCtxMap& send_ctx,
-                  const std::unordered_map<uint64_t, std::vector<std::string>>&
-                      dense_varnames,
-                  const std::map<std::string, std::string>& envs, int node_num,
+                  const std::vector<std::string>& host_sign_list,
                   int index);
 
   // stop server
@@ -193,6 +231,8 @@ class FleetWrapper {
   uint64_t RunServer(const std::string& ip, uint32_t port);
   // get client info
   std::vector<uint64_t> GetClientsInfo();
+  // set client info
+  int SetClients(std::vector<uint64_t>& host_sign_list);  // NOLINT
   // create client to client connection
   void CreateClient2ClientConnection();
   // flush all push requests
@@ -207,14 +247,16 @@ class FleetWrapper {
   void LoadModel(const std::string& path, const int mode);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
-  void LoadModelOneTable(const uint64_t table_id, const std::string& path,
+  void LoadModelOneTable(const uint64_t table_id,
+                         const std::string& path,
                          const int mode);
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
   void SaveModel(const std::string& path, const int mode);
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
-  void SaveModelOneTable(const uint64_t table_id, const std::string& path,
+  void SaveModelOneTable(const uint64_t table_id,
+                         const std::string& path,
                          const int mode);
 
   // recv table from server and save it in LodTensor
@@ -227,15 +269,18 @@ class FleetWrapper {
   // shrink sparse table
   void ShrinkSparseTable(int table_id, int threshold);
   // shrink dense table
-  void ShrinkDenseTable(int table_id, Scope* scope,
-                        std::vector<std::string> var_list, float decay,
+  void ShrinkDenseTable(int table_id,
+                        Scope* scope,
+                        std::vector<std::string> var_list,
+                        float decay,
                         int emb_dim);
 
   typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;
   // register client to client communication
   int RegisterClientToClientMsgHandler(int msg_type, MsgHandlerFunc handler);
   // send client to client message
-  std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
+  std::future<int32_t> SendClientToClientMsg(int msg_type,
+                                             int to_client_id,
                                              const std::string& msg);
 
   // FleetWrapper singleton
@@ -248,16 +293,40 @@ class FleetWrapper {
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
 
+  // for init worker
+  void InitGFlag(const std::string& gflags);
+
+  double GetCacheThreshold(int table_id);
+  void CacheShuffle(int table_id,
+                    const std::string& path,
+                    const int mode,
+                    const double cache_threshold);
+  int32_t SaveCache(int table_id, const std::string& path, const int mode);
+  void Revert();
+  void CheckSavePrePatchDone();
+
+  //********* for fl-coordinator
+  void InitFlWorker(const std::vector<std::string>& host_list,
+                    int index,
+                    const std::string& self_endpoint);
+  void PushFLClientInfoSync(const std::string& fl_client_info);
+  std::string PullFlStrategy();
+  //**********
+
   static std::shared_ptr<paddle::distributed::PSCore> pserver_ptr_;
+  static std::shared_ptr<paddle::distributed::PSClient> worker_ptr_;
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
-  size_t GetAbsoluteSum(size_t start, size_t end, size_t level,
+  paddle::distributed::PaddlePSEnvironment ps_env_;
+  size_t GetAbsoluteSum(size_t start,
+                        size_t end,
+                        size_t level,
                         const framework::LoD& lod);
 
  protected:
   static bool is_initialized_;
-  std::map<uint64_t, std::vector<paddle::distributed::Region>> _regions;
+  std::map<uint64_t, std::vector<paddle::distributed::Region>> regions_;
   bool scale_sparse_gradient_with_batch_size_;
   int32_t sleep_seconds_before_fail_exit_;
   int client2client_request_timeout_ms_;

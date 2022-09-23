@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <ThreadPool.h>
+
 #include <atomic>
 #include <ctime>
 #include <map>
@@ -35,10 +36,11 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allreduce.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
-#if defined(PADDLE_WITH_PSLIB)
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
 namespace paddle {
 
 namespace framework {
@@ -65,15 +67,21 @@ class BasicAucCalculator {
   void add_unlock_data(double pred, int label);
   void add_uid_unlock_data(double pred, int label, uint64_t uid);
   // add batch data
-  void add_data(const float* d_pred, const int64_t* d_label, int batch_size,
+  void add_data(const float* d_pred,
+                const int64_t* d_label,
+                int batch_size,
                 const paddle::platform::Place& place);
   // add mask data
-  void add_mask_data(const float* d_pred, const int64_t* d_label,
-                     const int64_t* d_mask, int batch_size,
+  void add_mask_data(const float* d_pred,
+                     const int64_t* d_label,
+                     const int64_t* d_mask,
+                     int batch_size,
                      const paddle::platform::Place& place);
   // add uid data
-  void add_uid_data(const float* d_pred, const int64_t* d_label,
-                    const int64_t* d_uid, int batch_size,
+  void add_uid_data(const float* d_pred,
+                    const int64_t* d_label,
+                    const int64_t* d_uid,
+                    int batch_size,
                     const paddle::platform::Place& place);
 
   void compute();
@@ -132,8 +140,10 @@ class Metric {
   class MetricMsg {
    public:
     MetricMsg() {}
-    MetricMsg(const std::string& label_varname, const std::string& pred_varname,
-              int metric_phase, int bucket_size = 1000000)
+    MetricMsg(const std::string& label_varname,
+              const std::string& pred_varname,
+              int metric_phase,
+              int bucket_size = 1000000)
         : label_varname_(label_varname),
           pred_varname_(pred_varname),
           metric_phase_(metric_phase) {
@@ -154,7 +164,8 @@ class Metric {
       const float* pred_data = NULL;
       get_data<int64_t>(exe_scope, label_varname_, &label_data, &label_len);
       get_data<float>(exe_scope, pred_varname_, &pred_data, &pred_len);
-      PADDLE_ENFORCE_EQ(label_len, pred_len,
+      PADDLE_ENFORCE_EQ(label_len,
+                        pred_len,
                         platform::errors::PreconditionNotMet(
                             "the predict data length should be consistent with "
                             "the label data length"));
@@ -163,24 +174,29 @@ class Metric {
 
     // get_data
     template <class T = float>
-    static void get_data(const Scope* exe_scope, const std::string& varname,
-                         const T** data, int* len) {
+    static void get_data(const Scope* exe_scope,
+                         const std::string& varname,
+                         const T** data,
+                         int* len) {
       auto* var = exe_scope->FindVar(varname.c_str());
       PADDLE_ENFORCE_NOT_NULL(
-          var, platform::errors::NotFound(
-                   "Error: var %s is not found in scope.", varname.c_str()));
+          var,
+          platform::errors::NotFound("Error: var %s is not found in scope.",
+                                     varname.c_str()));
       auto& cpu_tensor = var->Get<LoDTensor>();
       *data = cpu_tensor.data<T>();
       *len = cpu_tensor.numel();
     }
 
     template <class T = float>
-    static void get_data(const Scope* exe_scope, const std::string& varname,
+    static void get_data(const Scope* exe_scope,
+                         const std::string& varname,
                          std::vector<T>* data) {
       auto* var = exe_scope->FindVar(varname.c_str());
       PADDLE_ENFORCE_NOT_NULL(
-          var, platform::errors::NotFound(
-                   "Error: var %s is not found in scope.", varname.c_str()));
+          var,
+          platform::errors::NotFound("Error: var %s is not found in scope.",
+                                     varname.c_str()));
       auto& cpu_tensor = var->Get<LoDTensor>();
       auto* cpu_data = cpu_tensor.data<T>();
       auto len = cpu_tensor.numel();
@@ -208,7 +224,8 @@ class Metric {
    public:
     WuAucMetricMsg(const std::string& label_varname,
                    const std::string& pred_varname,
-                   const std::string& uid_varname, int metric_phase,
+                   const std::string& uid_varname,
+                   int metric_phase,
                    int bucket_size = 1000000) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
@@ -230,7 +247,8 @@ class Metric {
       int uid_len = 0;
       const int64_t* uid_data = NULL;
       get_data<int64_t>(exe_scope, uid_varname_, &uid_data, &uid_len);
-      PADDLE_ENFORCE_EQ(label_len, uid_len,
+      PADDLE_ENFORCE_EQ(label_len,
+                        uid_len,
                         platform::errors::PreconditionNotMet(
                             "the predict data length should be consistent with "
                             "the label data length"));
@@ -245,7 +263,8 @@ class Metric {
   class MultiTaskMetricMsg : public MetricMsg {
    public:
     MultiTaskMetricMsg(const std::string& label_varname,
-                       const std::string& pred_varname_list, int metric_phase,
+                       const std::string& pred_varname_list,
+                       int metric_phase,
                        const std::string& cmatch_rank_group,
                        const std::string& cmatch_rank_varname,
                        int bucket_size = 1000000) {
@@ -258,7 +277,8 @@ class Metric {
         const std::vector<std::string>& cur_cmatch_rank =
             string::split_string(cmatch_rank, "_");
         PADDLE_ENFORCE_EQ(
-            cur_cmatch_rank.size(), 2,
+            cur_cmatch_rank.size(),
+            2,
             platform::errors::PreconditionNotMet(
                 "illegal multitask auc spec: %s", cmatch_rank.c_str()));
         cmatch_rank_v.emplace_back(atoi(cur_cmatch_rank[0].c_str()),
@@ -267,11 +287,13 @@ class Metric {
       for (const auto& pred_varname : string::split_string(pred_varname_list)) {
         pred_v.emplace_back(pred_varname);
       }
-      PADDLE_ENFORCE_EQ(cmatch_rank_v.size(), pred_v.size(),
+      PADDLE_ENFORCE_EQ(cmatch_rank_v.size(),
+                        pred_v.size(),
                         platform::errors::PreconditionNotMet(
                             "cmatch_rank's size [%lu] should be equal to pred "
                             "list's size [%lu], but ther are not equal",
-                            cmatch_rank_v.size(), pred_v.size()));
+                            cmatch_rank_v.size(),
+                            pred_v.size()));
     }
     virtual ~MultiTaskMetricMsg() {}
     void add_data(const Scope* exe_scope,
@@ -282,10 +304,12 @@ class Metric {
       get_data<int64_t>(exe_scope, label_varname_, &label_data);
       size_t batch_size = cmatch_rank_data.size();
       PADDLE_ENFORCE_EQ(
-          batch_size, label_data.size(),
+          batch_size,
+          label_data.size(),
           platform::errors::PreconditionNotMet(
               "illegal batch size: batch_size[%lu] and label_data[%lu]",
-              batch_size, label_data.size()));
+              batch_size,
+              label_data.size()));
 
       std::vector<std::vector<float>> pred_data_list(pred_v.size());
       for (size_t i = 0; i < pred_v.size(); ++i) {
@@ -293,17 +317,19 @@ class Metric {
       }
       for (size_t i = 0; i < pred_data_list.size(); ++i) {
         PADDLE_ENFORCE_EQ(
-            batch_size, pred_data_list[i].size(),
+            batch_size,
+            pred_data_list[i].size(),
             platform::errors::PreconditionNotMet(
                 "illegal batch size: batch_size[%lu] and pred_data[%lu]",
-                batch_size, pred_data_list[i].size()));
+                batch_size,
+                pred_data_list[i].size()));
       }
       auto cal = GetCalculator();
       std::lock_guard<std::mutex> lock(cal->table_mutex());
       for (size_t i = 0; i < batch_size; ++i) {
-        auto cmatch_rank_it =
-            std::find(cmatch_rank_v.begin(), cmatch_rank_v.end(),
-                      parse_cmatch_rank(cmatch_rank_data[i]));
+        auto cmatch_rank_it = std::find(cmatch_rank_v.begin(),
+                                        cmatch_rank_v.end(),
+                                        parse_cmatch_rank(cmatch_rank_data[i]));
         if (cmatch_rank_it != cmatch_rank_v.end()) {
           cal->add_unlock_data(pred_data_list[std::distance(
                                    cmatch_rank_v.begin(), cmatch_rank_it)][i],
@@ -321,10 +347,12 @@ class Metric {
   class CmatchRankMetricMsg : public MetricMsg {
    public:
     CmatchRankMetricMsg(const std::string& label_varname,
-                        const std::string& pred_varname, int metric_phase,
+                        const std::string& pred_varname,
+                        int metric_phase,
                         const std::string& cmatch_rank_group,
                         const std::string& cmatch_rank_varname,
-                        bool ignore_rank = false, int bucket_size = 1000000) {
+                        bool ignore_rank = false,
+                        int bucket_size = 1000000) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
       cmatch_rank_varname_ = cmatch_rank_varname;
@@ -340,7 +368,8 @@ class Metric {
         const std::vector<std::string>& cur_cmatch_rank =
             string::split_string(cmatch_rank, "_");
         PADDLE_ENFORCE_EQ(
-            cur_cmatch_rank.size(), 2,
+            cur_cmatch_rank.size(),
+            2,
             platform::errors::PreconditionNotMet(
                 "illegal cmatch_rank auc spec: %s", cmatch_rank.c_str()));
         cmatch_rank_v.emplace_back(atoi(cur_cmatch_rank[0].c_str()),
@@ -358,15 +387,19 @@ class Metric {
       get_data<float>(exe_scope, pred_varname_, &pred_data);
       size_t batch_size = cmatch_rank_data.size();
       PADDLE_ENFORCE_EQ(
-          batch_size, label_data.size(),
+          batch_size,
+          label_data.size(),
           platform::errors::PreconditionNotMet(
               "illegal batch size: cmatch_rank[%lu] and label_data[%lu]",
-              batch_size, label_data.size()));
+              batch_size,
+              label_data.size()));
       PADDLE_ENFORCE_EQ(
-          batch_size, pred_data.size(),
+          batch_size,
+          pred_data.size(),
           platform::errors::PreconditionNotMet(
               "illegal batch size: cmatch_rank[%lu] and pred_data[%lu]",
-              batch_size, pred_data.size()));
+              batch_size,
+              pred_data.size()));
       auto cal = GetCalculator();
       std::lock_guard<std::mutex> lock(cal->table_mutex());
       for (size_t i = 0; i < batch_size; ++i) {
@@ -395,8 +428,10 @@ class Metric {
   class MaskMetricMsg : public MetricMsg {
    public:
     MaskMetricMsg(const std::string& label_varname,
-                  const std::string& pred_varname, int metric_phase,
-                  const std::string& mask_varname, int bucket_size = 1000000) {
+                  const std::string& pred_varname,
+                  int metric_phase,
+                  const std::string& mask_varname,
+                  int bucket_size = 1000000) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
       mask_varname_ = mask_varname;
@@ -418,7 +453,8 @@ class Metric {
       int mask_len = 0;
       const int64_t* mask_data = NULL;
       get_data<int64_t>(exe_scope, mask_varname_, &mask_data, &mask_len);
-      PADDLE_ENFORCE_EQ(label_len, mask_len,
+      PADDLE_ENFORCE_EQ(label_len,
+                        mask_len,
                         platform::errors::PreconditionNotMet(
                             "the predict data length should be consistent with "
                             "the label data length"));
@@ -433,7 +469,8 @@ class Metric {
   class CmatchRankMaskMetricMsg : public MetricMsg {
    public:
     CmatchRankMaskMetricMsg(const std::string& label_varname,
-                            const std::string& pred_varname, int metric_phase,
+                            const std::string& pred_varname,
+                            int metric_phase,
                             const std::string& cmatch_rank_group,
                             const std::string& cmatch_rank_varname,
                             bool ignore_rank = false,
@@ -455,7 +492,8 @@ class Metric {
         const std::vector<std::string>& cur_cmatch_rank =
             string::split_string(cmatch_rank, "_");
         PADDLE_ENFORCE_EQ(
-            cur_cmatch_rank.size(), 2,
+            cur_cmatch_rank.size(),
+            2,
             platform::errors::PreconditionNotMet(
                 "illegal cmatch_rank auc spec: %s", cmatch_rank.c_str()));
         cmatch_rank_v.emplace_back(atoi(cur_cmatch_rank[0].c_str()),
@@ -473,24 +511,30 @@ class Metric {
       get_data<float>(exe_scope, pred_varname_, &pred_data);
       size_t batch_size = cmatch_rank_data.size();
       PADDLE_ENFORCE_EQ(
-          batch_size, label_data.size(),
+          batch_size,
+          label_data.size(),
           platform::errors::PreconditionNotMet(
               "illegal batch size: cmatch_rank[%lu] and label_data[%lu]",
-              batch_size, label_data.size()));
+              batch_size,
+              label_data.size()));
       PADDLE_ENFORCE_EQ(
-          batch_size, pred_data.size(),
+          batch_size,
+          pred_data.size(),
           platform::errors::PreconditionNotMet(
               "illegal batch size: cmatch_rank[%lu] and pred_data[%lu]",
-              batch_size, pred_data.size()));
+              batch_size,
+              pred_data.size()));
 
       std::vector<int64_t> mask_data;
       if (!mask_varname_.empty()) {
         get_data<int64_t>(exe_scope, mask_varname_, &mask_data);
         PADDLE_ENFORCE_EQ(
-            batch_size, mask_data.size(),
+            batch_size,
+            mask_data.size(),
             platform::errors::PreconditionNotMet(
                 "illegal batch size: cmatch_rank[%lu] and mask_data[%lu]",
-                batch_size, mask_data.size()));
+                batch_size,
+                mask_data.size()));
       }
 
       auto cal = GetCalculator();
@@ -553,7 +597,8 @@ class Metric {
       for (const auto& name : metric_name_list_) {
         const auto iter = metric_lists_.find(name);
         PADDLE_ENFORCE_NE(
-            iter, metric_lists_.end(),
+            iter,
+            metric_lists_.end(),
             platform::errors::InvalidArgument(
                 "The metric name you provided is not registered."));
 
@@ -574,40 +619,63 @@ class Metric {
   void FlipPhase() { phase_ = (phase_ + 1) % phase_num_; }
   std::map<std::string, MetricMsg*>& GetMetricList() { return metric_lists_; }
 
-  void InitMetric(const std::string& method, const std::string& name,
+  void InitMetric(const std::string& method,
+                  const std::string& name,
                   const std::string& label_varname,
                   const std::string& pred_varname,
                   const std::string& cmatch_rank_varname,
                   const std::string& mask_varname,
-                  const std::string& uid_varname, int metric_phase,
-                  const std::string& cmatch_rank_group, bool ignore_rank,
+                  const std::string& uid_varname,
+                  int metric_phase,
+                  const std::string& cmatch_rank_group,
+                  bool ignore_rank,
                   int bucket_size = 1000000) {
     if (method == "AucCalculator") {
-      metric_lists_.emplace(name, new MetricMsg(label_varname, pred_varname,
-                                                metric_phase, bucket_size));
+      metric_lists_.emplace(
+          name,
+          new MetricMsg(
+              label_varname, pred_varname, metric_phase, bucket_size));
     } else if (method == "MultiTaskAucCalculator") {
-      metric_lists_.emplace(
-          name, new MultiTaskMetricMsg(label_varname, pred_varname,
-                                       metric_phase, cmatch_rank_group,
-                                       cmatch_rank_varname, bucket_size));
+      metric_lists_.emplace(name,
+                            new MultiTaskMetricMsg(label_varname,
+                                                   pred_varname,
+                                                   metric_phase,
+                                                   cmatch_rank_group,
+                                                   cmatch_rank_varname,
+                                                   bucket_size));
     } else if (method == "CmatchRankAucCalculator") {
-      metric_lists_.emplace(name, new CmatchRankMetricMsg(
-                                      label_varname, pred_varname, metric_phase,
-                                      cmatch_rank_group, cmatch_rank_varname,
-                                      ignore_rank, bucket_size));
+      metric_lists_.emplace(name,
+                            new CmatchRankMetricMsg(label_varname,
+                                                    pred_varname,
+                                                    metric_phase,
+                                                    cmatch_rank_group,
+                                                    cmatch_rank_varname,
+                                                    ignore_rank,
+                                                    bucket_size));
     } else if (method == "MaskAucCalculator") {
-      metric_lists_.emplace(
-          name, new MaskMetricMsg(label_varname, pred_varname, metric_phase,
-                                  mask_varname, bucket_size));
+      metric_lists_.emplace(name,
+                            new MaskMetricMsg(label_varname,
+                                              pred_varname,
+                                              metric_phase,
+                                              mask_varname,
+                                              bucket_size));
     } else if (method == "CmatchRankMaskAucCalculator") {
-      metric_lists_.emplace(name, new CmatchRankMaskMetricMsg(
-                                      label_varname, pred_varname, metric_phase,
-                                      cmatch_rank_group, cmatch_rank_varname,
-                                      ignore_rank, mask_varname, bucket_size));
+      metric_lists_.emplace(name,
+                            new CmatchRankMaskMetricMsg(label_varname,
+                                                        pred_varname,
+                                                        metric_phase,
+                                                        cmatch_rank_group,
+                                                        cmatch_rank_varname,
+                                                        ignore_rank,
+                                                        mask_varname,
+                                                        bucket_size));
     } else if (method == "WuAucCalculator") {
-      metric_lists_.emplace(
-          name, new WuAucMetricMsg(label_varname, pred_varname, uid_varname,
-                                   metric_phase, bucket_size));
+      metric_lists_.emplace(name,
+                            new WuAucMetricMsg(label_varname,
+                                               pred_varname,
+                                               uid_varname,
+                                               metric_phase,
+                                               bucket_size));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "PSLIB Metrics only support AucCalculator, MultiTaskAucCalculator, "
@@ -619,7 +687,8 @@ class Metric {
 
   const std::vector<float> GetMetricMsg(const std::string& name) {
     const auto iter = metric_lists_.find(name);
-    PADDLE_ENFORCE_NE(iter, metric_lists_.end(),
+    PADDLE_ENFORCE_NE(iter,
+                      metric_lists_.end(),
                       platform::errors::InvalidArgument(
                           "The metric name you provided is not registered."));
     std::vector<float> metric_return_values_(8, 0.0);
@@ -640,7 +709,8 @@ class Metric {
 
   const std::vector<float> GetWuAucMetricMsg(const std::string& name) {
     const auto iter = metric_lists_.find(name);
-    PADDLE_ENFORCE_NE(iter, metric_lists_.end(),
+    PADDLE_ENFORCE_NE(iter,
+                      metric_lists_.end(),
                       platform::errors::InvalidArgument(
                           "The metric name you provided is not registered."));
     VLOG(0) << "begin GetWuAucMetricMsg";

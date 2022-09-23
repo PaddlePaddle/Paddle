@@ -34,12 +34,13 @@
 #ifdef INFRT_WITH_PHI
 #include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/backends/host/phi_context.h"
+#include "paddle/infrt/tensor/phi/tensor_map.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 
@@ -84,22 +85,24 @@ using ValueVariantType =
 #ifdef INFRT_WITH_GPU
             backends::GpuPhiContext,
             ::phi::GPUContext,
-#endif
+#endif  // INFRT_WITH_GPU
             ::phi::CPUContext,
-            std::vector<const phi::DenseTensor*>,
-            std::vector<phi::DenseTensor*>,
-            paddle::experimental::ScalarBase<phi::DenseTensor>,
-            paddle::experimental::ScalarArrayBase<phi::DenseTensor>,
-            std::vector<phi::MetaTensor*>,
-            phi::MetaConfig,
+            std::vector<const ::phi::DenseTensor*>,
+            std::vector<::phi::DenseTensor*>,
+            paddle::experimental::ScalarBase<::phi::DenseTensor>,
+            paddle::experimental::IntArrayBase<::phi::DenseTensor>,
+            std::vector<const ::phi::MetaTensor*>,
+            std::vector<::phi::MetaTensor*>,
+            ::phi::MetaConfig,
             paddle::experimental::Backend,
             paddle::experimental::DataLayout,
             paddle::experimental::DataType,
+            ::infrt::phi::DenseTensorMap,
+#endif  // INFRT_WITH_PHI
 #ifdef INFRT_WITH_TRT
             ::infrt::backends::tensorrt::TrtEngine,
             ::infrt::kernel::tensorrt::MlirOperationWithInfrtSymbol,
 #endif  // INFRT_WITH_TRT
-#endif
             std::vector<int16_t>,
             std::vector<int32_t>,
             std::vector<int64_t>,
@@ -136,6 +139,7 @@ class Value : public common::Object {
   explicit Value(tensor::DenseHostTensor&& x) : data(std::move(x)) {}
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
 #ifdef INFRT_WITH_PHI
+  explicit Value(::infrt::phi::DenseTensorMap&& x) : data(std::move(x)) {}
   explicit Value(::phi::CPUContext&& x) : data(std::move(x)) {}
   explicit Value(backends::CpuPhiContext&& x) : data(std::move(x)) {}
 #ifdef INFRT_WITH_GPU
@@ -144,6 +148,7 @@ class Value : public common::Object {
 #endif
   explicit Value(::phi::DenseTensor&& x) : data(std::move(x)) {}
   explicit Value(::phi::MetaTensor&& x) : data(std::move(x)) {}
+  explicit Value(::phi::MetaConfig&& x) : data(std::move(x)) {}
 #ifdef INFRT_WITH_TRT
   explicit Value(::infrt::backends::tensorrt::TrtEngine&& x)
       : data(std::move(x)) {}
@@ -154,15 +159,15 @@ class Value : public common::Object {
 
   template <typename T>
   const T& get() const {
-    CHECK(data.template is<T>()) << "typeid: " << data.index()
-                                 << " != " << ValueVariantType::IndexOf<T>;
+    CHECK(data.template is<T>())
+        << "typeid: " << data.index() << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
   }
 
   template <typename T>
   T& get() {
-    CHECK(data.template is<T>()) << "typeid: " << data.index()
-                                 << " != " << ValueVariantType::IndexOf<T>;
+    CHECK(data.template is<T>())
+        << "typeid: " << data.index() << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
   }
 

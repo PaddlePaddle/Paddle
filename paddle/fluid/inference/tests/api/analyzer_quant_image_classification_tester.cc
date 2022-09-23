@@ -14,8 +14,11 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+
+DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
 
 namespace paddle {
 namespace inference {
@@ -24,20 +27,21 @@ namespace analysis {
 void SetConfig(AnalysisConfig *cfg, std::string model_path) {
   cfg->SetModel(model_path);
   cfg->DisableGpu();
-  cfg->SwitchIrOptim(false);
-  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim(true);
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
-  cfg->EnableMKLDNN();
+  if (FLAGS_enable_mkldnn) cfg->EnableMKLDNN();
 }
 
 template <typename T>
 class TensorReader {
  public:
-  TensorReader(std::ifstream &file, size_t beginning_offset,
-               std::vector<int> shape, std::string name)
+  TensorReader(std::ifstream &file,
+               size_t beginning_offset,
+               std::vector<int> shape,
+               std::string name)
       : file_(file), position_(beginning_offset), shape_(shape), name_(name) {
-    numel_ = std::accumulate(shape_.begin(), shape_.end(), size_t{1},
-                             std::multiplies<size_t>());
+    numel_ = std::accumulate(
+        shape_.begin(), shape_.end(), size_t{1}, std::multiplies<size_t>());
   }
 
   PaddleTensor NextBatch() {
@@ -82,8 +86,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   std::vector<int> label_batch_shape{batch_size, 1};
   auto images_offset_in_file = static_cast<size_t>(file.tellg());
 
-  TensorReader<float> image_reader(file, images_offset_in_file,
-                                   image_batch_shape, "image");
+  TensorReader<float> image_reader(
+      file, images_offset_in_file, image_batch_shape, "image");
 
   auto iterations_max = total_images / batch_size;
   auto iterations = iterations_max;
@@ -94,8 +98,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   auto labels_offset_in_file =
       images_offset_in_file + sizeof(float) * total_images * 3 * 224 * 224;
 
-  TensorReader<int64_t> label_reader(file, labels_offset_in_file,
-                                     label_batch_shape, "label");
+  TensorReader<int64_t> label_reader(
+      file, labels_offset_in_file, label_batch_shape, "label");
   for (auto i = 0; i < iterations; i++) {
     auto images = image_reader.NextBatch();
     std::vector<PaddleTensor> tmp_vec;
@@ -111,17 +115,19 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 TEST(Analyzer_quant_image_classification, quantization) {
   AnalysisConfig fp32_cfg;
   SetConfig(&fp32_cfg, FLAGS_fp32_model);
+  fp32_cfg.EnableMKLDNN();
 
   AnalysisConfig int8_cfg;
   SetConfig(&int8_cfg, FLAGS_int8_model);
+  if (FLAGS_enable_quant_int8) int8_cfg.EnableMkldnnInt8();
 
   // read data from file and prepare batches with test data
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
 
   // 0 is avg_cost, 1 is top1_accuracy, 2 is top5_accuracy or mAP
-  CompareAnalysisAndAnalysis(&fp32_cfg, &int8_cfg, input_slots_all,
-                             FLAGS_with_accuracy_layer, 1);
+  CompareAnalysisAndAnalysis(
+      &fp32_cfg, &int8_cfg, input_slots_all, FLAGS_with_accuracy_layer, 1);
 }
 
 }  // namespace analysis

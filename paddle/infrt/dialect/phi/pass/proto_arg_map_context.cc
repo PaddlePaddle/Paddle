@@ -32,17 +32,24 @@ bool ProtoArgumentMappingContext::HasOutput(const std::string& name) const {
 }
 
 bool ProtoArgumentMappingContext::HasAttr(const std::string& name) const {
+  if (name == "is_test") return true;
   return op_->hasAttr(name);
 }
 
 paddle::any ProtoArgumentMappingContext::Attr(const std::string& name) const {
-  mlir::Attribute attrs = op_->getAttr(name);
-  if (mlir::StringAttr str_attr = attrs.dyn_cast_or_null<mlir::StringAttr>()) {
-    return paddle::any(str_attr.str());
-  } else {
-    // ToDO: implementation in the ext PR.
-    return paddle::any(0);
+  if (name == "is_test") {
+    return paddle::any(true);
   }
+  mlir::Attribute attr = op_->getAttr(name);
+  if (!attr) {
+    return paddle::any();
+  }
+  if (mlir::StringAttr str_attr = attr.dyn_cast<mlir::StringAttr>()) {
+    return paddle::any(str_attr.str());
+  }
+
+  // ToDO: implementation in the ext PR.
+  return paddle::any(0);
 }
 
 size_t ProtoArgumentMappingContext::InputSize(const std::string& name) const {
@@ -56,7 +63,23 @@ bool ProtoArgumentMappingContext::IsDenseTensorInput(
     const std::string& name) const {
   return true;
 }
+
+bool ProtoArgumentMappingContext::IsDenseTensorInputs(
+    const std::string& name) const {
+  return true;
+}
+
+bool ProtoArgumentMappingContext::IsSelectedRowsInputs(
+    const std::string& name) const {
+  return false;
+}
+
 bool ProtoArgumentMappingContext::IsSelectedRowsInput(
+    const std::string& name) const {
+  return false;
+}
+
+bool ProtoArgumentMappingContext::IsDenseTensorVectorInput(
     const std::string& name) const {
   return false;
 }

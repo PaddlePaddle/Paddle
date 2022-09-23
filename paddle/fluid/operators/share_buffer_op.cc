@@ -32,7 +32,8 @@ class ShareBufferOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -65,3 +66,11 @@ REGISTER_OPERATOR(share_buffer, ops::ShareBufferOp, ops::ShareBufferOpMaker);
 
 // dtype is not important
 REGISTER_OP_CPU_KERNEL(share_buffer, ops::ShareBufferOpKernel<float>);
+
+#ifdef PADDLE_WITH_ASCEND_CL
+REGISTER_OP_NPU_KERNEL(share_buffer, ops::ShareBufferOpKernel<float>);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+REGISTER_OP_XPU_KERNEL(share_buffer, ops::ShareBufferOpKernel<float>);
+#endif

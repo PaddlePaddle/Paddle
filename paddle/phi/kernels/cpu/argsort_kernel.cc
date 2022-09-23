@@ -51,9 +51,13 @@ static void FullSort(Type input_height,
               col_vec.end(),
               [&](const std::pair<T, Type>& l, const std::pair<T, Type>& r) {
                 if (descending)
-                  return l.first > r.first;
+                  return (std::isnan(static_cast<double>(l.first)) &&
+                          !std::isnan(static_cast<double>(r.first))) ||
+                         (l.first > r.first);
                 else
-                  return l.first < r.first;
+                  return (!std::isnan(static_cast<double>(l.first)) &&
+                          std::isnan(static_cast<double>(r.first))) ||
+                         (l.first < r.first);
               });
 
     for (Type j = 0; j < input_width; ++j) {

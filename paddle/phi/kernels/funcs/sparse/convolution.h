@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
@@ -33,28 +34,30 @@ struct Dims4D {
 };
 
 // Judge whether the current position x is in (lower, upper)
-inline HOSTDEVICE bool Check(const int& x,
+template <typename IntT = int>
+inline HOSTDEVICE bool Check(const IntT& x,
                              const int& kx,
                              const int& pad,
                              const int& stride,
                              const int dilation,
                              const int kdim,
                              const int xdim) {
-  const int lower = x - dilation * kx + pad;
-  const int uper = x + (kdim - kx - 1) * dilation - pad;
+  const IntT lower = x - dilation * kx + pad;
+  const IntT uper = x + (kdim - kx - 1) * dilation - pad;
   return (lower >= 0 && lower % stride == 0 && uper < xdim);
 }
 
 // Check whether the current position(x, y, z) is legal:
 // Judge the minimum and maximum values at each latitude
+template <typename IntT = int>
 inline HOSTDEVICE bool Check(const Dims4D& dims,
                              const Dims4D& kernel_dims,
                              const Dims4D& paddings,
                              const Dims4D& dilations,
                              const Dims4D& strides,
-                             const int x,
-                             const int y,
-                             const int z,
+                             const IntT x,
+                             const IntT y,
+                             const IntT z,
                              const int kx,
                              const int ky,
                              const int kz) {
@@ -67,22 +70,22 @@ inline HOSTDEVICE bool Check(const Dims4D& dims,
   return (x_valid && y_valid && z_valid);
 }
 
-template <typename Dim>
-inline HOSTDEVICE int PointToIndex(const int& batch,
-                                   const int& x,
-                                   const int& y,
-                                   const int& z,
-                                   const Dim& dims) {
+template <typename Dim, typename IntT = int>
+inline HOSTDEVICE IntT PointToIndex(const IntT& batch,
+                                    const IntT& x,
+                                    const IntT& y,
+                                    const IntT& z,
+                                    const Dim& dims) {
   return batch * dims[1] * dims[2] * dims[3] + z * dims[2] * dims[3] +
          y * dims[3] + x;
 }
 
 // TODO(zhangkaihuo): use division and multiply to optimize
 // modulo operation
-template <typename Dim>
+template <typename Dim, typename IntT = int>
 inline HOSTDEVICE void IndexToPoint(
-    const int index, const Dim& dims, int* batch, int* x, int* y, int* z) {
-  int n = index;
+    const IntT index, const Dim& dims, IntT* batch, IntT* x, IntT* y, IntT* z) {
+  IntT n = index;
   *x = n % dims[3];
   n /= dims[3];
   *y = n % dims[2];
@@ -163,6 +166,109 @@ inline void SubmPreProcess(const Context& dev_ctx,
             kernel.data<T>() + half_kernel_size * in_channels * out_channels,
             static_cast<T>(0),
             x_grad_ptr);
+}
+
+inline const std::vector<int> PoolResetKernel(
+    const std::vector<int>& kernel_sizes,
+    const int in_channels,
+    const int out_channels) {
+  std::vector<int> res(kernel_sizes);
+  res.resize(5);
+  res[3] = in_channels;
+  res[4] = out_channels;
+  return res;
+}
+
+template <typename T>
+inline void PrefixSum(const T* counter, T* offsets, const int n) {
+  T offset = 0;
+  for (int i = 0; i < n; i++) {
+    offsets[i] = offset;
+    offset += counter[i];
+  }
+  offsets[n] = offset;
+}
+
+template <typename IntT>
+inline const IntT* GetRulebookPtr(const SparseCooTensor& coo,
+                                  const DenseTensor& rulebook,
+                                  const std::string& key,
+                                  int* rulebook_len) {
+  if (!key.empty()) {
+    const auto* indices_pairs = coo.IndicesPairs(key);
+    if (indices_pairs != nullptr) {
+      const DenseTensor& tmp_rulebook = indices_pairs->first;
+      *rulebook_len = tmp_rulebook.dims()[1];
+      return tmp_rulebook.data<IntT>();
+    }
+  }
+  *rulebook_len = rulebook.dims()[1];
+  return rulebook.data<IntT>();
+}
+
+inline const int* GetCounterPtr(const SparseCooTensor& coo,
+                                const DenseTensor& counter,
+                                const std::string& key) {
+  if (!key.empty()) {
+    const auto* indices_pairs = coo.IndicesPairs(key);
+    if (indices_pairs != nullptr) {
+      return indices_pairs->second.data<int>();
+    }
+  }
+  return counter.data<int>();
+}
+
+template <typename T, typename IntT, typename Context>
+inline const IntT* PrepareSubm(const Context& dev_ctx,
+                               const SparseCooTensor& x,
+                               const std::string& key,
+                               const DDim& out_dims,
+                               SparseCooTensor* out,
+                               int* counter,
+                               int* offsets,
+                               int* rulebook_len,
+                               bool* need_product_rulebook) {
+  const auto* indices_pairs = x.IndicesPairs(key);
+  if (indices_pairs != nullptr) {
+    *need_product_rulebook = false;
+    const DenseTensor& rulebook = indices_pairs->first;
+    const int counter_size = indices_pairs->second.numel();
+    memcpy(
+        counter, indices_pairs->second.data<int>(), counter_size * sizeof(int));
+    out->SetIndicesDict(x.GetIndicesDict());
+
+    *rulebook_len = rulebook.dims()[1];
+
+    DenseTensor out_indices =
+        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+    phi::Copy(
+        dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
+    out->SetMember(out_indices, out_values, out_dims, false);
+    PrefixSum<int>(counter, offsets, counter_size);
+    return rulebook.data<IntT>();
+  }
+  return nullptr;
+}
+
+template <typename Context>
+inline void SaveToTable(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const std::string& key,
+                        const DenseTensor& in_rulebook,
+                        const DenseTensor& h_counter,
+                        SparseCooTensor* out,
+                        DenseTensor* out_rulebook,
+                        DenseTensor* counter) {
+  out->SetIndicesDict(x.GetIndicesDict());
+  if (!key.empty()) {
+    out->SaveIndicesPairs(key, std::make_pair(in_rulebook, h_counter));
+  } else {
+    *out_rulebook = in_rulebook;
+    counter->Resize({h_counter.numel()});
+    int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
+    memcpy(counter_ptr, h_counter.data<int>(), h_counter.numel() * sizeof(int));
+  }
 }
 
 }  // namespace sparse

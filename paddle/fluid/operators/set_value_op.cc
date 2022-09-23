@@ -13,8 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/set_value_op.h"
+
 #include <string>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace framework {
@@ -26,31 +31,20 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class SetValue : public framework::OperatorWithKernel {
  public:
-  SetValue(const std::string &type, const framework::VariableNameMap &inputs,
+  SetValue(const std::string &type,
+           const framework::VariableNameMap &inputs,
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "SetValue");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SetValue");
-    auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE_LT(
-        in_dims.size(), 7,
-        platform::errors::InvalidArgument(
-            "The rank of input should be less than 7, but received %d.",
-            in_dims.size()));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -60,14 +54,15 @@ class SetValue : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StepsTensorList") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -105,10 +100,11 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
 
     // Attr
     AddAttr<int>("dtype", "data type of input.")
-        .InEnum(
-            {framework::proto::VarType::BOOL, framework::proto::VarType::INT32,
-             framework::proto::VarType::INT64, framework::proto::VarType::FP32,
-             framework::proto::VarType::FP64})
+        .InEnum({framework::proto::VarType::BOOL,
+                 framework::proto::VarType::INT32,
+                 framework::proto::VarType::INT64,
+                 framework::proto::VarType::FP32,
+                 framework::proto::VarType::FP64})
         .SetDefault(framework::proto::VarType::FP32);
     AddAttr<std::vector<int64_t>>(
         "axes", "(list<int64_t>) Axes that `starts` and `ends` apply to.");
@@ -189,12 +185,15 @@ class SetValueGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "set_value_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "set_value_grad");
 
     auto in_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE_LT(
-        in_dims.size(), 7,
+        in_dims.size(),
+        7,
         platform::errors::InvalidArgument(
             "The dimension of set_value_grad operator's input should be less "
             "than 7, but received dimension is %d.",
@@ -217,14 +216,15 @@ class SetValueGrad : public framework::OperatorWithKernel {
                                    in_tensor->place());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StepsTensorList") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -236,10 +236,17 @@ DECLARE_INPLACE_OP_INFERER(SetValueOpInplaceInferer, {"Input", "Out"});
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(set_value, ops::SetValue, ops::SetValueMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(set_value,
+                            SetValueInferShapeFunctor,
+                            PD_INFER_META(phi::SetValueInferMeta));
+
+REGISTER_OPERATOR(set_value,
+                  ops::SetValue,
+                  ops::SetValueMaker,
                   ops::SetValueGradMaker<paddle::framework::OpDesc>,
                   ops::SetValueGradMaker<paddle::imperative::OpBase>,
-                  ops::SetValueOpInplaceInferer);
+                  ops::SetValueOpInplaceInferer,
+                  SetValueInferShapeFunctor);
 
 REGISTER_OPERATOR(set_value_grad, ops::SetValueGrad);
 
@@ -267,7 +274,8 @@ Upgrade set_value, add 3 inputs [StartsTensorList, EndsTensorList, StepsTensorLi
             .ModifyAttr("ends",
                         "Ending indices of corresponding axis in `axes`.",
                         std::vector<int64_t>{})
-            .NewAttr("steps", "Stride step from the start to the end.",
+            .NewAttr("steps",
+                     "Stride step from the start to the end.",
                      std::vector<int64_t>{}))
     .AddCheckpoint(
         R"ROC(

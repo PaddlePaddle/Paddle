@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/scatter_nd_add_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
-#include "paddle/phi/kernels/scatter_nd_add_kernel.h"
 
 namespace phi {
 
@@ -26,7 +27,7 @@ void ScatterNdAddKernel(const Context &ctx,
                         const DenseTensor &index,
                         const DenseTensor &updates,
                         DenseTensor *out) {
-  Copy(ctx, x, ctx.GetPlace(), true, out);
+  Copy(ctx, x, ctx.GetPlace(), false, out);
   const auto &index_type = index.dtype();
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;

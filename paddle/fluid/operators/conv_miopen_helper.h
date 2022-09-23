@@ -14,46 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include <algorithm>
-#include <array>
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "paddle/fluid/framework/conv_search_cache.h"
-#include "paddle/fluid/framework/operator_kernel_configs.h"
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/operators/conv_base_helper.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using DataLayout = platform::DataLayout;
-template <typename T>
-using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
-using framework::AlgorithmsCache;
-static inline void GetNCDHW(const framework::DDim& dims,
-                            const DataLayout& layout, int* N, int* C, int* D,
-                            int* H, int* W) {
-  *N = dims[0];
-  *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int i = layout == DataLayout::kNCHW ? 0 : 1;
-  if (dims.size() == 5) {
-    *D = dims[2 - i];
-    *H = dims[3 - i];
-    *W = dims[4 - i];
-  } else {
-    *D = 1;
-    *H = dims[2 - i];
-    *W = dims[3 - i];
-  }
-}
+using ConvArgs = ConvArgsBase<miopenHandle_t, miopenDataType_t>;
 
 template <typename DeviceContext, typename T, size_t D>
 static void RemovePaddingSlice(const phi::GPUContext& context,
-                               const Tensor* input, Tensor* out,
+                               const Tensor* input,
+                               Tensor* out,
                                const std::vector<int>& starts,
                                const std::vector<int>& axes) {
   auto& place = *context.eigen_device();
@@ -66,9 +38,8 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
     extents[i] = new_out_dims[i];
   }
 
-  int start;
   for (size_t i = 0; i < axes.size(); ++i) {
-    start = starts[i];
+    int start = starts[i];
     if (start < 0) {
       start = (start + in_dims[axes[i]]);
     }
@@ -85,39 +56,7 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
   out_t.device(place) = in_t.slice(offsets, extents);
 }
 
-template <typename T>
-std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
-  out << "[";
-  for (auto const& tmp : v) out << tmp << ",";
-  out << "]";
-  return out;
-}
-
-using framework::ConvSearchCache;
-
-struct ConvArgs {
-  miopenHandle_t handle;
-  platform::TensorDescriptor idesc, odesc;
-  platform::FilterDescriptor wdesc;
-  platform::ConvolutionDescriptor cdesc;
-  const framework::Tensor *x, *w, *o;
-  miopenDataType_t cudnn_dtype;
-
-  // strides
-  std::vector<int> s;
-  // paddings
-  std::vector<int> p;
-  // dilations
-  std::vector<int> d;
-
-  ConvArgs(const framework::Tensor* x, const framework::Tensor* w,
-           const framework::Tensor* o, const std::vector<int> s,
-           const std::vector<int> p, const std::vector<int> d,
-           miopenDataType_t dtype)
-      : x(x), w(w), o(o), s(s), p(p), d(d), cudnn_dtype(dtype) {}
-};
-
-template <typename algo_t>
+template <typename PerfT>
 struct SearchAlgorithm {};
 
 template <>
@@ -126,8 +65,10 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
   using algo_t = miopenConvFwdAlgorithm_t;
 
   template <typename T>
-  static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic, size_t workspace_size,
+  static algo_t Find(const ConvArgs& args,
+                     bool exhaustive_search,
+                     bool deterministic,
+                     size_t workspace_size,
                      const phi::GPUContext& ctx) {
     algo_t algo;
 
@@ -138,11 +79,20 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
     auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenFindConvolutionForwardAlgorithm(
-              args.handle, args.idesc.desc(), args.x->data<T>(),
-              args.wdesc.desc(), args.w->data<T>(), args.cdesc.desc(),
-              args.odesc.desc(), const_cast<T*>(args.o->data<T>()),
-              kNUM_CUDNN_FWD_ALGS, &find_count, &find_result,
-              cudnn_workspace_ptr, workspace_size, false));
+              args.handle,
+              args.idesc.desc(),
+              args.x->data<T>(),
+              args.wdesc.desc(),
+              args.w->data<T>(),
+              args.cdesc.desc(),
+              args.odesc.desc(),
+              const_cast<T*>(args.o->data<T>()),
+              kNUM_CUDNN_FWD_ALGS,
+              &find_count,
+              &find_result,
+              cudnn_workspace_ptr,
+              workspace_size,
+              false));
     };
 
     workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
@@ -155,8 +105,12 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenConvolutionForwardGetWorkSpaceSize(
-            args.handle, args.wdesc.desc(), args.idesc.desc(),
-            args.cdesc.desc(), args.odesc.desc(), &workspace_size));
+            args.handle,
+            args.wdesc.desc(),
+            args.idesc.desc(),
+            args.cdesc.desc(),
+            args.odesc.desc(),
+            &workspace_size));
     return workspace_size;
   }
 };
@@ -167,8 +121,10 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
   using algo_t = miopenConvBwdDataAlgorithm_t;
 
   template <typename T>
-  static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic, size_t workspace_size,
+  static algo_t Find(const ConvArgs& args,
+                     bool exhaustive_search,
+                     bool deterministic,
+                     size_t workspace_size,
                      const phi::GPUContext& ctx) {
     algo_t algo;
 
@@ -179,11 +135,20 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
     auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenFindConvolutionBackwardDataAlgorithm(
-              args.handle, args.odesc.desc(), args.o->data<T>(),
-              args.wdesc.desc(), args.w->data<T>(), args.cdesc.desc(),
-              args.idesc.desc(), const_cast<T*>(args.x->data<T>()),
-              kNUM_CUDNN_BWD_DATA_ALGS, &find_count, &find_result,
-              cudnn_workspace_ptr, workspace_size, false));
+              args.handle,
+              args.odesc.desc(),
+              args.o->data<T>(),
+              args.wdesc.desc(),
+              args.w->data<T>(),
+              args.cdesc.desc(),
+              args.idesc.desc(),
+              const_cast<T*>(args.x->data<T>()),
+              kNUM_CUDNN_BWD_DATA_ALGS,
+              &find_count,
+              &find_result,
+              cudnn_workspace_ptr,
+              workspace_size,
+              false));
     };
 
     workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
@@ -196,8 +161,12 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenConvolutionBackwardDataGetWorkSpaceSize(
-            args.handle, args.odesc.desc(), args.wdesc.desc(),
-            args.cdesc.desc(), args.idesc.desc(), &workspace_size));
+            args.handle,
+            args.odesc.desc(),
+            args.wdesc.desc(),
+            args.cdesc.desc(),
+            args.idesc.desc(),
+            &workspace_size));
     return workspace_size;
   }
 };
@@ -208,8 +177,10 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
   using algo_t = miopenConvBwdWeightsAlgorithm_t;
 
   template <typename T>
-  static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic, size_t workspace_size,
+  static algo_t Find(const ConvArgs& args,
+                     bool exhaustive_search,
+                     bool deterministic,
+                     size_t workspace_size,
                      const phi::GPUContext& ctx) {
     algo_t algo;
 
@@ -220,11 +191,20 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
     auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenFindConvolutionBackwardWeightsAlgorithm(
-              args.handle, args.odesc.desc(), args.o->data<T>(),
-              args.idesc.desc(), args.x->data<T>(), args.cdesc.desc(),
-              args.wdesc.desc(), const_cast<T*>(args.w->data<T>()),
-              kNUM_CUDNN_BWD_FILTER_ALGS, &find_count, &find_result,
-              cudnn_workspace_ptr, workspace_size, false));
+              args.handle,
+              args.odesc.desc(),
+              args.o->data<T>(),
+              args.idesc.desc(),
+              args.x->data<T>(),
+              args.cdesc.desc(),
+              args.wdesc.desc(),
+              const_cast<T*>(args.w->data<T>()),
+              kNUM_CUDNN_BWD_FILTER_ALGS,
+              &find_count,
+              &find_result,
+              cudnn_workspace_ptr,
+              workspace_size,
+              false));
     };
 
     workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
@@ -237,8 +217,12 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenConvolutionBackwardWeightsGetWorkSpaceSize(
-            args.handle, args.odesc.desc(), args.idesc.desc(),
-            args.cdesc.desc(), args.wdesc.desc(), &workspace_size));
+            args.handle,
+            args.odesc.desc(),
+            args.idesc.desc(),
+            args.cdesc.desc(),
+            args.wdesc.desc(),
+            &workspace_size));
     return workspace_size;
   }
 };

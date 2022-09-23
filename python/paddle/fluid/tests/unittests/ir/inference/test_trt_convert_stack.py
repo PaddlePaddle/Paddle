@@ -22,14 +22,14 @@ import unittest
 
 
 class TrtConvertStackTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
         outputs = program_config.outputs
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         #The input dimension should be less than the set axis.
         if len(inputs['stack_input1'].shape) < attrs[0]['axis']:
@@ -38,38 +38,39 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 24, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 24, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         def generate_input3(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 24, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         for dims in [1, 2, 3, 4]:
-            for batch in [1, 2, 4]:
+            for batch in [1, 4]:
                 for axis in [-2, -1, 0, 1, 2, 3]:
                     self.dims = dims
                     dics = [{"axis": axis}, {}]
@@ -89,12 +90,15 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
-                            "stack_input1": TensorConfig(data_gen=partial(
-                                generate_input1, dics, batch)),
-                            "stack_input2": TensorConfig(data_gen=partial(
-                                generate_input2, dics, batch)),
-                            "stack_input3": TensorConfig(data_gen=partial(
-                                generate_input3, dics, batch))
+                            "stack_input1":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch)),
+                            "stack_input2":
+                            TensorConfig(
+                                data_gen=partial(generate_input2, dics, batch)),
+                            "stack_input3":
+                            TensorConfig(
+                                data_gen=partial(generate_input3, dics, batch))
                         },
                         outputs=["stack_output"])
 
@@ -102,6 +106,7 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -180,8 +185,7 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                 return 0, 5
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         # for static_shape
         clear_dynamic_shape()
@@ -195,11 +199,11 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
 
     def add_skip_trt_case(self):
         pass

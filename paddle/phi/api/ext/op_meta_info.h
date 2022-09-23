@@ -20,8 +20,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/phi/api/ext/dll_decl.h"
 #include "paddle/phi/api/ext/exception.h"
+#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/utils/any.h"
 
@@ -58,6 +58,7 @@ using Tensor = paddle::experimental::Tensor;
 
 constexpr char kGradTensorSuffix[] = "@GRAD";
 constexpr char kTensorVectorSuffix[] = "@VECTOR";
+constexpr char kDoubleGradNewOutSuffix[] = "@NEW";
 
 // Used for Construct Grad Tensor name
 inline std::string Grad(const std::string& t_name) {
@@ -74,6 +75,15 @@ inline std::string Vec(const std::string& t_name) {
   result.reserve(t_name.size() + 7U);
   result += t_name;
   result += kTensorVectorSuffix;
+  return result;
+}
+
+// Used for Construct double grad output name
+inline std::string New(const std::string& t_name) {
+  std::string result;
+  result.reserve(t_name.size() + 4U);
+  result += t_name;
+  result += kDoubleGradNewOutSuffix;
   return result;
 }
 
@@ -203,7 +213,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_ComputeCallHelper(const std::vector<std::string>&);
   // TODO(chenweihang): support other attribute type if needed.
   // Why not support other attribute type here?
-  // - boost::blank, std::vector<bool> and std::vector<double>
+  // - paddle::blank, std::vector<bool> and std::vector<double>
   //   are not used in op
   // - BlockDesc* and std::vector<BlockDesc*> are used in framework
 
@@ -307,25 +317,24 @@ using InferShapeFunc = std::vector<std::vector<int64_t>> (*)(
     const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
     const std::vector<paddle::any>& attrs);
 
-#define PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPE(input_type)            \
-  template <typename... Tail>                                               \
-  struct InferShapeCallHelper<input_type, Tail...> {                        \
-    template <int in_idx,                                                   \
-              int vec_in_idx,                                               \
-              int attr_idx,                                                 \
-              typename... PreviousArgs>                                     \
-    static Return InferShape(                                               \
-        const std::vector<std::vector<int64_t>>& input_shapes,              \
-        const std::vector<std::vector<std::vector<int64_t>>>&               \
-            vec_input_shapes,                                               \
-        const std::vector<paddle::any>& attrs,                              \
-        const PreviousArgs&... pargs) {                                     \
-      input_type arg = input_shapes[in_idx];                                \
-      return InferShapeCallHelper<Tail...>::template InferShape<in_idx + 1, \
-                                                                vec_in_idx, \
-                                                                attr_idx>(  \
-          input_shapes, vec_input_shapes, attrs, pargs..., arg);            \
-    }                                                                       \
+#define PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPE(input_type)     \
+  template <typename... Tail>                                        \
+  struct InferShapeCallHelper<input_type, Tail...> {                 \
+    template <int in_idx,                                            \
+              int vec_in_idx,                                        \
+              int attr_idx,                                          \
+              typename... PreviousArgs>                              \
+    static Return InferShape(                                        \
+        const std::vector<std::vector<int64_t>>& input_shapes,       \
+        const std::vector<std::vector<std::vector<int64_t>>>&        \
+            vec_input_shapes,                                        \
+        const std::vector<paddle::any>& attrs,                       \
+        const PreviousArgs&... pargs) {                              \
+      input_type arg = input_shapes[in_idx];                         \
+      return InferShapeCallHelper<Tail...>::                         \
+          template InferShape<in_idx + 1, vec_in_idx, attr_idx>(     \
+              input_shapes, vec_input_shapes, attrs, pargs..., arg); \
+    }                                                                \
   }
 
 #define PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPES(input_type)    \
@@ -387,10 +396,8 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
       const std::vector<std::vector<int64_t>>& input_shapes,
       const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
       const std::vector<paddle::any>& attrs) {
-    return InferShapeCallHelper<Args..., TypeTag<int>>::template InferShape<0,
-                                                                            0,
-                                                                            0>(
-        input_shapes, vec_input_shapes, attrs);
+    return InferShapeCallHelper<Args..., TypeTag<int>>::
+        template InferShape<0, 0, 0>(input_shapes, vec_input_shapes, attrs);
   }
 
  private:
@@ -472,20 +479,19 @@ using InferDtypeFunc = std::vector<DataType> (*)(
     }                                                                        \
   }
 
-#define PD_SPECIALIZE_InferDtypeCallHelper_FOR_DTYPES(input_type)            \
-  template <typename... Tail>                                                \
-  struct InferDtypeCallHelper<input_type, Tail...> {                         \
-    template <int in_idx, int vec_in_idx, typename... PreviousArgs>          \
-    static Return InferDtype(                                                \
-        const std::vector<DataType>& input_dtypes,                           \
-        const std::vector<std::vector<DataType>>& vec_input_dtypes,          \
-        const PreviousArgs&... pargs) {                                      \
-      input_type arg = vec_input_dtypes[vec_in_idx];                         \
-      return InferDtypeCallHelper<Tail...>::template InferDtype<in_idx,      \
-                                                                vec_in_idx + \
-                                                                    1>(      \
-          input_dtypes, vec_input_dtypes, pargs..., arg);                    \
-    }                                                                        \
+#define PD_SPECIALIZE_InferDtypeCallHelper_FOR_DTYPES(input_type)   \
+  template <typename... Tail>                                       \
+  struct InferDtypeCallHelper<input_type, Tail...> {                \
+    template <int in_idx, int vec_in_idx, typename... PreviousArgs> \
+    static Return InferDtype(                                       \
+        const std::vector<DataType>& input_dtypes,                  \
+        const std::vector<std::vector<DataType>>& vec_input_dtypes, \
+        const PreviousArgs&... pargs) {                             \
+      input_type arg = vec_input_dtypes[vec_in_idx];                \
+      return InferDtypeCallHelper<Tail...>::                        \
+          template InferDtype<in_idx, vec_in_idx + 1>(              \
+              input_dtypes, vec_input_dtypes, pargs..., arg);       \
+    }                                                               \
   }
 
 template <typename F, F f>

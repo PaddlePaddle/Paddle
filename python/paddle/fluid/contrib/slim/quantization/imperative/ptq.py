@@ -31,8 +31,9 @@ from .ptq_registry import PTQRegistry
 
 __all__ = ['ImperativePTQ']
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class ImperativePTQ(object):
@@ -109,11 +110,11 @@ class ImperativePTQ(object):
 
         Args:
             model (Layer): The model to be saved.
-            path (str): The path prefix to save model. The format is 
+            path (str): The path prefix to save model. The format is
                 ``dirname/file_prefix`` or ``file_prefix``.
             input_spec (list[InputSpec|Tensor], optional): Describes the input
                 of the saved model's forward method, which can be described by
-                InputSpec or example Tensor. If None, all input variables of 
+                InputSpec or example Tensor. If None, all input variables of
                 the original Layer's forward method would be the inputs of
                 the saved model. Default None.
             **configs (dict, optional): Other save configuration options for
@@ -124,9 +125,9 @@ class ImperativePTQ(object):
                 (1) output_spec (list[Tensor]): Selects the output targets of
                 the saved model. By default, all return variables of original
                 Layer's forward method are kept as the output of the saved model.
-                If the provided ``output_spec`` list is not all output variables, 
+                If the provided ``output_spec`` list is not all output variables,
                 the saved model will be pruned according to the given
-                ``output_spec`` list. 
+                ``output_spec`` list.
 
         Returns:
             None
@@ -155,12 +156,12 @@ class ImperativePTQ(object):
         model_filename = basename + INFER_MODEL_SUFFIX
         params_filename = basename + INFER_PARAMS_SUFFIX
 
-        [infer_program, feed_target_names, fetch_targets] = (
-            paddle.fluid.io.load_inference_model(
-                dirname=dirname,
-                executor=exe,
-                model_filename=model_filename,
-                params_filename=params_filename))
+        [infer_program, feed_target_names,
+         fetch_targets] = (paddle.fluid.io.load_inference_model(
+             dirname=dirname,
+             executor=exe,
+             model_filename=model_filename,
+             params_filename=params_filename))
 
         # Process inference program
         self._clean_up(infer_program)
@@ -168,14 +169,13 @@ class ImperativePTQ(object):
         self._remove_scale_op(infer_program)
 
         # Save final program
-        paddle.fluid.io.save_inference_model(
-            dirname=dirname,
-            feeded_var_names=feed_target_names,
-            target_vars=fetch_targets,
-            executor=exe,
-            main_program=infer_program.clone(),
-            model_filename=model_filename,
-            params_filename=params_filename)
+        paddle.fluid.io.save_inference_model(dirname=dirname,
+                                             feeded_var_names=feed_target_names,
+                                             target_vars=fetch_targets,
+                                             executor=exe,
+                                             main_program=infer_program.clone(),
+                                             model_filename=model_filename,
+                                             params_filename=params_filename)
 
         if is_dynamic_mode:
             paddle.disable_static()
@@ -310,8 +310,8 @@ class ImperativePTQ(object):
                 assert hasattr(quant_layer, "_fake_quant_input")
                 assert hasattr(quant_layer._fake_quant_input, "_scale")
                 assert len(in_act_quantizer.thresholds) == 1
-                input_threshold = np.array(
-                    [in_act_quantizer.thresholds[0]], dtype=np.float32)
+                input_threshold = np.array([in_act_quantizer.thresholds[0]],
+                                           dtype=np.float32)
                 quant_layer._fake_quant_input._scale.set_value(input_threshold)
 
                 assert hasattr(quant_layer, "_fake_quant_weight")
@@ -319,11 +319,11 @@ class ImperativePTQ(object):
                 assert len(wt_quantizer.thresholds) == 1
                 weight_threshold = wt_quantizer.thresholds[0]
                 if isinstance(weight_threshold, list):
-                    weight_threshold = np.array(
-                        weight_threshold, dtype=np.float32)
+                    weight_threshold = np.array(weight_threshold,
+                                                dtype=np.float32)
                 else:
-                    weight_threshold = np.array(
-                        [weight_threshold], dtype=np.float32)
+                    weight_threshold = np.array([weight_threshold],
+                                                dtype=np.float32)
                 quant_layer._fake_quant_weight._scale.set_value(
                     weight_threshold)
 
@@ -356,8 +356,8 @@ class ImperativePTQ(object):
                     attr_name = previous_op.output('OutScale')[0]
                     in_threshold = utils.load_variable_data(scope, attr_name)
                     in_threshold = utils.fp_numpy_to_naive(in_threshold)
-                    argname, index = utils._get_input_name_index(op,
-                                                                 in_var_name)
+                    argname, index = utils._get_input_name_index(
+                        op, in_var_name)
                     op._set_attr(argname + str(index) + "_threshold",
                                  in_threshold)
                     op._set_attr("with_quant_attr", True)
@@ -417,7 +417,8 @@ class ImperativePTQ(object):
                 old_attr_name = argname + str(index) + "_threshold"
 
                 argname, index = utils._get_output_name_index(
-                    next_op, next_op.output("Out")[0])
+                    next_op,
+                    next_op.output("Out")[0])
                 new_attr_name = argname + str(index) + "_threshold"
 
                 _helper(op, next_op, old_attr_name, new_attr_name)

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/infermeta/nullary.h"
@@ -24,7 +24,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
-                 const ScalarArray& shape,
+                 const IntArray& shape,
                  DataType dtype,
                  DenseTensor* out);
 
@@ -43,7 +43,7 @@ DenseTensor Empty(const Context& dev_ctx, DenseTensorMeta&& meta) {
 }
 
 template <typename T, typename Context>
-DenseTensor Empty(const Context& dev_ctx, const ScalarArray& shape) {
+DenseTensor Empty(const Context& dev_ctx, const IntArray& shape) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();

@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/conv_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/framework/eigen.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/operators/conv_miopen_helper.h"
 #else
@@ -28,15 +27,12 @@
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/kernels/funcs/padding.h"
-
-#include "paddle/phi/kernels/cpu/conv_util.h"
-#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
-
-#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
-
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/padding.h"
+#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
 namespace phi {
 
@@ -54,7 +50,7 @@ void ConvCudnnKernel(const Context& ctx,
                      int workspace_size_MB,
                      bool exhaustive_search_t,
                      DenseTensor* output) {
-  output->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
 
@@ -68,7 +64,6 @@ void ConvCudnnKernel(const Context& ctx,
                         "FLAGS_cudnn_deterministic True at same time."));
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
 #ifdef PADDLE_WITH_HIP
@@ -170,7 +165,7 @@ void ConvCudnnKernel(const Context& ctx,
     }
     DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
-    transformed_input.mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(&transformed_input);
 
     const int rank = transformed_input_channel.dims().size();
     T pad_value(0.0);
@@ -218,7 +213,9 @@ void ConvCudnnKernel(const Context& ctx,
                                    strides,
                                    padding_common,
                                    dilations,
-                                   dtype};
+                                   dtype,
+                                   groups,
+                                   compute_format};
 
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -309,17 +306,17 @@ void ConvCudnnKernel(const Context& ctx,
   size_t workspace_size = 0;  // final workspace to allocate.
 // ------------------- cudnn conv algorithm ---------------------
 #ifdef PADDLE_WITH_HIP
-  miopenConvFwdAlgorithm_t algo{};
+  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
   using search = paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
   workspace_size = search::GetWorkspaceSize(args);
-  algo = search::Find<T>(
+  fwd_result.algo = search::Find<T>(
       args, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-  cudnnConvolutionFwdAlgo_t algo{};
+  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-  algo = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-  workspace_size = search::GetWorkspaceSize(args, algo);
+  fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
+  workspace_size = fwd_result.workspace_size;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
@@ -328,7 +325,7 @@ void ConvCudnnKernel(const Context& ctx,
   // in forward computation, so change the algorithm to CUDNN_CONVOLUTION_\
     // FWD_ALGO_IMPLICIT_GEMM manually.
   if (groups > 1) {
-    algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
+    fwd_result.algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
   }
 #endif
 
@@ -336,9 +333,9 @@ void ConvCudnnKernel(const Context& ctx,
   paddle::operators::ScalingParamType<T> alpha = 1.0f;
   paddle::operators::ScalingParamType<T> beta = 0.0f;
 
-// NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
-// ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
-// VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
+  // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
+  // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+  // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
 
 #ifdef PADDLE_WITH_HIP
   workspace_handle.RunFunc(
@@ -352,7 +349,7 @@ void ConvCudnnKernel(const Context& ctx,
                 args.wdesc.desc(),
                 filter_data,
                 args.cdesc.desc(),
-                algo,
+                fwd_result.algo,
                 &beta,
                 args.odesc.desc(),
                 output_data,
@@ -373,7 +370,7 @@ void ConvCudnnKernel(const Context& ctx,
                   args.wdesc.desc(),
                   filter_data + i * group_offset_filter,
                   args.cdesc.desc(),
-                  algo,
+                  fwd_result.algo,
                   workspace_ptr,
                   workspace_size,
                   &beta,
@@ -418,6 +415,36 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
                      out);
 }
 
+template <typename T, typename Context>
+void DepthwiseConvCudnnKernel(const Context& dev_ctx,
+                              const DenseTensor& input,
+                              const DenseTensor& filter,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings,
+                              const std::string& padding_algorithm,
+                              int groups,
+                              const std::vector<int>& dilations,
+                              const std::string& data_format,
+                              bool use_addto,
+                              int workspace_size_MB,
+                              bool exhaustive_search,
+                              bool fuse_relu,
+                              DenseTensor* out) {
+  ConvCudnnKernel<T>(dev_ctx,
+                     input,
+                     filter,
+                     strides,
+                     paddings,
+                     padding_algorithm,
+                     groups,
+                     dilations,
+                     data_format,
+                     use_addto,
+                     workspace_size_MB,
+                     exhaustive_search,
+                     out);
+}
+
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
@@ -434,6 +461,14 @@ PD_REGISTER_KERNEL(conv3d,
                    phi::Conv3DCudnnKernel,
                    float,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(depthwise_conv2d,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::DepthwiseConvCudnnKernel,
+                   float,
+                   phi::dtype::float16) {}
+
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d,

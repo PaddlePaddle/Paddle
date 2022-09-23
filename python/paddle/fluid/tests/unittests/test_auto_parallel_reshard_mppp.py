@@ -21,23 +21,26 @@ import paddle.nn as nn
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import reshard
+from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.cost import CostEstimator
+from paddle.distributed.auto_parallel.cluster import Cluster
 
 paddle.enable_static()
 _global_parallel_strategy = "mp_pp"
-_global_process_mesh = auto.ProcessMesh([[0, 1], [2, 3]])
-PP_MESH_0 = auto.ProcessMesh([0, 1])
-PP_MESH_1 = auto.ProcessMesh([2, 3])
+_global_process_mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+PP_MESH_0 = auto.ProcessMesh([0, 1], dim_names=["x"])
+PP_MESH_1 = auto.ProcessMesh([2, 3], dim_names=["x"])
 
 
 class MLPLayer(nn.Layer):
+
     def __init__(self,
                  hidden_size=1024,
                  intermediate_size=4 * 1024,
@@ -45,44 +48,41 @@ class MLPLayer(nn.Layer):
         super(MLPLayer, self).__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
-        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-            mean=0.0, std=initializer_range))
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
         bias_attr = None
 
         self.word_embeddings = nn.Embedding(
             hidden_size,
             hidden_size,
-            weight_attr=paddle.ParamAttr(
-                name="word_embeddings",
-                initializer=nn.initializer.Normal(
-                    mean=0.0, std=initializer_range)))
+            weight_attr=paddle.ParamAttr(name="word_embeddings",
+                                         initializer=nn.initializer.Normal(
+                                             mean=0.0, std=initializer_range)))
 
-        self.linear0 = nn.Linear(
-            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
-        self.linear1 = nn.Linear(
-            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
-        self.linear2 = nn.Linear(
-            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+        self.linear2 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
 
     def forward(self, input):
-        auto.shard_tensor(
-            self.word_embeddings.weight,
-            dist_attr={"process_mesh": PP_MESH_0,
-                       "dims_mapping": [0, -1]})
-        auto.shard_tensor(
-            self.linear0.weight,
-            dist_attr={"process_mesh": PP_MESH_0,
-                       "dims_mapping": [-1, 0]})
-        auto.shard_tensor(
-            self.linear1.weight,
-            dist_attr={"process_mesh": PP_MESH_1,
-                       "dims_mapping": [0, -1]})
-        auto.shard_tensor(
-            self.linear2.weight,
-            dist_attr={"process_mesh": PP_MESH_1,
-                       "dims_mapping": [0, -1]})
+        auto.shard_tensor(self.word_embeddings.weight, PP_MESH_0, ["x", None])
+        auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, "x"])
+        auto.shard_tensor(self.linear1.weight, PP_MESH_1, ["x", None])
+        auto.shard_tensor(self.linear2.weight, PP_MESH_1, ["x", None])
         w_out = self.word_embeddings(input)
         out = self.linear0(w_out)
+        param = paddle.fluid.layers.create_parameter([4096, 4096],
+                                                     paddle.float32)
+        auto.shard_tensor(param, PP_MESH_0, ["x", None])
+        out = paddle.fluid.layers.mul(out, param)
         gelu_out = F.gelu(out, approximate=True)
         out = self.linear1(gelu_out)
         out1 = self.linear2(gelu_out)
@@ -98,21 +98,16 @@ def mlp_forward(train_program, start_program):
         hidden_size = 1024
         sequence_len = 512
         input = static.data(name="input", shape=[batch_size], dtype='int32')
-        label = static.data(
-            name="label", shape=[batch_size, 1], dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, 1],
+                            dtype='float32')
 
-        auto.shard_tensor(
-            input, dist_attr={"process_mesh": PP_MESH_0,
-                              "dims_mapping": [-1]})
-        auto.shard_tensor(
-            label,
-            dist_attr={"process_mesh": PP_MESH_1,
-                       "dims_mapping": [-1, -1]})
+        auto.shard_tensor(input, PP_MESH_0, [None])
+        auto.shard_tensor(label, PP_MESH_1, [None, None])
 
-        mlp = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            initializer_range=0.02)
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       initializer_range=0.02)
 
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
@@ -137,13 +132,12 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     complete_train_program = completer.complete_forward_annotation(
         train_program)
     dist_context.block_state.parse_forward_blocks(complete_train_program)
-    params_grads = parallelizer._generate_backward(
-        complete_train_program,
-        startup_program,
-        loss,
-        parameter_list=None,
-        no_grad_set=None,
-        callbacks=None)
+    params_grads = parallelizer._generate_backward(complete_train_program,
+                                                   startup_program,
+                                                   loss,
+                                                   parameter_list=None,
+                                                   no_grad_set=None,
+                                                   callbacks=None)
 
     # logical partition
     partitioner = Partitioner(dist_context, rank_id)
@@ -171,8 +165,7 @@ def check_send_recv_result(dist_main_prog, rank_id):
             if op.type == "send_v2" and "gelu_0.tmp_0@GRAD" in op.input_arg_names[
                     0]:
                 send_result = True
-            if op.type == "recv_v2" and "gelu_0.tmp_0" in op.output_arg_names[
-                    0]:
+            if op.type == "recv_v2" and "gelu_0.tmp_0" in op.output_arg_names[0]:
                 recv_result = True
 
     return send_result and recv_result
@@ -206,6 +199,7 @@ def check_allgather(dist_main_program):
 
 
 class TestMLPReshard(unittest.TestCase):
+
     def test_mlp_mppp(self):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -213,9 +207,9 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 2
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
-                dist_params_grads)
-
+        resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
+                              dist_context, dist_params_grads)
+        resharder.reshard()
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
 
@@ -226,41 +220,15 @@ class TestMLPReshard(unittest.TestCase):
     def test_allgather(self):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        process_mesh = auto.ProcessMesh(mesh=[0, 3])
+        process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
         with static.program_guard(train_program, startup_program):
             x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
-            x = auto.shard_tensor(
-                x,
-                dist_attr={
-                    "process_mesh": process_mesh,
-                    "dims_mapping": [0, -1]
-                })
-
+            x = auto.shard_tensor(x, process_mesh, ["x", None])
             w = paddle.static.data(name="w", shape=[4, 4], dtype='float32')
-            w = auto.shard_tensor(
-                w,
-                dist_attr={
-                    "process_mesh": process_mesh,
-                    "dims_mapping": [-1, -1]
-                })
+            w = auto.shard_tensor(w, process_mesh, [None, None])
 
-            # y = paddle.distributed.shard_op(paddle.matmul, process_mesh, {
-            #     x.name: [-1, -1],
-            #     w.name: [-1, -1]
-            # }, **{"x": x,
-            #       "y": w})[0]
-
-            y = paddle.distributed.shard_op(
-                paddle.matmul,
-                dist_attr={
-                    "process_mesh": process_mesh,
-                    x: {
-                        "dims_mapping": [-1, -1]
-                    },
-                    w: {
-                        "dims_mapping": [-1, -1]
-                    }
-                })(x, w)[0]
+            y = paddle.distributed.shard_op(paddle.matmul, process_mesh,
+                                            [[None, None], [None, None]])(x, w)
 
         rank_id = 0
         dist_context = DistributedContext()
@@ -272,8 +240,24 @@ class TestMLPReshard(unittest.TestCase):
         dist_context.block_state.parse_forward_blocks(complete_train_program)
         partitioned_main_prog, partitioned_startup_prog, partitioned_params_grads = partitioner.partition(
             complete_train_program, startup_program, [])
-        reshard(partitioned_main_prog, partitioned_startup_prog, rank_id,
-                dist_context, partitioned_params_grads)
+
+        # test estimator
+        cluster = Cluster()
+        cluster.gen_default_config_cluster(device_count=2)
+        cost_estimator = CostEstimator(train_program, cluster)
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context)
+        # test cache
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context)
+        assert global_cost.time > 0
+        assert max_memory > 0
+
+        resharder = Resharder(partitioned_main_prog, partitioned_startup_prog,
+                              rank_id, dist_context, partitioned_params_grads)
+        resharder.reshard()
         # the x should not be slice
         self.assertTrue(check_allgather(partitioned_main_prog))
 

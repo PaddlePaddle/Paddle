@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -26,17 +27,10 @@
 namespace phi {
 
 namespace {
-template <typename Context>
-void LimitGridDim(const Context& ctx, dim3* grid_dim) {
-  auto max_grid_dim =
-      reinterpret_cast<const phi::GPUContext&>(ctx).GetCUDAMaxGridDimSize();
-  grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
-  grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
-}
 #define PREDEFINED_BLOCK_SIZE_X 512
 #define PREDEFINED_BLOCK_SIZE 1024
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-};
+}  // namespace
 
 template <typename T, typename IndexT = int>
 __global__ void IndexSampleGrad(const IndexT* index,
@@ -67,9 +61,9 @@ __global__ void IndexSampleGrad(const IndexT* index,
 
 template <typename T, typename Context>
 void IndexSampleGradKernel(const Context& ctx,
-                           const DenseTensor& out_grad,
                            const DenseTensor& x,
                            const DenseTensor& index,
+                           const DenseTensor& out_grad,
                            DenseTensor* x_grad) {
   const T* output_grad_data = out_grad.data<T>();
   T* input_grad_data = ctx.template Alloc<T>(x_grad);
@@ -107,31 +101,31 @@ void IndexSampleGradKernel(const Context& ctx,
   dim3 block_dim(block_width, block_height);
   dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                 (batch_size + block_dim.y - 1) / block_dim.y);
-  LimitGridDim(ctx, &grid_dim);
+  paddle::platform::LimitGridDim(ctx, &grid_dim);
 
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, x_grad, static_cast<T>(0));
 
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    IndexSampleGrad<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
-        index_data,
-        input_grad_data,
-        output_grad_data,
-        index_length,
-        input_length,
-        batch_size,
-        same_data_in_index_row);
+    IndexSampleGrad<T, int64_t>
+        <<<grid_dim, block_dim, 0, stream>>>(index_data,
+                                             input_grad_data,
+                                             output_grad_data,
+                                             index_length,
+                                             input_length,
+                                             batch_size,
+                                             same_data_in_index_row);
   } else if (index_type == DataType::INT32) {
     const int* index_data = index.data<int>();
-    IndexSampleGrad<T, int><<<grid_dim, block_dim, 0, stream>>>(
-        index_data,
-        input_grad_data,
-        output_grad_data,
-        index_length,
-        input_length,
-        batch_size,
-        same_data_in_index_row);
+    IndexSampleGrad<T, int>
+        <<<grid_dim, block_dim, 0, stream>>>(index_data,
+                                             input_grad_data,
+                                             output_grad_data,
+                                             index_length,
+                                             input_length,
+                                             batch_size,
+                                             same_data_in_index_row);
   }
 }
 }  // namespace phi

@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -21,21 +25,6 @@ namespace operators {
 class TrilTriuOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of TrilTriuOp is not found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of TrilTriuOp is not found."));
-    const auto& x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "Input(X)'s rank must be at least 2 in TrilTriuOp."));
-    ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 class TrilTriuOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -52,9 +41,9 @@ class TrilTriuOpMaker : public framework::OpProtoAndCheckerMaker {
 TrilTriu Operator.
 
 The tril operator returns the lower triangular part of the matrix (2-D tensor)
-or batch of matrices $input$. The lower triangular part of the matrix is defined 
+or batch of matrices $input$. The lower triangular part of the matrix is defined
 as the elements on and below the diagonal.
-The triu operator returns the upper triangular part of a matrix (2-D tensor) 
+The triu operator returns the upper triangular part of a matrix (2-D tensor)
 or batch of matrices $input$. The upper triangular part of the matrix is defined
 as the elements on and above the diagonal.
 The other elements of the result tensor out are set to 0.
@@ -70,10 +59,12 @@ class TrilTriuGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::NotFound(
                           "Input(Out@GRAD) of TrilTriuOp should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")),
+                      true,
                       platform::errors::NotFound(
                           "Output(X@Grad) of TrilTriuOp should not be null"));
     ctx->SetOutputDim(framework::GradVarName("X"),
@@ -100,7 +91,13 @@ class TrilTriuGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(tril_triu, ops::TrilTriuOp, ops::TrilTriuOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(tril_triu,
+                            TrilTriuInferShapeFunctor,
+                            PD_INFER_META(phi::TrilTriuInferMeta));
+REGISTER_OPERATOR(tril_triu,
+                  ops::TrilTriuOp,
+                  ops::TrilTriuOpMaker,
                   ops::TrilTriuGradOpMaker<paddle::framework::OpDesc>,
-                  ops::TrilTriuGradOpMaker<paddle::imperative::OpBase>);
+                  ops::TrilTriuGradOpMaker<paddle::imperative::OpBase>,
+                  TrilTriuInferShapeFunctor);
 REGISTER_OPERATOR(tril_triu_grad, ops::TrilTriuGradOp);

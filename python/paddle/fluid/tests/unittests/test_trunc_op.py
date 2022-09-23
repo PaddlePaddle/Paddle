@@ -27,9 +27,11 @@ paddle.enable_static()
 
 
 class TestTruncOp(OpTest):
+
     def setUp(self):
         self.op_type = "trunc"
-        self.dtype = np.float64
+        self.python_api = paddle.trunc
+        self.init_dtype_type()
         np.random.seed(2021)
         self.inputs = {'X': np.random.random((20, 20)).astype(self.dtype)}
         self.outputs = {'Out': (np.trunc(self.inputs['X']))}
@@ -45,16 +47,27 @@ class TestTruncOp(OpTest):
 
 
 class TestFloatTruncOp(TestTruncOp):
+
     def init_dtype_type(self):
         self.dtype = np.float32
+        self.__class__.exist_fp64_check_grad = True
+
+    def test_check_grad(self):
+        pass
 
 
 class TestIntTruncOp(TestTruncOp):
+
     def init_dtype_type(self):
         self.dtype = np.int32
+        self.__class__.exist_fp64_check_grad = True
+
+    def test_check_grad(self):
+        pass
 
 
 class TestTruncAPI(unittest.TestCase):
+
     def setUp(self):
         self.shape = [20, 20]
         self.x = np.random.random((20, 20)).astype(np.float32)
@@ -69,14 +82,14 @@ class TestTruncAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
         out_ref = np.trunc(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-08), True)
+            np.testing.assert_allclose(out, out_ref, rtol=1e-08)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
         x_tensor = paddle.to_tensor(self.x)
         out = paddle.trunc(x_tensor)
         out_ref = np.trunc(self.x)
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
 
     def test_api_eager(self):
@@ -86,7 +99,7 @@ class TestTruncAPI(unittest.TestCase):
             x_tensor = paddle.to_tensor(self.x)
             out = paddle.trunc(x_tensor)
         out_ref = np.trunc(self.x)
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
 
     def test_api_eager_dygraph(self):

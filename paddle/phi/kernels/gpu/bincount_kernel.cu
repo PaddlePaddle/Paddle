@@ -49,7 +49,7 @@ __global__ void KernelBincount(const InputT* input,
 template <typename Context, typename T, typename InputT>
 void BincountCUDAInner(const Context& dev_ctx,
                        const DenseTensor& x,
-                       const paddle::optional<const DenseTensor&> weights,
+                       const paddle::optional<DenseTensor>& weights,
                        int minlength,
                        DenseTensor* out) {
   const DenseTensor* input = &x;
@@ -108,11 +108,9 @@ void BincountCUDAInner(const Context& dev_ctx,
     int64_t* output_data = dev_ctx.template Alloc<int64_t>(output);
     phi::funcs::SetConstant<Context, int64_t>()(dev_ctx, output, 0L);
 
-    KernelBincount<T, InputT, int64_t><<<GET_BLOCKS(input_numel),
-                                         PADDLE_CUDA_NUM_THREADS,
-                                         0,
-                                         stream>>>(
-        input_data, input_numel, has_weights, weights_data, output_data);
+    KernelBincount<T, InputT, int64_t>
+        <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+            input_data, input_numel, has_weights, weights_data, output_data);
   } else {
     const auto& weights_type =
         paddle::framework::TransToProtoVarType(weights->dtype());
@@ -122,20 +120,16 @@ void BincountCUDAInner(const Context& dev_ctx,
       phi::funcs::SetConstant<Context, float>()(
           dev_ctx, output, static_cast<float>(0));
 
-      KernelBincount<T, InputT, float><<<GET_BLOCKS(input_numel),
-                                         PADDLE_CUDA_NUM_THREADS,
-                                         0,
-                                         stream>>>(
-          input_data, input_numel, has_weights, weights_data, output_data);
+      KernelBincount<T, InputT, float>
+          <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+              input_data, input_numel, has_weights, weights_data, output_data);
     } else {
       double* output_data = dev_ctx.template Alloc<double>(output);
       phi::funcs::SetConstant<Context, double>()(
           dev_ctx, output, static_cast<double>(0));
-      KernelBincount<T, InputT, double><<<GET_BLOCKS(input_numel),
-                                          PADDLE_CUDA_NUM_THREADS,
-                                          0,
-                                          stream>>>(
-          input_data, input_numel, has_weights, weights_data, output_data);
+      KernelBincount<T, InputT, double>
+          <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+              input_data, input_numel, has_weights, weights_data, output_data);
     }
   }
 }
@@ -143,13 +137,22 @@ void BincountCUDAInner(const Context& dev_ctx,
 template <typename T, typename Context>
 void BincountKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<const DenseTensor&> weights,
-                    int minlength,
+                    const paddle::optional<DenseTensor>& weights,
+                    const Scalar& minlength,
                     DenseTensor* out) {
+  int int_minlength = minlength.to<int>();
+  PADDLE_ENFORCE_GE(int_minlength,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The minlength should be greater than or equal to 0."
+                        "But received minlength is %d",
+                        int_minlength));
+
   if (x.dtype() == DataType::INT32) {
-    BincountCUDAInner<Context, T, int>(dev_ctx, x, weights, minlength, out);
+    BincountCUDAInner<Context, T, int>(dev_ctx, x, weights, int_minlength, out);
   } else if (x.dtype() == DataType::INT64) {
-    BincountCUDAInner<Context, T, int64_t>(dev_ctx, x, weights, minlength, out);
+    BincountCUDAInner<Context, T, int64_t>(
+        dev_ctx, x, weights, int_minlength, out);
   }
 }
 }  // namespace phi

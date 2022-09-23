@@ -23,8 +23,22 @@ from functools import reduce
 
 import paddle.fluid.core as core
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.auto_parallel.process_group import get_all_process_groups
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
+
+
+def get_logger(log_level, name="auto_parallel"):
+    logger = logging.getLogger(name)
+    logger.propagate = False
+    if not logger.handlers:
+        logger.setLevel(log_level)
+        log_handler = logging.StreamHandler()
+        log_format = logging.Formatter(
+            '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+        log_handler.setFormatter(log_format)
+        logger.addHandler(log_handler)
+    return logger
 
 
 def is_valid_list_index(list, index):
@@ -46,6 +60,60 @@ def is_dim_replicate(mapping):
         return True
     else:
         return False
+
+
+def verify_dims_mapping(dims_mapping, process_mesh):
+    if dims_mapping is None:
+        return False
+    if not all(isinstance(d, int) for d in dims_mapping):
+        return False
+    for i in range(len(dims_mapping)):
+        if dims_mapping[i] < -1 or dims_mapping[i] >= len(process_mesh.shape):
+            return False
+    for i in range(len(process_mesh.shape)):
+        if dims_mapping.count(i) > 1:
+            return False
+    return True
+
+
+def convert_to_dims_mapping(shard_spec, process_mesh):
+    dims_mapping = []
+    for shard in shard_spec:
+        if shard is None:
+            dims_mapping.append(-1)
+        elif process_mesh.topology[process_mesh.dim_names.index(shard)] == 1:
+            dims_mapping.append(-1)
+        else:
+            dims_mapping.append(process_mesh.dim_names.index(shard))
+    return dims_mapping
+
+
+def convert_to_shard_spec(dims_mapping, process_mesh):
+    shard_spec = []
+    for dim_mapping in dims_mapping:
+        if dim_mapping == -1:
+            shard_spec.append(None)
+        else:
+            shard_spec.append(process_mesh.dim_names[dim_mapping])
+    return shard_spec
+
+
+def verify_shard_spec(shard_spec, tensor_shape, process_mesh):
+    if len(shard_spec) != len(tensor_shape):
+        return False
+    for shard in shard_spec:
+        if shard is not None and not isinstance(shard, str):
+            return False
+        if shard is not None and shard not in process_mesh.dim_names:
+            return False
+    dims_mapping = convert_to_dims_mapping(shard_spec, process_mesh)
+    if not verify_dims_mapping(dims_mapping, process_mesh):
+        return False
+    for i in range(len(tensor_shape)):
+        if dims_mapping[i] != -1 and tensor_shape[i] > 0 \
+            and tensor_shape[i] % process_mesh.shape[dims_mapping[i]] != 0:
+            return False
+    return True
 
 
 def compute_compatible_dim_mapping(dim_mappings):
@@ -159,18 +227,18 @@ def print_program_with_dist_attr(program, dist_context=None):
     from .dist_context import set_default_distributed_context
     if dist_context is None:
         dist_context = get_default_distributed_context()
-        print(program)
+        print(program, flush=True)
     else:
         original_default_context = get_default_distributed_context()
         set_default_distributed_context(dist_context)
-        print(program)
+        print(program, flush=True)
         set_default_distributed_context(original_default_context)
     lock.release()
 
 
 def _get_comm_group(processes, shape, axis, rank):
     """
-    Given a rank and the processes mesh the rank belongs to,  
+    Given a rank and the processes mesh the rank belongs to,
     compute the communication peers of the rank based on the give axis in the mesh.
 
     Example: 16 processes managed in a 4-Dimensinal mesh with shape of [2, 2, 2, 2].
@@ -204,7 +272,7 @@ def _get_comm_group(processes, shape, axis, rank):
 
 def _get_idx_in_axis(processes, shape, axis, rank):
     """
-    Given a rank and the processes mesh the rank belongs to,  
+    Given a rank and the processes mesh the rank belongs to,
     compute the index of the rank in given axis.
 
     Example: 27 processes managed in a 3-Dimensinal mesh with shape of [3, 3, 3].
@@ -225,20 +293,20 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
     """
     convert a coordinate in multidimensional mesh space into a scala idx in linear space.
 
-    it use Row-major order for dimension conversion. 
+    it use Row-major order for dimension conversion.
     so it has:  [most_significant_dim, ..., least_significant_dim]
-    assume: 
+    assume:
 
         the size of i-th dimension to be:  S[i]
         the index of j-th dimension is: I[j]
 
-    linear_idx of a n dimensional coordinate is: 
+    linear_idx of a n dimensional coordinate is:
 
         I[n-1] * (S[n-2] * S[n-3] * S[n-4] *     ....    S[0]) +
-        I[n-2] * (         S[n-3] * S[n-4] *     ....    S[0]) +       
-        I[n-3] * (                  S[n-4] *     ....    S[0]) +  
+        I[n-2] * (         S[n-3] * S[n-4] *     ....    S[0]) +
+        I[n-3] * (                  S[n-4] *     ....    S[0]) +
         ...
-        I[1]   * (                                       S[0]) + 
+        I[1]   * (                                       S[0]) +
         I[0]
 
     """
@@ -278,7 +346,7 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
     mapping a linear scala into multidimensional mesh space, return it coordinate in that space.
 
     it is the inverse function of _coordinate2linear_idx.
-    assume: 
+    assume:
 
         the size of i-th dimension to be:  S[i]
         the index of j-th dimension is: I[j]
@@ -324,10 +392,13 @@ def _get_corresponding_rank(dist_context, target_mesh, rank):
                                                 mesh.processes.index(rank))
             break
 
-    assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
-        rank)
-    return target_mesh.processes[_coordinate2linear_idx(mesh.topology,
-                                                        coordinate)]
+    # assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
+    #     rank)
+    if coordinate is not None:
+        return target_mesh.processes[_coordinate2linear_idx(
+            mesh.topology, coordinate)]
+    else:
+        return target_mesh.processes[0]
 
 
 def _get_unshard_dist_shape(var, dist_attr):
@@ -378,8 +449,8 @@ def _update_addition_info(addition_info):
             if item not in ["epoch", "batch", "batch_size"]:
                 raise ValueError(
                     "The key of 'addition_info' should be one of the "
-                    "['epoch', 'batch', 'batch_size'], but got '{}'."
-                    .format(str(item)))
+                    "['epoch', 'batch', 'batch_size'], but got '{}'.".format(
+                        str(item)))
             if not isinstance(value, int):
                 raise ValueError(
                     "The value of 'addition_info' should be 'int', "
@@ -398,8 +469,8 @@ def _check_valid_path(file_path):
                 raise TypeError("The type of file path should be 'str', "
                                 "but got '{}'.".format(str(type(file))))
             if not os.path.exists(file):
-                raise ValueError("The file path '{}' does not exist."
-                                 .format(file))
+                raise ValueError(
+                    "The file path '{}' does not exist.".format(file))
         return file_path
     else:
         raise TypeError("The type of file path should be 'list', "
@@ -456,8 +527,8 @@ def save_distributed_checkpoint(program,
                                 addition_info=None,
                                 is_integrated=False,
                                 dist_context=None):
-    """ 
-    Save model parameter state, optimzer state, distributed attribute and 
+    """
+    Save model parameter state, optimzer state, distributed attribute and
     additional information of each rank.
 
     Args:
@@ -498,7 +569,7 @@ def save_distributed_checkpoint(program,
 
 
 def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
-    """ 
+    """
     Load parameter, optimizer, distributed attribute and addition_info.
 
     Args:
@@ -508,7 +579,7 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
     Returns:
         param_dict(dict): parameters' value of all ranks.
         dist_attr(dict): parameters' distributed attribute.
-        addition_info(dict): additional information user saved in last training. 
+        addition_info(dict): additional information user saved in last training.
 
     Notes:
         The return, 'addition_info', is belonging to the first file of checkpoint_path by default.
@@ -516,9 +587,9 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
     Examples:
         .. code-block:: python
 
-            ckpt_path = ['./model_state_rank0.pdmodel', 
+            ckpt_path = ['./model_state_rank0.pdmodel',
                          './model_state_rank1.pdmodel']
-            dist_attr_path = ['./dist_attr_rank0.pdattr', 
+            dist_attr_path = ['./dist_attr_rank0.pdattr',
                               './dist_attr_rank1.pdattr']
             param_dict, dist_attr, add_info = load_distributed_checkpoint(ckpt_path, dist_attr_path)
     """
@@ -538,7 +609,7 @@ def load_checkpoint_into_program(checkpoint_path,
                                  dist_attr_path,
                                  program,
                                  dist_context=None):
-    """ 
+    """
     Load parameter, optimizer, distributed attribute and addition_info into model.
 
     Args:
@@ -549,7 +620,7 @@ def load_checkpoint_into_program(checkpoint_path,
 
     Returns:
         addition_info(dict): user saved in last train.
-    
+
     Notes:
         The return, 'addition_info', is belonging to the first file of checkpoint_path by default.
 
@@ -557,9 +628,9 @@ def load_checkpoint_into_program(checkpoint_path,
         .. code-block:: python
 
             exe.run(startup_program)
-            ckpt_path = ['./model_state_rank0.pdmodel', 
+            ckpt_path = ['./model_state_rank0.pdmodel',
                          './model_state_rank1.pdmodel']
-            dist_attr_path = ['./dist_attr_rank0.pdattr', 
+            dist_attr_path = ['./dist_attr_rank0.pdattr',
                               './dist_attr_rank1.pdattr']
             load_checkpoint_into_program(ckpt_path, dist_attr_path, main_program)
     """
@@ -577,15 +648,16 @@ def load_checkpoint_into_program(checkpoint_path,
     all_cur_dist_attr = get_dist_attr(program, dist_context)
     all_param_dict = all_state_dict_info["model"]
     addition_info = all_state_dict_info["addition_info"]
-    sliced_param_dict = merge_and_slice_parameter(
-        all_param_dict, all_pre_dist_attr, all_cur_dist_attr)
+    sliced_param_dict = merge_and_slice_parameter(all_param_dict,
+                                                  all_pre_dist_attr,
+                                                  all_cur_dist_attr)
     load_parameter_into_program(sliced_param_dict, program)
 
     return addition_info
 
 
 def load_parameter_into_program(param_dict, program):
-    """ 
+    """
     Load parameters into program.
 
     Args:
@@ -610,8 +682,8 @@ def _save_distributed_attribute(program, dist_attr_path, dist_context):
         "world_size": paddle.distributed.get_world_size()
     }
     paddle.save(dist_attr_dict, dist_attr_name)
-    logging.info("Already saved distributed attribute to '{}'.".format(
-        dist_attr_path))
+    logging.info(
+        "Already saved distributed attribute to '{}'.".format(dist_attr_path))
 
 
 def _load_distributed_attribute(dist_attr_path):
@@ -667,7 +739,7 @@ def _load_distributed_state_dict(checkpoint_path):
 
 
 def get_dist_attr(program, dist_context=None):
-    """ 
+    """
     Get distributed attribute of current rank.
 
     Args:
@@ -712,8 +784,8 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
     for name, value in dist_param_dict.items():
         if not isinstance(name, str):
             raise TypeError("The key of 'dist_param_dict' is parameter's name, "
-                            "and its type should be 'str', but got {}."
-                            .format(str(type(name))))
+                            "and its type should be 'str', but got {}.".format(
+                                str(type(name))))
         if not isinstance(value, list) or not all(
                 isinstance(v, np.ndarray) for v in value):
             raise TypeError(
@@ -745,16 +817,16 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
         pre_dims_mapping = pre_attr["dims_mapping"]
         cur_dims_mapping = cur_attr["dims_mapping"]
         if len(set(pre_dims_mapping)) > 1 or -1 not in pre_dims_mapping:
-            complete_param = _merge_parameter_with_dist_attr(pre_param,
-                                                             pre_attr)
+            complete_param = _merge_parameter_with_dist_attr(
+                pre_param, pre_attr)
             dist_param_dict[var_name] = complete_param
         else:
             complete_param = pre_param[0]
             dist_param_dict[var_name] = complete_param
 
         if len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping:
-            sliced_param = _slice_parameter_with_dist_attr(complete_param,
-                                                           cur_attr)
+            sliced_param = _slice_parameter_with_dist_attr(
+                complete_param, cur_attr)
             dist_param_dict[var_name] = sliced_param
 
     for var_name in pre_dist_attr:
@@ -763,31 +835,33 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
             dist_param_dict.pop(var_name)
 
     if param_not_in_pre:
-        warnings.warn("Parameters '{}' are not found in last training process."
-                      .format(str(param_not_in_pre)))
+        warnings.warn(
+            "Parameters '{}' are not found in last training process.".format(
+                str(param_not_in_pre)))
     if param_not_in_cur:
         warnings.warn(
-            "Parameters '{}' are not found in current training process."
-            .format(str(param_not_in_cur)))
+            "Parameters '{}' are not found in current training process.".format(
+                str(param_not_in_cur)))
 
     return dist_param_dict
 
 
 def _merge_parameter_with_dist_attr(param_list, dist_attr):
     """ Merge parameter with distributed attribute """
-    from .reshard import _compute_complete_shape, _compute_partition_index
+    from .reshard import Resharder
 
     dims_mapping = dist_attr["dims_mapping"]
     process_shape = dist_attr["process_shape"]
     process_group = dist_attr["process_group"]
     # get the complete shape of the parameter
-    complete_shape = _compute_complete_shape(param_list[0].shape, process_shape,
-                                             dims_mapping)
+    complete_shape = Resharder.compute_complete_shape(param_list[0].shape,
+                                                      process_shape,
+                                                      dims_mapping)
     # merge the parameter with dist_attr
     partition_param_list = []
     merged_partiton = []
     for process in process_group:
-        partition_index = _compute_partition_index(
+        partition_index = Resharder.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         index = process_group.index(process)
         if partition_index not in merged_partiton:
@@ -815,8 +889,9 @@ def _slice_parameter_with_dist_attr(param, dist_attr):
                                          len(partition_index_list))
     # get the current parameter's index in sliced_param_list
     rank_id = paddle.distributed.get_rank()
-    sliced_param_index = _get_sliced_param_index(
-        rank_id, param.shape, dims_mapping, process_shape, process_group)
+    sliced_param_index = _get_sliced_param_index(rank_id, param.shape,
+                                                 dims_mapping, process_shape,
+                                                 process_group)
     sliced_param = sliced_param_list[sliced_param_index]
     return sliced_param
 
@@ -840,7 +915,7 @@ def _merge_parameter(partition_param_list, param, partition_index,
             _merge_parameter(partition_param_list, param, partition_index)
             # partition_param_list: [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
     """
-    from .reshard import _compute_concat_info
+    from .reshard import Resharder
 
     if len(partition_param_list) == 1:
         is_complete_data = True
@@ -856,7 +931,7 @@ def _merge_parameter(partition_param_list, param, partition_index,
     else:
         i = 0
         while i < len(partition_param_list):
-            concat_axis, first_order, new_partition = _compute_concat_info(
+            concat_axis, first_order, new_partition = Resharder.compute_concat_info(
                 partition_param_list[i][1], partition_index)
             if concat_axis != -1:
                 if first_order == 0:
@@ -896,8 +971,9 @@ def _slice_parameter(complete_param, partition_index_list, length):
     """
     sliced_param_list = []
     axis = len(complete_param.shape) - length
-    sliced_param = np.split(
-        complete_param, partition_index_list[axis], axis=axis)
+    sliced_param = np.split(complete_param,
+                            partition_index_list[axis],
+                            axis=axis)
     if length == 1:
         return sliced_param
     for param in sliced_param:
@@ -926,25 +1002,27 @@ def _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape,
             process_group = [0, 1, 2]
 
             slice_param = _slice_parameter(complete_param, [[], [], [2, 4]], 3)
-            # slice_param: 
+            # slice_param:
             # [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
 
             index = _get_sliced_param_index(rank, complete_shape, dims_mapping
                                             process_shape, process_group)
             # index: 2
     """
-    from .reshard import _compute_partition_index
+    from .reshard import Resharder
 
-    partition_index = _compute_partition_index(
-        rank, complete_shape, dims_mapping, process_shape, process_group)
+    partition_index = Resharder.compute_partition_index(rank, complete_shape,
+                                                        dims_mapping,
+                                                        process_shape,
+                                                        process_group)
     sliced_param_index = 0
     for i, shape in enumerate(complete_shape):
         if dims_mapping[i] == -1:
             slice_shape = shape
         else:
             slice_shape = shape // process_shape[dims_mapping[i]]
-        if shape == 1:
-            index = 0
+        if slice_shape == 1:
+            index = partition_index[i][0]
         else:
             index = (partition_index[i][0] + 1) // slice_shape
         sliced_param_index = sliced_param_index * (shape // slice_shape) + index
@@ -972,11 +1050,11 @@ def _get_split_indices(complete_shape, dims_mapping, process_shape,
             index = _get_split_indices(complete_shape, dims_mapping, process_shape, process_group)
             # index: [[], [], [2, 4]]
     """
-    from .reshard import _compute_partition_index
+    from .reshard import Resharder
 
     split_indices_list = []
     for process in process_group:
-        partition_index = _compute_partition_index(
+        partition_index = Resharder.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         if split_indices_list:
             for dim in range(len(partition_index)):
@@ -996,70 +1074,91 @@ def set_grad_var_shape(program, dist_context):
 
     block = program.global_block()
     vars = block.vars
-    for op in block.ops:
+    appended_grad_times = 0
+    grad_var_to_var = dist_context.dist_op_context.grad_var_to_var
+
+    for idx, op in enumerate(block.ops):
+
+        if int(op.attr('op_role')) != int(OpRole.Backward):
+            continue
+
+        if int(block.ops[idx-1].attr('op_role')) == int(OpRole.Forward) or \
+            int(block.ops[idx-1].attr('op_role')) == 257:
+            appended_grad_times += 1
 
         if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
             break
 
-        if op.type in ["sum", "concat"]:
+        if op.type in ["sum", "concat", "shape"]:
             continue
-        if int(op.attr('op_role')) == int(OpRole.Backward):
-            op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
-            assert op_dist_attr is not None
 
-            for var_name in op.output_arg_names:
-                if "@GRAD" not in var_name:
-                    continue
+        op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+        assert op_dist_attr is not None
+
+        for var_name in op.output_arg_names:
+
+            if "@GRAD" not in var_name:
+                continue
+            if var_name in grad_var_to_var[appended_grad_times]:
+                forward_var_name = grad_var_to_var[appended_grad_times][
+                    var_name]
+            else:
                 forward_var_name = var_name[:var_name.find("@GRAD")]
-                if op.type in [
-                        "c_allreduce_sum", "c_identity", "scale", "cast"
-                ]:
-                    forward_var_name = op.input_arg_names[0]
-                elif op.type == "matmul_v2_grad":
-                    forward_var_name = None
-                    for output_name in op.output_names:
-                        if var_name in op.output(output_name):
-                            assert "@GRAD" in output_name
-                            input_name = output_name[:output_name.find("@GRAD")]
-                            assert len(op.input(input_name)) == 1
-                            forward_var_name = op.input(input_name)[0]
-                    assert forward_var_name is not None
 
-                need_set_shape_list = [
-                    "reshape2_grad", "softmax_with_cross_entropy_grad",
-                    "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
-                    "dropout_grad"
-                ]
-                forward_list = [
-                    "reshape2", "softmax_with_cross_entropy", "transpose2",
-                    "softmax", "cross_entropy2", "dropout"
-                ]
-                if op.type in need_set_shape_list:
-                    for forward_op in block.ops:
-                        assert int(forward_op.attr('op_role')) != int(
-                            OpRole.Backward)
-                        idx = need_set_shape_list.index(op.type)
-                        forward_op_name = forward_list[idx]
-                        if forward_op.type == forward_op_name and forward_var_name in forward_op.input_arg_names:
-                            op_dist_attr = dist_context.get_op_dist_attr_for_program(
-                                forward_op)
-                            break
+            if op.type in [
+                    "c_allreduce_sum", "c_identity", "scale", "cast",
+                    "fill_any_like"
+            ]:
+                forward_var_name = op.input_arg_names[0]
+            elif op.type == "matmul_v2_grad" or op.type == "matmul_grad" or op.type == "mul_grad":
+                forward_var_name = None
+                for output_name in op.output_names:
+                    if var_name in op.output(output_name):
+                        assert "@GRAD" in output_name
+                        input_name = output_name[:output_name.find("@GRAD")]
+                        assert len(op.input(input_name)) == 1
+                        forward_var_name = op.input(input_name)[0]
+                assert forward_var_name is not None
 
-                forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
-                    forward_var_name)
+            need_set_shape_list = [
+                "reshape2_grad", "softmax_with_cross_entropy_grad",
+                "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
+                "dropout_grad", "tanh_grad", "slice", "assign",
+                "matmul_v2_triple_grad", "elementwise_add_triple_grad",
+                "fill_constant", "sqrt_grad",
+                "fused_softmax_mask_upper_triangle_grad",
+                "flatten_contiguous_range_grad", "relu_grad"
+            ]
+            forward_list = [
+                "reshape2", "softmax_with_cross_entropy", "transpose2",
+                "softmax", "cross_entropy2", "dropout", "tanh",
+                ["slice_grad", "c_allgather"], "assign", "matmul_v2_grad_grad",
+                "elementwise_add_grad_grad", "shape", "sqrt",
+                "fused_softmax_mask_upper_triangle", "flatten_contiguous_range",
+                "relu"
+            ]
+            if op.type in need_set_shape_list:
+                for forward_op in block.ops:
+                    idx = need_set_shape_list.index(op.type)
+                    forward_op_name = forward_list[idx]
+                    if forward_op.type in forward_op_name and forward_var_name in forward_op.input_arg_names:
+                        op_dist_attr = dist_context.get_op_dist_attr_for_program(
+                            forward_op)
+                        break
 
-                assert forward_input_dist_attr is not None, f"{forward_var_name}"
-                forward_var = vars[forward_var_name]
-                forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                    forward_var)
-                assert forward_var_dist_attr is not None
-                grad_var = vars[var_name]
-                ref_shape = infer_shape(block, forward_var,
-                                        forward_var_dist_attr,
-                                        forward_input_dist_attr)
+            forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                forward_var_name)
+            assert forward_input_dist_attr is not None, f"{forward_var_name, str(op)}"
+            forward_var = vars[forward_var_name]
+            forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                forward_var)
+            assert forward_var_dist_attr is not None
+            grad_var = vars[var_name]
+            ref_shape = infer_shape(block, forward_var, forward_var_dist_attr,
+                                    forward_input_dist_attr)
 
-                if list(grad_var.shape) != ref_shape:
-                    grad_var.desc.set_shape(ref_shape)
+            if list(grad_var.shape) != ref_shape:
+                grad_var.desc.set_shape(ref_shape)
 
 
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -1067,11 +1166,9 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 def is_forward_op(op):
-    ref_role1 = int(core.op_proto_and_checker_maker.OpRole.Forward)
-    ref_role2 = int(core.op_proto_and_checker_maker.OpRole.Loss)
     op_role = int(op.attr('op_role'))
-    return OP_ROLE_KEY in op.attr_names and (op_role == ref_role1 or
-                                             op_role == ref_role2)
+    return OP_ROLE_KEY in op.attr_names and (op_role == int(OpRole.Forward)
+                                             or op_role == int(OpRole.Loss))
 
 
 def is_backward_op(op):
@@ -1079,17 +1176,43 @@ def is_backward_op(op):
             int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
 
 
+def is_optimize_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
+
+
+def is_lr_sched_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize.LRSched)
+
+
 def is_loss_op(op):
     return OP_ROLE_KEY in op.attr_names and \
-        int(op.all_attrs()[OP_ROLE_KEY]) == (int(core.op_proto_and_checker_maker.OpRole.Forward) | int(core.op_proto_and_checker_maker.OpRole.Loss))
+        int(op.all_attrs()[OP_ROLE_KEY]) == (int(OpRole.Forward) | int(OpRole.Loss))
+
+
+def is_loss_grad_op(op):
+    if OP_ROLE_KEY not in op.attr_names:
+        return False
+    op_role = int(op.all_attrs()[OP_ROLE_KEY])
+    return op_role & int(OpRole.Backward) and op_role & int(OpRole.Loss)
+
+
+def is_gradient_clip_op(op):
+    return op.desc.has_attr("op_namescope") \
+        and op.desc.attr("op_namescope").startswith("/gradient_clip")
+
+
+def is_prim_op(op):
+    return op.type.endswith("_p")
 
 
 def get_loss_op(block):
     loss_ops = []
     for op in block.ops:
         if is_loss_op(op):
-            assert len(op.desc.output_arg_names(
-            )) == 1, "loss op should only output loss var"
+            assert len(op.desc.output_arg_names()
+                       ) == 1, "loss op should only output loss var"
             loss_ops.append(op)
 
     assert len(loss_ops) == 1, "num of loss op is not equal to one"
@@ -1101,12 +1224,15 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
     tensor_dist_attr.dims_mapping = dims_mapping
     # TODO get global mesh group
     tensor_dist_attr.process_mesh = process_mesh
+    if "mark_annotated" in kwargs and kwargs["mark_annotated"]:
+        tensor_dist_attr.mark_annotated("dims_mapping")
+        tensor_dist_attr.mark_annotated("process_mesh")
     dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
     return tensor_dist_attr
 
 
-def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(new_op, process_mesh,
-                                                           ref_mapping, ctx):
+def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+        new_op, process_mesh, ref_mapping, ctx):
     assert process_mesh is not None
     assert ref_mapping is not None
 
@@ -1277,6 +1403,7 @@ def get_all_distributed_main_program(serial_program_info, dist_context,
 
 
 class SerialProgramInfo:
+
     def __init__(self,
                  train_program,
                  satrtup_program,
@@ -1311,6 +1438,7 @@ class SerialProgramInfo:
 
 
 def get_standalone_cost_data(distributed_programs):
+
     def _compute_runtime(op_cost, op, vars):
         runtime = 0
         try:
@@ -1329,8 +1457,8 @@ def get_standalone_cost_data(distributed_programs):
                 shape_left_boundary = info.find("[")
                 shape_right_boundary = info.find("]")
                 assert shape_left_boundary > 0 and shape_right_boundary > 0 and shape_right_boundary > shape_left_boundary, "Get shape failed."
-                shape = info[shape_left_boundary + 1:
-                             shape_right_boundary].split(",")
+                shape = info[shape_left_boundary +
+                             1:shape_right_boundary].split(",")
                 shape = list(map(lambda x: int(x.strip()), shape))
                 dtype_factor = 1
                 total_static_input_size += reduce(lambda x, y: x * y, shape)
@@ -1363,7 +1491,10 @@ def get_standalone_cost_data(distributed_programs):
     }
 
     standalone_cost_data = []
-    not_enum_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
+    # skip ops
+    not_enum_ops = [
+        "create_py_reader", "create_double_buffer_reader", "read", "assign"
+    ]
     for distributed_program in distributed_programs:
         cost_data = {}
         vars = distributed_program.global_block().vars
@@ -1372,20 +1503,21 @@ def get_standalone_cost_data(distributed_programs):
             if op.type in not_enum_ops:
                 cost_data[op.desc.id()] = runtime
                 continue
-            dtype = str(vars[op.input_arg_names[0]]
-                        .dtype) if op.input_arg_names else "float32"
+            dtype = str(vars[op.input_arg_names[0]].dtype
+                        ) if op.input_arg_names else "float32"
             if int(op.attr('op_role')) == int(OpRole.Backward):
                 if "_grad" in op.type:
                     forward_op_name = op.type[:-5]
                     if forward_op_name in OP_NAME_MAPPING.keys():
                         forward_op_name = OP_NAME_MAPPING[forward_op_name]
-                    op_cost = cost_model.get_static_op_time(
-                        forward_op_name, forward=False, dtype=dtype)
+                    op_cost = cost_model.get_static_op_time(forward_op_name,
+                                                            forward=False,
+                                                            dtype=dtype)
                     if op_cost:
                         runtime = _compute_runtime(op_cost, op, vars)
                     else:
-                        op_cost = cost_model.get_static_op_time(
-                            forward_op_name, dtype=dtype)
+                        op_cost = cost_model.get_static_op_time(forward_op_name,
+                                                                dtype=dtype)
                         if op_cost:
                             runtime = 2 * _compute_runtime(op_cost, op, vars)
             elif int(op.attr('op_role')) == int(OpRole.Forward):
@@ -1416,3 +1548,38 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
     # Third, print error infomation if we cannot find the original id
     else:
         assert False, "Cannot find the original id in the distributed context"
+
+
+def to_list(value):
+    if value is None:
+        return value
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value]
+
+
+def debug_program(program, path, name):
+
+    filename = os.path.join(
+        path, name + '_program' + ".%d" % (paddle.distributed.get_rank()))
+    with open(filename, 'w') as f:
+        f.write(str(program))
+
+
+def ring_id_to_process_group(ring_id):
+    for g in get_all_process_groups():
+        if g.id == ring_id:
+            return g
+    return None
+
+
+def find_higher_order_backward_op(program):
+
+    higher_order_op_suffix = ['_grad_grad', 'triple_grad']
+    for block in program.blocks:
+        for op in block.ops:
+            for suffix in higher_order_op_suffix:
+                if suffix in op.type:
+                    return True
+
+    return False

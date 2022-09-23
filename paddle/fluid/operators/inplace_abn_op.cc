@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/inplace_abn_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/phi/kernels/batch_norm_grad_kernel.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
@@ -38,18 +40,21 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
     if (input_data_type == framework::proto::VarType::FP64) {
       bn_param_type = framework::proto::VarType::FP64;
     }
-    PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
-                                         ctx.Input<Tensor>("Scale")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
-                                         ctx.Input<Tensor>("Bias")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Bias input should be of float type"));
-    PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
-                                         ctx.Input<Tensor>("Mean")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Mean input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
+        platform::errors::InvalidArgument(
+            "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
+        platform::errors::InvalidArgument(
+            "Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Mean")->dtype()),
+        platform::errors::InvalidArgument(
+            "Mean input should be of float type"));
     PADDLE_ENFORCE_EQ(
         bn_param_type,
         framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
@@ -59,8 +64,8 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library);
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -71,32 +76,41 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
   void InferShape(framework::InferShapeContext* ctx) const {
     // check input
     OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "InplaceABNGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
-                   "Y@GRAD", "InplaceABNGrad");
-    OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input",
+                   "Y@GRAD",
                    "InplaceABNGrad");
-    OP_INOUT_CHECK(ctx->HasInput("SavedVariance"), "Input", "SavedVariance",
+    OP_INOUT_CHECK(
+        ctx->HasInput("SavedMean"), "Input", "SavedMean", "InplaceABNGrad");
+    OP_INOUT_CHECK(ctx->HasInput("SavedVariance"),
+                   "Input",
+                   "SavedVariance",
                    "InplaceABNGrad");
 
     // check output
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@GRAD", "InplaceABNGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@GRAD",
+                   "InplaceABNGrad");
 
     const bool has_scale_grad = ctx->HasOutput(framework::GradVarName("Scale"));
     const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("Bias"));
 
     PADDLE_ENFORCE_EQ(
-        has_scale_grad, has_bias_grad,
+        has_scale_grad,
+        has_bias_grad,
         platform::errors::InvalidArgument(
             "Output(Scale@GRAD) and Output(Bias@GRAD) must be null "
             "or not be null at same time. But now, "
             "has Scale@Grad=[%d], has Bias@GRAD=[%d]",
-            has_scale_grad, has_bias_grad));
+            has_scale_grad,
+            has_bias_grad));
 
     const bool use_global_stats = ctx->Attrs().Get<bool>("use_global_stats");
     if (use_global_stats) {
       PADDLE_ENFORCE_EQ(
-          !ctx->Attrs().Get<bool>("use_mkldnn"), true,
+          !ctx->Attrs().Get<bool>("use_mkldnn"),
+          true,
           platform::errors::InvalidArgument(
               "Using global stats during training is not supported "
               "in gradient op kernel of batch_norm_mkldnn_op now."));
@@ -143,8 +157,8 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library);
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -190,7 +204,7 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
     }
 
     // used when setting use_global_stats True during training
-    if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
+    if (PADDLE_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
       op->SetInput("Mean", this->Output("MeanOut"));
       op->SetInput("Variance", this->Output("VarianceOut"));
     }
@@ -209,8 +223,10 @@ class InplaceABNKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Output<Tensor>("Y");
-    PADDLE_ENFORCE_EQ(x, y, platform::errors::InvalidArgument(
-                                "X and Y not inplaced in inplace mode"));
+    PADDLE_ENFORCE_EQ(x,
+                      y,
+                      platform::errors::InvalidArgument(
+                          "X and Y not inplaced in inplace mode"));
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
@@ -238,9 +254,24 @@ class InplaceABNKernel : public framework::OpKernel<T> {
     phi::BatchNormKernel<T>(
         static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *x, *scale, *bias, *mean, *variance, momentum, epsilon, data_layout,
-        is_test, use_global_stats, trainable_statistics, fuse_with_relu, y,
-        mean_out, variance_out, saved_mean, saved_variance, reserve_space);
+        *x,
+        *scale,
+        *bias,
+        *mean,
+        *variance,
+        momentum,
+        epsilon,
+        data_layout,
+        is_test,
+        use_global_stats,
+        trainable_statistics,
+        fuse_with_relu,
+        y,
+        mean_out,
+        variance_out,
+        saved_mean,
+        saved_variance,
+        reserve_space);
 
     auto cur_y = EigenVector<T>::Flatten(*y);
     InplaceABNActivation<DeviceContext, T> functor;
@@ -255,7 +286,8 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<Tensor>("Y");
     auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    PADDLE_ENFORCE_EQ(d_x, d_y,
+    PADDLE_ENFORCE_EQ(d_x,
+                      d_y,
                       platform::errors::InvalidArgument(
                           "X@GRAD and Y@GRAD not inplaced in inplace mode"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
@@ -292,9 +324,9 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     auto* mean = ctx.Input<Tensor>("ReserveSpace");
     auto* variance = ctx.Input<Tensor>("ReserveSpace");
 
-    paddle::optional<const Tensor&> space_opt = paddle::none;
-    paddle::optional<const Tensor&> mean_opt = paddle::none;
-    paddle::optional<const Tensor&> variance_opt = paddle::none;
+    paddle::optional<Tensor> space_opt;
+    paddle::optional<Tensor> mean_opt;
+    paddle::optional<Tensor> variance_opt;
 
     if (reserve_space != nullptr) {
       space_opt = *reserve_space;
@@ -312,10 +344,26 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     phi::BatchNormGradRawKernel<T>(
         static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *d_y, *y, *scale, *bias, *saved_mean, *saved_variance, space_opt,
-        mean_opt, variance_opt, momentum, epsilon, data_layout, is_test,
-        use_global_stats, trainable_statistics, fuse_with_relu, true, d_x,
-        scale_grad, bias_grad);
+        *y,
+        *scale,
+        *bias,
+        mean_opt,
+        variance_opt,
+        *saved_mean,
+        *saved_variance,
+        space_opt,
+        *d_y,
+        momentum,
+        epsilon,
+        data_layout,
+        is_test,
+        use_global_stats,
+        trainable_statistics,
+        fuse_with_relu,
+        true,
+        d_x,
+        scale_grad,
+        bias_grad);
   }
 };
 
@@ -323,17 +371,20 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker,
+
+DECLARE_INPLACE_OP_INFERER(InplaceAbnOpInplaceInferer, {"X", "Y"});
+REGISTER_OPERATOR(inplace_abn,
+                  ops::InplaceABNOp,
+                  ops::InplaceABNOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::InplaceABNOpGradMaker<paddle::framework::OpDesc>,
-                  ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>)
+                  ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>,
+                  InplaceAbnOpInplaceInferer)
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 
-REGISTER_OP_CPU_KERNEL(
-    inplace_abn,
-    ops::InplaceABNKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::InplaceABNKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    inplace_abn_grad,
-    ops::InplaceABNGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::InplaceABNGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(inplace_abn,
+                       ops::InplaceABNKernel<phi::CPUContext, float>,
+                       ops::InplaceABNKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(inplace_abn_grad,
+                       ops::InplaceABNGradKernel<phi::CPUContext, float>,
+                       ops::InplaceABNGradKernel<phi::CPUContext, double>);

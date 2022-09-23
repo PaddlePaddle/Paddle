@@ -53,30 +53,32 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     PADDLE_ENFORCE_EQ(
-        subgraph.count(input_node), true,
+        subgraph.count(input_node),
+        true,
         platform::errors::NotFound(
             "Input act node(%s) not found in QuantDequantFuse pass.",
             input_node->name()));
     Node* input = subgraph.at(input_node);
     GET_NODES;
     int bit_length =
-        BOOST_GET_CONST(int, quant_dequant_op->Op()->GetAttr("bit_length"));
-    int range = ((1 << (bit_length - 1)) - 1);
+        PADDLE_GET_CONST(int, quant_dequant_op->Op()->GetAttr("bit_length"));
 
     // Get input scale from tensor
     std::string input_scale_var_name =
         quant_dequant_op->Op()->Input("InScale").front();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument(
-                   "Scope in DeleteQuantDequantOpPass should not be null."));
+        scope,
+        platform::errors::InvalidArgument(
+            "Scope in DeleteQuantDequantOpPass should not be null."));
     const LoDTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(input_scale_tensor.place()), true,
+        paddle::platform::is_cpu_place(input_scale_tensor.place()),
+        true,
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
-    float input_scale = input_scale_data[0] / range;
+    float input_scale = input_scale_data[0];
 
     // Set input scale in attr, and relink nodes
     std::string input_name = input->Var()->Name();
@@ -85,13 +87,9 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
     for (auto* quantized_node : outlinks) {
       auto op_desc = quantized_node->Op();
       std::string quantized_op_type = op_desc->Type();
-      if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
-          quantized_op_type == "matmul_v2") {
-        op_desc->SetAttr("X_scale", input_scale);
-      } else {
-        op_desc->SetAttr("Input_scale", input_scale);
-      }
+      op_desc->SetAttr("Input_scale", input_scale);
       op_desc->SetAttr("bit_length", bit_length);
+      op_desc->SetAttr("enable_int8", true);
       op_desc->RenameInput(quant_dequant_output_name, input_name);
       op_desc->Flush();
       IR_NODE_LINK_TO(input, quantized_node);
@@ -99,8 +97,10 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph,
-                         {quant_dequant_op_inscale, quant_dequant_op,
-                          quant_dequant_op_outscale, quant_dequant_op_out});
+                         {quant_dequant_op_inscale,
+                          quant_dequant_op,
+                          quant_dequant_op_outscale,
+                          quant_dequant_op_out});
     found_count++;
   };
   gpd(graph, handler);

@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 limitations under the License. */
 
 #include <glog/logging.h>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 
 namespace paddle {
 namespace operators {
@@ -26,12 +27,12 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("BBoxes"), "Input", "BBoxes",
-                   "locality_aware_nms");
-    OP_INOUT_CHECK(ctx->HasInput("Scores"), "Input", "Scores",
-                   "locality_aware_nms");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "locality_aware_nms");
+    OP_INOUT_CHECK(
+        ctx->HasInput("BBoxes"), "Input", "BBoxes", "locality_aware_nms");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Scores"), "Input", "Scores", "locality_aware_nms");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "locality_aware_nms");
 
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
@@ -39,36 +40,41 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
-          score_size, 3,
+          score_size,
+          3,
           platform::errors::InvalidArgument(
               "The rank of Input(Scores) must be 3. But received %d.",
               score_size));
       PADDLE_ENFORCE_EQ(
-          box_dims.size(), 3,
+          box_dims.size(),
+          3,
           platform::errors::InvalidArgument(
               "The rank of Input(BBoxes) must be 3. But received %d.",
               box_dims.size()));
       PADDLE_ENFORCE_EQ(
           box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
               box_dims[2] == 24 || box_dims[2] == 32,
-          true, platform::errors::InvalidArgument(
-                    "The last dimension of Input(BBoxes) must be 4 or 8, "
-                    "represents the layout of coordinate "
-                    "[xmin, ymin, xmax, ymax] or "
-                    "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
-                    "8 points: [xi, yi] i= 1,2,...,8 or "
-                    "12 points: [xi, yi] i= 1,2,...,12 or "
-                    "16 points: [xi, yi] i= 1,2,...,16. "
-                    "But received %d.",
-                    box_dims[2]));
+          true,
+          platform::errors::InvalidArgument(
+              "The last dimension of Input(BBoxes) must be 4 or 8, "
+              "represents the layout of coordinate "
+              "[xmin, ymin, xmax, ymax] or "
+              "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
+              "8 points: [xi, yi] i= 1,2,...,8 or "
+              "12 points: [xi, yi] i= 1,2,...,12 or "
+              "16 points: [xi, yi] i= 1,2,...,16. "
+              "But received %d.",
+              box_dims[2]));
       PADDLE_ENFORCE_EQ(
-          box_dims[1], score_dims[2],
+          box_dims[1],
+          score_dims[2],
           platform::errors::InvalidArgument(
               "The 2nd dimension of Input(BBoxes) must be equal to "
               "last dimension of Input(Scores), which represents the "
               "predicted bboxes. But received the 2nd dimension of "
               "Input(BBoxes) was %d, last dimension of Input(Scores) was %d.",
-              box_dims[1], score_dims[2]));
+              box_dims[1],
+              score_dims[2]));
     }
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
@@ -85,7 +91,10 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
 };
 
 template <class T>
-void PolyWeightedMerge(const T* box1, T* box2, const T score1, const T score2,
+void PolyWeightedMerge(const T* box1,
+                       T* box2,
+                       const T score1,
+                       const T score2,
                        const size_t box_size) {
   for (size_t i = 0; i < box_size; ++i) {
     box2[i] = (box1[i] * score1 + box2[i] * score2) / (score1 + score2);
@@ -94,29 +103,38 @@ void PolyWeightedMerge(const T* box1, T* box2, const T score1, const T score2,
 
 template <class T>
 void GetMaxScoreIndexWithLocalityAware(
-    T* scores, T* bbox_data, int64_t box_size, const T threshold, int top_k,
-    int64_t num_boxes, std::vector<std::pair<T, int>>* sorted_indices,
-    const T nms_threshold, const bool normalized) {
+    T* scores,
+    T* bbox_data,
+    int64_t box_size,
+    const T threshold,
+    int top_k,
+    int64_t num_boxes,
+    std::vector<std::pair<T, int>>* sorted_indices,
+    const T nms_threshold,
+    const bool normalized) {
   std::vector<bool> skip(num_boxes, true);
   int index = -1;
   for (int64_t i = 0; i < num_boxes; ++i) {
     if (index > -1) {
       T overlap = T(0.);
       if (box_size == 4) {
-        overlap = JaccardOverlap<T>(bbox_data + i * box_size,
-                                    bbox_data + index * box_size, normalized);
+        overlap = phi::funcs::JaccardOverlap<T>(
+            bbox_data + i * box_size, bbox_data + index * box_size, normalized);
       }
       // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
       if (box_size == 8 || box_size == 16 || box_size == 24 || box_size == 32) {
-        overlap =
-            PolyIoU<T>(bbox_data + i * box_size, bbox_data + index * box_size,
-                       box_size, normalized);
+        overlap = phi::funcs::PolyIoU<T>(bbox_data + i * box_size,
+                                         bbox_data + index * box_size,
+                                         box_size,
+                                         normalized);
       }
 
       if (overlap > nms_threshold) {
         PolyWeightedMerge(bbox_data + i * box_size,
-                          bbox_data + index * box_size, scores[i],
-                          scores[index], box_size);
+                          bbox_data + index * box_size,
+                          scores[i],
+                          scores[index],
+                          box_size);
         scores[index] += scores[i];
       } else {
         skip[index] = false;
@@ -136,8 +154,9 @@ void GetMaxScoreIndexWithLocalityAware(
     }
   }
   // Sort the score pair according to the scores in descending order
-  std::stable_sort(sorted_indices->begin(), sorted_indices->end(),
-                   SortScorePairDescend<int>);
+  std::stable_sort(sorted_indices->begin(),
+                   sorted_indices->end(),
+                   phi::funcs::SortScorePairDescend<int>);
   // Keep top_k scores if needed.
   if (top_k > -1 && top_k < static_cast<int>(sorted_indices->size())) {
     sorted_indices->resize(top_k);
@@ -147,9 +166,12 @@ void GetMaxScoreIndexWithLocalityAware(
 template <typename T>
 class LocalityAwareNMSKernel : public framework::OpKernel<T> {
  public:
-  void LocalityAwareNMSFast(Tensor* bbox, Tensor* scores,
-                            const T score_threshold, const T nms_threshold,
-                            const T eta, const int64_t top_k,
+  void LocalityAwareNMSFast(Tensor* bbox,
+                            Tensor* scores,
+                            const T score_threshold,
+                            const T nms_threshold,
+                            const T eta,
+                            const int64_t top_k,
                             std::vector<int>* selected_indices,
                             const bool normalized) const {
     // The total boxes for each instance.
@@ -164,9 +186,15 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     T* bbox_data = bbox->data<T>();
     T* scores_data = scores->data<T>();
 
-    GetMaxScoreIndexWithLocalityAware(
-        scores_data, bbox_data, box_size, score_threshold, top_k, num_boxes,
-        &sorted_indices, nms_threshold, normalized);
+    GetMaxScoreIndexWithLocalityAware(scores_data,
+                                      bbox_data,
+                                      box_size,
+                                      score_threshold,
+                                      top_k,
+                                      num_boxes,
+                                      &sorted_indices,
+                                      nms_threshold,
+                                      normalized);
 
     selected_indices->clear();
 
@@ -180,15 +208,17 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
           // 4: [xmin ymin xmax ymax]
           if (box_size == 4) {
             overlap =
-                JaccardOverlap<T>(bbox_data + idx * box_size,
-                                  bbox_data + kept_idx * box_size, normalized);
+                phi::funcs::JaccardOverlap<T>(bbox_data + idx * box_size,
+                                              bbox_data + kept_idx * box_size,
+                                              normalized);
           }
           // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
           if (box_size == 8 || box_size == 16 || box_size == 24 ||
               box_size == 32) {
-            overlap = PolyIoU<T>(bbox_data + idx * box_size,
-                                 bbox_data + kept_idx * box_size, box_size,
-                                 normalized);
+            overlap = phi::funcs::PolyIoU<T>(bbox_data + idx * box_size,
+                                             bbox_data + kept_idx * box_size,
+                                             box_size,
+                                             normalized);
           }
           keep = overlap <= adaptive_threshold;
         } else {
@@ -206,8 +236,10 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     //    delete bbox_data;
   }
 
-  void LocalityAwareNMS(const framework::ExecutionContext& ctx, Tensor* scores,
-                        Tensor* bboxes, const int scores_size,
+  void LocalityAwareNMS(const framework::ExecutionContext& ctx,
+                        Tensor* scores,
+                        Tensor* bboxes,
+                        const int scores_size,
                         std::map<int, std::vector<int>>* indices,
                         int* num_nmsed_out) const {
     int64_t background_label = ctx.Attr<int>("background_label");
@@ -228,8 +260,13 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
       score_slice = scores->Slice(c, c + 1);
       bbox_slice = *bboxes;
 
-      LocalityAwareNMSFast(&bbox_slice, &score_slice, score_threshold,
-                           nms_threshold, nms_eta, nms_top_k, &((*indices)[c]),
+      LocalityAwareNMSFast(&bbox_slice,
+                           &score_slice,
+                           score_threshold,
+                           nms_threshold,
+                           nms_eta,
+                           nms_top_k,
+                           &((*indices)[c]),
                            normalized);
       num_det += (*indices)[c].size();
     }
@@ -252,8 +289,9 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
         }
       }
       // Keep top k results per image.
-      std::stable_sort(score_index_pairs.begin(), score_index_pairs.end(),
-                       SortScorePairDescend<std::pair<int, int>>);
+      std::stable_sort(score_index_pairs.begin(),
+                       score_index_pairs.end(),
+                       phi::funcs::SortScorePairDescend<std::pair<int, int>>);
       score_index_pairs.resize(keep_top_k);
 
       // Store the new indices.
@@ -270,10 +308,13 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
   }
 
   void LocalityAwareNMSOutput(
-      const platform::DeviceContext& ctx, const Tensor& scores,
+      const platform::DeviceContext& ctx,
+      const Tensor& scores,
       const Tensor& bboxes,
       const std::map<int, std::vector<int>>& selected_indices,
-      const int scores_size, Tensor* outs, int* oindices = nullptr,
+      const int scores_size,
+      Tensor* outs,
+      int* oindices = nullptr,
       const int offset = 0) const {
     int64_t predict_dim = scores.dims()[1];
     int64_t box_size = bboxes.dims()[1];
@@ -314,16 +355,16 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     auto* boxes_input = ctx.Input<LoDTensor>("BBoxes");
     auto* scores_input = ctx.Input<LoDTensor>("Scores");
     auto* outs = ctx.Output<LoDTensor>("Out");
-    auto score_dims = scores_input->dims();
+    auto& score_dims = scores_input->dims();
     auto score_size = score_dims.size();
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
     LoDTensor scores;
     LoDTensor boxes;
-    paddle::framework::TensorCopySync(*scores_input, platform::CPUPlace(),
-                                      &scores);
-    paddle::framework::TensorCopySync(*boxes_input, platform::CPUPlace(),
-                                      &boxes);
+    paddle::framework::TensorCopySync(
+        *scores_input, platform::CPUPlace(), &scores);
+    paddle::framework::TensorCopySync(
+        *boxes_input, platform::CPUPlace(), &boxes);
     std::vector<std::map<int, std::vector<int>>> all_indices;
     std::vector<size_t> batch_starts = {0};
     int64_t batch_size = score_dims[0];
@@ -339,7 +380,11 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
       boxes_slice.Resize({score_dims[2], box_dim});
 
       std::map<int, std::vector<int>> indices;
-      LocalityAwareNMS(ctx, &scores_slice, &boxes_slice, score_size, &indices,
+      LocalityAwareNMS(ctx,
+                       &scores_slice,
+                       &boxes_slice,
+                       score_size,
+                       &indices,
                        &num_nmsed_out);
       all_indices.push_back(indices);
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
@@ -364,9 +409,14 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
         int64_t e = batch_starts[i + 1];
         if (e > s) {
           Tensor out = outs->Slice(s, e);
-          LocalityAwareNMSOutput(dev_ctx, scores_slice, boxes_slice,
-                                 all_indices[i], score_dims.size(), &out,
-                                 oindices, offset);
+          LocalityAwareNMSOutput(dev_ctx,
+                                 scores_slice,
+                                 boxes_slice,
+                                 all_indices[i],
+                                 score_dims.size(),
+                                 &out,
+                                 oindices,
+                                 offset);
         }
       }
     }
@@ -466,8 +516,11 @@ https://arxiv.org/abs/1704.03155.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    locality_aware_nms, ops::LocalityAwareNMSOp, ops::LocalityAwareNMSOpMaker,
+    locality_aware_nms,
+    ops::LocalityAwareNMSOp,
+    ops::LocalityAwareNMSOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(locality_aware_nms, ops::LocalityAwareNMSKernel<float>,
+REGISTER_OP_CPU_KERNEL(locality_aware_nms,
+                       ops::LocalityAwareNMSKernel<float>,
                        ops::LocalityAwareNMSKernel<double>);

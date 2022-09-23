@@ -23,14 +23,29 @@
  *  for USE_PASS from pass_library.
  */
 
-using ::paddle::platform::kCUDA;
 using ::paddle::platform::kCPU;
+using ::paddle::platform::kCUDA;
+using ::paddle::platform::kCUSTOM_DEVICE;
+using ::paddle::platform::kNPU;
+using ::paddle::platform::kXPU;
 
 USE_EVENT(kCPU)
 USE_EVENT_WAIT(kCPU, kCPU)
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 USE_EVENT(kCUDA);
 USE_EVENT_WAIT(kCUDA, kCUDA)
 USE_EVENT_WAIT(kCPU, kCUDA)
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+USE_EVENT(kNPU);
+USE_EVENT_WAIT(kNPU, kNPU)
+USE_EVENT_WAIT(kCPU, kNPU)
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+USE_EVENT(kCUSTOM_DEVICE);
+USE_EVENT_WAIT(kCUSTOM_DEVICE, kCUSTOM_DEVICE)
+USE_EVENT_WAIT(kCPU, kCUSTOM_DEVICE)
 #endif

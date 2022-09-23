@@ -14,6 +14,8 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -28,7 +30,8 @@ class PartialSumKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<Tensor>("X");
     Tensor* out = ctx.Output<Tensor>("Out");
     PADDLE_ENFORCE_EQ(
-        ins[0] != nullptr, true,
+        ins[0] != nullptr,
+        true,
         platform::errors::InvalidArgument("The input should not be null."));
 
     auto place = ctx.GetPlace();  // CPUPlace only now
@@ -66,7 +69,8 @@ class PartialSumGradientOpKernel : public framework::OpKernel<T> {
         ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_EQ(
-        ins[0] != nullptr, true,
+        ins[0] != nullptr,
+        true,
         platform::errors::InvalidArgument("The input should not be null."));
     auto start_index = ctx.Attr<int>("start_index");
     auto length = ctx.Attr<int>("length");
@@ -76,8 +80,8 @@ class PartialSumGradientOpKernel : public framework::OpKernel<T> {
     }
 
     // initialize
-    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
+    auto& place =
+        *ctx.template device_context<phi::CPUContext>().eigen_device();
     for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
       auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);

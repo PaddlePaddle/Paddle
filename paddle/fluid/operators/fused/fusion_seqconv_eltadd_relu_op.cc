@@ -13,63 +13,75 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_seqconv_eltadd_relu_op.h"
+
 #include <algorithm>  // for min, max
 #include <string>
-#include "paddle/fluid/operators/math/fc.h"
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
 
 namespace paddle {
 namespace operators {
 
 void FusionSeqConvEltAddReluOp::InferShape(
     framework::InferShapeContext* ctx) const {
-  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
-                 "fusion_seqconv_eltadd_relu");
-  OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter",
-                 "fusion_seqconv_eltadd_relu");
-  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias",
-                 "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(
+      ctx->HasInput("X"), "Input", "X", "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(
+      ctx->HasInput("Filter"), "Input", "Filter", "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(
+      ctx->HasInput("Bias"), "Input", "Bias", "fusion_seqconv_eltadd_relu");
 
-  OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                 "fusion_seqconv_eltadd_relu");
-  OP_INOUT_CHECK(ctx->HasOutput("ColMat"), "Output", "ColMat",
+  OP_INOUT_CHECK(
+      ctx->HasOutput("Out"), "Output", "Out", "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(ctx->HasOutput("ColMat"),
+                 "Output",
+                 "ColMat",
                  "fusion_seqconv_eltadd_relu");
 
   auto x_dims = ctx->GetInputDim("X");
   auto w_dims = ctx->GetInputDim("Filter");
   int context_length = ctx->Attrs().Get<int>("contextLength");
-  PADDLE_ENFORCE_EQ(ctx->Attrs().Get<int>("contextStride"), 1,
+  PADDLE_ENFORCE_EQ(ctx->Attrs().Get<int>("contextStride"),
+                    1,
                     platform::errors::InvalidArgument(
                         "Currently, FusionSeqConvEltAddReluOp only supports "
                         "contextStride=1, but received value is: %d.",
                         ctx->Attrs().Get<int>("contextStride")));
 
   PADDLE_ENFORCE_EQ(
-      x_dims.size(), 2,
+      x_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "Input(X) should be 2-D tensor, but reveiced value is: %d.",
           x_dims.size()));
 
   PADDLE_ENFORCE_EQ(
-      w_dims.size(), 2,
+      w_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "Filter should be 2-D tensor, but reveiced value is: %d.",
           w_dims.size()));
 
-  PADDLE_ENFORCE_EQ(w_dims[0], context_length * x_dims[1],
+  PADDLE_ENFORCE_EQ(w_dims[0],
+                    context_length * x_dims[1],
                     platform::errors::InvalidArgument(
                         "Filter's height should be equal to context_length * "
                         "input_hidden_size, but received Filter height is: %d,"
                         "context_length is: %d, input_hidden_size is: %d.",
-                        w_dims[0], context_length, x_dims[1]));
+                        w_dims[0],
+                        context_length,
+                        x_dims[1]));
 
   PADDLE_ENFORCE_GT(
-      context_length + ctx->Attrs().Get<int>("contextStart"), 0,
+      context_length + ctx->Attrs().Get<int>("contextStart"),
+      0,
       platform::errors::InvalidArgument(
           "contextStart size should be smaller than contextLength, "
           "but received context_length is: %d, contextStart is: "
           "%d.",
-          context_length, ctx->Attrs().Get<int>("contextStart")));
+          context_length,
+          ctx->Attrs().Get<int>("contextStart")));
 
   ctx->SetOutputDim("Out", {x_dims[0], w_dims[1]});
   ctx->SetOutputDim("ColMat", {x_dims[0], w_dims[0]});
@@ -137,7 +149,7 @@ template <typename T>
 class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     auto* x = ctx.Input<LoDTensor>("X");
     auto* w = ctx.Input<Tensor>("Filter");
     auto* b = ctx.Input<Tensor>("Bias");
@@ -148,13 +160,16 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
     auto x_dims = x->dims();
     auto w_dims = w->dims();
     PADDLE_ENFORCE_EQ(
-        b->numel(), w_dims[1],
+        b->numel(),
+        w_dims[1],
         platform::errors::InvalidArgument(
             "bias size should be equal to weights feature size, but received "
             "bias size is: %d, weights feature size is: %d.",
-            b->numel(), w_dims[1]));
+            b->numel(),
+            w_dims[1]));
     PADDLE_ENFORCE_EQ(
-        x_lod.size(), 1UL,
+        x_lod.size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Only support one level sequence now, but received value is: %d.",
             x_lod.size()));
@@ -244,9 +259,16 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
       }
     }
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
-    fc(dev_ctx, x_dims[0], w_dims[1], w_dims[0], col_data, w_data, y_data,
-       b_data, true);
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx,
+       x_dims[0],
+       w_dims[1],
+       w_dims[0],
+       col_data,
+       w_data,
+       y_data,
+       b_data,
+       true);
   }
 };
 
@@ -254,7 +276,8 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fusion_seqconv_eltadd_relu, ops::FusionSeqConvEltAddReluOp,
+REGISTER_OPERATOR(fusion_seqconv_eltadd_relu,
+                  ops::FusionSeqConvEltAddReluOp,
                   ops::FusionSeqConvEltAddReluOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_seqconv_eltadd_relu,

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/optional.h"
 
@@ -22,12 +23,12 @@ namespace phi {
 
 template <typename T, typename Context>
 void GraphSendRecvGradKernel(const Context& ctx,
-                             const DenseTensor& out_grad,
-                             paddle::optional<const DenseTensor&> x,
-                             paddle::optional<const DenseTensor&> out,
+                             const DenseTensor& x,
                              const DenseTensor& src_index,
                              const DenseTensor& dst_index,
-                             paddle::optional<const DenseTensor&> dst_count,
-                             const std::string& pool_type,
+                             const paddle::optional<DenseTensor>& out,
+                             const paddle::optional<DenseTensor>& dst_count,
+                             const DenseTensor& out_grad,
+                             const std::string& reduce_op,
                              DenseTensor* x_grad);
 }  // namespace phi

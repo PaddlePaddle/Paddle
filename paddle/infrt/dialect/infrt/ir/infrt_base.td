@@ -10,6 +10,7 @@ def Infrt_Dialect : Dialect {
 
   let name = "infrt";
   let cppNamespace = "::infrt";
+  let hasConstantMaterializer = 1;
   let useDefaultAttributePrinterParser = 1;
 }
 
@@ -83,7 +84,7 @@ def DenseTensor : Infrt_Type<"DenseTensor"> {
   );
 }
 
-def DenseTensorMap :  Infrt_Type<"DenseTensorMap"> {
+def DenseHostTensorMap :  Infrt_Type<"DenseHostTensorMap"> {
   let summary = "infrt dense tensor map";
   let description = [{dense_tensor map}];
   let parameters = (ins);

@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,13 +19,22 @@ from enum import Enum
 import paddle
 
 from paddle.optimizer import Optimizer
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
+from paddle.fluid.framework import in_dygraph_mode
+
+# Old version
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import ShardingStage2
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import ShardingStage3
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import ShardingScaler
 
-logger_ = get_logger(logging.INFO)
+# New version
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import GroupShardedStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import GroupShardedStage3
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import GroupShardedScaler
+
+logger_ = get_logger(logging.WARNING)
 
 
 def group_sharded_parallel(model,
@@ -53,12 +62,12 @@ def group_sharded_parallel(model,
         buffer_max_size (int, optional): The max size of the buffer used to integrate gradient in `os_g`. The larger the size, the more GPU memory will be used. Defaults to 2**23, which means that the dimension of the buffer is 2**23.
         segment_size (int, optional): The smallest size of parameter to be sharded in `p_g_os`. Defaults to 2**20, indicating that the dimension of the minimum segmented parameter is 2**20.
         sync_comm (bool, optional): Whether to use synchronous communication, only in `p_g_os` used. Defaults to False, indicating that asynchronous communication is used.
-    
+
     Returns:
         model: A wrapper for group sharded given model.
         optimizer: A wrapper for group sharded given optimizer.
         scaler: A wrapper for group sharded given scaler.
-    
+
     Examples:
         .. code-block:: python
 
@@ -96,8 +105,8 @@ def group_sharded_parallel(model,
     assert isinstance(
         optimizer, Optimizer
     ), "The optimizer must be the instance of paddle.optimizer.Optimizer."
-    assert level in ['os', 'os_g', 'p_g_os'
-                     ], "The level must be os, os_g or p_g_os."
+    assert level in ['os', 'os_g',
+                     'p_g_os'], "The level must be os, os_g or p_g_os."
 
     def check_dtype(param):
         return param.dtype == paddle.float16
@@ -110,30 +119,51 @@ def group_sharded_parallel(model,
         logger_.info("*" * 30)
         logger_.info("Sharded level os uses sharded level os_g achieved now.")
         logger_.info("*" * 30)
-        optimizer = ShardingOptimizerStage2(
-            params=model.parameters(),
-            optim=optimizer,
-            group=group,
-            offload=offload)
-        model = ShardingStage2(
-            model,
-            optimizer,
-            group=group,
-            sync_buffers=sync_buffers,
-            buffer_max_size=buffer_max_size)
+        if in_dygraph_mode():
+            optimizer = GroupShardedOptimizerStage2(
+                params=optimizer._parameter_list,
+                optim=optimizer,
+                group=group,
+                offload=offload)
+            model = GroupShardedStage2(model,
+                                       optimizer,
+                                       group=group,
+                                       sync_buffers=sync_buffers,
+                                       buffer_max_size=buffer_max_size)
+        else:
+            optimizer = ShardingOptimizerStage2(params=model.parameters(),
+                                                optim=optimizer,
+                                                group=group,
+                                                offload=offload)
+            model = ShardingStage2(model,
+                                   optimizer,
+                                   group=group,
+                                   sync_buffers=sync_buffers,
+                                   buffer_max_size=buffer_max_size)
     elif level == 'p_g_os':
-        model = ShardingStage3(
-            model,
-            optimizer=optimizer,
-            group=group,
-            sync_buffers=sync_buffers,
-            segment_size=segment_size,
-            offload=offload,
-            sync_comm=sync_comm)
+        if in_dygraph_mode():
+            model = GroupShardedStage3(model,
+                                       optimizer=optimizer,
+                                       group=group,
+                                       sync_buffers=sync_buffers,
+                                       segment_size=segment_size,
+                                       offload=offload,
+                                       sync_comm=sync_comm)
+        else:
+            model = ShardingStage3(model,
+                                   optimizer=optimizer,
+                                   group=group,
+                                   sync_buffers=sync_buffers,
+                                   segment_size=segment_size,
+                                   offload=offload,
+                                   sync_comm=sync_comm)
     else:
         raise ValueError("Please enter the correct level.")
-    if params_fp16 and isinstance(scaler, paddle.amp.GradScaler):
-        scaler = ShardingScaler(scaler)
+    if isinstance(scaler, paddle.amp.GradScaler):
+        if in_dygraph_mode():
+            scaler = GroupShardedScaler(scaler)
+        else:
+            scaler = ShardingScaler(scaler)
     logger_.info("*" * 30)
     logger_.info(
         "If there is a communication hang using group sharded, please check whether the communication operations of each process are unified."
@@ -147,14 +177,14 @@ def save_group_sharded_model(model, output, optimizer=None):
     """
     Group sharded encapsulated model and optimizer state saving module.
 
-    .. note::
+    Note:
         If using save_group_sharded_model saves the model. When loading again, you need to set the model or optimizer state before using group_sharded_parallel.
 
     Args:
         model (Layer): A wrapper for group sharded given model.
         output (str): Save directory.
         optimizer (Optimizer, optional): Group sharded encapsulated optimizer. Defaults to None, indicating that the optimizer state is not saved.
-    
+
     Examples:
         .. code-block:: python
 
@@ -195,15 +225,16 @@ def save_group_sharded_model(model, output, optimizer=None):
     ), "Saving directory ({}) should be a directory, not a file".format(output)
     os.makedirs(output, exist_ok=True)
     output_model = os.path.join(output, "model.pdmodel")
-    if isinstance(model, ShardingStage2):
+    if isinstance(model, (ShardingStage2, GroupShardedStage2)):
         paddle.save(model._layer.state_dict(), output_model)
-    elif isinstance(model, ShardingStage3):
+    elif isinstance(model, (ShardingStage3, GroupShardedStage3)):
         convert2cpu = True if model._offload else False
         model.get_all_parameters(convert2cpu=convert2cpu)
         paddle.save(model._layer.state_dict(), output_model)
     else:
         raise ValueError(
-            "Please use the layer which is wrapped with group_sharded_parallel.")
+            "Please use the layer which is wrapped with group_sharded_parallel."
+        )
 
     if optimizer is not None:
         assert hasattr(

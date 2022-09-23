@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_max_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
@@ -25,9 +23,6 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -112,29 +107,14 @@ class ElementwiseFMaxGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(elementwise_max, ops::ElementwiseOp,
-                  ops::ElementwiseMaxOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_max,
+                  ops::ElementwiseOp,
+                  ops::ElementwiseMaxOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMaxGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseMaxGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_max_grad, ops::ElementwiseOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_max,
-    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_max_grad,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::bfloat16>);
 
 REGISTER_OP_VERSION(elementwise_max)
     .AddCheckpoint(
@@ -145,8 +125,10 @@ REGISTER_OP_VERSION(elementwise_max)
             "using the operator of elementwise_max.",
             1.0f));
 
-REGISTER_OPERATOR(elementwise_fmax, ops::ElementwiseOp,
-                  ops::ElementwiseFMaxOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_fmax,
+                  ops::ElementwiseOp,
+                  ops::ElementwiseFMaxOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseFMaxGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseFMaxGradOpMaker<paddle::imperative::OpBase>);
 

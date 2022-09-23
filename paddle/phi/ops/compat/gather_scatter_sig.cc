@@ -17,25 +17,23 @@
 namespace phi {
 
 KernelSignature GatherNdGradArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("gather_nd_grad",
-                         {"X", "Index", GradVarName("Out")},
-                         {},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "gather_nd_grad", {"X", "Index", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature ScatterGradArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("scatter_grad",
-                         {"Ids", "Updates", GradVarName("Out")},
+                         {"Ids", "Updates", "Out@GRAD"},
                          {"overwrite"},
-                         {GradVarName("X"), GradVarName("Updates")});
+                         {"X@GRAD", "Updates@GRAD"});
 }
 
 KernelSignature ScatterNdAddGradArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("scatter_nd_add_grad",
-                         {"Index", "Updates", GradVarName("Out")},
+                         {"Index", "Updates", "Out@GRAD"},
                          {},
-                         {GradVarName("X"), GradVarName("Updates")});
+                         {"X@GRAD", "Updates@GRAD"});
 }
 
 }  // namespace phi

@@ -20,11 +20,11 @@ limitations under the License. */
 namespace phi {
 
 template <typename InT, typename OutT = InT>
-struct FullFuctor {
+struct FullFunctor {
   OutT value;
 
   template <typename VType>
-  explicit inline FullFuctor(VType val) {
+  explicit inline FullFunctor(VType val) {
     value = static_cast<OutT>(val);
   }
 
@@ -35,7 +35,7 @@ struct FullFuctor {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
-                const ScalarArray& shape,
+                const IntArray& shape,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
@@ -50,7 +50,7 @@ void FullKernel(const Context& dev_ctx,
     // the data will not be loaded in the kernel because the number of
     // parameters in the operator is 0
     phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
+        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
   }
 }
 
@@ -60,7 +60,7 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype,
                     DenseTensor* out) {
-  auto value = val.to<float>();
+  auto value = val.to<double>();
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<
@@ -104,7 +104,7 @@ void FullLikeKernel(const Context& dev_ctx,
   int numel = out->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFuctor<T>(value));
+        dev_ctx, inputs, &outputs, FullFunctor<T>(value));
   }
 }
 
@@ -132,6 +132,7 @@ PD_REGISTER_KERNEL(full_like,
                    phi::FullLikeKernel,
                    float,
                    double,
+                   uint8_t,
                    int16_t,
                    int,
                    int64_t,

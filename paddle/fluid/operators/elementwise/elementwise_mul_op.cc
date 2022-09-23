@@ -13,42 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct SameDimsElemwiseMul<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    blas.VMUL(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-  }
-};
-
-template <typename T>
-struct SameDimsElemwiseMul<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    eigen_z.device(place) = eigen_x * eigen_y;
-  }
-};
-
 class ElementwiseMulOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Mul"; }
@@ -143,36 +116,26 @@ class ElementwiseMulTripleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseMulOp,
-                  ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_mul,
+                  ops::ElementwiseMulOp,
+                  ops::ElementwiseMulOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
-    elementwise_mul_grad, ops::ElementwiseOpGrad,
+    elementwise_mul_grad,
+    ops::ElementwiseOpGrad,
     ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(
-    elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
+    elementwise_mul_grad_grad,
+    ops::ElementwiseOpDoubleGrad,
     ops::ElementwiseDoubleGradOpInplaceInferer,
     ops::ElementwiseMulTripleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseMulTripleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_mul_triple_grad, ops::ElementwiseOpTripleGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_mul,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::bfloat16>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(elementwise_mul)
     .AddCheckpoint(

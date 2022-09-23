@@ -54,7 +54,7 @@ class UnfoldOpMaker : public framework::OpProtoAndCheckerMaker {
 This Operator is used to extract sliding local blocks from a batched input tensor, also known
 as im2col when operated on batched 2D image tensor. For each block under the convolution filter,
 all element will be rearranged as a column. While the convolution filter sliding over the input
-feature map, a series of such columns will be formed. 
+feature map, a series of such columns will be formed.
     )DOC");
   }
 };
@@ -78,13 +78,16 @@ class UnfoldGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Y")), true,
+        ctx->HasInput(framework::GradVarName("Y")),
+        true,
         platform::errors::NotFound("The gradient of Y should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound("The input X should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::NotFound("The gradient of X should not be null"));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -119,11 +122,15 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnfoldGradOpNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(unfold, UnfoldInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(unfold,
+                            UnfoldInferShapeFunctor,
                             PD_INFER_META(phi::UnfoldInferMeta));
-REGISTER_OPERATOR(unfold, ops::UnfoldOp, ops::UnfoldOpMaker,
+REGISTER_OPERATOR(unfold,
+                  ops::UnfoldOp,
+                  ops::UnfoldOpMaker,
                   ops::UnfoldGradMaker<paddle::framework::OpDesc>,
                   ops::UnfoldGradMaker<paddle::imperative::OpBase>,
                   UnfoldInferShapeFunctor);
-REGISTER_OPERATOR(unfold_grad, ops::UnfoldGradOp,
+REGISTER_OPERATOR(unfold_grad,
+                  ops::UnfoldGradOp,
                   ops::UnfoldGradOpNoNeedBufferVarsInferer);

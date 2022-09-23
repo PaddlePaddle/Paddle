@@ -60,7 +60,8 @@ class CreateCustomReaderOp : public framework::OperatorBase {
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     out->Reset(framework::MakeDecoratedReader<CustomReader>(
-        underlying_reader, *sub_block,
+        underlying_reader,
+        *sub_block,
         Attr<std::vector<std::string>>("source_var_names"),
         Attr<std::vector<std::string>>("sink_var_names")));
   }
@@ -97,11 +98,13 @@ class CustomReaderInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_NE(
-        ctx->IsRuntime(), true,
+        ctx->IsRuntime(),
+        true,
         platform::errors::PreconditionNotMet(
             "'CustomReaderInferShape' should only be invoked during "
             "compile time."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "The output decorated reader should not be null."));
     const auto* sub_block =
@@ -113,13 +116,14 @@ class CustomReaderInferShape : public framework::InferShapeBase {
     for (const std::string& var_name : sink_var_names) {
       auto* sink_var = sub_block->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
-          sink_var, platform::errors::NotFound(
-                        "The sink variable is not found in CustomReader."));
+          sink_var,
+          platform::errors::NotFound(
+              "The sink variable is not found in CustomReader."));
       res_dims.emplace_back(sink_var->GetShape());
       res_lod_levels.push_back(sink_var->GetLoDLevel());
     }
     auto* out_reader =
-        BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
+        PADDLE_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
     out_reader->SetShapes(res_dims);
     out_reader->SetLoDLevels(res_lod_levels);
   }
@@ -129,42 +133,46 @@ class CustomReaderInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto& out_var_name = ctx->Output("Out")[0];
-    PADDLE_ENFORCE_EQ(ctx->HasVar(out_var_name), true,
+    PADDLE_ENFORCE_EQ(ctx->HasVar(out_var_name),
+                      true,
                       platform::errors::NotFound(
                           "The output reader variable should not be null."));
     ctx->SetType(out_var_name, framework::proto::VarType::READER);
 
-    auto sink_var_names = BOOST_GET_CONST(std::vector<std::string>,
-                                          ctx->GetAttr("sink_var_names"));
+    auto sink_var_names = PADDLE_GET_CONST(std::vector<std::string>,
+                                           ctx->GetAttr("sink_var_names"));
     const auto* sub_block =
-        BOOST_GET_CONST(framework::BlockDesc*, ctx->GetAttr("sub_block"));
+        PADDLE_GET_CONST(framework::BlockDesc*, ctx->GetAttr("sub_block"));
     std::vector<framework::proto::VarType::Type> res_data_types;
     for (const std::string& var_name : sink_var_names) {
       framework::VarDesc* var = sub_block->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
-          var, platform::errors::NotFound(
-                   "The sink variable is not found in CustomReader."));
+          var,
+          platform::errors::NotFound(
+              "The sink variable is not found in CustomReader."));
       res_data_types.emplace_back(var->GetDataType());
     }
     ctx->SetDataTypes(out_var_name, res_data_types);
   }
 };
 
-void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
+void CustomReader::ReadNextImpl(paddle::framework::LoDTensorArray* out) {
   out->clear();
-  std::vector<framework::LoDTensor> underlying_outs;
+  paddle::framework::LoDTensorArray underlying_outs;
   reader_->ReadNext(&underlying_outs);
   if (underlying_outs.empty()) {
     // There is not next data.
     return;
   }
   PADDLE_ENFORCE_EQ(
-      source_var_names_.size(), underlying_outs.size(),
+      source_var_names_.size(),
+      underlying_outs.size(),
       platform::errors::InvalidArgument(
           "The size of source_var_names(%d) and the size of "
           "underlying_outs(%d) are not consistent. Each feeding element "
           "must have its own source variable.",
-          source_var_names_.size(), underlying_outs.size()));
+          source_var_names_.size(),
+          underlying_outs.size()));
   // The scope for CustomReader's sub-block should be independent and shouldn't
   // be any other computation scope's child. Otherwise, data preprocessing and
   // compution cannot be concurrent.
@@ -182,9 +190,10 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   out->resize(sink_var_names_.size());
   for (size_t i = 0; i < sink_var_names_.size(); ++i) {
     auto* var = exe_scope->FindVar(sink_var_names_[i]);
-    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
-                                     "The variable %s is not in current scope.",
-                                     sink_var_names_[i]));
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::NotFound("The variable %s is not in current scope.",
+                                   sink_var_names_[i]));
     const auto& tensor = var->Get<framework::LoDTensor>();
     framework::TensorCopySync(tensor, platform::CPUPlace(), &(*out)[i]);
   }
@@ -197,8 +206,10 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
 
 namespace ops = paddle::operators::reader;
 REGISTER_OPERATOR(
-    create_custom_reader, ops::CreateCustomReaderOp,
-    ops::CreateCustomReaderOpMaker, ops::CustomReaderInferShape,
+    create_custom_reader,
+    ops::CreateCustomReaderOp,
+    ops::CreateCustomReaderOpMaker,
+    ops::CustomReaderInferShape,
     ops::CustomReaderInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)

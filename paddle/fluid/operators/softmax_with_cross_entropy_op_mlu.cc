@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +32,8 @@ class SoftmaxWithCrossEntropyMLUKernel : public framework::OpKernel<T> {
     auto* backprop = ctx.Output<Tensor>("Backprop");
     auto soft_label = ctx.Attr<bool>("soft_label");
 
-    PADDLE_ENFORCE_EQ(ctx.Attr<bool>("use_softmax"), true,
+    PADDLE_ENFORCE_EQ(ctx.Attr<bool>("use_softmax"),
+                      true,
                       platform::errors::InvalidArgument(
                           "use_softmax=False is not supported in "
                           "the mlu kernel of softmax_with_cross_entropy."));
@@ -63,27 +65,41 @@ class SoftmaxWithCrossEntropyMLUKernel : public framework::OpKernel<T> {
       regard_loss_shape = {d1, 1, d3};
     }
 
-    MLUCnnlTensorDesc logits_desc(cnnl_softmax_dims, regard_logits_shape.data(),
-                                  ToCnnlDataType<T>());
-    MLUCnnlTensorDesc labels_desc(cnnl_softmax_dims, regard_labels_shape.data(),
-                                  ToCnnlDataType<T>());
-    MLUCnnlTensorDesc loss_desc(cnnl_softmax_dims, regard_loss_shape.data(),
-                                ToCnnlDataType<T>());
+    MLUCnnlTensorDesc logits_desc(
+        cnnl_softmax_dims, regard_logits_shape.data(), ToCnnlDataType<T>());
+    MLUCnnlTensorDesc labels_desc(
+        cnnl_softmax_dims, regard_labels_shape.data(), ToCnnlDataType<T>());
+    MLUCnnlTensorDesc loss_desc(
+        cnnl_softmax_dims, regard_loss_shape.data(), ToCnnlDataType<T>());
 
     const cnnlSoftmaxAlgorithm_t algo = CNNL_SOFTMAX_ACCURATE;
-    MLUCnnl::SoftmaxForward(ctx, algo, mode, NULL, logits_desc.get(),
-                            GetBasePtr(logits), NULL, logits_desc.get(),
+    MLUCnnl::SoftmaxForward(ctx,
+                            algo,
+                            mode,
+                            NULL,
+                            logits_desc.get(),
+                            GetBasePtr(logits),
+                            NULL,
+                            logits_desc.get(),
                             GetBasePtr(softmax));
 
     if (soft_label) {
       const cnnlComputationPreference_t prefer =
           CNNL_COMPUTATION_HIGH_PRECISION;
-      MLUCnnl::SoftmaxCrossEntropyWithLogits(
-          ctx, mode, prefer, logits_desc.get(), GetBasePtr(logits),
-          labels_desc.get(), GetBasePtr(labels), loss_desc.get(),
-          GetBasePtr(loss), logits_desc.get(), GetBasePtr(backprop));
+      MLUCnnl::SoftmaxCrossEntropyWithLogits(ctx,
+                                             mode,
+                                             prefer,
+                                             logits_desc.get(),
+                                             GetBasePtr(logits),
+                                             labels_desc.get(),
+                                             GetBasePtr(labels),
+                                             loss_desc.get(),
+                                             GetBasePtr(loss),
+                                             logits_desc.get(),
+                                             GetBasePtr(backprop));
     } else {
-      PADDLE_ENFORCE_EQ(d3, 1,
+      PADDLE_ENFORCE_EQ(d3,
+                        1,
                         platform::errors::InvalidArgument(
                             "If soft_label=False, axis must be -1 or"
                             " can be regard as last dimention in mlu kernel."));
@@ -94,8 +110,12 @@ class SoftmaxWithCrossEntropyMLUKernel : public framework::OpKernel<T> {
       MLUCnnlTensorDesc labels_int64_desc(*labels);
       MLUCnnlTensorDesc labels_int32_desc(labels_int32);
       cnnlCastDataType_t cast_type = GetCastDataType(VT::INT64, VT::INT32);
-      MLUCnnl::Cast(ctx, cast_type, labels_int64_desc.get(), GetBasePtr(labels),
-                    labels_int32_desc.get(), GetBasePtr(&labels_int32));
+      MLUCnnl::Cast(ctx,
+                    cast_type,
+                    labels_int64_desc.get(),
+                    GetBasePtr(labels),
+                    labels_int32_desc.get(),
+                    GetBasePtr(&labels_int32));
 
       const int regard_sparse_shape[cnnl_softmax_dims - 1] = {d1, 1};
       MLUCnnlTensorDesc sparse_labels_desc(cnnl_softmax_dims - 1,
@@ -104,11 +124,16 @@ class SoftmaxWithCrossEntropyMLUKernel : public framework::OpKernel<T> {
       MLUCnnlTensorDesc sparse_loss_desc(
           cnnl_softmax_dims - 1, regard_sparse_shape, ToCnnlDataType<T>());
 
-      MLUCnnl::SparseSoftmaxXentWithLogits(
-          ctx, mode, logits_desc.get(), GetBasePtr(logits),
-          sparse_labels_desc.get(), GetBasePtr(&labels_int32),
-          sparse_loss_desc.get(), GetBasePtr(loss), logits_desc.get(),
-          GetBasePtr(backprop));
+      MLUCnnl::SparseSoftmaxXentWithLogits(ctx,
+                                           mode,
+                                           logits_desc.get(),
+                                           GetBasePtr(logits),
+                                           sparse_labels_desc.get(),
+                                           GetBasePtr(&labels_int32),
+                                           sparse_loss_desc.get(),
+                                           GetBasePtr(loss),
+                                           logits_desc.get(),
+                                           GetBasePtr(backprop));
     }
   }
 };
@@ -126,15 +151,20 @@ class SoftmaxWithCrossEntropyGradMLUKernel : public framework::OpKernel<T> {
                                 "softmax_with_cross_entropy_grad."));
     logits_grad->mutable_data<T>(ctx.GetPlace());
 
-    MLUCnnlOpTensorDesc mul_op_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
-                                    CNNL_NOT_PROPAGATE_NAN);
+    MLUCnnlOpTensorDesc mul_op_desc(
+        CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
     MLUCnnlTensorDesc backprop_desc(*backprop);
     MLUCnnlTensorDesc loss_grad_desc(*loss_grad);
     MLUCnnlTensorDesc logits_grad_desc(*logits_grad);
-    MLUCnnl::OpTensor(ctx, mul_op_desc.get(), backprop_desc.get(),
-                      GetBasePtr(backprop), loss_grad_desc.get(),
-                      GetBasePtr(loss_grad), logits_grad_desc.get(),
-                      GetBasePtr(logits_grad), ToCnnlDataType<T>());
+    MLUCnnl::OpTensor(ctx,
+                      mul_op_desc.get(),
+                      backprop_desc.get(),
+                      GetBasePtr(backprop),
+                      loss_grad_desc.get(),
+                      GetBasePtr(loss_grad),
+                      logits_grad_desc.get(),
+                      GetBasePtr(logits_grad),
+                      ToCnnlDataType<T>());
   }
 };
 }  // namespace operators
@@ -143,7 +173,8 @@ class SoftmaxWithCrossEntropyGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_MLU_KERNEL(
-    softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyMLUKernel<float>,
+    softmax_with_cross_entropy,
+    ops::SoftmaxWithCrossEntropyMLUKernel<float>,
     ops::SoftmaxWithCrossEntropyMLUKernel<paddle::platform::float16>);
 REGISTER_OP_MLU_KERNEL(
     softmax_with_cross_entropy_grad,

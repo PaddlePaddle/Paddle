@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,29 +15,50 @@
 import logging
 import sys
 
-__all__ = []
+from paddle.distributed.utils.log_utils import get_logger
+
+logger = get_logger("INFO", __name__)
 
 
-class LoggerFactory:
-    @staticmethod
-    def build_logger(name=None, level=logging.INFO):
-        assert name is not None, "name for logger should not be None"
+def set_log_level(level):
+    """
+    Set log level
 
-        formatter = logging.Formatter(
-            "%(asctime)s-%(levelname)s: "
-            "[%(filename)s:%(lineno)d:%(funcName)s] %(message)s")
+    Args:
+        level (str|int): a specified level
 
-        _logger = logging.getLogger(name)
-        _logger.setLevel(level)
-        _logger.propagate = False
-        handler = logging.StreamHandler(stream=sys.stderr)
-        handler.setFormatter(formatter)
-        handler.setLevel(level)
-        _logger.addHandler(handler)
-        return _logger
+    Example 1:
+        import paddle
+        import paddle.distributed.fleet as fleet
+        fleet.init()
+        fleet.setLogLevel("DEBUG")
+
+    Example 2:
+        import paddle
+        import paddle.distributed.fleet as fleet
+        fleet.init()
+        fleet.setLogLevel(1)
+
+    """
+    assert isinstance(level, (str, int)), "level's type must be str or int"
+    if isinstance(level, int):
+        logger.setLevel(level)
+    else:
+        logger.setLevel(level.upper())
 
 
-logger = LoggerFactory.build_logger(name="HybridParallel", level=logging.INFO)
+def get_log_level_code():
+    """
+    Return current log level code
+    """
+    return logger.getEffectiveLevel()
+
+
+def get_log_level_name():
+    """
+    Return current log level name
+    """
+    return logging.getLevelName(get_log_level_code())
 
 
 def layer_to_str(base, *args, **kwargs):

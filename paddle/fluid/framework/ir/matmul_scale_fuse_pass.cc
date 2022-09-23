@@ -16,9 +16,9 @@
 
 #include <cmath>
 #include <string>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -131,16 +131,16 @@ void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, matmul_scale_pattern);
 
     auto* scope = param_scope();
-    float bias = BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
+    float bias = PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
     if (std::abs(bias) > 1e-5) return;
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING) << "matmul_scale_fuse_pass in op compat failed.";
       return;
     }
 
-    float scale = BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
+    float scale = PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
     float matmul_alpha =
-        BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+        PADDLE_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     auto const& names = scale_op->Op()->InputNames();
     bool has_scale_tensor =
         std::find(names.begin(), names.end(), "ScaleTensor") != names.end();
@@ -184,25 +184,25 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "matmul_v2_scale_fuse pass";
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_x, matmul_v2_in_x,
-                              matmul_v2_scale_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_y, matmul_v2_in_y,
-                              matmul_v2_scale_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_op, matmul_v2_op,
-                              matmul_v2_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_x, matmul_v2_in_x, matmul_v2_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_y, matmul_v2_in_y, matmul_v2_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_op, matmul_v2_op, matmul_v2_scale_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_in_x, scale_in_x, matmul_v2_scale_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_op, scale_op, matmul_v2_scale_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, matmul_v2_scale_pattern);
 
     auto* scope = param_scope();
-    float bias = BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
+    float bias = PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
     if (std::abs(bias) > 1e-5) return;
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING) << "matmul_v2_scale_fuse_pass in op compat failed.";
       return;
     }
 
-    float scale = BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
+    float scale = PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
     auto const& names = scale_op->Op()->InputNames();
     bool has_scale_tensor =
         std::find(names.begin(), names.end(), "ScaleTensor") != names.end();

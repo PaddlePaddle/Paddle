@@ -21,13 +21,24 @@ from .operators import softmax_mask_fuse_upper_triangle  # noqa: F401
 from .operators import softmax_mask_fuse  # noqa: F401
 from .operators import graph_send_recv
 from .operators import graph_khop_sampler
+from .operators import graph_sample_neighbors
+from .operators import graph_reindex
 from .tensor import segment_sum
 from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
 from .passes import fuse_resnet_unit_pass
 
+from . import autograd  #noqa: F401
+from . import autotune  #noqa: F401
+from . import sparse  #noqa: F401
 from . import nn  #noqa: F401
+from . import asp  #noqa: F401
+
+from ..fluid.layers.loss import identity_loss
+
+from ..fluid.incubate import fleet
+from . import xpu
 
 __all__ = [
     'LookAhead',
@@ -36,8 +47,11 @@ __all__ = [
     'softmax_mask_fuse',
     'graph_send_recv',
     'graph_khop_sampler',
+    'graph_sample_neighbors',
+    'graph_reindex',
     'segment_sum',
     'segment_mean',
     'segment_max',
     'segment_min',
+    'identity_loss',
 ]

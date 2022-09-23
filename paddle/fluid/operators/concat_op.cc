@@ -15,11 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/concat_op.h"
 
 #include <paddle/fluid/platform/complex.h>
+
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/infershape_utils.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -54,7 +55,8 @@ class ConcatOp : public framework::OperatorWithKernel {
     }
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -63,13 +65,14 @@ class ConcatOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxisTensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -78,35 +81,19 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input tensors of concat operator.").AsDuplicable();
     AddOutput("Out", "Output tensor of concat operator.");
-    AddAttr<bool>(
-        "use_mkldnn",
-        "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated."
                  "The axis could also be negative numbers. Negative axis is "
                  "interpreted as counting from the end of the rank."
                  "i.e., axis + rank(X) th dimension.")
-        .SetDefault(0);
+        .SetDefault(0)
+        .SupportTensor();
     AddInput("AxisTensor",
              "(Tensor) The axis along which the input tensors will be "
              "concatenated.  "
              "It has higher priority than Attr(axis). "
              "The shape of AxisTensor must be [1].")
         .AsDispensable();
-    AddAttr<bool>(
-        "use_quantizer",
-        "(bool, default false) "
-        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
     AddComment(R"DOC(
 Concat Operator.
 
@@ -147,7 +134,8 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
     // "use_mkldnn" to any value
     if (ctx.HasAttr("use_mkldnn") &&
         this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -156,13 +144,14 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxisTensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -205,29 +194,18 @@ class ConcatDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(concat, ConcatInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(concat,
+                            ConcatInferShapeFunctor,
                             PD_INFER_META(phi::ConcatInferMeta));
 
-REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
+REGISTER_OPERATOR(concat,
+                  ops::ConcatOp,
+                  ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatGradOpMaker<paddle::imperative::OpBase>,
                   ConcatInferShapeFunctor);
-REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
+REGISTER_OPERATOR(concat_grad,
+                  ops::ConcatOpGrad,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ConcatOpGradNoNeedBufferVarInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    concat_grad,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::float16>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<float>>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<double>>);

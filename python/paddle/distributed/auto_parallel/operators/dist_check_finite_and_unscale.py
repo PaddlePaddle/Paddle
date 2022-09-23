@@ -17,7 +17,7 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from paddle.fluid import core, unique_name
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..utils import set_var_dist_attr
@@ -30,6 +30,7 @@ world_process_group = get_world_process_group()
 
 
 class DistributedCheckFiniteAndUnscale(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedCheckFiniteAndUnscale, self).__init__(op_type)
 
@@ -39,6 +40,7 @@ register_distributed_operator_impl_container(
 
 
 class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedCheckFiniteAndUnscaleImpl, self).__init__(name)
         self._name = name
@@ -111,53 +113,47 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                 filter_vars.append(varname)
 
         # replicate op in dist program
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
         dist_op_desc.copy_from(backward_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
         dist_op_desc.set_input('X', filter_vars)
         dist_op_desc.set_output('Out', filter_vars)
-        main_block._sync_with_cpp()
 
         # sync result
         group = new_process_group(world_process_group.ranks)
 
         inf_var = main_block.var(kwargs['FoundInfinite'][0])
-        inf_var_int32 = main_block.create_var(
-            name=inf_var.name + "@cast_int32",
-            shape=inf_var.shape,
-            dtype=core.VarDesc.VarType.INT32)
+        inf_var_int32 = main_block.create_var(name=inf_var.name + "@cast_int32",
+                                              shape=inf_var.shape,
+                                              dtype=core.VarDesc.VarType.INT32)
         set_var_dist_attr(
             ctx, inf_var_int32,
             ctx.get_tensor_dist_attr_for_program(inf_var).dims_mapping,
             ctx.get_tensor_dist_attr_for_program(inf_var).process_mesh)
-        cast_op1 = main_block.append_op(
-            type='cast',
-            inputs={'X': inf_var},
-            outputs={'Out': inf_var_int32},
-            attrs={
-                "in_dtype": inf_var.dtype,
-                "out_dtype": inf_var_int32.dtype,
-                OP_ROLE_KEY: OpRole.Backward
-            })
-        allreduce_op = main_block.append_op(
-            type='c_allreduce_max',
-            inputs={'X': inf_var_int32},
-            outputs={'Out': inf_var_int32},
-            attrs={
-                'ring_id': group.id,
-                'use_calc_stream': True,
-                OP_ROLE_KEY: OpRole.Backward
-            })
-        cast_op2 = main_block.append_op(
-            type='cast',
-            inputs={'X': inf_var_int32},
-            outputs={'Out': inf_var},
-            attrs={
-                "in_dtype": inf_var_int32.dtype,
-                "out_dtype": inf_var.dtype,
-                OP_ROLE_KEY: OpRole.Backward
-            })
-        main_block._sync_with_cpp()
+        cast_op1 = main_block.append_op(type='cast',
+                                        inputs={'X': inf_var},
+                                        outputs={'Out': inf_var_int32},
+                                        attrs={
+                                            "in_dtype": inf_var.dtype,
+                                            "out_dtype": inf_var_int32.dtype,
+                                            OP_ROLE_KEY: OpRole.Optimize
+                                        })
+        allreduce_op = main_block.append_op(type='c_allreduce_max',
+                                            inputs={'X': inf_var_int32},
+                                            outputs={'Out': inf_var_int32},
+                                            attrs={
+                                                'ring_id': group.id,
+                                                'use_calc_stream': True,
+                                                OP_ROLE_KEY: OpRole.Optimize
+                                            })
+        cast_op2 = main_block.append_op(type='cast',
+                                        inputs={'X': inf_var_int32},
+                                        outputs={'Out': inf_var},
+                                        attrs={
+                                            "in_dtype": inf_var_int32.dtype,
+                                            "out_dtype": inf_var.dtype,
+                                            OP_ROLE_KEY: OpRole.Optimize
+                                        })
 
         for op in [cast_op1, allreduce_op, cast_op2]:
             new_op_dist_attr = OperatorDistributedAttribute()

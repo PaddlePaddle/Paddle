@@ -18,6 +18,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
 class TestMarkerOp(OpTest):
+
     def setUp(self):
         self.op_type = "marker"
         self.inputs = {}

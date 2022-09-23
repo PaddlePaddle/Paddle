@@ -44,8 +44,8 @@ DECLARE_string(deny_cinn_ops);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
-using ir::Graph;
 using ::cinn::common::Target;
+using ir::Graph;
 
 namespace {
 template <typename T, typename Alloc = std::allocator<T>>
@@ -59,12 +59,12 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T, Alloc>& vec) {
 }
 
 // Get compilation_key values
-std::vector<std::string> GetCompilationKeys(const Graph& graph) {
-  std::vector<std::string> compilation_keys;
+std::vector<int64_t> GetCompilationKeys(const Graph& graph) {
+  std::vector<int64_t> compilation_keys;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      compilation_keys.emplace_back(BOOST_GET_CONST(
-          std::string, node->Op()->GetAttr(operators::kCompilationKey)));
+      compilation_keys.emplace_back(PADDLE_GET_CONST(
+          int64_t, node->Op()->GetAttr(operators::kCompilationKey)));
     }
   }
   return compilation_keys;
@@ -83,12 +83,12 @@ std::unordered_set<std::string> ExtractOpTypes(const Graph& graph) {
 
 // Get inputs info
 std::unordered_map<std::string, std::vector<int64_t>> GetInputsInfo(
-    const std::string& key, const Graph& graph) {
+    int64_t key, const Graph& graph) {
   std::unordered_set<std::string> inputs;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      if (BOOST_GET_CONST(std::string,
-                          node->Op()->GetAttr(operators::kCompilationKey)) !=
+      if (PADDLE_GET_CONST(int64_t,
+                           node->Op()->GetAttr(operators::kCompilationKey)) !=
           key) {
         continue;
       }
@@ -251,8 +251,7 @@ TEST(CinnCompilerTest, Compile) {
   const auto& compiling_graph = cinn_compiler->FindGraph(compilation_key);
   viz_graph("compiling_graph.dot", const_cast<Graph*>(&compiling_graph));
 
-  EXPECT_THROW(cinn_compiler->FindGraph("no_existed"),
-               paddle::platform::EnforceNotMet);
+  EXPECT_THROW(cinn_compiler->FindGraph(0), paddle::platform::EnforceNotMet);
 
   auto inputs_info = GetInputsInfo(compilation_key, *graph);
   std::unordered_map<std::string, LoDTensor> create_inputs;
@@ -262,7 +261,8 @@ TEST(CinnCompilerTest, Compile) {
     tensor.mutable_data<float>(platform::CPUPlace());
   }
   std::map<std::string, const LoDTensor*> input_tensors;
-  std::for_each(create_inputs.begin(), create_inputs.end(),
+  std::for_each(create_inputs.begin(),
+                create_inputs.end(),
                 [&input_tensors](const auto& val) {
                   input_tensors.emplace(val.first, &val.second);
                 });
@@ -300,6 +300,6 @@ TEST(CinnCompilerTest, Compile) {
 
 USE_PASS(build_cinn_pass);
 USE_PASS(graph_viz_pass);
-USE_OP(mul);
+USE_OP_ITSELF(mul);
 USE_OP_ITSELF(relu);
 USE_OP_ITSELF(elementwise_add);
