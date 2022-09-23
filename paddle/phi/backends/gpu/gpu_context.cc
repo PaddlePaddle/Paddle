@@ -717,6 +717,37 @@ struct GPUContext::Impl {
     }
   }
 
+  bool HasDnnAttr(const std::string& attr_name) const {
+    return dnn_attrs_.count(attr_name) != 0UL;
+  }
+  const Attribute& GetDnnAttr(const std::string& attr_name) const {
+    auto iter = dnn_attrs_.find(attr_name);
+    PADDLE_ENFORCE_NE(
+        iter,
+        dnn_attrs_.end(),
+        phi::errors::NotFound("Attribute `%s` is not found in OneDNNContext."));
+    return iter->second;
+  }
+
+  void SetDnnAttr(const std::string& attr_name, const Attribute& attr) {
+    if (dnn_attrs_version_ == 0) {
+      dnn_attrs_[attr_name] = attr;
+    } else {
+      auto iter = dnn_attrs_.find(attr_name);
+      // TODO(chenweihang): this check is not enough
+      PADDLE_ENFORCE_EQ(
+          iter,
+          dnn_attrs_.end(),
+          phi::errors::AlreadyExists(
+              "Attribute `%s` in OneDNNContext is being used now."));
+      dnn_attrs_[attr_name] = attr;
+    }
+  }
+
+  int8_t DnnAttrsVersion() const { return dnn_attrs_version_; }
+
+  void SetDnnAttrsVersion(int8_t version) { dnn_attrs_version_ = version; }
+
   // use one flag for all handles?
   // they should be accessed consistently
   bool owned_{false};
@@ -780,6 +811,17 @@ struct GPUContext::Impl {
   Allocator* allocator_{nullptr};  // external resource.
   // A internal resouce to initinalize eigen_device.
   std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
+
+  // For thread safety when using onednn_attrs_
+  int8_t dnn_attrs_version_ = 0;
+  // Holds some attributes only used by the gpudnn kernel calculation
+  // Since original mkldnn op kernel directly adds the operations that require
+  // fusion to the native kernel operations, and uses the attribute `fuse_xxx`
+  // to control, for gpudnn, there will be some attributes that seem to be
+  // independent of the device are also saved here.
+  // Here, the operation of fusion needs to be implemented separately as
+  // a fusion op and kernel, instead of patching it to a basic operation.
+  AttributeMap dnn_attrs_;
 };
 
 GPUContext::GPUContext(GPUContext&&) = default;
@@ -999,5 +1041,24 @@ void GPUContext::SetMaxGridDimSize(const std::array<int, 3>& val) {
 void GPUContext::SetDriverVersion(int val) { impl_->driver_version_ = val; }
 
 void GPUContext::SetRuntimeVersion(int val) { impl_->runtime_version_ = val; }
+
+bool GPUContext::HasDnnAttr(const std::string& attr_name) const {
+  return impl_->HasDnnAttr(attr_name);
+}
+
+const Attribute& GPUContext::GetDnnAttr(const std::string& attr_name) const {
+  return impl_->GetDnnAttr(attr_name);
+}
+
+void GPUContext::SetDnnAttr(const std::string& attr_name,
+                            const Attribute& attr) {
+  return impl_->SetDnnAttr(attr_name, attr);
+}
+
+int8_t GPUContext::DnnAttrsVersion() const { return impl_->DnnAttrsVersion(); }
+
+void GPUContext::SetDnnAttrsVersion(int8_t version) {
+  return impl_->SetDnnAttrsVersion(version);
+}
 
 }  // namespace phi

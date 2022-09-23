@@ -285,38 +285,36 @@ struct OneDNNContext::Impl {
     return key_it->second;
   }
 
-  bool HasDeviceAttr(const std::string& attr_name) const {
-    return device_attrs_.count(attr_name) != 0UL;
+  bool HasDnnAttr(const std::string& attr_name) const {
+    return dnn_attrs_.count(attr_name) != 0UL;
   }
-  const Attribute& GetDeviceAttr(const std::string& attr_name) const {
-    auto iter = device_attrs_.find(attr_name);
+  const Attribute& GetDnnAttr(const std::string& attr_name) const {
+    auto iter = dnn_attrs_.find(attr_name);
     PADDLE_ENFORCE_NE(
         iter,
-        device_attrs_.end(),
+        dnn_attrs_.end(),
         phi::errors::NotFound("Attribute `%s` is not found in OneDNNContext."));
     return iter->second;
   }
 
-  void SetDeviceAttr(const std::string& attr_name, const Attribute& attr) {
-    if (device_attrs_version_ == 0) {
-      device_attrs_[attr_name] = attr;
+  void SetDnnAttr(const std::string& attr_name, const Attribute& attr) {
+    if (dnn_attrs_version_ == 0) {
+      dnn_attrs_[attr_name] = attr;
     } else {
-      auto iter = device_attrs_.find(attr_name);
+      auto iter = dnn_attrs_.find(attr_name);
       // TODO(chenweihang): this check is not enough
       PADDLE_ENFORCE_EQ(
           iter,
-          device_attrs_.end(),
+          dnn_attrs_.end(),
           phi::errors::AlreadyExists(
               "Attribute `%s` in OneDNNContext is being used now."));
-      device_attrs_[attr_name] = attr;
+      dnn_attrs_[attr_name] = attr;
     }
   }
 
-  int8_t DeviceAttrsVersion() const { return device_attrs_version_; }
+  int8_t DnnAttrsVersion() const { return dnn_attrs_version_; }
 
-  void SetDeviceAttrsVersion(int8_t version) {
-    device_attrs_version_ = version;
-  }
+  void SetDnnAttrsVersion(int8_t version) { dnn_attrs_version_ = version; }
 
   std::shared_ptr<BlobMap> p_blobmap_;
   // Map key is pointer of executor and value is a data(iterator in map) needed
@@ -326,8 +324,8 @@ struct OneDNNContext::Impl {
   // 0 - clearing is allowed. x > 0 do not clear.
   unsigned int block_next_cache_clearing_ = 0;
 
-  // For thread safety when using device_attrs_
-  int8_t device_attrs_version_ = 0;
+  // For thread safety when using dnn_attrs_
+  int8_t dnn_attrs_version_ = 0;
   // Holds some attributes only used by the onednn kernel calculation
   // Since original mkldnn op kernel directly adds the operations that require
   // fusion to the native kernel operations, and uses the attribute `fuse_xxx`
@@ -335,7 +333,7 @@ struct OneDNNContext::Impl {
   // independent of the device are also saved here.
   // Here, the operation of fusion needs to be implemented separately as
   // a fusion op and kernel, instead of patching it to a basic operation.
-  AttributeMap device_attrs_;
+  AttributeMap dnn_attrs_;
 };
 
 OneDNNContext::OneDNNContext(const Place& place)
@@ -367,26 +365,25 @@ OneDNNContext::BlobPtr_t<void> OneDNNContext::GetBlob(
   return impl_->GetBlob(name);
 }
 
-bool OneDNNContext::HasDeviceAttr(const std::string& attr_name) const {
-  return impl_->HasDeviceAttr(attr_name);
+bool OneDNNContext::HasDnnAttr(const std::string& attr_name) const {
+  return impl_->HasDnnAttr(attr_name);
 }
 
-const Attribute& OneDNNContext::GetDeviceAttr(
-    const std::string& attr_name) const {
-  return impl_->GetDeviceAttr(attr_name);
+const Attribute& OneDNNContext::GetDnnAttr(const std::string& attr_name) const {
+  return impl_->GetDnnAttr(attr_name);
 }
 
-void OneDNNContext::SetDeviceAttr(const std::string& attr_name,
-                                  const Attribute& attr) {
-  return impl_->SetDeviceAttr(attr_name, attr);
+void OneDNNContext::SetDnnAttr(const std::string& attr_name,
+                               const Attribute& attr) {
+  return impl_->SetDnnAttr(attr_name, attr);
 }
 
-int8_t OneDNNContext::DeviceAttrsVersion() const {
-  return impl_->DeviceAttrsVersion();
+int8_t OneDNNContext::DnnAttrsVersion() const {
+  return impl_->DnnAttrsVersion();
 }
 
-void OneDNNContext::SetDeviceAttrsVersion(int8_t version) {
-  return impl_->SetDeviceAttrsVersion(version);
+void OneDNNContext::SetDnnAttrsVersion(int8_t version) {
+  return impl_->SetDnnAttrsVersion(version);
 }
 
 }  // namespace phi

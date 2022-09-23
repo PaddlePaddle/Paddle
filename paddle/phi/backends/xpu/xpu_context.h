@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_XPU
+
 #include <memory>
 
 #include "paddle/phi/backends/xpu/forwards.h"
@@ -82,3 +84,5 @@ using KPSContext = XPUContext;
 #endif
 
 }  // namespace phi
+
+#endif

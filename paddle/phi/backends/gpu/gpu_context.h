@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/device_context.h"
 
 namespace phi {
@@ -167,6 +168,13 @@ class PADDLE_API GPUContext : public DeviceContext,
 
   void WaitStreamCallback() const;
 
+  // Several methods for adapting Dnn-specific attributes
+  bool HasDnnAttr(const std::string& attr_name) const;
+  const Attribute& GetDnnAttr(const std::string& attr_name) const;
+  void SetDnnAttr(const std::string& attr_name, const Attribute& attr);
+  int8_t DnnAttrsVersion() const;
+  void SetDnnAttrsVersion(int8_t version);
+
   static const char* name() { return "GPUContext"; }
 
  public:
@@ -253,10 +261,10 @@ class PADDLE_API GPUContext : public DeviceContext,
   std::unique_ptr<Impl> impl_;
 };
 
-// Note: In order to register the kernel of CUDNN, GPUDNNContext is required.
+// Note: In order to register the kernel of CUDNN, DnnContext is required.
 // Currently, CUDNN kernel directly uses GPUContext. But if the kernel function
 // has the same name, this will lead to duplicate instantiations of GPU kernel
-// and GPUDNN kernel function, so if we using GPUDNNContext = GPUContext, we
+// and Dnn kernel function, so if we using DnnContext = GPUContext, we
 // must use different function name for cudnn kernel
 using GPUDNNContext = GPUContext;
 

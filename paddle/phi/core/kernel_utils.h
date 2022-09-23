@@ -14,13 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/custom/custom_context.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/onednn/onednn_context.h"
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#endif
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"

@@ -23,12 +23,8 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/onednn/onednn_context.h"
-#endif
-#ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#endif
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
 // TODO(wilber): DeviceContextPool nees include fluid file.

@@ -136,11 +136,11 @@ class OneDNNContext : public CPUContext {
   }
 
   // Several methods for adapting ONEDNN-specific attributes
-  bool HasDeviceAttr(const std::string& attr_name) const;
-  const Attribute& GetDeviceAttr(const std::string& attr_name) const;
-  void SetDeviceAttr(const std::string& attr_name, const Attribute& attr);
-  int8_t DeviceAttrsVersion() const;
-  void SetDeviceAttrsVersion(int8_t version);
+  bool HasDnnAttr(const std::string& attr_name) const;
+  const Attribute& GetDnnAttr(const std::string& attr_name) const;
+  void SetDnnAttr(const std::string& attr_name, const Attribute& attr);
+  int8_t DnnAttrsVersion() const;
+  void SetDnnAttrsVersion(int8_t version);
 
   static const char* name() { return "OneDNNContext"; }
 
