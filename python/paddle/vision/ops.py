@@ -710,6 +710,25 @@ def prior_box(input,
             clip=True,
             flip=True)
     """
+    if in_dygraph_mode():
+        step_w, step_h = steps
+        if max_sizes == None:
+            max_sizes = []
+        box, var = _C_ops.prior_box(input, image, min_sizes, aspect_ratios,
+                                    variance, max_sizes, flip, clip, step_w,
+                                    step_h, offset, min_max_aspect_ratios_order)
+        return box, var
+
+    if _non_static_mode():
+        step_w, step_h = steps
+        if max_sizes == None:
+            max_sizes = []
+        box, var = _legacy_C_ops.prior_box(input, image, min_sizes,
+                                           aspect_ratios, variance, max_sizes,
+                                           flip, clip, step_w, step_h, offset,
+                                           min_max_aspect_ratios_order)
+        return box, var
+
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
     check_variable_and_dtype(input, 'input',
@@ -731,52 +750,39 @@ def prior_box(input,
     aspect_ratios = list(map(float, aspect_ratios))
     steps = list(map(float, steps))
 
-    cur_max_sizes = None
+    attrs = {
+        'min_sizes': min_sizes,
+        'aspect_ratios': aspect_ratios,
+        'variances': variance,
+        'flip': flip,
+        'clip': clip,
+        'step_w': steps[0],
+        'step_h': steps[1],
+        'offset': offset,
+        'min_max_aspect_ratios_order': min_max_aspect_ratios_order
+    }
     if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
         if not _is_list_or_tuple_(max_sizes):
             max_sizes = [max_sizes]
-        cur_max_sizes = max_sizes
+        attrs['max_sizes'] = max_sizes
 
-    if _non_static_mode():
-        attrs = ('min_sizes', min_sizes, 'aspect_ratios', aspect_ratios,
-                 'variances', variance, 'flip', flip, 'clip', clip, 'step_w',
-                 steps[0], 'step_h', steps[1], 'offset', offset,
-                 'min_max_aspect_ratios_order', min_max_aspect_ratios_order)
-        if cur_max_sizes is not None:
-            attrs += ('max_sizes', cur_max_sizes)
-        box, var = _legacy_C_ops.prior_box(input, image, *attrs)
-        return box, var
-    else:
-        attrs = {
-            'min_sizes': min_sizes,
-            'aspect_ratios': aspect_ratios,
-            'variances': variance,
-            'flip': flip,
-            'clip': clip,
-            'step_w': steps[0],
-            'step_h': steps[1],
-            'offset': offset,
-            'min_max_aspect_ratios_order': min_max_aspect_ratios_order
-        }
-
-        if cur_max_sizes is not None:
-            attrs['max_sizes'] = cur_max_sizes
-
-        box = helper.create_variable_for_type_inference(dtype)
-        var = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(type="prior_box",
-                         inputs={
-                             "Input": input,
-                             "Image": image
-                         },
-                         outputs={
-                             "Boxes": box,
-                             "Variances": var
-                         },
-                         attrs=attrs)
-        box.stop_gradient = True
-        var.stop_gradient = True
-        return box, var
+    box = helper.create_variable_for_type_inference(dtype)
+    var = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="prior_box",
+        inputs={
+            "Input": input,
+            "Image": image
+        },
+        outputs={
+            "Boxes": box,
+            "Variances": var
+        },
+        attrs=attrs,
+    )
+    box.stop_gradient = True
+    var.stop_gradient = True
+    return box, var
 
 
 def box_coder(prior_box,
@@ -884,20 +890,23 @@ def box_coder(prior_box,
     if in_dygraph_mode():
         if isinstance(prior_box_var, Variable):
             output_box = _C_ops.box_coder(prior_box, prior_box_var, target_box,
-                                          code_type, box_normalized, axis)
+                                          code_type, box_normalized, axis, [])
         elif isinstance(prior_box_var, list):
             output_box = _C_ops.box_coder(prior_box, None, target_box,
                                           code_type, box_normalized, axis,
                                           prior_box_var)
         else:
             raise TypeError(
-                "Input variance of box_coder must be Variable or list")
-    elif _non_static_mode():
+                "Input variance of box_coder must be Variable or lisz")
+        return output_box
+
+    if _non_static_mode():
         if isinstance(prior_box_var, Variable):
             output_box = _legacy_C_ops.box_coder(prior_box, prior_box_var,
                                                  target_box, "code_type",
                                                  code_type, "box_normalized",
                                                  box_normalized, "axis", axis)
+
         elif isinstance(prior_box_var, list):
             output_box = _legacy_C_ops.box_coder(prior_box, None, target_box,
                                                  "code_type", code_type,
@@ -908,29 +917,30 @@ def box_coder(prior_box,
             raise TypeError(
                 "Input variance of box_coder must be Variable or list")
         return output_box
-
-    helper = LayerHelper("box_coder", **locals())
-
-    output_box = helper.create_variable_for_type_inference(
-        dtype=prior_box.dtype)
-
-    inputs = {"PriorBox": prior_box, "TargetBox": target_box}
-    attrs = {
-        "code_type": code_type,
-        "box_normalized": box_normalized,
-        "axis": axis
-    }
-    if isinstance(prior_box_var, Variable):
-        inputs['PriorBoxVar'] = prior_box_var
-    elif isinstance(prior_box_var, list):
-        attrs['variance'] = prior_box_var
     else:
-        raise TypeError("Input variance of box_coder must be Variable or list")
-    helper.append_op(type="box_coder",
-                     inputs=inputs,
-                     attrs=attrs,
-                     outputs={"OutputBox": output_box})
-    return output_box
+        helper = LayerHelper("box_coder", **locals())
+
+        output_box = helper.create_variable_for_type_inference(
+            dtype=prior_box.dtype)
+
+        inputs = {"PriorBox": prior_box, "TargetBox": target_box}
+        attrs = {
+            "code_type": code_type,
+            "box_normalized": box_normalized,
+            "axis": axis
+        }
+        if isinstance(prior_box_var, Variable):
+            inputs['PriorBoxVar'] = prior_box_var
+        elif isinstance(prior_box_var, list):
+            attrs['variance'] = prior_box_var
+        else:
+            raise TypeError(
+                "Input variance of box_coder must be Variable or list")
+        helper.append_op(type="box_coder",
+                         inputs=inputs,
+                         attrs=attrs,
+                         outputs={"OutputBox": output_box})
+        return output_box
 
 
 class DeformConv2D(Layer):

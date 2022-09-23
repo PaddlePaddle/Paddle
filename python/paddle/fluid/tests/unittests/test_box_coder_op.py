@@ -106,8 +106,8 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
 
 class TestBoxCoderOp(OpTest):
 
-    # def test_check_output(self):
-    #     self.check_output(check_eager=True)
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
     def setUp(self):
         self.op_type = "box_coder"
@@ -134,8 +134,8 @@ class TestBoxCoderOp(OpTest):
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
 
-    # def test_check_output(self):
-    #     self.check_output(check_eager=True)
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
     def setUp(self):
         self.python_api = paddle.fluid.layers.box_coder
@@ -163,8 +163,8 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
 
 class TestBoxCoderOpWithLoD(OpTest):
 
-    # def test_check_output(self):
-    #     self.check_output(check_eager=True)
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
     def setUp(self):
         self.python_api = paddle.fluid.layers.box_coder
@@ -189,8 +189,8 @@ class TestBoxCoderOpWithLoD(OpTest):
 
 class TestBoxCoderOpWithAxis(OpTest):
 
-    # def test_check_output(self):
-    #     self.check_output(check_eager=True)
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
     def setUp(self):
         self.python_api = paddle.fluid.layers.box_coder
