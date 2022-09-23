@@ -185,12 +185,8 @@ __global__ void CrossEntropyHardLabel(T* loss,
   // thread ids compute loss[ids] using softmax[idx]
   if (ids < n * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
-    PADDLE_ENFORCE_GE(
-        lbl, 0, errors::OutOfRange("Target {%f} is out of lower bound.", lbl));
-    PADDLE_ENFORCE_LT(
-        lbl,
-        dim,
-        errors::OutOfRange("Target {%f} is out of upper bound.", lbl));
+    static_assert(lbl >= 0, "The value of label is out of lower bound.");
+    static_assert(lbl < dim, "The value of label is out of upper bound.");
     int64_t idx = idx_n * dim * d + lbl * d + idx_d;
     if (IgnoreIndex == true) {
       // IgnoreIndex is true
@@ -227,12 +223,8 @@ __global__ void CrossEntropyExpHardLabel(T* loss,
 
   if (idx < n * dim * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
-    PADDLE_ENFORCE_GE(
-        lbl, 0, errors::OutOfRange("Target {%f} is out of lower bound.", lbl));
-    PADDLE_ENFORCE_LT(
-        lbl,
-        dim,
-        errors::OutOfRange("Target {%f} is out of upper bound.", lbl));
+    static_assert(lbl >= 0, "The value of label is out of lower bound.");
+    static_assert(lbl < dim, "The value of label is out of upper bound.");
     if (IgnoreIndex == true) {
       // IgnoreIndex is true
       if (idx_dim == lbl) {
