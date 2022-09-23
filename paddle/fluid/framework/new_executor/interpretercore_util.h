@@ -44,7 +44,6 @@ constexpr size_t kPrepareWorkQueueIdx = 2;
 namespace paddle {
 namespace framework {
 namespace interpreter {
-
 class AsyncWorkQueue {
  public:
   AsyncWorkQueue(size_t host_num_threads,
@@ -76,6 +75,8 @@ std::unique_ptr<AtomicVectorSizeT> PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count);
 std::unique_ptr<AtomicVectorSizeT> PrepareAtomicVarRef(
     const std::vector<VariableMetaInfo>& vec_meta_info);
+
+void LogDeviceMemoryStats(const platform::Place& place);
 
 void build_variable_scope(const framework::BlockDesc& block,
                           VariableScope* var_scope,
