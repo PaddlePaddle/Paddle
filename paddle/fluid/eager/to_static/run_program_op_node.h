@@ -289,7 +289,7 @@ inline void RunProgramAPI(
       PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
 
   if (use_interpretorcore) {
-    VLOG(0) << "RunProgramOp use interpretercore to execute program.";
+    VLOG(2) << "RunProgramOp use interpretercore to execute program.";
 
     auto input_names = details::GetTensorsName(x);
     auto output_names = details::GetTensorsName(out);
@@ -467,7 +467,7 @@ inline void RunProgramGradAPI(
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   if (use_interpretorcore) {
-    VLOG(0) << "RunProgramGradOp use interpretercore to execute program.";
+    VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
     auto *forward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc *, attrs.at("forward_global_block"));
