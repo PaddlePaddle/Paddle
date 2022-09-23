@@ -527,16 +527,10 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
     int step_c = step_n / size;
     for (int i = 0; i < weight_dims[0]; i++) {
       int begin_n = i * step_n;
-      for (int j = begin_n; j < begin_n + step_n; j++) {
-        if (weight_dims.size() == 2) {
-          weight_data[j] *= scales[j - begin_n];
-        } else {
-          for (int k = 0; k < size; k++) {
-            int begin_c = k * step_c;
-            for (int m = begin_c; m < begin_c + step_c; m++) {
-              weight_data[m] *= scales[k];
-            }
-          }
+      for (int j = 0; j < size; j++) {
+        int begin_c = begin_n + j * step_c;
+        for (int k = 0; k < step_c; k++) {
+          weight_data[begin_c + k] *= scales[j];
         }
       }
     }
