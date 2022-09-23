@@ -111,6 +111,9 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
       case ReshapeKernelOpName::reshape:
         InferShapeReshapeOp(ctx, x_dims, out_dims);
         break;
+      case ReshapeKernelOpName::squeeze:
+        InferShapeSqueezeOp(ctx, x_dims, out_dims);
+        break;
       case ReshapeKernelOpName::flatten:
         InferShapeFlattenOp(ctx, x_dims, out_dims);
         break;
@@ -151,6 +154,15 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
           std::vector<int>(shape_data, shape_data + shape_tensor->numel());
       out_dims = ValidateShape(shape, x_dims);
     }
+  }
+
+  void InferShapeSqueezeOp(const framework::ExecutionContext& ctx,
+                           framework::DDim& x_dims,            // NOLINT
+                           framework::DDim& out_dims) const {  // NOLINT
+    auto* x = ctx.Input<LoDTensor>("X");
+    x_dims = x->dims();
+    const auto& axes = ctx.Attr<std::vector<int>>("axes");
+    out_dims = GetOutputShape(axes, x_dims, true);
   }
 
   void InferShapeFlattenOp(const framework::ExecutionContext& ctx,
