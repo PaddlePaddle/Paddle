@@ -1116,7 +1116,7 @@ def dropout(x,
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            if p == 1.:
+            if in_dynamic_mode() and p == 1.:
                 return paddle.scale(x, scale=0.)
 
             scale_input = paddle.scale(
