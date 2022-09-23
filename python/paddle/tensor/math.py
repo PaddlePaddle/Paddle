@@ -748,13 +748,14 @@ def divide(x, y, name=None):
 
 def floor_divide(x, y, name=None):
     """
-    Floor divide two tensors element-wise. The equation is:
+    Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward zero. The equation is:
 
     .. math::
-        out = x // y
+        out = trunc(x / y)
 
     Note:
         ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
 
     Args:
         x (Tensor): the input tensor, it's data type should be int32, int64.
