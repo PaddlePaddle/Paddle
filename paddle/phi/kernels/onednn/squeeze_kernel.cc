@@ -24,15 +24,15 @@ void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& axes,
                    DenseTensor* out) {
-  phi::DDim x_dims = x.dims();
+  DDim x_dims = x.dims();
   std::vector<int32_t> tmp(axes.GetData().begin(), axes.GetData().end());
-  phi::DDim out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, true);
+  DDim out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, true);
 
-  auto x_vec_dims = phi::vectorize(x_dims);
-  phi::funcs::ReorderOneDNNHandler reorder_handler(
+  auto x_vec_dims = vectorize(x_dims);
+  funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims,
       x.dtype(),
-      phi::funcs::ToOneDNNDataType(x.dtype()),
+      funcs::ToOneDNNDataType(x.dtype()),
       dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
@@ -40,20 +40,18 @@ void SqueezeKernel(const Context& dev_ctx,
   out->Resize(x_dims);  // to match x numel, format is changed later
   // reorder is done into a plain tag to allow usage with blocked formats
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-      out,
-      phi::funcs::GetPlainOneDNNFormat(x.dims().size()),
-      dev_ctx.GetPlace());
+      out, funcs::GetPlainOneDNNFormat(x.dims().size()), dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
 
-  auto& astream = phi::OneDNNContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
 
   astream.wait();
 
   out->Resize(out_dims);
   out->set_mem_desc(
-      reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
+      reorder_dst_memory_p->get_desc().reshape(vectorize(out_dims)));
 }
 
 template <typename T, typename Context>
