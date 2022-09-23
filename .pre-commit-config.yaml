@@ -1,3 +1,4 @@
+# Exclude all third-party libraries globally
 exclude: |
     (?x)^(
         patches/.+|
