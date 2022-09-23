@@ -416,12 +416,6 @@ def transpose(x, perm, name=None):
 
 def unstack(x, axis=0, num=None):
     """
-    :alias_main: paddle.unstack
-    :alias: paddle.unstack,paddle.tensor.unstack,paddle.tensor.manipulation.unstack
-    :old_api: paddle.fluid.layers.unstack
-
-    **UnStack Layer**
-
     This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
 
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
