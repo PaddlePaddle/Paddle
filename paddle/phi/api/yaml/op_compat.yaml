@@ -179,6 +179,10 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
 
+- op : dequantize_linear
+  extra :
+    attrs : [float moving_rate = 0.9]
+
 - op : diag (diag_v2)
   backward : diag_grad (diag_v2_grad)
   inputs :
@@ -270,6 +274,34 @@
   backward : expm1_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : fake_channel_wise_quantize_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_channel_wise_quantize_dequantize_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_quantize_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_quantize_dequantize_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_quantize_dequantize_moving_average_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_quantize_moving_average_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_quantize_range_abs_max
+  extra :
+    attrs : [int round_type = 1]
 
 - op : fft_c2c
   inputs: {x: X}
@@ -494,6 +526,10 @@
   backward : prelu_grad
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : quantize_linear
+  extra :
+    attrs : [float moving_rate = 0.9]
 
 - op : reciprocal
   backward : reciprocal_grad
