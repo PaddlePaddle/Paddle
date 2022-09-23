@@ -774,9 +774,10 @@ class TestDropoutOrig2PrimCase1(TestElementWiseAddOrig2Prim):
 
         self.input = {'X': X}
         self.output = {
-            'Out':
-            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
             'Mask':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.uint8),
+            'Out':
             self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
         }
         self.attrs = {
@@ -785,12 +786,13 @@ class TestDropoutOrig2PrimCase1(TestElementWiseAddOrig2Prim):
             'dropout_implementation': 'upscale_in_train'
         }
 
-        self.orig2prim_args = (X, )
+        self.orig2prim_args = (None, X)
         self.all_ops = [
-            'bernoulli_p', 'mul_p', 'fill_constant_p', 'div_p', 'dropout'
+            'bernoulli_p', 'mul_p', 'fill_constant_p', 'div_p', 'cast_p',
+            'dropout'
         ]
         # { prim_op_output_index: orig_op_output_var }
-        self.out_map = {0: self.output['Out'], 1: self.output['Mask']}
+        self.out_map = {0: self.output['Mask'], 1: self.output['Out']}
 
 
 class TestDropoutOrig2PrimCase2(TestElementWiseAddOrig2Prim):
@@ -801,9 +803,10 @@ class TestDropoutOrig2PrimCase2(TestElementWiseAddOrig2Prim):
 
         self.input = {'X': X}
         self.output = {
-            'Out':
-            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
             'Mask':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.uint8),
+            'Out':
             self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
         }
         self.attrs = {
@@ -812,10 +815,10 @@ class TestDropoutOrig2PrimCase2(TestElementWiseAddOrig2Prim):
             'dropout_implementation': 'downgrade_in_infer'
         }
 
-        self.orig2prim_args = (X, )
-        self.all_ops = ['bernoulli_p', 'mul_p', 'dropout']
+        self.orig2prim_args = (None, X)
+        self.all_ops = ['bernoulli_p', 'mul_p', 'cast_p', 'dropout']
         # { prim_op_output_index: orig_op_output_var }
-        self.out_map = {0: self.output['Out'], 1: self.output['Mask']}
+        self.out_map = {0: self.output['Mask'], 1: self.output['Out']}
 
 
 class TestDropoutOrig2PrimCase3(TestElementWiseAddOrig2Prim):
@@ -826,9 +829,10 @@ class TestDropoutOrig2PrimCase3(TestElementWiseAddOrig2Prim):
 
         self.input = {'X': X}
         self.output = {
-            'Out':
-            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
             'Mask':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.uint8),
+            'Out':
             self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
         }
         self.attrs = {
@@ -837,10 +841,10 @@ class TestDropoutOrig2PrimCase3(TestElementWiseAddOrig2Prim):
             'dropout_implementation': 'upscale_in_train'
         }
 
-        self.orig2prim_args = (X, )
-        self.all_ops = ['bernoulli_p', 'dropout']
+        self.orig2prim_args = (None, X)
+        self.all_ops = ['bernoulli_p', 'cast_p', 'dropout']
         # { prim_op_output_index: orig_op_output_var }
-        self.out_map = {0: self.output['Out'], 1: self.output['Mask']}
+        self.out_map = {0: self.output['Mask'], 1: self.output['Out']}
 
 
 class TestDropoutOrig2PrimCase4(TestElementWiseAddOrig2Prim):
@@ -851,9 +855,10 @@ class TestDropoutOrig2PrimCase4(TestElementWiseAddOrig2Prim):
 
         self.input = {'X': X}
         self.output = {
-            'Out':
-            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
             'Mask':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.uint8),
+            'Out':
             self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
         }
         self.attrs = {
@@ -862,10 +867,12 @@ class TestDropoutOrig2PrimCase4(TestElementWiseAddOrig2Prim):
             'dropout_implementation': 'downgrade_in_infer'
         }
 
-        self.orig2prim_args = (X, )
-        self.all_ops = ['bernoulli_p', 'fill_constant_p', 'mul_p', 'dropout']
+        self.orig2prim_args = (None, X)
+        self.all_ops = [
+            'bernoulli_p', 'fill_constant_p', 'mul_p', 'cast_p', 'dropout'
+        ]
         # { prim_op_output_index: orig_op_output_var }
-        self.out_map = {0: self.output['Out'], 1: self.output['Mask']}
+        self.out_map = {0: self.output['Mask'], 1: self.output['Out']}
 
 
 class TestReduceSumOrig2Prim(TestElementWiseAddOrig2Prim):
