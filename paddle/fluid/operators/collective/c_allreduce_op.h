@@ -79,7 +79,7 @@ class CAllReduceOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
     if (var_name == "Cond") {
       return expected_kernel_type;
@@ -193,7 +193,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
     if (ctx.HasInput("Cond")) {
-      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
       PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
                         true,
@@ -327,7 +327,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_XPU_BKCL)
     if (ctx.HasInput("Cond")) {
-      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
       PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
                         true,
@@ -412,7 +412,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     if (ctx.HasInput("Cond")) {
-      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
       PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
                         true,
@@ -533,7 +533,7 @@ class CAllReduceOpMLUKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
     if (ctx.HasInput("Cond")) {
-      auto cond = ctx.Input<framework::Tensor>("Cond");
+      auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
       PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
                         true,
