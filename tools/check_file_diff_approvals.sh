@@ -284,7 +284,7 @@ if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
     check_approval 1 16605440 6836917
 fi
 
-UNNECESSARY_FUTURE_IMPORT=`echo "$ALL_ADDED_LINES" | grep -E '\+\s+from __future__ import (nested_scopes|generators|division|absolute_import|with_statement|print_function|unicode_literals|generator_stop)' || true`
+UNNECESSARY_FUTURE_IMPORT=`echo "$ALL_ADDED_LINES" | grep -E '\+\s*from __future__ import (nested_scopes|generators|division|absolute_import|with_statement|print_function|unicode_literals|generator_stop)' || true`
 if [ "${UNNECESSARY_FUTURE_IMPORT}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="This feature is already mandatory in the Python3.7, no need to import it from __future__.\nPlease modify the code below. If anything is unclear, please read the Python __future__ module docs [ https://docs.python.org/3/library/__future__.html ]. If it is a mismatch, please request qili93 (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${UNNECESSARY_FUTURE_IMPORT}\n"
     check_approval 1 16605440 6836917
