@@ -24,6 +24,7 @@ import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from op_test import OpTest
 import paddle.inference as paddle_infer
+from paddle.fluid.framework import in_dygraph_mode
 
 paddle.enable_static()
 
@@ -101,8 +102,15 @@ class TestBincountOpError(unittest.TestCase):
             input_value = paddle.to_tensor([1, 2, 3, 4, 5])
             paddle.bincount(input_value, minlength=-1)
 
-        with self.assertRaises(IndexError):
-            self.run_network(net_func)
+        with fluid.dygraph.guard():
+            if in_dygraph_mode():
+                # InvalidArgument for phi BincountKernel
+                with self.assertRaises(ValueError):
+                    self.run_network(net_func)
+            else:
+                # OutOfRange for EqualGreaterThanChecker
+                with self.assertRaises(IndexError):
+                    self.run_network(net_func)
 
     def test_input_type_errors(self):
         """Test input tensor should only contain non-negative ints."""
