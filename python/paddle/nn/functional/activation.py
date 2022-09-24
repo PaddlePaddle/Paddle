@@ -1170,14 +1170,14 @@ def softplus(x, beta=1, threshold=20, name=None):
 
     .. math::
         softplus(x)=\begin{cases}
-                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{threshold}{\beta};\\
-                x,&x>\frac{threshold}{\beta}.
+                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{\varepsilon}{\beta};\\
+                x,&x>\frac{\varepsilon}{\beta}.
             \end{cases}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
-        threshold (float, optional): The value of threshold for softplus. Default is 20
+        threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:

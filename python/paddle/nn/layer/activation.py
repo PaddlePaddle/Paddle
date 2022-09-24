@@ -802,13 +802,13 @@ class Softplus(Layer):
 
     .. math::
         softplus(x)=\begin{cases}
-                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{threshold}{\beta};\\
-                x,&x>\frac{threshold}{\beta}.
+                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{\varepsilon}{\beta};\\
+                x,&x>\frac{\varepsilon}{\beta}.
             \end{cases}
 
     Parameters:
         beta (float, optional): The value of :math:`\beta` for Softplus. Default is 1
-        threshold (float, optional): The value of threshold for Softplus. Default is 20
+        threshold (float, optional): The value of :math:`\varepsilon` for Softplus. Default is 20
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
