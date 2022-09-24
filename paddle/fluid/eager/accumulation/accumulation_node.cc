@@ -31,12 +31,16 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
                             const paddle::experimental::Tensor& t,
                             bool is_fake_empty) {
   if (is_fake_empty) {
+    VLOG(3) << "Move Tensor ptr: " << t.impl();
     *tensor = t;
   } else {
     if (!tensor->defined() || !tensor->initialized()) {
       // Simply copy tensor->impl
+      VLOG(3) << "Move Tensor ptr: " << t.impl();
       *tensor = t;
     } else {
+      VLOG(3) << "Add Tensor ptr: " << t.impl()
+              << " with Tensor ptr: " << tensor->impl();
       // Accumulation
       if (LIKELY(t.is_dense_tensor())) {
         if (LIKELY(tensor->is_dense_tensor())) {

@@ -1344,7 +1344,7 @@ def alltoall_single(in_tensor,
     """
     Scatter a single input tensor to all participators and gather the received tensors in out_tensor.
 
-    .. note::
+    Note:
         ``alltoall_single`` is only supported in eager mode.
 
     Args:
