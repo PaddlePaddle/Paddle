@@ -83,7 +83,7 @@ class TransformedDistribution(distribution.Distribution):
         """Sample from ``TransformedDistribution``.
 
         Args:
-            shape (tuple, optional): The sample shape. Defaults to ().
+            shape ((Sequence[int], optional): The sample shape. Defaults to ().
 
         Returns:
             [Tensor]: The sample result.
@@ -97,7 +97,7 @@ class TransformedDistribution(distribution.Distribution):
         """Reparameterized sample from ``TransformedDistribution``.
 
         Args:
-            shape (tuple, optional): The sample shape. Defaults to ().
+            shape ((Sequence[int], optional): The sample shape. Defaults to ().
 
         Returns:
             [Tensor]: The sample result.
