@@ -132,20 +132,32 @@ def monkey_patch_variable():
     @static_only
     def cpu(self):
         """
-            Variable should not have cpu() and cuda() interface.
-            But this interface can greatly facilitate dy2static.
-            We do nothing here.
+        Variable should not have cpu() and cuda() interface.
+        But this interface can greatly facilitate dy2static.
+        We do nothing here.
         """
         return self
 
     @static_only
     def cuda(self):
         """
-            Variable should not have cpu() and cuda() interface.
-            But this interface can greatly facilitate dy2static.
-            We do nothing here.
+        Variable should not have cpu() and cuda() interface.
+        But this interface can greatly facilitate dy2static.
+        We do nothing here.
         """
         return self
+
+    @static_only
+    def place(self):
+        """
+        Variable don't have 'place' interface in static mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warnning here and return None.
+        """
+        warnings.warn(
+            "Variable do not have 'place' interface for static mode, try not to use it. None will be returned."
+        )
+        return None
 
     def astype(self, dtype):
         """
@@ -427,6 +439,7 @@ def monkey_patch_variable():
         ('astype', astype),
         ('cpu', cpu),
         ('cuda', cuda),
+        ('place', place),
         ('append', append),
         ('item', _item),
         ('pop', pop),
