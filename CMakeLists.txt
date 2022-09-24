@@ -64,6 +64,7 @@ option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 # NOTE(umiswing): WITH_CUTLASS can be compile on gpu with sm >= 80. Set WITH_CUTLASS=ON if a
 # gather-gemm-scatter fusion in sparse conv 3d is needed.
 option(WITH_CUTLASS "Compile PaddlePaddle with CUTLASS" OFF)
+option(WITH_CUCOLLECTIONS "Compile PaddlePaddle with CUCOLLECTIONS" OFF)
 # # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
@@ -427,6 +428,10 @@ endif()
 
 if(WITH_CUTLASS)
   add_definitions("-DPADDLE_WITH_CUTLASS")
+endif()
+
+if(WITH_CUCOLLECTIONS)
+  add_definitions("-DPADDLE_WITH_CUCOLLECTIONS")
 endif()
 
 if(WITH_BRPC_RDMA)
