@@ -3612,28 +3612,24 @@ PDNode *patterns::MergeLayernormPattern::operator()(PDNode* in){
                                 ->AsIntermediate();
   auto strided_slice_10_op = pattern->NewNode(strided_slice_10_op_repr())
                                     ->assert_is_op("strided_slice");
-                                    // ->assert_op_attr<std::vector<int>>("starts",{0,0});
   auto strided_slice_10_out = pattern->NewNode(strided_slice_10_out_repr())
                                      ->assert_is_op_output("strided_slice","Out")
                                      ->assert_is_op_nth_input("concat","X",0)
                                      ->AsIntermediate();
   auto strided_slice_11_op = pattern->NewNode(strided_slice_11_op_repr())
                                     ->assert_is_op("strided_slice");
-                                    // ->assert_op_attr<std::vector<int>>("starts",{0,1});
   auto strided_slice_11_out = pattern->NewNode(strided_slice_11_out_repr())
                                      ->assert_is_op_output("strided_slice","Out")
                                      ->assert_is_op_nth_input("concat","X",1)
                                      ->AsIntermediate();
   auto strided_slice_12_op = pattern->NewNode(strided_slice_12_op_repr())
                                     ->assert_is_op("strided_slice");
-                                    // ->assert_op_attr<std::vector<int>>("starts",{1,0});
   auto strided_slice_12_out = pattern->NewNode(strided_slice_12_out_repr())
                                      ->assert_is_op_output("strided_slice","Out")
                                      ->assert_is_op_nth_input("concat","X",2)
                                      ->AsIntermediate();
   auto strided_slice_13_op = pattern->NewNode(strided_slice_13_op_repr())
                                     ->assert_is_op("strided_slice");
-                                    // ->assert_op_attr<std::vector<int>>("starts",{1,1});
   auto strided_slice_13_out = pattern->NewNode(strided_slice_13_out_repr())
                                      ->assert_is_op_output("strided_slice","Out")
                                      ->assert_is_op_nth_input("concat","X",3)

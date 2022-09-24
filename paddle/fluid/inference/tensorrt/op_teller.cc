@@ -2068,6 +2068,13 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+    if (op_type == "merge_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The merge_layernorm op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
 
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);

@@ -43,6 +43,84 @@ namespace paddle {
 namespace framework {
 namespace ir {
     // TODO @@@ AddOpCompat
+    MergeLayernormFusePass::MergeLayernormFusePass(){
+        AddOpCompat(OpCompat("reshape2"))
+            .AddInput("X")
+            .IsTensor()
+            .End()
+            .AddOutput("Out")
+            .IsTensor()
+            .End()
+            .AddOutput("XShape")
+            .IsOptional()
+            .IsTensor()
+            .End()
+            .AddAttr("shape")
+            .IsType<std::vector<int>>()
+            .End();
+        AddOpCompat(OpCompat("strided_slice"))
+            .AddInput("Input")
+            .IsTensor()
+            .End()
+            .AddOutput("Out")
+            .IsTensor()
+            .End()
+            .AddAttr("axes")
+            .IsType<std::vector<int>>()
+            .End()
+            .AddAttr("starts")
+            .IsType<std::vector<int>>()
+            .End()
+            .AddAttr("strides")
+            .IsType<std::vector<int>>()
+            .End()
+            .AddAttr("infer_flags")
+            .IsType<std::vector<int>>()
+            .End()
+            .AddAttr("ends")
+            .IsType<std::vector<int>>()
+            .End();
+        AddOpCompat(OpCompat("concat"))
+            .AddInput("X") // X is vector<Tensor>
+            .End()
+            .AddInput("AxisTensor")
+            .IsTensor()
+            .IsOptional()
+            .End()
+            .AddOutput("Out")
+            .IsTensor()
+            .End()
+            .AddAttr("axis")
+            .End();
+        AddOpCompat(OpCompat("layer_norm"))
+            .AddInput("X")
+            .IsTensor()
+            .End()
+            .AddInput("Scale")
+            .IsTensor()
+            .End()
+            .AddInput("Bias")
+            .IsTensor()
+            .End()
+            .AddOutput("Y")
+            .IsTensor()
+            .End()
+            .AddOutput("Mean")
+            .IsTensor()
+            .IsOptional()
+            .End()
+            .AddOutput("Variance")
+            .IsTensor()
+            .IsOptional()
+            .End()
+            .AddAttr("epsilon")
+            .IsNumGE(0.0f)
+            .IsNumLE(0.001f)
+            .End()
+            .AddAttr("begin_norm_axis")
+            .IsNumEQ(2)
+            .End();
+    }
     void MergeLayernormFusePass::ApplyImpl(ir::Graph* graph) const {
         GraphPatternDetector gpd;
         const std::string pattern_name = "merge_layernorm";
@@ -60,10 +138,11 @@ namespace ir {
                            Graph* g){
 
             // TODO @@@ iscompat
-            // if (!IsCompat(subgraph, g)) {
-            //     LOG(WARNING) << "Pass in op compat failed.";
-            //     return;
-            // }
+            if (!IsCompat(subgraph, g)) {
+                LOG(WARNING) << "Pass in op compat failed.";
+                printf("@@@@ compat failed\r\n");
+                return;
+            }
 
             GET_NODES;
             OpDesc merge_layer_op_desc(reshape2_00_op->Op()->Block());
