@@ -809,8 +809,7 @@ class Softplus(Layer):
     Parameters:
         beta (float, optional): The value of :math:`\beta` for Softplus. Default is 1
         threshold (float, optional): The value of :math:`\varepsilon` for Softplus. Default is 20
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
         - input: Tensor with any shape.
