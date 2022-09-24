@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import math
-from pprint import pprint
 import unittest
 import scipy.stats
 
@@ -26,8 +25,6 @@ from paddle.distribution.normal import Normal
 from paddle.distribution.lognormal import LogNormal
 from test_distribution import DistributionNumpy
 from paddle.distribution.kl import kl_divergence
-
-np.random.seed(2022)
 
 
 class LogNormalNumpy(DistributionNumpy):
@@ -84,13 +81,13 @@ class LogNormalTest(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static()
-        self._paddle_lognormal = LogNormal(loc=paddle.to_tensor(self.loc),
-                                           scale=paddle.to_tensor(self.scale))
-        self._np_lognormal = LogNormalNumpy(self.loc, self.scale)
+        self.paddle_lognormal = LogNormal(loc=paddle.to_tensor(self.loc),
+                                          scale=paddle.to_tensor(self.scale))
+        self.np_lognormal = LogNormalNumpy(self.loc, self.scale)
 
     def test_mean(self):
-        mean = self._paddle_lognormal.mean
-        np_mean = self._np_lognormal.mean
+        mean = self.paddle_lognormal.mean
+        np_mean = self.np_lognormal.mean
         self.assertEqual(mean.numpy().dtype, np_mean.dtype)
         np.testing.assert_allclose(mean,
                                    np_mean,
@@ -98,8 +95,8 @@ class LogNormalTest(unittest.TestCase):
                                    atol=config.ATOL.get(str(self.scale.dtype)))
 
     def test_variance(self):
-        var = self._paddle_lognormal.variance
-        np_var = self._np_lognormal.variance
+        var = self.paddle_lognormal.variance
+        np_var = self.np_lognormal.variance
         self.assertEqual(var.numpy().dtype, np_var.dtype)
         np.testing.assert_allclose(var,
                                    np_var,
@@ -107,8 +104,8 @@ class LogNormalTest(unittest.TestCase):
                                    atol=config.ATOL.get(str(self.scale.dtype)))
 
     def test_entropy(self):
-        entropy = self._paddle_lognormal.entropy()
-        np_entropy = self._np_lognormal.entropy()
+        entropy = self.paddle_lognormal.entropy()
+        np_entropy = self.np_lognormal.entropy()
         self.assertEqual(entropy.numpy().dtype, np_entropy.dtype)
         np.testing.assert_allclose(entropy,
                                    np_entropy,
@@ -120,8 +117,8 @@ class LogNormalTest(unittest.TestCase):
 
         for v in value:
             with paddle.fluid.dygraph.guard(self.place):
-                probs = self._paddle_lognormal.probs(paddle.to_tensor(v))
-                np_probs = self._np_lognormal.probs(v)
+                probs = self.paddle_lognormal.probs(paddle.to_tensor(v))
+                np_probs = self.np_lognormal.probs(v)
                 np.testing.assert_allclose(
                     probs,
                     np_probs,
@@ -132,8 +129,8 @@ class LogNormalTest(unittest.TestCase):
         value = [np.random.rand(*self.scale.shape)]
         for v in value:
             with paddle.fluid.dygraph.guard(self.place):
-                log_prob = self._paddle_lognormal.log_prob(paddle.to_tensor(v))
-                np_log_prob = self._np_lognormal.log_prob(v)
+                log_prob = self.paddle_lognormal.log_prob(paddle.to_tensor(v))
+                np_log_prob = self.np_lognormal.log_prob(v)
                 np.testing.assert_allclose(
                     log_prob,
                     np_log_prob,
@@ -149,39 +146,43 @@ class TestLogNormalSample(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static()
-        self._paddle_lognormal = LogNormal(loc=self.loc, scale=self.scale)
+        self.paddle_lognormal = LogNormal(loc=self.loc, scale=self.scale)
         n = 80000
-        self.sample_shape = [n]
-        self.rsample_shape = [n]
-        self.samples = self._paddle_lognormal.sample(self.sample_shape)
-        self.rsamples = self._paddle_lognormal.rsample(self.rsample_shape)
+        self.sample_shape = (n, )
+        self.rsample_shape = (n, )
+        self.samples = self.paddle_lognormal.sample(self.sample_shape)
+        self.rsamples = self.paddle_lognormal.rsample(self.rsample_shape)
 
     def test_sample(self):
         samples_mean = self.samples.mean(axis=0)
         samples_var = self.samples.var(axis=0)
         np.testing.assert_allclose(samples_mean,
-                                   self._paddle_lognormal.mean,
+                                   self.paddle_lognormal.mean,
                                    rtol=0.1,
                                    atol=0)
         np.testing.assert_allclose(samples_var,
-                                   self._paddle_lognormal.variance,
+                                   self.paddle_lognormal.variance,
                                    rtol=0.1,
                                    atol=0)
 
         rsamples_mean = self.rsamples.mean(axis=0)
         rsamples_var = self.rsamples.var(axis=0)
         np.testing.assert_allclose(rsamples_mean,
-                                   self._paddle_lognormal.mean,
+                                   self.paddle_lognormal.mean,
                                    rtol=0.1,
                                    atol=0)
         np.testing.assert_allclose(rsamples_var,
-                                   self._paddle_lognormal.variance,
+                                   self.paddle_lognormal.variance,
                                    rtol=0.1,
                                    atol=0)
 
+        batch_shape = (self.loc + self.scale).shape
+        self.assertEqual(self.samples.shape,
+                         list(self.sample_shape + batch_shape))
+        self.assertEqual(self.rsamples.shape,
+                         list(self.rsample_shape + batch_shape))
+
         for i in range(len(self.scale)):
-            self.assertEqual(self.samples[:, i].shape, self.sample_shape)
-            self.assertEqual(self.rsamples[:, i].shape, self.rsample_shape)
             self.assertTrue(
                 self._kstest(self.loc[i], self.scale[i], self.samples[:, i]))
             self.assertTrue(

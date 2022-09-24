@@ -83,10 +83,10 @@ class LogNormal(TransformedDistribution):
     """
 
     def __init__(self, loc, scale, name=None):
-        self.base_dist = Normal(loc=loc, scale=scale, name=name)
-        self.loc = self.base_dist.loc
-        self.scale = self.base_dist.scale
-        super(LogNormal, self).__init__(self.base_dist, [ExpTransform()])
+        self._base = Normal(loc=loc, scale=scale, name=name)
+        self.loc = self._base.loc
+        self.scale = self._base.scale
+        super(LogNormal, self).__init__(self._base, [ExpTransform()])
 
     @property
     def mean(self):
@@ -95,7 +95,7 @@ class LogNormal(TransformedDistribution):
         Returns:
             Tensor: mean value.
         """
-        return paddle.exp(self.base_dist.mean + self.base_dist.variance / 2)
+        return paddle.exp(self._base.mean + self._base.variance / 2)
 
     @property
     def variance(self):
@@ -104,8 +104,8 @@ class LogNormal(TransformedDistribution):
         Returns:
             Tensor: variance value.
         """
-        return (paddle.expm1(self.base_dist.variance) *
-                paddle.exp(2 * self.base_dist.mean + self.base_dist.variance))
+        return (paddle.expm1(self._base.variance) *
+                paddle.exp(2 * self._base.mean + self._base.variance))
 
     def entropy(self):
         r"""Shannon entropy in nats.
@@ -124,7 +124,7 @@ class LogNormal(TransformedDistribution):
           Tensor: Shannon entropy of lognormal distribution.The data type is float32.
 
         """
-        return self.base_dist.entropy() + self.base_dist.mean
+        return self._base.entropy() + self._base.mean
 
     def probs(self, value):
         """Probability density/mass function.
@@ -171,4 +171,4 @@ class LogNormal(TransformedDistribution):
             Tensor: kl-divergence between two lognormal distributions.The data type is float32.
 
         """
-        return self.base_dist.kl_divergence(other.base_dist)
+        return self._base.kl_divergence(other._base)

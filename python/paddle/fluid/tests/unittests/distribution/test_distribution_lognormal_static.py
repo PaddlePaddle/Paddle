@@ -24,8 +24,6 @@ from paddle.distribution.lognormal import LogNormal
 from test_distribution_lognormal import LogNormalNumpy
 from paddle.distribution.kl import kl_divergence
 
-np.random.seed(2022)
-
 
 @place(config.DEVICES)
 @parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('one-dim', xrand(
@@ -41,11 +39,11 @@ class TestLogNormal(unittest.TestCase):
             loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
-            self.ln_a = LogNormal(loc=loc, scale=scale)
-            self._np_lognormal = LogNormalNumpy(loc=self.loc, scale=self.scale)
-            mean = self.ln_a.mean
-            var = self.ln_a.variance
-            entropy = self.ln_a.entropy()
+            self.paddle_lognormal = LogNormal(loc=loc, scale=scale)
+            self.np_lognormal = LogNormalNumpy(loc=self.loc, scale=self.scale)
+            mean = self.paddle_lognormal.mean
+            var = self.paddle_lognormal.variance
+            entropy = self.paddle_lognormal.entropy()
         fetch_list = [mean, var, entropy]
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
@@ -56,7 +54,7 @@ class TestLogNormal(unittest.TestCase):
                                       fetch_list=fetch_list)
 
     def test_mean(self):
-        np_mean = self._np_lognormal.mean
+        np_mean = self.np_lognormal.mean
         self.assertEqual(str(self.mean.dtype).split('.')[-1], self.scale.dtype)
         np.testing.assert_allclose(self.mean,
                                    np_mean,
@@ -64,7 +62,7 @@ class TestLogNormal(unittest.TestCase):
                                    atol=config.ATOL.get(str(self.scale.dtype)))
 
     def test_var(self):
-        np_var = self._np_lognormal.variance
+        np_var = self.np_lognormal.variance
         self.assertEqual(str(self.var.dtype).split('.')[-1], self.scale.dtype)
         np.testing.assert_allclose(self.var,
                                    np_var,
@@ -72,7 +70,7 @@ class TestLogNormal(unittest.TestCase):
                                    atol=config.ATOL.get(str(self.scale.dtype)))
 
     def test_entropy(self):
-        np_entropy = self._np_lognormal.entropy()
+        np_entropy = self.np_lognormal.entropy()
         self.assertEqual(
             str(self.entropy.dtype).split('.')[-1], self.scale.dtype)
         np.testing.assert_allclose(self.entropy,
@@ -97,13 +95,13 @@ class TestLogNormalSample(unittest.TestCase):
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
             n = 80000
-            self.sample_shape = [n]
-            self.rsample_shape = [n]
-            self.ln_a = LogNormal(loc=loc, scale=scale)
-            self.mean = self.ln_a.mean
-            self.variance = self.ln_a.variance
-            self.samples = self.ln_a.sample(self.sample_shape)
-            self.rsamples = self.ln_a.rsample(self.rsample_shape)
+            self.sample_shape = (n, )
+            self.rsample_shape = (n, )
+            self.paddle_lognormal = LogNormal(loc=loc, scale=scale)
+            self.mean = self.paddle_lognormal.mean
+            self.variance = self.paddle_lognormal.variance
+            self.samples = self.paddle_lognormal.sample(self.sample_shape)
+            self.rsamples = self.paddle_lognormal.rsample(self.rsample_shape)
         fetch_list = [self.mean, self.variance, self.samples, self.rsamples]
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
@@ -127,10 +125,11 @@ class TestLogNormalSample(unittest.TestCase):
                                    rtol=0.1,
                                    atol=0)
 
+        batch_shape = (self.loc + self.scale).shape
+        self.assertEqual(self.samples.shape, self.sample_shape + batch_shape)
+        self.assertEqual(self.rsamples.shape, self.rsample_shape + batch_shape)
+
         for i in range(len(self.scale)):
-            self.assertEqual(self.samples[:, i].shape, tuple(self.sample_shape))
-            self.assertEqual(self.rsamples[:, i].shape,
-                             tuple(self.rsample_shape))
             self.assertTrue(
                 self._kstest(self.loc[i], self.scale[i], self.samples[:, i]))
             self.assertTrue(
