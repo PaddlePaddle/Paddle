@@ -75,8 +75,8 @@ class LogNormalNumpy(DistributionNumpy):
 @place(config.DEVICES)
 @parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
                   [('float', xrand(), xrand()),
-                   ('one-dim', xrand((3, )), xrand((3, ))),
-                   ('multi-dim', xrand((5, 5)), xrand((5, 5)))])
+                   ('one-dim', xrand((2, )), xrand((2, ))),
+                   ('multi-dim', xrand((3, 3)), xrand((3, 3)))])
 class LogNormalTest(unittest.TestCase):
 
     def setUp(self):
@@ -141,13 +141,13 @@ class LogNormalTest(unittest.TestCase):
 @place(config.DEVICES)
 @parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
                   [('sample', xrand(
-                      (4, ), min=0, max=1), xrand((4, ), min=0.01, max=1))])
+                      (4, ), min=0, max=1), xrand((4, ), min=0, max=1))])
 class TestLogNormalSample(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static()
         self.paddle_lognormal = LogNormal(loc=self.loc, scale=self.scale)
-        n = 80000
+        n = 100000
         self.sample_shape = (n, )
         self.rsample_shape = (n, )
         self.samples = self.paddle_lognormal.sample(self.sample_shape)

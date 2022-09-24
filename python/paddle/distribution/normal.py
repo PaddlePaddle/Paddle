@@ -25,6 +25,10 @@ from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
                                  elementwise_mul, elementwise_sub, nn, ops,
                                  tensor)
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
 
 
 class Normal(distribution.Distribution):
@@ -157,12 +161,16 @@ class Normal(distribution.Distribution):
             Tensor, A tensor with prepended dimensions shape.The data type is float32.
 
         """
+        if not isinstance(shape, Iterable):
+            raise TypeError('sample shape must be Iterable object.')
+
         if not _non_static_mode():
-            check_type(shape, 'shape', (tuple), 'sample')
             check_type(seed, 'seed', (int), 'sample')
 
-        batch_shape = tuple((self.loc + self.scale).shape)
+        shape = list(shape)
+        batch_shape = list((self.loc + self.scale).shape)
         name = self.name + '_sample'
+
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
@@ -219,7 +227,7 @@ class Normal(distribution.Distribution):
 
         """
         name = self.name + '_entropy'
-        batch_shape = tuple((self.loc + self.scale).shape)
+        batch_shape = list((self.loc + self.scale).shape)
         zero_tmp = tensor.fill_constant_batch_size_like(self.loc + self.scale,
                                                         batch_shape, self.dtype,
                                                         0.)

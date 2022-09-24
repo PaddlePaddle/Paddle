@@ -26,8 +26,10 @@ from paddle.distribution.kl import kl_divergence
 
 
 @place(config.DEVICES)
-@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('one-dim', xrand(
-    (2, )), xrand((2, ))), ('multi-dim', xrand((3, 3)), xrand((3, 3)))])
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
+                  [('float', xrand(), xrand()),
+                   ('one-dim', xrand((2, )), xrand((2, ))),
+                   ('multi-dim', xrand((3, 3)), xrand((3, 3)))])
 class TestLogNormal(unittest.TestCase):
 
     def setUp(self):
@@ -82,7 +84,7 @@ class TestLogNormal(unittest.TestCase):
 @place(config.DEVICES)
 @parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
                   [('sample', xrand(
-                      (4, ), min=0, max=1), xrand((4, ), min=0.01, max=1))])
+                      (4, ), min=0, max=1), xrand((4, ), min=0, max=1))])
 class TestLogNormalSample(unittest.TestCase):
 
     def setUp(self):
@@ -94,7 +96,7 @@ class TestLogNormalSample(unittest.TestCase):
             loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
-            n = 80000
+            n = 100000
             self.sample_shape = (n, )
             self.rsample_shape = (n, )
             self.paddle_lognormal = LogNormal(loc=loc, scale=scale)
