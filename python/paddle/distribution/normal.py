@@ -207,7 +207,7 @@ class Normal(distribution.Distribution):
           Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-        return self.sample(shape)
+        return self.sample(shape, seed)
 
     def entropy(self):
         r"""Shannon entropy in nats.
