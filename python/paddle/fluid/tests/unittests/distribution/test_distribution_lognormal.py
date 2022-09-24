@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+from pprint import pprint
 import unittest
 import scipy.stats
 
@@ -21,6 +22,7 @@ import paddle
 
 import config
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+from paddle.distribution.normal import Normal
 from paddle.distribution.lognormal import LogNormal
 from test_distribution import DistributionNumpy
 from paddle.distribution.kl import kl_divergence
@@ -202,18 +204,33 @@ class TestLogNormalKL(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static()
-        self._paddle_lognormal = LogNormal(loc=paddle.to_tensor(self.loc1),
-                                           scale=paddle.to_tensor(self.scale1))
-        self._paddle_lognormal_other = LogNormal(
-            loc=paddle.to_tensor(self.loc2),
-            scale=paddle.to_tensor(self.scale2))
+        self.ln_a = LogNormal(loc=paddle.to_tensor(self.loc1),
+                              scale=paddle.to_tensor(self.scale1))
+        self.ln_b = LogNormal(loc=paddle.to_tensor(self.loc2),
+                              scale=paddle.to_tensor(self.scale2))
+        self.normal_a = Normal(loc=paddle.to_tensor(self.loc1),
+                               scale=paddle.to_tensor(self.scale1))
+        self.normal_b = Normal(loc=paddle.to_tensor(self.loc2),
+                               scale=paddle.to_tensor(self.scale2))
 
     def test_kl_divergence(self):
-        kl1 = kl_divergence(self._paddle_lognormal,
-                            self._paddle_lognormal_other)
-        kl2 = self._kl(self._paddle_lognormal, self._paddle_lognormal_other)
+        kl0 = self.ln_a.kl_divergence(self.ln_b)
+        kl1 = kl_divergence(self.ln_a, self.ln_b)
+        kl_normal = kl_divergence(self.normal_a, self.normal_b)
+        kl_formula = self._kl(self.ln_a, self.ln_b)
+
+        self.assertEqual(tuple(kl0.shape), self.scale1.shape)
+        self.assertEqual(tuple(kl1.shape), self.scale1.shape)
+        np.testing.assert_allclose(kl0,
+                                   kl_formula,
+                                   rtol=config.RTOL.get(str(self.scale1.dtype)),
+                                   atol=config.ATOL.get(str(self.scale1.dtype)))
         np.testing.assert_allclose(kl1,
-                                   kl2,
+                                   kl_formula,
+                                   rtol=config.RTOL.get(str(self.scale1.dtype)),
+                                   atol=config.ATOL.get(str(self.scale1.dtype)))
+        np.testing.assert_allclose(kl_normal,
+                                   kl_formula,
                                    rtol=config.RTOL.get(str(self.scale1.dtype)),
                                    atol=config.ATOL.get(str(self.scale1.dtype)))
 

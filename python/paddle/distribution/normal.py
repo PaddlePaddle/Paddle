@@ -180,8 +180,9 @@ class Normal(distribution.Distribution):
             return output
         else:
             output_shape = shape + batch_shape
-            output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed, dtype=self.dtype) * \
-                (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
+            output = nn.gaussian_random(
+                output_shape, mean=0., std=1., seed=seed, dtype=self.dtype) * (
+                    tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)

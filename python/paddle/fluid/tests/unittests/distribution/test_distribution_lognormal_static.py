@@ -19,6 +19,7 @@ import scipy.stats
 import config
 
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+from paddle.distribution.normal import Normal
 from paddle.distribution.lognormal import LogNormal
 from test_distribution_lognormal import LogNormalNumpy
 from paddle.distribution.kl import kl_divergence
@@ -40,11 +41,11 @@ class TestLogNormal(unittest.TestCase):
             loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
-            self._paddle_lognormal = LogNormal(loc=loc, scale=scale)
+            self.ln_a = LogNormal(loc=loc, scale=scale)
             self._np_lognormal = LogNormalNumpy(loc=self.loc, scale=self.scale)
-            mean = self._paddle_lognormal.mean
-            var = self._paddle_lognormal.variance
-            entropy = self._paddle_lognormal.entropy()
+            mean = self.ln_a.mean
+            var = self.ln_a.variance
+            entropy = self.ln_a.entropy()
         fetch_list = [mean, var, entropy]
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
@@ -98,11 +99,11 @@ class TestLogNormalSample(unittest.TestCase):
             n = 80000
             self.sample_shape = [n]
             self.rsample_shape = [n]
-            self._paddle_lognormal = LogNormal(loc=loc, scale=scale)
-            self.mean = self._paddle_lognormal.mean
-            self.variance = self._paddle_lognormal.variance
-            self.samples = self._paddle_lognormal.sample(self.sample_shape)
-            self.rsamples = self._paddle_lognormal.rsample(self.rsample_shape)
+            self.ln_a = LogNormal(loc=loc, scale=scale)
+            self.mean = self.ln_a.mean
+            self.variance = self.ln_a.variance
+            self.samples = self.ln_a.sample(self.sample_shape)
+            self.rsamples = self.ln_a.rsample(self.rsample_shape)
         fetch_list = [self.mean, self.variance, self.samples, self.rsamples]
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
@@ -127,9 +128,9 @@ class TestLogNormalSample(unittest.TestCase):
                                    atol=0)
 
         for i in range(len(self.scale)):
-            self.assertEqual(self.samples[:, i].shape, (self.sample_shape[0], ))
+            self.assertEqual(self.samples[:, i].shape, tuple(self.sample_shape))
             self.assertEqual(self.rsamples[:, i].shape,
-                             (self.rsample_shape[0], ))
+                             tuple(self.rsample_shape))
             self.assertTrue(
                 self._kstest(self.loc[i], self.scale[i], self.samples[:, i]))
             self.assertTrue(
@@ -162,13 +163,18 @@ class TestLogNormalKL(unittest.TestCase):
             loc2 = paddle.static.data('loc2', self.loc2.shape, self.loc2.dtype)
             scale2 = paddle.static.data('scale2', self.scale2.shape,
                                         self.scale2.dtype)
-            self._paddle_lognormal = LogNormal(loc=loc1, scale=scale1)
-            self._paddle_lognormal_other = LogNormal(loc=loc2, scale=scale2)
-            self.kl1 = kl_divergence(self._paddle_lognormal,
-                                     self._paddle_lognormal_other)
-            self.kl2 = self._kl(self._paddle_lognormal,
-                                self._paddle_lognormal_other)
-        fetch_list = [self.kl1, self.kl2]
+
+            self.ln_a = LogNormal(loc=loc1, scale=scale1)
+            self.ln_b = LogNormal(loc=loc2, scale=scale2)
+            self.normal_a = Normal(loc=loc1, scale=scale1)
+            self.normal_b = Normal(loc=loc2, scale=scale2)
+
+            self.kl0 = self.ln_a.kl_divergence(self.ln_b)
+            self.kl1 = kl_divergence(self.ln_a, self.ln_b)
+            self.kl_normal = kl_divergence(self.normal_a, self.normal_b)
+            self.kl_formula = self._kl(self.ln_a, self.ln_b)
+
+        fetch_list = [self.kl0, self.kl1, self.kl_normal, self.kl_formula]
         self.feeds = {
             'loc1': self.loc1,
             'scale1': self.scale1,
@@ -177,13 +183,24 @@ class TestLogNormalKL(unittest.TestCase):
         }
 
         executor.run(startup_program)
-        [self.kl1, self.kl2] = executor.run(main_program,
-                                            feed=self.feeds,
-                                            fetch_list=fetch_list)
+        [self.kl0, self.kl1, self.kl_normal,
+         self.kl_formula] = executor.run(main_program,
+                                         feed=self.feeds,
+                                         fetch_list=fetch_list)
 
     def test_kl_divergence(self):
+        np.testing.assert_allclose(self.kl0,
+                                   self.kl_formula,
+                                   rtol=config.RTOL.get(str(self.scale1.dtype)),
+                                   atol=config.ATOL.get(str(self.scale1.dtype)))
+
         np.testing.assert_allclose(self.kl1,
-                                   self.kl2,
+                                   self.kl_formula,
+                                   rtol=config.RTOL.get(str(self.scale1.dtype)),
+                                   atol=config.ATOL.get(str(self.scale1.dtype)))
+
+        np.testing.assert_allclose(self.kl_normal,
+                                   self.kl_formula,
                                    rtol=config.RTOL.get(str(self.scale1.dtype)),
                                    atol=config.ATOL.get(str(self.scale1.dtype)))
 
