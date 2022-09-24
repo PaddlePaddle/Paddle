@@ -21,7 +21,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
-import os
 
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
