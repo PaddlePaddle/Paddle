@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/layernorm_shift_partition_fuse_pass.h"
+#include "paddle/fluid/framework/ir/layernorm_shift_partition_2_fuse_pass.h"
 
 #include <cmath>
 #include <string>
@@ -28,7 +28,7 @@ namespace ir {
 
 class Node;
 
-LayerNormShiftPartitionFusePass::LayerNormShiftPartitionFusePass() {
+LayerNormShiftPartition2FusePass::LayerNormShiftPartition2FusePass() {
   AddOpCompat(OpCompat("layer_norm"))
       .AddInput("X")
       .IsTensor()
@@ -85,19 +85,32 @@ LayerNormShiftPartitionFusePass::LayerNormShiftPartitionFusePass() {
       .AddAttr("axis")
       .IsType<std::vector<int>>()
       .End();
+    AddOpCompat(OpCompat("roll"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsType<std::vector<int64_t>>()
+      .End()
+      .AddAttr("shifts")
+      .IsType<std::vector<int64_t>>()
+      .End();
 }
 
-void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
+void LayerNormShiftPartition2FusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
       platform::errors::InvalidArgument(
-          "The input graph of LayerNormShiftPartitionFusePass should not be "
+          "The input graph of LayerNormShiftPartition2FusePass should not be "
           "nullptr."));
 
   FusePassBase::Init(scope_name_, graph);
 
   GraphPatternDetector gpd;
-  patterns::LayernormShiftPartitionPattern shift_patition_pattern(
+  patterns::LayernormShiftPartition2Pattern shift_patition_pattern(
       gpd.mutable_pattern(), scope_name_);
   shift_patition_pattern();
 
@@ -105,11 +118,11 @@ void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "layernorm_shift_partition_fuse in op compat failed.";
+      LOG(WARNING) << "layernorm_shift_partition_2_fuse in op compat failed.";
       return;
     }
 
-    VLOG(4) << "layernorm_shift_partition_fuse pass";
+    VLOG(4) << "layernorm_shift_partition_2_fuse pass";
     GET_IR_NODE_FROM_SUBGRAPH(
         layer_norm_in, layer_norm_in, shift_patition_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -123,6 +136,8 @@ void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(reshape1_op, reshape1_op, shift_patition_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         reshape1_out, reshape1_out, shift_patition_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(roll1_op, roll1_op, shift_patition_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(roll1_out, roll1_out, shift_patition_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_op, reshape2_op, shift_patition_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         reshape2_out, reshape2_out, shift_patition_pattern);
@@ -176,7 +191,7 @@ void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetAttr("begin_norm_axis",
                         layer_norm_op->Op()->GetAttr("begin_norm_axis"));
     new_op_desc.SetAttr("window_size", window_size);
-    new_op_desc.SetAttr("shift_size", 0); // if no circle_shift (roll), shift_size is 0
+    new_op_desc.SetAttr("shift_size", (int)window_size/2); // if no circle_shift (roll), shift_size is 0
     new_op_desc.SetAttr("input_resolution", input_resolution);
     new_op_desc.Flush();
 
@@ -191,6 +206,8 @@ void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
                           layer_norm_out,
                           reshape1_op,
                           reshape1_out,
+                          roll1_op,
+                          roll1_out,
                           reshape2_op,
                           reshape2_out,
                           transpose_op,
@@ -209,9 +226,9 @@ void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(layernorm_shift_partition_fuse_pass,
-              paddle::framework::ir::LayerNormShiftPartitionFusePass);
-REGISTER_PASS_CAPABILITY(layernorm_shift_partition_fuse_pass)
+REGISTER_PASS(layernorm_shift_partition_2_fuse_pass,
+              paddle::framework::ir::LayerNormShiftPartition2FusePass);
+REGISTER_PASS_CAPABILITY(layernorm_shift_partition_2_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("transpose2", 0)
