@@ -134,9 +134,8 @@ class LogNormalTest(unittest.TestCase):
 
 
 @place(config.DEVICES)
-@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
-                  [('sample', xrand(
-                      (4, ), min=0, max=1), xrand((4, ), min=0, max=1))])
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample', xrand(
+    (4, )), xrand((4, ), min=0, max=1))])
 class TestLogNormalSample(unittest.TestCase):
 
     def setUp(self):
