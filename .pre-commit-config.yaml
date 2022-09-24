@@ -21,7 +21,7 @@ repos:
         # And exclude some unit test files that require tabs.
         exclude: |
             (?x)^(
-                python/paddle/fluid/(?!.*tests).+|
+                python/paddle/fluid/(?!tests).+|
                 python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py|
                 python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py
             )$
