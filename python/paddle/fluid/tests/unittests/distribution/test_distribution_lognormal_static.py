@@ -26,10 +26,9 @@ from paddle.distribution.kl import kl_divergence
 
 
 @place(config.DEVICES)
-@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
-                  [('float', xrand(), xrand()),
-                   ('one-dim', xrand((2, )), xrand((2, ))),
-                   ('multi-dim', xrand((3, 3)), xrand((3, 3)))])
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale', 'value'),
+                  [('one-dim', xrand((2, )), xrand((2, )), xrand((2, ))),
+                   ('multi-dim', xrand((3, 3)), xrand((3, 3)), xrand((3, 3)))])
 class TestLogNormal(unittest.TestCase):
 
     def setUp(self):
@@ -41,19 +40,23 @@ class TestLogNormal(unittest.TestCase):
             loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
+            value = paddle.static.data('value', self.value.shape,
+                                       self.value.dtype)
             self.paddle_lognormal = LogNormal(loc=loc, scale=scale)
             self.np_lognormal = LogNormalNumpy(loc=self.loc, scale=self.scale)
             mean = self.paddle_lognormal.mean
             var = self.paddle_lognormal.variance
             entropy = self.paddle_lognormal.entropy()
-        fetch_list = [mean, var, entropy]
-        self.feeds = {'loc': self.loc, 'scale': self.scale}
+            probs = self.paddle_lognormal.probs(value)
+            log_prob = self.paddle_lognormal.log_prob(value)
+        fetch_list = [mean, var, entropy, probs, log_prob]
+        self.feeds = {'loc': self.loc, 'scale': self.scale, 'value': self.value}
 
         executor.run(startup_program)
-        [self.mean, self.var,
-         self.entropy] = executor.run(main_program,
-                                      feed=self.feeds,
-                                      fetch_list=fetch_list)
+        [self.mean, self.var, self.entropy, self.probs,
+         self.log_prob] = executor.run(main_program,
+                                       feed=self.feeds,
+                                       fetch_list=fetch_list)
 
     def test_mean(self):
         np_mean = self.np_lognormal.mean
@@ -80,6 +83,20 @@ class TestLogNormal(unittest.TestCase):
                                    rtol=config.RTOL.get(str(self.scale.dtype)),
                                    atol=config.ATOL.get(str(self.scale.dtype)))
 
+    def test_probs(self):
+        np_probs = self.np_lognormal.probs(self.value)
+        np.testing.assert_allclose(self.probs,
+                                   np_probs,
+                                   rtol=config.RTOL.get(str(self.scale.dtype)),
+                                   atol=config.ATOL.get(str(self.scale.dtype)))
+
+    def test_log_prob(self):
+        np_log_prob = self.np_lognormal.log_prob(self.value)
+        np.testing.assert_allclose(self.log_prob,
+                                   np_log_prob,
+                                   rtol=config.RTOL.get(str(self.scale.dtype)),
+                                   atol=config.ATOL.get(str(self.scale.dtype)))
+
 
 @place(config.DEVICES)
 @parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
@@ -100,11 +117,11 @@ class TestLogNormalSample(unittest.TestCase):
             self.sample_shape = (n, )
             self.rsample_shape = (n, )
             self.paddle_lognormal = LogNormal(loc=loc, scale=scale)
-            self.mean = self.paddle_lognormal.mean
-            self.variance = self.paddle_lognormal.variance
-            self.samples = self.paddle_lognormal.sample(self.sample_shape)
-            self.rsamples = self.paddle_lognormal.rsample(self.rsample_shape)
-        fetch_list = [self.mean, self.variance, self.samples, self.rsamples]
+            mean = self.paddle_lognormal.mean
+            variance = self.paddle_lognormal.variance
+            samples = self.paddle_lognormal.sample(self.sample_shape)
+            rsamples = self.paddle_lognormal.rsample(self.rsample_shape)
+        fetch_list = [mean, variance, samples, rsamples]
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
         executor.run(startup_program)
@@ -170,12 +187,12 @@ class TestLogNormalKL(unittest.TestCase):
             self.normal_a = Normal(loc=loc1, scale=scale1)
             self.normal_b = Normal(loc=loc2, scale=scale2)
 
-            self.kl0 = self.ln_a.kl_divergence(self.ln_b)
-            self.kl1 = kl_divergence(self.ln_a, self.ln_b)
-            self.kl_normal = kl_divergence(self.normal_a, self.normal_b)
-            self.kl_formula = self._kl(self.ln_a, self.ln_b)
+            kl0 = self.ln_a.kl_divergence(self.ln_b)
+            kl1 = kl_divergence(self.ln_a, self.ln_b)
+            kl_normal = kl_divergence(self.normal_a, self.normal_b)
+            kl_formula = self._kl(self.ln_a, self.ln_b)
 
-        fetch_list = [self.kl0, self.kl1, self.kl_normal, self.kl_formula]
+        fetch_list = [kl0, kl1, kl_normal, kl_formula]
         self.feeds = {
             'loc1': self.loc1,
             'scale1': self.scale1,

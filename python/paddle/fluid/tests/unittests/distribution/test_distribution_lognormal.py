@@ -73,10 +73,9 @@ class LogNormalNumpy(DistributionNumpy):
 
 
 @place(config.DEVICES)
-@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'),
-                  [('float', xrand(), xrand()),
-                   ('one-dim', xrand((2, )), xrand((2, ))),
-                   ('multi-dim', xrand((3, 3)), xrand((3, 3)))])
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale', 'value'),
+                  [('one-dim', xrand((2, )), xrand((2, )), xrand((2, ))),
+                   ('multi-dim', xrand((3, 3)), xrand((3, 3)), xrand((3, 3)))])
 class LogNormalTest(unittest.TestCase):
 
     def setUp(self):
@@ -113,29 +112,25 @@ class LogNormalTest(unittest.TestCase):
                                    atol=config.ATOL.get(str(self.scale.dtype)))
 
     def test_probs(self):
-        value = [np.random.rand(*self.scale.shape)]
-
-        for v in value:
-            with paddle.fluid.dygraph.guard(self.place):
-                probs = self.paddle_lognormal.probs(paddle.to_tensor(v))
-                np_probs = self.np_lognormal.probs(v)
-                np.testing.assert_allclose(
-                    probs,
-                    np_probs,
-                    rtol=config.RTOL.get(str(self.scale.dtype)),
-                    atol=config.ATOL.get(str(self.scale.dtype)))
+        with paddle.fluid.dygraph.guard(self.place):
+            probs = self.paddle_lognormal.probs(paddle.to_tensor(self.value))
+            np_probs = self.np_lognormal.probs(self.value)
+            np.testing.assert_allclose(
+                probs,
+                np_probs,
+                rtol=config.RTOL.get(str(self.scale.dtype)),
+                atol=config.ATOL.get(str(self.scale.dtype)))
 
     def test_log_prob(self):
-        value = [np.random.rand(*self.scale.shape)]
-        for v in value:
-            with paddle.fluid.dygraph.guard(self.place):
-                log_prob = self.paddle_lognormal.log_prob(paddle.to_tensor(v))
-                np_log_prob = self.np_lognormal.log_prob(v)
-                np.testing.assert_allclose(
-                    log_prob,
-                    np_log_prob,
-                    rtol=config.RTOL.get(str(self.scale.dtype)),
-                    atol=config.ATOL.get(str(self.scale.dtype)))
+        with paddle.fluid.dygraph.guard(self.place):
+            log_prob = self.paddle_lognormal.log_prob(
+                paddle.to_tensor(self.value))
+            np_log_prob = self.np_lognormal.log_prob(self.value)
+            np.testing.assert_allclose(
+                log_prob,
+                np_log_prob,
+                rtol=config.RTOL.get(str(self.scale.dtype)),
+                atol=config.ATOL.get(str(self.scale.dtype)))
 
 
 @place(config.DEVICES)
