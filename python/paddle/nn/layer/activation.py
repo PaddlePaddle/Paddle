@@ -803,12 +803,13 @@ class Softplus(Layer):
     Softplus Activation
 
     .. math::
-
-        softplus(x) = \frac{1}{beta} * \log(1 + e^{beta * x}) \\
-        \text{For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.}
+        softplus(x)=\begin{cases}
+                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{threshold}{\beta};\\
+                x,&x>\frac{threshold}{\beta}.
+            \end{cases}
 
     Parameters:
-        beta (float, optional): The value of beta for Softplus. Default is 1
+        beta (float, optional): The value of :math:`\beta` for Softplus. Default is 1
         threshold (float, optional): The value of threshold for Softplus. Default is 20
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.

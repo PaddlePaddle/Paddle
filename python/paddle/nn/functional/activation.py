@@ -1187,13 +1187,14 @@ def softplus(x, beta=1, threshold=20, name=None):
     softplus activation
 
     .. math::
-
-        softplus(x) = \frac{1}{beta} * \log(1 + e^{beta * x}) \\
-        \text{For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.}
+        softplus(x)=\begin{cases}
+                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{threshold}{\beta};\\
+                x,&x>\frac{threshold}{\beta}.
+            \end{cases}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        beta (float, optional): The value of beta for softplus. Default is 1
+        beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
         threshold (float, optional): The value of threshold for softplus. Default is 20
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
