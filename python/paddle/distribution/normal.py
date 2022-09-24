@@ -154,7 +154,7 @@ class Normal(distribution.Distribution):
         """Generate samples of the specified shape.
 
         Args:
-            shape (Sequence[int], optional): Sample shape.
+            shape (Sequence[int], optional): Shape of the generated samples.
             seed (int): Python integer number.
 
         Returns:
