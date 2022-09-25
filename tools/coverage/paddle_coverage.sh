@@ -123,7 +123,6 @@ function gen_diff_html_report() {
     if [ "${GIT_PR_ID}" != "" ]; then
 
         COVERAGE_DIFF_PATTERN="`python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
-        
         python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py diff ${GIT_PR_ID} > git-diff.out
     fi
 
@@ -132,11 +131,7 @@ function gen_diff_html_report() {
         -o coverage-diff.info \
         --rc lcov_branch_coverage=0
     COVERAGE_DIFF_PATTERN="`python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
-    
-    lcov --extract coverage.info \
-        ${COVERAGE_DIFF_PATTERN} \
-        -o coverage_ljd.info \
-        --rc lcov_branch_coverage=0
+
     python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
     mv -f coverage-diff.tmp coverage-diff.info
