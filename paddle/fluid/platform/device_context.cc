@@ -73,7 +73,30 @@ DeviceType Place2DeviceType(const platform::Place& place) {
   }
 }
 
-DeviceContextPool* DeviceContextPool::pool = nullptr;
+static DeviceContextPool* pool = nullptr;
+
+DeviceContextPool& DeviceContextPool::Instance() {
+  PADDLE_ENFORCE_NOT_NULL(pool,
+                          phi::errors::PreconditionNotMet(
+                              "Need to Create DeviceContextPool firstly!"));
+  return *pool;
+}
+
+/*! \brief  Create should only called by Init function */
+DeviceContextPool& DeviceContextPool::Init(
+    const std::vector<platform::Place>& places) {
+  if (pool == nullptr) {
+    pool = new DeviceContextPool(places);
+  }
+  return *pool;
+}
+
+bool DeviceContextPool::IsInitialized() { return pool != nullptr; }
+
+void DeviceContextPool::SetPool(DeviceContextPool* dev_pool) {
+  pool = dev_pool;
+}
+
 thread_local const std::map<Place,
                             std::shared_future<std::unique_ptr<DeviceContext>>>*
     DeviceContextPool::external_device_contexts_ = nullptr;
