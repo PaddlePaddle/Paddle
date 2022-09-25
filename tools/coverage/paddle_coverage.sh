@@ -138,7 +138,7 @@ function gen_diff_html_report() {
         --rc lcov_branch_coverage=0
         
     echo 'the following is test code..'
-    diff coverage-diff.info coverage_ljd.info > /dev/null
+    diff /paddle/build/coverage-diff.info /paddle/build/coverage_ljd.info > /dev/null
     if [ $? == 0 ]; then
         echo "Both file are same"
     else
