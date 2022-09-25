@@ -106,7 +106,7 @@ export SSL_CERT_FILE=/opt/_internal/certs.pem
 # tar -xzf patchelf-0.9njs2.tar.gz
 # (cd patchelf-0.9njs2 && ./configure && make && make install)
 # rm -rf patchelf-0.9njs2.tar.gz patchelf-0.9njs2
-yum install -y patchelf
+sh "$MY_DIR/install_patchelf.sh"
 
 # Install latest pypi release of auditwheel
 #LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY35_BIN})/lib" $PY35_BIN/pip install auditwheel

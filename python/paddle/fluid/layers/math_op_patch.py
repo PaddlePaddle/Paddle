@@ -131,21 +131,33 @@ def monkey_patch_variable():
 
     @static_only
     def cpu(self):
-        """ 
-            Variable should not have cpu() and cuda() interface.
-            But this interface can greatly facilitate dy2static.
-            We do nothing here.
+        """
+        Variable should not have cpu() and cuda() interface.
+        But this interface can greatly facilitate dy2static.
+        We do nothing here.
         """
         return self
 
     @static_only
     def cuda(self):
-        """ 
-            Variable should not have cpu() and cuda() interface.
-            But this interface can greatly facilitate dy2static.
-            We do nothing here.
+        """
+        Variable should not have cpu() and cuda() interface.
+        But this interface can greatly facilitate dy2static.
+        We do nothing here.
         """
         return self
+
+    @static_only
+    def place(self):
+        """
+        Variable don't have 'place' interface in static mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warnning here and return None.
+        """
+        warnings.warn(
+            "Variable do not have 'place' interface for static mode, try not to use it. None will be returned."
+        )
+        return None
 
     def astype(self, dtype):
         """
@@ -209,7 +221,7 @@ def monkey_patch_variable():
         """
          **Notes**:
             **The type variable must be LoD Tensor Array.
-        
+
         """
         if not isinstance(var, Variable):
             if in_declarative_mode():
@@ -228,11 +240,29 @@ def monkey_patch_variable():
         array_write(x=var, i=array_length(self), array=self)
 
     @static_only
+    def _item(self):
+        """
+        In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
+        It will check that the shape must be a 1-D tensor
+        """
+        if len(self.shape) > 1:
+            raise TypeError(
+                "Required input var should be 1-D Variable, but received {}".
+                format(self.shape))
+        return self
+
+    @static_only
     def pop(self, *args):
         """
-         **Notes**:
-            **The type variable must be LoD Tensor Array.
-        
+        The type variable must be LoD Tensor Array.
+        When self is LoDTensorArray, calling pop is similar to Python's pop on list.
+        This interface is used to simplify dygraph to static graph operations.
+
+        Args:
+            self(Variable): The source variable, which must be LOD_TENSOR_ARRAY
+            *args: optional, a int means index.
+        Returns:
+            Variable: self[index]
         """
         from paddle.fluid.dygraph.dygraph_to_static.convert_operators import _run_paddle_pop
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
@@ -409,7 +439,9 @@ def monkey_patch_variable():
         ('astype', astype),
         ('cpu', cpu),
         ('cuda', cuda),
+        ('place', place),
         ('append', append),
+        ('item', _item),
         ('pop', pop),
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),

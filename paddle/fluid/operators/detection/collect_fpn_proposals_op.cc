@@ -125,7 +125,7 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
 This operator concats all proposals from different images
  and different FPN levels. Then sort all of those proposals
 by objectness confidence. Select the post_nms_topN RoIs in
- total. Finally, re-sort the RoIs in the order of batch index. 
+ total. Finally, re-sort the RoIs in the order of batch index.
 )DOC");
   }
 };
@@ -145,7 +145,7 @@ REGISTER_OP_CPU_KERNEL(collect_fpn_proposals,
 REGISTER_OP_VERSION(collect_fpn_proposals)
     .AddCheckpoint(
         R"ROC(
-              Upgrade collect_fpn_proposals add a new input 
+              Upgrade collect_fpn_proposals add a new input
               [MultiLevelRoIsNum] and add a new output [RoisNum].)ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewInput("MultiLevelRoIsNum",

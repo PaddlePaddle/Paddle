@@ -65,7 +65,7 @@ class DequeueOp : public framework::OperatorBase {
           platform::errors::InvalidArgument(
               "Variable with name %s has not been initialized.", out_names[i]));
 
-      std::vector<LoDTensor> lod_tensor_vec;
+      paddle::framework::LoDTensorArray lod_tensor_vec;
       bool success = false;
       lod_tensor_vec = queue_holder->GetQueue()->Pop(&success);
       PADDLE_ENFORCE_EQ(lod_tensor_vec.size(),
@@ -90,7 +90,7 @@ class DequeueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "A list of `lod_tensor` to dequeue and assigned.")
         .AsDuplicable();
     AddComment(R"DOC(
-			Dequeue operator.
+      Dequeue operator.
       )DOC");
   }
 };

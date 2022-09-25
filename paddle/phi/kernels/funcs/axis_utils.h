@@ -26,24 +26,27 @@ static inline int CanonicalAxis(const int axis, const int rank) {
   return axis;
 }
 
-static inline int SizeToAxis(const int axis, DDim dims) {
-  int size = 1;
+template <typename T = int>
+static inline T SizeToAxis(const int axis, DDim dims) {
+  T size = 1;
   for (int i = 0; i < axis; i++) {
     size *= dims[i];
   }
   return size;
 }
 
+template <typename T = int>
 static inline int SizeFromAxis(const int axis, DDim dims) {
-  int size = 1;
+  T size = 1;
   for (int i = axis; i < dims.size(); i++) {
     size *= dims[i];
   }
   return size;
 }
 
+template <typename T = int>
 static inline int SizeOutAxis(const int axis, DDim dims) {
-  int size = 1;
+  T size = 1;
   for (int i = axis + 1; i < dims.size(); i++) {
     size *= dims[i];
   }

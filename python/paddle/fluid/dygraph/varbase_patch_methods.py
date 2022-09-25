@@ -816,17 +816,6 @@ def monkey_patch_varbase():
                 "_set_grad_ivar is only supported for Parameter Tensor")
 
     @framework.dygraph_only
-    def clone(self):
-        if in_dygraph_mode():
-            return _C_ops.assign(self)
-
-        if _in_legacy_dygraph():
-            output = core.VarBase()
-        else:
-            output = core.eager.Tensor()
-        return _legacy_C_ops.assign(self, output)
-
-    @framework.dygraph_only
     def value(self):
         return self
 
@@ -923,12 +912,7 @@ def monkey_patch_varbase():
                     print(sparse_x.values())
                     #[1, 2, 3, 4, 5]
         """
-
-        if self.is_sparse_coo() or self.is_sparse_csr():
-            return _C_ops.sparse_values(self)
-        else:
-            raise ValueError(
-                "only SparseCooTensor and SparseCsrTensor have method values")
+        return _C_ops.sparse_values(self)
 
     @framework.dygraph_only
     def to_dense(self):
@@ -956,12 +940,7 @@ def monkey_patch_varbase():
                     # [4., 5., 0., 0.]]
         """
 
-        if self.is_sparse_coo():
-            return _C_ops.sparse_coo_to_dense(self)
-        elif self.is_sparse_csr():
-            return _C_ops.sparse_to_dense(self)
-        else:
-            return self
+        return _C_ops.sparse_to_dense(self)
 
     @framework.dygraph_only
     def to_sparse_coo(self, sparse_dim):
@@ -987,16 +966,7 @@ def monkey_patch_varbase():
                     #values=[1., 2., 3., 4.]
         """
 
-        if self.is_sparse_csr():
-            return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
-        elif self.is_sparse_coo():
-            return self
-        elif self.is_selected_rows():
-            raise ValueError(
-                "SelectedRows does not support to_sparse_coo method")
-        else:
-            #is dense tensor
-            return _C_ops.sparse_dense_to_coo(self, sparse_dim)
+        return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
@@ -1028,7 +998,6 @@ def monkey_patch_varbase():
     if framework._in_eager_mode_:
         setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
-        setattr(core.eager.Tensor, "clone", clone)
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)
         setattr(core.eager.Tensor, "cuda", cuda)

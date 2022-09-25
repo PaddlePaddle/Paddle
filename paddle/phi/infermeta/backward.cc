@@ -88,10 +88,14 @@ void BmmGradInferMeta(const MetaTensor& x,
                       const MetaTensor& out_grad,
                       MetaTensor* x_grad,
                       MetaTensor* y_grad) {
-  x_grad->set_dims(x.dims());
-  y_grad->set_dims(y.dims());
-  x_grad->set_dtype(x.dtype());
-  y_grad->set_dtype(y.dtype());
+  if (x_grad) {
+    x_grad->set_dims(x.dims());
+    x_grad->set_dtype(x.dtype());
+  }
+  if (y_grad) {
+    y_grad->set_dims(y.dims());
+    y_grad->set_dtype(y.dtype());
+  }
 }
 
 void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
@@ -143,6 +147,22 @@ void ConvTransposeGradInferMeta(const MetaTensor& x,
   GeneralBinaryGradInferMeta(x, filter, dx, dfilter);
 }
 
+void Conv2dTransposeGradInferMeta(const MetaTensor& x,
+                                  const MetaTensor& filter,
+                                  const MetaTensor& dout,
+                                  const std::vector<int>& strides,
+                                  const std::vector<int>& paddings,
+                                  const std::vector<int>& output_padding,
+                                  const IntArray& output_size,
+                                  const std::string& padding_algorithm,
+                                  int groups,
+                                  const std::vector<int>& dilations,
+                                  const std::string& data_format,
+                                  MetaTensor* dx,
+                                  MetaTensor* dfilter) {
+  GeneralBinaryGradInferMeta(x, filter, dx, dfilter);
+}
+
 void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         const MetaTensor& filter,
                                         const MetaTensor& dout,
@@ -151,7 +171,7 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         const std::vector<int>& strides,
                                         const std::vector<int>& paddings,
                                         const std::vector<int>& output_padding,
-                                        const std::vector<int>& output_size,
+                                        const IntArray& output_size,
                                         const std::string& padding_algorithm,
                                         int groups,
                                         const std::vector<int>& dilations,

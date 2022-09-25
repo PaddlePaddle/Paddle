@@ -163,10 +163,14 @@ class LayerHelperBase(object):
                         [self.name, 'weight_norm_reshape'])),
                     dtype=dtype,
                     persistable=False)
-            block.append_op(type='reshape',
+            x_shape = block.create_var(name="Xshape", dtype=x.dtype)
+            block.append_op(type="reshape2",
                             inputs={'X': x},
-                            outputs={'Out': out},
-                            attrs={'shape': shape})
+                            attrs={'shape': shape},
+                            outputs={
+                                "Out": out,
+                                "XShape": x_shape
+                            })
             return out
 
         def __transpose_op(x,
