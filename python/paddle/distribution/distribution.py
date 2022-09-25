@@ -117,7 +117,7 @@ class Distribution(object):
     def probs(self, value):
         """Probability density/mass function.
 
-        .. note::
+        Note:
 
             This method will be deprecated in the future, please use `prob`
             instead.

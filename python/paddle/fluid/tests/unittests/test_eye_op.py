@@ -29,7 +29,7 @@ class TestEyeOp(OpTest):
 
     def setUp(self):
         '''
-	Test eye op with specified shape
+        Test eye op with specified shape
         '''
         self.python_api = paddle.eye
         self.op_type = "eye"
@@ -50,7 +50,7 @@ class TestEyeOp1(OpTest):
 
     def setUp(self):
         '''
-	Test eye op with default parameters
+        Test eye op with default parameters
         '''
         self.python_api = paddle.eye
         self.op_type = "eye"

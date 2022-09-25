@@ -14,20 +14,29 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/selected_rows.h"
-#include "paddle/phi/kernels/impl/clip_kernel_impl.h"
+#include <set>
+#include <string>
 
-namespace phi {
-namespace sr {
+#include "paddle/fluid/platform/place.h"
 
-template <typename T, typename Context>
-void ClipSparseKernel(const Context& dev_ctx,
-                      const SelectedRows& x,
-                      const Scalar& min,
-                      const Scalar& max,
-                      SelectedRows* out);
-}  // namespace sr
-}  // namespace phi
+namespace paddle {
+namespace framework {
+namespace interpreter {
+
+struct ExecutionConfig {
+  bool used_for_jit{false};
+  bool create_local_scope{true};
+
+  size_t host_num_threads;
+  size_t deivce_num_threads;
+  size_t prepare_num_threads;
+
+  std::set<std::string> skip_gc_vars;
+
+  ExecutionConfig(const phi::Place& place, size_t op_num);
+  void Log(int log_level);
+};
+
+}  // namespace interpreter
+}  // namespace framework
+}  // namespace paddle

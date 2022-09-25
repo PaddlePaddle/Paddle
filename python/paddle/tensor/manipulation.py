@@ -141,10 +141,6 @@ def slice(input, axes, starts, ends):
     Returns:
         Tensor:  A ``Tensor``. The data type is same as ``input``.
 
-    Raises:
-        TypeError: The type of ``starts`` must be list, tuple or Tensor.
-        TypeError: The type of ``ends`` must be list, tuple or Tensor.
-
     Examples:
         .. code-block:: python
 
@@ -419,12 +415,6 @@ def transpose(x, perm, name=None):
 
 def unstack(x, axis=0, num=None):
     """
-    :alias_main: paddle.unstack
-	:alias: paddle.unstack,paddle.tensor.unstack,paddle.tensor.manipulation.unstack
-	:old_api: paddle.fluid.layers.unstack
-
-    **UnStack Layer**
-
     This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
 
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
@@ -439,9 +429,6 @@ def unstack(x, axis=0, num=None):
 
     Returns:
         list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
-
-    Raises:
-        ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
 
     Examples:
         .. code-block:: python
@@ -1131,7 +1118,7 @@ def broadcast_tensors(input, name=None):
     """
     Broadcast a list of tensors following broadcast semantics
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -1429,10 +1416,6 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
                   axes flattened by indicated start axis and end axis. \
                   A Tensor with data type same as input x.
 
-    Raises:
-        ValueError: If x is not a Tensor.
-        ValueError: If start_axis or stop_axis is illegal.
-
     Examples:
 
         .. code-block:: python
@@ -1703,12 +1686,12 @@ def stack(x, axis=0, name=None):
             #  [[3., 4.]],
             #  [[5., 6.]]]
 
-	    out = paddle.stack([x1, x2, x3], axis=-2)
-	    print(out.shape)  # [1, 3, 2]
-	    print(out)
-	    # [[[1., 2.],
-	    #   [3., 4.],
-	    #   [5., 6.]]]
+        out = paddle.stack([x1, x2, x3], axis=-2)
+        print(out.shape)  # [1, 3, 2]
+        print(out)
+        # [[[1., 2.],
+        #   [3., 4.],
+        #   [5., 6.]]]
     """
     axis = 0 if axis is None else axis
 
@@ -2118,7 +2101,8 @@ def unique_consecutive(x,
     r"""
     Eliminates all but the first element from every consecutive group of equivalent elements.
 
-    .. note:: This function is different from :func:`paddle.unique` in the sense that this function
+    Note:
+        This function is different from :func:`paddle.unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
 
     Args:
@@ -2672,7 +2656,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
         overwrite (bool): The mode that updating the output when there are same indices.
 
             If True, use the overwrite mode to update the output of the same index,
-	        if False, use the accumulate mode to update the output of the same index.Default value is True.
+            if False, use the accumulate mode to update the output of the same index.Default value is True.
 
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
