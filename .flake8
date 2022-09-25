@@ -9,7 +9,7 @@ exclude =
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     E121,E122,E123,E125,E126,E127,E128,E129,E131,
-    E201,E202,E203,E221,E225,E226,E228,E231,E241,E251,E261,E262,E265,E266,E271,E272,E275,
+    E201,E202,E203,E225,E226,E228,E231,E241,E251,E261,E262,E265,E266,E271,E272,
     E301,E302,E303,E305,E306,
     E401,E402,
     E501,E502,
@@ -17,9 +17,9 @@ ignore =
 
     # F, see https://flake8.pycqa.org/en/latest/user/error-codes.html
     F401,F402,F403,F405,
-    F522,F523,F524,F541,
+    F522,F524,F541,
     F601,F631,F632,
-    F811,F821,F823,F841,
+    F811,F821,F841,
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     W503,W504
