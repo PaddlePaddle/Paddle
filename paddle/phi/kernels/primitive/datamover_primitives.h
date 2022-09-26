@@ -77,7 +77,7 @@ struct FastDivMod {
   uint32_t multiplier;
 };
 
-/**
+/*
  * Configuration of broadcast. Calculate the input data index according to the
  * index of the output data. if input or output shape is [dim0, dim1] then dims
  * must be [dim1, dim0].
@@ -90,28 +90,22 @@ struct BroadcastConfig {
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
                              const std::vector<int64_t>& in_dims,
-                             int dim_size) {
-    std::vector<uint32_t> strides_in;
+                             int dim_size) : kDims(dim_size) {
     std::vector<FastDivMod> divmoders_in;
     // for divmoders
-    divmoders_in.resize(dim_size);
     for (int i = 0; i < dim_size; ++i) {
-      divmoders_in[i] = FastDivMod(out_dims[i]);
+      divmoders[i] = FastDivMod(out_dims[i]);
     }
     // for strides
-    strides_in.resize(dim_size, 1);
     for (int i = 0; i < dim_size; ++i) {
-      strides_in[i] = in_dims[i] == 1 ? 0 : strides_in[i];
-      strides_in[i] = (i != 0 && strides_in[i] != 0)
+      strides[i] = in_dims[i] == 1 ? 0 : strides[i];
+      strides[i] = (i != 0 && strides[i] != 0)
                           ? std::accumulate(in_dims.begin(),
                                             in_dims.begin() + i,
                                             1,
                                             std::multiplies<int64_t>())
-                          : strides_in[i];
+                          : strides[i];
     }
-    kDims = dim_size;
-    memcpy(strides, strides_in.data(), kDims * sizeof(uint32_t));
-    memcpy(divmoders, divmoders_in.data(), kDims * sizeof(FastDivMod));
   }
 };
 
