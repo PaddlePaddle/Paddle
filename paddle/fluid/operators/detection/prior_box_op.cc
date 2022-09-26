@@ -35,13 +35,8 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     auto input_input_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_input_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, input_input_type)) {
       auto input_image_type = framework::TransToProtoVarType(
           ctx.Input<framework::Tensor>("Image")->dtype());
       int customized_type_value =
@@ -54,13 +49,12 @@ class PriorBoxOp : public framework::OperatorWithKernel {
       }
       return framework::OpKernelType(input_input_type,
                                      ctx.GetPlace(),
-                                     layout_,
-                                     library_,
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN,
                                      customized_type_value);
     }
 #endif
-    return framework::OpKernelType(
-        input_input_type, ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(input_input_type, ctx.GetPlace());
   }
 };
 

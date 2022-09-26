@@ -132,6 +132,11 @@ class Scope : public ScopeBase {
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
+  // only for dygraph_to_static
+  bool CanReuesd() const { return can_reused_; }
+
+  void SetCanReuesd(bool can_reused) { can_reused_ = can_reused; }
+
  protected:
   struct KeyHasher {
     std::size_t operator()(const std::string& key) const {
@@ -169,14 +174,14 @@ class Scope : public ScopeBase {
   mutable std::list<Scope*> kids_;
   const Scope* parent_{nullptr};
 
-  DISABLE_COPY_AND_ASSIGN(Scope);
+  // only for dygraph_to_static
+  bool can_reused_{false};
 
-#ifndef PADDLE_ON_INFERENCE
+  DISABLE_COPY_AND_ASSIGN(Scope);
 
  private:
   mutable phi::RWLock kids_lock_;
   mutable phi::RWLock vars_lock_;
-#endif
 };
 
 // Generate some debug string about the inherience structure of scope, quite

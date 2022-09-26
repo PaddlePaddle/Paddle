@@ -97,7 +97,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
 
   // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
   // data_transfer.cc
-  if (!x.IsInitialized() && src_layout == DataLayout::MKLDNN &&
+  if (!x.IsInitialized() && src_layout == DataLayout::ONEDNN &&
       dst_layout == DataLayout::NHWC) {
     VLOG(4) << src_layout << "->" << dst_layout << " " << x.layout();
     out->Resize(x.dims());
@@ -106,7 +106,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     return;
   }
 
-  if (src_layout != DataLayout::MKLDNN && dst_layout == DataLayout::MKLDNN) {
+  if (src_layout != DataLayout::ONEDNN && dst_layout == DataLayout::ONEDNN) {
     // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
     // Just set layout/format. No real transform occur
     auto out_format = funcs::OneDNNFormatForSize(
@@ -121,16 +121,18 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
       OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
     }
 
-    out->set_layout(DataLayout::MKLDNN);
-    out->set_format(out_format);
-  } else if (src_layout == DataLayout::MKLDNN &&
-             dst_layout != DataLayout::MKLDNN) {
+    dnnl::memory::desc out_mem_desc(vectorize<int64_t>(out->dims()),
+                                    funcs::ToOneDNNDataType(x.dtype()),
+                                    out_format);
+    out->set_mem_desc(out_mem_desc);
+  } else if (src_layout == DataLayout::ONEDNN &&
+             dst_layout != DataLayout::ONEDNN) {
     // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
     funcs::innerTransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());
-  } else if (src_layout == DataLayout::MKLDNN &&
-             dst_layout == DataLayout::MKLDNN) {
+  } else if (src_layout == DataLayout::ONEDNN &&
+             dst_layout == DataLayout::ONEDNN) {
     PADDLE_ENFORCE_NE(
         src_layout,
         dst_layout,

@@ -1328,8 +1328,10 @@ bool OperatorWithKernel::SupportsMKLDNN(
   auto has_phi_kernel =
       std::any_of(phi_kernels.begin(),
                   phi_kernels.end(),
-                  [](phi::KernelKeyMap::const_reference kern_pair) {
-                    return kern_pair.first.backend() == phi::Backend::ONEDNN;
+                  [data_type](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::ONEDNN &&
+                           kern_pair.first.dtype() ==
+                               framework::TransToPhiDataType(data_type);
                   });
   if (has_phi_kernel) {
     return true;
@@ -1888,7 +1890,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   PADDLE_ENFORCE_NE(
       kernels_iter,
       all_op_kernels.end(),
-      platform::errors::Unavailable(
+      platform::errors::Unimplemented(
           "There are no kernels which are registered in the %s operator.",
           type_));
 
@@ -2663,13 +2665,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::LoDTensorArray>()) {
         need_prepare_phi_data_ = true;
-        paddle::small_vector<const phi::TensorBase*> tensor_vector;
-        auto& tensor_array = var->Get<framework::LoDTensorArray>();
-        for (auto& t : tensor_array) {
-          tensor_vector.emplace_back(&t);
-        }
-        phi_kernel_context->EmplaceBackInputsWithoutSetRange(tensor_vector);
-        end_idx += tensor_array.size() - 1;
+        tensor_in = &(var->Get<framework::LoDTensorArray>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
@@ -2712,16 +2709,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::LoDTensorArray>()) {
-          paddle::small_vector<phi::TensorBase*> tensor_vector;
-          auto* tensor_array =
-              var->template GetMutable<framework::LoDTensorArray>();
+          tensor_out = var->template GetMutable<framework::LoDTensorArray>();
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
-          for (auto& t : *tensor_array) {
-            tensor_vector.emplace_back(&t);
-          }
-          phi_kernel_context->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-          end_idx += tensor_array->size() - 1;
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",

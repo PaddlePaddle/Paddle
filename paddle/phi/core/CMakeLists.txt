@@ -58,6 +58,11 @@ cc_library(
   DEPS convert_utils tensor_meta tensor_base)
 
 cc_library(
+  tensor_array
+  SRCS tensor_array.cc
+  DEPS dense_tensor tensor_base)
+
+cc_library(
   meta_tensor
   SRCS meta_tensor.cc
   DEPS tensor_base tensor_meta dense_tensor)

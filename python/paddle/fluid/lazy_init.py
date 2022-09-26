@@ -36,7 +36,7 @@ class LazyInitHelper(object):
         """
         if self._state:
             return
-        assert framework.in_dygraph_mode(
+        assert framework._non_static_mode(
         ), "LazyInit.enable() is only available in dygraph mode."
         self._state = True
 
@@ -97,12 +97,12 @@ class LazyGuard(object):
         Construct instance from class_obj by Lazy Initializing parameters.
 
         Examples:
-    
+
             .. code-block:: python
 
                 from paddle import LazyGuard
                 from paddle.nn import Linear
-                
+
                 with LazyGuard():
                     fc = LazyInit(Linear)(10, 10)
 

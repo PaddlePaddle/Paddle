@@ -28,11 +28,11 @@ import paddle.utils as utils
 from paddle.fluid import layers
 from paddle.io import IterableDataset, DataLoader
 from paddle.distributed import fleet
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = None
-_global_process_mesh = None
+_global_process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
 batch_size = 4
 hidden_size = 1024
 sequence_len = 512
@@ -103,11 +103,7 @@ def mlp_pretrain_forward(train_program, start_program):
                             shape=[batch_size, sequence_len, 1],
                             dtype='float32')
 
-        auto.shard_tensor(input,
-                          dist_attr={
-                              "process_mesh": _global_process_mesh,
-                              "dims_mappig": [-1, -1, -1]
-                          })
+        auto.shard_tensor(input, _global_process_mesh, [None, None, None])
 
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
@@ -126,9 +122,6 @@ def mlp_pretrain_forward(train_program, start_program):
 
 
 def train():
-    global _global_process_mesh
-    _global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.amp = False
     dist_strategy.pipeline = False

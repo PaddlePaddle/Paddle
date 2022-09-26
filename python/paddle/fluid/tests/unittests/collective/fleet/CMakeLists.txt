@@ -204,6 +204,20 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
                        PROPERTIES TIMEOUT "500")
 endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_pipeline_parallel_with_virtual_stage
+    START_BASH
+    ../../dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(
+    test_parallel_dygraph_pipeline_parallel_with_virtual_stage
+    PROPERTIES TIMEOUT "500")
+endif()
 if((WITH_GPU
     OR WITH_XPU
     OR WITH_ASCEND
@@ -923,4 +937,9 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(
     test_fleet_checkpoint PROPERTIES TIMEOUT "200" LABELS
                                      "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  py_test_modules(
+    test_fleet_log MODULES test_fleet_log ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()

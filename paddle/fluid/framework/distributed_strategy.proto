@@ -343,6 +343,7 @@ message DistributedStrategy {
   optional bool is_fl_ps_mode = 39 [ default = false ];
   optional bool with_coordinator = 40 [ default = false ];
   optional bool qat = 41 [ default = false ];
+  optional bool split_data = 42 [ default = true ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
