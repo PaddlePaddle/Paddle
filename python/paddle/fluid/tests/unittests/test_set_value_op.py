@@ -1423,13 +1423,7 @@ class TestGradientTruncated(unittest.TestCase):
             # When `input.stop_gradient = True` and `value.stop_gradient = False`,
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
-
             y2 = y + 1
-            print("======")
-            print(x)
-            print(y)
-            print(y2)
-            sys.exit(0)
             loss = paddle.fluid.layers.reduce_sum(y2)
             sgd = paddle.optimizer.Adam()
             sgd.minimize(loss)
@@ -1474,7 +1468,6 @@ class TestGradientTruncated(unittest.TestCase):
         paddle.disable_static()
 
 
-'''
 class TestSetValueInplace(unittest.TestCase):
 
     def test_inplace(self):
@@ -1529,7 +1522,7 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
         np.testing.assert_array_equal(a_grad_1, a_grad_2)
         np.testing.assert_array_equal(b_grad_1, b_grad_2)
         paddle.enable_static()
-'''
+
 
 if __name__ == '__main__':
     unittest.main()

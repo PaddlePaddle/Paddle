@@ -43,7 +43,8 @@ TEST(DDim, Equality) {
   EXPECT_EQ(zero_ddim_vec.size(), size_t(0));
 
   // reshape zero-DDim
-  phi::DDim reshape_ddim = zero_ddim.reshape({1});
+  std::vector<int> reshape_vec = {1};
+  phi::DDim reshape_ddim = zero_ddim.reshape(reshape_vec);
   EXPECT_EQ(arity(reshape_ddim), 1);
   EXPECT_EQ(reshape_ddim.size(), 1);
   EXPECT_EQ(phi::product(reshape_ddim), 1);

@@ -90,7 +90,7 @@ class TestActivation(OpTest):
         pass
 
 
-class TestActivationZeroDim(TestActivation):
+class TestActivation_ZeroDim(TestActivation):
 
     def init_shape(self):
         self.shape = []
@@ -118,7 +118,7 @@ class TestExpm1(TestActivation):
         self.check_output(check_eager=True)
 
 
-class TestExpm1ZeroDim(TestExpm1):
+class TestExpm1_ZeroDim(TestExpm1):
 
     def init_shape(self):
         self.shape = []
@@ -219,7 +219,7 @@ class TestSigmoid(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
-class TestSigmoidZeroDim(TestSigmoid):
+class TestSigmoid_ZeroDim(TestSigmoid):
 
     def init_shape(self):
         self.shape = []
@@ -259,7 +259,7 @@ class TestSigmoidBF16(OpTest):
 
 
 '''
-class TestSigmoidBF16ZeroDim(TestSigmoidBF16):
+class TestSigmoidBF16_ZeroDim(TestSigmoidBF16):
 
     def init_shape(self):
         self.shape = []
@@ -289,7 +289,7 @@ class TestSilu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSiluZeroDim(TestSilu):
+class TestSilu_ZeroDim(TestSilu):
 
     def init_shape(self):
         self.shape = []
@@ -362,7 +362,7 @@ class TestLogSigmoid(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
-class TestLogSigmoidZeroDim(TestLogSigmoid):
+class TestLogSigmoid_ZeroDim(TestLogSigmoid):
 
     def init_shape(self):
         self.shape = []
@@ -453,7 +453,7 @@ class TestTanh(TestActivation, TestParameter):
         self.dtype = np.float32
 
 
-class TestTanhZeroDim(TestTanh):
+class TestTanh_ZeroDim(TestTanh):
 
     def init_shape(self):
         self.shape = []
@@ -569,7 +569,7 @@ class TestAtan(TestActivation, TestParameter):
             self.assertEqual(z, z_expected)
 
 
-class TestAtanZeroDim(TestTanh):
+class TestAtan_ZeroDim(TestTanh):
 
     def init_shape(self):
         self.shape = []
@@ -595,7 +595,7 @@ class TestSinh(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSinhZeroDim(TestSinh):
+class TestSinh_ZeroDim(TestSinh):
 
     def init_shape(self):
         self.shape = []
@@ -678,7 +678,7 @@ class TestCosh(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestCoshZeroDim(TestCosh):
+class TestCosh_ZeroDim(TestCosh):
 
     def init_shape(self):
         self.shape = []
@@ -766,7 +766,7 @@ class TestTanhshrink(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestTanhshrinkZeroDim(TestTanhshrink):
+class TestTanhshrink_ZeroDim(TestTanhshrink):
 
     def init_shape(self):
         self.shape = []
@@ -873,7 +873,7 @@ class TestHardShrink_threshold_negative(TestHardShrink):
 
 
 '''
-class TestHardShrinkZeroDim(TestHardShrink):
+class TestHardShrink_ZeroDim(TestHardShrink):
 
     def init_shape(self):
         self.shape = []
@@ -1041,7 +1041,7 @@ class TestSoftshrink(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
-class TestSoftshrinkZeroDim(TestSoftshrink):
+class TestSoftshrink_ZeroDim(TestSoftshrink):
 
     def init_shape(self):
         self.shape = []
@@ -1136,7 +1136,7 @@ class TestSqrt(TestActivation, TestParameter):
         self.check_output(check_eager=True)
 
 
-class TestSqrtZeroDim(TestSqrt):
+class TestSqrt_ZeroDim(TestSqrt):
 
     def init_shape(self):
         self.shape = []
@@ -1204,7 +1204,7 @@ class TestRsqrt(TestActivation):
 
 
 '''
-class TestRsqrtZeroDim(TestRsqrt):
+class TestRsqrt_ZeroDim(TestRsqrt):
 
     def init_shape(self):
         self.shape = []
@@ -1239,7 +1239,7 @@ class TestAbs(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=False)
 
 
-class TestAbsZeroDim(TestAbs):
+class TestAbs_ZeroDim(TestAbs):
 
     def init_shape(self):
         self.shape = []
@@ -1269,7 +1269,7 @@ class TestCeil(TestActivation):
         pass
 
 
-class TestCeilZeroDim(TestCeil):
+class TestCeil_ZeroDim(TestCeil):
 
     def init_shape(self):
         self.shape = []
@@ -1301,7 +1301,7 @@ class TestFloor(TestActivation):
         pass
 
 
-class TestFloorZeroDim(TestFloor):
+class TestFloor_ZeroDim(TestFloor):
 
     def init_shape(self):
         self.shape = []
@@ -1330,7 +1330,7 @@ class TestCos(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestCosZeroDim(TestCos):
+class TestCos_ZeroDim(TestCos):
 
     def init_shape(self):
         self.shape = []
@@ -1363,7 +1363,7 @@ class TestTan(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestTanZeroDim(TestTan):
+class TestTan_ZeroDim(TestTan):
 
     def init_shape(self):
         self.shape = []
@@ -1432,7 +1432,7 @@ class TestAcos(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestAcosZeroDim(TestAcos):
+class TestAcos_ZeroDim(TestAcos):
 
     def init_shape(self):
         self.shape = []
@@ -1461,7 +1461,7 @@ class TestSin(TestActivation, TestParameter):
         self.check_grad(['X'], 'Out')
 
 
-class TestSinZeroDim(TestSin):
+class TestSin_ZeroDim(TestSin):
 
     def init_shape(self):
         self.shape = []
@@ -1490,7 +1490,7 @@ class TestAsin(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestAsinZeroDim(TestAsin):
+class TestAsin_ZeroDim(TestAsin):
 
     def init_shape(self):
         self.shape = []
@@ -1519,7 +1519,7 @@ class TestAcosh(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestAcoshZeroDim(TestAcosh):
+class TestAcosh_ZeroDim(TestAcosh):
 
     def init_shape(self):
         self.shape = []
@@ -1548,7 +1548,7 @@ class TestAsinh(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestAsinhZeroDim(TestAsinh):
+class TestAsinh_ZeroDim(TestAsinh):
 
     def init_shape(self):
         self.shape = []
@@ -1577,7 +1577,7 @@ class TestAtanh(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestAtanhZeroDim(TestAtanh):
+class TestAtanh_ZeroDim(TestAtanh):
 
     def init_shape(self):
         self.shape = []
@@ -1606,7 +1606,7 @@ class TestRound(TestActivation):
         pass
 
 
-class TestRoundZeroDim(TestRound):
+class TestRound_ZeroDim(TestRound):
 
     def init_shape(self):
         self.shape = []
@@ -1641,7 +1641,7 @@ class TestRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestReluZeroDim(TestRelu):
+class TestRelu_ZeroDim(TestRelu):
 
     def init_shape(self):
         self.shape = []
@@ -1757,7 +1757,7 @@ class TestLeakyReluAlpha3(TestLeakyRelu):
         return -2.0
 
 
-class TestLeakyReluZeroDim(TestLeakyRelu):
+class TestLeakyRelu_ZeroDim(TestLeakyRelu):
 
     def init_shape(self):
         self.shape = []
@@ -1881,7 +1881,7 @@ class TestGelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestGeluZeroDim(TestGelu):
+class TestGelu_ZeroDim(TestGelu):
 
     def init_shape(self):
         self.shape = []
@@ -2045,7 +2045,7 @@ class TestRelu6(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
-class TestRelu6ZeroDim(TestRelu6):
+class TestRelu6_ZeroDim(TestRelu6):
 
     def init_shape(self):
         self.shape = []
@@ -2152,7 +2152,7 @@ class TestHardSwish(TestActivation):
         self.check_output(check_eager=True)
 
 
-class TestHardSwishZeroDim(TestHardSwish):
+class TestHardSwish_ZeroDim(TestHardSwish):
 
     def init_shape(self):
         self.shape = []
@@ -2305,7 +2305,7 @@ class TestELUAlpha(TestELU):
         return -0.2
 
 
-class TestELUZeroDim(TestELU):
+class TestELU_ZeroDim(TestELU):
 
     def init_shape(self):
         self.shape = []
@@ -2415,7 +2415,7 @@ class TestCELU(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
-class TestCELUZeroDim(TestCELU):
+class TestCELU_ZeroDim(TestCELU):
 
     def init_shape(self):
         self.shape = []
@@ -2517,7 +2517,7 @@ class TestReciprocal(TestActivation):
         self.check_output(check_eager=True)
 
 
-class TestReciprocalZeroDim(TestReciprocal):
+class TestReciprocal_ZeroDim(TestReciprocal):
 
     def init_shape(self):
         self.shape = []
@@ -2558,7 +2558,7 @@ class TestLog(TestActivation):
         self.assertRaises(TypeError, fluid.layers.log, in2)
 
 
-class TestLogZeroDim(TestLog):
+class TestLog_ZeroDim(TestLog):
 
     def init_shape(self):
         self.shape = []
@@ -2583,15 +2583,6 @@ class TestLog2(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', check_eager=True)
-
-
-class TestLog2ZeroDim(TestLog2):
-
-    def init_shape(self):
-        self.shape = []
-
-
-class TestLog2API(unittest.TestCase):
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -2627,6 +2618,12 @@ class TestLog2API(unittest.TestCase):
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
+class TestLog2_ZeroDim(TestLog2):
+
+    def init_shape(self):
+        self.shape = []
+
+
 class TestLog10(TestActivation):
 
     def setUp(self):
@@ -2648,7 +2645,7 @@ class TestLog10(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
-class TestLog10ZeroDim(TestLog10):
+class TestLog10_ZeroDim(TestLog10):
 
     def init_shape(self):
         self.shape = []
@@ -2712,7 +2709,7 @@ class TestLog1p(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
-class TestLog1pZeroDim(TestLog1p):
+class TestLog1p_ZeroDim(TestLog1p):
 
     def init_shape(self):
         self.shape = []
@@ -2774,7 +2771,7 @@ class TestSquare(TestActivation):
         self.check_output(check_eager=True)
 
 
-class TestSquareZeroDim(TestSquare):
+class TestSquare_ZeroDim(TestSquare):
 
     def init_shape(self):
         self.shape = []
@@ -2839,7 +2836,7 @@ class TestPow(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=self.check_eager)
 
 
-class TestPowZeroDim(TestPow):
+class TestPow_ZeroDim(TestPow):
 
     def init_shape(self):
         self.shape = []
@@ -2976,7 +2973,7 @@ class TestSTanhScaleB(TestSTanh):
         return 0.5
 
 
-class TestSTanhZeroDim(TestSTanh):
+class TestSTanh_ZeroDim(TestSTanh):
 
     def init_shape(self):
         self.shape = []
@@ -3095,7 +3092,7 @@ class TestSoftplus(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=check_eager)
 
 
-class TestSoftplusZeroDim(TestSoftplus):
+class TestSoftplus_ZeroDim(TestSoftplus):
 
     def init_shape(self):
         self.shape = []
@@ -3221,7 +3218,7 @@ class TestSoftsign(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
-class TestSoftsignZeroDim(TestSoftsign):
+class TestSoftsign_ZeroDim(TestSoftsign):
 
     def init_shape(self):
         self.shape = []
@@ -3317,7 +3314,7 @@ class TestThresholdedRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestThresholdedReluZeroDim(TestThresholdedRelu):
+class TestThresholdedRelu_ZeroDim(TestThresholdedRelu):
 
     def init_shape(self):
         self.shape = []
@@ -3433,7 +3430,7 @@ class TestHardSigmoidSlopeOffset(TestHardSigmoid):
         self.offset = 0.4
 
 
-class TestHardSigmoidZeroDim(TestHardSigmoid):
+class TestHardSigmoid_ZeroDim(TestHardSigmoid):
 
     def init_shape(self):
         self.shape = []
@@ -3534,7 +3531,7 @@ class TestSwish(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=check_eager)
 
 
-class TestSwishZeroDim(TestSwish):
+class TestSwish_ZeroDim(TestSwish):
 
     def init_shape(self):
         self.shape = []
@@ -3636,7 +3633,7 @@ class TestMish(TestActivation):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
-class TestMishZeroDim(TestMish):
+class TestMish_ZeroDim(TestMish):
 
     def init_shape(self):
         self.shape = []

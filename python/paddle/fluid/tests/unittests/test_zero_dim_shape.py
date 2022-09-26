@@ -73,13 +73,13 @@ class TestUnaryAPI(unittest.TestCase):
         paddle.disable_static()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         for api in unary_api_list:
-            print(api)
             x = paddle.rand([])
             x.stop_gradient = False
             out = api(x)
+            out.backward()
+
             self.assertEqual(x.shape, [])
             self.assertEqual(out.shape, [])
-            out.backward()
             self.assertEqual(x.grad.shape, [])
             self.assertEqual(out.grad.shape, [])
 
@@ -96,20 +96,16 @@ class TestUnaryAPI(unittest.TestCase):
                 out = api(x)
                 fluid.backward.append_backward(out)
 
+                # ScaleLossGradOp / append_backward always set grad shape to [1]
                 prog = paddle.static.default_main_program()
                 block = prog.global_block()
 
                 x_grad = block.var(fluid.framework.grad_var_name(x.name))
                 out_grad = block.var(fluid.framework.grad_var_name(out.name))
-                print(out_grad.name)
 
-                print(out_grad.shape)
-
-                # Test compile shape
+                # Test compile shape, grad is always [1]
                 self.assertEqual(x.shape, ())
                 self.assertEqual(out.shape, ())
-                self.assertEqual(x_grad.shape, ())
-                self.assertEqual(out_grad.shape, ())
 
                 exe = fluid.Executor()
                 result = exe.run(main_prog,
@@ -118,15 +114,19 @@ class TestUnaryAPI(unittest.TestCase):
                 # Test runtime shape
                 self.assertEqual(result[0].shape, ())
                 self.assertEqual(result[1].shape, ())
-                self.assertEqual(result[2].shape, ())
-                self.assertEqual(result[3].shape, ())
+                self.assertEqual(result[3].shape, (1, ))
 
+                # 0D will be stacked when 1+ place, due to it cannot be concated
+                # for 1 place: [ x-place1 ]
+                # for 1+ place: [ paddle.stack([x-place1, x_place2...]) ]
                 if paddle.device.is_compiled_with_cuda():
                     places = [paddle.CUDAPlace(0)]
                     device_num = 1
+                    expect_shape = ()
                 else:
                     places = [paddle.CPUPlace()] * 4
                     device_num = 4
+                    expect_shape = (device_num, )
 
                 compiled_program = fluid.CompiledProgram(
                     main_prog).with_data_parallel(out.name, places=places)
@@ -135,11 +135,8 @@ class TestUnaryAPI(unittest.TestCase):
                                  return_merged=True)
 
                 # Test runtime parallel shape
-                # 0D will be stacked, due to it cannot be concated
-                # [ x-place1 .concat(stack) x-place2, ...]
-                self.assertEqual(result[0].shape, (device_num, ))
-                self.assertEqual(result[1].shape, (device_num, ))
-                self.assertEqual(result[2].shape, (device_num, ))
+                self.assertEqual(result[0].shape, expect_shape)
+                self.assertEqual(result[1].shape, expect_shape)
                 self.assertEqual(result[3].shape, (device_num, ))
 
                 compiled_program = fluid.CompiledProgram(
@@ -151,8 +148,7 @@ class TestUnaryAPI(unittest.TestCase):
                 # [[x-place1, x-place2, ...], [], [], ...]
                 self.assertEqual(np.array(result[0]).shape, (device_num, ))
                 self.assertEqual(np.array(result[1]).shape, (device_num, ))
-                self.assertEqual(np.array(result[2]).shape, (device_num, ))
-                self.assertEqual(np.array(result[3]).shape, (device_num, ))
+                self.assertEqual(np.array(result[3]).shape, (device_num, 1))
 
         paddle.disable_static()
 

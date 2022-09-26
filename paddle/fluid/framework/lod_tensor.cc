@@ -341,8 +341,6 @@ std::vector<LoDTensor> SplitLoDTensor(
 void MergeLoDTensor(LoDTensor *target,
                     const std::vector<const LoDTensor *> &lod_tensors,
                     platform::Place dst_place) {
-  // VLOG(0) << "run MergeLoDTensor==========>\n";
-  // VLOG(0) << "lod_tensors.size()==========> " << lod_tensors.size() << "\n";
   PADDLE_ENFORCE_EQ(lod_tensors.empty(),
                     false,
                     platform::errors::InvalidArgument(
@@ -362,7 +360,6 @@ void MergeLoDTensor(LoDTensor *target,
 
   LoD new_lod = lod_tensors[0]->lod();
   auto rank = lod_tensors[0]->dims().size();
-  // VLOG(0) << "rank:   " << rank << "\n";
 
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];

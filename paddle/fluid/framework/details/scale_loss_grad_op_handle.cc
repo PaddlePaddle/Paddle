@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace phi {
@@ -101,23 +102,13 @@ std::string ScaleLossGradOpHandle::LossGradName() const {
 void ScaleLossGradOpHandle::RunImpl() {
   platform::RecordEvent record_event(
       Name(), platform::TracerEventType::UserDefined, 2);
-  // VLOG(0) << "LossGradName:  " << LossGradName();
-  // VLOG(0) << "local_exec_scopes_[0]->Size():  " <<
-  // local_exec_scopes_[0]->Size(); for (size_t i=0; i<
-  // local_exec_scopes_[0]->Size(); ++i) {
-  //   VLOG(0) << "local_exec_scopes_[0]->LocalVarNames()[i]:  " <<
-  //   local_exec_scopes_[0]->LocalVarNames()[i]; VLOG(0) <<
-  //   "local_exec_scopes_[0]->LocalVars()[i]->GetMutable<LoDTensor>()->dims().size():
-  //   " <<
-  //   local_exec_scopes_[0]->LocalVars()[i]->GetMutable<LoDTensor>()->dims().size();
-  // }
 
   RunOnVar(local_exec_scopes_[0]->FindVar(LossGradName()), true);
 }
 
 void ScaleLossGradOpHandle::RunOnVar(Variable *var, bool record_event) {
   auto *tensor = var->GetMutable<LoDTensor>();
-  tensor->Resize(phi::make_ddim({}));
+  tensor->Resize(phi::make_ddim({1}));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ScaleLossGradFunctor func(
