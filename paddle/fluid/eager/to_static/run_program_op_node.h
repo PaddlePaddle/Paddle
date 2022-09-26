@@ -495,6 +495,16 @@ inline void RunProgramGradAPI(
 
   bool use_interpretorcore =
       PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  }
+  PADDLE_ENFORCE_EQ(is_test,
+                    false,
+                    paddle::platform::errors::InvalidArgument(
+                        "Can't call RunProgramGradOp while is_test=True.\n",
+                        "Maybe you forget to call model.train() after changing "
+                        "to eval() mode."));
   auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
 
   auto *out_scope_vec = &step_scope;
@@ -502,7 +512,9 @@ inline void RunProgramGradAPI(
       out_scope_vec->size(),
       1,
       paddle::platform::errors::InvalidArgument(
-          "The OutScope of RunProgramGradOp should only hold one scope."));
+          "The OutScope of RunProgramGradOp should only hold one scope.\n",
+          "Maybe you forget to call model.train() after changing to eval() "
+          "mode."));
 
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
