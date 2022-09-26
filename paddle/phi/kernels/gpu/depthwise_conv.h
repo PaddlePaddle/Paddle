@@ -1599,7 +1599,6 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
     if (c_filter == -1) {                                                      \
       threads = dim3(                                                          \
           std::min(block_size, batch_size * output_height * output_width));    \
-      threads.y = threads.z = 1;                                               \
     }                                                                          \
     if (data_layout != DataLayout::kNHWC) {                                    \
       KernelDepthwiseConvFilterGradSp<T,                                       \
