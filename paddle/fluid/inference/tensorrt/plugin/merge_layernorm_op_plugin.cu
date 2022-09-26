@@ -39,7 +39,7 @@ __global__ void merge_layernorm_v2(T *out,
   // output is [batch, H, W, n]
   // grid (W, H, batch)
   // block (n)
-  const int ite = 4;
+  const int kIte = 4;
   const int tid = threadIdx.x;
   const int W_idx = blockIdx.x;
   const int H_idx = blockIdx.y;
@@ -52,11 +52,11 @@ __global__ void merge_layernorm_v2(T *out,
   __shared__ float s_variance;
   float mean = 0.0f;
   float variance = 0.0f;
-  float local_out[ite];
+  float local_out[kIte];
 
   float sum = 0.0f;
 #pragma unroll
-  for (int i = 0; i < ite; i++) {
+  for (int i = 0; i < kIte; i++) {
     int col_id = i * blockDim.x + tid;
     if (col_id < n) {
       int part_id = col_id / n_4;
@@ -65,12 +65,12 @@ __global__ void merge_layernorm_v2(T *out,
       size_t input_id = batch_offset +
                         (2 * H_idx + offset_in_H) * input_H_stride +
                         (2 * W_idx + offset_in_W) * n_4 + (col_id % n_4);
-      local_out[i] = (float)(__ldg(input + input_id));
+      local_out[i] = static_cast<float>(__ldg(input + input_id));
       sum += local_out[i];
     }
   }
 
-  mean = phi::funcs::blockReduceSum<float>(sum,FINAL_MASK);
+  mean = phi::funcs::blockReduceSum<float>(sum, FINAL_MASK);
   if (tid == 0) {
     s_mean = mean / n;
   }
@@ -78,7 +78,7 @@ __global__ void merge_layernorm_v2(T *out,
 
   float var = 0.0f;
 #pragma unroll
-  for (int i = 0; i < ite; i++) {
+  for (int i = 0; i < kIte; i++) {
     int col_id = i * blockDim.x + tid;
     if (col_id < n) {
       local_out[i] = local_out[i] - s_mean;
@@ -86,21 +86,21 @@ __global__ void merge_layernorm_v2(T *out,
     }
   }
 
-  variance = phi::funcs::blockReduceSum<float>(var,FINAL_MASK);
+  variance = phi::funcs::blockReduceSum<float>(var, FINAL_MASK);
   if (tid == 0) {
     s_variance = rsqrtf(variance / n + layernorm_eps);
   }
   __syncthreads();
 
 #pragma unroll
-  for (int i = 0; i < ite; i++) {
+  for (int i = 0; i < kIte; i++) {
     int col_id = i * blockDim.x + tid;
     if (col_id < n) {
       size_t output_idx =
           batch_offset + H_idx * output_H_stride + W_idx * n + col_id;
-      out[output_idx] =
-          (T)(local_out[i] * s_variance * (float)__ldg(&gamma[col_id]) +
-              (float)__ldg(&beta[col_id]));
+      out[output_idx] = static_cast<T>(
+          local_out[i] * s_variance * static_cast<float> __ldg(&gamma[col_id]) +
+          static_cast<float>(__ldg(&beta[col_id])));
     }
   }
 }
@@ -118,12 +118,12 @@ void invokeMergeLayernorm(T *output,
                           cudaStream_t stream) {
   if ((W % 2 != 0) || (H % 2 != 0)) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-      "H(W) of merge layernorm should be a multiple of 2."));
+        "H(W) of merge layernorm should be a multiple of 2."));
   }
   dim3 grid(W / 2, H / 2, batch);
   int blockSize = 4 * n;
   blockSize = (blockSize + 31) / 32 * 32;
-  // TODO
+  // TODO(wangbojun)
   // if (blockSize >= 768)
   {
     blockSize = ((blockSize / 4) + 31) / 32 * 32;
@@ -267,7 +267,6 @@ nvinfer1::DimsExprs MergeLayernormPluginDynamic::getOutputDimensions(
     const nvinfer1::DimsExprs *inputs,
     int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
-  // TODO
   PADDLE_ENFORCE_EQ(output_index,
                     0,
                     platform::errors::InvalidArgument(

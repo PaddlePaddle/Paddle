@@ -42,14 +42,16 @@ namespace ir {
 //         | [?x784x384]
 //        output
 // 
+
 class MergeLayernormFusePass : public FusePassBase {
-    public:
-        MergeLayernormFusePass();
-        virtual ~MergeLayernormFusePass() {}
-    protected:
-        void ApplyImpl(ir::Graph* graph) const override;
+ public:
+  MergeLayernormFusePass();
+  virtual ~MergeLayernormFusePass() {}
+
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
-} // namespace ir
-} // namespace framework
-} // paddle
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

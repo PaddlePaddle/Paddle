@@ -46,14 +46,14 @@ class MergeLayernormPluginDynamic : public DynamicPluginTensorRT {
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     return new MergeLayernormPluginDynamic(bias_.data(),
-                                                bias_.size(),
-                                                scale_.data(),
-                                                scale_.size(),
-                                                eps_,
-                                                begin_norm_axis_,
-                                                with_fp16_,
-                                                bias_device_,
-                                                scale_device_);
+                                           bias_.size(),
+                                           scale_.data(),
+                                           scale_.size(),
+                                           eps_,
+                                           begin_norm_axis_,
+                                           with_fp16_,
+                                           bias_device_,
+                                           scale_device_);
   }
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "merge_layernorm_plugin_dynamic";
