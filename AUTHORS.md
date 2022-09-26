@@ -12,6 +12,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | beckett1124 | Bin Qi |
 | ChengduoZH | Cheng-Duo Zhao|
 | chengxiaohua1105 | Xiao-Hua Cheng |
+| chenwhql | Wei-Hang Chen |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
 | ddokupil | Dariusz Dokupil |
