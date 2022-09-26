@@ -79,7 +79,8 @@ list(
   fused_token_prune_op.cc
   celu_op.cc
   layernorm_shift_partition_op.cc
-  generic_and_custom_plugin_creater.cc)
+  generic_and_custom_plugin_creater.cc
+  tanhshrink_op.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
