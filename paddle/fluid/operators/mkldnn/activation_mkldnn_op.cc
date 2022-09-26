@@ -42,7 +42,6 @@ class MKLDNNActivationKernel
   }
 };
 
-
 template <typename T>
 struct SoftplusMKLDNNFunctor : public BaseActivationFunctor<T> {
   void operator()(const framework::ExecutionContext &ctx) const {
