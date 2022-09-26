@@ -992,18 +992,23 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
 
     // CacheKV input
     VarDesc cache_kv_desc("cache_kv" + std::to_string(layer_idx));
-    // FIXME: only support batch_size = 1, and max_seq_len <= 1024
-    cache_kv_desc.SetShape(phi::vectorize({2, 1, num_head, 1024, dim_head}));
+    // FIXME: only support max_seq_len <= 1024
     cache_kv_desc.SetDataType(
         framework::TransToProtoVarType(wq_tensor->dtype()));
-    cache_kv_desc.SetPersistable(true);
+    cache_kv_desc.SetPersistable(false);
     auto* cache_kv = graph->CreateVarNode(&cache_kv_desc);
-    auto* cache_kv_tensor =
-        scope->Var(cache_kv->Name())->GetMutable<LoDTensor>();
-    cache_kv_tensor->Resize(DDim{2, 1, num_head, 1024, dim_head});
-    std::fill_n(cache_kv_tensor->mutable_data<float>(platform::CPUPlace()),
-                cache_kv_tensor->numel(),
-                0.0f);
+
+    OpDesc fill_const_op_desc(layer_norm->Op()->Block());
+    fill_const_op_desc.SetType("fill_constant_batch_size_like");
+    fill_const_op_desc.SetInput("Input", {input0->Name()});
+    fill_const_op_desc.SetOutput("Out", {cache_kv->Name()});
+    std::vector<int> shape = {2, -1, num_head, 1024, dim_head};
+    fill_const_op_desc.SetAttr("shape", shape);
+    fill_const_op_desc.SetAttr("input_dim_idx", 0);
+    fill_const_op_desc.SetAttr("output_dim_idx", 1);
+    fill_const_op_desc.SetAttr("value", 0);
+    fill_const_op_desc.SetAttr("dtype", static_cast<int>(proto::VarType::FP32));
+    auto* fill_const_op = graph->CreateOpNode(&fill_const_op_desc);
 
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv->Name()});
 
@@ -1055,6 +1060,10 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
     IR_NODE_LINK_TO(matmul0_w, fused_multi_transformer);
     IR_NODE_LINK_TO(eltadd0_b, fused_multi_transformer);
     IR_NODE_LINK_TO(eltadd_qk_b, fused_multi_transformer);
+
+    IR_NODE_LINK_TO(input0, fill_const_op);
+    IR_NODE_LINK_TO(fill_const_op, cache_kv);
+    IR_NODE_LINK_TO(cache_kv, fused_multi_transformer);
 
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
 
@@ -1703,18 +1712,23 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
 
     // CacheKV input
     VarDesc cache_kv_desc("cache_kv" + std::to_string(layer_idx));
-    // FIXME: only support batch_size = 1, and max_seq_len <= 1024
-    cache_kv_desc.SetShape(phi::vectorize({2, 1, num_head, 1024, dim_head}));
+    // FIXME: only support max_seq_len <= 1024
     cache_kv_desc.SetDataType(
         framework::TransToProtoVarType(qkv_w_tensor->dtype()));
-    cache_kv_desc.SetPersistable(true);
+    cache_kv_desc.SetPersistable(false);
     auto* cache_kv = graph->CreateVarNode(&cache_kv_desc);
-    auto* cache_kv_tensor =
-        scope->Var(cache_kv->Name())->GetMutable<LoDTensor>();
-    cache_kv_tensor->Resize(DDim{2, 1, num_head, 1024, dim_head});
-    std::fill_n(cache_kv_tensor->mutable_data<float>(platform::CPUPlace()),
-                cache_kv_tensor->numel(),
-                0.0f);
+
+    OpDesc fill_const_op_desc(layer_norm->Op()->Block());
+    fill_const_op_desc.SetType("fill_constant_batch_size_like");
+    fill_const_op_desc.SetInput("Input", {input0->Name()});
+    fill_const_op_desc.SetOutput("Out", {cache_kv->Name()});
+    std::vector<int> shape = {2, -1, num_head, 1024, dim_head};
+    fill_const_op_desc.SetAttr("shape", shape);
+    fill_const_op_desc.SetAttr("input_dim_idx", 0);
+    fill_const_op_desc.SetAttr("output_dim_idx", 1);
+    fill_const_op_desc.SetAttr("value", 0);
+    fill_const_op_desc.SetAttr("dtype", static_cast<int>(proto::VarType::FP32));
+    auto* fill_const_op = graph->CreateOpNode(&fill_const_op_desc);
 
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv->Name()});
 
@@ -1766,6 +1780,10 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     IR_NODE_LINK_TO(matmul0_w, fused_multi_transformer);
     IR_NODE_LINK_TO(eltadd0_b, fused_multi_transformer);
     IR_NODE_LINK_TO(eltadd_qk_b, fused_multi_transformer);
+
+    IR_NODE_LINK_TO(input0, fill_const_op);
+    IR_NODE_LINK_TO(fill_const_op, cache_kv);
+    IR_NODE_LINK_TO(cache_kv, fused_multi_transformer);
 
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
 
