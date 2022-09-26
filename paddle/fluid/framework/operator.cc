@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/isfinite_op.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -2966,17 +2967,115 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
   // For compatible with Op with extra attrs for specific backend
   auto& runtime_attrs = RuntimeAttrs();
-  for (const auto& attr : runtime_attrs) {
-    auto& attr_name = attr.first;
-    // auto& attr_val = attr.second;
-    VLOG(4) << "attr name: " << attr_name;
-    if (phi::OneDNNContext::classof(dev_ctx)) {
-      VLOG(4) << "Current DeviceContext is OneDNNContext";
-    } else if (phi::GPUContext::classof(dev_ctx)) {
-      // For GPUDNN, GPUDNN has no DeviceContext, so use GPUContext
-      VLOG(4) << "Current DeviceContext is GPUContext";
+  for (const auto& attr_iter : runtime_attrs) {
+    auto& attr_name = attr_iter.first;
+    auto& attr = attr_iter.second;
+    auto attr_propertys = paddle::operators::GetExtraAttrPropertys(attr_name);
+    if (phi::OneDNNContext::classof(dev_ctx) &&
+        attr_propertys.Support(operators::ExtraAttrProperty::ONEDNN)) {
+      VLOG(4) << "Runtime attr `" << attr_name
+              << "` is passed to OneDNNContext.";
+      phi::OneDNNContext* one_dnn_ctx =
+          static_cast<phi::OneDNNContext*>(dev_ctx);
+      switch (AttrTypeID(attr)) {
+        case proto::AttrType::INT:
+          one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
+          break;
+        case proto::AttrType::FLOAT:
+          one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(float, attr));
+          break;
+        case proto::AttrType::STRING:
+          one_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::string, attr));
+          break;
+        case proto::AttrType::INTS:
+          one_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::vector<int>, attr));
+          break;
+        case proto::AttrType::FLOATS:
+          one_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::vector<float>, attr));
+          break;
+        case proto::AttrType::STRINGS:
+          one_dnn_ctx->SetDnnAttr(
+              attr_name, PADDLE_GET_CONST(std::vector<std::string>, attr));
+          break;
+        case proto::AttrType::BOOLEAN:
+          one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
+          break;
+        case proto::AttrType::BOOLEANS:
+          one_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::vector<bool>, attr));
+          break;
+        case proto::AttrType::LONG:
+          one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int64_t, attr));
+          break;
+        case proto::AttrType::LONGS:
+          one_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::vector<int64_t>, attr));
+          break;
+        case proto::AttrType::FLOAT64S:
+          one_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::vector<double>, attr));
+          break;
+        default:
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported Attribute value type `%s` for phi.",
+              platform::demangle(attr.type().name())));
+      }
+    } else if (phi::GPUContext::classof(dev_ctx) &&
+               attr_propertys.Support(operators::ExtraAttrProperty::GPUDNN)) {
+      VLOG(4) << "Runtime attr `" << attr_name
+              << "` is passed to GPUDNNContext.";
+      phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
+      switch (AttrTypeID(attr)) {
+        case proto::AttrType::INT:
+          gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
+          break;
+        case proto::AttrType::FLOAT:
+          gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(float, attr));
+          break;
+        case proto::AttrType::STRING:
+          gpu_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::string, attr));
+          break;
+        case proto::AttrType::INTS:
+          gpu_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::vector<int>, attr));
+          break;
+        case proto::AttrType::FLOATS:
+          gpu_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::vector<float>, attr));
+          break;
+        case proto::AttrType::STRINGS:
+          gpu_dnn_ctx->SetDnnAttr(
+              attr_name, PADDLE_GET_CONST(std::vector<std::string>, attr));
+          break;
+        case proto::AttrType::BOOLEAN:
+          gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
+          break;
+        case proto::AttrType::BOOLEANS:
+          gpu_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::vector<bool>, attr));
+          break;
+        case proto::AttrType::LONG:
+          gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int64_t, attr));
+          break;
+        case proto::AttrType::LONGS:
+          gpu_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::vector<int64_t>, attr));
+          break;
+        case proto::AttrType::FLOAT64S:
+          gpu_dnn_ctx->SetDnnAttr(attr_name,
+                                  PADDLE_GET_CONST(std::vector<double>, attr));
+          break;
+        default:
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported Attribute value type `%s` for phi.",
+              platform::demangle(attr.type().name())));
+      }
     } else {
-      // skip current attr, do nothing
+      // do nothing
     }
   }
   VLOG(4) << "Done runtime attributes";

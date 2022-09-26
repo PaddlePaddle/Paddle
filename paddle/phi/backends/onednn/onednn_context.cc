@@ -297,7 +297,7 @@ struct OneDNNContext::Impl {
     return iter->second;
   }
 
-  void SetDnnAttr(const std::string& attr_name, const Attribute& attr) {
+  void SetDnnAttr(const std::string& attr_name, Attribute attr) {
     if (dnn_attrs_version_ == 0) {
       dnn_attrs_[attr_name] = attr;
     } else {
@@ -373,9 +373,8 @@ const Attribute& OneDNNContext::GetDnnAttr(const std::string& attr_name) const {
   return impl_->GetDnnAttr(attr_name);
 }
 
-void OneDNNContext::SetDnnAttr(const std::string& attr_name,
-                               const Attribute& attr) {
-  return impl_->SetDnnAttr(attr_name, attr);
+void OneDNNContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
+  return impl_->SetDnnAttr(attr_name, std::move(attr));
 }
 
 int8_t OneDNNContext::DnnAttrsVersion() const {

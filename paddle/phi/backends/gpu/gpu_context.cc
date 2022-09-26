@@ -729,7 +729,7 @@ struct GPUContext::Impl {
     return iter->second;
   }
 
-  void SetDnnAttr(const std::string& attr_name, const Attribute& attr) {
+  void SetDnnAttr(const std::string& attr_name, Attribute attr) {
     if (dnn_attrs_version_ == 0) {
       dnn_attrs_[attr_name] = attr;
     } else {
@@ -1050,9 +1050,8 @@ const Attribute& GPUContext::GetDnnAttr(const std::string& attr_name) const {
   return impl_->GetDnnAttr(attr_name);
 }
 
-void GPUContext::SetDnnAttr(const std::string& attr_name,
-                            const Attribute& attr) {
-  return impl_->SetDnnAttr(attr_name, attr);
+void GPUContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
+  return impl_->SetDnnAttr(attr_name, std::move(attr));
 }
 
 int8_t GPUContext::DnnAttrsVersion() const { return impl_->DnnAttrsVersion(); }

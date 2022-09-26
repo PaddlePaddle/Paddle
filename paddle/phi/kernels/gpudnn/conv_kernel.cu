@@ -51,8 +51,11 @@ void ConvCudnnKernel(const Context& ctx,
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
 
+  bool has_exhaustive_search = ctx.HasDnnAttr("exhaustive_search");
+  VLOG(4) << "GPUContext contains `exhaustive_search`: "
+          << has_exhaustive_search;
   bool exhaustive_search_attr =
-      ctx.HasDnnAttr("exhaustive_search")
+      has_exhaustive_search
           ? paddle::get<bool>(ctx.GetDnnAttr("exhaustive_search"))
           : false;
   bool exhaustive_search =

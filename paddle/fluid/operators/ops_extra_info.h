@@ -51,7 +51,7 @@ class ExtraAttrPropertySet final {
 
   inline uint64_t bitset() const { return bitset_; }
 
-  bool inline Contains(ExtraAttrProperty e) const {
+  bool inline Support(ExtraAttrProperty e) const {
     // DEPRECATED ExtraAttr always return false
     return static_cast<bool>(bitset_ & ExtraAttrPropertySet(e).bitset());
   }
@@ -128,6 +128,15 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
          ExtraAttrPropertySet(ExtraAttrProperty::ONEDNN) |
              ExtraAttrPropertySet(ExtraAttrProperty::GPUDNN)},
 };
+
+inline ExtraAttrPropertySet GetExtraAttrPropertys(
+    const std::string& attr_name) {
+  auto iter = extra_attr_properties.find(attr_name);
+  if (iter != extra_attr_properties.end()) {
+    return iter->second;
+  }
+  return ExtraAttrPropertySet();
+}
 
 template <typename T>
 struct ExtraAttrChecker {

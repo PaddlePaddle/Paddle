@@ -171,7 +171,7 @@ class PADDLE_API GPUContext : public DeviceContext,
   // Several methods for adapting Dnn-specific attributes
   bool HasDnnAttr(const std::string& attr_name) const;
   const Attribute& GetDnnAttr(const std::string& attr_name) const;
-  void SetDnnAttr(const std::string& attr_name, const Attribute& attr);
+  void SetDnnAttr(const std::string& attr_name, Attribute attr);
   int8_t DnnAttrsVersion() const;
   void SetDnnAttrsVersion(int8_t version);
 
