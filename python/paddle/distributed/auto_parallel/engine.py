@@ -575,6 +575,9 @@ class Engine:
         # insert read op at the end of program
         places = paddle.static.cuda_places()
         with static.program_guard(dist_main_prog, dist_startup_prog):
+            split_data = True
+            if hasattr(dataset, split_data):
+                split_data = dataset.split_data
             dataloader = NonIterableGeneratorLoader(
                 dataset,
                 feed_list,
@@ -584,7 +587,8 @@ class Engine:
                 steps_per_epoch,
                 collate_fn,
                 data_parallel_world_size=self._input_split_size,
-                data_parallel_rank=self._input_split_rank)
+                data_parallel_rank=self._input_split_rank,
+                split_data=split_data)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
