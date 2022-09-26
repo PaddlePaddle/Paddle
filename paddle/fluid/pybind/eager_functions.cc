@@ -933,34 +933,31 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
     }
   }
 
-  {
-    eager_gil_scoped_release guard;
-    if (py::isinstance<py::array_t<int32_t>>(array)) {
-      SetUVATensorFromPyArray<int32_t>(new_tensor, array, device_id);
-    } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-      SetUVATensorFromPyArray<int64_t>(new_tensor, array, device_id);
-    } else if (py::isinstance<py::array_t<float>>(array)) {
-      SetUVATensorFromPyArray<float>(new_tensor, array, device_id);
-    } else if (py::isinstance<py::array_t<double>>(array)) {
-      SetUVATensorFromPyArray<double>(new_tensor, array, device_id);
-    } else if (py::isinstance<py::array_t<int8_t>>(array)) {
-      SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
-    } else if (py::isinstance<py::array_t<int16_t>>(array)) {
-      SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
-    } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
-      SetUVATensorFromPyArray<paddle::platform::float16>(
-          new_tensor, array, device_id);
-    } else if (py::isinstance<py::array_t<bool>>(array)) {
-      SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
-    } else {
-      // obj may be any type, obj.cast<py::array>() may be failed,
-      // then the array.dtype will be string of unknown meaning.
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Input object type error or incompatible array data type. "
-          "tensor.set() supports array with bool, float16, float32, "
-          "float64, int8, int16, int32, int64,"
-          "please check your input or input array data type."));
-    }
+  if (py::isinstance<py::array_t<int32_t>>(array)) {
+    SetUVATensorFromPyArray<int32_t>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
+    SetUVATensorFromPyArray<int64_t>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<float>>(array)) {
+    SetUVATensorFromPyArray<float>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<double>>(array)) {
+    SetUVATensorFromPyArray<double>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<int8_t>>(array)) {
+    SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<int16_t>>(array)) {
+    SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
+    SetUVATensorFromPyArray<paddle::platform::float16>(
+        new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<bool>>(array)) {
+    SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
+  } else {
+    // obj may be any type, obj.cast<py::array>() may be failed,
+    // then the array.dtype will be string of unknown meaning.
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Input object type error or incompatible array data type. "
+        "tensor.set() supports array with bool, float16, float32, "
+        "float64, int8, int16, int32, int64,"
+        "please check your input or input array data type."));
   }
   return ToPyObject(*(new_tensor.get()));
   EAGER_CATCH_AND_THROW_RETURN_NULL
