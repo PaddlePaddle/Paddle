@@ -69,7 +69,7 @@ ENV LD_LIBRARY_PATH=/usr/local/python3.7.0/lib:${LD_LIBRARY_PATH}
 ENV CPLUS_INCLUDE_PATH=/usr/local/python3.7.0/include/python3.7:$CPLUS_INCLUDE_PATH
 RUN ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/local/bin/python3 && ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/bin/python3
 
-RUN rm -r /root/python_build
+RUN rm -rf /root/python_build
 
 # Install Python2.7.15 to replace original python
 WORKDIR /home
