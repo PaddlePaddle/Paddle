@@ -54,6 +54,9 @@ class ProcessGroupStream : public ProcessGroup {
   ProcessGroupStream(int rank, int size, const platform::Place& place, int gid);
   virtual ~ProcessGroupStream() = default;
 
+  virtual phi::DeviceContext* GetDeviceContext(const Place& place,
+                                               bool use_calc_stream) const;
+
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT

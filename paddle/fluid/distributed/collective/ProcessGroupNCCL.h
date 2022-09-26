@@ -98,6 +98,9 @@ class ProcessGroupNCCL : public ProcessGroupStream {
 
   phi::DeviceContext* GetDeviceContext(const Place& place) const override;
 
+  phi::DeviceContext* GetDeviceContext(const Place& place,
+                                       bool use_calc_stream) const override;
+
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT

@@ -1283,13 +1283,22 @@ ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
 
 phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
     const Place& place) const {
-  std::vector<Place> places = {place};
-  const auto& iter = places_to_ctx_.find(GetKeyFromPlaces(places));
-  PADDLE_ENFORCE_NE(iter,
-                    places_to_ctx_.end(),
-                    platform::errors::InvalidArgument(
-                        "Cannot find device context in process group."));
-  return iter->second[0].get();
+  return GetDeviceContext(place, /*use_calc_stream*/ false);
+}
+
+phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
+    const Place& place, bool use_calc_stream) const {
+  if (use_calc_stream) {
+    return platform::DeviceContextPool::Instance().Get(place);
+  } else {
+    std::vector<Place> places = {place};
+    const auto& iter = places_to_ctx_.find(GetKeyFromPlaces(places));
+    PADDLE_ENFORCE_NE(iter,
+                      places_to_ctx_.end(),
+                      platform::errors::InvalidArgument(
+                          "Cannot find device context in process group."));
+    return iter->second[0].get();
+  }
 }
 
 }  //  namespace distributed

@@ -47,16 +47,44 @@ class StreamAllgatherTestCase():
 
         rank = dist.get_rank()
         tensor = paddle.to_tensor(test_data_list[rank])
-        tensor_list = []
-        task = dist.stream.all_gather(tensor_list,
+
+        # case 1: pass an empty tensor list
+        empty_tensor_list = []
+        task = dist.stream.all_gather(empty_tensor_list,
                                       tensor,
                                       sync_op=self._sync_op,
                                       use_calc_stream=self._use_calc_stream)
         if not self._sync_op:
             task.wait()
+        assert np.allclose(empty_tensor_list,
+                           test_data_list,
+                           rtol=1e-05,
+                           atol=1e-05)
 
-        result = test_data_list
-        assert np.allclose(tensor_list, result, rtol=1e-05, atol=1e-05)
+        # case 2: pass a pre-sized tensor list
+        full_tensor_list = [paddle.empty_like(tensor) for _ in test_data_list]
+        task = dist.stream.all_gather(full_tensor_list,
+                                      tensor,
+                                      sync_op=self._sync_op,
+                                      use_calc_stream=self._use_calc_stream)
+        if not self._sync_op:
+            task.wait()
+        assert np.allclose(full_tensor_list,
+                           test_data_list,
+                           rtol=1e-05,
+                           atol=1e-05)
+
+        # case 3: pass a pre-sized tensor
+        result_tensor = paddle.concat(
+            [paddle.to_tensor(data) for data in test_data_list])
+        out_tensor = paddle.empty_like(result_tensor)
+        task = dist.stream.all_gather(out_tensor,
+                                      tensor,
+                                      sync_op=self._sync_op,
+                                      use_calc_stream=self._use_calc_stream)
+        if not self._sync_op:
+            task.wait()
+        assert np.allclose(out_tensor, result_tensor, rtol=1e-05, atol=1e-05)
 
 
 if __name__ == "__main__":
