@@ -99,3 +99,5 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | DesmonDay | Dai Siming |
 | thisjiang | jiangcheng |
 | yghstill | Guanghua Yu |
+| CtfGo | Tefeng Chen |
+
