@@ -20,8 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
-#include "dnnl.hpp"  // NOLINT
-
 namespace paddle {
 namespace operators {
 
