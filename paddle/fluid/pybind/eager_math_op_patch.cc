@@ -660,27 +660,30 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar_div function for __rdiv__ and __rtruediv__
-  float* other_float_ptr = nullptr;
+  float other_float = 0.0;
+  bool has_other_float = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      *other_float_ptr = CastPyArg2AttrFloat(other_obj, 0);
+      other_float = CastPyArg2AttrFloat(other_obj, 0);
+      has_other_float = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      *other_float_ptr = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other_float = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      has_other_float = true;
     }
   }
 
   // 2. create or get tensor for other_obj
   paddle::experimental::Tensor other_tensor;
-  if (other_float_ptr) {
+  if (has_other_float) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(*other_float_ptr),
+                                phi::Scalar(other_float),
                                 self_tensor.dtype(),
                                 place);
   } else if (!PyCheckTensor(other_obj)) {
