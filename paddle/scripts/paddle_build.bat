@@ -114,18 +114,16 @@ if "%WITH_PYTHON%" == "ON" (
 )
 
 rem -------Caching strategy 1: keep build directory for incremental compilation-----------
-rmdir %BUILD_DIR%\python /s/q
-rmdir %BUILD_DIR%\paddle\third_party\externalError /s/q
-rem rmdir %BUILD_DIR%\paddle\fluid\pybind /s/q
-rmdir %BUILD_DIR%\paddle_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
-del %BUILD_DIR%\CMakeCache.txt
-
 if "%WITH_CACHE%"=="OFF" (
     rmdir %BUILD_DIR% /s/q
     goto :mkbuild
 )
+
+rmdir %BUILD_DIR%\python /s/q
+rmdir %BUILD_DIR%\paddle_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
+del %BUILD_DIR%\CMakeCache.txt
 
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
@@ -172,14 +170,15 @@ echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
 cd /d %BUILD_DIR%
 dir .
 dir %cache_dir%
-dir paddle\fluid\pybind\Release
 rem -------Caching strategy 1: End --------------------------------
 
 
 rem -------Caching strategy 2: sccache decorate compiler-----------
 if not defined SCCACHE_ROOT set SCCACHE_ROOT=D:\sccache
+set PATH=%SCCACHE_ROOT%;%PATH%
 if "%WITH_SCCACHE%"=="ON" (
     cmd /C sccache -V || call :install_sccache
+
     sccache --stop-server 2> NUL
     del %SCCACHE_ROOT%\sccache_log.txt
 
@@ -203,7 +202,7 @@ if "%WITH_SCCACHE%"=="ON" (
     sccache -z
     goto :CASE_%1
 ) else (
-    del %PYTHON_ROOT%\sccache.exe 2> NUL
+    del %SCCACHE_ROOT%\sccache.exe 2> NUL
     goto :CASE_%1
 )
 
@@ -211,7 +210,7 @@ if "%WITH_SCCACHE%"=="ON" (
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
-xcopy sccache.exe %PYTHON_ROOT%\ /Y
+xcopy sccache.exe %SCCACHE_ROOT%\ /Y
 del sccache.exe
 goto:eof
 rem -------Caching strategy 2: End --------------------------------
@@ -240,6 +239,7 @@ call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
+call :test_inference || goto test_inference_error
 goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------

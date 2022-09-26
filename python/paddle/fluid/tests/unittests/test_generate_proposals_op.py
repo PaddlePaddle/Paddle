@@ -213,7 +213,7 @@ def filter_boxes(boxes, min_size, im_info, pixel_offset=True):
 
 def iou(box_a, box_b, pixel_offset=True):
     """
-	Apply intersection-over-union overlap between box_a and box_b
+    Apply intersection-over-union overlap between box_a and box_b
     """
     xmin_a = min(box_a[0], box_a[2])
     ymin_a = min(box_a[1], box_a[3])
