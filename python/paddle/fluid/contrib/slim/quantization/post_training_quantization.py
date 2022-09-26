@@ -18,6 +18,7 @@ import math
 import shutil
 import logging
 import numpy as np
+import copy
 
 try:
     from tqdm import tqdm
@@ -36,6 +37,7 @@ from .quantization_pass import QuantizationTransformPass, QuantizationTransformP
 from .cal_kl_threshold import cal_kl_threshold
 from .adaround import run_adaround
 from . import utils
+
 
 __all__ = [
     'PostTrainingQuantization',
@@ -129,7 +131,7 @@ class PostTrainingQuantization(object):
                  hist_percent=0.99999,
                  quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
                  round_type='round',
-                 learning_rate=0.001,
+                 learning_rate=0.1,
                  is_full_quantize=False,
                  bias_correction=False,
                  activation_bits=8,
@@ -144,7 +146,9 @@ class PostTrainingQuantization(object):
                  same_scale_tensor_list=None,
                  cache_dir=None,
                  scale_dict=None,
-                 return_graph=False):
+                 return_graph=False,
+                 qdrop=False,
+                 model_name=None):
         '''
         Constructor.
 
@@ -370,7 +374,8 @@ class PostTrainingQuantization(object):
         self.FLAG = False
         if self._program is not None:
             self.FLAG = True
-
+        self._qdrop=qdrop
+        self._model_name = model_name
     def quantize(self):
         '''
         Load the FP32 model, and use the calibrate data to calculate the forward-stage.
@@ -429,11 +434,9 @@ class PostTrainingQuantization(object):
                 np.array(self._quantized_var_avg[var_name]).mean()
         if self._algo in ["KL", "hist"]:
             self._calculate_kl_hist_threshold()
-
+        self._reset_activation_persistable()
         if self._round_type == 'adaround':
             self._adaround_apply()
-
-        self._reset_activation_persistable()
 
         if self._algo is 'min_max':
             self._save_input_threhold()
@@ -477,18 +480,25 @@ class PostTrainingQuantization(object):
             scale_dict = self._quantized_var_threshold
         else:
             scale_dict = self._quantized_threshold
-        run_adaround(self._data_loader,
-                     self._program,
-                     self._fetch_list,
-                     self._executor,
-                     self._scope,
-                     self._place,
-                     self._quantized_op_pairs,
-                     self._weight_op_pairs,
-                     scale_dict,
-                     num_iterations=self._batch_nums,
-                     bias_correction=self._bias_correction,
-                     lr=self._learning_rate)
+        self._program = run_adaround(self._data_loader,
+                    self._program,
+                    self._feed_list,
+                    self._fetch_list,
+                    self._executor,
+                    self._scope,
+                    self._place,
+                    self._quantized_op_pairs,
+                    self._input_var_names,
+                    self._weight_op_pairs,
+                    copy.deepcopy(scale_dict),
+                    num_iterations=self._batch_nums,
+                    bias_correction=self._bias_correction,
+                    lr=self._learning_rate,
+                    weight_quantize_type=self._weight_quantize_type,
+                    epochs=20,
+                    qdrop=self._qdrop,
+                    model_name=self._model_name)
+
 
     def save_quantized_model(self,
                              save_model_path,
@@ -589,6 +599,9 @@ class PostTrainingQuantization(object):
                     self._quantized_act_var_name.add(var_name)
 
         persistable_var_names = _all_persistable_var_names(self._program)
+
+        self._input_var_names = {}
+
         for block_id in range(len(self._program.blocks)):
             for op in self._program.blocks[block_id].ops:
                 # skip quant form self._skip_tensor_list
@@ -614,6 +627,14 @@ class PostTrainingQuantization(object):
                             if in_var_name in persistable_var_names:
                                 self._quantized_op_pairs[
                                     in_var_name] = out_var_name
+
+                    in_var_names = utils._get_op_input_var_names(op)
+                    for in_var_name in in_var_names:
+                        if in_var_name in persistable_var_names:
+                            in_var_names.remove(in_var_name)
+                            self._input_var_names[in_var_name] = in_var_names
+                            break
+
                 # For other op, only sample output scale
                 elif op_type in self._out_scale_op_list:
                     collect_var_name(utils._get_op_output_var_names(op),

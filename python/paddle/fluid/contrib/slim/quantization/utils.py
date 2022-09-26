@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import sys
 import numpy as np
 from ....framework import IrNode
 from ....framework import Operator
-
+from paddleslim.core import GraphWrapper
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.initializer import MSRA
+from paddle.fluid.param_attr import ParamAttr
 _weight_supported_quantizable_op_type = [
     'conv2d', 'depthwise_conv2d', 'conv2d_transpose', 'mul', 'matmul',
     'matmul_v2'
@@ -459,3 +464,415 @@ class tqdm(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stderr.write('\n')
+
+
+
+
+
+
+def soft_rounding_weights(program, weight_names, scales, scope, exe, weight_quantize_type, ZETA=1.1, GAMMA=-0.1):
+    graph = GraphWrapper(program)
+
+    for name_ in weight_names:
+        weight = graph.var(name_)
+        scale = scales[name_]
+        shape = weight.shape()
+        _tensor = load_variable_data(scope, "teacher_"+name_)
+        tensor_scale = quant_tensor(_tensor, scale)
+        tensor_floor = np.floor(tensor_scale)
+        tensor = tensor_scale - tensor_floor
+        alpha = -np.log((ZETA - GAMMA) / (tensor - GAMMA) - 1)
+
+        #channel-wise
+
+        if weight_quantize_type=='channel_wise_abs_max':
+            scale = np.array(scale)
+            scale = scale.reshape(scale.shape[0], 1)
+            scale = scale.repeat(shape[1]*shape[2]*shape[3],axis=1)
+            scale = scale.reshape(shape)
+
+        soft_rounding_weight(weight, scale, alpha, exe, weight_quantize_type)
+
+
+def soft_rounding(weight, scale, alpha,  weight_quantize_type, zeta=1.1, gamma=-0.1, weight_bits=8):
+    """
+    Define network of soft rounding.
+    Args:
+      weight: The quanted weight with dtype=float32
+    """
+
+
+
+
+    bnt = (1 << (weight_bits - 1)) - 1
+
+    def _dequant(x, scale):
+        s = (scale+1e-8)/bnt
+        dequant_x = s * x 
+        return dequant_x
+
+    quantized_weight = paddle.static.data(shape=weight.shape,
+                                        dtype=weight.dtype,
+                                        name=weight.name+'_quant')
+
+    v = paddle.static.create_parameter(shape=weight.shape,
+                                        dtype=weight.dtype,
+                                        name=weight.name+".alpha",
+                                        default_initializer=fluid.initializer.NumpyArrayInitializer(alpha))
+
+    h_v = paddle.clip(paddle.nn.functional.sigmoid(v) * (zeta - gamma) + gamma, 0, 1)
+
+    if weight_quantize_type=='channel_wise_abs_max':
+        scale_var = paddle.static.create_parameter(
+                dtype=weight.dtype,
+                shape=weight.shape,
+                name=weight.name+'.scale',
+                default_initializer=fluid.initializer.NumpyArrayInitializer(scale),
+            )
+    else:
+        scale_var = scale
+
+
+    w = _dequant(quantized_weight+h_v, scale_var)
+    return w
+
+
+def insert_func(var, scale, alpha, exe, func, weight_quantize_type):
+    program = var._graph.program
+    #print(f"var:{var}")
+    ops = var.outputs()
+    #print(f"ops:{ops}")
+    inputs = var._var
+
+    startup_program = paddle.static.Program()
+    new_program = paddle.static.Program()
+    
+    with paddle.static.program_guard(new_program, startup_program):
+        out = func(inputs, scale, alpha, weight_quantize_type)
+    exe.run(startup_program)
+    #create var in program
+    #skip create Temporary var conv_weight_quant in program
+    for new_var in new_program.list_vars():
+        if new_var.name == var._var.name+'_quant':
+            #print(f"new_var_name:{new_var.name}")
+            continue
+        elif new_var.name == var._var.name+'.alpha':
+            program.global_block().create_parameter(
+            name=new_var.name,
+            shape=new_var.shape,
+            dtype=new_var.dtype,
+            type=new_var.type,
+            stop_gradient=new_var.stop_gradient)
+            #print(new_var.name+'.rounding')
+        elif new_var.name == var._var.name+'.scale':
+            program.global_block().create_parameter(
+            name=new_var.name,
+            shape=new_var.shape,
+            dtype=new_var.dtype,
+            type=new_var.type,
+            stop_gradient=True)
+        else:
+            program.global_block().create_var(
+            name=new_var.name+'.rounding',
+            shape=new_var.shape,
+            dtype=new_var.dtype,
+            type=new_var.type,
+            persistable=new_var.persistable,
+            stop_gradient=new_var.stop_gradient)
+    
+    op_list = new_program.global_block().ops
+    op_list = list(reversed(op_list))
+
+    #prepend new_program's op in program
+    for op in op_list:
+        if op.type=='elementwise_add':
+            program.global_block()._prepend_op(
+                type=op.type,
+                inputs={
+                    'X': var._var,     #replace tmp var conv.weight_quant with var conv.weight
+                    'Y': op.input('Y')[0]+'.rounding',
+                    },
+                outputs={'Out':op.output('Out')[0]+'.rounding'},
+                attrs={
+                       'use_mkldnn': False,
+                       'with_quant_attr' :False}
+            )
+        elif op.type == 'clip':
+            program.global_block()._prepend_op(
+                type=op.type,
+                inputs={
+                    'X':op.input('X')[0]+'.rounding',
+                    },
+                outputs={'Out':op.output('Out')[0]+'.rounding'},
+                attrs={
+                       'use_mkldnn': False,
+                       'with_quant_attr' :False,
+                       'max':op.attr('max'),
+                       'min':op.attr('min')}
+            )
+        elif op.type == 'scale':
+            if op.input('X')[0].endswith('scale'):
+                program.global_block()._prepend_op(
+                    type=op.type,
+                    inputs={
+                        'X':op.input('X')[0]
+                        },
+                    outputs={'Out':op.output('Out')[0]+'.rounding'},
+                    attrs={
+                        'use_mkldnn': False,
+                        'with_quant_attr' :False,
+                        'scale': op.attr('scale'),
+                        'bias_after_scale':op.attr('bias_after_scale')}
+                )
+            else:
+                program.global_block()._prepend_op(
+                    type=op.type,
+                    inputs={
+                        'X':op.input('X')[0]+'.rounding'
+                        },
+                    outputs={'Out':op.output('Out')[0]+'.rounding'},
+                    attrs={
+                        'use_mkldnn': False,
+                        'with_quant_attr' :False,
+                        'scale': op.attr('scale'),
+                        'bias_after_scale':op.attr('bias_after_scale')}
+                )
+        elif op.type=='sigmoid':
+            program.global_block()._prepend_op(
+                type=op.type,
+                inputs={
+                    'X':op.input('X')[0]
+                    },
+                outputs={'Out':op.output('Out')[0]+'.rounding'},
+                attrs={
+                       'use_mkldnn': False,
+                       'with_quant_attr' :False}
+            )            
+        elif op.type=='elementwise_mul':
+            program.global_block()._prepend_op(
+                type=op.type,
+                inputs={
+                    'X':op.input('X')[0]+'.rounding',
+                    'Y':op.input('Y')[0]+'.rounding',
+                    },
+                outputs={'Out':op.output('Out')[0]+'.rounding'},
+                attrs={
+                       'use_mkldnn': False,
+                       'with_quant_attr' :False,
+                        'Scale_out':op.attr('Scale_out'),
+                        'Scale_x':op.attr('Scale_x'),
+                        'Scale_y':op.attr('Scale_y'),
+                        'axis':op.attr('axis')}
+            )       
+        else:
+            program.global_block()._prepend_op(
+                type=op.type,
+                inputs={
+                    'X':op.input('X')[0]+'.rounding'
+                    },
+                outputs={'Out':op.output('Out')[0]+'.rounding'},
+                attrs={
+                       'use_mkldnn': False,
+                       'with_quant_attr' :False}
+            )
+
+
+
+
+    for op in ops:
+        op._op._rename_input(inputs.name, out.name+'.rounding')
+        #print(f"rename {inputs.name} to {out.name+'.rounding'}")
+
+
+
+def soft_rounding_weight(weight, scale, alpha, exe, weight_quantize_type):
+    
+    ops = weight.outputs()
+    var = weight._var
+    program = weight._graph.program
+    insert_func(weight, scale, alpha, exe, soft_rounding, weight_quantize_type)
+
+
+
+
+def duplicate_var(var):
+    vars = []
+    block = var._var.block
+    index = 0
+    for op in var.outputs():
+        var_ = var._var
+        op_ = op._op
+        duplicated_var = block.create_var(name=var_.name+".assign"+str(index),
+                                       type=var_.type,
+                                       shape=var_.shape,
+                                       dtype=var_.dtype)
+        vars.append(duplicated_var)
+        index += 1
+        idx = block.ops.index(op_)
+        block._insert_op(idx,
+                         type="assign",
+                         inputs={"X": var_},
+                         outputs={"Out": duplicated_var})
+        op_._rename_input(var_.name, duplicated_var.name)
+    return vars
+
+def duplicate_vars(program, var_names):
+    result = {}
+    graph = GraphWrapper(program)
+    for var_name in var_names:
+        var = graph.var(var_name)
+        result[var_name] = duplicate_var(var)
+    return result
+
+def isolate_blocks(program, blocks):
+    starts = [block[0] for block in blocks]
+    var2duplications = duplicate_vars(program, starts)
+    for vars_ in var2duplications.values():
+        for var_ in vars_:
+            var_.stop_gradients = True
+
+
+
+def drop_quant_dequant(inputs, scale):
+
+    x = paddle.static.data(shape=inputs.shape,
+                            dtype=inputs.dtype,
+                            name=inputs.name+'.tmp')
+    scale = scale / 127
+    dequantized_tensor = paddle.round(x / scale) * scale
+    quant_noise = x - dequantized_tensor
+    random_noise = paddle.nn.functional.dropout(quant_noise, p=0.5)
+    return x + random_noise
+
+def insert_drop_quant_deqaunt(program, scale):
+    graph = GraphWrapper(program)
+    for op in graph.ops():
+        if op.type() in ['conv2d', 'depthwise_conv2d']:
+            #print(op.inputs("Filter")[0].name())
+            if op.inputs("Filter")[0].name().startswith("teacher"):
+                break
+            input = op.inputs("Input")[0]
+            if input.name() in scale.keys():
+                insert_func_2(input, drop_quant_dequant, scale[input.name()])
+
+
+def insert_func_2(var, func, scale):
+    program = var._graph.program
+    ops = var.outputs()
+    #print(f"ops:{ops}")
+    inputs = var._var
+    block = var._var.block
+   
+    startup_program = paddle.static.Program()
+    new_program = paddle.static.Program()
+    with paddle.static.program_guard(new_program, startup_program):
+        out = func(inputs, scale)
+    exe = paddle.static.Executor(paddle.CPUPlace())
+    exe.run(startup_program)
+
+
+    for new_var in new_program.list_vars():
+        if new_var.name == inputs.name+'.tmp':
+            continue
+        program.global_block().create_var(
+            name=new_var.name,
+            shape=new_var.shape,
+            dtype=new_var.dtype,
+            type=new_var.type,
+            persistable=new_var.persistable,
+            stop_gradient=new_var.stop_gradient)
+    
+    op_list = new_program.global_block().ops
+    op_list = list(reversed(op_list))
+    #op_type = [op.type for op in op_list]
+    #print(f"op_type:{op_type}")
+    #prepend new_program's op in program
+
+
+    for _op in ops:
+        
+        #print(f"_op:{_op}")
+        if _op.type() not in ['conv2d', 'depthwise_conv2d']:
+            print(_op.type())
+            break
+        if _op.inputs('Filter')[0].name().startswith('teacher'):
+            break
+        idx = block.ops.index(_op._op)
+        for op in op_list:
+            if op.type=='elementwise_add' or op.type=='elementwise_sub':
+                block._insert_op(
+                    idx,
+                    type=op.type,
+                    inputs={
+                        'X': inputs,     #replace tmp var conv.weight_quant with var conv.weight
+                        'Y': op.input('Y'),
+                        },
+                    outputs={'Out':op.output('Out')},
+                    attrs={
+                        'use_mkldnn': False,
+                        'with_quant_attr' :False}
+                )
+            elif op.type == 'scale':
+                if op.input('X')[0] == inputs.name+'.tmp':
+                    block._insert_op(
+                        idx,
+                        type=op.type,
+                        inputs={
+                            'X':inputs
+                            },
+                        outputs={'Out':op.output('Out')},
+                        attrs={
+                            'use_mkldnn': False,
+                            'with_quant_attr' :False,
+                            'scale': op.attr('scale')}
+                    )
+                else:
+                    block._insert_op(
+                        idx,
+                        type=op.type,
+                        inputs={
+                            'X':op.input('X')
+                            },
+                        outputs={'Out':op.output('Out')},
+                        attrs={
+                            'use_mkldnn': False,
+                            'with_quant_attr' :False,
+                            'scale': op.attr('scale'),
+                            'bias_after_scale':op.attr('bias_after_scale')}
+                    ) 
+            elif op.type=='dropout':
+                block._insert_op(
+                    idx,
+                    type=op.type,
+                    inputs={
+                        'X':op.input('X')[0]
+                        },
+                    outputs={'Out':op.output('Out')[0],
+                            'Mask':op.output('Mask')[0]},
+                    attrs={
+                        'use_mkldnn': False,
+                        'with_quant_attr' :False}
+                )
+            else:
+                block._insert_op(
+                    idx,
+                    type=op.type,
+                    inputs={
+                        'X':op.input('X')[0]
+                        },
+                    outputs={'Out':op.output('Out')[0]},
+                    attrs={
+                        'use_mkldnn': False,
+                        'with_quant_attr' :False}
+                )
+
+    for op in ops:
+        #print(op)
+        if op.type() not in ['conv2d', 'depthwise_conv2d']:
+            break
+        if op.inputs('Filter')[0].name().startswith('teacher'):
+            continue
+        op._op._rename_input(inputs.name, out.name)
+        #print(f"rename {inputs.name} to {out.name}")
+
+
