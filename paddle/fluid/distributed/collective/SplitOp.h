@@ -24,7 +24,7 @@ namespace distributed {
 template <typename DeviceContext, typename T>
 struct SplitDenseTensor {
   void operator()(const DeviceContext *context,
-                  const phi::DenseTensor *in,
+                  const phi::DenseTensor &in,
                   std::vector<phi::DenseTensor *> *out,
                   int axis = 0) {
     std::vector<const phi::DenseTensor *> shape_refer;
@@ -33,13 +33,13 @@ struct SplitDenseTensor {
       shape_refer.emplace_back(p_tensor);
     }
     phi::funcs::SplitFunctor<DeviceContext, T> split_functor_;
-    split_functor_(*context, *in, shape_refer, axis, out);
+    split_functor_(*context, in, shape_refer, axis, out);
   }
 };
 
 template <typename DeviceContext>
 void SplitDenseTensorWithType(const DeviceContext *dev_ctx,
-                              const phi::DenseTensor *p_dense,
+                              const phi::DenseTensor &p_dense,
                               std::vector<phi::DenseTensor *> *p_list,
                               phi::DataType type) {
   switch (type) {
@@ -89,14 +89,14 @@ void SplitTensor(const phi::DeviceContext *dev_ctx,
   const auto &place = dev_ctx->GetPlace();
   if (platform::is_gpu_place(place)) {
     SplitDenseTensorWithType(static_cast<const phi::GPUContext *>(dev_ctx),
-                             &tensor,
+                             tensor,
                              &dense_list,
                              tensor.dtype());
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     SplitDenseTensorWithType(
         static_cast<const platform::CustomDeviceContext *>(dev_ctx),
-        &tensor,
+        tensor,
         &dense_list,
         tensor.dtype());
 #else
@@ -106,7 +106,7 @@ void SplitTensor(const phi::DeviceContext *dev_ctx,
 #endif
   } else if (platform::is_cpu_place(place)) {
     SplitDenseTensorWithType(static_cast<const phi::CPUContext *>(dev_ctx),
-                             &tensor,
+                             tensor,
                              &dense_list,
                              tensor.dtype());
   } else {
