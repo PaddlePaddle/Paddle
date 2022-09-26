@@ -879,5 +879,102 @@ class TestSquareOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestRSqrtOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'rsqrt'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['rsqrt', 'rsqrt_p']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out']}
+
+
+class TestBatchnormOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'batch_norm'
+        x = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+        m = paddle.static.data(name='Mean', shape=[8], dtype='float')
+        v = paddle.static.data(name='Variance', shape=[8], dtype='float')
+        w = paddle.static.data(name='Scale', shape=[8], dtype='float')
+        b = paddle.static.data(name='Bias', shape=[8], dtype='float')
+
+        self.input = {
+            "X": [x],
+            "Scale": [w],
+            "Bias": [b],
+            "Mean": [m],
+            "Variance": [v]
+        }
+        saved_variance = self.layer_help.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True)
+        batch_norm_out = self.layer_help.create_variable_for_type_inference(
+            x.dtype)
+        saved_mean = self.layer_help.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True)
+        self.output = {
+            "Y": [batch_norm_out],
+            "MeanOut": [m],
+            "VarianceOut": [v],
+            "SavedMean": [saved_mean],
+            "SavedVariance": [saved_variance]
+        }
+
+        self.attrs = {
+            "momentum": 0.9,
+            "epsilon": 1e-5,
+            "is_test": False,
+            "data_layout": 'NCHW',
+            "use_mkldnn": False,
+            "fuse_with_relu": False,
+            "use_global_stats": False,
+            "trainable_statistics": False,
+        }
+        self.orig2prim_args = (b, m, None, w, v, x)
+        self.all_ops = [
+            'add_p', 'add_p', 'add_p', 'add_p', 'batch_norm', 'broadcast_p',
+            'broadcast_p', 'broadcast_p', 'broadcast_p', 'broadcast_p', 'div_p',
+            'div_p', 'div_p', 'fill_constant_p', 'fill_constant_p',
+            'fill_constant_p', 'fill_constant_p', 'fill_constant_p',
+            'fill_constant_p', 'fill_constant_p', 'fill_constant_p',
+            'fill_constant_p', 'mul_p', 'mul_p', 'mul_p', 'mul_p', 'mul_p',
+            'pow_p', 'reduce_sum_p', 'reduce_sum_p', 'reshape_p', 'reshape_p',
+            'reshape_p', 'reshape_p', 'sqrt_p', 'sub_p', 'sub_p', 'sub_p',
+            'sub_p'
+        ]
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {}
+
+
+class TestFillConstantOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'fill_constant'
+
+        self.attrs = {'value': 1., 'shape': (2, 3), 'dtype': paddle.float32}
+        self.input = {}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.float32)
+        }
+
+        self.orig2prim_args = (None, None, None)
+        self.all_ops = ['fill_constant', 'fill_constant_p']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out']}
+
+
 if __name__ == '__main__':
     unittest.main()
