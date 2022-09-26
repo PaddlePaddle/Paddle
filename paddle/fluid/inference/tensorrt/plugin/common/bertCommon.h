@@ -96,8 +96,8 @@ template <typename T>
 inline void serFromDev(char** buffer, const T* data, size_t nbElem) {
   const size_t len = sizeof(T) * nbElem;
   cudaMemcpy(
-      buffer, static_cast<const void*>(data), len, cudaMemcpyDeviceToHost);
-  buffer += len;
+      *buffer, static_cast<const void*>(data), len, cudaMemcpyDeviceToHost);
+  *buffer += len;
 }
 
 template <typename T>
@@ -174,8 +174,8 @@ struct WeightsWithOwnership : public nvinfer1::Weights {
     const auto nbBytes = getWeightsSize(*this, type);
     auto destBuf = new char[nbBytes];
     this->values = destBuf;
-    std::copy_n(srcBuf, nbBytes, destBuf);
-    srcBuf += nbBytes;
+    std::copy_n(*srcBuf, nbBytes, destBuf);
+    *srcBuf += nbBytes;
   }
 };
 
