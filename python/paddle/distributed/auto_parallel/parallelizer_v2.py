@@ -89,7 +89,7 @@ class Parallelizer:
                     time.time() - time0, self._mode))
             # Do reshard process
             time0 = time.time()
-            set_grad_var_shape(dist_main_prog, self._dist_context)
+            # set_grad_var_shape(dist_main_prog, self._dist_context)
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, dist_params_grads)
             resharder.reshard()
