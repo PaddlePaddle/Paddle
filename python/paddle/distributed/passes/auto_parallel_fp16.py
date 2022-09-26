@@ -369,7 +369,7 @@ class FP16State(object):
                 forward_op_id]:
 
             # some forward output is not need by backward computation, e.g. logit in softmax_with_cross_entropy
-            if slot_name not in op.input:
+            if slot_name not in op.input_names:
                 continue
 
             # rename input
