@@ -514,6 +514,7 @@ class AMPPass(PassBase):
         self._loss_scaling = None
         self._num_good_steps = None
         self._num_bad_steps = None
+        self._loss = None
 
     def _check_self(self):
         if self.get_attr("init_loss_scaling") < 0:
@@ -606,12 +607,6 @@ class AMPPass(PassBase):
             loss_op)
 
         if loss.dtype != core.VarDesc.VarType.FP32:
-            # cast loss here will change the effective loss tensor for the computation graph
-            # and therefore will effect all following passes whose logic is based on the loss tensor(Recompute & Gradient Merge),
-            # so we it is not allowed by now. fixed it in future.
-            raise NotImplementedError(
-                "Loss's generator op is not support in FP16 in Auto Parallel by now, please put that op into your black-list. Op: {}"
-                .format(str(loss_op)))
 
             tmp_name = unique_name.generate(loss.name + ".cast_fp32")
             cast_loss = main_block.create_var(name=tmp_name, dtype=dtype)
@@ -637,7 +632,10 @@ class AMPPass(PassBase):
                               core.op_proto_and_checker_maker.OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 cast_op, ref_mesh, [-1], self.dist_context)
-            loss = loss.astype('float32')
+            # loss = loss.astype('float32')
+
+            loss_op = cast_op
+            loss = cast_loss
 
         if self.get_attr("use_dynamic_loss_scaling"
                          ) or self.get_attr("init_loss_scaling") != 1.0:
@@ -707,10 +705,9 @@ class AMPPass(PassBase):
             assert elementwise_mul_grad_op.type == "elementwise_mul_grad"
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 elementwise_mul_grad_op, ref_mesh, [-1], self.dist_context)
-
         else:
             self._scaled_loss = loss
-
+        self._loss = loss
         main_block._sync_with_cpp()
 
     def _update_loss_scaling(self, grads, found_inf):
@@ -774,3 +771,13 @@ class AMPPass(PassBase):
         self.dist_context.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
         main_block._sync_with_cpp()
+
+    def get_loss(self):
+        # NOTE the amp / fp16 might change the effective loss variable for network and
+        # therefore would affect the subsequent passes that rely on the loss.
+        # return the effective loss after amp / fp16 pass.
+
+        if self._loss:
+            return self._loss
+        else:
+            return self.get_attr("loss")
