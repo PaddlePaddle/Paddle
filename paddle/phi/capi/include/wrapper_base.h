@@ -370,11 +370,6 @@ inline int64_t Scalar::to<int64_t>() const {
   return PD_ScalarGetInt64Data(raw_data());
 }
 
-template <>
-inline phi::dtype::float16 Scalar::to<phi::dtype::float16>() const {
-  return PD_ScalarGetFloat16Data(raw_data());
-}
-
 class IntArray : WrapperBase<PD_IntArray> {
  public:
   explicit IntArray(PD_IntArray* int_array)

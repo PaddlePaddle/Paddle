@@ -103,8 +103,8 @@ void UniformRandomRawKernel(const Context& dev_ctx,
                                            diag_val);
       IndexKernel<double, UniformGenerator<double>>(dev_ctx, out, func);
     } else {
-      auto func = UniformGenerator<T>(min.to<T>(),
-                                      max.to<T>(),
+      auto func = UniformGenerator<T>(static_cast<T>(min.to<float>()),
+                                      static_cast<T>(max.to<float>()),
                                       seed,
                                       diag_num,
                                       diag_step,
