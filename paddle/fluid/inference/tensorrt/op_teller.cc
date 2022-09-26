@@ -2328,7 +2328,10 @@ struct GenericPluginTeller : public Teller {
     if (!with_dynamic_shape) {
       return false;
     }
-
+    if (op_type == "yolo_box") {
+      if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
+        return false;
+    }
     if (use_no_calib_int8) {
       return false;
     } else {

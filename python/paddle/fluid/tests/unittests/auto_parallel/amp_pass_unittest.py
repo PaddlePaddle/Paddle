@@ -97,6 +97,7 @@ class TestAMPPass(unittest.TestCase):
                                           3,
                                           batch_size=self.batch_size)
         amp_o1_losses = np.array(amp_o1_losses["loss"])
+        amp_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o1_losses)
 
         # mp2 amp-o2 training
@@ -105,6 +106,7 @@ class TestAMPPass(unittest.TestCase):
                                           3,
                                           batch_size=self.batch_size)
         amp_o2_losses = np.array(amp_o2_losses["loss"])
+        amp_o2_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o2_losses)
 
         # mp2 amp-o3 training
@@ -113,6 +115,7 @@ class TestAMPPass(unittest.TestCase):
                                           3,
                                           batch_size=self.batch_size)
         amp_o3_losses = np.array(amp_o3_losses["loss"])
+        amp_o3_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o3_losses)
 
 
