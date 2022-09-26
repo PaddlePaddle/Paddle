@@ -200,7 +200,6 @@ DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhOneDNNGradUseOutFunctor);
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                   ReluOneDNNGradFunctor,
                                                   alpha);
-DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Relu6, Relu6OneDNNGradFunctor, threshold);
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                   MishOneDNNGradFunctor,
                                                   threshold);
@@ -244,6 +243,16 @@ void HardSwishGradKernel(const Context& dev_ctx,
                          DenseTensor* dx) {
   HardSwishOneDNNGradFunctor<T> functor;
   functor(dev_ctx, x, dout, threshold, 0, dx);
+}
+
+template <typename T, typename Context>
+void Relu6GradKernel(const Context& dev_ctx,
+                     const DenseTensor& out,
+                     const DenseTensor& dout,
+                     float threshold,
+                     DenseTensor* dx) {
+  Relu6OneDNNGradFunctor<T> functor;
+  functor(dev_ctx, out, dout, threshold, 0, dx);
 }
 
 }  // namespace phi
