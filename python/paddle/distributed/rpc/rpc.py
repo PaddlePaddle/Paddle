@@ -21,7 +21,7 @@ from contextlib import closing
 import paddle
 import paddle.fluid.core as core
 import paddle.distributed as dist
-from paddle.distributed.utils import logger
+from paddle.distributed.utils.launch_utils import logger
 from paddle.distributed.rpc.internal import _serialize, PythonFunc
 from paddle.distributed.collective import (
     _new_process_group_impl,
