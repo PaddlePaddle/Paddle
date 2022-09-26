@@ -456,6 +456,9 @@ void DlnneSubgraphPass::CreateDlnneOp(
                     platform::errors::PreconditionNotMet(
                         "The subgraph should not be empty."));
 
+  std::unordered_set<Node *> io_var_nodes = GetRelatedIOVarNodes(subgraph);
+  *repetitive_params = ExtractParameters(io_var_nodes, true);
+
   // A fake block desc.
   framework::proto::BlockDesc block_proto;
   framework::BlockDesc block_desc(nullptr, &block_proto);
@@ -560,7 +563,7 @@ void DlnneSubgraphPass::CreateDlnneOp(
   // starting fix bath as one
   bool use_static_batch = Get<bool>("use_static_batch");
   auto name_shape_table =
-      fix_batch_as_one(*name_var_desc, *valid_input_names, use_static_batch);
+      fix_batch_as_one(&name_var_desc, &valid_input_names, use_static_batch);
 
   for (const auto &name_shape : name_shape_table) {
     VLOG(4) << "Fix batch shape as one var name: " << name_shape.first;
@@ -686,26 +689,26 @@ void DlnneSubgraphPass::CreateDlnneOp(
     MKDIR("./dump");
     MKDIR(subgraph_root_path.c_str());
     std::ofstream m_stream;
-    m_stream.open(subgraph_root_path + "/__model__", std::ios::out);
-
-    for (auto param_name : params) {
-      auto *var = scope->FindVar(param_name);
-      if (var != nullptr) {
-        auto *var_t = var->GetMutable<framework::LoDTensor>();
-        std::ofstream p_stream;
-        p_stream.open(
-            subgraph_root_path + "/" + replace_name(param_name, "/", "."),
-            std::ios::out);
-        platform::DeviceContextPool &pool =
-            platform::DeviceContextPool::Instance();
-        auto &dev_ctx = *pool.Get(var_t->place());
-        framework::SerializeToStream(p_stream, *var_t, dev_ctx);
-        p_stream.close();
-      }
-    }
-
+    m_stream.open(subgraph_root_path + "/model.pdmodel", std::ios::out);
     m_stream << model_str;
     m_stream.close();
+
+    std::ostringstream os;
+    phi::CPUContext ctx;
+    for (const auto &param : *repetitive_params) {
+      VLOG(3) << "Serialize param: " << param;
+      PADDLE_ENFORCE_NOT_NULL(
+          scope->FindVar(param),
+          platform::errors::NotFound(
+              "Block should already have a '%s' variable", param));
+      auto *tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+      framework::SerializeToStream(os, *tensor, ctx);
+    }
+    std::string params_str = os.str();
+    std::ofstream file((subgraph_root_path + "/model.pdiparams").c_str(),
+                       std::ios::binary);
+    file.write(params_str.c_str(), params_str.size());
+    file.close();
   }
 }
 

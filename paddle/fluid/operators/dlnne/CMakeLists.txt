@@ -39,7 +39,9 @@ op_library(
   framework_proto
   device_context
   op_registry
-  scope)
+  scope
+  onnxruntime
+  paddle2onnx)
 
 #message("PYBIND_FILE:${pybind_file}")
 #file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(dlnne_engine);\n")

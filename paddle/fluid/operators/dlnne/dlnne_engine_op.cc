@@ -86,14 +86,22 @@ void ConvertPaddle2Onnx(std::string onnx_file_name,
                         std::string subgraph_root_path) {
   if (!FileExists(onnx_file_name.c_str())) {
     std::stringstream convert_cmd;
-    convert_cmd << "paddle2onnx --model_dir " << subgraph_root_path
-                << " --save_file " << onnx_file_name << " --opset_version 11";
-    LOG(INFO) << convert_cmd.str();
-    int convert_flag = system(convert_cmd.str().c_str());
+    std::string model_file = subgraph_root_path + "/model.pdmodel";
+    std::string params_file = subgraph_root_path + "/model.pdiparams";
+    char* onnx_proto = nullptr;
+    int out_size;
+
+    bool cvtonnx_flag = paddle2onnx::Export(
+        model_file.c_str(), params_file.c_str(), &onnx_proto, &out_size);
     PADDLE_ENFORCE_EQ(
-        convert_flag,
-        0,
+        cvtonnx_flag,
+        true,
         platform::errors::Unavailable("Convert paddle to onnx failed"));
+
+    std::fstream onnx_out;
+    onnx_out.open(onnx_file_name, std::ios::out | std::ios::binary);
+    onnx_out.write(onnx_proto, out_size);
+    onnx_out.close();
   }
 }
 

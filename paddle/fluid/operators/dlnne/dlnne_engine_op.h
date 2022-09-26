@@ -35,6 +35,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/ddim.h"
