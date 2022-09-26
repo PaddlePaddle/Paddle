@@ -370,29 +370,16 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
 
-                int nranks = self.GetRank();
-                auto dtype = in_tensor.dtype();
-                auto &place = in_tensor.place();
-                auto *dev_ctx = self.GetDeviceContext(place);
-
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
-                Tensor concat_out_tensor;
-                if (out_tensor_list.size() == 0) {
-                  auto concat_out_dims = phi::vectorize(in_tensor.dims());
-                  concat_out_dims[0] *= nranks;
-                  concat_out_tensor =
-                      paddle::empty(concat_out_dims, dtype, place);
-                } else {
-                  concat_out_tensor = paddle::concat(out_tensor_list, 0);
-                }
+                Tensor concat_out_tensor = paddle::concat(out_tensor_list, 0);
                 auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
                     concat_out_tensor.impl());
                 std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
 
+                const auto *dev_ctx = self.GetDeviceContext(in_tensor.place());
                 auto task = self.AllGather(in_wrapper, out_wrapper, sync_op);
-                distributed::SplitDense2Tensor(
-                    *out_dense, out_tensor_list, dev_ctx);
+                distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
                 return task;
               },
               py::arg("in"),
@@ -569,32 +556,20 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
 
-                int nranks = self.GetRank();
-                auto dtype = in_tensor.dtype();
-                auto &place = in_tensor.place();
-                auto *dev_ctx = self.GetDeviceContext(place, true);
-
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
-                Tensor concat_out_tensor;
-                if (out_tensor_list.size() == 0) {
-                  auto concat_out_dims = phi::vectorize(in_tensor.dims());
-                  concat_out_dims[0] *= nranks;
-                  concat_out_tensor =
-                      paddle::empty(concat_out_dims, dtype, place);
-                } else {
-                  concat_out_tensor = paddle::concat(out_tensor_list, 0);
-                }
+                Tensor concat_out_tensor = paddle::concat(out_tensor_list, 0);
                 auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
                     concat_out_tensor.impl());
                 std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
 
+                const auto *dev_ctx =
+                    self.GetDeviceContext(in_tensor.place(), true);
                 auto task = self.AllGather(in_wrapper,
                                            out_wrapper,
                                            /*sync_op*/ true,
                                            /*use_calc_stream*/ true);
-                distributed::SplitDense2Tensor(
-                    *out_dense, out_tensor_list, dev_ctx);
+                distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
                 return task;
               },
               py::arg("in"),

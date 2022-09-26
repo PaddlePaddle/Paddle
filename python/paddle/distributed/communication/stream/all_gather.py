@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.distributed.collective as collective
 import paddle.fluid.framework as framework
+from paddle.distributed import collective
 
 
 def _check_tensor_shape(tensor, shape, nranks=1):
@@ -70,7 +70,6 @@ def _all_gather_in_dygraph(tensor_list, tensor, group, sync_op,
     return task
 
 
-# TODO: 文档需要更新
 def all_gather(tensor_or_tensor_list,
                tensor,
                group=None,
@@ -81,7 +80,7 @@ def all_gather(tensor_or_tensor_list,
     Gather tensors across devices to a correctly-sized tensor or a tensor list.
 
     Args:
-        tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The gather output. If it is a tensor, it should be correctly-sized. If it is a list, it
+        tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The output. If it is a tensor, it should be correctly-sized. If it is a list, it
             should be empty or contain correctly-sized tensors.
         tensor (Tensor): The input tensor on each rank. The result will overwrite this tenor after communication. Support
             float16, float32, float64, int32 or int64 as the input data type.

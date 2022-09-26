@@ -22,9 +22,9 @@ namespace paddle {
 namespace distributed {
 
 template <typename DeviceContext, typename T>
-struct SplitDense2Dense {
+struct SplitDenseTensor {
   void operator()(const DeviceContext *context,
-                  phi::DenseTensor *in,
+                  const phi::DenseTensor *in,
                   std::vector<phi::DenseTensor *> *out,
                   int axis = 0) {
     std::vector<const phi::DenseTensor *> shape_refer;
@@ -38,35 +38,35 @@ struct SplitDense2Dense {
 };
 
 template <typename DeviceContext>
-void SplitDense2DenseWithType(const DeviceContext *dev_ctx,
-                              phi::DenseTensor *p_dense,
+void SplitDenseTensorWithType(const DeviceContext *dev_ctx,
+                              const phi::DenseTensor *p_dense,
                               std::vector<phi::DenseTensor *> *p_list,
                               phi::DataType type) {
   switch (type) {
     case phi::DataType::BOOL:
-      SplitDense2Dense<DeviceContext, bool>()(dev_ctx, p_dense, p_list);
+      SplitDenseTensor<DeviceContext, bool>()(dev_ctx, p_dense, p_list);
       break;
     case phi::DataType::UINT8:
-      SplitDense2Dense<DeviceContext, uint8_t>()(dev_ctx, p_dense, p_list);
+      SplitDenseTensor<DeviceContext, uint8_t>()(dev_ctx, p_dense, p_list);
       break;
     case phi::DataType::INT8:
-      SplitDense2Dense<DeviceContext, int8_t>()(dev_ctx, p_dense, p_list);
+      SplitDenseTensor<DeviceContext, int8_t>()(dev_ctx, p_dense, p_list);
       break;
     case phi::DataType::INT32:
-      SplitDense2Dense<DeviceContext, int32_t>()(dev_ctx, p_dense, p_list);
+      SplitDenseTensor<DeviceContext, int32_t>()(dev_ctx, p_dense, p_list);
       break;
     case phi::DataType::INT64:
-      SplitDense2Dense<DeviceContext, int64_t>()(dev_ctx, p_dense, p_list);
+      SplitDenseTensor<DeviceContext, int64_t>()(dev_ctx, p_dense, p_list);
       break;
     case phi::DataType::FLOAT16:
-      SplitDense2Dense<DeviceContext, platform::float16>()(
+      SplitDenseTensor<DeviceContext, platform::float16>()(
           dev_ctx, p_dense, p_list);
       break;
     case phi::DataType::FLOAT32:
-      SplitDense2Dense<DeviceContext, float>()(dev_ctx, p_dense, p_list);
+      SplitDenseTensor<DeviceContext, float>()(dev_ctx, p_dense, p_list);
       break;
     case phi::DataType::FLOAT64:
-      SplitDense2Dense<DeviceContext, double>()(dev_ctx, p_dense, p_list);
+      SplitDenseTensor<DeviceContext, double>()(dev_ctx, p_dense, p_list);
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -76,12 +76,11 @@ void SplitDense2DenseWithType(const DeviceContext *dev_ctx,
   }
 }
 
-void SplitDense2Tensor(
-    phi::DenseTensor &tensor,                        // NOLINT
-    std::vector<experimental::Tensor> &tensor_list,  // NOLINT
-    const phi::DeviceContext *dev_ctx) {
+void SplitTensor(const phi::DeviceContext *dev_ctx,
+                 const phi::DenseTensor &tensor,
+                 const std::vector<experimental::Tensor> *tensor_list) {
   std::vector<phi::DenseTensor *> dense_list;
-  for (auto &tensor : tensor_list) {
+  for (auto &tensor : *tensor_list) {
     auto p_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()).get();
     dense_list.emplace_back(p_tensor);
@@ -89,13 +88,13 @@ void SplitDense2Tensor(
 
   const auto &place = dev_ctx->GetPlace();
   if (platform::is_gpu_place(place)) {
-    SplitDense2DenseWithType(static_cast<const phi::GPUContext *>(dev_ctx),
+    SplitDenseTensorWithType(static_cast<const phi::GPUContext *>(dev_ctx),
                              &tensor,
                              &dense_list,
                              tensor.dtype());
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    SplitDense2DenseWithType(
+    SplitDenseTensorWithType(
         static_cast<const platform::CustomDeviceContext *>(dev_ctx),
         &tensor,
         &dense_list,
@@ -106,7 +105,7 @@ void SplitDense2Tensor(
         "Please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    SplitDense2DenseWithType(static_cast<const phi::CPUContext *>(dev_ctx),
+    SplitDenseTensorWithType(static_cast<const phi::CPUContext *>(dev_ctx),
                              &tensor,
                              &dense_list,
                              tensor.dtype());
