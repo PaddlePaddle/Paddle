@@ -168,7 +168,7 @@ using ReluOneDNNGradFunctor =
 
 template <typename T>
 using Relu6OneDNNGradUseOutFunctor =
-    OneDNNActivationGradUseOutFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
+    OneDNNActivationGradUseOutFunc<T, dnnl::algorithm::eltwise_clip_v2_use_dst_for_bwd>;
 
 template <typename T>
 using SigmoidOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
@@ -252,7 +252,7 @@ void Relu6GradKernel(const Context& dev_ctx,
                      float threshold,
                      DenseTensor* dx) {
   Relu6OneDNNGradUseOutFunctor<T> functor;
-  functor(dev_ctx, out, dout, threshold, 0, dx);
+  functor(dev_ctx, out, dout, 0, threshold, dx);
 }
 
 }  // namespace phi
