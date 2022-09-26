@@ -183,9 +183,9 @@ void GeluKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void Relu6Kernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     float threshold,
-                     DenseTensor* out) {
+                 const DenseTensor& x,
+                 float threshold,
+                 DenseTensor* out) {
   Relu6OneDNNFunctor<T> functor;
   functor(dev_ctx, x, 0, threshold, out);
 }

@@ -167,8 +167,9 @@ using ReluOneDNNGradFunctor =
     OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
 
 template <typename T>
-using Relu6OneDNNGradUseOutFunctor =
-    OneDNNActivationGradUseOutFunc<T, dnnl::algorithm::eltwise_clip_v2_use_dst_for_bwd>;
+using Relu6OneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
+    T,
+    dnnl::algorithm::eltwise_clip_v2_use_dst_for_bwd>;
 
 template <typename T>
 using SigmoidOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
