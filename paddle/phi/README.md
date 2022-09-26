@@ -759,6 +759,6 @@ The basic design of `MetaTensor` see the `paddle/phi/core/meta_tensor.h`. There 
 
 
 > Note:
-> Only some content related to the design of PHI itself in this README. If you want to know more about the design compatible with phi and fluid, please refer to:
+> Only the content related to the design of PHI itself in this README. If you want to know more about the design of how phi and fluid are compatible, please refer to:
 > 1. [Paddle HIgh reusability operator library (PHI) Design Document (CN Version)](https://github.com/PaddlePaddle/docs/blob/develop/docs/design/phi/design_cn.md)
 > 2. [Paddle HIgh reusability operator library (PHI) Design Document (EN Version)](https://github.com/PaddlePaddle/docs/blob/develop/docs/design/phi/design_en.md)
