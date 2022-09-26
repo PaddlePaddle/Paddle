@@ -609,7 +609,8 @@ class AMPPass(PassBase):
         if loss.dtype != core.VarDesc.VarType.FP32:
 
             tmp_name = unique_name.generate(loss.name + ".cast_fp32")
-            cast_loss = main_block.create_var(name=tmp_name, dtype=dtype)
+            cast_loss = main_block.create_var(name=tmp_name,
+                                              dtype=core.VarDesc.VarType.FP32)
             loss_dist_attr = self.dist_context.get_tensor_dist_attr_for_program(
                 loss)
             ref_mesh = loss_op_dist_attr.process_mesh
