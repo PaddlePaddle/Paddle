@@ -41,8 +41,8 @@ TEST(DenseTensor, DataAssert) {
   } catch (platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
-    EXPECT_TRUE(ex_msg.find("phi::DenseTensor holds no memory. Call "
-                            "phi::DenseTensor::mutable_data firstly.") !=
+    EXPECT_TRUE(ex_msg.find("Tensor holds no memory. Call "
+                            "Tensor::mutable_data firstly.") !=
                 std::string::npos);
   }
   ASSERT_TRUE(caught);
@@ -185,8 +185,8 @@ TEST(DenseTensor, ShareDataWith) {
     } catch (paddle::platform::EnforceNotMet& err) {
       caught = true;
       std::string ex_msg = err.what();
-      EXPECT_TRUE(ex_msg.find("phi::DenseTensor holds no memory. Call "
-                              "phi::DenseTensor::mutable_data firstly.") !=
+      EXPECT_TRUE(ex_msg.find("Tensor holds no memory. Call "
+                              "Tensor::mutable_data firstly.") !=
                   std::string::npos);
     }
     ASSERT_TRUE(caught);
