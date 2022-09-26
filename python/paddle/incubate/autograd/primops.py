@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+import operator
+
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -92,6 +95,97 @@ def set_value(x, y, axis, starts, ends, strides, out):
     return out
 
 
+def mean(x, axis=None, keepdim=False):
+    axes = axis or tuple(range(0, len(x.shape)))
+    sum = reduce_sum(x, axis=axes, keepdim=keepdim)
+    norm = fill_const(shape=sum.shape,
+                      value=functools.reduce(operator.mul,
+                                             [x.shape[axis] for axis in axes]),
+                      dtype=sum.dtype)
+    return div(sum, norm)
+
+
+def ones(shape, dtype):
+    return fill_const(1, shape, dtype)
+
+
+def zeros(shape, dtype):
+    return fill_const(0, shape, dtype)
+
+
+def batch_norm(x,
+               axis,
+               gamma,
+               beta,
+               run_mean,
+               run_var,
+               eps=1e-5,
+               momentum=0.9,
+               use_run_stat=False,
+               reserve_space=None):
+    """batch normalizer.
+
+    Args:
+        x (Tensor): A tensor to be normalized.
+        axis (int): The features axis.
+        gamma (Tensor): The scale factor.
+        beta (float): The shift factor.
+        run_mean (Tensor): Running mean.
+        run_var (Tensor): Running variance.
+        eps (float, optional): A value added to the denominator for numerical
+            stability. Defaults to 1e-5.
+        momentum (float, optional): The value used for the running_mean and
+            running_var computation. Can be set to None for cumulative moving
+            average (i.e. simple average). Defaults to 0.9.
+        use_run_stat (bool, optional): Whether or not using runing statistics.
+            Defaults to False.
+    """
+    reduce_axes = tuple(i for i in range(len(x.shape)) if i != axis)
+    stats_shape = tuple(1 if i in reduce_axes else s
+                        for i, s in enumerate(x.shape))
+
+    batch_mean = zeros(run_mean.shape, run_mean.dtype)
+    batch_var = zeros(run_var.shape, run_var.dtype)
+
+    if not use_run_stat:
+        batch_mean = mean(x, reduce_axes, keepdim=True)
+        batch_var = mean(square(sub(x, broadcast(batch_mean, x.shape))),
+                         reduce_axes,
+                         keepdim=True)
+        x_hat = div(
+            sub(x, broadcast(batch_mean, x.shape)),
+            sqrt(
+                add(broadcast(batch_var, x.shape),
+                    fill_const(eps, x.shape, batch_var.dtype))))
+
+        momentum = fill_const(momentum, run_mean.shape, run_mean.dtype)
+        run_mean = add(
+            mul(momentum, run_mean),
+            mul(sub(ones(run_mean.shape, run_mean.dtype), momentum),
+                reshape(batch_mean, run_mean.shape)))
+        run_var = add(
+            mul(momentum, run_var),
+            mul(sub(ones(run_var.shape, run_var.dtype), momentum),
+                reshape(batch_var, run_var.shape)))
+    else:
+        x_hat = div(
+            sub(x, broadcast(reshape(run_mean, stats_shape), x.shape)),
+            sqrt(
+                add(broadcast(reshape(run_var, stats_shape), x.shape),
+                    fill_const(eps, x.shape, x.dtype))))
+    y = add(mul(broadcast(reshape(gamma, stats_shape), x_hat.shape), x_hat),
+            broadcast(reshape(beta, stats_shape), x_hat.shape))
+
+    if reserve_space:
+        return run_mean, reserve_space, batch_mean, batch_var, run_var, y
+    else:
+        return run_mean, batch_mean, batch_var, run_var, y
+
+
+def square(x):
+    return pow(x, fill_const(2., x.shape, x.dtype))
+
+
 @REGISTER_FN('add_p', 'X', 'Y', 'Z')
 def add(x, y, out=None):
     return _simple_binop(LayerHelper('add_p', **locals()))
@@ -135,6 +229,11 @@ def cos(x, out=None):
 @REGISTER_FN('exp_p', 'X', 'Y')
 def exp(x, out=None):
     return _simple_unop(LayerHelper('exp_p', **locals()))
+
+
+@REGISTER_FN('abs_p', 'X', 'Y')
+def abs(x, out=None):
+    return _simple_unop(LayerHelper('abs_p', **locals()))
 
 
 @REGISTER_FN('reshape_p', 'X', 'Y')
@@ -193,15 +292,17 @@ def concat(xs, axis=0, out=None):
     return out
 
 
-@REGISTER_FN('reduce_p', 'X', 'Y')
-def reduce(x, axis, keepdim=False, out=None):
+@REGISTER_FN('reduce_sum_p', 'X', 'Y')
+def reduce_sum(x, axis=None, keepdim=False, out=None):
+    axes = axis or tuple(range(0, len(x.shape)))
+    axes = (axes, ) if isinstance(axes, int) else axes
     if not isinstance(axis, (tuple, list)):
         raise TypeError(f'axis must be tuple or list, but got {type(axis)}')
     if not isinstance(keepdim, bool):
         raise TypeError(f'keepdim must be bool, but got {type(keepdim)}')
-    attrs = {'axis': axis, 'keepdim': keepdim}
 
-    helper = LayerHelper('reduce_p', **locals())
+    attrs = {'axis': axis, 'keepdim': keepdim}
+    helper = LayerHelper('reduce_sum_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -347,6 +448,21 @@ def eq(x, y, out=None):
     return _simple_binop(LayerHelper('eq_p', **locals()))
 
 
+@REGISTER_FN('gt_p', 'X', 'Y', 'Z')
+def gt(x, y, out=None):
+    return _simple_binop(LayerHelper('gt_p', **locals()))
+
+
+@REGISTER_FN('ge_p', 'X', 'Y', 'Z')
+def ge(x, y, out=None):
+    return _simple_binop(LayerHelper('ge_p', **locals()))
+
+
+@REGISTER_FN('ne_p', 'X', 'Y', 'Z')
+def ne(x, y, out=None):
+    return _simple_binop(LayerHelper('ne_p', **locals()))
+
+
 @REGISTER_FN('pow_p', 'X', 'Y', 'Z')
 def pow(x, y, out=None):
     return _simple_binop(LayerHelper('pow_p', **locals()))
@@ -360,3 +476,20 @@ def max(x, y, out=None):
 @REGISTER_FN('erf_p', 'X', 'Y')
 def erf(x, out=None):
     return _simple_unop(LayerHelper('erf_p', **locals()))
+
+
+@REGISTER_FN('cast_p', 'X', 'Y')
+def cast(x, dtype, out=None):
+    helper = LayerHelper('cast_p', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type=helper.layer_type,
+                     inputs={'X': x},
+                     outputs={'Y': out},
+                     attrs={'dtype': dtype})
+    return out
+
+
+@REGISTER_FN('rsqrt_p', 'X', 'Y')
+def rsqrt(x, out=None):
+    return _simple_unop(LayerHelper('rsqrt_p', **locals()))

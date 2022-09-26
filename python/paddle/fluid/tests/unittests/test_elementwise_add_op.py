@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestElementwiseAddOp(OpTest):
@@ -693,12 +694,41 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
         paddle.enable_static()
 
-    def test_dygraph_add(self):
+    def func_dygraph_add(self):
         paddle.disable_static()
         a = 1.5
-        b = paddle.full([4, 5, 6], True, dtype='bool')
+        b = paddle.full([2], True, dtype='bool')
+        # special case: scalar + tensor(bool)
         c = a + b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float64)
+        np_b = np.random.random((2, 3, 4)).astype(np.float64)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: tensor + tensor
+        expect_out = np_a + np_b
+        actual_out = tensor_a + tensor_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        # normal case: tensor + scalar
+        expect_out = np_a + 1
+        actual_out = tensor_a + 1
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        # normal case: scalar + tenor
+        expect_out = 1 + np_a
+        actual_out = 1 + tensor_a
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        paddle.enable_static()
+
+    def test_dygraph_add(self):
+        with _test_eager_guard():
+            self.func_dygraph_add()
+        self.func_dygraph_add()
 
 
 if __name__ == '__main__':

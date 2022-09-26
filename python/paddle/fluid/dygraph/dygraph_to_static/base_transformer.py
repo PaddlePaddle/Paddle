@@ -122,10 +122,10 @@ class NameNodeReplaceTransformer(BaseTransformer):
 
 class ForLoopTuplePreTransformer(BaseTransformer):
     """ pre-process of for loop.
-    >>> for A in B: 
+    >>> for A in B:
     >>>    C
 
-    will be changed into : 
+    will be changed into :
 
     >>> UUID_iterator = _jst.Indexable(B)  # make iterator-only to indexable list.
     >>> for UUID_target in UUID_iterator:
@@ -166,9 +166,9 @@ class ForLoopTuplePreTransformer(BaseTransformer):
 
     def tuple_node_to_unpack_structure(self, node):
         """ Create a sequence to represents the structure of nest.
-            For example: `a, (b,c), [d,e,f]` is represented by 
+            For example: `a, (b,c), [d,e,f]` is represented by
             `[1, [1,1], [1,1,1]]`. the `1` is just a notation.
-            
+
             Specially, `a` is represented by `1`.
         """
         ret = []
@@ -395,9 +395,9 @@ class ForNodeVisitor(object):
         """
         Process special cases for iter_node inclue:
           - Case 1 (for zip):
-            
+
             - for i, val in enumerate(zip(x, y))  # original code:
-            
+
             - __for_loop_iter_zip_0 = list(zip(x, y))
             - for i, val in enumerate(__for_loop_iter_zip_0)
         """

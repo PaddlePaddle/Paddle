@@ -27,7 +27,7 @@ from paddle.distributed.fleet import fleet
 
 
 class TestSparseLoadProgram(unittest.TestCase):
-    """ 
+    """
     Test Sparse load operator.
     """
 

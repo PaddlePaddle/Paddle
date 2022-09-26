@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/conv_base_helper.h"
 
 namespace paddle {
@@ -54,6 +55,9 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
           *out, new_out_dims);
   out_t.device(place) = in_t.slice(offsets, extents);
 }
+
+template <typename PerfT>
+struct SearchAlgorithm {};
 
 template <>
 struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {

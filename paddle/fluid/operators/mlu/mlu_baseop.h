@@ -16,6 +16,7 @@ limitations under the License. */
 #include <cn_api.h>
 #include <cnnl.h>
 #include <concurrentqueue.h>
+#include <mlu_op.h>
 
 #include <string>
 #include <vector>
@@ -138,6 +139,54 @@ inline cnnlDataType_t ToCnnlDataType() {
   return ToCnnlDataType(type);
 }
 
+inline mluOpDataType_t ToMluOpDataType(
+    const paddle::experimental::DataType& dtype) {
+  mluOpDataType_t type = MLUOP_DTYPE_FLOAT;
+  switch (dtype) {
+    case DataType::FLOAT16:
+      type = MLUOP_DTYPE_HALF;
+      break;
+    case DataType::FLOAT32:
+      type = MLUOP_DTYPE_FLOAT;
+      break;
+    case DataType::FLOAT64:
+      type = MLUOP_DTYPE_DOUBLE;
+      break;
+    case DataType::INT8:
+      type = MLUOP_DTYPE_INT8;
+      break;
+    case DataType::INT16:
+      type = MLUOP_DTYPE_INT16;
+      break;
+    case DataType::INT32:
+      type = MLUOP_DTYPE_INT32;
+      break;
+    case DataType::INT64:
+      type = MLUOP_DTYPE_INT64;
+      break;
+    case DataType::BOOL:
+      type = MLUOP_DTYPE_BOOL;
+      break;
+    case DataType::UINT8:
+      type = MLUOP_DTYPE_UINT8;
+      break;
+    default:
+      break;
+  }
+  return type;
+}
+
+inline mluOpDataType_t ToMluOpDataType(
+    const paddle::framework::proto::VarType::Type& type) {
+  return ToMluOpDataType(framework::TransToPhiDataType(type));
+}
+
+template <typename T>
+inline mluOpDataType_t ToMluOpDataType() {
+  auto type = framework::ToDataType(std::type_index(typeid(T)));
+  return ToMluOpDataType(type);
+}
+
 // Converts (via narrowing) a type T value to a type U, and checks that the
 // value has no value change due to the conversion.
 template <typename WideT, typename NarrowT>
@@ -150,6 +199,10 @@ NarrowT CheckedNarrowing(const WideT& wide) {
 
 inline static cnnlHandle_t GetHandleFromCTX(const ExecutionContext& ctx) {
   return ctx.template device_context<MLUDeviceContext>().cnnl_handle();
+}
+
+inline static mluOpHandle_t GetMLUOpHandleFromCTX(const ExecutionContext& ctx) {
+  return ctx.template device_context<MLUDeviceContext>().mluOp_handle();
 }
 
 inline static const MLUDeviceContext& GetDevCtxFromCTX(
@@ -279,6 +332,74 @@ class MLUCnnlTensorDesc {
 
  private:
   cnnlTensorDescriptor_t raw_tensor_desc = nullptr;
+};
+
+class MLUOpTensorDesc {
+ public:
+  MLUOpTensorDesc() {}
+
+  // SE_DISALLOW_COPY_AND_ASSIGN
+  MLUOpTensorDesc(const MLUOpTensorDesc& desc) = delete;
+  MLUOpTensorDesc& operator=(const MLUOpTensorDesc&) = delete;
+
+  MLUOpTensorDesc(MLUOpTensorDesc&& rhs)
+      : raw_tensor_desc(rhs.raw_tensor_desc) {
+    rhs.raw_tensor_desc = nullptr;
+  }
+
+  MLUOpTensorDesc& operator=(MLUOpTensorDesc&& rhs);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int dim_sizes[],
+                  const mluOpDataType_t tensor_dtype);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int dim_sizes[],
+                  const mluOpDataType_t tensor_dtype,
+                  const mluOpTensorLayout_t layout);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int dim_sizes[],
+                  const mluOpDataType_t tensor_dtype,
+                  int position);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int64_t dim_sizes[],
+                  const mluOpDataType_t tensor_dtype);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int64_t dim_sizes[],
+                  const mluOpDataType_t tensor_dtype,
+                  const mluOpTensorLayout_t layout);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int64_t dim_sizes[],
+                  const mluOpDataType_t tensor_dtype,
+                  int position);
+
+  MLUOpTensorDesc(const Tensor& tensor,
+                  const mluOpTensorLayout_t layout,
+                  const mluOpDataType_t tensor_dtype);
+
+  explicit MLUOpTensorDesc(const Tensor& tensor);
+
+  MLUOpTensorDesc(const Tensor& tensor,
+                  mluOpTensorLayout_t layout,
+                  const mluOpDataType_t tensor_dtype,
+                  int position);
+
+  MLUOpTensorDesc(const Tensor& tensor,
+                  mluOpTensorLayout_t layout,
+                  const mluOpDataType_t tensor_dtype,
+                  int position,
+                  float scale);
+
+  ~MLUOpTensorDesc();
+
+  const mluOpTensorDescriptor_t get() const { return raw_tensor_desc; }
+
+ private:
+  mluOpTensorDescriptor_t raw_tensor_desc = nullptr;
 };
 
 class MLUCnnlActivationDesc {

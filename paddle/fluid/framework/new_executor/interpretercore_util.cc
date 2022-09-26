@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 
 #include <algorithm>
@@ -18,6 +19,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
@@ -34,6 +36,11 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Enable serial execution for standalone executor, used for debug.");
 
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_log_memory_stats,
+    false,
+    "Log memory stats after each op runs, just used for debug.");
+
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(check_nan_inf);
 
@@ -42,10 +49,12 @@ namespace framework {
 namespace interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
-constexpr size_t kPrepareWorkQueueIdx = 2;
 
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
-    size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
+    size_t host_num_threads,
+    size_t device_num_threads,
+    size_t prepare_num_threads,
+    EventsWaiter* waiter) {
   std::vector<WorkQueueOptions> group_options;
   // for execute host Kernel
   group_options.emplace_back(/*name*/ "HostTasks",
@@ -65,7 +74,7 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
                              /*events_waiter*/ waiter);
   // for prepare deps and others
   group_options.emplace_back(/*name*/ "Prepare",
-                             /*num_threads*/ 1,
+                             /*num_threads*/ prepare_num_threads,
                              /*allow_spinning*/ true,
                              /*always_spinning*/ false,
                              /*track_task*/ false,
@@ -76,10 +85,11 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
 
 AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
                                size_t device_num_threads,
+                               size_t prepare_num_threads,
                                EventsWaiter* waiter)
     : host_num_thread_(host_num_threads) {
-  queue_group_ = CreateWorkQueueGroup(
-      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
+  queue_group_ = CreateWorkQueueGroup(ConstructWorkQueueOptions(
+      host_num_threads, device_num_threads, prepare_num_threads, waiter));
 }
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
@@ -130,6 +140,21 @@ std::unique_ptr<AtomicVectorSizeT> PrepareAtomicVarRef(
   }
   VLOG(4) << "AtomicVarRef:" << var_ref.get() << " " << var_ref->size();
   return var_ref;
+}
+
+void LogDeviceMemoryStats(const platform::Place& place) {
+  if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
+    VLOG(0) << "memory_allocated: "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB";
+    VLOG(0) << "max_memory_allocated: "
+            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
+                   "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB";
+  }
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
@@ -418,7 +443,6 @@ void build_op_func_list(const platform::Place& place,
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
       ops_unique;  // its elements will be moved to vec_func_list
-  bool flag_log_is_printed = false;
   // Step 1: create all ops for current block.
   create_all_ops(block, &ops_unique);
 
@@ -443,6 +467,7 @@ void build_op_func_list(const platform::Place& place,
   }
   auto unused_var_map = get_unused_vars(block, ops);
 
+  bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
     const std::string& op_type = op->Type();
@@ -452,7 +477,7 @@ void build_op_func_list(const platform::Place& place,
     // Print new executor log if grad op is used.
     // It's only for test and will be removed later.
     if (!flag_log_is_printed && op_type.find("_grad") != std::string::npos) {
-      VLOG(0) << "Standalone Executor is Used.";
+      LOG_FIRST_N(INFO, 1) << "Standalone Executor is Used.";
       flag_log_is_printed = true;
     }
 
@@ -626,18 +651,14 @@ void build_op_func_list(const platform::Place& place,
 
         // step 5. run kernel
         if (run_phi_kernel) {
-          VLOG(1) << "start run phi kernel. ";
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               runtime_context, dev_ctx, &phi_kernel_context);
           (*op_func_node.phi_kernel_)(&phi_kernel_context);
-          VLOG(1) << "end run phi kernel. ";
         } else {
-          VLOG(4) << "start run kernel. ";
           // the place of exec_ctx maybe has changed.
           op_func_node.kernel_func_(ExecutionContext(
               *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
-          VLOG(4) << "end run kernel. ";
         }
 
         // post-process grad_op.outputs if need cast complex grad into real
@@ -699,6 +720,7 @@ void build_op_func_list(const platform::Place& place,
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op);
     if (iter == unused_var_map.end()) {
+      interpreter::LogDeviceMemoryStats(place);
       continue;
     }
 
@@ -719,6 +741,8 @@ void build_op_func_list(const platform::Place& place,
       }
     }
     delete garbages;  // free mem
+
+    interpreter::LogDeviceMemoryStats(place);
   }
 }
 

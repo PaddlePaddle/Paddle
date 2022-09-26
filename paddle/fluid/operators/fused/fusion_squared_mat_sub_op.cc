@@ -79,7 +79,7 @@ void FusionSquaredMatSubOpMaker::Make() {
   AddAttr<float>("scalar", "The scalar on output matrix.").SetDefault(1.f);
   AddComment(R"DOC(
     Fusion Squared Matrix and substrct operator.
-    
+
     ( (X * Y).^2 - (X.^2 * Y.^2) ) .* scalar
 )DOC");
 }
