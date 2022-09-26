@@ -26,7 +26,7 @@ namespace interpreter {
 struct ExecutionConfig {
   bool used_for_jit{false};
   bool create_local_scope{true};
-  bool used_for_control_flow_op_{false};
+  bool used_for_control_flow_op{false};
 
   size_t host_num_threads;
   size_t deivce_num_threads;
