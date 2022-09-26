@@ -889,7 +889,8 @@ class Engine:
 
     def _tune(self, tune_data, tune_sample_split=None, batch_size=1):
         self.mode = 'train'
-        self._infer_sample_spec(tune_data, batch_size, tune_sample_split)
+        inputs, labels = self._split_sample_item(tune_data, tune_sample_split)
+        self._infer_sample_spec(inputs, labels, batch_size)
         self._optimization_tuning(self.mode, tune_data, batch_size)
 
     def dataloader(self,
