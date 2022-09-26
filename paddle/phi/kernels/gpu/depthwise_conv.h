@@ -827,7 +827,9 @@ __global__ void KernelDepthwiseConvInputGradSp(
 }
 
 // Cuda kernel to compute the depthwise convolution backprop w.r.t. filter.
-template <typename T, bool fuse_relu_before_conv>
+// loop_batch: to determine where to loop in 'batch' dimension. This param is
+// to make most cases have better performance
+template <typename T, bool fuse_relu_before_conv, bool loop_batch>
 __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
     const T* output_grad_data,
     const T* input_data,
@@ -850,38 +852,67 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
     T* filter_grad_data) {
   T f_grad(0);
 
-  int idx = blockIdx.x;
-  int tmp_1 = idx / filter_width;
-  int tmp_2 = tmp_1 / filter_height;
-  int kw_id = idx - tmp_1 * filter_width;
-  int kh_id = tmp_1 - tmp_2 * filter_height;
-  int oc_id = tmp_2;
+  int kw_id = blockIdx.x;
+  int kh_id = blockIdx.y;
+  int oc_id = blockIdx.z;
   int ic_id = oc_id / filter_multiplier;
+  int idx = ((blockIdx.z * gridDim.y) + blockIdx.y) * gridDim.x + blockIdx.x;
 
   const int ohw = output_height * output_width;
   const int onhw = num * ohw;
+  const int h_offset = kh_id * dilate_height - padding_height;
+  const int w_offset = kw_id * dilate_width - padding_width;
 
-  for (int id = threadIdx.x; id < onhw; id += blockDim.x) {
-    int bid = id / ohw;
-    int og_hw = id - bid * ohw;
-    int og_h = og_hw / output_width;
-    int og_w = og_hw - og_h * output_width;
+  if (loop_batch) {
+    for (int bid = 0; bid < num; ++bid) {
+      for (int id = threadIdx.x; id < ohw; id += blockDim.x) {
+        int og_h = id / output_width;
+        int og_w = id - og_h * output_width;
 
-    int i_w = og_w * stride_width + kw_id * dilate_width - padding_width;
-    int i_h = og_h * stride_height + kh_id * dilate_height - padding_height;
+        int i_h = og_h * stride_height + h_offset;
+        int i_w = og_w * stride_width + w_offset;
 
-    if (i_w >= 0 && i_w < input_width && i_h >= 0 && i_h < input_height) {
-      int input_offset =
-          ((bid * input_channels + ic_id) * input_height + i_h) * input_width +
-          i_w;
-      int output_grad_offset = (bid * output_channels + oc_id) * ohw + og_hw;
-      if (fuse_relu_before_conv) {
-        f_grad += output_grad_data[output_grad_offset] *
-                  static_cast<T>(
-                      max(0.0f, static_cast<double>(input_data[input_offset])));
-      } else {
-        f_grad +=
-            output_grad_data[output_grad_offset] * input_data[input_offset];
+        if (i_w >= 0 && i_w < input_width && i_h >= 0 && i_h < input_height) {
+          int input_offset =
+              ((bid * input_channels + ic_id) * input_height + i_h) *
+                  input_width +
+              i_w;
+          int output_grad_offset = (bid * output_channels + oc_id) * ohw + id;
+          if (fuse_relu_before_conv) {
+            f_grad += output_grad_data[output_grad_offset] *
+                      static_cast<T>(max(
+                          0.0f, static_cast<double>(input_data[input_offset])));
+          } else {
+            f_grad +=
+                output_grad_data[output_grad_offset] * input_data[input_offset];
+          }
+        }
+      }
+    }
+  } else {
+    for (int id = threadIdx.x; id < onhw; id += blockDim.x) {
+      int bid = id / ohw;
+      int og_hw = id - bid * ohw;
+      int og_h = og_hw / output_width;
+      int og_w = og_hw - og_h * output_width;
+
+      int i_h = og_h * stride_height + h_offset;
+      int i_w = og_w * stride_width + w_offset;
+
+      if (i_w >= 0 && i_w < input_width && i_h >= 0 && i_h < input_height) {
+        int input_offset =
+            ((bid * input_channels + ic_id) * input_height + i_h) *
+                input_width +
+            i_w;
+        int output_grad_offset = (bid * output_channels + oc_id) * ohw + og_hw;
+        if (fuse_relu_before_conv) {
+          f_grad += output_grad_data[output_grad_offset] *
+                    static_cast<T>(max(
+                        0.0f, static_cast<double>(input_data[input_offset])));
+        } else {
+          f_grad +=
+              output_grad_data[output_grad_offset] * input_data[input_offset];
+        }
       }
     }
   }
@@ -1063,7 +1094,7 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
   }
   if (c_filter_multiplier == 0 || c_filter == -1) {
     if (data_layout != DataLayout::kNHWC) {
-      KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv>(
+      KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv, false>(
           output_grad_data,
           input_data,
           num,
@@ -1107,7 +1138,7 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
     }
   } else {
     if (data_layout != DataLayout::kNHWC) {
-      KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv>(
+      KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv, true>(
           output_grad_data,
           input_data,
           num,
@@ -1546,8 +1577,8 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
     dim3 threads;
     dim3 grid;
     if (data_layout != DataLayout::kNHWC) {
-      grid = dim3(output_channels * ksize_height * ksize_width);
-      threads = dim3(min(256, batch_size * WARP_SIZE));
+      threads = dim3(std::min(block_size, output_height * output_width));
+      grid = dim3(ksize_width, ksize_height, output_channels);
     } else {
       blocks = std::min(
           std::max(block_size / output_channels, 1),
@@ -1565,6 +1596,11 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
           stride_height == stride_width && stride_height == c_stride &&        \
           (ksize_height == ksize_width && ksize_height == c_filter ||          \
            c_filter == -1)) {                                                  \
+    if (c_filter == -1) {                                                      \
+      threads = dim3(                                                          \
+          std::min(block_size, batch_size * output_height * output_width));    \
+      threads.y = threads.z = 1;                                               \
+    }                                                                          \
     if (data_layout != DataLayout::kNHWC) {                                    \
       KernelDepthwiseConvFilterGradSp<T,                                       \
                                       c_filter_multiplier,                     \
