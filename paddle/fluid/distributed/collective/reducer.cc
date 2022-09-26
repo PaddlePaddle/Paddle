@@ -1,4 +1,3 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -253,6 +252,10 @@ static void ConcatTensorsWithType(
     case phi::DataType::FLOAT64:
       ConcatTensorsForAllReduce<DeviceContext, double>()(
           context, dense_tensors_, p_dense_contents);
+      break;
+    case phi::DataType::BFLOAT16:
+      ConcatTensorsForAllReduce<DeviceContext, platform::bfloat16>()(
+	        context, dense_tensors_, p_dense_contents);
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
