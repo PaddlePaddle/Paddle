@@ -61,7 +61,6 @@ def add(a, b):
 def run_rpc_sync(
     rank,
     world_size,
-    server_endpoint,
     master_endpoint,
     queue,
     fn,
@@ -72,7 +71,6 @@ def run_rpc_sync(
         worker_name(rank),
         rank,
         world_size,
-        server_endpoint,
         master_endpoint,
     )
     res = dist.rpc.rpc_sync("worker0", fn, args=args, kwargs=kwargs)
@@ -83,7 +81,6 @@ def run_rpc_sync(
 def run_rpc_async(
     rank,
     world_size,
-    server_endpoint,
     master_endpoint,
     queue,
     fn,
@@ -94,7 +91,6 @@ def run_rpc_async(
         worker_name(rank),
         rank,
         world_size,
-        server_endpoint,
         master_endpoint,
     )
     res = dist.rpc.rpc_async("worker0", fn, args=args, kwargs=kwargs)
@@ -125,7 +121,6 @@ class RpcTestBase(unittest.TestCase):
                         args=(
                             rank,
                             world_size,
-                            server_endpoint(),
                             MASTER_ENDPOINT,
                             q,
                             fn,
@@ -140,7 +135,6 @@ class RpcTestBase(unittest.TestCase):
                         args=(
                             rank,
                             world_size,
-                            server_endpoint(),
                             MASTER_ENDPOINT,
                             q,
                             fn,

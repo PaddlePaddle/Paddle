@@ -30,6 +30,7 @@ class ControleMode:
     COLLECTIVE = "collective"
     PS = "ps"
     IPU = "ipu"
+    RPC = "rpc"
 
 
 class ControllerBase(object):

@@ -256,11 +256,6 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
                                default=False,
                                help="update np force")
 
-    rpc_group = parser.add_argument_group("Rpc Parameters")
-    rpc_group.add_argument("--servers",
-                           type=str,
-                           default="",
-                           help="User defined servers ip:port")
     known_args, _ = parser.parse_known_args()
     return known_args
 
@@ -452,111 +447,6 @@ def launch_ps(args, distribute_mode):
     return
 
 
-def start_local_rpc(args):
-    training_script = args.training_script
-    training_script_args = args.training_script_args
-    servers = args.servers
-    log_dir = args.log_dir
-    nproc_per_node = args.nproc_per_node
-    rank = args.rank
-    assert rank >= 0, "rank {} < 0".format(rank)
-    if nproc_per_node is None or nproc_per_node < 0:
-        nproc_per_node = 1
-    # assert nproc_per_node > 0, "nproc_per_node {} <= 0".format(nproc_per_node)
-    global_envs = {}
-    global_envs["PADDLE_MASTER_ENDPOINT"] = args.master
-    global_envs["PADDLE_WORLD_SIZE"] = int(args.nnodes) * nproc_per_node
-    current_env = copy.copy(os.environ.copy())
-    current_env.update(global_envs)
-    # paddle broadcast ncclUniqueId use socket, and
-    # proxy maybe make trainers unreachable, so delete them.
-    # if we set them to "", grpc will log error message "bad uri"
-    # so just delete them.
-    current_env.pop("http_proxy", None)
-    current_env.pop("https_proxy", None)
-
-    if servers != None:
-        all_servers = servers.strip().split(",")
-    else:
-        _, ip = get_host_name_ip()
-        ports = find_free_ports(nproc_per_node)
-        all_servers = []
-        for p in ports:
-            all_servers.append("{}:{}".format(ip, p))
-    assert len(
-        all_servers
-    ) == nproc_per_node, "len(servers) {} != nproc_per_node {}".format(
-        len(all_servers), nproc_per_node)
-    procs = []
-    for idx, server in enumerate(all_servers):
-        proc_env = {
-            "PADDLE_RANK": "%d" % (idx + nproc_per_node * rank),
-            "PADDLE_SERVER_ENDPOINT": "%s" % server
-        }
-        current_env.update(proc_env)
-        cmd = [sys.executable, "-u"] + [training_script] + training_script_args
-
-        logger.debug("start rpc proc{}  env:{}".format(cmd, current_env))
-
-        if idx == 0:
-            logger.info(
-                "Local start {} rpc processes. First process distributed "
-                "environment info (Only For Debug): {}".format(
-                    nproc_per_node,
-                    pretty_print_envs(proc_env, ("Distributed Envs", "Value"))))
-            logger.info(
-                "details about PADDLE_TRAINER_ENDPOINTS can be found in "
-                "{}/endpoints.log, and detail running logs maybe found in "
-                "{}/workerlog.0".format(log_dir, log_dir))
-        fn = None
-        pre_fn = None if os.name == 'nt' else os.setsid
-        if log_dir is not None:
-            os.system("mkdir -p {}".format(log_dir))
-            if idx == 0:
-                if os.path.exists("%s/endpoints.log" % log_dir):
-                    os.system("rm -f {}/endpoints.log".format(log_dir))
-                with open("%s/endpoints.log" % log_dir, "w") as f:
-                    f.write("PADDLE_TRAINER_ENDPOINTS: \n")
-                    f.write("\n".join(all_servers))
-            fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
-            proc = subprocess.Popen(cmd,
-                                    env=current_env,
-                                    stdout=fn,
-                                    stderr=fn,
-                                    preexec_fn=pre_fn)
-        else:
-            proc = subprocess.Popen(cmd, env=current_env, preexec_fn=pre_fn)
-
-        tp = TrainerProc()
-        tp.proc = proc
-        tp.rank = idx + nproc_per_node * rank
-        tp.local_rank = idx
-        tp.log_fn = fn
-        tp.log_offset = fn.tell() if fn else None
-        tp.cmd = cmd
-
-        procs.append(tp)
-
-    return procs
-
-
-def launch_rpc(args):
-    procs = start_local_rpc(args)
-    for idx, proc in enumerate(procs):
-        print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
-    while True:
-        try:
-            alive = watch_local_trainers(procs, args.nproc_per_node)
-            if not alive:
-                logger.info("Local processes completed.")
-                break
-            time.sleep(3)
-        except:
-            logger.warning("Terminating... exit")
-            terminate_local_procs(procs)
-            exit(1)
-
-
 def infer_backend(args):
     if args.backend != "auto": return
     if fluid.core.is_compiled_with_cuda():
@@ -574,7 +464,7 @@ def infer_backend(args):
 def which_distributed_mode(args):
     infer_backend(args)  # modify the args.backend
     if args.run_mode is not None:
-        assert args.run_mode in ["collective", "ps", "ps-heter", "rpc"]
+        assert args.run_mode in ["collective", "ps", "ps-heter"]
 
     if args.run_mode == "collective":
         return DistributeMode.COLLECTIVE
@@ -582,8 +472,6 @@ def which_distributed_mode(args):
         return DistributeMode.PS
     elif args.run_mode == "ps-heter":
         return DistributeMode.PS_HETER
-    elif args.run_mode == "rpc":
-        return DistributeMode.RPC
 
     ps_args = [
         '--worker_num', '--server_num', '--heter_worker_num', '--servers',
@@ -853,8 +741,6 @@ def launch():
 
     if distribute_mode == DistributeMode.COLLECTIVE:
         launch_collective(args)
-    elif distribute_mode == DistributeMode.RPC:
-        launch_rpc(args)
     else:
         launch_ps(args, distribute_mode)
 

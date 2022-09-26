@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import os
+import socket
 from collections import namedtuple
 import pickle
+from contextlib import closing
 
 import paddle
 import paddle.fluid.core as core
 import paddle.distributed as dist
+from paddle.distributed.utils import logger
 from paddle.distributed.rpc.internal import _serialize, PythonFunc
 from paddle.distributed.collective import (
     _new_process_group_impl,
@@ -62,11 +65,26 @@ def _exchange_all_service_infos():
     return all_infos
 
 
-def init_rpc(name,
-             rank=None,
-             world_size=None,
-             server_endpoint=None,
-             master_endpoint=None):
+def _free_port():
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
+
+
+def _get_host_ip():
+    try:
+        hostname = socket.gethostname()
+        ip = socket.gethostbyname(socket.getfqdn(hostname))
+        return ip
+    except:
+        return '127.0.0.1'
+
+
+def _gen_endpoint():
+    return "{}:{}".format(_get_host_ip(), _free_port())
+
+
+def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     """
     init rpc.
 
@@ -74,7 +92,6 @@ def init_rpc(name,
         name (str): worker name.
         rank (int): worker id.
         world_size (int): number of workers.
-        server_endpoint (str): ip address of server(ip:port).
         master_endpoint (str): id address of master, other nodes communicate with the master to
             get the information of all service nodes.
 
@@ -83,7 +100,6 @@ def init_rpc(name,
             import paddle.distributed.rpc as rpc
 
             rpc.init_rpc("worker0", rank=0, world_size=2,
-                        server_endpoint="127.0.0.1:8002",
                         master_endpoint="127.0.0.1:8001")
             rpc.shutdown()
     """
@@ -98,8 +114,10 @@ def init_rpc(name,
         os.environ["PADDLE_TRAINERS_NUM"] = str(world_size)
     else:
         world_size = int(os.environ["PADDLE_TRAINERS_NUM"])
-    server_endpoint = (server_endpoint if server_endpoint != None else
-                       os.environ["PADDLE_SERVER_ENDPOINT"])
+    server_endpoint = os.getenv("PADDLE_SERVER_ENDPOINT", None)
+    if server_endpoint is None:
+        server_endpoint = _gen_endpoint()
+    logger.info("Trainer {}: server endpoint: {}".format(rank, server_endpoint))
     master_endpoint = (master_endpoint if master_endpoint != None else
                        os.environ["PADDLE_MASTER_ENDPOINT"])
     master_addr, master_port = master_endpoint.split(":")
@@ -141,6 +159,7 @@ def init_rpc(name,
     core.rpc_start_server()
     paddle.distributed.barrier(group=group)
     core.rpc_start_client()
+    logger.info("Trainer {}: Init RPC done!".format(dist.get_rank()))
 
 
 def rpc_sync(name, fn, timeout_ms=_DEFAULT_TIMEOUT_MS, args=None, kwargs=None):
@@ -169,7 +188,6 @@ def rpc_sync(name, fn, timeout_ms=_DEFAULT_TIMEOUT_MS, args=None, kwargs=None):
                     return a + b
 
                 rpc.init_rpc("worker0", rank=0, world_size=2,
-                        server_endpoint="127.0.0.1:8002",
                         master_endpoint="127.0.0.1:8001")
                 ret = rpc.rpc_sync("worker1", add, args=(2, 3))
                 rpc.shutdown()
@@ -179,7 +197,6 @@ def rpc_sync(name, fn, timeout_ms=_DEFAULT_TIMEOUT_MS, args=None, kwargs=None):
                 # On server 1:
                 import paddle.distributed.rpc as rpc
                 rpc.init_rpc("worker1", rank=1, world_size=2,
-                        server_endpoint="127.0.0.1:8003",
                         master_endpoint="127.0.0.1:8001")
                 rpc.shutdown()
     """
@@ -215,7 +232,6 @@ def rpc_async(name, fn, timeout_ms=_DEFAULT_TIMEOUT_MS, args=None, kwargs=None):
                     return a + b
 
                 rpc.init_rpc("worker0", rank=0, world_size=2,
-                        server_endpoint="127.0.0.1:8002",
                         master_endpoint="127.0.0.1:8001")
                 fut = rpc.rpc_async("worker1", add, args=(2, 3))
                 print(fut.wait())
@@ -226,7 +242,6 @@ def rpc_async(name, fn, timeout_ms=_DEFAULT_TIMEOUT_MS, args=None, kwargs=None):
                 # On server 1:
                 import paddle.distributed.rpc as rpc
                 rpc.init_rpc("worker1", rank=1, world_size=2,
-                        server_endpoint="127.0.0.1:8003",
                         master_endpoint="127.0.0.1:8001")
                 rpc.shutdown()
     """
@@ -252,13 +267,13 @@ def shutdown():
             import paddle.distributed.rpc as rpc
 
             rpc.init_rpc("worker0", rank=0, world_size=1,
-                        server_endpoint="127.0.0.1:8002",
                         master_endpoint="127.0.0.1:8001")
             rpc.shutdown()
     """
     paddle.distributed.barrier(group=_default_group)
     core.rpc_stop_server()
     core.rpc_clear_python_rpc_handler()
+    logger.info("Trainer {}: rpc shutdown!".format(dist.get_rank()))
 
 
 def get_service_info(name):

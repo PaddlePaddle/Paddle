@@ -20,11 +20,11 @@ option cc_generic_services = true;
 option cc_enable_arenas = true;
 
 message RpcRequest {
-      required string message = 1;
+      required bytes message = 1;
 };
 
 message RpcResponse {
-      required string message = 1;
+      required bytes message = 1;
 };
 
 service RpcBaseService {
