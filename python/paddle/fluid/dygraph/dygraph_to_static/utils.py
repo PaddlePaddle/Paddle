@@ -93,6 +93,9 @@ FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
 FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
 FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
 
+RE_PYNAME = '[a-zA-Z0-9_]+'
+RE_PYMODULE = '[a-zA-Z0-9_]+\.'
+
 # FullArgSpec is valid from Python3. Defined a Namedtuple to
 # to make it available in Python2.
 FullArgSpec = collections.namedtuple('FullArgSpec', [
@@ -321,8 +324,8 @@ def is_numpy_api(node):
             func_str, "numpy"))
         # BUG: np.random.uniform doesn't have module and cannot be analyzed
         # TODO: find a better way
-        if not module_result:
-            return func_str.startswith("numpy.") or func_str.startswith("np.")
+        return module_result or (func_str.startswith("numpy.")
+                                 or func_str.startswith("np."))
     except Exception:
         return False
 

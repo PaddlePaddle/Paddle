@@ -181,9 +181,9 @@ def _fallback_legacy_dygraph():
     global _in_eager_mode_
     global _is_first_import_
     need_fallback = False
-    # Only enable eager on CPU/GPU
-    is_not_support = core.is_compiled_with_xpu() or core.is_compiled_with_npu(
-    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu()
+    # Only enable eager on CPU/GPU/XPU
+    is_not_support = core.is_compiled_with_npu() or core.is_compiled_with_ipu(
+    ) or core.is_compiled_with_mlu()
 
     if _in_eager_mode_ and is_not_support:
         # switch into legacy dygraph mode
@@ -245,8 +245,8 @@ def _non_static_mode():
 
 @signature_safe_contextmanager
 def _test_eager_guard(place=None):
-    # FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
-    # only GPU/CPU. Remove this after we improve this feature.
+    # FIXME(dev): We haven't fully verified eager mode on NPU et.al but
+    # only GPU/CPU/XPU. Remove this after we improve this feature.
     already_fallback = _fallback_legacy_dygraph()
     if not already_fallback:
         _disable_legacy_dygraph()
@@ -5873,9 +5873,7 @@ class Program(object):
 
         # Note: The op_role and op_role_var cann't be deleted currently,
         # and we will try to remove them in the future.
-        common_clipped_attrs_list = [
-            'op_namescope', 'op_callstack', 'op_device', 'with_quant_attr'
-        ]
+        common_clipped_attrs_list = ['op_callstack', 'with_quant_attr']
 
         for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
@@ -5904,8 +5902,9 @@ class Program(object):
                         break
                     if not find:
                         remove_input_list.append(name)
-                for name in remove_input_list:
-                    op.remove_input(name)
+                # The extra input of op will be removed in the future
+                # for name in remove_input_list:
+                #     op.remove_input(name)
 
                 remove_output_list = []
                 for name in op.output_names():
@@ -5919,10 +5918,10 @@ class Program(object):
                         break
                     if not find:
                         remove_output_list.append(name)
-                for name in remove_output_list:
-                    op.remove_output(name)
+                # The extra output of op will be removed in the future
+                # for name in remove_output_list:
+                #     op.remove_output(name)
 
-                remove_attr_list = []
                 op_quant_name = core.op_proto_and_checker_maker.kOpWithQuantAttrName(
                 )
                 quant = bool(op.attr(op_quant_name)
@@ -5932,6 +5931,7 @@ class Program(object):
                     "activation_bits", "bit_length", "quantize_weight_bits",
                     "weight_quant_scale"
                 ]
+                remove_attr_list = []
                 for name in op.attr_names():
                     if quant:
                         if name in quant_attrs:
@@ -5946,8 +5946,6 @@ class Program(object):
                     for attr_proto in proto.attrs:
                         if attr_proto.name != name:
                             continue
-                        if attr_proto.extra:
-                            remove_attr_list.append(name)
                         find = True
                         break
                     if not find:
