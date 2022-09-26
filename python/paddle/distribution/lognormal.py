@@ -43,8 +43,8 @@ class LogNormal(TransformedDistribution):
     * :math:`scale = \sigma`: is the stddevs of the underlying Normal distribution.
 
     Args:
-        loc(int|float|list|tuple|numpy.ndarray|Tensor): The mean of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
-        scale(int|float|list|tuple|numpy.ndarray|Tensor): The std of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
+        loc(int|float|list|tuple|numpy.ndarray|Tensor): The means of normal distribution.
+        scale(int|float|list|tuple|numpy.ndarray|Tensor): The stddevs of normal distribution.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -122,7 +122,7 @@ class LogNormal(TransformedDistribution):
         * :math:`scale = \sigma`: is the stddevs of the underlying Normal distribution.
 
         Returns:
-          Tensor: Shannon entropy of lognormal distribution.The data type is float32.
+          Tensor: Shannon entropy of lognormal distribution.
 
         """
         return self._base.entropy() + self._base.mean
@@ -134,7 +134,7 @@ class LogNormal(TransformedDistribution):
           value (Tensor): The input tensor.
 
         Returns:
-          Tensor: probability.The data type is same with value.
+          Tensor: probability.The data type is same with :attr:`value` .
 
         """
         return paddle.exp(self.log_prob(value))
@@ -158,10 +158,10 @@ class LogNormal(TransformedDistribution):
 
         In the above equation:
 
-        * :math:`loc = \mu_0`: is the mean of current underlying Normal distribution.
-        * :math:`scale = \sigma_0`: is the std of current underlying Normal distribution.
-        * :math:`loc = \mu_1`: is the mean of other underlying Normal distribution.
-        * :math:`scale = \sigma_1`: is the std of other underlying Normal distribution.
+        * :math:`loc = \mu_0`: is the means of current underlying Normal distribution.
+        * :math:`scale = \sigma_0`: is the stddevs of current underlying Normal distribution.
+        * :math:`loc = \mu_1`: is the means of other underlying Normal distribution.
+        * :math:`scale = \sigma_1`: is the stddevs of other underlying Normal distribution.
         * :math:`ratio`: is the ratio of scales.
         * :math:`diff`: is the difference between means.
 
@@ -169,7 +169,7 @@ class LogNormal(TransformedDistribution):
             other (LogNormal): instance of LogNormal.
 
         Returns:
-            Tensor: kl-divergence between two lognormal distributions.The data type is float32.
+            Tensor: kl-divergence between two lognormal distributions.
 
         """
         return self._base.kl_divergence(other._base)

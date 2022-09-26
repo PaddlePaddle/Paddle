@@ -243,7 +243,7 @@ class Normal(distribution.Distribution):
           value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability.The data type is same with value.
+          Tensor: log probability.The data type is same with :attr:`value` .
 
         """
         name = self.name + '_log_prob'
@@ -263,7 +263,7 @@ class Normal(distribution.Distribution):
             value (Tensor): The input tensor.
 
         Returns:
-            Tensor, probability. The data type is same with value.
+            Tensor, probability. The data type is same with :attr:`value` .
 
         """
         name = self.name + '_probs'
