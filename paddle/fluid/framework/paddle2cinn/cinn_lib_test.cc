@@ -52,7 +52,7 @@ Program CreateAddProgram() {
   return program;
 }
 
-void SetRandData(hlir::Tensor tensor, Target target) {
+void SetRandData(hlir::framework::Tensor tensor, Target target) {
   auto* data = tensor->mutable_data<float>(target);
   std::random_device seed;
   std::default_random_engine engine(seed());
@@ -96,8 +96,8 @@ TEST(net_build, program_execute_multi_elementwise_add) {
   hlir::framework::GraphCompiler gc(target, scope, graph);
   auto runtime_program = gc.Build();
 
-  scope->Var<hlir::Tensor>("A");
-  scope->Var<hlir::Tensor>("B");
+  scope->Var<hlir::framework::Tensor>("A");
+  scope->Var<hlir::framework::Tensor>("B");
 
   auto A = scope->GetTensor("A");
   auto B = scope->GetTensor("B");
@@ -133,10 +133,10 @@ TEST(net_build, program_execute_fc) {
   hlir::framework::GraphCompiler gc(target, scope, graph);
   auto runtime_program = gc.Build();
 
-  scope->Var<hlir::Tensor>(std::string(a.id()));
-  scope->Var<hlir::Tensor>(std::string(w.id()));
-  scope->Var<hlir::Tensor>(std::string(b.id()));
-  scope->Var<hlir::Tensor>(std::string(mul_out->id));
+  scope->Var<hlir::framework::Tensor>(std::string(a.id()));
+  scope->Var<hlir::framework::Tensor>(std::string(w.id()));
+  scope->Var<hlir::framework::Tensor>(std::string(b.id()));
+  scope->Var<hlir::framework::Tensor>(std::string(mul_out->id));
 
   auto a_ten = scope->GetTensor(std::string(a.id()));
   auto w_ten = scope->GetTensor(std::string(w.id()));
