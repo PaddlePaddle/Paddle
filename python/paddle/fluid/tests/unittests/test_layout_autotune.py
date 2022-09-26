@@ -46,6 +46,13 @@ class SimpleNet(paddle.nn.Layer):
 
 class LayoutAutoTune(unittest.TestCase):
 
+    def test_config(self):
+        paddle.fluid.core.enable_layout_autotune()
+        if self.use_autoune():
+            self.assertEqual(paddle.fluid.core.use_layout_autotune(), True)
+            paddle.fluid.core.disable_layout_autotune()
+        self.assertEqual(paddle.fluid.core.use_layout_autotune(), False)
+
     def setUp(self):
         self.use_autoune()
 

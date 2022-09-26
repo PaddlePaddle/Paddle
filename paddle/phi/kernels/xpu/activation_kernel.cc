@@ -82,18 +82,43 @@ int xpu_activation_func(
 }
 
 template <typename Context, typename T, typename XPUType>
-int xpu_activation_1attr_func(
+int xpu_activation_func_with_max_x_y(
     const Context& dev_ctx,
     const DenseTensor& x,
     DenseTensor* out,
-    float attr,
-    std::function<int(xpu::Context*, const XPUType*, XPUType*, int, float)>
+    std::function<
+        int(xpu::Context*, const XPUType*, XPUType*, int, const float*, float*)>
         func) {
+  // does not support "const float* max_x, float* max_y" now
   int r = func(dev_ctx.x_context(),
                reinterpret_cast<const XPUType*>(x.data<T>()),
                reinterpret_cast<XPUType*>(out->data<T>()),
                x.numel(),
-               attr);
+               nullptr,
+               nullptr);
+  return r;
+}
+
+template <typename Context, typename T, typename XPUType>
+int xpu_activation_1attr_func(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              DenseTensor* out,
+                              float attr,
+                              std::function<int(xpu::Context*,
+                                                const XPUType*,
+                                                XPUType*,
+                                                int,
+                                                float,
+                                                const float*,
+                                                float*)> func) {
+  // does not support "const float* max_x, float* max_y" now
+  int r = func(dev_ctx.x_context(),
+               reinterpret_cast<const XPUType*>(x.data<T>()),
+               reinterpret_cast<XPUType*>(out->data<T>()),
+               x.numel(),
+               attr,
+               nullptr,
+               nullptr);
   return r;
 }
 
@@ -213,7 +238,7 @@ struct XPUHardSwishFunctor : public funcs::BaseActivationFunctor<T> {
         offset,
         3.0f,
         errors::External("Not support offset [%f] in XPU", offset));
-    int r = xpu_activation_func<Context, T, XPUType>(
+    int r = xpu_activation_func_with_max_x_y<Context, T, XPUType>(
         dev_ctx, x, out, xpu::hard_swish<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_swish");
   }
@@ -259,7 +284,7 @@ struct XPURelu6Functor : public funcs::BaseActivationFunctor<T> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) const {
-    int r = xpu_activation_func<Context, T, XPUType>(
+    int r = xpu_activation_func_with_max_x_y<Context, T, XPUType>(
         dev_ctx, x, out, xpu::relu6<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu6");
   }
@@ -272,7 +297,7 @@ struct XPUSigmoidFunctor : public funcs::BaseActivationFunctor<T> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) const {
-    int r = xpu_activation_func<Context, T, XPUType>(
+    int r = xpu_activation_func_with_max_x_y<Context, T, XPUType>(
         dev_ctx, x, out, xpu::sigmoid<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid");
   }
@@ -363,7 +388,7 @@ struct XPUTanhFunctor : public funcs::BaseActivationFunctor<T> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) const {
-    int r = xpu_activation_func<Context, T, XPUType>(
+    int r = xpu_activation_func_with_max_x_y<Context, T, XPUType>(
         dev_ctx, x, out, xpu::tanh<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "tanh");
   }

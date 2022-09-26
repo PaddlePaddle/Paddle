@@ -107,12 +107,12 @@ def fc(x,
             The default value is None, and the weight will be initialized to zero.
             For detailed information, please refer to :attr:`paddle.ParamAttr`.
             Warning, if x is a list of tensor, weight_attr should also be a list of same length.
-        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias. 
+        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias.
             If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
             to :attr:`paddle.ParamAttr`. The default value is None and the bias will be
-            initialized to zero. 
+            initialized to zero.
         activation (str, optional): Activation to be applied to the output of
             this layer, such as tanh, softmax, sigmoid, relu. For more information,
             please refer to :ref:`api_guide_activations_en` . Default: None.
@@ -121,9 +121,6 @@ def fc(x,
 
     Returns:
         Tensor, its shape is :math:`[batch\_size, *, size]` , and the data type is same with input.
-
-    Raises:
-        ValueError: If dimensions of the input tensor is less than 2.
 
     Examples:
         .. code-block:: python
@@ -275,9 +272,7 @@ def deform_conv2d(x,
     Returns:
         Tensor: The tensor storing the deformable convolution \
                   result. A Tensor with type float32, float64.
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
+
     Examples:
         .. code-block:: python
 

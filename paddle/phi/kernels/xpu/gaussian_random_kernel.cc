@@ -42,7 +42,7 @@ void GaussianRandomKernel(const Context& ctx,
   for (int64_t i = 0; i < size; ++i) {
     data_cpu[i] = dist(*engine);
   }
-  paddle::memory::Copy(phi::XPUPlace(),
+  paddle::memory::Copy(ctx.GetPlace(),
                        data,
                        phi::CPUPlace(),
                        reinterpret_cast<void*>(data_cpu.get()),

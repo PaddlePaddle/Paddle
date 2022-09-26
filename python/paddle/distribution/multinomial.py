@@ -24,14 +24,14 @@ except:
 
 class Multinomial(distribution.Distribution):
     r"""
-    Multinomial distribution parameterized by :attr:`total_count` and 
+    Multinomial distribution parameterized by :attr:`total_count` and
     :attr:`probs`.
 
-    In probability theory, the multinomial distribution is a generalization of 
+    In probability theory, the multinomial distribution is a generalization of
     the binomial distribution, it models the probability of counts for each side
-    of a k-sided die rolled n times. When k is 2 and n is 1, the multinomial is 
-    the bernoulli distribution, when k is 2 and n is grater than 1, it is the 
-    binomial distribution, when k is grater than 2 and n is 1, it is the 
+    of a k-sided die rolled n times. When k is 2 and n is 1, the multinomial is
+    the bernoulli distribution, when k is 2 and n is grater than 1, it is the
+    binomial distribution, when k is grater than 2 and n is 1, it is the
     categorical distribution.
 
     The probability mass function (PMF) for multinomial is
@@ -40,18 +40,18 @@ class Multinomial(distribution.Distribution):
 
         f(x_1, ..., x_k; n, p_1,...,p_k) = \frac{n!}{x_1!...x_k!}p_1^{x_1}...p_k^{x_k}
 
-    where, :math:`n` is number of trials, k is the number of categories, 
-    :math:`p_i` denote probability of a trial falling into each category, 
-    :math:`{\textstyle \sum_{i=1}^{k}p_i=1}, p_i \ge 0`, and :math:`x_i` denote 
-    count of each category. 
+    where, :math:`n` is number of trials, k is the number of categories,
+    :math:`p_i` denote probability of a trial falling into each category,
+    :math:`{\textstyle \sum_{i=1}^{k}p_i=1}, p_i \ge 0`, and :math:`x_i` denote
+    count of each category.
 
     Args:
         total_count (int): Number of trials.
-        probs (Tensor): Probability of a trial falling into each category. Last 
+        probs (Tensor): Probability of a trial falling into each category. Last
             axis of probs indexes over categories, other axes index over batches.
-            Probs value should between [0, 1], and sum to 1 along last axis. If 
-            the value over 1, it will be normalized to sum to 1 along the last 
-            axis. 
+            Probs value should between [0, 1], and sum to 1 along last axis. If
+            the value over 1, it will be normalized to sum to 1 along the last
+            axis.
 
     Examples:
 

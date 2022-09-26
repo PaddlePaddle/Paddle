@@ -213,8 +213,8 @@ class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(new OpDesc());
     try {
-      this->Apply(retv.front().get());
       retv.front()->SetRuntimeAttrMap(this->RuntimeAttrs());
+      this->Apply(retv.front().get());
     } catch (platform::EnforceNotMet& exception) {
       framework::AppendErrorOpHint(retv.front().get()->Type(), &exception);
       throw std::move(exception);

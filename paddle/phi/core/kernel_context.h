@@ -144,6 +144,13 @@ class KernelContext {
   size_t OutputsSize() const { return outputs_.size(); }
   size_t AttrsSize() const { return attrs_.size(); }
 
+  void ClearInputOutput() {
+    inputs_.clear();
+    input_range_.clear();
+    outputs_.clear();
+    output_range_.clear();
+  }
+
  private:
   DeviceContext* dev_ctx_;
 

@@ -39,7 +39,7 @@ class TaskNode:
         :param role (int): The role of the task node. (Will be removed in the future)
         :param node_type (str): The type of the task node.
         :param task_id (int): The id of task node.
-        :param ops (list): A list of op.desc to init the task node. (Will be removed in the future) 
+        :param ops (list): A list of op.desc to init the task node. (Will be removed in the future)
         :param program (Program): An instance of Program to init the task node.
         :param lazy_initialize (bool): In user-defined task, the program may change adding feed/fetch op. As efficient consideration, the task node will have the C++ object later.
         """

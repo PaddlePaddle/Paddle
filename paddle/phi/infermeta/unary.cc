@@ -2035,8 +2035,8 @@ void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
                         "whose shape must be [N, 4] "
                         "N is the number of boxes "
                         "in last dimension in format [x1, x2, y1, y2]. "));
-  auto num_boxes = boxes_dim[0];
-  out->set_dims(phi::make_ddim({num_boxes}));
+  out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(DataType::INT64);
 }
 
 void NormInferMeta(const MetaTensor& x,
@@ -3205,10 +3205,14 @@ void SplitInferMeta(const MetaTensor& x,
   // fill out dims with -1
   if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1 ||
       (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
-    std::vector<phi::DDim> out_dims(
-        sections_data.size(),
-        phi::make_ddim(std::vector<int>(x.dims().size(), -1)));
-
+    std::vector<phi::DDim> out_dims;
+    if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1) {
+      out_dims = std::vector<phi::DDim>(
+          sections_data.size(),
+          phi::make_ddim(std::vector<int>(x.dims().size(), -1)));
+    } else {
+      out_dims = std::vector<phi::DDim>(sections_data.size(), x.dims());
+    }
     for (size_t i = 0; i < sections_data.size(); ++i) {
       if (axis_value != 0) {
         // Only pass LoD when not spliting along the first dim.
@@ -3293,9 +3297,13 @@ void SplitWithNumInferMeta(const MetaTensor& x,
   int axis_value = GetSplitAxisValue(x, axis, config);
   // fill out dims with -1
   if (axis_value == -1 || (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
-    std::vector<phi::DDim> out_dims(
-        num, phi::make_ddim(std::vector<int>(x.dims().size(), -1)));
-
+    std::vector<phi::DDim> out_dims;
+    if (axis_value == -1) {
+      out_dims = std::vector<phi::DDim>(
+          num, phi::make_ddim(std::vector<int>(x.dims().size(), -1)));
+    } else {
+      out_dims = std::vector<phi::DDim>(num, x.dims());
+    }
     for (int i = 0; i < num; ++i) {
       if (axis_value != 0) {
         // Only pass LoD when not spliting along the first dim.
