@@ -472,10 +472,9 @@ def edit_distance(input,
         NOTE: This Api is different from fluid.metrics.EditDistance
 
     Returns:
-	Tuple:
-
-        distance(Tensor): edit distance result, its data type is float32, and its shape is (batch_size, 1).
-        sequence_num(Tensor): sequence number, its data type is float32, and its shape is (1,).
+        Tuple:
+            distance(Tensor): edit distance result, its data type is float32, and its shape is (batch_size, 1).
+            sequence_num(Tensor): sequence number, its data type is float32, and its shape is (1,).
 
     Examples:
         .. code-block:: python
@@ -2959,29 +2958,29 @@ def multi_label_soft_margin_loss(input,
         name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
 
-	Shape:
-            input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
-            label: N-D Tensor, same shape as the input.
-            weight:N-D Tensor, the shape is [N,1]
-            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
+    Shape:
+        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
+        label: N-D Tensor, same shape as the input.
+        weight:N-D Tensor, the shape is [N,1]
+        output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
-	Returns:
-            Tensor, The tensor variable storing the multi_label_soft_margin_loss of input and label.
+    Returns:
+        Tensor, The tensor variable storing the multi_label_soft_margin_loss of input and label.
 
-	Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
-                import paddle.nn.functional as F
-                input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
-                # label elements in {1., -1.}
-                label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
-                loss = F.multi_label_soft_margin_loss(input, label, reduction='none')
-                print(loss)
-                # Tensor([3.49625897, 0.71111226, 0.43989015])
-                loss = F.multi_label_soft_margin_loss(input, label, reduction='mean')
-                print(loss)
-                # Tensor([1.54908717])
+            import paddle
+            import paddle.nn.functional as F
+            input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
+            # label elements in {1., -1.}
+            label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
+            loss = F.multi_label_soft_margin_loss(input, label, reduction='none')
+            print(loss)
+            # Tensor([3.49625897, 0.71111226, 0.43989015])
+            loss = F.multi_label_soft_margin_loss(input, label, reduction='mean')
+            print(loss)
+            # Tensor([1.54908717])
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -3266,8 +3265,8 @@ def triplet_margin_with_distance_loss(input,
 
         distance_function (callable, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
 
-	    margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
-            between the positive and negative distances required for the loss to be 0.
+        margin (float, optional): A nonnegative margin representing the minimum difference
+            between the positive and negative distances required for the loss to be 0. Default value is :math:`1`.
 
         swap (bool, optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.

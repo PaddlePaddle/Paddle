@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import warnings
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTensorTypePromotion(unittest.TestCase):
@@ -26,7 +27,7 @@ class TestTensorTypePromotion(unittest.TestCase):
         self.x = paddle.to_tensor([2, 3])
         self.y = paddle.to_tensor([1.0, 2.0])
 
-    def test_operator(self):
+    def add_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x + self.y
@@ -34,6 +35,7 @@ class TestTensorTypePromotion(unittest.TestCase):
                 "The dtype of left and right variables are not the same" in str(
                     context[-1].message))
 
+    def sub_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x - self.y
@@ -41,6 +43,7 @@ class TestTensorTypePromotion(unittest.TestCase):
                 "The dtype of left and right variables are not the same" in str(
                     context[-1].message))
 
+    def mul_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x * self.y
@@ -48,12 +51,25 @@ class TestTensorTypePromotion(unittest.TestCase):
                 "The dtype of left and right variables are not the same" in str(
                     context[-1].message))
 
+    def div_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x / self.y
             self.assertTrue(
                 "The dtype of left and right variables are not the same" in str(
                     context[-1].message))
+
+    def test_operator(self):
+        with _test_eager_guard():
+            self.setUp()
+            # add and sub has been sunk to cpp level, there is no warnings to catch by this test.
+            self.mul_operator()
+            self.div_operator()
+        self.setUp()
+        self.add_operator()
+        self.sub_operator()
+        self.mul_operator()
+        self.div_operator()
 
 
 if __name__ == '__main__':

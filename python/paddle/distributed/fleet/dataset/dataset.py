@@ -1493,7 +1493,7 @@ class BoxPSDataset(InMemoryDataset):
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
-	    """
+        """
         self._prepare_to_run()
         self.boxps.load_into_memory()
 
