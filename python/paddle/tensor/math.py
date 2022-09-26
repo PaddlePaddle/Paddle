@@ -5123,7 +5123,7 @@ def frexp(x, name=None):
         - mantissa (Tensor), A mantissa Tensor. The shape and data type of mantissa tensor and exponential tensor are
             the same as those of input.
 
-        - exponent (Tensor): A exponent Tensor. The shape and data type of mantissa tensor and exponential tensor are
+        - exponent (Tensor), A exponent Tensor. The shape and data type of mantissa tensor and exponential tensor are
             the same as those of input.
 
     Examples:
