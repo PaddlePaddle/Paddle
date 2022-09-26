@@ -615,8 +615,14 @@ endfunction()
 function(prune_pybind_h)
   file(STRINGS ${op_list_file} op_list)
 
+  list(APPEND op_list "load_combine")
+  list(APPEND op_list "tensorrt_engine")
+
   # add fused_op in op_list
   list(APPEND op_list "conv2d_fusion")
+
+  # add plugin_op in op_list
+  list(APPEND op_list "anchor_generator")
 
   file(STRINGS ${pybind_file} op_registry_list)
 
