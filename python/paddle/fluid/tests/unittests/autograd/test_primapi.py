@@ -152,6 +152,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
     ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
     ('abs', paddle.abs, (np.random.uniform(-10, 10,
                                            (10, 10)), ), None, 'float32'),
+    ('rsqrt', paddle.rsqrt, (np.random.rand(100, 200), ), None, 'float32'),
 ))
 # paddle.where, paddle.pow, paddle.maximum has no double grad definition,
 # can not compute forward grad use double trick
@@ -267,6 +268,7 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          (np.random.rand(3, 3), np.random.rand(3, 3)),
          (np.random.rand(3, 3), ), 'float64'),
         ('sin', paddle.sin, (np.random.rand(100, 200), ), None, 'float32'),
+        ('rsqrt', paddle.rsqrt, (np.random.rand(100, 200), ), None, 'float32'),
         ('cos', paddle.cos, (np.random.rand(200, 90), ), None, 'float32'),
         ('exp', paddle.exp, (np.random.rand(299, 320), ), None, 'float32'),
         # In where op, grad of condition computed by paddle.static.gradients is None,
