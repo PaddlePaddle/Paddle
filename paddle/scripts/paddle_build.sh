@@ -994,12 +994,13 @@ function generate_upstream_develop_api_spec() {
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
     echo "pr_whl_size: ${pr_whl_size}"
 
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/python/paddle
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/python
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
 
     cd ${PADDLE_ROOT}
-    git checkout .
-    git checkout -b develop_base_pr upstream/$BRANCH
+    git fetch upstream $BRANCH
+    git checkout -b develop_base_pr -t upstream/$BRANCH
+    git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
@@ -1836,14 +1837,10 @@ EOF
 }
 
 function insert_pile_to_h_cu_diff {
-    # TODO get develop h/cu md5
+    # get all .cu files of develop branch
     cd ${PADDLE_ROOT}
     find ${PADDLE_ROOT} -name '*.cu'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
-    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'get_h_file_md5' ${PADDLE_ROOT}
-    
-    # TODO insert pile to diff h/cu file 
-
-    #insert pile to full h/cu file 
+    #insert pile to all .cu files
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'insert_pile_to_h_file' ${PADDLE_ROOT}
 }
 
@@ -1885,12 +1882,11 @@ function parallel_card_test_single {
     num=$2
     for case in $(echo $testcases | tr "$|^" "\n")
     do
-        cd ${PADDLE_ROOT}/build
-        precise_card_test "^${case}$" $num
+        cd ${PADDLE_ROOT}/build 
+        parallel_card_test "^${case}$" $num 
     done
 }
-
-function precise_card_test() {
+function parallel_card_test() {
     set -m
     testcases=$1
     if (( $# > 1 )); then
@@ -1926,13 +1922,42 @@ function precise_card_test() {
     set +m
 }
 
+function precise_card_test() {
+    set -m
+    testcases=$1
+    if (( $# > 1 )); then
+        cardnumber=$2
+        cuda_list="0"
+        if [ $cardnumber -eq 2 ]; then
+            cuda_list=${CUDA_VISIBLE_DEVICES}
+        else
+            cuda_list="0"
+        fi
+    else
+        cardnumber=2
+        cuda_list=${CUDA_VISIBLE_DEVICES}
+    fi
+
+    if [[ "$testcases" == "" ]]; then
+        return 0
+    fi
+
+    echo "****************************************************************"
+    echo "***Running ut: $testcases***"
+    echo "****************************************************************"
+    
+    tmpfile=$tmp_dir/$testcases".log"
+    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
+    set +m
+}
+
 function get_precise_tests_map_file {
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     ut_total_startTime_s=`date +%s`
     EXIT_CODE=0;
     test_cases=$(ctest -N -V) # get all test cases
-    single_card_tests='' # all cases list which would take one graph card
+    single_card_tests=''      # all cases list which would take one graph card
     exclusive_tests=''        # cases list which would be run exclusively
     multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
     is_exclusive=''           # indicate whether the case is exclusive type
@@ -1999,18 +2024,22 @@ set +x
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
-
-    precise_card_test_single "$single_card_tests" 1
-    precise_card_test_single "$single_card_tests_1" 1
-    precise_card_test_single "$multiple_card_tests" 2
-    precise_card_test_single "$exclusive_tests"
+    #run all unittest to get the coverage information of .c and .h files
+    #precise_card_test_single "$single_card_tests" 1
+    #precise_card_test_single "$single_card_tests_1" 1
+    #precise_card_test_single "$multiple_card_tests" 2
+    #precise_card_test_single "$exclusive_tests"
+    ljd_testcases='^test_op_signature$|^variant_test$'
+    precise_card_test_single  "$ljd_testcases" 1
     wait;
+    #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
     
-    #analy h/cu to Map file
+    #analyze the mapping between unit tests and .cu files
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
 
     wait;
+    #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
     get_failedUts_precise_map_file
 
     #generate python coverage and generate python file to tests_map_file

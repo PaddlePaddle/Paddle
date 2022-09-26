@@ -148,11 +148,11 @@ def notsuccessfuc(rootPath):
 
 def ut_file_map_supplement(rootPath):
     ut_file_map_new = "%s/build/ut_file_map.json" % rootPath
-    os.system('mkdir /pre_test')
+    os.system('mkdir /pre_test_tmp')
     os.system(
-        'cd /pre_test && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json --no-check-certificate'
+        'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json --no-check-certificate'
     )
-    ut_file_map_old = "/pre_test/ut_file_map.json"
+    ut_file_map_old = "/pre_test_tmp/ut_file_map.json"
     with open(ut_file_map_new, 'r') as load_f:
         load_dict_new = json.load(load_f)
     with open(ut_file_map_old, 'r') as f:
@@ -164,20 +164,14 @@ def ut_file_map_supplement(rootPath):
         for ut in f.readlines():
             all_uts_paddle_list.append(ut.strip())
         f.close()
-    print("-----------------------------------------")
-    os.system('mkdir /pre_test_tmp')
-    os.system(
-        'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json --no-check-certificate'
-    )
-    print("----------------------------------------")
     with open("/pre_test_tmp/ut_file_map.json", "w") as f:
         json.dump(load_dict_new, f, indent=4)
         print("load_dict_new success!!")
 
     os.system(
-        'cd /pre_test && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta --no-check-certificate'
+        'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta --no-check-certificate'
     )
-    prec_delta_old = '/pre_test/prec_delta'
+    prec_delta_old = '/pre_test_tmp/prec_delta'
     prec_delta_new = "%s/build/prec_delta" % rootPath
     with open(prec_delta_old, 'r') as f:
         prec_delta_old_list = []
@@ -197,7 +191,7 @@ def ut_file_map_supplement(rootPath):
                 prec_delta_new_list.append(ut)
     prec_delta_new_list.append(
         'test_py_reader_error_msg')  #add a python case for pycoverage
-    prec_delta_file = open("/pre_test/prec_delta", 'w')
+    prec_delta_file = open("/pre_test_tmp/prec_delta", 'w')
     for ut in prec_delta_new_list:
         prec_delta_file.write(ut + '\n')
     print("prec_delta_file success!!")
