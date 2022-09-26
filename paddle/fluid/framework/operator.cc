@@ -2966,11 +2966,13 @@ void OperatorWithKernel::BuildPhiKernelContext(
   VLOG(4) << "Done attributes";
 
   // For compatible with Op with extra attrs for specific backend
+#if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
     auto attr_propertys = paddle::operators::GetExtraAttrPropertys(attr_name);
+#ifdef PADDLE_WITH_MKLDNN
     if (phi::OneDNNContext::classof(dev_ctx) &&
         attr_propertys.Support(operators::ExtraAttrProperty::ONEDNN)) {
       VLOG(4) << "Runtime attr `" << attr_name
@@ -3023,8 +3025,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
               "Unsupported Attribute value type `%s` for phi.",
               platform::demangle(attr.type().name())));
       }
-    } else if (phi::GPUContext::classof(dev_ctx) &&
-               attr_propertys.Support(operators::ExtraAttrProperty::GPUDNN)) {
+    }
+#endif
+#ifdef PADDLE_WITH_CUDA
+    if (phi::GPUContext::classof(dev_ctx) &&
+        attr_propertys.Support(operators::ExtraAttrProperty::GPUDNN)) {
       VLOG(4) << "Runtime attr `" << attr_name
               << "` is passed to GPUDNNContext.";
       phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
@@ -3074,11 +3079,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
               "Unsupported Attribute value type `%s` for phi.",
               platform::demangle(attr.type().name())));
       }
-    } else {
-      // do nothing
     }
+#endif
   }
   VLOG(4) << "Done runtime attributes";
+#endif
 }
 
 }  // namespace framework
