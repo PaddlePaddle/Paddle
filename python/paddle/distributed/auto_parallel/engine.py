@@ -669,7 +669,7 @@ class Engine:
                                           batch_size_axis, rank_id)
             return len(group_ranks), group_ranks.index(rank_id)
 
-        return None, None
+        return 1, 0
 
     def _set_recompute_ckpts(self):
         # NOTE hack to enable recompute in engine api for GPT-3
