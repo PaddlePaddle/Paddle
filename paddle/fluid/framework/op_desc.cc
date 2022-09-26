@@ -790,11 +790,11 @@ Attribute OpDesc::GetAttr(const std::string &name, bool with_attr_var) const {
   auto it = attrs_.find(name);
   if (it == attrs_.end()) {
     it = runtime_attrs_.find(name);
+    PADDLE_ENFORCE_NE(
+        it,
+        runtime_attrs_.end(),
+        platform::errors::NotFound("Attribute %s is not found.", name));
   }
-  PADDLE_ENFORCE_NE(
-      it,
-      attrs_.end(),
-      platform::errors::NotFound("Attribute %s is not found.", name));
   if (!with_attr_var) {
     PADDLE_ENFORCE_EQ(
         HasAttrVar(it->second),

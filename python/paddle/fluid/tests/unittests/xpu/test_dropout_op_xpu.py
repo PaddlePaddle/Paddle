@@ -19,6 +19,7 @@ sys.path.append("..")
 import unittest
 import numpy as np
 import paddle.fluid.core as core
+from paddle import _legacy_C_ops
 from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
@@ -185,7 +186,8 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
 
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
+                    out, mask = _legacy_C_ops.dropout(input, 'dropout_prob',
+                                                      0.5)
                     out.backward()
 
                     np.testing.assert_allclose(
@@ -199,9 +201,10 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     prob = 0.5
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = core.ops.dropout(input, 'dropout_prob', prob,
-                                                 "dropout_implementation",
-                                                 "upscale_in_train")
+                    out, mask = _legacy_C_ops.dropout(input, 'dropout_prob',
+                                                      prob,
+                                                      "dropout_implementation",
+                                                      "upscale_in_train")
                     out.backward()
 
                     np.testing.assert_allclose(
@@ -215,9 +218,10 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     prob = 0.3
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = core.ops.dropout(input, 'dropout_prob', prob,
-                                                 "dropout_implementation",
-                                                 "upscale_in_train")
+                    out, mask = _legacy_C_ops.dropout(input, 'dropout_prob',
+                                                      prob,
+                                                      "dropout_implementation",
+                                                      "upscale_in_train")
                     out.backward()
 
                     np.testing.assert_allclose(

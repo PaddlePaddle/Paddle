@@ -25,12 +25,4 @@ void GumbelSoftmaxKernel(const Context& dev_ctx,
                          int axis,
                          DenseTensor* out);
 
-template <typename T, typename Context>
-void GumbelSoftmaxInferKernel(const Context& dev_ctx,
-                              const DenseTensor& x,
-                              float temperature,
-                              bool hard,
-                              int axis,
-                              DenseTensor* out);
-
 }  // namespace phi

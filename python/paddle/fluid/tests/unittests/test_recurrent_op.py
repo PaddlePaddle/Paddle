@@ -619,7 +619,7 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
         h_t = \sigma (W x_t + U h_{t-1})
     weights:
         - W
-	- U
+        - U
     vars:
         - x
     memories:

@@ -18,7 +18,7 @@ import random
 import numpy as np
 import paddle
 
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from get_gpt_model import generate_model, create_data_holder, FakeDataset
 
@@ -32,7 +32,7 @@ def apply_pass(use_sharding=False, stage=None):
     if use_sharding:
         sharding = strategy.sharding
         sharding.enable = True
-        sharding.sharding_degree = 2
+        sharding.degree = 2
         sharding.stage = 1
 
     return strategy
