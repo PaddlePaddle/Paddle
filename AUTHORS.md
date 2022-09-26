@@ -91,3 +91,4 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | jzhang533 | Jun Zhang |
 | Ligoml | Meng-Liu Li |
 | jeff41404 | Xiang Gao |
+| zh794390558 | Hui Zhang |
