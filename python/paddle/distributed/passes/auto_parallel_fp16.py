@@ -368,6 +368,10 @@ class FP16State(object):
         for cast_name, src_name, dst_dtype, src_dtype, slot_name in self.forward_input_cast_ops[
                 forward_op_id]:
 
+            # some forward output is not need by backward computation, e.g. logit in softmax_with_cross_entropy
+            if slot_name not in op.input:
+                continue
+
             # rename input
             assert src_name in op.input(
                 slot_name), "var: {} not in op's {}. {}".format(
