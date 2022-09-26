@@ -190,7 +190,6 @@ void Relu6Kernel(const Context& dev_ctx,
   functor(dev_ctx, x, 0, threshold, out);
 }
 
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(round, OneDNN, ALL_LAYOUT, phi::RoundKernel, float) {}
