@@ -170,6 +170,7 @@ static PyObject* tensor__add__method(TensorObject* self,
       other = CastPyArg2AttrFloat(other_obj, 0);
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
+        eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
@@ -186,7 +187,8 @@ static PyObject* tensor__add__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::experimental::Tensor other_tensor;
   if (!PyCheckTensor(other_obj)) {
-    paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
+    paddle::experimental::Scalar value =
+        CastPyArg2Scalar(other_obj, "__add__", 0);
     {
       eager_gil_scoped_release guard;
       other_tensor =
@@ -210,9 +212,11 @@ static PyObject* tensor__add__method(TensorObject* self,
               framework::TransToProtoVarType(rhs_dtype)));
       if (lhs_dtype != promote_dtype) {
         // cast
+        eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, promote_dtype);
       }
       if (rhs_dtype != promote_dtype) {
+        eager_gil_scoped_release guard;
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
       }
     } else {
@@ -221,6 +225,7 @@ static PyObject* tensor__add__method(TensorObject* self,
              "dtype is "
           << lhs_dtype << ", but right dtype is " << rhs_dtype
           << ", the right dtype will convert to " << lhs_dtype;
+      eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
   }
@@ -264,6 +269,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
       other = CastPyArg2AttrFloat(other_obj, 0);
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
+        eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
@@ -279,7 +285,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::experimental::Tensor other_tensor;
   if (!PyCheckTensor(other_obj)) {
-    paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
+    paddle::experimental::Scalar value =
+        CastPyArg2Scalar(other_obj, "__sub__", 0);
     {
       eager_gil_scoped_release guard;
       other_tensor =
@@ -301,9 +308,11 @@ static PyObject* tensor__sub__method(TensorObject* self,
               framework::TransToProtoVarType(rhs_dtype)));
       if (lhs_dtype != promote_dtype) {
         // cast
+        eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, promote_dtype);
       }
       if (rhs_dtype != promote_dtype) {
+        eager_gil_scoped_release guard;
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
       }
     } else {
@@ -312,6 +321,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
              "dtype is "
           << lhs_dtype << ", but right dtype is " << rhs_dtype
           << ", the right dtype will convert to " << lhs_dtype;
+      eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
   }
@@ -353,6 +363,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       other = CastPyArg2AttrFloat(other_obj, 0);
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
+        eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
@@ -368,7 +379,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::experimental::Tensor other_tensor;
   if (!PyCheckTensor(other_obj)) {
-    paddle::experimental::Scalar value = CastPyArg2Scalar(other_obj, "full", 0);
+    paddle::experimental::Scalar value =
+        CastPyArg2Scalar(other_obj, "__rsub__", 0);
     {
       eager_gil_scoped_release guard;
       other_tensor =
@@ -390,9 +402,11 @@ static PyObject* tensor__rsub__method(TensorObject* self,
               framework::TransToProtoVarType(rhs_dtype)));
       if (lhs_dtype != promote_dtype) {
         // cast
+        eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, promote_dtype);
       }
       if (rhs_dtype != promote_dtype) {
+        eager_gil_scoped_release guard;
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
       }
     } else {
@@ -401,6 +415,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
              "dtype is "
           << lhs_dtype << ", but right dtype is " << rhs_dtype
           << ", the right dtype will convert to " << lhs_dtype;
+      eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
   }
