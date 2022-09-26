@@ -103,3 +103,4 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | ZHUI | Hui Zhong|
 | LemonNoel | Huijuan Wang |
 | wawltor | Zeyang Fang |
+| FrostML | Zheng-Xi Liu |
