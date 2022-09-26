@@ -5120,7 +5120,7 @@ def frexp(x, name=None):
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
     Returns:
 
-        - mantissa (Tensor): A mantissa Tensor. The shape and data type of mantissa tensor and exponential tensor are
+        - mantissa (Tensor), A mantissa Tensor. The shape and data type of mantissa tensor and exponential tensor are
             the same as those of input.
 
         - exponent (Tensor): A exponent Tensor. The shape and data type of mantissa tensor and exponential tensor are
