@@ -347,23 +347,23 @@ def interpolate(x,
     Examples:
         .. code-block:: python
 
-		import paddle
-		import paddle.nn.functional as F
+            import paddle
+            import paddle.nn.functional as F
 
-		input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
-		output_1 = F.interpolate(x=input_data, size=[12,12])
-		print(output_1.shape)
-		    # [2L, 3L, 12L, 12L]
+            input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
+            output_1 = F.interpolate(x=input_data, size=[12,12])
+            print(output_1.shape)
+            # [2L, 3L, 12L, 12L]
 
-		# given scale
-		output_2 = F.interpolate(x=input_data, scale_factor=[2,1])
-		print(output_2.shape)
-		# [2L, 3L, 12L, 10L]
+            # given scale
+            output_2 = F.interpolate(x=input_data, scale_factor=[2,1])
+            print(output_2.shape)
+            # [2L, 3L, 12L, 10L]
 
-		# bilinear interp
-		output_3 = F.interpolate(x=input_data, scale_factor=[2,1], mode="bilinear")
-		print(output_2.shape)
-		# [2L, 3L, 12L, 10L]
+            # bilinear interp
+            output_3 = F.interpolate(x=input_data, scale_factor=[2,1], mode="bilinear")
+            print(output_2.shape)
+            # [2L, 3L, 12L, 10L]
     """
     data_format = data_format.upper()
     resample = mode.upper()
@@ -818,17 +818,17 @@ def upsample(x,
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
 
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-		import paddle
-		import paddle.nn as nn
+                import paddle
+                import paddle.nn as nn
 
-		input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
-		upsample_out = paddle.nn.Upsample(size=[12,12])
+                input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
+                upsample_out = paddle.nn.Upsample(size=[12,12])
 
-		output = upsample_out(x=input_data)
-		print(output.shape)
-		# [2L, 3L, 12L, 12L]
+                output = upsample_out(x=input_data)
+                print(output.shape)
+                # [2L, 3L, 12L, 12L]
 
     """
     return interpolate(x, size, scale_factor, mode, align_corners, align_mode,
@@ -842,30 +842,30 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     See :ref:`api_nn_Bilinear` for details and output shape.
 
     Parameters:
-       x1 (Tensor): the first input tensor, it's data type should be float32, float64.
-       x2 (Tensor): the second input tensor, it's data type should be float32, float64.
-       weight (Parameter): The learnable weights of this layer, shape is [out_features, in1_features, in2_features].
-       bias (Parameter, optional): The learnable bias(Bias) of this layer, shape is [1, out_features]. If it is set to None, no bias will be added to the output units. The default value is None.
-       name (str, optional): The default value is None. Normally there is no need for user
-           to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
+        x1 (Tensor): the first input tensor, it's data type should be float32, float64.
+        x2 (Tensor): the second input tensor, it's data type should be float32, float64.
+        weight (Parameter): The learnable weights of this layer, shape is [out_features, in1_features, in2_features].
+        bias (Parameter, optional): The learnable bias(Bias) of this layer, shape is [1, out_features]. If it is set to None, no bias will be added to the output units. The default value is None.
+        name (str, optional): The default value is None. Normally there is no need for user
+            to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
-       Tensor: A 2-D Tensor of shape [batch_size, out_features].
+        Tensor: A 2-D Tensor of shape [batch_size, out_features].
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-		import paddle
-		import paddle.nn.functional as F
+            import paddle
+            import paddle.nn.functional as F
 
-		x1 = paddle.randn((5, 5)).astype(paddle.float32)
-		x2 = paddle.randn((5, 4)).astype(paddle.float32)
-		w = paddle.randn((1000, 5, 4)).astype(paddle.float32)
-		b = paddle.randn((1, 1000)).astype(paddle.float32)
+            x1 = paddle.randn((5, 5)).astype(paddle.float32)
+            x2 = paddle.randn((5, 4)).astype(paddle.float32)
+            w = paddle.randn((1000, 5, 4)).astype(paddle.float32)
+            b = paddle.randn((1, 1000)).astype(paddle.float32)
 
-		result = F.bilinear(x1, x2, w, b)
-		print(result.shape)
-		# [5, 1000]
+            result = F.bilinear(x1, x2, w, b)
+            print(result.shape)
+            # [5, 1000]
     """
 
     if in_dygraph_mode():
@@ -1008,38 +1008,38 @@ def dropout(x,
 
         .. code-block:: python
 
-		import paddle
+            import paddle
 
-		x = paddle.to_tensor([[1,2,3], [4,5,6]]).astype(paddle.float32)
-		y_train = paddle.nn.functional.dropout(x, 0.5)
-		y_test = paddle.nn.functional.dropout(x, 0.5, training=False)
-		y_0 = paddle.nn.functional.dropout(x, axis=0)
-		y_1 = paddle.nn.functional.dropout(x, axis=1)
-		y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
-		print(x)
-		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-		#        [[1., 2., 3.],
-		#         [4., 5., 6.]])
-		print(y_train)
-		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-		#        [[2. , 0. , 6. ],
-		#         [8. , 0. , 12.]])
-		print(y_test)
-		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-		#        [[1., 2., 3.],
-		#         [4., 5., 6.]])
-		print(y_0)
-		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-		#        [[0. , 0. , 0. ],
-		#         [8. , 10., 12.]])
-		print(y_1)
-		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-		#        [[2. , 0. , 6. ],
-		#         [8. , 0. , 12.]])
-		print(y_01)
-		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-		#        [[0. , 0. , 0. ],
-		#         [8. , 0. , 12.]])
+            x = paddle.to_tensor([[1,2,3], [4,5,6]]).astype(paddle.float32)
+            y_train = paddle.nn.functional.dropout(x, 0.5)
+            y_test = paddle.nn.functional.dropout(x, 0.5, training=False)
+            y_0 = paddle.nn.functional.dropout(x, axis=0)
+            y_1 = paddle.nn.functional.dropout(x, axis=1)
+            y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
+            print(x)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[1., 2., 3.],
+            #         [4., 5., 6.]])
+            print(y_train)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[2. , 0. , 6. ],
+            #         [8. , 0. , 12.]])
+            print(y_test)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[1., 2., 3.],
+            #         [4., 5., 6.]])
+            print(y_0)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0. , 0. , 0. ],
+            #         [8. , 10., 12.]])
+            print(y_1)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[2. , 0. , 6. ],
+            #         [8. , 0. , 12.]])
+            print(y_01)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0. , 0. , 0. ],
+            #         [8. , 0. , 12.]])
 
     """
     if not isinstance(p, (float, int, Variable)):
@@ -1119,7 +1119,7 @@ def dropout(x,
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            if p == 1.:
+            if in_dynamic_mode() and p == 1.:
                 return paddle.scale(x, scale=0.)
 
             scale_input = paddle.scale(
@@ -1239,14 +1239,14 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     Examples:
         .. code-block:: python
 
-		import paddle
+            import paddle
 
-		x = paddle.randn(shape=(2, 3, 4, 5, 6)).astype(paddle.float32)
-		y_train = paddle.nn.functional.dropout3d(x)  #train
-		y_test = paddle.nn.functional.dropout3d(x, training=False) #test
-		print(x[0,0,:,:,:])
-		print(y_train[0,0,:,:,:]) # may all 0
-		print(y_test[0,0,:,:,:])
+            x = paddle.randn(shape=(2, 3, 4, 5, 6)).astype(paddle.float32)
+            y_train = paddle.nn.functional.dropout3d(x)  #train
+            y_test = paddle.nn.functional.dropout3d(x, training=False) #test
+            print(x[0,0,:,:,:])
+            print(y_train[0,0,:,:,:]) # may all 0
+            print(y_test[0,0,:,:,:])
 
     """
 
@@ -1287,19 +1287,19 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     Examples:
         .. code-block:: python
 
-		import paddle
+            import paddle
 
-		x = paddle.to_tensor([[-1, 1], [-1, 1]]).astype(paddle.float32)
-		y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
-		y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
-		print(y_train)
-		# Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-		#        [[-0.10721093, -0.77919382],
-		#         [-0.10721093,  1.66559887]]) (randomly)
-		print(y_test)
-		# Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-		#        [[-1.,  1.],
-		#         [-1.,  1.]])
+            x = paddle.to_tensor([[-1, 1], [-1, 1]]).astype(paddle.float32)
+            y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
+            y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
+            print(y_train)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[-0.10721093, -0.77919382],
+            #         [-0.10721093,  1.66559887]]) (randomly)
+            print(y_test)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[-1.,  1.],
+            #         [-1.,  1.]])
     """
     if not isinstance(p, (float, int)):
         raise TypeError("p argument should be a float or int")

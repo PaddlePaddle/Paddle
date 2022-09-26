@@ -215,6 +215,33 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           kind);
     }
 #endif
+#if defined(PADDLE_WITH_XPU)
+  } else if (self->tensor.is_xpu()) {
+    platform::CPUPlace place;
+    if (self->tensor.is_selected_rows()) {
+      VLOG(6) << "Getting SelectedRows's numpy value";
+      auto* selected_rows =
+          static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+      auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+          selected_rows->mutable_value());
+      paddle::memory::Copy(
+          place,
+          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
+          dense_tensor->place(),
+          dense_tensor->data(),
+          sizeof_dtype * numel);
+    } else {
+      VLOG(6) << "Getting DenseTensor's numpy value";
+      auto dense_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+      paddle::memory::Copy(
+          place,
+          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
+          dense_tensor->place(),
+          dense_tensor->data(),
+          sizeof_dtype * numel);
+    }
+#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (self->tensor.is_custom_device()) {
     if (self->tensor.is_selected_rows()) {
