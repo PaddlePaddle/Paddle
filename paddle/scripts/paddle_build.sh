@@ -1154,10 +1154,6 @@ function check_diff_file_for_coverage() {
 
 function check_change_of_unittest() {
     generate_unittest_spec "PR"
-    fetch_upstream_develop_if_not_exist
-    git reset --hard upstream/$BRANCH
-    cmake_gen $1
-    generate_unittest_spec "DEV"
     check_approvals_of_unittest 2
 }
 
