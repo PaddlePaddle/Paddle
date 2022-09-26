@@ -291,16 +291,13 @@ struct MatrixEighFunctor<GPUContext, T> {
 template <typename T>
 inline void MatrixEighFunctor<GPUContext, T>::EighMemoryAllocate(
     const GPUContext &dev_ctx, int workspace_size) {
-  auto work = paddle::memory::Alloc(
+  size_t buffer_size = sizeof(T) * workspace_size + sizeof(int) * batch_size;
+  auto buffer = paddle::memory::Alloc(
       dev_ctx.GetPlace(),
-      sizeof(T) * workspace_size,
+      buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  auto info = paddle::memory::Alloc(
-      dev_ctx.GetPlace(),
-      sizeof(int) * batch_size,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  info_ptr = reinterpret_cast<int *>(info->ptr());
-  work_ptr = reinterpret_cast<T *>(work->ptr());
+  work_ptr = reinterpret_cast<T *>(buffer->ptr());
+  info_ptr = reinterpret_cast<int *>(work_ptr + workspace_size);
 }
 
 template <typename T>
