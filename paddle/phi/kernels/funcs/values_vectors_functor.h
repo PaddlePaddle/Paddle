@@ -230,15 +230,6 @@ struct MatrixEighFunctor<GPUContext, T> {
     DenseTensor input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
-    int major = -1, minor = -1, patch = -1;
-    dynload::cusolverGetProperty(MAJOR_VERSION, &major);
-    dynload::cusolverGetProperty(MINOR_VERSION, &minor);
-    dynload::cusolverGetProperty(PATCH_LEVEL, &patch);
-    printf("CUSOLVER Version (Major,Minor,PatchLevel): %d.%d.%d\n",
-           major,
-           minor,
-           patch);
-
     // Reference to
     // https://github.com/pytorch/pytorch/pull/53040#issuecomment-788264724
     bool use_syevj = ((input.dtype() == phi::DataType::FLOAT32) &&
