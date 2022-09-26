@@ -517,7 +517,7 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
     _check_vars('fetch_vars', fetch_vars)
 
     program = _get_valid_program(kwargs.get('program', None))
-    clip_extra = kwargs.get('clip_extra', False)
+    clip_extra = kwargs.get('clip_extra', True)
     program = normalize_program(program, feed_vars, fetch_vars)
     # serialize and save program
     program_bytes = _serialize_program(
