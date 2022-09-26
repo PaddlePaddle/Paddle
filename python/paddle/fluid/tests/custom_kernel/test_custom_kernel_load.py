@@ -48,7 +48,7 @@ class TestCustomKernelLoad(unittest.TestCase):
                     paddle_lib_path = lib_dir
         self.default_path = os.path.sep.join(
             [paddle_lib_path, '..', '..', 'paddle-plugins'])
-        # copy so to defalut path
+        # copy so to default path
         cmd = 'mkdir -p {} && cp ./*.so {}'.format(self.default_path,
                                                    self.default_path)
         os.system(cmd)  # wait

@@ -1041,8 +1041,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
     def test_dropout_with_seed(self):
         """
         when we recompute a dropout op, make sure that the recomputed one
-	    is the same as the original var.
-	    """
+        is the same as the original var.
+        """
 
         def gen_data():
             return {

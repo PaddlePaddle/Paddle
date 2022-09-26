@@ -38,7 +38,8 @@ set(PRIM_OP_SRCS
     erf_p_op.cc
     bernoulli_p_op.cc
     abs_p_op.cc
-    cast_p_op.cc)
+    cast_p_op.cc
+    rsqrt_p_op.cc)
 
 cc_test(
   prim_op_test

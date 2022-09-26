@@ -78,7 +78,7 @@ class EnqueueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("queue_name",
                          "Name of the `LoDTensorBlockingQueueHolder` variable");
     AddComment(R"DOC(
-			Enqueue operator.
+      Enqueue operator.
       )DOC");
   }
 };

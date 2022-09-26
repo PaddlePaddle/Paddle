@@ -403,3 +403,8 @@ def cast(x, dtype, out=None):
                      outputs={'Y': out},
                      attrs={'dtype': dtype})
     return out
+
+
+@REGISTER_FN('rsqrt_p', 'X', 'Y')
+def rsqrt(x, out=None):
+    return _simple_unop(LayerHelper('rsqrt_p', **locals()))
