@@ -54,24 +54,6 @@ static void CheckEighResult(const int batch, const int info) {
           info));
 }
 
-#ifdef PADDLE_WITH_CUDA
-static void CheckEighResult(const GPUContext &dev_ctx,
-                            const int64_t batch_size,
-                            int *info) {
-  std::vector<int> error_info(batch_size);
-  paddle::memory::Copy(phi::CPUPlace(),
-                       error_info.data(),
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int) * batch_size,
-                       dev_ctx.stream());
-  dev_ctx.Wait();
-  for (auto i = 0; i < batch_size; ++i) {
-    CheckEighResult(i, error_info[i]);
-  }
-}
-#endif
-
 template <typename DeviceContext, typename T>
 struct MatrixEighFunctor {
   void operator()(const DeviceContext &dev_ctx,
@@ -193,167 +175,235 @@ struct MatrixEighFunctor<CPUContext, T> {
 };
 
 #ifdef PADDLE_WITH_CUDA
-
 // Calculates the eigenvalues ​​and eigenvectors of Hermitian or real
 // symmetric matrices on GPU, and uses the variable has_vectors
 // to control whether to return the eigenvectors.
-// Reference to
-// https://github.com/pytorch/pytorch/pull/53040#issuecomment-788264724
+static void CheckEighResult(const GPUContext &dev_ctx,
+                            const int64_t batch_size,
+                            int *info) {
+  std::vector<int> error_info(batch_size);
+  paddle::memory::Copy(phi::CPUPlace(),
+                       error_info.data(),
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int) * batch_size,
+                       dev_ctx.stream());
+  dev_ctx.Wait();
+  for (auto i = 0; i < batch_size; ++i) {
+    CheckEighResult(i, error_info[i]);
+  }
+}
+
 template <typename T>
 struct MatrixEighFunctor<GPUContext, T> {
+ private:
+  int lda{1};
+  int last_dim{0};
+  int64_t hw_stride{0};
+  int64_t batch_size{0};
+
+  T *work_ptr{nullptr};
+  int *info_ptr{nullptr};
+
  public:
+  using ValueType = phi::dtype::Real<T>;
+
   void operator()(const GPUContext &dev_ctx,
                   const DenseTensor &input,
                   DenseTensor *eigen_values,
                   DenseTensor *eigen_vectors,
                   bool is_lower,
                   bool has_vectors) {
-    using ValueType = phi::dtype::Real<T>;
-
-    int workspace_size = 0;
-    auto &dims = input.dims();
+    const auto &dims = input.dims();
     int dim_size = dims.size();
-    int64_t batch_size = GetBatchSize(dims);
-    int last_dim = dims[dim_size - 1];
-    int lda = std::max<int>(1, last_dim);
-    auto vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
-    auto values_stride = dims[dim_size - 1];
+    batch_size = GetBatchSize(dims);
+    last_dim = dims[dim_size - 1];
+    hw_stride = last_dim * dims[dim_size - 2];
 
+    lda = std::max<int>(1, last_dim);
     cublasFillMode_t uplo =
         is_lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
     cusolverEigMode_t jobz =
         has_vectors ? CUSOLVER_EIG_MODE_VECTOR : CUSOLVER_EIG_MODE_NOVECTOR;
 
     ValueType *out_value = dev_ctx.template Alloc<ValueType>(eigen_values);
-    auto info = paddle::memory::Alloc(
-        dev_ctx.GetPlace(),
-        sizeof(int) * batch_size,
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-    auto *info_ptr = reinterpret_cast<int *>(info->ptr());
-
     DenseTensor input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
-    // Once input data type is float32, and the last dimension of
-    // input is located in range [32, 512], Syevj works better.
-    bool use_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
-                      values_stride >= 32 && values_stride <= 512);
-    auto handle = dev_ctx.cusolver_dn_handle();
+    int major = -1, minor = -1, patch = -1;
+    dynload::cusolverGetProperty(MAJOR_VERSION, &major);
+    dynload::cusolverGetProperty(MINOR_VERSION, &minor);
+    dynload::cusolverGetProperty(PATCH_LEVEL, &patch);
+    printf("CUSOLVER Version (Major,Minor,PatchLevel): %d.%d.%d\n",
+           major,
+           minor,
+           patch);
 
-    syevjInfo_t syevj_params;
+    // Reference to
+    // https://github.com/pytorch/pytorch/pull/53040#issuecomment-788264724
+    bool use_syevj = ((input.dtype() == phi::DataType::FLOAT32) &&
+                      (last_dim >= 32 && last_dim <= 512));
+
     if (use_syevj) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cusolverDnCreateSyevjInfo(&syevj_params));
-
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj_bufferSize(
-          dev_ctx.cusolver_dn_handle(),
-          jobz,
-          uplo,
-          last_dim,
-          reinterpret_cast<const float *>(input_vector),
-          lda,
-          reinterpret_cast<const float *>(out_value),
-          &workspace_size,
-          syevj_params));
+      SolveWithSyevj(dev_ctx, input_vector, out_value, jobz, uplo);
     } else {
-      EvdBuffer(dev_ctx.cusolver_dn_handle(),
-                jobz,
-                uplo,
-                last_dim,
-                input_vector,
-                lda,
-                out_value,
-                &workspace_size);
+      SolveWithSyevd(dev_ctx, input_vector, out_value, jobz, uplo);
     }
-    auto work = paddle::memory::Alloc(
-        dev_ctx.GetPlace(),
-        sizeof(T) * workspace_size,
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-    auto *work_ptr = reinterpret_cast<T *>(work->ptr());
 
-    for (auto i = 0; i < batch_size; ++i) {
-      auto *input_data = input_vector + i * vector_stride;
-      auto *value_data = out_value + i * values_stride;
-      if (use_syevj) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            dynload::cusolverDnSsyevj(handle,
-                                      jobz,
-                                      uplo,
-                                      last_dim,
-                                      reinterpret_cast<float *>(input_data),
-                                      lda,
-                                      reinterpret_cast<float *>(value_data),
-                                      reinterpret_cast<float *>(work_ptr),
-                                      workspace_size,
-                                      &info_ptr[i],
-                                      syevj_params));
-      } else {
-        Evd(handle,
-            jobz,
-            uplo,
-            last_dim,
-            input_data,
-            lda,
-            value_data,
-            work_ptr,
-            workspace_size,
-            &info_ptr[i]);
-      }
-    }
-    CheckEighResult(dev_ctx, batch_size, info_ptr);
-
-    if (use_syevj) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cusolverDnDestroySyevjInfo(syevj_params));
-    }
     if (has_vectors) {
       PADDLE_ENFORCE_NOT_NULL(eigen_vectors,
                               phi::errors::InvalidArgument(
                                   "When has_vectors is true,"
                                   "the eigenvectors needs to be calculated,"
                                   "so the eigenvectors must be provided."));
-      //   input_trans = dito.Transpose(input_trans);
+      // input_trans = dito.Transpose(input_trans);
       input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input_trans);
       eigen_vectors->ShareDataWith(input_trans);
     }
   }
 
-  using ValueType = phi::dtype::Real<T>;
-  inline void EvdBuffer(cusolverDnHandle_t handle,
-                        cusolverEigMode_t jobz,
-                        cublasFillMode_t uplo,
-                        int n,
-                        const T *A,
-                        int lda,
-                        const ValueType *W,
-                        int *lwork) const;
+  void EighMemoryAllocate(const GPUContext &dev_ctx, int workspace_size);
 
-  inline void Evd(cusolverDnHandle_t handle,
-                  cusolverEigMode_t jobz,
-                  cublasFillMode_t uplo,
-                  int n,
-                  T *A,
-                  int lda,
-                  ValueType *W,
-                  T *work,
-                  int lwork,
-                  int *devInfo) const;
+  void SolveWithSyevj(const GPUContext &dev_ctx,
+                      T *input_vector,
+                      ValueType *out_value,
+                      cusolverEigMode_t jobz,
+                      cublasFillMode_t uplo);
+
+  void SolveWithSyevd(const GPUContext &dev_ctx,
+                      T *input_vector,
+                      ValueType *out_value,
+                      cusolverEigMode_t jobz,
+                      cublasFillMode_t uplo);
+
+  void EvdBuffer(cusolverDnHandle_t handle,
+                 cusolverEigMode_t jobz,
+                 cublasFillMode_t uplo,
+                 int n,
+                 const T *A,
+                 int lda,
+                 const ValueType *W,
+                 int *lwork) const;
+
+  void Evd(cusolverDnHandle_t handle,
+           cusolverEigMode_t jobz,
+           cublasFillMode_t uplo,
+           int n,
+           T *A,
+           int lda,
+           ValueType *W,
+           T *work,
+           int lwork,
+           int *devInfo) const;
 };
 
-using phi::dtype::complex;
+template <typename T>
+inline void MatrixEighFunctor<GPUContext, T>::EighMemoryAllocate(
+    const GPUContext &dev_ctx, int workspace_size) {
+  auto work = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(T) * workspace_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto info = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int) * batch_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  info_ptr = reinterpret_cast<int *>(info->ptr());
+  work_ptr = reinterpret_cast<T *>(work->ptr());
+}
 
-#define FUNC_WITH_TYPES(m)                       \
-  m(float, Ssy, float) m(double, Dsy, double) m( \
-      complex<float>, Che, cuComplex) m(complex<double>, Zhe, cuDoubleComplex)
+template <typename T>
+inline void MatrixEighFunctor<GPUContext, T>::SolveWithSyevj(
+    const GPUContext &dev_ctx,
+    T *input_vector,
+    ValueType *out_value,
+    cusolverEigMode_t jobz,
+    cublasFillMode_t uplo) {
+  syevjInfo_t syevj_params;
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&syevj_params));
 
-#define EVDBUFFER_INSTANCE(T, C, CastType)                             \
+  auto handle = dev_ctx.cusolver_dn_handle();
+  int workspace_size = 0;
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj_bufferSize(
+      handle,
+      jobz,
+      uplo,
+      last_dim,
+      reinterpret_cast<const float *>(input_vector),
+      lda,
+      reinterpret_cast<const float *>(out_value),
+      &workspace_size,
+      syevj_params));
+  EighMemoryAllocate(dev_ctx, workspace_size);
+
+  for (auto i = 0; i < batch_size; ++i) {
+    auto *input_data = input_vector + i * hw_stride;
+    auto *value_data = out_value + i * last_dim;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cusolverDnSsyevj(handle,
+                                  jobz,
+                                  uplo,
+                                  last_dim,
+                                  reinterpret_cast<float *>(input_data),
+                                  lda,
+                                  reinterpret_cast<float *>(value_data),
+                                  reinterpret_cast<float *>(work_ptr),
+                                  workspace_size,
+                                  &info_ptr[i],
+                                  syevj_params));
+  }
+  CheckEighResult(dev_ctx, batch_size, info_ptr);
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDestroySyevjInfo(syevj_params));
+}
+
+template <typename T>
+inline void MatrixEighFunctor<GPUContext, T>::SolveWithSyevd(
+    const GPUContext &dev_ctx,
+    T *input_vector,
+    ValueType *out_value,
+    cusolverEigMode_t jobz,
+    cublasFillMode_t uplo) {
+  auto handle = dev_ctx.cusolver_dn_handle();
+  int workspace_size = 0;
+  EvdBuffer(handle,
+            jobz,
+            uplo,
+            last_dim,
+            input_vector,
+            lda,
+            out_value,
+            &workspace_size);
+  EighMemoryAllocate(dev_ctx, workspace_size);
+
+  for (auto i = 0; i < batch_size; ++i) {
+    auto *input_data = input_vector + i * hw_stride;
+    auto *value_data = out_value + i * last_dim;
+    Evd(handle,
+        jobz,
+        uplo,
+        last_dim,
+        input_data,
+        lda,
+        value_data,
+        work_ptr,
+        workspace_size,
+        &info_ptr[i]);
+  }
+}
+
+#define FUNC_WITH_TYPES(m)                          \
+  m(float, Ssy, float) m(double, Dsy, double)       \
+      m(phi::dtype::complex<float>, Che, cuComplex) \
+          m(phi::dtype::complex<double>, Zhe, cuDoubleComplex)
+
+#define EVDBUFFER_INSTANCE(Type, C, CastType)                          \
   template <>                                                          \
-  inline void MatrixEighFunctor<GPUContext, T>::EvdBuffer(             \
+  inline void MatrixEighFunctor<GPUContext, Type>::EvdBuffer(          \
       cusolverDnHandle_t handle,                                       \
       cusolverEigMode_t jobz,                                          \
       cublasFillMode_t uplo,                                           \
       int n,                                                           \
-      const T *A,                                                      \
+      const Type *A,                                                   \
       int lda,                                                         \
       const ValueType *W,                                              \
       int *lwork) const {                                              \
@@ -367,34 +417,33 @@ using phi::dtype::complex;
         W,                                                             \
         lwork));                                                       \
   }
-
 FUNC_WITH_TYPES(EVDBUFFER_INSTANCE);
 
-#define EVD_INSTANCE(T, C, CastType)                                           \
-  template <>                                                                  \
-  inline void MatrixEighFunctor<GPUContext, T>::Evd(cusolverDnHandle_t handle, \
-                                                    cusolverEigMode_t jobz,    \
-                                                    cublasFillMode_t uplo,     \
-                                                    int n,                     \
-                                                    T *A,                      \
-                                                    int lda,                   \
-                                                    ValueType *W,              \
-                                                    T *work,                   \
-                                                    int lwork,                 \
-                                                    int *devInfo) const {      \
-    PADDLE_ENFORCE_GPU_SUCCESS(                                                \
-        dynload::cusolverDn##C##evd(handle,                                    \
-                                    jobz,                                      \
-                                    uplo,                                      \
-                                    n,                                         \
-                                    reinterpret_cast<CastType *>(A),           \
-                                    lda,                                       \
-                                    W,                                         \
-                                    reinterpret_cast<CastType *>(work),        \
-                                    lwork,                                     \
-                                    devInfo));                                 \
+#define EVD_INSTANCE(Type, C, CastType)                                 \
+  template <>                                                           \
+  inline void MatrixEighFunctor<GPUContext, Type>::Evd(                 \
+      cusolverDnHandle_t handle,                                        \
+      cusolverEigMode_t jobz,                                           \
+      cublasFillMode_t uplo,                                            \
+      int n,                                                            \
+      Type *A,                                                          \
+      int lda,                                                          \
+      ValueType *W,                                                     \
+      Type *work,                                                       \
+      int lwork,                                                        \
+      int *devInfo) const {                                             \
+    PADDLE_ENFORCE_GPU_SUCCESS(                                         \
+        dynload::cusolverDn##C##evd(handle,                             \
+                                    jobz,                               \
+                                    uplo,                               \
+                                    n,                                  \
+                                    reinterpret_cast<CastType *>(A),    \
+                                    lda,                                \
+                                    W,                                  \
+                                    reinterpret_cast<CastType *>(work), \
+                                    lwork,                              \
+                                    devInfo));                          \
   }
-
 FUNC_WITH_TYPES(EVD_INSTANCE);
 
 #undef FUNC_WITH_TYPES

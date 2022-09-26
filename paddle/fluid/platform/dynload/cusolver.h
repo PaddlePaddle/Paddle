@@ -31,6 +31,7 @@ namespace dynload {
 #define CUSOLVER_ROUTINE_EACH(__macro)  \
   __macro(cusolverDnCreate);            \
   __macro(cusolverDnDestroy);           \
+  __macro(cusolverGetProperty);         \
   __macro(cusolverDnSetStream);         \
   __macro(cusolverDnSpotrf_bufferSize); \
   __macro(cusolverDnDpotrf_bufferSize); \
