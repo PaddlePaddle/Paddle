@@ -88,10 +88,12 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                  collate_fn=None,
                  data_parallel_world_size=None,
                  data_parallel_rank=None,
-                 drop_last=False):
+                 drop_last=False,
+                 split_data=True):
         self.feed_list = feed_list
         self.places = places
         self.steps_per_epoch = steps_per_epoch
+        self.split_data = split_data
 
         super(NonIterableGeneratorLoader,
               self).__init__(dataset, batch_size, epochs,
@@ -152,7 +154,14 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
             for indices in self.sampler_iter:
                 partial_data = []
                 batch = self.dataset_fetcher.fetch(indices)
+
                 for data in batch:
+
+                    if not self.split_data:
+                        # array = np.array(data)
+                        partial_data.append(data)
+                        continue
+
                     assert data.shape[0] % self.dp_world_size == 0, \
                         "Please padding dataset's batch_size to be divisible by data parallel size"
                     partial_data.append(
