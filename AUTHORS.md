@@ -98,3 +98,4 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | zhupengyang | Zhu Pengyang |
 | DesmonDay | Dai Siming |
 | thisjiang | jiangcheng |
+| yghstill | Guanghua Yu |
