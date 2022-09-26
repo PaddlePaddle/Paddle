@@ -149,14 +149,19 @@ static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>> MakeAutoTuner(
   return AutoTuneBase<T, decltype(obj)>(obj);
 }
 
-template <typename T, typename KernelType>
-class TransposeAutoTuner : public AutoTuneBase<T, KernelType> {
+template <typename T, typename RetureType, typename... Args>
+class TransposeAutoTuner
+    : public AutoTuneBase<T, KernelCallback<T, RetureType, Args...>> {
  public:
-  static AutoTuneBase<T, KernelType>* Instance(KernelType kernel) {
+  static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>>* Instance(
+      RetureType (*func)(Args...)) {
     static std::once_flag transpose_init_flag_;
-    static std::unique_ptr<AutoTuneBase<T, KernelType>> instance_;
+    static std::unique_ptr<
+        AutoTuneBase<T, KernelCallback<T, RetureType, Args...>>>
+        instance_;
     std::call_once(transpose_init_flag_, [&] {
-      instance_.reset(new AutoTuneBase<T, KernelType>(kernel));
+      auto obj = MakeCallback<T>(func);
+      instance_.reset(new AutoTuneBase<T, decltype(obj)>(obj));
     });
     return instance_.get();
   }
@@ -165,8 +170,7 @@ class TransposeAutoTuner : public AutoTuneBase<T, KernelType> {
 template <typename T, typename RetureType, typename... Args>
 static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>>*
 MakeTransposeTuner(RetureType (*func)(Args...)) {
-  auto obj = MakeCallback<T>(func);
-  return TransposeAutoTuner<T, decltype(obj)>::Instance(obj);
+  return TransposeAutoTuner<T, RetureType, Args...>::Instance(func);
 }
 
 }  // namespace autotune

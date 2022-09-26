@@ -35,11 +35,9 @@ void AutoTuneStatus::DisableAutoTune() {
 
 void AutoTuneStatus::Update() {
   current_steps_id_ += 1;
-
-  // The judge is the switch if OP Kernel auto-tune works by default.
-  // When the judge works, the feature is triggered manually with
-  // FLAGS_use_autotune. Once quoted, OP Kernel auto-tune works by default.
-  // if (FLAGS_use_autotune) { return; }
+  if (!FLAGS_use_autotune) {
+    return;
+  }
 
   // This fuction is called when each iter finished.
   if (current_steps_id_ + 1 < start_step_id_) {
