@@ -2024,14 +2024,8 @@ set +x
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
-    #run all unittest to get the coverage information of .c and .h files
-    #precise_card_test_single "$single_card_tests" 1
-    #precise_card_test_single "$single_card_tests_1" 1
-    #precise_card_test_single "$multiple_card_tests" 2
-    #precise_card_test_single "$exclusive_tests"
-    
     ljd_testcases='^test_op_signature$|^variant_test$'
-    precise_card_test_single  "$ljd_testcases" 1
+    precise_card_test_single "$ljd_testcases" 1
     wait;
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
