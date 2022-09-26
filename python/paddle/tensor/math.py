@@ -5148,16 +5148,9 @@ def frexp(x, name=None):
     # 0填充
     mantissa = paddle.divide(input_x, 2**exponent)
     # 计算exponent
-    exponent = paddle.where((mantissa <= -1),
-                            paddle.add(exponent, paddle.ones_like(exponent)),
-                            exponent)
     exponent = paddle.where((mantissa >= 1),
                             paddle.add(exponent, paddle.ones_like(exponent)),
                             exponent)
-    mantissa = paddle.where((mantissa <= -1),
-                            paddle.divide(mantissa,
-                                          2**paddle.ones_like(exponent)),
-                            mantissa)
     mantissa = paddle.where((mantissa >= 1),
                             paddle.divide(mantissa,
                                           2**paddle.ones_like(exponent)),
