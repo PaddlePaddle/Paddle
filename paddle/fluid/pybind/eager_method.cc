@@ -281,36 +281,38 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
   }
 
   if (self->tensor.is_cpu()) {
-    eager_gil_scoped_release guard;
-    VLOG(6) << "Getting StringTensor's numpy value";
-    auto string_tensor =
-        std::dynamic_pointer_cast<phi::StringTensor>(self->tensor.impl());
-    const auto* st_ptr = string_tensor->data();
-    auto numel = self->tensor.numel();
-    auto tensor_dims = self->tensor.shape();
-    // Get the max unicode length of StringTensor to create numpy unicode string
-    // array.
-    auto* longest_pstring = std::max_element(
-        st_ptr, st_ptr + numel, [](const auto& a, const auto& b) {
-          auto a_unicode_len =
-              phi::strings::GetUnicodeStrLen(a.data(), a.size());
-          auto b_unicode_len =
-              phi::strings::GetUnicodeStrLen(b.data(), b.size());
-          return a_unicode_len < b_unicode_len;
-        });
-    size_t max_unicode_length = phi::strings::GetUnicodeStrLen(
-        longest_pstring->data(), longest_pstring->size());
-    max_unicode_length = (max_unicode_length == 0) ? 1 : max_unicode_length;
-    VLOG(6) << "The max unicode length is " << max_unicode_length;
-    auto sp = std::make_unique<uint32_t[]>(max_unicode_length * numel);
-    auto py_array_data = sp.get();
-    memset(py_array_data, 0, max_unicode_length * numel * sizeof(uint32_t));
-    for (int64_t i = 0; i < numel; ++i) {
-      auto curr_unicode_len =
-          phi::strings::GetUnicodeStrLen(st_ptr[i].data(), st_ptr[i].size());
-      phi::strings::GetUnicodeStr(st_ptr[i].data(),
-                                  py_array_data + i * max_unicode_length,
-                                  curr_unicode_len);
+    {
+      eager_gil_scoped_release guard;
+      VLOG(6) << "Getting StringTensor's numpy value";
+      auto string_tensor =
+          std::dynamic_pointer_cast<phi::StringTensor>(self->tensor.impl());
+      const auto* st_ptr = string_tensor->data();
+      auto numel = self->tensor.numel();
+      auto tensor_dims = self->tensor.shape();
+      // Get the max unicode length of StringTensor to create numpy unicode
+      // string array.
+      auto* longest_pstring = std::max_element(
+          st_ptr, st_ptr + numel, [](const auto& a, const auto& b) {
+            auto a_unicode_len =
+                phi::strings::GetUnicodeStrLen(a.data(), a.size());
+            auto b_unicode_len =
+                phi::strings::GetUnicodeStrLen(b.data(), b.size());
+            return a_unicode_len < b_unicode_len;
+          });
+      size_t max_unicode_length = phi::strings::GetUnicodeStrLen(
+          longest_pstring->data(), longest_pstring->size());
+      max_unicode_length = (max_unicode_length == 0) ? 1 : max_unicode_length;
+      VLOG(6) << "The max unicode length is " << max_unicode_length;
+      auto sp = std::make_unique<uint32_t[]>(max_unicode_length * numel);
+      auto py_array_data = sp.get();
+      memset(py_array_data, 0, max_unicode_length * numel * sizeof(uint32_t));
+      for (int64_t i = 0; i < numel; ++i) {
+        auto curr_unicode_len =
+            phi::strings::GetUnicodeStrLen(st_ptr[i].data(), st_ptr[i].size());
+        phi::strings::GetUnicodeStr(st_ptr[i].data(),
+                                    py_array_data + i * max_unicode_length,
+                                    curr_unicode_len);
+      }
     }
     py::array array(py::dtype("U" + std::to_string(max_unicode_length)),
                     tensor_dims,
