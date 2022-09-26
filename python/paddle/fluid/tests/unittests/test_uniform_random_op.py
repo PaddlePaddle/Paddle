@@ -593,6 +593,15 @@ class TestUniformDtype(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestUniformFP16(unittest.TestCase):
+
+    def test_uniform_fp16(self):
+        paddle.disable_static()
+        out = paddle.uniform(shape=[2, 3], dtype=paddle.float16)
+        self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
+        paddle.enable_static()
+
+
 class TestRandomValue(unittest.TestCase):
 
     def test_fixed_random_number(self):
