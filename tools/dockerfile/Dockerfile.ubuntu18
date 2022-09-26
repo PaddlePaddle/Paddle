@@ -55,7 +55,7 @@ ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 
 RUN apt-get update && \
-  apt-get install python3.7 python3.7-dev \
+  apt-get install -y python3.7 python3.7-dev \
   python3.8 python3.8-dev python3.8-distutils \
   python3.9 python3.9-dev python3.9-distutils && \
   rm /usr/bin/python && ln -s /usr/bin/python3.7 /usr/bin/python && \
