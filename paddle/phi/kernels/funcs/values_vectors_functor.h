@@ -241,6 +241,7 @@ struct MatrixEighFunctor<GPUContext, T> {
       SolveWithSyevd(dev_ctx, input_vector, out_value, jobz, uplo);
     }
 
+    CheckEighResult(dev_ctx, batch_size, info_ptr);
     if (has_vectors) {
       PADDLE_ENFORCE_NOT_NULL(eigen_vectors,
                               phi::errors::InvalidArgument(
@@ -340,7 +341,6 @@ inline void MatrixEighFunctor<GPUContext, T>::SolveWithSyevj(
                                   &info_ptr[i],
                                   syevj_params));
   }
-  CheckEighResult(dev_ctx, batch_size, info_ptr);
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDestroySyevjInfo(syevj_params));
 }
 
