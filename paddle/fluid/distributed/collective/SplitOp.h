@@ -14,10 +14,10 @@
 
 #pragma once
 
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace paddle {
 namespace distributed {
@@ -33,7 +33,7 @@ struct SplitDenseTensor {
     for (auto *p_tensor : *out) {
       shape_refer.emplace_back(p_tensor);
     }
-    phi::funcs::SplitFunctor<DeviceContext, T> split_functor_;
+    operators::math::SplitFunctor<DeviceContext, T> split_functor_;
     split_functor_(*context, in, shape_refer, axis, out);
   }
 };
@@ -108,10 +108,16 @@ void SplitTensor(const phi::DeviceContext *dev_ctx,
 
   const auto &place = dev_ctx->GetPlace();
   if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     SplitDenseTensorWithType(static_cast<const phi::GPUContext *>(dev_ctx),
                              tensor,
                              &dense_list,
                              tensor.dtype());
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't split tensor since it's not support NCCL/RCCL, please "
+        "recompile or reinstall Paddle with NCCL/RCCL support."));
+#endif
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     SplitDenseTensorWithType(
@@ -121,8 +127,8 @@ void SplitTensor(const phi::DeviceContext *dev_ctx,
         tensor.dtype());
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't split tensor since it's not compiled with CUSTOM_DEVICE,"
-        "Please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
+        "Paddle can't split tensor since it's not compiled with CUSTOM_DEVICE, "
+        "please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
     SplitDenseTensorWithType(static_cast<const phi::CPUContext *>(dev_ctx),
