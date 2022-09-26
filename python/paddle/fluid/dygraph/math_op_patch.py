@@ -389,10 +389,6 @@ def monkey_patch_math_varbase():
         ('ndim', _ndim_),
         ('size', _size_),
         ('T', _T_),
-        ('__mul__',
-         _binary_creator_('__mul__', 'multiply', False, _scalar_mul_, True)),
-        ('__rmul__',
-         _binary_creator_('__rmul__', 'multiply', False, _scalar_mul_, True)),
         ('__div__',
          _binary_creator_('__div__', 'divide', False, _scalar_div_, True)),
         ('__truediv__',
@@ -427,6 +423,8 @@ def monkey_patch_math_varbase():
         "__radd__",
         '__sub__',
         '__rsub__',
+        '__mul__',
+        '__rmul__',
     ]
 
     global _already_patch_varbase
