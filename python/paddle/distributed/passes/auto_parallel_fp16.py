@@ -385,8 +385,9 @@ class FP16State(object):
             grad_slot_name = slot_name + "@GRAD"
             assert grad_slot_name in op.output_names, "[{}], Current Op: {}".format(
                 grad_slot_name, str(op))
-            assert len(op.output(grad_slot_name)) == 1, "Current Op: {}".format(
-                str(op))
+            assert len(
+                op.output(grad_slot_name)) == 1, "[{}], Current Op: {}".format(
+                    grad_slot_name, str(op))
             grad_name = op.output(grad_slot_name)[0]
             grad = block.var(grad_name)
             grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)
