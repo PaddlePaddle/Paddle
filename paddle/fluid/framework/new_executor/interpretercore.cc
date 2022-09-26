@@ -282,6 +282,7 @@ const VariableScope* InterpreterCore::GetVariableScope() const {
 
 void InterpreterCore::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
+  framework::interpreter::build_variable_scope(block_, &var_scope_, false);
   auto& var_list = var_scope_.MutableVarList();
   for (size_t i = 0; i < var_list.size(); i++) {
     var_list[i] = new_scope->FindVar(var_scope_.GetNameById(i));

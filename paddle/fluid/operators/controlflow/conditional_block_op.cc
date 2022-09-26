@@ -75,11 +75,15 @@ class ConditionalBlockOp : public ConditionalOp {
           platform::errors::PreconditionNotMet(
               "Expect Scope variable to be set in conditional_block_op, but "
               "got a null Scope variable. Please set the Scope variable."));
+      // PE call executor, cannot know which call this
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
-      if (scopes->size() == 0) {
+      VLOG(10) << "[tmp debug]" << scopes->size();
+      if (1 || scopes->size() == 0 || !FLAGS_control_flow_use_new_executor ||
+          !FLAGS_control_flow_use_new_executor_cache) {
         scopes->resize(1);
         scopes->front() = &scope.NewScope();
       }
+      VLOG(10) << "[tmp debug]" << scopes->size() << " " << scopes->front();
       auto &cur_scope = *scopes->front();
 #ifdef PADDLE_WITH_MKLDNN
       // (jczaja) Executor on being destroyed clears oneDNN cache and
@@ -90,20 +94,22 @@ class ConditionalBlockOp : public ConditionalOp {
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       // framework::StandaloneExecutor exec(dev_place, *block->Program());
 
+      VLOG(10) << "[important]" << this << " " << &scope;
+      VLOG(10) << "[important]" << this << " " << &scope << " "
+               << scopes->front() << " " << scopes->size();
+
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
       auto &skip_vars =
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
-
-      // print scope
-      VLOG(10) << "scope contains: \n";
-      VLOG(10) << framework::GenScopeTreeDebugInfo(
-          const_cast<framework::Scope *>(&scope));
-
       // print cur_scope
       VLOG(10) << "cur scope contains: \n";
       VLOG(10) << framework::GenScopeTreeDebugInfo(
           const_cast<framework::Scope *>(&cur_scope));
+      // print scope
+      VLOG(10) << "scope contains: \n";
+      VLOG(10) << framework::GenScopeTreeDebugInfo(
+          const_cast<framework::Scope *>(&scope));
 
       // print skip_vars
       VLOG(10) << "skip vars: ";
@@ -128,8 +134,10 @@ class ConditionalBlockOp : public ConditionalOp {
           core->SetUsedForControlFlowOp(true);
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core;
+        } else {
+          core->reset_scope(&cur_scope);
         }
-        // core->reset_scope(&cur_scope);
+
         core->Run({}, false);
 
         FLAGS_new_executor_use_local_scope =
@@ -240,18 +248,14 @@ class ConditionalBlockGradOp : public ConditionalOp {
             FLAGS_new_executor_use_local_scope;
         FLAGS_new_executor_use_local_scope = false;
 
-        // auto core = std::make_shared<InterpreterCore>(
-        //     dev_place, *block, skip_gc_vars, &cur_scope, false);
-        // core->SetUsedForControlFlowOp(true);
-        // core->Run({}, false);
-
         if (!core || !platform::is_same_place(core->Place(), dev_place) ||
             !FLAGS_control_flow_use_new_executor_cache) {
           core.reset(new InterpreterCore(
               dev_place, *block, skip_gc_vars, &cur_scope, false));
           core->SetUsedForControlFlowOp(true);
+        } else {
+          core->reset_scope(&cur_scope);
         }
-        // core->reset_scope(&cur_scope);
         core->Run({}, false);
 
         FLAGS_new_executor_use_local_scope =
