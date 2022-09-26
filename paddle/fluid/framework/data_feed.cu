@@ -930,8 +930,11 @@ int GraphDataGenerator::GenerateBatch() {
                       stream_);
     }
     if (sage_mode_) {
-      d_feature_buf_ =
-          memory::AllocShared(place_, slot_instance * slot_num_ * sizeof(uint64_t));
+      size_t temp_storage_bytes = slot_instance * slot_num_ * sizeof(uint64_t);
+      // No need to allocate a new d_feature_buf_ if the old one is enough.
+      if (d_feature_buf_->size() < temp_storage_bytes) {
+        d_feature_buf_ = memory::AllocShared(place_, temp_storage_bytes);
+      }
     }
     uint64_t *feature_buf = reinterpret_cast<uint64_t *>(d_feature_buf_->ptr());
     if (FLAGS_enable_opt_get_features || !gpu_graph_training_) {
