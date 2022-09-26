@@ -576,7 +576,7 @@ class Engine:
         places = paddle.static.cuda_places()
         with static.program_guard(dist_main_prog, dist_startup_prog):
             split_data = True
-            if hasattr(dataset, split_data):
+            if hasattr(dataset, "split_data"):
                 split_data = dataset.split_data
             dataloader = NonIterableGeneratorLoader(
                 dataset,
