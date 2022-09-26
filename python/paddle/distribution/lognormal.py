@@ -118,7 +118,8 @@ class LogNormal(TransformedDistribution):
 
         In the above equation:
 
-        * :math:`scale = \sigma`: is the std.
+        * :math:`loc = \mu`: is the mean of the underlying Normal distribution.
+        * :math:`scale = \sigma`: is the stddevs of the underlying Normal distribution.
 
         Returns:
           Tensor: Shannon entropy of lognormal distribution.The data type is float32.
