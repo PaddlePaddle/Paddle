@@ -87,43 +87,35 @@ class DepthwiseConvFilterGradFunctor {
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
+#define FINAL_MASK 0xffffffff
+#define HALF_WARP 16
+#define WARP_SIZE 32
+
 template <typename T>
-static __forceinline__ __device__ T WarpReduceSum(T val, int warp_size) {
-  typedef cub::WarpReduce<T> WarpReduce;
-  typename WarpReduce::TempStorage temp_storage;
-  val = WarpReduce(temp_storage).Sum(val, warp_size);
+__forceinline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+    val += platform::CudaShuffleDownSync(lane_mask, val, mask);
   return val;
 }
 
 template <typename T>
-__forceinline__ __device__ T BlockReduceSum(T val) {
-  static __shared__ T shared[32];
-  int thread_id = threadIdx.x + threadIdx.y * blockDim.x +
-                  threadIdx.z * blockDim.x * blockDim.y;
-  int warp_size = min(blockDim.x * blockDim.y * blockDim.z, warpSize);
-  int lane = thread_id % warp_size;
-  int wid = thread_id / warp_size;
+__forceinline__ __device__ T BlockReduceSum(T val, unsigned mask = FINAL_MASK) {
+  static __shared__ T shared[WARP_SIZE];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
 
-  val = WarpReduceSum(val, warp_size);  // Each warp performs partial reduction
+  val = WarpReduceSum<T>(val, mask);
 
-  if (lane == 0) shared[wid] = val;  // Write reduced value to shared memory
-  __syncthreads();                   // Wait for all partial reductions
-
-  // read from shared memory only if that warp existed
-  int block_size = blockDim.x * blockDim.y * blockDim.z;
-  if (thread_id < (block_size - 1) / warp_size + 1) {
-    val = shared[lane];
-  } else {
-    val = static_cast<T>(0);
-  }
-
-  if (wid == 0) {
-    val = WarpReduceSum(val, warp_size);  // Final reduce within first warp
-  }
   __syncthreads();
-  if (thread_id != 0) {
-    val = static_cast<T>(0);
-  }
+  if (lane == 0) shared[wid] = val;
+
+  __syncthreads();
+
+  // align block_span to WARP_SIZE
+  int block_span = (blockDim.x + WARP_SIZE - 1) >> 5;
+  val = (lane < block_span) ? shared[lane] : static_cast<T>(0.0f);
+  val = WarpReduceSum<T>(val, mask);
+
   return val;
 }
 
@@ -855,44 +847,48 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
     const int dilate_height,
     const int dilate_width,
     T* filter_grad_data) {
-  T s(0);
-  int gbid = ((blockIdx.z * gridDim.y) + blockIdx.y) * gridDim.x + blockIdx.x;
+  T f_grad(0);
 
-  for (int image_w = threadIdx.x; image_w < output_width;
-       image_w += blockDim.x) {
-    for (int bid = 0; bid < num; bid++) {
-      for (int image_h = threadIdx.y; image_h < output_height;
-           image_h += blockDim.y) {
-        int kernel_id = blockIdx.z;
-        int kernel_h = blockIdx.y * dilate_height - padding_height;
-        int kernel_w = blockIdx.x * dilate_width - padding_width;
+  int idx = blockIdx.x;
+  int tmp_1 = idx / filter_width;
+  int tmp_2 = tmp_1 / filter_height;
+  int kw_id = idx - tmp_1 * filter_width;
+  int kh_id = tmp_1 - tmp_2 * filter_height;
+  int oc_id = tmp_2;
+  int ic_id = oc_id / filter_multiplier;
 
-        int image_hk = image_h * stride_height + kernel_h;
-        int image_wk = image_w * stride_width + kernel_w;
-        if (image_hk < 0 || image_hk >= input_height) continue;
-        if (image_wk < 0 || image_wk >= input_width) continue;
-#define gaid(N, C, H, W) \
-  ((((N)*gridDim.z + (C)) * output_height + (H)) * output_width + (W))
-        int input_id = ((bid * (gridDim.z / filter_multiplier) +
-                         kernel_id / filter_multiplier) *
-                            input_height +
-                        image_hk) *
-                           input_width +
-                       image_wk;
-        if (fuse_relu_before_conv) {
-          s += output_grad_data[gaid(bid, kernel_id, image_h, image_w)] *
-               T(max(0.0f, static_cast<double>(input_data[input_id])));
-        } else {
-          s += output_grad_data[gaid(bid, kernel_id, image_h, image_w)] *
-               input_data[input_id];
-        }
-#undef gaid
+  const int ohw = output_height * output_width;
+  const int onhw = num * ohw;
+
+  for (int id = threadIdx.x; id < onhw; id += blockDim.x) {
+    int bid = id / ohw;
+    int og_hw = id - bid * ohw;
+    int og_h = og_hw / output_width;
+    int og_w = og_hw - og_h * output_width;
+
+    int i_w = og_w * stride_width + kw_id * dilate_width - padding_width;
+    int i_h = og_h * stride_height + kh_id * dilate_height - padding_height;
+
+    if (i_w >= 0 && i_w < input_width && i_h >= 0 && i_h < input_height) {
+      int input_offset =
+          ((bid * input_channels + ic_id) * input_height + i_h) * input_width +
+          i_w;
+      int output_grad_offset = (bid * output_channels + oc_id) * ohw + og_hw;
+      if (fuse_relu_before_conv) {
+        f_grad += output_grad_data[output_grad_offset] *
+                  static_cast<T>(
+                      max(0.0f, static_cast<double>(input_data[input_offset])));
+      } else {
+        f_grad +=
+            output_grad_data[output_grad_offset] * input_data[input_offset];
       }
     }
   }
 
-  T val = BlockReduceSum(s);
-  if (threadIdx.y == 0 && threadIdx.x == 0) filter_grad_data[gbid] = val;
+  T val = BlockReduceSum<T>(f_grad);
+  if (threadIdx.x == 0) {
+    filter_grad_data[idx] = val;
+  }
 }
 
 template <typename T, bool fuse_relu_before_conv>
@@ -1547,14 +1543,8 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
     dim3 threads;
     dim3 grid;
     if (data_layout != DataLayout::kNHWC) {
-      if (output_width > 1024 && output_width <= 2048) {
-        block_size = (output_width - 1) / 2 + 1;
-      } else if (output_width > 512 && output_width <= 1024) {
-        block_size = output_width;
-      }
-      blocks = std::min(std::max(block_size / output_width, 1), output_height);
-      grid = dim3(ksize_width, ksize_height, output_channels);
-      threads = dim3(std::min(output_width, block_size), blocks, 1);
+      grid = dim3(output_channels * ksize_height * ksize_width);
+      threads = dim3(min(256, batch_size * WARP_SIZE));
     } else {
       blocks = std::min(
           std::max(block_size / output_channels, 1),
