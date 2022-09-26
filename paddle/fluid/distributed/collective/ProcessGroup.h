@@ -82,6 +82,9 @@ class ProcessGroup {
                         int size,
                         const platform::Place& place,
                         int gid);
+
+  explicit ProcessGroup(int rank, int size, int gid);
+
   virtual ~ProcessGroup() {}
 
   int GetRank() const { return rank_; }

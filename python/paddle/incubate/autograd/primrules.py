@@ -23,7 +23,7 @@ from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
                       fill_const, gather, ge, gt, log, matmul, max, mul, ne,
                       neg, reduce_sum, reshape, scatter_add, select, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose)
+                      transpose, rsqrt)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -252,6 +252,11 @@ def sqrt_orig2prim(op, x):
     return sqrt(x)
 
 
+@REGISTER_ORIG2PRIM('rsqrt')
+def rsqrt_orig2prim(op, x):
+    return rsqrt(x)
+
+
 @REGISTER_ORIG2PRIM('matmul_v2')
 def matmul_v2_orig2prim(op, x, y):
 
@@ -454,6 +459,11 @@ def add_prim2orig(op, x, y):
 @REGISTER_PRIM2ORIG('sub_p')
 def sub_prim2orig(op, x, y):
     return paddle.subtract(x, y)
+
+
+@REGISTER_PRIM2ORIG('rsqrt_p')
+def rsqrt_prim2orig(op, x):
+    return paddle.rsqrt(x)
 
 
 @REGISTER_PRIM2ORIG('mul_p')
@@ -967,6 +977,17 @@ def max_jvp(op, x_dot, y_dot):
 def cast_jvp(op, x_dot):
     y = op_position_output(op)
     return primops.cast(x_dot, y.dtype)
+
+
+@REGISTER_JVP('rsqrt_p')
+def rsqrt_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    y = op_position_output(op)
+    x = op_position_inputs(op)
+    c2 = fill_const(value=-2.0, shape=y.shape, dtype=y.dtype)
+    y_dot = mul(x_dot, div(div(y, x), c2))
+    return y_dot
 
 
 ## Register transpose rules

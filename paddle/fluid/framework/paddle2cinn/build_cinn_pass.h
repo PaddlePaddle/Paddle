@@ -14,12 +14,21 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 class MemOptVarInfo;
+class Node;
 }  // namespace ir
 
 namespace paddle2cinn {
@@ -31,9 +40,40 @@ constexpr char kInternalVars[] = "InternalVars";
 constexpr char kOutputVars[] = "OutputVars";
 constexpr char kMemOptVarInfoFromMainGraph[] =
     "mem_opt_var_info_from_main_graph";
+
 using Name2VarInfoMap =
     std::unordered_map<std::string,
                        std::shared_ptr<framework::ir::MemOptVarInfo>>;
+using GraphNodeSet = std::unordered_set<ir::Node*>;
+
+struct OpTransInfo {
+  const std::unordered_set<std::string> default_deny_ops{"feed", "fetch"};
+
+  const std::unordered_map<std::string, std::function<bool(const ir::Node*)>>
+      dynamic_op_cond{
+          {"slice", [](const ir::Node* node) -> bool {
+             if (!node->IsOp()) {
+               return false;
+             }
+             auto* op_desc = node->Op();
+             auto infer_flags =
+                 op_desc->GetAttrIfExists<std::vector<int>>("infer_flags");
+             if (std::find_if(
+                     infer_flags.begin(), infer_flags.end(), [](int v) {
+                       return v < 0;
+                     }) != infer_flags.end()) {
+               return true;
+             }
+             return false;
+           }}};
+
+  const std::unordered_map<std::string, std::unordered_set<std::string>>
+      deny_param_cond{{"batch_norm", {"ReserveSpace"}},
+                      {"batch_norm_grad", {"ReserveSpace"}}};
+
+  std::unordered_set<std::string> GetDenyVarNames(
+      const GraphNodeSet& cluster) const;
+};
 
 // A pass named BuildCinnPass, the function of this pass is:
 //

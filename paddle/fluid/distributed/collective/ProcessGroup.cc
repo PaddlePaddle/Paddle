@@ -52,5 +52,13 @@ ProcessGroup::ProcessGroup(int rank,
   }
 }
 
+ProcessGroup::ProcessGroup(int rank, int size, int gid)
+    : rank_(rank), size_(size), gid_(gid) {
+  if (gid != IGNORE_ID) {
+    auto map = ProcessGroupMapFromGid::getInstance();
+    map->insert(gid_, this);
+  }
+}
+
 }  //  namespace distributed
 }  //  namespace paddle

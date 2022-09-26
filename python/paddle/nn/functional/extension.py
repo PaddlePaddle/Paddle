@@ -350,9 +350,6 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
         out(Tensor): The temporal shifting result is a tensor with the
         same shape and same data type as the input.
 
-    Raises:
-        TypeError: seg_num must be int type.
-
     Examples:
         .. code-block:: python
 

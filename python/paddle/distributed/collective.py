@@ -414,7 +414,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
             paddle.distributed.init_parallel_env()
             tindata = paddle.randn(shape=[2, 3])
             gp = paddle.distributed.new_group([2,4,6])
-            paddle.distributed.all_reduce(tindata, group=gp, use_calc_stream=False)
+            paddle.distributed.all_reduce(tindata, group=gp, sync_op=False)
 
     """
     global _custom_gid
@@ -521,7 +521,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     tmp = paddle.to_tensor(
         [1], dtype="int32") if _non_static_mode() else fill_constant(
             [0], dtype="int32", value="1")
-    paddle.distributed.all_reduce(tmp, use_calc_stream=True)
+    paddle.distributed.all_reduce(tmp, sync_op=True)
     paddle.distributed.wait(tmp)
     return gp
 
@@ -617,7 +617,7 @@ def wait(tensor, group=None, use_calc_stream=True):
 
             paddle.distributed.init_parallel_env()
             tindata = paddle.randn(shape=[2, 3])
-            paddle.distributed.all_reduce(tindata, use_calc_stream=True)
+            paddle.distributed.all_reduce(tindata, sync_op=True)
             paddle.distributed.wait(tindata)
 
     """
@@ -665,7 +665,7 @@ def _sync_comm_stream(tensor, ring_id=0):
     )
 
 
-def broadcast(tensor, src, group=None, use_calc_stream=True):
+def broadcast(tensor, src, group=None, sync_op=True):
     """
 
     Broadcast a tensor from the source to all others.
@@ -681,9 +681,8 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         tensor (Tensor): The Tensor to send if current rank is the source, or the Tensor to receive otherwise. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         src (int): The source rank.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -716,12 +715,13 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         gsrc = group.get_group_rank(src)
         assert gsrc >= 0, ("src rank out of group, need global rank")
         task = group.process_group.broadcast(tensor, gsrc)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     ring_id = ring_id = 0 if group is None else group.id
     gsrc = src if group is None else group.get_group_rank(src)
     assert gsrc >= 0, ("src rank out of group, need global rank")
@@ -748,7 +748,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
                      })
 
 
-def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
+def all_reduce(tensor, op=ReduceOp.SUM, group=None, sync_op=True):
     """
 
     Reduce a tensor over all ranks so that all get the result.
@@ -764,10 +764,9 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     Args:
         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The operation used. Default value is ReduceOp.SUM.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Wether this op is a sync op. Default value is True.
 
     Returns:
         None.
@@ -795,12 +794,13 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         op_type = _get_reduce_op(op, "all_reduce")
         group = _get_default_group() if group is None else group
         task = group.process_group.allreduce(tensor, op_type)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
     if _non_static_mode():
         if op == ReduceOp.SUM:
@@ -846,7 +846,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
                      })
 
 
-def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
+def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
     """
 
     Reduce a tensor to the destination from all others. As shown below, one process is started with a GPU and the data of this process is represented
@@ -862,10 +862,9 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         dst (int): The destination rank id.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The operation used. Default value is ReduceOp.SUM.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -896,12 +895,13 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         gdst = group.get_group_rank(dst)
         assert gdst >= 0, ("dst rank out of group, need global rank")
         task = group.process_group.reduce(tensor, gdst, op_type)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
     gdst = dst if group is None else group.get_group_rank(dst)
     assert gdst >= 0, ("dst rank out of group, need global rank")
@@ -953,7 +953,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
                      })
 
 
-def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
+def all_gather(tensor_list, tensor, group=None, sync_op=True):
     """
 
     Gather tensors from all participators and all get the result. As shown
@@ -971,9 +971,8 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
         tensor (Tensor): The Tensor to send. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -1027,6 +1026,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             tensor_list.extend(list_of_tensor)
         return
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
     nranks = _get_global_group().nranks if group is None else group.nranks
 
@@ -1137,7 +1137,7 @@ def all_gather_object(object_list, obj, group=None):
             _convert_tensor_to_object(tensor, list_len_of_tensor[i]))
 
 
-def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
+def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
     """
 
     Scatter a tensor to all participators. As shown below, one process is started with a GPU and the source of the scatter
@@ -1154,9 +1154,8 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         tensor_list (list|tuple): A list/tuple of Tensors to scatter. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool. Default value is None.
         src (int): The source rank id. Default value is 0.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -1206,12 +1205,13 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     temp = paddle.concat(tensor_list, axis=0)
     if in_dygraph_mode():
         task = group.process_group.scatter(temp, tensor, gsrc)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     if _non_static_mode():
         return _legacy_C_ops.c_scatter(temp, tensor, 'use_calc_stream',
                                        use_calc_stream, 'ring_id', ring_id,
@@ -1233,7 +1233,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
                      })
 
 
-def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
+def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
     """
     Scatter tensors in in_tensor_list to all participators averagely and gather the result tensors in out_tensor_list.
     As shown below, the in_tensor_list in GPU0 includes 0_0 and 0_1, and GPU1 includes 1_0 and 1_1.
@@ -1251,7 +1251,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         out_tensor_list (list): A list of output Tensors. The data type of its elements should be the same as the
             data type of the input Tensors.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Whether to use calculation stream (True) or communication stream. Default: True.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -1301,6 +1301,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         out_tensor_list.extend(paddle.split(out, nranks, 0))
         return
 
+    use_calc_stream = sync_op
     if _non_static_mode():
         out = _legacy_C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
                                      'ring_id', ring_id)
@@ -1339,11 +1340,11 @@ def alltoall_single(in_tensor,
                     in_split_sizes=None,
                     out_split_sizes=None,
                     group=None,
-                    use_calc_stream=True):
+                    sync_op=True):
     """
     Scatter a single input tensor to all participators and gather the received tensors in out_tensor.
 
-    .. note::
+    Note:
         ``alltoall_single`` is only supported in eager mode.
 
     Args:
@@ -1354,10 +1355,10 @@ def alltoall_single(in_tensor,
         out_split_sizes (list[int], optional): Split sizes of ``out_tensor`` for dim[0]. If not given, dim[0] of ``out_tensor``
             must be divisible by group size and ``out_tensor`` will be gathered averagely from all participators. Default: None.
         group (Group, optional): The group instance return by ``new_group`` or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Whether to use calculation stream (True) or communication stream. Default: True.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
-        None, if ``use_calc_stream`` is set to ``True``; ``Task`` of ``group``, if ``use_calc_stream`` is set to ``False``.
+        None, if ``sync_op`` is set to ``True``; ``Task`` of ``group``, if ``sync_op`` is set to ``False``.
 
     Examples:
         .. code-block:: python
@@ -1396,7 +1397,7 @@ def alltoall_single(in_tensor,
                                         output,
                                         in_split_sizes,
                                         out_split_sizes,
-                                        use_calc_stream=False,
+                                        sync_op=False,
                                         group=group)
             task.wait()
             print(output)
@@ -1419,7 +1420,7 @@ def alltoall_single(in_tensor,
 
     task = group.process_group.alltoall_single(in_tensor, out_tensor,
                                                in_split_sizes, out_split_sizes)
-    if use_calc_stream:
+    if sync_op:
         task.wait()
         return
     else:
@@ -1430,7 +1431,7 @@ def _get_group_rank(global_rank, group=None):
     return global_rank if group is None else group.get_group_rank(global_rank)
 
 
-def send(tensor, dst=0, group=None, use_calc_stream=True):
+def send(tensor, dst=0, group=None, sync_op=True):
     """
     Send a tensor to the receiver.
 
@@ -1439,7 +1440,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         dst (int): The destination rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -1469,12 +1470,13 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         backend = _group_map_backend[group]
         assert backend != 'gloo', ("backend gloo is not supported yet")
         task = group.process_group.send(tensor, dst)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
@@ -1495,7 +1497,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
                      })
 
 
-def recv(tensor, src=0, group=None, use_calc_stream=True):
+def recv(tensor, src=0, group=None, sync_op=True):
     """
     Receive a tensor to the sender.
 
@@ -1504,7 +1506,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
         None.
@@ -1535,12 +1537,13 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         backend = _group_map_backend[group]
         assert backend != 'gloo', ("backend gloo is not supported yet")
         task = group.process_group.recv(tensor, src)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
             return task
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
@@ -1811,7 +1814,7 @@ def reduce_scatter(tensor,
                    tensor_list,
                    op=ReduceOp.SUM,
                    group=None,
-                   use_calc_stream=True):
+                   sync_op=True):
     """
     Reduces, then scatters a list of tensors to all processes in a group
 
@@ -1822,11 +1825,11 @@ def reduce_scatter(tensor,
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global
             default group. Default: None.
-        use_calc_stream (bool, optional): Whether this op should be an async op.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
     Returns:
-        Async task handle, if use_calc_stream is set to False.
-        None, if use_calc_stream or if not part of the group.
+        Async task handle, if sync_op is set to False.
+        None, if sync_op or if not part of the group.
 
     Warning:
         This API only supports the dygraph mode.
@@ -1866,7 +1869,7 @@ def reduce_scatter(tensor,
 
         temp = paddle.concat(tensor_list, axis=0)
         task = group.process_group._reduce_scatter_base(tensor, temp, op_type)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
@@ -1879,7 +1882,7 @@ def _reduce_scatter_base(output,
                          input,
                          op=ReduceOp.SUM,
                          group=None,
-                         use_calc_stream=True):
+                         sync_op=True):
     """
     Reduces, then scatters a flattened tensor to all processes in a group.
 
@@ -1890,11 +1893,11 @@ def _reduce_scatter_base(output,
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,
             the default process group will be used.
-        use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
+
     Returns:
-        Async task handle, if use_calc_stream is set to False.
-        None, if use_calc_stream or if not part of the group.
+        Async task handle, if sync_op is set to False.
+        None, if sync_op or if not part of the group.
 
     Examples:
         .. code-block:: python
@@ -1925,7 +1928,7 @@ def _reduce_scatter_base(output,
         op_type = _get_reduce_op(op, "_reduce_scatter_base")
         group = _get_default_group() if group is None else group
         task = group.process_group._reduce_scatter_base(output, input, op_type)
-        if use_calc_stream:
+        if sync_op:
             task.wait()
             return None
         else:
