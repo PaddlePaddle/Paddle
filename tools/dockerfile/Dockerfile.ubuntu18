@@ -78,7 +78,7 @@ RUN python3.9 setup.py install && \
   python3.7 setup.py install
 
 WORKDIR /home
-RUN rm setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
+RUN rm setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
     rm -r setuptools-40.6.2 setuptools-50.3.2 pip-20.0.1
 RUN rm /usr/local/bin/pip && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip && \
   rm /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3
