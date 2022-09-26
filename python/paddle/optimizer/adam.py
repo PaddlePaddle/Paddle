@@ -67,19 +67,19 @@ class Adam(Optimizer):
         epsilon (float|Tensor, optional): A small float value for numerical stability.
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 1e-08.
-	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. And you can specify different options for \
-            different parameter groups such as the learning rate, weight decay, etc, \
-            then the parameters are list of dict. Note that the learning_rate in paramter groups \
-            represents the scale of base learning_rate. \
-	    The default value is None in static mode, at this time all parameters will be updated.
-	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-	    It canbe a float value as coeff of L2 regularization or \
-	    :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-	    If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
-	    the regularization setting here in optimizer will be ignored for this parameter. \
-	    Otherwise, the regularization setting here in optimizer will take effect. \
-	    Default None, meaning there is no regularization.
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+            This parameter is required in dygraph mode. And you can specify different options for
+            different parameter groups such as the learning rate, weight decay, etc,
+            then the parameters are list of dict. Note that the learning_rate in paramter groups
+            represents the scale of base learning_rate.
+            The default value is None in static mode, at this time all parameters will be updated.
+        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
+            It canbe a float value as coeff of L2 regularization or
+            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already,
+            the regularization setting here in optimizer will be ignored for this parameter.
+            Otherwise, the regularization setting here in optimizer will take effect.
+            Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,

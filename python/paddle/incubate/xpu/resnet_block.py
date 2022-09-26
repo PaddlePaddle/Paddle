@@ -71,7 +71,7 @@ def resnet_basic_block(x,
                        trainable_statistics=False,
                        find_conv_max=True):
 
-    if fluid.framework.in_dygraph_mode():
+    if fluid.framework._non_static_mode():
         attrs = ('stride1', stride1, 'stride2', stride2, 'stride3', stride3,
                  'padding1', padding1, 'padding2', padding2, 'padding3',
                  padding3, 'dilation1', dilation1, 'dilation2', dilation2,
@@ -83,7 +83,7 @@ def resnet_basic_block(x,
                  find_conv_max)
 
         out, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = \
-                getattr(_C_ops, "resnet_basic_block")(x, filter1, scale1, bias1, mean1, var1, filter2, scale2, bias2, mean2, var2, \
+                _legacy_C_ops.resnet_basic_block(x, filter1, scale1, bias1, mean1, var1, filter2, scale2, bias2, mean2, var2, \
                 filter3, scale3, bias3, mean3, var3, mean1, var1, mean2, var2, mean3, var3, *attrs)
         return out
     helper = LayerHelper('resnet_basic_block', **locals())

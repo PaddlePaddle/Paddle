@@ -253,7 +253,7 @@ def add(x, y, name=None):
 
     """
     if y.dtype != x.dtype:
-        y = _C_ops.sparse_cast(y, None, x.dtype)
+        y = cast(y, None, x.dtype)
     return _C_ops.sparse_add(x, y)
 
 

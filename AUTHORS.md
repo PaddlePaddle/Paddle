@@ -1,3 +1,6 @@
+This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddle/Paddle/) codebase, to see a full list, please use the source control tool git. PaddlePaddle community encourges every Paddle codebase author include his/her GitHub account and fullname here.
+
+
 | Github account | name |
 |---|---|
 | abhinavarora | Abhinav Arora |
@@ -85,3 +88,6 @@
 | mingxu1067 | Ming Huang (NVIDIA) |
 | zlsh80826 | Reese Wang (NVIDIA) |
 | leo0519 | Leo Chen (NVIDIA) |
+| jzhang533 | Jun Zhang |
+| Ligoml | Meng-Liu Li |
+| jeff41404 | Xiang Gao |

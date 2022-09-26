@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/activation_grad_kernel.h"
+#include "paddle/phi/kernels/gelu_grad_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
@@ -22,16 +23,6 @@
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 
 namespace phi {
-
-#define DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPX(name, functor_class) \
-  template <typename T, typename Context>                              \
-  void name##GradKernel(const Context& dev_ctx,                        \
-                        const DenseTensor& x,                          \
-                        const DenseTensor& dout,                       \
-                        DenseTensor* dx) {                             \
-    functor_class<T> functor;                                          \
-    functor(dev_ctx, x, dout, 0, 0, dx);                               \
-  }
 
 #define DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX( \
     name, functor_class, attr)                             \
@@ -53,18 +44,6 @@ namespace phi {
                         DenseTensor* dx) {                               \
     functor_class<T> functor;                                            \
     functor(dev_ctx, out, dout, 0, 0, dx);                               \
-  }
-
-#define DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPOUT( \
-    name, functor_class, attr)                               \
-  template <typename T, typename Context>                    \
-  void name##GradKernel(const Context& dev_ctx,              \
-                        const DenseTensor& out,              \
-                        const DenseTensor& dout,             \
-                        float attr,                          \
-                        DenseTensor* dx) {                   \
-    functor_class<T> functor;                                \
-    functor(dev_ctx, out, dout, attr, 0, dx);                \
   }
 
 template <typename T>
@@ -158,12 +137,14 @@ using AbsOneDNNGradFunctor =
     OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_abs>;
 
 template <typename T>
-using ReluOneDNNGradFunctor =
-    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
+using EluOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
+    T,
+    dnnl::algorithm::eltwise_elu_use_dst_for_bwd>;
 
 template <typename T>
-using SwishOneDNNGradFunctor =
-    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_swish>;
+using ExpOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
+    T,
+    dnnl::algorithm::eltwise_exp_use_dst_for_bwd>;
 
 template <typename T>
 using HardSwishOneDNNGradFunctor =
@@ -174,14 +155,21 @@ using MishOneDNNGradFunctor =
     OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_mish>;
 
 template <typename T>
+using GeluTanhOneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_gelu_tanh>;
+
+template <typename T>
+using GeluErfOneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_gelu_erf>;
+
+template <typename T>
+using ReluOneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
+
+template <typename T>
 using SigmoidOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
     T,
     dnnl::algorithm::eltwise_logistic_use_dst_for_bwd>;
-
-template <typename T>
-using TanhOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
-    T,
-    dnnl::algorithm::eltwise_tanh_use_dst_for_bwd>;
 
 template <typename T>
 using SqrtOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
@@ -189,22 +177,21 @@ using SqrtOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
     dnnl::algorithm::eltwise_sqrt_use_dst_for_bwd>;
 
 template <typename T>
-using EluOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
-    T,
-    dnnl::algorithm::eltwise_elu_use_dst_for_bwd>;
+using SwishOneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_swish>;
 
 template <typename T>
-using ExpOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
+using TanhOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
     T,
-    dnnl::algorithm::eltwise_exp_use_dst_for_bwd>;
+    dnnl::algorithm::eltwise_tanh_use_dst_for_bwd>;
 
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhOneDNNGradUseOutFunctor);
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtOneDNNGradUseOutFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Abs, AbsOneDNNGradFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpOneDNNGradUseOutFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluOneDNNGradFunctor);
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid,
                                             SigmoidOneDNNGradUseOutFunctor);
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpOneDNNGradUseOutFunctor);
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Abs, AbsOneDNNGradFunctor);
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluOneDNNGradFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtOneDNNGradUseOutFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhOneDNNGradUseOutFunctor);
 
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                   ReluOneDNNGradFunctor,
@@ -215,17 +202,6 @@ DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Swish,
                                                   SwishOneDNNGradFunctor,
                                                   beta);
-template <typename T, typename Context>
-void HardSwishGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& dout,
-                         float threshold,
-                         float scale,
-                         float offset,
-                         DenseTensor* dx) {
-  HardSwishOneDNNGradFunctor<T> functor;
-  functor(dev_ctx, x, dout, threshold, 0, dx);
-}
 
 template <typename T, typename Context>
 void EluGradKernel(const Context& dev_ctx,
@@ -236,6 +212,33 @@ void EluGradKernel(const Context& dev_ctx,
                    DenseTensor* dx) {
   EluOneDNNGradUseOutFunctor<T> functor;
   functor(dev_ctx, out, dout, alpha, 0, dx);
+}
+
+template <typename T, typename Context>
+void GeluGradKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& out_grad,
+                    bool approximate,
+                    DenseTensor* x_grad) {
+  if (approximate) {
+    GeluTanhOneDNNGradFunctor<T> functor;
+    functor(dev_ctx, x, out_grad, 0, 0, x_grad);
+  } else {
+    GeluErfOneDNNGradFunctor<T> functor;
+    functor(dev_ctx, x, out_grad, 0, 0, x_grad);
+  }
+}
+
+template <typename T, typename Context>
+void HardSwishGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         float threshold,
+                         float scale,
+                         float offset,
+                         DenseTensor* dx) {
+  HardSwishOneDNNGradFunctor<T> functor;
+  functor(dev_ctx, x, dout, threshold, 0, dx);
 }
 
 }  // namespace phi
@@ -254,6 +257,7 @@ PD_REGISTER_KERNEL(relu_grad,
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(abs_grad, AbsGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_grad, EluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(exp_grad, ExpGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(gelu_grad, GeluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_swish_grad, HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
