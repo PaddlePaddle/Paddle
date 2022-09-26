@@ -100,4 +100,6 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | thisjiang | jiangcheng |
 | yghstill | Guanghua Yu |
 | CtfGo | Tefeng Chen |
-
+| ZHUI | Hui Zhong|
+| LemonNoel | Huijuan Wang |
+| wawltor | Zeyang Fang |
