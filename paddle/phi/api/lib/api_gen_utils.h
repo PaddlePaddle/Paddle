@@ -107,5 +107,10 @@ phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type);
 
 phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type);
 
+void ShareVectorTensorBuffer(const std::vector<phi::DenseTensor>& ins,
+                             const std::vector<phi::DenseTensor*>& outs);
+void ShareVectorTensorInplaceVersionCounter(
+    const std::vector<phi::DenseTensor>& ins,
+    const std::vector<phi::DenseTensor*>& outs);
 }  // namespace experimental
 }  // namespace paddle
