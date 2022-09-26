@@ -28,11 +28,11 @@ namespace ir {
 
 //       input
 //         | [?x3136x96]
-//       reshape2                                                            input
-//         | [?x56x56x96]                                                      | [?x3136x96]
-//         |--------------|--------------|--------------|                merge_layernorm
-//   strided_slice  strided_slice  strided_slice  strided_slice    ->          | [?x784x384]
-//         | [?x28x28x96] | [?x28x28x96] | [?x28x28x96] |         fused      output
+//       reshape2                                                                  input
+//         | [?x56x56x96]                                                            | [?x3136x96]
+//         |--------------|--------------|--------------|                      merge_layernorm
+//   strided_slice  strided_slice  strided_slice  strided_slice          ->          | [?x784x384]
+//         | [?x28x28x96] | [?x28x28x96] | [?x28x28x96] | [?x28x28x96]  fused      output
 //         |--------------|--------------|--------------|
 //       concat
 //         | [?x28x28x384]
