@@ -62,8 +62,7 @@ class TestTensorTypePromotion(unittest.TestCase):
     def test_operator(self):
         with _test_eager_guard():
             self.setUp()
-            # add and sub has been sunk to cpp level, there is no warnings to catch by this test.
-            self.mul_operator()
+            # add / sub / mul has been sunk to cpp level, there is no warnings to catch by this test.
             self.div_operator()
         self.setUp()
         self.add_operator()
