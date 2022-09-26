@@ -221,7 +221,9 @@ def _partial_recv_op(tensor, group, use_calc_stream, ring_id, src, nranks,
                                                 nranks, rank_id)
         if use_calc_stream:
             task.wait()
-        return task
+            return None
+        else:
+            return task
 
 
 def recv_partial(tensor,
@@ -275,8 +277,13 @@ def allgather_partial(tensor,
         return None
     ring_id = 0 if group is None else group.id
 
-    return _partial_allgather_op(tensor, group, use_calc_stream, ring_id,
+    task = _partial_allgather_op(tensor, group, use_calc_stream, ring_id,
                                  nranks, rank_id)
+    if use_calc_stream:
+        task.wait()
+        return None
+    else:
+        return task
 
 
 def _p2p_helper(tensor_send_next,
@@ -433,20 +440,12 @@ def _p2p_helper(tensor_send_next,
         else:
             tensors_for_all_gather.append(tensor_recv_next)
 
-    tasks = []
     for tensor in tensors_for_all_gather:
-        tasks.append(
-            allgather_partial(tensor,
-                              nranks=mp_degree,
-                              rank_id=mp_rank,
-                              group=mp_group,
-                              use_calc_stream=True))
-
-    if in_dygraph_mode():
-        for task in tasks:
-            # wait partial all gather tasks
-            if task is not None:
-                task.wait()
+        allgather_partial(tensor,
+                          nranks=mp_degree,
+                          rank_id=mp_rank,
+                          group=mp_group,
+                          use_calc_stream=True)
 
     return tensor_recv_prev, tensor_recv_next
 
