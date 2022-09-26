@@ -167,7 +167,6 @@ void FilterGradAddup(const Context& dev_ctx,
                      const T* dweight_3d,
                      T* filter_grad);
 
-// 总入口
 template <typename T, typename Context>
 void DeformableConvGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
@@ -271,7 +270,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                   T(1.0),
                   &col_buffer_3d_slice,
                   T(0.0));
-    }  // 相信没啥问题
+    }
     col_buffer.Resize(make_ddim(col_buffer_shape_vec));
 
     T* col_buffer_ptr = col_buffer.data<T>();
@@ -300,7 +299,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
           deformable_groups,
           offset_grad_ptr + i * im2col_step * input_offset_dim,
           mask_grad_data_ptr);
-    }  // check
+    }
     if (dx) {
       MT* mt_dx_ptr = dev_ctx.template Alloc<MT>(dx);
 
@@ -331,7 +330,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
         strides,
         dilations,
         deformable_groups,
-        col_buffer_ptr);  // check
+        col_buffer_ptr);
 
     col_buffer_3d.Resize(col_buffer_3d_shape);
 

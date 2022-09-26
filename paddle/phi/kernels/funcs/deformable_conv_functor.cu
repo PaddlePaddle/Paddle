@@ -82,8 +82,6 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
                               kernel_h * kernel_w * height_col * width_col
             : nullptr;
 
-    // 上边都动不了，指针移动也不会引起误差和速度降低
-
     for (int i = 0; i < kernel_h; ++i) {
       for (int j = 0; j < kernel_w; ++j) {
         const int data_offset_h_ptr =
