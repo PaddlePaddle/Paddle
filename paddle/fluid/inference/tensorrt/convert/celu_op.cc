@@ -76,18 +76,12 @@ class CeluOpConverter : public OpConverter {
         AddConstantLayer(weight_zero_data.data(), constant_shape);
     auto* constant_one_data =
         AddConstantLayer(weight_one_data.data(), constant_shape);
-    auto* constant_two_data =
-        AddConstantLayer(weight_two_data.data(), constant_shape);
 
     auto* input_div_with_alpha = Div(input, alpha_data);
-    auto* input_opposite = Sub(constant_zero_data, input_div_with_alpha);
-    auto* sigmoid = TRT_ENGINE_ADD_LAYER(engine_,
-                                         Activation,
-                                         *input_opposite,
-                                         nvinfer1::ActivationType::kSIGMOID);
-    auto* one_div_sigmoid = Div(constant_one_data, sigmoid->getOutput(0));
-    auto* input_sub_with_two = Sub(one_div_sigmoid, constant_two_data);
-    auto* input_prod_with_alpha = Prod(input_sub_with_two, alpha_data);
+    auto* input_exp = TRT_ENGINE_ADD_LAYER(
+        engine_, Unary, *input_div_with_alpha, nvinfer1::UnaryOperation::kEXP);
+    auto* input_sub_with_one = Sub(input_exp->getOutput(0), constant_one_data);
+    auto* input_prod_with_alpha = Prod(input_sub_with_one, alpha_data);
     auto* min_input = Min(input_prod_with_alpha, constant_zero_data);
     auto* relu = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *input, nvinfer1::ActivationType::kRELU);
