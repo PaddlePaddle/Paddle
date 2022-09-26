@@ -5158,7 +5158,7 @@ def frexp(x, name=None):
                             paddle.divide(mantissa,
                                           2**paddle.ones_like(exponent)),
                             mantissa)
-    mantissa = paddle.where((mantissa >= -1),
+    mantissa = paddle.where((mantissa >= 1),
                             paddle.divide(mantissa,
                                           2**paddle.ones_like(exponent)),
                             mantissa)
