@@ -21,6 +21,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
+from paddle import _legacy_C_ops
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
@@ -251,15 +252,15 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         x.stop_gradient = False
         y.stop_gradient = False
 
-        out1 = core.ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
-                                            'trans_y', False, 'activation',
-                                            'none')
-        out2 = core.ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
-                                            'trans_y', False, 'activation',
-                                            'relu')
-        out3 = core.ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
-                                            'trans_y', False, 'activation',
-                                            'gelu')
+        out1 = _legacy_C_ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
+                                                 'trans_y', False, 'activation',
+                                                 'none')
+        out2 = _legacy_C_ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
+                                                 'trans_y', False, 'activation',
+                                                 'relu')
+        out3 = _legacy_C_ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
+                                                 'trans_y', False, 'activation',
+                                                 'gelu')
 
         out_np1 = get_output(x_np, y_np, bias_np, 'none')
         out_np2 = get_output(x_np, y_np, bias_np, 'relu')

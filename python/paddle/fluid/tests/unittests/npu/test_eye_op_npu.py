@@ -33,7 +33,7 @@ class TestEyeOp(OpTest):
 
     def setUp(self):
         '''
-	    Test eye op with specified shape
+        Test eye op with specified shape
         '''
         self.set_npu()
         self.place = paddle.NPUPlace(0)

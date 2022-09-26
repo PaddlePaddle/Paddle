@@ -65,7 +65,7 @@ def nms(boxes, nms_threshold):
             else:
                 continue
 
-    return selected_indices
+    return selected_indices[:cnt]
 
 
 class TestNMSOp(OpTest):

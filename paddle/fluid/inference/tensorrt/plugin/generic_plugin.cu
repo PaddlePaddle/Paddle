@@ -216,6 +216,7 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
       }
     }
   }
+  CHECK_EQ(attr_names.size(), kernel_context->AttrsSize());
 }
 
 GenericPlugin::GenericPlugin(
@@ -333,12 +334,16 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
   auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));
 
-  phi_kernel_context_ = new phi::KernelContext(dev_ctx);
-  dense_tensor_inputs_ = new std::vector<phi::DenseTensor>(getNbInputs());
-  dense_tensor_outputs_ = new std::vector<phi::DenseTensor>(getNbOutputs());
+  if (!phi_kernel_context_) {
+    phi_kernel_context_ = new phi::KernelContext(dev_ctx);
+    BuildPhiKernelContextAttr(
+        op_desc_, phi_kernel_context_, phi_kernel_signature, phi_kernel);
+  }
+  if (!dense_tensor_inputs_)
+    dense_tensor_inputs_ = new std::vector<phi::DenseTensor>(getNbInputs());
+  if (!dense_tensor_outputs_)
+    dense_tensor_outputs_ = new std::vector<phi::DenseTensor>(getNbOutputs());
 
-  BuildPhiKernelContextAttr(
-      op_desc_, phi_kernel_context_, phi_kernel_signature, phi_kernel);
   return 0;
 }
 
@@ -387,26 +392,28 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
 
   // [TODO]now generic plugin do not support FP16 and INT8 precision
-  auto protoType2PhiType = [](int proto_type) -> phi::DataType {
+  auto protoType2PhiType = [](int proto_type) -> std::pair<phi::DataType, int> {
     if (proto_type ==
         static_cast<int>(framework::proto::VarType_Type::VarType_Type_FP32))
-      return phi::DataType::FLOAT32;
+      return {phi::DataType::FLOAT32, sizeof(float)};
     else if (proto_type ==
                  static_cast<int>(
                      framework::proto::VarType_Type::VarType_Type_INT64) ||
              proto_type ==
                  static_cast<int>(
                      framework::proto::VarType_Type::VarType_Type_INT32))
-      return phi::DataType::INT32;
+      return {phi::DataType::INT32, sizeof(int32_t)};
     else if (proto_type ==
              static_cast<int>(
                  framework::proto::VarType_Type::VarType_Type_BOOL))
-      return phi::DataType::BOOL;
+      return {phi::DataType::BOOL, sizeof(bool)};
     else
       CHECK(false) << "precision is not supported";
   };
 
   // input
+  phi_kernel_context_->ClearInputOutput();
+
   for (int i = 0; i < getNbInputs(); i++) {
     auto const& input_dims = input_desc[i].dims;
 
@@ -417,11 +424,12 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
 
-    phi::DenseTensorMeta input_meta(protoType2PhiType(inputs_data_type_[i]),
+    auto data_type_and_size = protoType2PhiType(inputs_data_type_[i]);
+    phi::DenseTensorMeta input_meta(data_type_and_size.first,
                                     phi::make_ddim(input_shape));
     std::shared_ptr<phi::Allocation> input_alloc(
         new phi::Allocation((void*)(inputs[i]),  // NOLINT
-                            input_numel * sizeof(int32_t),
+                            input_numel * data_type_and_size.second,
                             place));
     (*dense_tensor_inputs_)[i] =
         std::move(phi::DenseTensor(input_alloc, input_meta));
@@ -440,17 +448,21 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     for (int k = 0; k < output_shape.size(); k++)
       output_numel *= output_shape[k];
 
-    phi::DenseTensorMeta output_meta(protoType2PhiType(outputs_data_type_[i]),
+    auto data_type_and_size = protoType2PhiType(inputs_data_type_[i]);
+    phi::DenseTensorMeta output_meta(data_type_and_size.first,
                                      phi::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
         new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
-                            output_numel * sizeof(float),
+                            output_numel * data_type_and_size.second,
                             place));
     phi::DenseTensor output_densetonsor(output_alloc, output_meta);
     (*dense_tensor_outputs_)[i] =
         std::move(phi::DenseTensor(output_alloc, output_meta));
     phi_kernel_context_->EmplaceBackOutput(&((*dense_tensor_outputs_)[i]));
   }
+
+  CHECK_EQ(phi_kernel_context_->InputsSize(), getNbInputs());
+  CHECK_EQ(phi_kernel_context_->OutputsSize(), getNbOutputs());
 
   (*phi_kernel_)(phi_kernel_context_);
 

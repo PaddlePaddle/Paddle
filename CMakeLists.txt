@@ -485,6 +485,9 @@ if(WITH_DISTRIBUTE)
         ON
         CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
   endif()
+  set(WITH_MPI
+      ON
+      CACHE STRING "Enable MPI when compiling WITH_DISTRIBUTE=ON." FORCE)
   if(WITH_ASCEND_CL AND NOT WITH_ARM_BRPC)
     # disable WITH_PSCORE for NPU before include third_party
     message(
@@ -507,6 +510,10 @@ if(WITH_DISTRIBUTE)
           "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496"
           FORCE)
   endif()
+endif()
+
+if(WITH_MPI)
+  include(mpi)
 endif()
 
 include(third_party

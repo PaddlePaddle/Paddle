@@ -58,7 +58,7 @@ class Transform(object):
     Suppose :math:`X` is a K-dimensional random variable with probability
     density function :math:`p_X(x)`. A new random variable :math:`Y = f(X)` may
     be defined by transforming :math:`X` with a suitably well-behaved funciton
-    :math:`f`. It suffices for what follows to note that if f is one-to-one and
+    :math:`f`. It suffices for what follows to note that if `f` is one-to-one and
     its inverse :math:`f^{-1}` have a well-defined Jacobian, then the density of
     :math:`Y` is
 
@@ -1001,15 +1001,15 @@ class StackTransform(Transform):
     specific axis.
 
     Args:
-        transforms(Sequence[Transform]): The sequence of transformations.
-        axis(int): The axis along which will be transformed.
+        transforms (Sequence[Transform]): The sequence of transformations.
+        axis (int, optional): The axis along which will be transformed. default
+            value is 0.
 
     Examples:
 
         .. code-block:: python
 
             import paddle
-
 
             x = paddle.stack(
                 (paddle.to_tensor([1., 2., 3.]), paddle.to_tensor([1, 2., 3.])), 1)
@@ -1023,11 +1023,13 @@ class StackTransform(Transform):
             #        [[2.71828175 , 1.         ],
             #         [7.38905621 , 4.         ],
             #         [20.08553696, 9.         ]])
+
             print(t.inverse(t.forward(x)))
             # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [[1., 1.],
             #         [2., 2.],
             #         [3., 3.]])
+
             print(t.forward_log_det_jacobian(x))
             # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [[1.        , 0.69314718],
