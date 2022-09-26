@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dnnl.hpp"
+#include "paddle/fluid/operators/quantize_op.h"
+
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/quantize_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
