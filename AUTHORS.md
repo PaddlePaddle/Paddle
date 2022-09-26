@@ -95,3 +95,4 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | limin2021 | Min Li |
 | zhouwei25 | Wei Zhou |
 | littletomatodonkey | Ruo-Yu Guo |
+| zhupengyang | Zhu Pengyang |
