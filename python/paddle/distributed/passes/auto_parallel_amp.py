@@ -610,8 +610,8 @@ class AMPPass(PassBase):
             # and therefore will effect all following passes whose logic is based on the loss tensor(Recompute & Gradient Merge),
             # so we it is not allowed by now. fixed it in future.
             raise NotImplementedError(
-                "Loss's generator op is not support in FP16 in Auto Parallel by now, please put that op into your black-list."
-            )
+                "Loss's generator op is not support in FP16 in Auto Parallel by now, please put that op into your black-list. Op: {}"
+                .format(str(loss_op)))
 
             tmp_name = unique_name.generate(loss.name + ".cast_fp32")
             cast_loss = main_block.create_var(name=tmp_name, dtype=dtype)
