@@ -182,10 +182,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
+#ifdef __linux__
+#include "paddle/fluid/pybind/rpc.h"
+#endif
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/fluid/pybind/rpc.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
@@ -2600,6 +2603,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraphGpuWrapper(&m);
 #endif
 #endif
+#ifdef __linux__
   BindServiceInfo(&m);
   BindFuture(&m);
   InitAndSetAgentInstance(&m);
@@ -2612,6 +2616,7 @@ All parameter, weight, gradient are variables in Paddle.
   GetCurrentServiceInfo(&m);
   GetAllServiceInfos(&m);
   ClearPythonRpcHandler(&m);
+#endif
 }
 }  // namespace pybind
 }  // namespace paddle
