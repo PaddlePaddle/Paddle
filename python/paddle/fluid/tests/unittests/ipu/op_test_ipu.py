@@ -204,6 +204,14 @@ class IPUOpTest(IPUTest):
             if self.is_fp16_mode(exec_mode):
                 ipu_strategy.set_precision_config(enable_fp16=True)
                 IPUOpTest.cast_model_to_fp16(self.main_prog)
+
+            # TODO(ipu) remove in the future version of popart
+            # keep the log clean, no side effects for tests without profiling
+            ipu_strategy.set_options(
+                {'engine_options': {
+                    'debug.retainDebugInformation': 'false'
+                }})
+
             program = paddle.static.IpuCompiledProgram(
                 self.main_prog,
                 ipu_strategy=ipu_strategy).compile(self.feed_list,

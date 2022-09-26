@@ -24,17 +24,8 @@
 #include "paddle/fluid/platform/event.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
-// When in inference scenario, the scopes will not be written by two threads in
-// a mean time, but a scope may be read by multiple threads concurrently, and
-// the mutex will cause serious performance issue.
-// So the mutex is disabled when `ON_INFER`.
-#ifdef PADDLE_ON_INFERENCE
-#define SCOPE_VARS_READER_LOCK
-#define SCOPE_VARS_WRITER_LOCK
-#else
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
-#endif
 
 namespace paddle {
 namespace framework {
@@ -410,7 +401,8 @@ static bool IsCpuOp(const Instruction& instr) {
 // is supported heterogeneous place
 static bool IsSupportedHetePlace(const phi::Place& place) {
   return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
-         platform::is_xpu_place(place) || platform::is_ipu_place(place);
+         platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
+         platform::is_custom_place(place);
 }
 
 }  // namespace interpreter

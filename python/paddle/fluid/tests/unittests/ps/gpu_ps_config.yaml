@@ -31,7 +31,5 @@ runner:
   sync_mode: "gpubox"
   thread_num: 16
   use_gpu: 1
-  
-  model_path: "../ps_dnn_model.py"
 
-  
+  model_path: "../ps_dnn_model.py"

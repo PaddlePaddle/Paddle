@@ -41,7 +41,7 @@ def numel(var):
 class DataParallelOptimizationPass(PassBase):
     """
     Apply Optimizations that specialized for data parallelism in Auto Parallel.
-    1. prune grad scaling 
+    1. prune grad scaling
     2. overlap comm and calc
     3. fuse allreduce
     """
@@ -111,14 +111,9 @@ class DataParallelOptimizationPass(PassBase):
         if not self._could_be_fuse():
             return []
 
-        with open('./before_program.txt.' + str(paddle.distributed.get_rank()),
-                  'w') as f:
-            f.write(str(default_main_program()))
         grad_group = self._group_grads()
         self._update_program(grad_group)
-        with open('./after_program.txt.' + str(paddle.distributed.get_rank()),
-                  'w') as f:
-            f.write(str(default_main_program()))
+
         return grad_group
 
     def _analyze_program(self):
@@ -174,7 +169,7 @@ class DataParallelOptimizationPass(PassBase):
 
     def _could_be_prune(self):
 
-        return self.dist_context._gradient_scale and (
+        return self.dist_context.gradient_scale and (
             self._support_rescale_grad or self._all_dp_groups_same_degree())
 
     def _all_dp_groups_same_degree(self):
@@ -350,9 +345,9 @@ class DataParallelOptimizationPass(PassBase):
         """
         conditions for gradients to be grouped:
         1. group size < max_fuse_numel
-        2. same dp group 
+        2. same dp group
         3. same dtype
-        4. dependency: grad would NOT be used by other ops within group segment 
+        4. dependency: grad would NOT be used by other ops within group segment
 
         gradients inside same group would be fuse into one coalesce tensor
         """
@@ -569,6 +564,11 @@ class GradientsGroup(object):
             self.remove_scale_op_indices.append(i + 1)
 
         if len(self.gradients) == 1:
+            # TODO Remove this is a temporary hack for Tensor Parallel. the logic
+            # for find grad_op should be more general.
+            if self.ops[grad_op_idx].type == "c_allreduce_sum":
+                grad_op_idx -= 1
+
             grad_op = self.ops[grad_op_idx]
             assert grad_var.name in grad_op.output_arg_names, "grad [{}] should be output of {}".format(
                 grad_var.name, str(grad_op))
