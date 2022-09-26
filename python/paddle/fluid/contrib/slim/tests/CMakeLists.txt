@@ -546,7 +546,7 @@ set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_fuse PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_user_defined PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_qat_lsq PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_qat_lsq PROPERTIES TIMEOUT 300)
 
 if(LINUX AND WITH_MKLDNN)
   set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
