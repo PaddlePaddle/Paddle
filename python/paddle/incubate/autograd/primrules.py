@@ -23,7 +23,7 @@ from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
                       fill_const, gather, ge, gt, log, matmul, max, mul, ne,
                       neg, reduce_sum, reshape, scatter_add, select, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose)
+                      transpose, rsqrt)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -215,6 +215,20 @@ def fill_any_like_orig2prim(op, x):
                           convert_dtype(INT_DTYPE_2_STRING[op.attr('dtype')])))
 
 
+@REGISTER_ORIG2PRIM('fill_constant')
+def fill_const_orig2prim(op,
+                         shape_tensor=None,
+                         shape_tensor_list=None,
+                         value_tensor=None):
+    if shape_tensor or shape_tensor_list or value_tensor:
+        raise TypeError(
+            'fill_const_orig2prim currently not support Tensor input of shape and value.'
+        )
+    return fill_const(value=op.attr('value'),
+                      shape=op.attr('shape'),
+                      dtype=paddle.dtype(op.attr('dtype')))
+
+
 @REGISTER_ORIG2PRIM('sum')
 def sum_orig2prim(op, xs):
     x0 = xs[0]
@@ -250,6 +264,11 @@ def assign_orig2prim(op, x):
 @REGISTER_ORIG2PRIM('sqrt')
 def sqrt_orig2prim(op, x):
     return sqrt(x)
+
+
+@REGISTER_ORIG2PRIM('rsqrt')
+def rsqrt_orig2prim(op, x):
+    return rsqrt(x)
 
 
 @REGISTER_ORIG2PRIM('matmul_v2')
@@ -386,7 +405,7 @@ def pow_orig2prim(op, x, y):
 
 @REGISTER_ORIG2PRIM('square')
 def square_orig2prim(op, x):
-    return primops.pow(x, fill_const(2., x.shape, x.dtype))
+    return primops.square(x)
 
 
 @REGISTER_ORIG2PRIM('elementwise_max')
@@ -431,12 +450,35 @@ def reduce_sum_orig2prim(op, x):
 def reduce_mean_orig2prim(op, x):
     axes = tuple(range(0, len(
         x.shape))) if op.attr('reduce_all') else op.attr('dim')
-    sum = reduce_sum(x, axis=axes, keepdim=op.attr('keep_dim'))
-    norm = fill_const(shape=sum.shape,
-                      value=functools.reduce(operator.mul,
-                                             [x.shape[axis] for axis in axes]),
-                      dtype=sum.dtype)
-    return div(sum, norm)
+    return primops.mean(x, axes, op.attr('keep_dim'))
+
+
+@REGISTER_ORIG2PRIM('batch_norm')
+def batch_norm_orig2prim(op, bias, run_mean, momentum_tensor, scale, run_var,
+                         x):
+    momentum = op.attr('momentum')
+    eps = op.attr('epsilon')
+    is_test = op.attr('is_test')
+    data_layout = op.attr('data_layout')
+    use_global_stats = op.attr('use_global_stats')
+    trainable_statistics = op.attr('trainable_statistics')
+    reserve_space = None if len(
+        op.output_names) == 5 else get_output_var_list(op)[1]
+
+    feature_axis = 1 if data_layout in ('NC', 'NCL', 'NCHW',
+                                        'NCHWD') else len(x.shape) - 1
+    use_run_stat = (is_test and (not trainable_statistics)) or use_global_stats
+
+    return primops.batch_norm(x,
+                              feature_axis,
+                              scale,
+                              bias,
+                              run_mean,
+                              run_var,
+                              eps=eps,
+                              momentum=momentum,
+                              use_run_stat=use_run_stat,
+                              reserve_space=reserve_space)
 
 
 @REGISTER_ORIG2PRIM('size')
@@ -454,6 +496,11 @@ def add_prim2orig(op, x, y):
 @REGISTER_PRIM2ORIG('sub_p')
 def sub_prim2orig(op, x, y):
     return paddle.subtract(x, y)
+
+
+@REGISTER_PRIM2ORIG('rsqrt_p')
+def rsqrt_prim2orig(op, x):
+    return paddle.rsqrt(x)
 
 
 @REGISTER_PRIM2ORIG('mul_p')
@@ -967,6 +1014,17 @@ def max_jvp(op, x_dot, y_dot):
 def cast_jvp(op, x_dot):
     y = op_position_output(op)
     return primops.cast(x_dot, y.dtype)
+
+
+@REGISTER_JVP('rsqrt_p')
+def rsqrt_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    y = op_position_output(op)
+    x = op_position_inputs(op)
+    c2 = fill_const(value=-2.0, shape=y.shape, dtype=y.dtype)
+    y_dot = mul(x_dot, div(div(y, x), c2))
+    return y_dot
 
 
 ## Register transpose rules

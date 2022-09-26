@@ -179,6 +179,10 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
 
+- op : dequantize_linear
+  extra :
+    attrs : [float moving_rate = 0.9]
+
 - op : diag (diag_v2)
   backward : diag_grad (diag_v2_grad)
   inputs :
@@ -203,6 +207,10 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : distributed_push_sparse
+  extra :
+    attrs : ['int[] slots = {}']
 
 - op : divide (elementwise_div)
   backward : divide_grad (elementwise_div)
@@ -270,6 +278,34 @@
   backward : expm1_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : fake_channel_wise_quantize_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_channel_wise_quantize_dequantize_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_quantize_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_quantize_dequantize_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_quantize_dequantize_moving_average_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_quantize_moving_average_abs_max
+  extra :
+    attrs : [int round_type = 1]
+
+- op : fake_quantize_range_abs_max
+  extra :
+    attrs : [int round_type = 1]
 
 - op : fft_c2c
   inputs: {x: X}
@@ -453,6 +489,12 @@
   outputs :
     out : Out
 
+- op : nce
+  backward : nce_grad
+  extra :
+    attrs : [int trainer_id = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
+             'str[] table_names = {}', 'int[] custom_neg_classes = {}']
+
 - op : nearest_interp (nearest_interp_v2)
   backward : nearest_interp_grad (nearest_interp_v2_grad)
   extra :
@@ -494,6 +536,10 @@
   backward : prelu_grad
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : quantize_linear
+  extra :
+    attrs : [float moving_rate = 0.9]
 
 - op : reciprocal
   backward : reciprocal_grad
@@ -585,6 +631,11 @@
 - op : seed
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- op : sequence_softmax
+  backward : sequence_softmax_grad
+  extra :
+    attrs : [str data_format = "AnyLayout"]
 
 - op : shape
   extra :
