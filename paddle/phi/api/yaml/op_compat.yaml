@@ -632,6 +632,11 @@
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
 
+- op : sequence_softmax
+  backward : sequence_softmax_grad
+  extra :
+    attrs : [str data_format = "AnyLayout"]
+
 - op : shape
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
