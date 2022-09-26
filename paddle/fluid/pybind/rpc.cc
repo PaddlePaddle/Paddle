@@ -130,24 +130,6 @@ void GetAllServiceInfos(py::module* m) {
       },
       py::call_guard<py::gil_scoped_release>());
 }
-void GetRank(py::module* m) {
-  m->def(
-      "rpc_get_rank",
-      []() {
-        auto instance = RpcAgent::RpcAgentInstance();
-        return instance->Rank();
-      },
-      py::call_guard<py::gil_scoped_release>());
-}
-void GetWorldSize(py::module* m) {
-  m->def(
-      "rpc_get_world_size",
-      []() {
-        auto instance = RpcAgent::RpcAgentInstance();
-        return instance->WorldSize();
-      },
-      py::call_guard<py::gil_scoped_release>());
-}
 void ClearPythonRpcHandler(py::module* m) {
   m->def("rpc_clear_python_rpc_handler", []() {
     auto instance = PythonRpcHandler::GetInstance();

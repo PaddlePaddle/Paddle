@@ -2611,8 +2611,6 @@ All parameter, weight, gradient are variables in Paddle.
   GetServiceInfoByRank(&m);
   GetCurrentServiceInfo(&m);
   GetAllServiceInfos(&m);
-  GetRank(&m);
-  GetWorldSize(&m);
   ClearPythonRpcHandler(&m);
 }
 }  // namespace pybind

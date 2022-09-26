@@ -33,8 +33,6 @@ void GetServiceInfo(py::module* m);
 void GetServiceInfoByRank(py::module* m);
 void GetCurrentServiceInfo(py::module* m);
 void GetAllServiceInfos(py::module* m);
-void GetRank(py::module* m);
-void GetWorldSize(py::module* m);
 void ClearPythonRpcHandler(py::module* m);
 }  // namespace pybind
 }  // namespace paddle
