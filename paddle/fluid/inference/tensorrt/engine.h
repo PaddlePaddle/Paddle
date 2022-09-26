@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <NvInfer.h>
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -24,9 +25,9 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "NvInferRuntimeCommon.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -37,6 +38,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -171,7 +174,7 @@ class TRTInt8Calibrator;
 /*
  * TensorRT Engine.
  *
- * There are two alternative ways to use it, one is  to build from a paddle
+ * There are two alternative ways to use it, one is to build from a paddle
  * protobuf model, another way is to manually construct the network.
  */
 class TensorRTEngine {
@@ -283,54 +286,14 @@ class TensorRTEngine {
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
+  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name);
   std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
-  nvinfer1::IExecutionContext* context() {
-#ifndef PADDLE_WITH_TESTING
-    PADDLE_ENFORCE_GT(
-        predictor_id_per_thread,
-        -1,
-        platform::errors::InvalidArgument(
-            "thread local var predictor_id_per_thread must be "
-            "initialized to >= 0, but now predictor_id_per_thread = %d",
-            predictor_id_per_thread));
-#endif
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
-      PADDLE_ENFORCE_NOT_NULL(
-          infer_engine_,
-          platform::errors::InvalidArgument(
-              "You should build engine first and then set the context."));
-      // We may see trt warning: Profile 0 has been chosen by another
-      // IExecutionContext...
-      // It's ok. We will set it later.
-      infer_context_[predictor_id_per_thread].reset(
-          infer_engine_->createExecutionContext());
-      if (with_dynamic_shape_) {
-        // need new profile if it's not the first
-        if (cur_profile_num_ > 0) {
-          infer_context_[predictor_id_per_thread]->setOptimizationProfile(
-              cur_profile_num_);
-        }
-        profile_index_[predictor_id_per_thread] = cur_profile_num_;
-        ++cur_profile_num_;
-      }
-    }
-    return infer_context_[predictor_id_per_thread].get();
-  }
+  nvinfer1::IExecutionContext* context();
 
   int GetProfileIndex() {
     if (max_profile_num_ > 1) {
-#ifndef PADDLE_WITH_TESTING
-      PADDLE_ENFORCE_GT(
-          predictor_id_per_thread,
-          -1,
-          platform::errors::InvalidArgument(
-              "thread local var predictor_id_per_thread must be "
-              "initialized to >= 0, but now predictor_id_per_thread = %d",
-              predictor_id_per_thread));
-#endif
       std::unique_lock<std::mutex> lock(mutex_);
       return profile_index_[predictor_id_per_thread];
     } else {
@@ -349,15 +312,6 @@ class TensorRTEngine {
         infer_engine_,
         platform::errors::InvalidArgument(
             "You should build engine first and then set the context."));
-#ifndef PADDLE_WITH_TESTING
-    PADDLE_ENFORCE_GT(
-        predictor_id_per_thread,
-        -1,
-        platform::errors::InvalidArgument(
-            "thread local var predictor_id_per_thread must be "
-            "initialized to >= 0, but now predictor_id_per_thread = %d",
-            predictor_id_per_thread));
-#endif
     std::unique_lock<std::mutex> lock(mutex_);
     infer_context_[predictor_id_per_thread].reset(nullptr);
     infer_context_.erase(predictor_id_per_thread);
@@ -379,47 +333,7 @@ class TensorRTEngine {
     return ihost_memory_.get();
   }
 
-  void Deserialize(const std::string& engine_serialized_data) {
-    freshDeviceId();
-    infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-
-    if (use_dla_) {
-      if (precision_ != AnalysisConfig::Precision::kInt8 &&
-          precision_ != AnalysisConfig::Precision::kHalf) {
-        LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
-                        "set float32, so DLA is not used.";
-      } else if (runtime->getNbDLACores() == 0) {
-        LOG(WARNING)
-            << "TensorRT DLA is set by config, but your device does not have "
-               "DLA, so DLA is not used.";
-      } else {
-        if (dla_core_ < 0 || dla_core_ >= runtime->getNbDLACores()) {
-          dla_core_ = 0;
-          LOG(WARNING) << "Invalid DLACore, must be 0 < DLACore < "
-                       << runtime->getNbDLACores() << ", but got " << dla_core_
-                       << ", so use use 0 as default.";
-        }
-        runtime->setDLACore(dla_core_);
-        LOG(INFO) << "TensorRT DLA enabled in Deserialize(), DLACore "
-                  << dla_core_;
-      }
-    }
-
-    infer_engine_.reset(runtime->deserializeCudaEngine(
-        engine_serialized_data.c_str(), engine_serialized_data.size()));
-
-    PADDLE_ENFORCE_NOT_NULL(
-        infer_engine_,
-        platform::errors::Fatal(
-            "Building TRT cuda engine failed when deserializing engine info. "
-            "Please check:\n1. Your TRT serialization is generated and loaded "
-            "on the same GPU architecture;\n2. The Paddle Inference version of "
-            "generating serialization file and doing inference are "
-            "consistent."));
-
-    binding_num_ = infer_engine_->getNbBindings();
-    GetEngineInfo();
-  }
+  void Deserialize(const std::string& engine_serialized_data);
 
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
@@ -691,12 +605,19 @@ class TensorRTEngine {
   void GetEngineInfo();
 
   void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
+  void SetScope(const framework::Scope& scope) { scope_ = &scope; }
+
+  void SetContextMemorySharing(bool context_memory_sharing) {
+    context_memory_sharing_ = context_memory_sharing;
+  }
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
   // freshDeviceId().
   void freshDeviceId();
+  // Used for convert weight into Itensor
+  const framework::Scope* scope_;
 
   // the max batch size
   int max_batch_;
@@ -709,6 +630,9 @@ class TensorRTEngine {
   TRTInt8Calibrator* calibrator_;
   // batch size of the current data, will be updated each Executation.
   int batch_size_{-1};
+
+  // use for engine context memory sharing
+  bool context_memory_sharing_{false};
 
   int device_id_;
   int max_profile_num_{1};
@@ -787,14 +711,23 @@ class TensorRTEngine {
   engine__->network()->add##layer__(__VA_ARGS__)
 
 class TRTEngineManager {
+  using PredictorID = int;
+  using AllocationPtr = phi::Allocator::AllocationPtr;
+
  public:
-  bool Empty() const { return engines_.size() == 0; }
+  bool Empty() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return engines_.size() == 0;
+  }
+
   bool Has(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (engines_.count(name) == 0) return false;
     return engines_.at(name).get() != nullptr;
   }
 
   TensorRTEngine* Get(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
     return engines_.at(name).get();
   }
 
@@ -822,17 +755,21 @@ class TRTEngineManager {
                                  disable_trt_plugin_fp16,
                                  model_precision,
                                  logger);
+    std::lock_guard<std::mutex> lock(mutex_);
     engines_[name].reset(p);
     return p;
   }
 
   void DeleteAll() {
+    std::lock_guard<std::mutex> lock(mutex_);
     for (auto& item : engines_) {
       item.second.reset(nullptr);
     }
+    engines_.clear();
   }
 
   void DeleteKey(const std::string& key) {
+    std::lock_guard<std::mutex> lock(mutex_);
     auto iter = engines_.find(key);
     if (iter != engines_.end()) {
       iter->second.reset(nullptr);
@@ -840,7 +777,57 @@ class TRTEngineManager {
     }
   }
 
+  void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
+    bool size_updated{false};
+
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (max_ctx_mem_size_ < mem_size) {
+        max_ctx_mem_size_ = mem_size;
+        size_updated = true;
+      }
+    }
+
+    if (size_updated) {
+      releaseContextMemory(predictor_id);
+    }
+  }
+
+  void* getContextMemory(PredictorID predictor_id,
+                         const phi::GPUPlace& place,
+                         const phi::Stream& stream) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    static auto alignment = getAlignmentSize(place);
+    if (context_memorys_.count(predictor_id) == 0) {
+      auto context_memory =
+          memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
+      // context_memory_[predictor_id].reset(context_memory.release());
+      context_memorys_[predictor_id] = std::move(context_memory);
+    }
+    return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
+  }
+
+  void releaseContextMemory(PredictorID predictor_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (context_memorys_.count(predictor_id)) {
+      context_memorys_[predictor_id].reset(nullptr);
+      context_memorys_.erase(predictor_id);
+    }
+  }
+
  private:
+  size_t getAlignmentSize(const phi::GPUPlace& place) {
+    const auto& prop = platform::GetDeviceProperties(place.GetDeviceId());
+    return prop.textureAlignment;
+  }
+
+  void* getAlignedMemory(void* addr, size_t alignment) {
+    return reinterpret_cast<void*>(uintptr_t(addr) & (~(alignment - 1)));
+  }
+
+  mutable std::mutex mutex_;
+  size_t max_ctx_mem_size_{0};
+  std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
 

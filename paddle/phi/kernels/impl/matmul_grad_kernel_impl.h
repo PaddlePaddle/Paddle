@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
@@ -45,7 +45,7 @@ struct ReduceSumForMatmulGrad<CPUContext, T> {
                   const std::vector<int>& reduce_dims) {
     std::vector<int64_t> reduce_dims_tmp(reduce_dims.begin(),
                                          reduce_dims.end());
-    ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
+    funcs::ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
         dev_ctx, input, output, reduce_dims_tmp, true, false);
   }
 };

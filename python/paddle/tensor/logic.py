@@ -91,7 +91,7 @@ def logical_and(x, y, out=None, name=None):
 
         out = x \&\& y
 
-    .. note::
+    Note:
         ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -134,7 +134,7 @@ def logical_or(x, y, out=None, name=None):
 
         out = x || y
 
-    .. note::
+    Note:
         ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -179,7 +179,7 @@ def logical_xor(x, y, out=None, name=None):
 
         out = (x || y) \&\& !(x \&\& y)
 
-    .. note::
+    Note:
         ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -393,12 +393,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if in_dygraph_mode():
-        # NOTE(dev): Pass tol as Tensor to fix precision loss problem, because
-        # C++ backend will cast it into float32 if passing float from python.
-        as_tensor = lambda x: paddle.to_tensor(
-            [x], dtype='float64', place='cpu')
-        return _C_ops.allclose(x, y, as_tensor(rtol), as_tensor(atol),
-                               equal_nan)
+        return _C_ops.allclose(x, y, rtol, atol, equal_nan)
     if _in_legacy_dygraph():
         return _legacy_C_ops.allclose(x, y, 'rtol', str(rtol), 'atol',
                                       str(atol), 'equal_nan', equal_nan)
@@ -962,13 +957,6 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     Returns:
         Tensor: ${out_comment}.
 
-    Raises:
-        TypeError: The data type of ``x`` must be one of float32, float64.
-        TypeError: The data type of ``y`` must be one of float32, float64.
-        TypeError: The type of ``rtol`` must be float.
-        TypeError: The type of ``atol`` must be float.
-        TypeError: The type of ``equal_nan`` must be bool.
-
     Examples:
         .. code-block:: python
 
@@ -998,11 +986,7 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if in_dygraph_mode():
-        # NOTE(dev): Pass tol as Tensor to fix precision loss problem, because
-        # C++ backend will cast it into float32 if passing float from python.
-        as_tensor = lambda x: paddle.to_tensor(
-            [x], dtype='float64', place='cpu')
-        return _C_ops.isclose(x, y, as_tensor(rtol), as_tensor(atol), equal_nan)
+        return _C_ops.isclose(x, y, rtol, atol, equal_nan)
     if _in_legacy_dygraph():
         return _legacy_C_ops.isclose(x, y, 'rtol', str(rtol), 'atol', str(atol),
                                      'equal_nan', equal_nan)

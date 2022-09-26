@@ -42,8 +42,7 @@ bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = "AnyLayout";
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -88,8 +87,7 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = "AnyLayout";
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

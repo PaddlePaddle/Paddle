@@ -87,7 +87,9 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                     "input_dim_idx":
                                     0,
                                     "str_value":
-                                    "0.0",
+                                    "",
+                                    "value":
+                                    0.0,
                                     "shape": [K * num_layers, -1, hidden_size],
                                     "output_dim_idx":
                                     1,
