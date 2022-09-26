@@ -12,13 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dnnl.hpp"  // NOLINT
+#include "paddle/fluid/operators/dequantize_op.h"
+
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/dequantize_op.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+
+#include "dnnl.hpp"  // NOLINT
 
 namespace paddle {
 namespace operators {

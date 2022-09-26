@@ -254,78 +254,78 @@ TEST(TensorToVector, Tensor) {
 #endif
 }
 
-TEST(TensorToVector, Tensor_bool){{phi::DenseTensor src;
-bool* src_ptr = src.mutable_data<bool>({3, 3}, paddle::platform::CPUPlace());
-for (int i = 0; i < 3 * 3; ++i) {
-  src_ptr[i] = static_cast<bool>(i % 2);
-}
+TEST(TensorToVector, Tensor_bool) {
+  phi::DenseTensor src;
+  bool* src_ptr = src.mutable_data<bool>({3, 3}, paddle::platform::CPUPlace());
+  for (int i = 0; i < 3 * 3; ++i) {
+    src_ptr[i] = static_cast<bool>(i % 2);
+  }
 
-paddle::platform::CPUPlace place;
-std::vector<bool> dst;
-paddle::framework::TensorToVector<bool>(src, &dst);
+  paddle::platform::CPUPlace place;
+  std::vector<bool> dst;
+  paddle::framework::TensorToVector<bool>(src, &dst);
 
-for (int i = 0; i < 3 * 3; ++i) {
-  EXPECT_EQ(src_ptr[i], dst[i]);
-}
-}  // namespace framework
+  for (int i = 0; i < 3 * 3; ++i) {
+    EXPECT_EQ(src_ptr[i], dst[i]);
+  }
 
 #ifdef PADDLE_WITH_CUDA
-{
-  std::vector<bool> src_vec = {
-      false,
-      true,
-      false,
-      true,
-      false,
-      true,
-      false,
-      true,
-      false,
-  };
-  phi::DenseTensor gpu_tensor;
-  paddle::platform::CUDAPlace place;
-  phi::GPUContext gpu_ctx(place);
-  gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(place, gpu_ctx.stream())
-                           .get());
-  gpu_ctx.PartialInitWithAllocator();
-  paddle::framework::TensorFromVector<bool>(src_vec, gpu_ctx, &gpu_tensor);
+  {
+    std::vector<bool> src_vec = {
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+    };
+    phi::DenseTensor gpu_tensor;
+    paddle::platform::CUDAPlace place;
+    phi::GPUContext gpu_ctx(place);
+    gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                             .GetAllocator(place, gpu_ctx.stream())
+                             .get());
+    gpu_ctx.PartialInitWithAllocator();
+    paddle::framework::TensorFromVector<bool>(src_vec, gpu_ctx, &gpu_tensor);
 
-  std::vector<bool> dst;
-  paddle::framework::TensorToVector<bool>(gpu_tensor, gpu_ctx, &dst);
+    std::vector<bool> dst;
+    paddle::framework::TensorToVector<bool>(gpu_tensor, gpu_ctx, &dst);
 
-  for (int i = 0; i < 3 * 3; ++i) {
-    EXPECT_EQ(src_vec[i], dst[i]);
+    for (int i = 0; i < 3 * 3; ++i) {
+      EXPECT_EQ(src_vec[i], dst[i]);
+    }
   }
-}
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-{
-  std::vector<bool> src_vec = {
-      false,
-      true,
-      false,
-      true,
-      false,
-      true,
-      false,
-      true,
-      false,
-  };
-  phi::DenseTensor npu_tensor;
-  paddle::platform::NPUPlace place(0);
-  paddle::platform::NPUDeviceContext npu_ctx(place);
-  paddle::framework::TensorFromVector<bool>(src_vec, npu_ctx, &npu_tensor);
+  {
+    std::vector<bool> src_vec = {
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+    };
+    phi::DenseTensor npu_tensor;
+    paddle::platform::NPUPlace place(0);
+    paddle::platform::NPUDeviceContext npu_ctx(place);
+    paddle::framework::TensorFromVector<bool>(src_vec, npu_ctx, &npu_tensor);
 
-  std::vector<bool> dst;
-  paddle::framework::TensorToVector<bool>(npu_tensor, npu_ctx, &dst);
+    std::vector<bool> dst;
+    paddle::framework::TensorToVector<bool>(npu_tensor, npu_ctx, &dst);
 
-  for (int i = 0; i < 3 * 3; ++i) {
-    EXPECT_EQ(src_vec[i], dst[i]);
+    for (int i = 0; i < 3 * 3; ++i) {
+      EXPECT_EQ(src_vec[i], dst[i]);
+    }
   }
-}
 #endif
-}  // namespace paddle
+}
 
 TEST(TensorFromDLPack, Tensor) {
   {
