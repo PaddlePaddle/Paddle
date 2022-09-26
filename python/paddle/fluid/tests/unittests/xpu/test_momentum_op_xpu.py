@@ -66,7 +66,6 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
 
         def set_case(self):
             self.op_type = 'momentum'
-            self.dtype = self.in_type
             self.init_config()
 
             self.param = np.random.uniform(-1, 1,
@@ -75,7 +74,6 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
                                           self.input_shape).astype(self.dtype)
             self.velocity = np.random.uniform(-1, 1, self.input_shape).astype(
                 self.dtype)
-
             param_out, velocity_out = calculate_momentum_by_numpy(
                 param=self.param,
                 grad=self.grad,
@@ -85,6 +83,8 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
                 learning_rate=self.learning_rate,
                 regularization_method=self.regularization_method,
                 regularization_coeff=self.regularization_coeff)
+            param_out = param_out.astype(self.dtype)
+            velocity_out = velocity_out.astype(self.dtype)
             self.inputs = {
                 'Param': self.param,
                 'Grad': self.grad,
@@ -101,14 +101,14 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
             self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
 
         def init_dtype(self):
-            self.dtype = np.float32
+            self.dtype = self.in_type
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
         def init_config(self):
             self.input_shape = [864]
-            self.learning_rate = np.array([0.001]).astype(self.dtype)
+            self.learning_rate = np.array([0.001]).astype(float)
             self.mu = 0.0001
             self.use_nesterov = False
             self.regularization_method = None
@@ -118,7 +118,7 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
 
         def init_config(self):
             self.input_shape = [2, 768]
-            self.learning_rate = np.array([0.002]).astype(self.dtype)
+            self.learning_rate = np.array([0.002]).astype(float)
             self.mu = 0.001
             self.use_nesterov = False
             self.regularization_method = None
@@ -128,7 +128,7 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
 
         def init_config(self):
             self.input_shape = [3, 8, 4096]
-            self.learning_rate = np.array([0.005]).astype(self.dtype)
+            self.learning_rate = np.array([0.005]).astype(float)
             self.mu = 0.002
             self.use_nesterov = True
             self.regularization_method = None
@@ -138,7 +138,7 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
 
         def init_config(self):
             self.input_shape = [1024]
-            self.learning_rate = np.array([0.01]).astype(self.dtype)
+            self.learning_rate = np.array([0.01]).astype(float)
             self.mu = 0.0001
             self.use_nesterov = False
             if self.xpu_version != core.XPUVersion.XPU1:
@@ -153,7 +153,7 @@ class XPUTestMomentumOP(XPUOpTestWrapper):
 
         def init_config(self):
             self.input_shape = [2, 2, 255]
-            self.learning_rate = np.array([0.0005]).astype(self.dtype)
+            self.learning_rate = np.array([0.0005]).astype(float)
             self.mu = 0.005
             self.use_nesterov = True
             if self.xpu_version != core.XPUVersion.XPU1:

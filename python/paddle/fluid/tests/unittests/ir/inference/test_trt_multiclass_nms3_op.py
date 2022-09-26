@@ -86,9 +86,9 @@ def multiclass_nms(bboxes,
                           step. -1 means keeping all bboxes after NMS step.
         normalized (bool): Whether detections are normalized. Default: True
         return_index(bool): Whether return selected index. Default: False
-        rois_num(Tensor): 1-D Tensor contains the number of RoIs in each image. 
+        rois_num(Tensor): 1-D Tensor contains the number of RoIs in each image.
             The shape is [B] and data type is int32. B is the number of images.
-            If it is not None then return a list of 1-D Tensor. Each element 
+            If it is not None then return a list of 1-D Tensor. Each element
             is the output RoIs' number of each image on the corresponding level
             and the shape is [B]. None by default.
         name(str): Name of the multiclass nms op. Default: None.

@@ -60,17 +60,17 @@ void MinimumKernel(const Context& dev_ctx,
                    DenseTensor* out);
 
 template <typename T, typename Context>
-void ModuloRawKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     int axis,
-                     DenseTensor* out);
+void RemainderRawKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        int axis,
+                        DenseTensor* out);
 
 template <typename T, typename Context>
-void ModuloKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* out);
+void RemainderKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out);
 
 template <typename T, typename Context>
 void FloorDivideRawKernel(const Context& dev_ctx,
@@ -134,13 +134,13 @@ DenseTensor Minimum(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-DenseTensor Modulo(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& y) {
+DenseTensor Remainder(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
-  ModuloKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  RemainderKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
 

@@ -56,12 +56,12 @@ class LayerNormOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layernorm_layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      int input_num = 1;
-      for (int i = begin_norm_axis; i < X->getDimensions().nbDims; i++) {
-        input_num *= X->getDimensions().d[i];
-      }
-      std::vector<int64_t> mean_shape{input_num};
-      std::vector<int64_t> variance_shape{input_num};
+      // For dynamic shape,
+      // the shape of mean and variance will be determine in configuPlugin.
+      std::vector<int64_t> mean_shape{1};
+      std::vector<int64_t> variance_shape{1};
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::LayerNormPluginDynamic* plugin =
           new plugin::LayerNormPluginDynamic(
               static_cast<const float*>(bias_weight.get().values),
@@ -71,15 +71,18 @@ class LayerNormOpConverter : public OpConverter {
               begin_norm_axis,
               eps,
               mean_shape,
-              variance_shape);
+              variance_shape,
+              with_fp16);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
-      int input_num = 1;
-      for (int i = begin_norm_axis - 1; i < X->getDimensions().nbDims; i++) {
-        input_num *= X->getDimensions().d[i];
+      int statis_num = 1;
+      for (int i = 1; i < begin_norm_axis; i++) {
+        statis_num *= X->getDimensions().d[i];
       }
-      std::vector<int64_t> mean_shape{input_num};
-      std::vector<int64_t> variance_shape{input_num};
+      std::vector<int64_t> mean_shape{statis_num};
+      std::vector<int64_t> variance_shape{statis_num};
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::LayerNormPlugin* plugin = new plugin::LayerNormPlugin(
           static_cast<const float*>(bias_weight.get().values),
           bias_weight.get().count,
@@ -88,7 +91,8 @@ class LayerNormOpConverter : public OpConverter {
           begin_norm_axis,
           eps,
           mean_shape,
-          variance_shape);
+          variance_shape,
+          with_fp16);
       layernorm_layer = engine_->AddPlugin(
           &X, 1, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
     }

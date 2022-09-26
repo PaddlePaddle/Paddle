@@ -298,6 +298,9 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
       for (auto& attr : conv->Op()->GetAttrMap()) {
         desc.SetAttr(attr.first, attr.second);
       }
+      for (auto& attr : conv->Op()->GetRuntimeAttrMap()) {
+        desc.SetAttr(attr.first, attr.second);
+      }
       auto conv_bias_node = g->CreateOpNode(&desc);
 
       IR_NODE_LINK_TO(subgraph.at(conv_input), conv_bias_node);

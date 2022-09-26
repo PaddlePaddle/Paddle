@@ -26,11 +26,12 @@ from paddle.distribution.transform import *  # noqa: F403
 from paddle.distribution.transformed_distribution import \
     TransformedDistribution
 from paddle.distribution.uniform import Uniform
+from paddle.distribution.laplace import Laplace
 
 __all__ = [  # noqa
     'Beta', 'Categorical', 'Dirichlet', 'Distribution', 'ExponentialFamily',
     'Multinomial', 'Normal', 'Uniform', 'kl_divergence', 'register_kl',
-    'Independent', 'TransformedDistribution'
+    'Independent', 'TransformedDistribution', 'Laplace'
 ]
 
 __all__.extend(transform.__all__)

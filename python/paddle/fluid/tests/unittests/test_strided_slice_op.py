@@ -990,5 +990,43 @@ class TestStridedSliceTensorArray(unittest.TestCase):
         self.create_case(Net27(input_size=112, array_size=13))
 
 
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestStridedSliceFloat16(unittest.TestCase):
+
+    def init_test_case(self):
+        self.op_type = 'strided_slice'
+        self.input_shape = [3, 3, 3, 6, 7, 8]
+        self.axes = [0, 1, 2, 3, 4, 5]
+        self.starts = [1, 0, 0, 0, 1, 2]
+        self.ends = [2, 2, 3, 1, 2, 8]
+        self.strides = [1, 1, 1, 1, 1, 2]
+        self.infer_flags = [1, 1, 1, 1, 1]
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        output = strided_slice_native_forward(x, self.axes, self.starts,
+                                              self.ends, self.strides)
+        x_grad = paddle.grad(output, x)
+        output_np = output[0].numpy().astype('float32')
+        x_grad_np = x_grad[0].numpy().astype('float32')
+        paddle.enable_static()
+        return output_np, x_grad_np
+
+    def test_check(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        output_np_fp16, x_grad_np_fp16 = self.check_main(x_np, 'float16')
+        output_np_fp32, x_grad_np_fp32 = self.check_main(x_np, 'float32')
+
+        np.testing.assert_allclose(output_np_fp16, output_np_fp32)
+
+        np.testing.assert_allclose(x_grad_np_fp16, x_grad_np_fp32)
+
+
 if __name__ == "__main__":
     unittest.main()

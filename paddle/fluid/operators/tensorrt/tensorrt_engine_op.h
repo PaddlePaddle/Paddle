@@ -476,12 +476,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
-    int num_inputs = 0;
-
-    num_inputs += runtime_input_names_.size();
-    //  const int num_bindings = num_inputs + Outputs("Ys").size();
-    //  std::vector<void *> buffers(num_bindings);
-    // This method returns the total over all profiles.
+    // Get the total over all profiles
     const int num_bindings = engine->GetNbBindings();
     std::vector<void *> buffers(num_bindings, nullptr);
 
@@ -495,6 +490,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     // Bind input tensor to TRT.
     for (const auto &x : runtime_input_names_) {
+#if IS_TRT_VERSION_LT(8000)
+      // trt may remove input tensor if it's unused or used only at compile-time
+      if (engine->engine()->getBindingIndex(x.c_str()) < 0) continue;
+#endif
+
       // convert input and copy to TRT engine's buffer
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);

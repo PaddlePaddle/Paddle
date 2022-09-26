@@ -41,7 +41,7 @@ def sum(input, scope=None, util=None):
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = fluid.layers.elementwise_add(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)
-          
+
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
           print("sum array: ", paddle.distributed.fleet.sum(res))

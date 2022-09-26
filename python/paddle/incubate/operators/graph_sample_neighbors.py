@@ -17,9 +17,15 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
+import paddle.utils.deprecated as deprecated
 
 
+@deprecated(
+    since="2.4.0",
+    update_to="paddle.geometric.sample_neighbors",
+    level=1,
+    reason="paddle.incubate.graph_sample_neighbors will be removed in future")
 def graph_sample_neighbors(row,
                            colptr,
                            input_nodes,
@@ -33,13 +39,13 @@ def graph_sample_neighbors(row,
     Graph Sample Neighbors API.
 
     This API is mainly used in Graph Learning domain, and the main purpose is to
-    provide high performance of graph sampling method. For example, we get the 
-    CSC(Compressed Sparse Column) format of the input graph edges as `row` and 
+    provide high performance of graph sampling method. For example, we get the
+    CSC(Compressed Sparse Column) format of the input graph edges as `row` and
     `colptr`, so as to convert graph data into a suitable format for sampling.
-    `input_nodes` means the nodes we need to sample neighbors, and `sample_sizes` 
+    `input_nodes` means the nodes we need to sample neighbors, and `sample_sizes`
     means the number of neighbors and number of layers we want to sample.
 
-    Besides, we support fisher-yates sampling in GPU version. 
+    Besides, we support fisher-yates sampling in GPU version.
 
     Args:
         row (Tensor): One of the components of the CSC format of the input graph, and
@@ -51,16 +57,16 @@ def graph_sample_neighbors(row,
         input_nodes (Tensor): The input nodes we need to sample neighbors for, and the
                               data type should be the same with `row`.
         eids (Tensor): The eid information of the input graph. If return_eids is True,
-                            then `eids` should not be None. The data type should be the 
+                            then `eids` should not be None. The data type should be the
                             same with `row`. Default is None.
         perm_buffer (Tensor): Permutation buffer for fisher-yates sampling. If `flag_perm_buffer`
                               is True, then `perm_buffer` should not be None. The data type should
-                              be the same with `row`. Default is None. 
-        sample_size (int): The number of neighbors we need to sample. Default value is 
+                              be the same with `row`. Default is None.
+        sample_size (int): The number of neighbors we need to sample. Default value is
                            -1, which means returning all the neighbors of the input nodes.
         return_eids (bool): Whether to return eid information of sample edges. Default is False.
-        flag_perm_buffer (bool): Using the permutation for fisher-yates sampling in GPU. Default 
-                                 value is false, means not using it. 
+        flag_perm_buffer (bool): Using the permutation for fisher-yates sampling in GPU. Default
+                                 value is false, means not using it.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -68,7 +74,7 @@ def graph_sample_neighbors(row,
         out_neighbors (Tensor): The sample neighbors of the input nodes.
         out_count (Tensor): The number of sampling neighbors of each input node, and the shape
                             should be the same with `input_nodes`.
-        out_eids (Tensor): If `return_eids` is True, we will return the eid information of the 
+        out_eids (Tensor): If `return_eids` is True, we will return the eid information of the
                            sample edges.
 
     Examples:
@@ -84,7 +90,7 @@ def graph_sample_neighbors(row,
         colptr = paddle.to_tensor(colptr, dtype="int64")
         nodes = paddle.to_tensor(nodes, dtype="int64")
         out_neighbors, out_count = \
-            paddle.incubate.graph_sample_neighbors(row, colptr, nodes, 
+            paddle.incubate.graph_sample_neighbors(row, colptr, nodes,
                                                    sample_size=sample_size)
 
     """
@@ -101,7 +107,7 @@ def graph_sample_neighbors(row,
                 "is True.")
 
     if _non_static_mode():
-        out_neighbors, out_count, out_eids = _C_ops.graph_sample_neighbors(
+        out_neighbors, out_count, out_eids = _legacy_C_ops.graph_sample_neighbors(
             row, colptr, input_nodes, eids, perm_buffer, "sample_size",
             sample_size, "return_eids", return_eids, "flag_perm_buffer",
             flag_perm_buffer)

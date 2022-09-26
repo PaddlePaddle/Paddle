@@ -225,19 +225,18 @@ class LRNOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -302,10 +301,6 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
                "beta is the power number.")
         .SetDefault(0.75)
         .GreaterThan(0.0);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<std::string>(
         "data_format",
         "(string, default NCHW) Only used in "
@@ -313,12 +308,6 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false)
-        .AsExtra();
-
     AddComment(R"DOC(
 Local Response Normalization Operator.
 
@@ -370,19 +359,18 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(

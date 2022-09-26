@@ -218,7 +218,10 @@ class TRTReduceMeanStaticFP16(InferencePassTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu, flatten=True)
+            self.check_output_with_option(use_gpu,
+                                          flatten=True,
+                                          atol=1e-3,
+                                          rtol=1e-3)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
@@ -244,7 +247,10 @@ class TRTReduceMeanFP16Static(InferencePassTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu, flatten=True)
+            self.check_output_with_option(use_gpu,
+                                          flatten=True,
+                                          atol=1e-3,
+                                          rtol=1e-3)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 

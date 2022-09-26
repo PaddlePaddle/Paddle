@@ -18,6 +18,7 @@ import paddle
 import paddle.fluid as fluid
 from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid.core as core
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestStackOpBase(OpTest):
@@ -266,6 +267,31 @@ class API_DygraphTest(unittest.TestCase):
         with fluid.dygraph.guard():
             x = paddle.to_tensor([1, 2, 3])
             self.assertRaises(Exception, paddle.stack, x)
+
+
+class TestStackOpWithNegativeShape(unittest.TestCase):
+
+    def test_out(self):
+        main_prg, startup_prg = Program(), Program()
+        with program_guard(main_prg, startup_prg):
+            b = paddle.static.data(name='b', shape=[-1], dtype='int64')
+            e = paddle.static.data(name='e', shape=[3], dtype='int64')
+            k = paddle.stack([b, e], axis=0)
+            exe = paddle.static.Executor()
+            exe.run(startup_prg)
+            out = exe.run(main_prg,
+                          feed={
+                              'b': np.ones([
+                                  3,
+                              ]).astype("int64"),
+                              'e': np.zeros([
+                                  3,
+                              ]).astype("int64")
+                          },
+                          fetch_list=[k])
+        np.testing.assert_allclose(out[0],
+                                   np.array([[1, 1, 1], [0, 0, 0]]),
+                                   rtol=1e-05)
 
 
 if __name__ == '__main__':

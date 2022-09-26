@@ -7,6 +7,7 @@ cc_library(
   SRCS cuda_tracer.cc cupti_data_process.cc
   DEPS workqueue_utils enforce glog)
 add_subdirectory(mlu)
+add_subdirectory(custom_device)
 cc_library(
   event_node
   SRCS event_node.cc
@@ -32,8 +33,13 @@ cc_library(
 cc_library(
   new_profiler
   SRCS profiler.cc
-  DEPS host_tracer cuda_tracer profiler_utils cpu_utilization event_bind
-       mlu_tracer)
+  DEPS host_tracer
+       cuda_tracer
+       profiler_utils
+       cpu_utilization
+       event_bind
+       mlu_tracer
+       custom_tracer)
 cc_test(
   test_event_node
   SRCS test_event_node.cc

@@ -73,7 +73,7 @@ void CalculateGrad(const Context& ctx,
       const int ntx = FindNumThreads(slice_size, ctx.GetMaxThreadsPerBlock());
       const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
       const int nbx = (slice_size + ntx - 1) / ntx;
-      const int nby = (index_size + nty - 1) / nty;
+      const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
       const dim3 grid_tmp(nbx, nby);
       const dim3 block_tmp(ntx, nty);
       GraphSendUVGradCUDAKernel<T, IndexT>
@@ -93,7 +93,7 @@ void CalculateGrad(const Context& ctx,
           FindNumThreads(bcast_info.out_len, ctx.GetMaxThreadsPerBlock());
       const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
       const int nbx = (bcast_info.out_len + ntx - 1) / ntx;
-      const int nby = (index_size + nty - 1) / nty;
+      const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
       const dim3 grid_tmp(nbx, nby);
       const dim3 block_tmp(ntx, nty);
       GraphSendUVGradCUDAKernel<T, IndexT>
@@ -108,7 +108,7 @@ void CalculateGrad(const Context& ctx,
       DenseTensor x_grad_out = phi::Sum<T, Context>(
           ctx,
           x_grad_v2,
-          reduce_idx,
+          phi::IntArray(reduce_idx),
           paddle::experimental::CppTypeToDataType<T>::Type(),
           true);
 #ifdef PADDLE_WITH_HIP
@@ -133,7 +133,7 @@ void CalculateGrad(const Context& ctx,
     const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
     const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
     const int nbx = (out_len + ntx - 1) / ntx;
-    const int nby = (index_size + nty - 1) / nty;
+    const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
     const dim3 grid_(nbx, nby);
     const dim3 block_(ntx, nty);
     funcs::MultiplyFunctor<T> mul_functor;
@@ -190,7 +190,7 @@ void CalculateGrad(const Context& ctx,
       DenseTensor x_grad_out = phi::Sum<T, Context>(
           ctx,
           x_grad_v2,
-          reduce_idx,
+          phi::IntArray(reduce_idx),
           paddle::experimental::CppTypeToDataType<T>::Type(),
           true);
 #ifdef PADDLE_WITH_HIP

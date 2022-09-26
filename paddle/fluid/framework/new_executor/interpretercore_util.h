@@ -39,15 +39,16 @@
 #include "paddle/fluid/platform/init.h"
 
 using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
+constexpr size_t kPrepareWorkQueueIdx = 2;
 
 namespace paddle {
 namespace framework {
 namespace interpreter {
-
 class AsyncWorkQueue {
  public:
   AsyncWorkQueue(size_t host_num_threads,
                  size_t deivce_num_threads,
+                 size_t prepare_num_threads,
                  EventsWaiter* waiter);
 
   std::future<std::unique_ptr<AtomicVectorSizeT>> PrepareAtomicDeps(
@@ -61,6 +62,10 @@ class AsyncWorkQueue {
 
   void Cancel() { queue_group_->Cancel(); }
 
+  size_t QueueNumThreads(size_t idx) {
+    return queue_group_->QueueNumThreads(idx);
+  }
+
  private:
   size_t host_num_thread_;
   std::unique_ptr<WorkQueueGroup> queue_group_;
@@ -71,6 +76,8 @@ std::unique_ptr<AtomicVectorSizeT> PrepareAtomicDeps(
 std::unique_ptr<AtomicVectorSizeT> PrepareAtomicVarRef(
     const std::vector<VariableMetaInfo>& vec_meta_info);
 
+void LogDeviceMemoryStats(const platform::Place& place);
+
 void build_variable_scope(const framework::BlockDesc& block,
                           VariableScope* var_scope,
                           bool use_local_scope = true);
@@ -80,7 +87,8 @@ void build_op_func_list(const platform::Place& place,
                         const std::set<std::string>& skip_gc_vars,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* scope,
-                        bool use_local_scope = true);
+                        bool use_local_scope = true,
+                        bool used_for_jit = false);
 
 void add_fetch(const std::vector<std::string>& fetch_names,
                framework::BlockDesc* block);

@@ -18,6 +18,7 @@ import argparse
 import re
 
 from api_gen import ForwardAPI
+from api_base import PREFIX_TENSOR_NAME
 
 
 class SparseAPI(ForwardAPI):
@@ -136,6 +137,36 @@ class SparseAPI(ForwardAPI):
 
         return kernel_context_code
 
+    def prepare_input(self):
+        input_names = self.inputs['names']
+        input_types = self.inputs['tensor_type']
+        attr_names = self.attrs['names']
+        infer_meta = self.infer_meta
+
+        infer_meta_params = infer_meta['param'] if infer_meta[
+            'param'] is not None else input_names + attr_names
+
+        create_input_var_code = ""
+        tensor_type_map = {
+            'dense': 'phi::DenseTensor',
+            'sparse_coo': 'phi::SparseCooTensor',
+            'sparse_csr': 'phi::SparseCsrTensor'
+        }
+        for param in infer_meta_params:
+            if param in input_names:
+                var_name = "auto " + PREFIX_TENSOR_NAME + param + " = "
+                if self.inputs['input_info'][param] == "const Tensor&":
+                    create_input_var_code = create_input_var_code + var_name + param + ".impl();\n"
+                elif param in self.optional_vars:
+                    tensor_type = 'phi::DenseTensor'
+                    for name, input_type in zip(input_names, input_types):
+                        if param == name:
+                            tensor_type = tensor_type_map[input_type]
+                            break
+                    optional_var = "paddle::optional<" + tensor_type + ">("
+                    create_input_var_code = create_input_var_code + var_name + param + " ? " + optional_var + "*static_cast<" + tensor_type + "*>((*" + param + ").impl().get())) : " + optional_var + "paddle::none);\n"
+        return f"""{create_input_var_code}"""
+
     def gen_sparse_kernel_code(self, kernel_name, inplace_flag=False):
         _, kernel_output_names, output_create = self.gene_output(
             self.kernel['dispatch'][kernel_name][1], None, '', inplace_flag)
@@ -154,19 +185,22 @@ class SparseAPI(ForwardAPI):
     auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
     auto kernel_context = phi::KernelContext(dev_ctx);
 {output_create}
+{self.prepare_input()}
+{self.gene_infer_meta(kernel_output_names, '')}
 {kernel_context_code}
     phi_kernel(&kernel_context);
   {return_code}"""
 
     def get_condition_code(self, kernel_name):
         assert self.kernel['dispatch'][kernel_name], \
-                f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'conv3d' in sparse_api.yaml."
+                f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'conv3d' in sparse_ops.yaml."
         input_types = self.kernel['dispatch'][kernel_name][0]
         sparse_type_map = {
             'sparse_coo': 'DataLayout::SPARSE_COO',
             'sparse_csr': 'DataLayout::SPARSE_CSR'
         }
         condition_list = []
+        tensor_type_list = []
         for i, in_type in enumerate(input_types):
             if in_type == "dense":
                 if self.inputs['names'][i] in self.optional_vars:
@@ -178,9 +212,15 @@ class SparseAPI(ForwardAPI):
                         f"phi::DenseTensor::classof({self.inputs['names'][i]}.impl().get())"
                     )
             else:
-                condition_list.append(
-                    f"{self.inputs['names'][i]}.layout() == {sparse_type_map[in_type]}"
-                )
+                if in_type == 'sparse_coo':
+                    condition_list.append(
+                        f"{self.inputs['names'][i]}.is_sparse_coo_tensor()")
+                else:
+                    condition_list.append(
+                        f"{self.inputs['names'][i]}.is_sparse_csr_tensor()")
+            tensor_type_list.append(in_type)
+        self.inputs['tensor_type'] = tensor_type_list
+
         return " && ".join(condition_list)
 
     def gene_dispatch_code(self, kernel_name, inplace_flag=False):
@@ -229,8 +269,16 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/ternary.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/utils/none.h"
+
+#include "paddle/phi/infermeta/sparse/unary.h"
+#include "paddle/phi/infermeta/sparse/binary.h"
+#include "paddle/phi/infermeta/sparse/multiary.h"
 """
 
 
@@ -284,7 +332,7 @@ def main():
         description='Generate PaddlePaddle C++ Sparse API files')
     parser.add_argument('--api_yaml_path',
                         help='path to sparse api yaml file',
-                        default='paddle/phi/api/yaml/sparse_api.yaml')
+                        default='paddle/phi/api/yaml/sparse_ops.yaml')
 
     parser.add_argument('--api_header_path',
                         help='output of generated api header code file',

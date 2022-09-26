@@ -143,14 +143,11 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType MultiGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library = framework::LibraryType::kMKLDNN;
-  framework::DataLayout layout = framework::DataLayout::kMKLDNN;
-
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"),
       ctx.GetPlace(),
-      layout,
-      library);
+      framework::DataLayout::kMKLDNN,
+      framework::LibraryType::kMKLDNN);
 }
 
 void MultiGRUOpMaker::Make() {
@@ -219,7 +216,7 @@ void MultiGRUOpMaker::Make() {
       .SetDefault(false);
   AddComment(R"DOC(
 The Fusion complete GRU Operator.
-This operator fuse the fully-connected operator into GRU, 
+This operator fuse the fully-connected operator into GRU,
 more details can refer to GRU op.
 )DOC");
 }

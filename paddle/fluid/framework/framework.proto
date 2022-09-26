@@ -38,6 +38,7 @@ enum AttrType {
   FLOAT64S = 12;
   VAR = 13;
   VARS = 14;
+  FLOAT64 = 15;
 }
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
@@ -62,6 +63,7 @@ message OpDesc {
     repeated double float64s = 16;
     optional string var_name = 17;
     repeated string vars_name = 18;
+    optional double float64 = 19;
   };
 
   message Var {

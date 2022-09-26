@@ -325,8 +325,8 @@ class Upsample(Layer):
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
-             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
-             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
              Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
@@ -354,26 +354,10 @@ class Upsample(Layer):
         A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
-    Raises:
-        TypeError: size should be a list or tuple or Tensor.
-        ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
-                    'trilinear', 'bicubic', or 'nearest' currently.
-        ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear' and 'bicubic'  only support 4-D tensor.
-        ValueError: 'trilinear' only support 5-D tensor.
-        ValueError: 'nearest' only support 4-D or 5-D tensor.
-        ValueError: One of size and scale_factor must not be None.
-        ValueError: size length should be 1 for input 3-D tensor.
-        ValueError: size length should be 2 for input 4-D tensor.
-        ValueError: size length should be 3 for input 5-D tensor.
-        ValueError: scale_factor should be greater than zero.
-        TypeError: align_corners should be a bool value
-        ValueError: align_mode can only be '0' or '1'
-        ValueError: data_format can only be 'NCW', 'NWC', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -945,46 +929,34 @@ class Pad1D(Layer):
     If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
             same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
-        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
-            When in 'constant' mode, this op uses a constant value to pad the input tensor.
-            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
-            When in 'replicate' mode, uses input boundaries to pad the input tensor.
-            When in 'circular' mode, uses circular input to pad the input tensor.
-            Default is 'constant'.
-        value (float32): The value to fill the padded areas. Default is 0.0
-        data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
+        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
+
+           - 'constant' mode, uses a constant value to pad the input tensor.
+           - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+           - 'replicate' mode, uses input boundaries to pad the input tensor.
+           - 'circular' mode, uses circular input to pad the input tensor.
+
+        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`。
+        data_format (str, optional): An string from: "NCL", "NLC". Specify the data format of the input data.
            Default is  "NCL"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         None
 
     Examples:
-        .. code-block:: text
-
-            x = [[[1., 2., 3.],
-                  [4., 5., 6.]]]
-            padding = [1, 2],
-            mode = "constant"
-            value = 0.0
-            Out = [[[0. 1. 2. 3. 0. 0.]
-                    [0. 4. 5. 6. 0. 0.]]]
-
-    Code Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
             input_shape = (1, 2, 3)
             pad = [1, 2]
             mode = "constant"
-            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad1D(padding=pad, mode=mode)
             result = my_pad(data)
             print(result)
@@ -1027,45 +999,34 @@ class Pad2D(Layer):
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
-            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded. 
-            The pad has the form (pad_left, pad_right, pad_top, pad_bottom). 
-        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
-            When in 'constant' mode, this op uses a constant value to pad the input tensor.
-            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
-            When in 'replicate' mode, uses input boundaries to pad the input tensor.
-            When in 'circular' mode, uses circular input to pad the input tensor.
-            Default is 'constant'.
-        value (float32): The value to fill the padded areas. Default is 0.0
-        data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
-           Default is  "NCHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
+            The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
+        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
+
+           - 'constant' mode, uses a constant value to pad the input tensor.
+           - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+           - 'replicate' mode, uses input boundaries to pad the input tensor.
+           - 'circular' mode, uses circular input to pad the input tensor.
+
+        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`。
+        data_format (str, optional): An string from: "NCHW", "NHWC". Specify the data format of the input data.
+           Default is  "NCHW"。
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         None
 
     Examples:
-        .. code-block:: text
-
-            x = [[[[1., 2., 3.],
-                   [4., 5., 6.]]]]
-            padding = [1, 1, 0, 0]
-            mode = "constant"
-            value = 0.0
-            Out = [[[[0. 1. 2. 3. 0.]
-                     [0. 4. 5. 6. 0.]]]]
-
-    Code Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
+
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
             mode = "constant"
-            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad2D(padding=pad, mode=mode)
             result = my_pad(data)
             print(result)
@@ -1178,45 +1139,34 @@ class Pad3D(Layer):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
-            When in 'constant' mode, this op uses a constant value to pad the input tensor.
-            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
-            When in 'replicate' mode, uses input boundaries to pad the input tensor.
-            When in 'circular' mode, uses circular input to pad the input tensor.
-            Default is 'constant'.
-        value (float32): The value to fill the padded areas. Default is 0.0
-        data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
-           Default is  "NCDHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
+
+           - 'constant' mode, uses a constant value to pad the input tensor.
+           - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+           - 'replicate' mode, uses input boundaries to pad the input tensor.
+           - 'circular' mode, uses circular input to pad the input tensor.
+
+        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`。
+        data_format (str, optional): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
+           Default is  "NCDHW"。
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         None
 
     Examples:
-        .. code-block:: text
-
-            x = [[[[[1., 2., 3.],
-                    [4., 5., 6.]]]]]
-            padding = [1, 2, 0, 0, 0, 0]
-            mode = "constant"
-            value = 0.0
-            Out = [[[[[0. 1. 2. 3. 0. 0.]
-                      [0. 4. 5. 6. 0. 0.]]]]]
-
-    Code Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
+
             input_shape = (1, 1, 1, 2, 3)
             pad = [1, 0, 1, 2, 0, 0]
             mode = "constant"
-            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad3D(padding=pad, mode=mode)
             result = my_pad(data)
             print(result)
@@ -1313,9 +1263,8 @@ class CosineSimilarity(Layer):
 
 class Embedding(Layer):
     r"""
-    **Embedding Layer**
 
-    This interface is used to construct a callable object of the ``Embedding`` class.
+    Embedding Layer, used to construct a callable object of the ``Embedding`` class.
     For specific usage, refer to code examples. It implements the function of the Embedding Layer.
     This layer is used to lookup embeddings vector of ids provided by :attr:`x` .
     It automatically constructs a 2D embedding matrix based on the
@@ -1324,8 +1273,9 @@ class Embedding(Layer):
     The shape of output Tensor is generated by appending an emb_size dimension to the
     last dimension of the input Tensor shape.
 
-    **Note:** The id in :attr:`x` must satisfy :math:`0 =< id < num_embeddings` ,
-    otherwise the program will throw an exception and exit.
+    Note:
+        The id in :attr:`x` must satisfy :math:`0 =< id < num_embeddings` ,
+        otherwise the program will throw an exception and exit.
 
     .. code-block:: text
 
@@ -1352,23 +1302,23 @@ class Embedding(Layer):
         num_embeddings (int): Just one element which indicate the size
             of the dictionary of embeddings.
         embedding_dim (int):  Just one element which indicate the size of each embedding vector respectively.
-        padding_idx(int|long|None): padding_idx needs to be in the interval [-num_embeddings, num_embeddings).
+        padding_idx(int|long|None, optional): padding_idx needs to be in the interval [-num_embeddings, num_embeddings).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
             to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
             If set None, it makes no effect to output. Default: None.
-        sparse(bool): The flag indicating whether to use sparse update. This parameter only
+        sparse(bool, optional): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set
             True because sparse update is faster. But some optimizer does not support sparse update,
             such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these case, sparse must be False. Default: False.
-        weight_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
+        weight_attr(ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_initializer_NumpyArrayInitializer`
             is used to load custom or pre-trained word vectors. See code example for details.
-        name(str|None): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
                to :ref:`api_guide_Name`. Usually name is no need to set and
                None by default.
 
@@ -1483,7 +1433,7 @@ class Unfold(Layer):
 
     See ``paddle.nn.functional.unfold`` for more details.
 
-    
+
     Parameters:
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
@@ -1548,35 +1498,36 @@ class Unfold(Layer):
 class Fold(Layer):
     r"""
 
-    This Op is used to combines an array of sliding local blocks into a large containing
-    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
-    combined value in the resulting large tensor by summing all values from all containing blocks. 
+    Combines an array of sliding local blocks into a large containing
+    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each
+    combined value in the resulting large tensor by summing all values from all containing blocks.
 
 
     For each input :math:`x` with shape [N, C_in , L], the output shape [N, C_out, H_out, W_out]
     can be calculated as following.
 
     .. math::
-        H_out &= output_size[0]
-        W_out &= output_size[1]
-        C_out &= C_in / kernel\_sizes[0] / kernel\_sizes[1]
+
+        H_{out} &= output\_size[0] \\
+        W_{out} &= output\_size[1] \\
+        C_{out} &= \frac{C_{in}}{kernel\_sizes[0]\times kernel\_sizes[1]} \\
 
     Parameters:
         output_sizes(list):       The size of output size, should be [output_size_h, output_size_w]
                                   or an interger o treated as [o, o].
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list|tuple):        The strides, should be [stride_h, stride_w]
+        strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list|tuple):       The paddings of each dimension, should be
+        paddings(int|list|tuple, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list|tuple):      the dilations of convolution kernel, should be
+        dilations(int|list|tuple, optional):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.

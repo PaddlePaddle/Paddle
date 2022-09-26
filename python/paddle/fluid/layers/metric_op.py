@@ -26,7 +26,7 @@ from ..param_attr import ParamAttr
 from . import nn
 from . import tensor
 from ..data_feeder import check_variable_and_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['accuracy', 'auc']
 
@@ -76,10 +76,10 @@ def accuracy(input, label, k=1, correct=None, total=None):
             total = _varbase_creator(dtype="int32")
 
         _k = k.numpy().item(0) if isinstance(k, Variable) else k
-        topk_out, topk_indices = _C_ops.top_k_v2(input, 'k', _k, 'sorted',
-                                                 False)
-        _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label, correct,
-                                     total)
+        topk_out, topk_indices = _legacy_C_ops.top_k_v2(input, 'k', _k,
+                                                        'sorted', False)
+        _acc, _, _ = _legacy_C_ops.accuracy(topk_out, topk_indices, label,
+                                            correct, total)
         return _acc
 
     helper = LayerHelper("accuracy", **locals())
@@ -155,7 +155,7 @@ def auc(input,
                              the roc curve. Default 4095.
         topk(int): only topk number of prediction output will be used for auc.
         slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
-        ins_tag_weight(Tensor): A 2D int Tensor indicating the data's tag weight, 1 means real data, 0 means fake data. Default None, and it will be assigned to a tensor of value 1. 
+        ins_tag_weight(Tensor): A 2D int Tensor indicating the data's tag weight, 1 means real data, 0 means fake data. Default None, and it will be assigned to a tensor of value 1.
                          A Tensor with type float32,float64.
 
     Returns:
@@ -164,7 +164,7 @@ def auc(input,
         batch_stat_pos, batch_stat_neg, stat_pos, stat_neg ]
         Data type is Tensor, supporting float32, float64.
 
-    Examples 1:
+    Examples:
         .. code-block:: python
 
             import paddle
@@ -173,8 +173,8 @@ def auc(input,
 
             data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             label = paddle.static.data(name="label", shape=[-1], dtype="int")
-            fc_out = paddle.static.nn.fc(input=data, size=2)
-            predict = paddle.nn.functional.softmax(input=fc_out)
+            fc_out = paddle.static.nn.fc(x=data, size=2)
+            predict = paddle.nn.functional.softmax(x=fc_out)
             result=paddle.static.auc(input=predict, label=label)
 
             place = paddle.CPUPlace()
@@ -186,19 +186,18 @@ def auc(input,
             output= exe.run(feed={"input": x,"label": y},
                              fetch_list=[result[0]])
             print(output)
-            #[array([0.5])]
-    Examples 2:
-        .. code-block:: python
 
+            #you can learn the usage of ins_tag_weight by the following code.
+            '''
             import paddle
             import numpy as np
             paddle.enable_static()
 
             data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             label = paddle.static.data(name="label", shape=[-1], dtype="int")
-            fc_out = paddle.static.nn.fc(input=data, size=2)
-            predict = paddle.nn.functional.softmax(input=fc_out)
-            ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+            ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='float64')
+            fc_out = paddle.static.nn.fc(x=data, size=2)
+            predict = paddle.nn.functional.softmax(x=fc_out)
             result=paddle.static.auc(input=predict, label=label, ins_tag_weight=ins_tag_weight)
 
             place = paddle.CPUPlace()
@@ -207,10 +206,12 @@ def auc(input,
             exe.run(paddle.static.default_startup_program())
             x = np.random.rand(3,32,32).astype("float32")
             y = np.array([1,0,1])
-            output= exe.run(feed={"input": x,"label": y},
+            z = np.array([1,0,1])
+            output= exe.run(feed={"input": x,"label": y, "ins_tag_weight":z},
                              fetch_list=[result[0]])
             print(output)
-            #[array([0.5])]
+            '''
+
     """
     helper = LayerHelper("auc", **locals())
 

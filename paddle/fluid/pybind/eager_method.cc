@@ -47,7 +47,9 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -211,6 +213,33 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           paddle::framework::DataTypeSize(dense_tensor->dtype()) *
               dense_tensor->numel(),
           kind);
+    }
+#endif
+#if defined(PADDLE_WITH_XPU)
+  } else if (self->tensor.is_xpu()) {
+    platform::CPUPlace place;
+    if (self->tensor.is_selected_rows()) {
+      VLOG(6) << "Getting SelectedRows's numpy value";
+      auto* selected_rows =
+          static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+      auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+          selected_rows->mutable_value());
+      paddle::memory::Copy(
+          place,
+          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
+          dense_tensor->place(),
+          dense_tensor->data(),
+          sizeof_dtype * numel);
+    } else {
+      VLOG(6) << "Getting DenseTensor's numpy value";
+      auto dense_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+      paddle::memory::Copy(
+          place,
+          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
+          dense_tensor->place(),
+          dense_tensor->data(),
+          sizeof_dtype * numel);
     }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -440,6 +469,24 @@ static PyObject* tensor_method_copy_(TensorObject* self,
           << self->tensor.name();
   RETURN_PY_NONE
 
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_clone(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+
+  PADDLE_ENFORCE_EQ(
+      self->tensor.initialized(),
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "We can only support initialized tensor in clone, however we got "
+          "uninitialized tensor %s, please check your code.",
+          self->tensor.name()));
+
+  auto out = assign_ad_func(self->tensor);
+  return ToPyObject(out);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -722,6 +769,33 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__get_tensor_from_selected_rows(
+    TensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(self->tensor.is_selected_rows(),
+                 paddle::platform::errors::Fatal(
+                     "this method is only effective for SelectedRows."));
+
+  auto* selected_rows =
+      static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+
+  PADDLE_ENFORCE(
+      selected_rows->initialized(),
+      paddle::platform::errors::Fatal("SelectedRows must be initialized."));
+
+  auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+      selected_rows->mutable_value());
+  VLOG(1) << "dense_tensor: " << dense_tensor->IsInitialized();
+
+  auto t = paddle::experimental::Tensor(
+      egr::Controller::Instance().GenerateUniqueName());
+  t.set_impl(std::make_shared<phi::DenseTensor>(*dense_tensor));
+
+  return ToPyObject(t);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                                   PyObject* args,
                                                   PyObject* kwargs) {
@@ -732,8 +806,10 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       decrease_axis, none_axes, infer_flags, list_select_idxs;
   // if index is a list, list_select_flag will be true
   bool list_select_flag = false;
+  // Note(0x45f): Using defined() instead of initialized()
+  // to support slice tensor which shape like [0, 0, 0].
   PADDLE_ENFORCE_EQ(
-      self->tensor.initialized(),
+      self->tensor.defined(),
       true,
       platform::errors::InvalidArgument(
           "tensor %s has not been initialized, we can only slice initialized "
@@ -779,14 +855,14 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                            decrease_axis.end());
 
     if (op_type == "slice") {
-      out = slice_final_state_dygraph_function(self->tensor,
-                                               slice_axes_tmp,
-                                               slice_starts,
-                                               slice_ends,
-                                               infer_flags_tmp,
-                                               decrease_axis_tmp);
+      out = slice_ad_func(self->tensor,
+                          slice_axes_tmp,
+                          slice_starts,
+                          slice_ends,
+                          infer_flags_tmp,
+                          decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
-      out = strided_slice_final_state_dygraph_function(
+      out = strided_slice_ad_func(
           self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -825,7 +901,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       }
 
       paddle::experimental::Tensor new_out;
-      new_out = unsqueeze_final_state_dygraph_function(out, none_axes);
+      new_out = unsqueeze_ad_func(out, none_axes);
       return ToPyObject(new_out);
     }
   }
@@ -841,8 +917,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(
         list_select_idxs, *dev_ctx, idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_final_state_dygraph_function(
-        self->tensor, select_index, 0);
+    out = index_select_ad_func(self->tensor, select_index, 0);
   }
 
   return ToPyObject(out);
@@ -1143,6 +1218,17 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // Release gil and do tracing
       py::gil_scoped_release release;
       // use inplace set_value_ operator
+      if (value_tensor.initialized() &&
+          (self->tensor.dtype() != value_tensor.dtype())) {
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            tmps = {{self->tensor}, {value_tensor}};
+        auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
+        self->tensor = egr::EagerAmpAutoCast(
+            self->tensor.name(), self->tensor, amp_dtype, "set_value");
+        value_tensor = egr::EagerAmpAutoCast(
+            value_tensor.name(), value_tensor, amp_dtype, "set_value");
+      }
       self->tensor = set_value__dygraph_function(
           self->tensor, value_tensor, {}, {}, {}, attrs);
     }
@@ -1543,6 +1629,15 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_is_same_shape(TensorObject* self,
+                                             PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  auto other = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  return ToPyObject(self->tensor.shape() == other.shape());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__inplace_version(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -1804,6 +1899,10 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_copy_,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+    {"clone",
+     (PyCFunction)(void (*)(void))tensor_method_clone,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
     {"reconstruct_from_",
      (PyCFunction)(void (*)(void))tensor_method_reconstruct_from_,
      METH_VARARGS | METH_KEYWORDS,
@@ -1850,6 +1949,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"get_selected_rows",
      (PyCFunction)(void (*)(void))tensor_method_get_underline_selected_rows,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_get_tensor_from_selected_rows",
+     (PyCFunction)(void (*)(void))tensor_method__get_tensor_from_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_getitem_index_not_tensor",
@@ -1932,6 +2035,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"is_sparse_csr",
      (PyCFunction)(void (*)(void))tensor_method_is_sparse_csr,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"is_same_shape",
+     (PyCFunction)(void (*)(void))tensor_method_is_same_shape,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"to_sparse_csr",

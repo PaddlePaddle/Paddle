@@ -502,7 +502,7 @@ void BufferedReader::StartImpl() {
   ReadTillBufferFullAsync();
 }
 
-void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
+void BufferedReader::ReadNextImpl(paddle::framework::LoDTensorArray *out) {
   if (position_.empty()) {
     out->clear();
     return;

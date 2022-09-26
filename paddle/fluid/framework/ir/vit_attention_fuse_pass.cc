@@ -79,6 +79,10 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     OpDesc desc(matmul0_op->Op()->Block());
     desc.SetType("multihead_matmul");
     desc.SetInput("Input", {subgraph.at(x)->Name()});
+    if (matmul0_out->Var()->GetShape().size() != 3) {
+      VLOG(3) << "vit_attention_fuse_pass only support input.dim == 3";
+      return;
+    }
     // refactor W and Bias
     auto* w_tensor =
         scope->FindVar(matmul0_in_y->Name())->GetMutable<LoDTensor>();

@@ -28,6 +28,8 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
+from test_attribute_var import UnittestBase
+
 
 def output_hist(out):
     hist, _ = np.histogram(out, range=(-5, 10))
@@ -176,7 +178,7 @@ class TestUniformRandomOp(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
-    def test_check_api(self):
+    def func_test_check_api(self):
         places = self._get_places()
         for place in places:
             with fluid.dygraph.base.guard(place=place):
@@ -186,7 +188,8 @@ class TestUniformRandomOp(OpTest):
 
     def test_check_api_eager(self):
         with _test_eager_guard():
-            self.test_check_api()
+            self.func_test_check_api()
+        self.func_test_check_api()
 
 
 class TestUniformRandomOpError(unittest.TestCase):
@@ -646,6 +649,50 @@ class TestRandomValue(unittest.TestCase):
         np.testing.assert_allclose(out[10, 10, 10, 0:10], expect, rtol=1e-05)
 
         paddle.enable_static()
+
+
+class TestUniformMinMaxTensor(UnittestBase):
+
+    def init_info(self):
+        self.shapes = [[2, 3, 4]]
+        self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
+
+    def test_static(self):
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            fc = paddle.nn.Linear(4, 10)
+            x = paddle.randn([2, 3, 4])
+            x.stop_gradient = False
+            feat = fc(x)  # [2,3,10]
+            min_v = paddle.to_tensor([0.1])
+            max_v = paddle.to_tensor([0.9])
+            y = paddle.uniform([2, 3, 10], min=min_v, max=max_v)
+            z = paddle.fluid.layers.uniform_random([2, 3, 10],
+                                                   min=min_v,
+                                                   max=max_v)
+
+            out = feat + y + z
+
+            sgd = paddle.optimizer.SGD()
+            sgd.minimize(paddle.mean(out))
+            self.assertTrue(self.var_prefix() in str(main_prog))
+
+            exe = paddle.static.Executor()
+            exe.run(starup_prog)
+            res = exe.run(fetch_list=[out])
+            np.testing.assert_array_equal(res[0].shape, [2, 3, 10])
+
+            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
+            # Test for Inference Predictor
+            infer_out = self.infer_prog()
+            np.testing.assert_array_equal(res[0].shape, [2, 3, 10])
+
+    def path_prefix(self):
+        return 'uniform_random'
+
+    def var_prefix(self):
+        return "Var["
 
 
 if __name__ == "__main__":

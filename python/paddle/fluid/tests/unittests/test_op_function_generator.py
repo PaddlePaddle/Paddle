@@ -21,7 +21,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.jit import TracedLayer
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 class TestTracedLayer(fluid.dygraph.Layer):
@@ -30,7 +30,7 @@ class TestTracedLayer(fluid.dygraph.Layer):
         super(TestTracedLayer, self).__init__(name_scope)
 
     def forward(self, input):
-        return _C_ops.relu(input)
+        return _legacy_C_ops.relu(input)
 
 
 class TestVariable(unittest.TestCase):
@@ -49,7 +49,7 @@ class TestVariable(unittest.TestCase):
             x.stop_gradient = False
 
             res1 = layers.elementwise_add(x, y)
-            res2 = _C_ops.elementwise_add(x, y)
+            res2 = _legacy_C_ops.elementwise_add(x, y)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
@@ -61,7 +61,7 @@ class TestVariable(unittest.TestCase):
             y = fluid.dygraph.to_variable(b)
 
             res1 = layers.elementwise_mul(x, y)
-            res2 = _C_ops.elementwise_mul(x, y)
+            res2 = _legacy_C_ops.elementwise_mul(x, y)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
@@ -71,7 +71,7 @@ class TestVariable(unittest.TestCase):
             x = fluid.dygraph.to_variable(a)
 
             res1 = layers.relu(x)
-            res2 = _C_ops.relu(x)
+            res2 = _legacy_C_ops.relu(x)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
@@ -85,7 +85,7 @@ class TestVariable(unittest.TestCase):
             x.stop_gradient = False
             y.stop_gradient = False
 
-            loss = _C_ops.elementwise_mul(x, y)
+            loss = _legacy_C_ops.elementwise_mul(x, y)
 
             loss.backward()
             x_grad = x.gradient()

@@ -79,9 +79,8 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
 
   int half_kernel_size = kernel_size / 2;
   auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
-  DenseTensor x_grad_indices =
-      phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
+  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
   T* x_grad_values_ptr = x_grad_values.data<T>();
   phi::backends::gpu::GpuMemsetAsync(x_grad_values_ptr,
                                      0,
@@ -89,11 +88,8 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                                      dev_ctx.stream());
   phi::backends::gpu::GpuMemsetAsync(
       d_x_features_ptr, 0, sizeof(T) * d_x_features.numel(), dev_ctx.stream());
-  phi::Copy<GPUContext>(dev_ctx,
-                        x.non_zero_indices(),
-                        dev_ctx.GetPlace(),
-                        false,
-                        &x_grad_indices);
+  phi::Copy<GPUContext>(
+      dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &x_grad_indices);
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
 
   std::vector<int> offsets(kernel_size + 1);
@@ -109,59 +105,24 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   offsets[kernel_size] = offset;
 
   if (subm) {
-    phi::funcs::sparse::SubmPreProcess<T, GPUContext>(
-        dev_ctx,
-        x,
-        kernel,
-        out_grad.non_zero_elements(),
-        in_channels,
-        out_channels,
-        half_kernel_size,
-        kernel_grad,
-        &x_grad_values);
+    phi::funcs::sparse::SubmPreProcess<T, GPUContext>(dev_ctx,
+                                                      x,
+                                                      kernel,
+                                                      out_grad.values(),
+                                                      in_channels,
+                                                      out_channels,
+                                                      half_kernel_size,
+                                                      kernel_grad,
+                                                      &x_grad_values);
     if (max_count == 0) {
       return;
     }
   }
 
-  int max_voxel = counter_ptr[kernel_size];
-  if (!subm) {
-    const auto& x_dims = x.dims();
-    Dims4D d_x_dims(x_dims[0], x_dims[3], x_dims[2], x_dims[1]);
-    int64_t table_size = 1;
-    for (int i = 0; i < x_dims.size() - 1; i++) {
-      table_size *= x_dims[i];
-    }
-    DenseTensor in_index_table = phi::Empty<int>(dev_ctx, {table_size + 1});
-    int* in_index_table_ptr = in_index_table.data<int>();
-    phi::backends::gpu::GpuMemsetAsync(in_index_table_ptr,
-                                       0,
-                                       sizeof(int) * (table_size + 1),
-                                       dev_ctx.stream());
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.nnz(), 1);
-    GetOutIndexTable<IntT, false>
-        <<<config.block_per_grid,
-           config.thread_per_block,
-           0,
-           dev_ctx.stream()>>>(x.non_zero_indices().data<IntT>(),
-                               x.nnz(),
-                               d_x_dims,
-                               nullptr,
-                               in_index_table_ptr,
-                               in_index_table_ptr + table_size);
-
-    phi::backends::gpu::GpuMemcpyAsync(&max_voxel,
-                                       in_index_table_ptr + table_size,
-                                       sizeof(int),
-                                       gpuMemcpyDeviceToHost,
-                                       dev_ctx.stream());
-    dev_ctx.Wait();
-  }
-
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
   DenseTensor unique_value = phi::Empty<int>(
-      dev_ctx, {static_cast<int>(x_grad->nnz() * max_voxel * kernel_size * 2)});
+      dev_ctx, {static_cast<int>(x_grad->nnz() * kernel_size * 2)});
   DenseTensor out_index =
       phi::Empty<int>(dev_ctx, {static_cast<int>(x.nnz() * 2)});
   int* out_index_ptr = out_index.data<int>();
@@ -174,25 +135,24 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                   0,
                   dev_ctx.stream()>>>(rulebook_len,
                                       x.nnz(),
-                                      kernel_size * max_voxel,
+                                      kernel_size,
                                       offsets[kernel_size / 2],
                                       rulebook_ptr,
                                       out_index_ptr,
                                       unique_value_ptr);
 
   GatherV2<T, IntT>(dev_ctx,
-                    x.non_zero_elements().data<T>(),
+                    x.values().data<T>(),
                     out_index_ptr,
                     unique_value_ptr,
                     x.nnz(),
                     kernel_size,
-                    max_voxel,
                     in_channels,
                     2,
                     in_features_ptr);
 
   Gather<T, IntT>(dev_ctx,
-                  out_grad.non_zero_elements().data<T>(),
+                  out_grad.values().data<T>(),
                   rulebook_ptr + rulebook_len,
                   rulebook_len,
                   out_channels,
@@ -247,7 +207,6 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                                    unique_value.data<int>(),
                                    x_grad->nnz(),
                                    kernel_size,
-                                   max_voxel,
                                    in_channels,
                                    2,
                                    x_grad_values_ptr);
@@ -270,7 +229,7 @@ void Conv3dCooGradKernel(const Context& dev_ctx,
                          SparseCooTensor* x_grad,
                          DenseTensor* kernel_grad) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "Conv3dCooGradGPUKernel", ([&] {
+      x.indices().dtype(), "Conv3dCooGradGPUKernel", ([&] {
         Conv3dCooGradGPUKernel<T, data_t>(dev_ctx,
                                           x,
                                           kernel,

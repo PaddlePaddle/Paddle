@@ -34,20 +34,23 @@ TEST(AlgosCache, AlgosCache) {
   std::vector<int> dilations = {1, 1};
   phi::DataType dtype = paddle::experimental::CppTypeToDataType<float>::Type();
 
-  auto key = phi::autotune::ConvKey(
-      x_shape, w_shape, paddings, strides, dilations, dtype);
+  phi::autotune::ConvCacheKey key(
+      x_shape, w_shape, paddings, strides, dilations, dtype, 0, 0);
   EXPECT_EQ(cache.Find(key), false);
-  cache.Set(key, ConvAlgos::GEMMKernel);
+  phi::autotune::DnnNode node(static_cast<int64_t>(ConvAlgos::GEMMKernel), 0);
+  cache.Set(key, node);
   EXPECT_EQ(cache.Size(), 1);
   EXPECT_EQ(cache.Find(key), true);
   auto algo = cache.Get(key);
-  EXPECT_EQ(algo, ConvAlgos::GEMMKernel);
+  EXPECT_EQ(algo.algo, ConvAlgos::GEMMKernel);
 
   x_shape = {4, 128, 128, 3};
-  key = phi::autotune::ConvKey(
-      x_shape, w_shape, paddings, strides, dilations, dtype);
-  EXPECT_EQ(cache.Find(key), false);
-  cache.Set(key, ConvAlgos::CuDNNKernel_1);
+  phi::autotune::ConvCacheKey key1(
+      x_shape, w_shape, paddings, strides, dilations, dtype, 0, 1);
+  EXPECT_EQ(cache.Find(key1), false);
+  phi::autotune::DnnNode node1(static_cast<int64_t>(ConvAlgos::CuDNNKernel_1),
+                               0);
+  cache.Set(key1, node1);
   EXPECT_EQ(cache.Size(), 2);
   EXPECT_EQ(cache.CacheHits(), 1);
   EXPECT_EQ(cache.CacheMisses(), 2);
