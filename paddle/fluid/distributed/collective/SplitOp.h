@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace paddle {
@@ -29,13 +30,32 @@ struct SplitDenseTensor {
                   int axis = 0) {
     std::vector<const phi::DenseTensor *> shape_refer;
     shape_refer.reserve(out->size());
-    for (auto &p_tensor : *out) {
+    for (auto *p_tensor : *out) {
       shape_refer.emplace_back(p_tensor);
     }
     phi::funcs::SplitFunctor<DeviceContext, T> split_functor_;
     split_functor_(*context, in, shape_refer, axis, out);
   }
 };
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+template <typename T>
+struct SplitDenseTensor<platform::CustomDeviceContext, T> {
+  void operator()(const platform::CustomDeviceContext *context,
+                  const phi::DenseTensor &in,
+                  std::vector<phi::DenseTensor *> *out) {
+    auto *in_data = in.data<T>();
+    auto *device = phi::DeviceManager::GetDeviceWithPlace(context->GetPlace());
+    size_t offset = 0;
+    for (auto *p_tensor : *out) {
+      auto *out_data = p_tensor->data<T>();
+      auto sz = p_tensor->numel() * sizeof(T);
+      device->MemoryCopyD2D(out_data, in_data + offset, sz, nullptr);
+      offset += sz;
+    }
+  }
+};
+#endif
 
 template <typename DeviceContext>
 void SplitDenseTensorWithType(const DeviceContext *dev_ctx,
