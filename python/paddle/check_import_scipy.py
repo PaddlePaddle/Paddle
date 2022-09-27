@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
-from __future__ import generator_stop, print_function
-from __future__ import annotations, print_function
-
 
 def check_import_scipy(OsName):
     print_info = ""
