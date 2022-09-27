@@ -1125,5 +1125,751 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
         self.run_test()
 
 
+class TrtConvertSwinToMultiHeadMatmul_1_Test(TrtLayerAutoScanTest):
+
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
+    def sample_program_configs(self):
+
+        # qkv fc input, batch*windows_num,seq_len,head_num*head_size
+        def generate_input1(batch, sqrtlength):
+            return np.zeros((batch, 8, sqrtlength, 8, sqrtlength, 192),
+                            dtype=np.float32)
+
+        # qkv fc weight
+        def generate_weight1():
+            return np.random.rand(192, 576).astype(np.float32)
+
+        # qkv fc bias
+        def generate_bias_1():
+            return np.random.rand(576).astype(np.float32)
+
+        # qk bias
+        def generate_bias_2(length):
+            return np.random.rand(1, 6, length, length).astype(np.float32)
+
+        for batch in [1, 2, 4]:
+            self.batch = batch
+            for sqrtlength in [7, 12, 20]:
+                self.sqrtlength = sqrtlength
+                ops_config = [{
+                    "op_type": "transpose2",
+                    "op_inputs": {
+                        "X": ["input_data1"],
+                    },
+                    "op_outputs": {
+                        "Out": ["transpose_i0_output"]
+                    },
+                    "op_attrs": {
+                        "axis": [0, 1, 3, 2, 4, 5],
+                        "data_format": "AnyLayout"
+                    }
+                }, {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["transpose_i0_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape_i1_output"],
+                        "XShape": ["reshape_i1_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "shape": [-1, sqrtlength, sqrtlength, 192]
+                    }
+                }, {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["reshape_i1_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape_i2_output"],
+                        "XShape": ["reshape_i2_output_xhape"]
+                    },
+                    "op_attrs": {
+                        "shape": [-1, sqrtlength * sqrtlength, 192]
+                    }
+                }, {
+                    "op_type": "matmul_v2",
+                    "op_inputs": {
+                        "X": ["reshape_i2_output"],
+                        "Y": ["matmul1_weight"]
+                    },
+                    "op_outputs": {
+                        "Out": ["matmul1_output"]
+                    },
+                    "op_attrs": {
+                        "trans_x": False,
+                        "trans_y": False
+                    }
+                }, {
+                    "op_type": "elementwise_add",
+                    "op_inputs": {
+                        "X": ["matmul1_output"],
+                        "Y": ["elementwise_add1_weight"]
+                    },
+                    "op_outputs": {
+                        "Out": ["elementwise_add1_output"]
+                    },
+                    "op_attrs": {
+                        "Scale_out": 1.0,
+                        "Scale_x": 1.0,
+                        "Scale_y": 1.0,
+                        "axis": 2
+                    }
+                }, {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["elementwise_add1_output"],
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape1_output"],
+                        "XShape": ["reshape1_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "shape": [-1, sqrtlength * sqrtlength, 3, 6, 32]
+                    }
+                }, {
+                    "op_type": "transpose2",
+                    "op_inputs": {
+                        "X": ["reshape1_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["transpose1_output"],
+                        "XShape": ["transpose1_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "axis": [2, 0, 3, 1, 4],
+                        "data_format": "AnyLayout"
+                    }
+                }, {
+                    "op_type": "slice",
+                    "op_inputs": {
+                        "Input": ["transpose1_output"],
+                    },
+                    "op_outputs": {
+                        "Out": ["slice1_output"]
+                    },
+                    "op_attrs": {
+                        "axes": [0],
+                        "starts": [0],
+                        "ends": [1],
+                        "decrease_axis": [0],
+                        "infer_flags": [1]
+                    }
+                }, {
+                    "op_type": "slice",
+                    "op_inputs": {
+                        "Input": ["transpose1_output"],
+                    },
+                    "op_outputs": {
+                        "Out": ["slice2_output"]
+                    },
+                    "op_attrs": {
+                        "axes": [0],
+                        "starts": [1],
+                        "ends": [2],
+                        "decrease_axis": [0],
+                        "infer_flags": [1]
+                    }
+                }, {
+                    "op_type": "slice",
+                    "op_inputs": {
+                        "Input": ["transpose1_output"],
+                    },
+                    "op_outputs": {
+                        "Out": ["slice3_output"]
+                    },
+                    "op_attrs": {
+                        "axes": [0],
+                        "starts": [2],
+                        "ends": [3],
+                        "decrease_axis": [0],
+                        "infer_flags": [1]
+                    }
+                }, {
+                    "op_type": "transpose2",
+                    "op_inputs": {
+                        "X": ["slice2_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["transpose2_output"],
+                    },
+                    "op_attrs": {
+                        "axis": [0, 1, 3, 2],
+                        "data_format": "AnyLayout"
+                    }
+                }, {
+                    "op_type": "scale",
+                    "op_inputs": {
+                        "X": ["slice1_output"],
+                    },
+                    "op_outputs": {
+                        "Out": ["scale_output"]
+                    },
+                    "op_attrs": {
+                        "scale": 0.1767766922712326,
+                        "bias": 0.0,
+                        "bias_after_scale": True
+                    }
+                }, {
+                    "op_type": "matmul_v2",
+                    "op_inputs": {
+                        "X": ["scale_output"],
+                        "Y": ["transpose2_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["matmul2_output"]
+                    },
+                    "op_attrs": {
+                        "trans_x": False,
+                        "trans_y": False
+                    }
+                }, {
+                    "op_type": "elementwise_add",
+                    "op_inputs": {
+                        "X": ["matmul2_output"],
+                        "Y": ["elementwise_add2_weight"]
+                    },
+                    "op_outputs": {
+                        "Out": ["elementwise_add2_output"]
+                    },
+                    "op_attrs": {
+                        "Scale_out": 1.0,
+                        "Scale_x": 1.0,
+                        "Scale_y": 1.0,
+                        "axis": -1
+                    }
+                }, {
+                    "op_type": "softmax",
+                    "op_inputs": {
+                        "X": ["elementwise_add2_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["softmax_output"]
+                    },
+                    "op_attrs": {
+                        "axis": -1,
+                        "data_format": "AnyLayout"
+                    }
+                }, {
+                    "op_type": "matmul_v2",
+                    "op_inputs": {
+                        "X": ["softmax_output"],
+                        "Y": ["slice3_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["matmul3_output"]
+                    },
+                    "op_attrs": {
+                        "trans_x": False,
+                        "trans_y": False
+                    }
+                }, {
+                    "op_type": "transpose2",
+                    "op_inputs": {
+                        "X": ["matmul3_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["transpose3_output"],
+                        "XShape": ["transpose3_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "axis": [0, 2, 1, 3],
+                        "data_format": "AnyLayout"
+                    }
+                }, {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["transpose3_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape2_output"],
+                        "XShape": ["reshape2_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "shape": [-1, sqrtlength * sqrtlength, 192]
+                    }
+                }]
+
+                ops = self.generate_op_config(ops_config)
+
+                program_config = ProgramConfig(
+                    ops=ops,
+                    weights={
+                        "matmul1_weight":
+                        TensorConfig(data_gen=partial(generate_weight1)),
+                        "elementwise_add1_weight":
+                        TensorConfig(data_gen=partial(generate_bias_1)),
+                        "elementwise_add2_weight":
+                        TensorConfig(
+                            data_gen=partial(generate_bias_2, sqrtlength *
+                                             sqrtlength))
+                    },
+                    inputs={
+                        "input_data1":
+                        TensorConfig(data_gen=partial(generate_input1, batch,
+                                                      sqrtlength))
+                    },
+                    outputs=["reshape2_output"])
+
+                yield program_config
+
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+        def generate_dynamic_shape(attrs):
+            # The last dim of input1 and input2 should be static.
+            seqlen = attrs[1]['shape'][1]
+            self.dynamic_shape.min_input_shape = {
+                "input_data1": [1, 8, seqlen, 8, seqlen, 96],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data1": [4, 8, seqlen, 8, seqlen, 192],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data1": [1, 8, seqlen, 8, seqlen, 96],
+            }
+
+        def clear_dynamic_shape():
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
+
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+
+        def generate_trt_nodes_num():
+            return 1, 2
+
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.workspace_size = 1 << 30
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(), (1e-5,
+                                                                         1e-5)
+
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(), (1e-2,
+                                                                         1e-4)
+
+    def add_skip_trt_case(self):
+        pass
+
+    def test(self):
+        self.add_skip_trt_case()
+        self.run_test()
+
+
+class TrtConvertSwinToMultiHeadMatmul_2_Test(TrtLayerAutoScanTest):
+
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
+    def sample_program_configs(self):
+
+        # qkv fc input, batch*windows_num,seq_len,head_num*head_size
+        def generate_input1(batch, sqrtlength):
+            return np.zeros((batch, 8, sqrtlength, 8, sqrtlength, 192),
+                            dtype=np.float32)
+
+        # qkv fc weight
+        def generate_weight1():
+            return np.random.rand(192, 576).astype(np.float32)
+
+        # qkv fc bias
+        def generate_bias_1():
+            return np.random.rand(576).astype(np.float32)
+
+        # qk bias
+        def generate_bias_2(length):
+            return np.random.rand(1, 6, length, length).astype(np.float32)
+
+        # qk bias mask
+        def generate_bias_3(length):
+            return np.random.rand(64, length, length).astype(np.float32)
+
+        for batch in [1, 2, 4]:
+            self.batch = batch
+            for sqrtlength in [7, 12, 20]:
+                self.sqrtlength = sqrtlength
+                ops_config = [{
+                    "op_type": "transpose2",
+                    "op_inputs": {
+                        "X": ["input_data1"],
+                    },
+                    "op_outputs": {
+                        "Out": ["transpose_i0_output"]
+                    },
+                    "op_attrs": {
+                        "axis": [0, 1, 3, 2, 4, 5],
+                        "data_format": "AnyLayout"
+                    }
+                }, {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["transpose_i0_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape_i1_output"],
+                        "XShape": ["reshape_i1_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "shape": [-1, sqrtlength, sqrtlength, 192]
+                    }
+                }, {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["reshape_i1_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape_i2_output"],
+                        "XShape": ["reshape_i2_output_xhape"]
+                    },
+                    "op_attrs": {
+                        "shape": [-1, sqrtlength * sqrtlength, 192]
+                    }
+                }, {
+                    "op_type": "matmul_v2",
+                    "op_inputs": {
+                        "X": ["reshape_i2_output"],
+                        "Y": ["matmul1_weight"]
+                    },
+                    "op_outputs": {
+                        "Out": ["matmul1_output"]
+                    },
+                    "op_attrs": {
+                        "trans_x": False,
+                        "trans_y": False
+                    }
+                }, {
+                    "op_type": "elementwise_add",
+                    "op_inputs": {
+                        "X": ["matmul1_output"],
+                        "Y": ["elementwise_add1_weight"]
+                    },
+                    "op_outputs": {
+                        "Out": ["elementwise_add1_output"]
+                    },
+                    "op_attrs": {
+                        "Scale_out": 1.0,
+                        "Scale_x": 1.0,
+                        "Scale_y": 1.0,
+                        "axis": 2
+                    }
+                }, {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["elementwise_add1_output"],
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape1_output"],
+                        "XShape": ["reshape1_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "shape": [-1, sqrtlength * sqrtlength, 3, 6, 32]
+                    }
+                }, {
+                    "op_type": "transpose2",
+                    "op_inputs": {
+                        "X": ["reshape1_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["transpose1_output"],
+                        "XShape": ["transpose1_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "axis": [2, 0, 3, 1, 4],
+                        "data_format": "AnyLayout"
+                    }
+                }, {
+                    "op_type": "slice",
+                    "op_inputs": {
+                        "Input": ["transpose1_output"],
+                    },
+                    "op_outputs": {
+                        "Out": ["slice1_output"]
+                    },
+                    "op_attrs": {
+                        "axes": [0],
+                        "starts": [0],
+                        "ends": [1],
+                        "decrease_axis": [0],
+                        "infer_flags": [1]
+                    }
+                }, {
+                    "op_type": "slice",
+                    "op_inputs": {
+                        "Input": ["transpose1_output"],
+                    },
+                    "op_outputs": {
+                        "Out": ["slice2_output"]
+                    },
+                    "op_attrs": {
+                        "axes": [0],
+                        "starts": [1],
+                        "ends": [2],
+                        "decrease_axis": [0],
+                        "infer_flags": [1]
+                    }
+                }, {
+                    "op_type": "slice",
+                    "op_inputs": {
+                        "Input": ["transpose1_output"],
+                    },
+                    "op_outputs": {
+                        "Out": ["slice3_output"]
+                    },
+                    "op_attrs": {
+                        "axes": [0],
+                        "starts": [2],
+                        "ends": [3],
+                        "decrease_axis": [0],
+                        "infer_flags": [1]
+                    }
+                }, {
+                    "op_type": "transpose2",
+                    "op_inputs": {
+                        "X": ["slice2_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["transpose2_output"],
+                    },
+                    "op_attrs": {
+                        "axis": [0, 1, 3, 2],
+                        "data_format": "AnyLayout"
+                    }
+                }, {
+                    "op_type": "scale",
+                    "op_inputs": {
+                        "X": ["slice1_output"],
+                    },
+                    "op_outputs": {
+                        "Out": ["scale_output"]
+                    },
+                    "op_attrs": {
+                        "scale": 0.1767766922712326,
+                        "bias": 0.0,
+                        "bias_after_scale": True
+                    }
+                }, {
+                    "op_type": "matmul_v2",
+                    "op_inputs": {
+                        "X": ["scale_output"],
+                        "Y": ["transpose2_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["matmul2_output"]
+                    },
+                    "op_attrs": {
+                        "trans_x": False,
+                        "trans_y": False
+                    }
+                }, {
+                    "op_type": "elementwise_add",
+                    "op_inputs": {
+                        "X": ["matmul2_output"],
+                        "Y": ["elementwise_add2_weight"]
+                    },
+                    "op_outputs": {
+                        "Out": ["elementwise_add2_output"]
+                    },
+                    "op_attrs": {
+                        "Scale_out": 1.0,
+                        "Scale_x": 1.0,
+                        "Scale_y": 1.0,
+                        "axis": -1
+                    }
+                }, {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["elementwise_add2_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape_i3_output"],
+                        "XShape": ["reshape_i3_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "shape": [
+                            -1, 64, 6, sqrtlength * sqrtlength,
+                            sqrtlength * sqrtlength
+                        ]
+                    }
+                }, {
+                    "op_type": "unsqueeze2",
+                    "op_inputs": {
+                        "X": ["elementwise_add3_weight"]
+                    },
+                    "op_outputs": {
+                        "Out": ["unsqueeze2_0_output"]
+                    },
+                    "op_attrs": {
+                        "axes": [1]
+                    }
+                }, {
+                    "op_type": "unsqueeze2",
+                    "op_inputs": {
+                        "X": ["unsqueeze2_0_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["unsqueeze2_1_output"]
+                    },
+                    "op_attrs": {
+                        "axes": [0]
+                    }
+                }, {
+                    "op_type": "elementwise_add",
+                    "op_inputs": {
+                        "X": ["reshape_i3_output"],
+                        "Y": ["unsqueeze2_1_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["elementwise_add_3_output"]
+                    },
+                    "op_attrs": {
+                        "axis": -1
+                    }
+                }, {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["elementwise_add_3_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape_i4_output"],
+                        "XShape": ["reshape_i4_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "shape": [
+                            -1, 6, sqrtlength * sqrtlength,
+                            sqrtlength * sqrtlength
+                        ]
+                    }
+                }, {
+                    "op_type": "softmax",
+                    "op_inputs": {
+                        "X": ["reshape_i4_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["softmax_output"]
+                    },
+                    "op_attrs": {
+                        "axis": -1,
+                        "data_format": "AnyLayout"
+                    }
+                }, {
+                    "op_type": "matmul_v2",
+                    "op_inputs": {
+                        "X": ["softmax_output"],
+                        "Y": ["slice3_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["matmul3_output"]
+                    },
+                    "op_attrs": {
+                        "trans_x": False,
+                        "trans_y": False
+                    }
+                }, {
+                    "op_type": "transpose2",
+                    "op_inputs": {
+                        "X": ["matmul3_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["transpose3_output"],
+                        "XShape": ["transpose3_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "axis": [0, 2, 1, 3],
+                        "data_format": "AnyLayout"
+                    }
+                }, {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["transpose3_output"]
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape2_output"],
+                        "XShape": ["reshape2_output_xshape"]
+                    },
+                    "op_attrs": {
+                        "shape": [-1, sqrtlength * sqrtlength, 192]
+                    }
+                }]
+
+                ops = self.generate_op_config(ops_config)
+
+                program_config = ProgramConfig(
+                    ops=ops,
+                    weights={
+                        "matmul1_weight":
+                        TensorConfig(data_gen=partial(generate_weight1)),
+                        "elementwise_add1_weight":
+                        TensorConfig(data_gen=partial(generate_bias_1)),
+                        "elementwise_add2_weight":
+                        TensorConfig(
+                            data_gen=partial(generate_bias_2, sqrtlength *
+                                             sqrtlength)),
+                        "elementwise_add3_weight":
+                        TensorConfig(
+                            data_gen=partial(generate_bias_3, sqrtlength *
+                                             sqrtlength))
+                    },
+                    inputs={
+                        "input_data1":
+                        TensorConfig(data_gen=partial(generate_input1, batch,
+                                                      sqrtlength))
+                    },
+                    outputs=["reshape2_output"])
+
+                yield program_config
+
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+        def generate_dynamic_shape(attrs):
+            # The last dim of input1 and input2 should be static.
+            seqlen = attrs[1]['shape'][1]
+            self.dynamic_shape.min_input_shape = {
+                "input_data1": [1, 8, seqlen, 8, seqlen, 96],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data1": [4, 8, seqlen, 8, seqlen, 192],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data1": [1, 8, seqlen, 8, seqlen, 96],
+            }
+
+        def clear_dynamic_shape():
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
+
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+
+        def generate_trt_nodes_num():
+            return 1, 2
+
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.workspace_size = 1 << 30
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(), (1e-5,
+                                                                         1e-5)
+
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(), (1e-2,
+                                                                         1e-4)
+
+    def add_skip_trt_case(self):
+        pass
+
+    def test(self):
+        self.add_skip_trt_case()
+        self.run_test()
+
+
 if __name__ == "__main__":
     unittest.main()

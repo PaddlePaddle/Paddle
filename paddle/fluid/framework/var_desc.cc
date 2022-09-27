@@ -250,6 +250,7 @@ std::vector<proto::VarType::TensorDesc> VarDesc::tensor_descs() const {
       true,
       platform::errors::NotFound("The variable's type was not be set."));
   std::vector<proto::VarType::TensorDesc> res;
+
   res.reserve(GetTensorDescNum());
   switch (desc_.type().type()) {
     case proto::VarType::READER:
