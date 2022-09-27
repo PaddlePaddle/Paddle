@@ -626,11 +626,13 @@ static PyObject* tensor__div__method(TensorObject* self,
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
   }
-  if (self_tensor.dtype() != DataType::FLOAT32) {
+  if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+      _supported_int_dtype_.end()) {
     eager_gil_scoped_release guard;
     self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
   }
-  if (other_tensor.dtype() != DataType::FLOAT32) {
+  if (_supported_int_dtype_.find(other_tensor.dtype()) !=
+      _supported_int_dtype_.end()) {
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
   }
@@ -740,11 +742,13 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
   }
-  if (self_tensor.dtype() != DataType::FLOAT32) {
+  if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+      _supported_int_dtype_.end()) {
     eager_gil_scoped_release guard;
     self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
   }
-  if (other_tensor.dtype() != DataType::FLOAT32) {
+  if (_supported_int_dtype_.find(other_tensor.dtype()) !=
+      _supported_int_dtype_.end()) {
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
   }
