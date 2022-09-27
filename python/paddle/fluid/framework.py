@@ -246,12 +246,13 @@ def _test_eager_guard(place=None):
     # FIXME(dev): We haven't fully verified eager mode on NPU et.al but
     # only GPU/CPU/XPU. Remove this after we improve this feature.
     already_fallback = _fallback_legacy_dygraph()
-    if not already_fallback:
+    original_legacy_state = _in_legacy_dygraph()
+    if not already_fallback and not original_legacy_state:
         _disable_legacy_dygraph()
     try:
         yield
     finally:
-        if not already_fallback:
+        if not already_fallback and not original_legacy_state:
             _enable_legacy_dygraph()
 
 
