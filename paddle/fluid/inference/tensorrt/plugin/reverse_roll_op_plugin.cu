@@ -47,9 +47,18 @@ __global__ void reverse_roll(T*        dst,
     const int idx_in_window = (H_idx % window_size) * window_size + (W_idx % window_size);
     const int input_offset  = (batch_idx * window_num + window_idx) * window_len + idx_in_window;
     const int output_offset = (batch_idx * H + H_idx_shifted) * W + W_idx_shifted;
+    __shared__ T shift_array[1025];
     for (int tid = threadIdx.x; tid < dim; tid += blockDim.x) {
-        dst[output_offset * dim + tid] = src[input_offset * dim + tid];
+        shift_array[tid] = src[input_offset * dim + tid];
     }
+    __syncthreads();
+    for (int tid = threadIdx.x; tid < dim; tid += blockDim.x) {
+        dst[output_offset * dim + tid] = shift_array[tid];
+    }
+
+    // for (int tid = threadIdx.x; tid < dim; tid += blockDim.x) {
+    //     dst[output_offset * dim + tid] = src[input_offset * dim + tid];
+    // }
 }
 
 // src is [batch*window_num, window_len, dim]
@@ -210,9 +219,6 @@ int ReverseRollPluginDynamic::enqueue(
   int dim = input_dims.d[2];
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(3) << "TRT Plugin DataType selected. ReverseRoll-->fp32";
-    printf("@@, batch:%d, window_num_:%d, window_len_:%d, window_size_:%d, input_resolution_:%d, dim:%d, shift_size_:%d",
-            batch, window_num_, window_len_, window_size_, input_resolution_, dim,
-            shift_size_);
     invokeReverseRoll(
         reinterpret_cast<float *>(outputs[0]),
         reinterpret_cast<const float *>(inputs[0]),
