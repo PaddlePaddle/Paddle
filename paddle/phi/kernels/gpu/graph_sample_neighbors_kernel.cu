@@ -59,7 +59,8 @@ struct MaxFunctor {
 };
 
 template <typename T, int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
-__global__ void SampleKernel(const uint64_t rand_seed,
+__global__ void SampleKernel(uint64_t seed,
+                             uint64_t offset,
                              int k,
                              const int64_t num_nodes,
                              const int64_t len_col_ptr,
@@ -77,18 +78,13 @@ __global__ void SampleKernel(const uint64_t rand_seed,
   int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
   const int64_t last_row =
       min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_nodes);
-#ifdef PADDLE_WITH_HIP
-  hiprandState rng;
-  hiprand_init(rand_seed * gridDim.x + blockIdx.x,
-               threadIdx.y * WARP_SIZE + threadIdx.x,
-               0,
-               &rng);
-#else
-  curandState rng;
-  curand_init(rand_seed * gridDim.x + blockIdx.x,
-              threadIdx.y * WARP_SIZE + threadIdx.x,
-              0,
-              &rng);
+
+#ifdef __NVCC__
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, threadIdx.y * WARP_SIZE + threadIdx.x, offset, &state);
+#elif __HIPCC__
+  hiprandStatePhilox4_32_10_t state;
+  hiprand_init(seed, threadIdx.y * WARP_SIZE + threadIdx.x, offset, &state);
 #endif
 
   while (out_row < last_row) {
@@ -118,9 +114,9 @@ __global__ void SampleKernel(const uint64_t rand_seed,
 
       for (int idx = k + threadIdx.x; idx < deg; idx += WARP_SIZE) {
 #ifdef PADDLE_WITH_HIP
-        const int num = hiprand(&rng) % (idx + 1);
+        const int num = hiprand(&state) % (idx + 1);
 #else
-        const int num = curand(&rng) % (idx + 1);
+        const int num = curand(&state) % (idx + 1);
 #endif
         if (num < k) {
           atomicMax(reinterpret_cast<unsigned int*>(  // NOLINT
@@ -181,6 +177,9 @@ void SampleNeighbors(const Context& dev_ctx,
   thrust::exclusive_scan(
       output_count, output_count + bs, output_ptr.begin(), 0);
 
+  auto gen_cuda = dev_ctx.GetGenerator();
+  auto seed_offset = gen_cuda->IncrementOffset(total_sample_num);
+
   constexpr int WARP_SIZE = 32;
   constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
@@ -188,7 +187,8 @@ void SampleNeighbors(const Context& dev_ctx,
   const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
   SampleKernel<T, WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
       <<<grid, block, 0, dev_ctx.stream()>>>(
-          0,
+          seed_offset.first,
+          seed_offset.second,
           sample_size,
           bs,
           len_col_ptr,
