@@ -56,22 +56,25 @@ void TransposeCsrKernel(const Context& dev_ctx,
   const DenseTensor& x_crows = x.crows();
   const DenseTensor& x_cols = x.cols();
   const DenseTensor& x_values = x.values();
+  DenseTensor out_crows, out_cols, out_values;
   // return a copy of x
   if (perm[0] == 0 && perm[1] == 1 && (n_dim == 2 || perm[2] == 2)) {
-    out->SetMember(x_crows, x_cols, x_values, x.dims());
+    out_crows = x_crows;
+    out_cols = x_cols;
+    out_values = x_values;
+    out->SetMember(out_crows, out_cols, out_values, x.dims());
     return;
   }
   // create out sparse tensor
   DDim out_dims = x.dims().transpose(perm);
-  DenseTensor out_crows;
   if (n_dim == 2) {
     out_crows = Empty<int64_t, Context>(dev_ctx, {out_dims[0] + 1});
   } else {
     out_crows =
         Empty<int64_t, Context>(dev_ctx, {out_dims[0] * (out_dims[1] + 1)});
   }
-  DenseTensor out_cols = EmptyLike<int64_t, Context>(dev_ctx, x.cols());
-  DenseTensor out_values = EmptyLike<T, Context>(dev_ctx, x.values());
+  out_cols = EmptyLike<int64_t, Context>(dev_ctx, x.cols());
+  out_values = EmptyLike<T, Context>(dev_ctx, x.values());
   out->SetMember(out_crows, out_cols, out_values, out_dims);
   // transpose by two stages
   if (perm[0] == 1 && perm[1] == 2) {  // perm == {1, 2, 0}
