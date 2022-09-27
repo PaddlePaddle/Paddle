@@ -1377,6 +1377,9 @@ class Variable(object):
             type = core.VarDesc.VarType.STRINGS
             lod_level = None
 
+        if type == core.VarDesc.VarType.SPARSE_COO:
+            lod_level = None
+
         self.belong_to_optimizer = belong_to_optimizer
 
         self.error_clip = error_clip
