@@ -78,7 +78,7 @@ function(kernel_declare TARGET_LIST)
     string(
       REGEX
         MATCH
-        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[[ \t\r\n\/]*[a-z0-9_]*]?[ \t\r\n]*[A-Z]*,[ \t\r\n]*[A-Z_]*"
+        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[A-Z]*,[ \\\t\r\n]*[A-Z_]*"
         first_registry
         "${kernel_impl}")
 
@@ -95,7 +95,7 @@ function(kernel_declare TARGET_LIST)
       string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_msg
                      "${kernel_msg}")
       string(REPLACE "," ";" kernel_msg "${kernel_msg}")
-      string(REGEX REPLACE "[ \t\r\n]+" "" kernel_msg "${kernel_msg}")
+      string(REGEX REPLACE "[ \\\t\r\n]+" "" kernel_msg "${kernel_msg}")
       string(REGEX REPLACE "//cuda_only" "" kernel_msg "${kernel_msg}")
 
       list(GET kernel_msg 0 kernel_name)
