@@ -35,6 +35,7 @@ ServiceInfo = namedtuple("ServiceInfo", ["name", "rank", "ip", "port"])
 
 _DEFAULT_BACKEND = "gloo"
 _DEFAULT_TIMEOUT_MS = 500000
+_TIMEOUT_MAX_DAYS = 99999999
 _default_group = None
 _default_store = None
 
@@ -258,9 +259,9 @@ def _invoke_rpc(name, fn, timeout_ms, args, kwargs):
     return future
 
 
-def _barrier_by_tcp_store():
-    import sys
-    timeout = sys.maxsize
+def _barrier_never_timeout():
+    # max timeout
+    timeout = datetime.timedelta(days=_TIMEOUT_MAX_DAYS)
     global_rank = paddle.distributed.get_rank()
     global_world_size = paddle.distributed.get_world_size()
 
@@ -314,10 +315,11 @@ def shutdown():
                         master_endpoint="127.0.0.1:8001")
             rpc.shutdown()
     """
-    # never timeout
-    _barrier_by_tcp_store()
+    # Prevent idle servers shutdown first
+    _barrier_never_timeout()
+    # Prevent master shutdown first, because master will exit from `_barrier_never_timeout()` first.
+    paddle.distributed.barrier(group=_default_group)
     core.rpc_stop_server()
-    core.rpc_clear_python_rpc_handler()
     logger.info("Trainer {}: rpc shutdown!".format(dist.get_rank()))
 
 
