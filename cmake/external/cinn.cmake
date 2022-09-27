@@ -17,7 +17,7 @@ if(NOT WITH_CINN)
 endif()
 
 if(NOT CINN_GIT_TAG)
-  set(CINN_GIT_TAG release/v0.2)
+  set(CINN_GIT_TAG ernie_test)
 endif()
 
 message(STATUS "CINN version: " ${CINN_GIT_TAG})
@@ -44,7 +44,7 @@ set(CINN_BUILD_COMMAND $(MAKE) cinnapi -j)
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/CINN.git"
+  GIT_REPOSITORY "${GIT_URL}/Aganlengzi/CINN.git"
   GIT_TAG ${CINN_GIT_TAG}
   PREFIX ${CINN_PREFIX_DIR}
   BUILD_COMMAND ${CINN_BUILD_COMMAND}
