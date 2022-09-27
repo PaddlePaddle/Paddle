@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 from collections import defaultdict
 from collections.abc import Iterable
@@ -1377,6 +1375,9 @@ class Variable(object):
 
         if dtype == core.VarDesc.VarType.STRINGS:
             type = core.VarDesc.VarType.STRINGS
+            lod_level = None
+
+        if type == core.VarDesc.VarType.SPARSE_COO:
             lod_level = None
 
         self.belong_to_optimizer = belong_to_optimizer
