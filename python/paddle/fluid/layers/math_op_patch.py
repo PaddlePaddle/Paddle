@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import warnings
 import inspect
 
@@ -80,6 +78,10 @@ def monkey_patch_variable():
         tmp_name = unique_tmp_name()
         return block.create_var(name=tmp_name, dtype=dtype)
 
+    def create_new_tmp_sparse_var(block, dtype, type):
+        tmp_name = unique_tmp_name()
+        return block.create_var(name=tmp_name, dtype=dtype, type=type)
+
     def create_tensor(block, value, dtype, shape):
         value = float(value)
         var = create_new_tmp_var(block, dtype)
@@ -132,20 +134,32 @@ def monkey_patch_variable():
     @static_only
     def cpu(self):
         """
-            Variable should not have cpu() and cuda() interface.
-            But this interface can greatly facilitate dy2static.
-            We do nothing here.
+        Variable should not have cpu() and cuda() interface.
+        But this interface can greatly facilitate dy2static.
+        We do nothing here.
         """
         return self
 
     @static_only
     def cuda(self):
         """
-            Variable should not have cpu() and cuda() interface.
-            But this interface can greatly facilitate dy2static.
-            We do nothing here.
+        Variable should not have cpu() and cuda() interface.
+        But this interface can greatly facilitate dy2static.
+        We do nothing here.
         """
         return self
+
+    @static_only
+    def place(self):
+        """
+        Variable don't have 'place' interface in static mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warnning here and return None.
+        """
+        warnings.warn(
+            "Variable do not have 'place' interface for static mode, try not to use it. None will be returned."
+        )
+        return None
 
     def astype(self, dtype):
         """
@@ -421,12 +435,40 @@ def monkey_patch_variable():
         __impl__.__name__ = method_name
         return __impl__
 
+    def values(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(type="sparse_values",
+                        inputs={"x": [var]},
+                        outputs={"out": [out]},
+                        attrs={})
+        return out
+
+    def indices(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(type="sparse_indices",
+                        inputs={"x": [var]},
+                        outputs={"out": [out]},
+                        attrs={})
+        return out
+
+    def to_dense(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(type="sparse_to_dense",
+                        inputs={"x": [var]},
+                        outputs={"out": [out]},
+                        attrs={})
+        return out
+
     variable_methods = [
         #   b=-a
         ('__neg__', _neg_),
         ('astype', astype),
         ('cpu', cpu),
         ('cuda', cuda),
+        ('place', place),
         ('append', append),
         ('item', _item),
         ('pop', pop),
@@ -472,7 +514,10 @@ def monkey_patch_variable():
         ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
         ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
-        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None))
+        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
+        ('values', values),
+        ('indices', indices),
+        ('to_dense', to_dense),
     ]
 
     global _already_patch_variable

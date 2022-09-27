@@ -274,9 +274,6 @@ class Conv1D(_ConvNd):
         - bias: 1-D tensor with shape: (out_channels)
         - output: 3-D tensor with same shape as input x.
 
-    Raises:
-        None
-
     Examples:
         .. code-block:: python
 
@@ -927,10 +924,6 @@ class Conv3D(_ConvNd):
 
            W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
 
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
-
     Examples:
 
         .. code-block:: python
@@ -1105,9 +1098,6 @@ class Conv3DTranspose(_ConvNd):
 
            W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (kernel\_size[2] - 1) + 1
 
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
     Examples:
 
        .. code-block:: python

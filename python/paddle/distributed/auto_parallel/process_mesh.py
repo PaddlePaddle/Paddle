@@ -12,86 +12,90 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
+import numpy as np
 import copy
+import paddle
+
+# Use to store the previous and current process mesh
+_g_previous_process_mesh = None
+_g_current_process_mesh = None
 
 
-def _get_nested_list_shape(nested_list):
-    """
-    Get the shape of a nested_list.
-    """
-    result = []
-    while isinstance(nested_list, list):
-        result.append(len(nested_list))
-        nested_list = nested_list[0]
-    return result
+def get_current_process_mesh():
+    global _g_current_process_mesh
+    return _g_current_process_mesh
 
 
-def _flatten_nested_list(nested_list):
-    """
-    Get a list of all items in a nested_list.
-    Ref: https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
-    """
-    result = numpy.array(nested_list).flatten().tolist()
-    return result
+def set_current_process_mesh(process_mesh):
+    global _g_previous_process_mesh
+    global _g_current_process_mesh
+    _g_previous_process_mesh = _g_current_process_mesh
+    _g_current_process_mesh = process_mesh
+
+
+def reset_current_process_mesh():
+    global _g_previous_process_mesh
+    global _g_current_process_mesh
+    _g_current_process_mesh = _g_previous_process_mesh
 
 
 class ProcessMesh(object):
-    r"""
-    The class `Processmesh` describes the topology of logical processes.
-    A mesh is an N-dimensional array. The shape of the N-dimensional
-    array represents the topology of logical processes and every
-    element of the N-dimensional array represent a logical process. For
-    example, the 2-dimensional array [[2, 4, 5], [0, 1, 3]]
-    illustrates six logical processes organized as the topology [2, 3],
-    i.e., the shape of the 2-dimensional array. With the above topology,
-    there are two parallel groups, where the first parallel group has a
-    parallel degree of 2 and the second one has a parallel degree of 3.
-    And the first logical process is the one with id=2.
+    """
+    The `Processmesh` object describes the topology of the used processes.
 
     Args:
-        mesh (list): an N-dimensional array (nested list) describes the toplogy
-            of logical processes. The shape of the N-dimensional array
-            represents the topology of logical processes and every
-            element of the N-dimensional array represents a logical process.
-
-    Returns:
-        None
-
-    Raises:
-        ValueError: If `mesh` is not an instance of list.
+        mesh (list|numpy.array): an n-dimensional array describes the toplogy
+            of the processes.
+        dim_names (list, optional): the i-th element of this list gives the name of the
+            i-th dimension of the mesh.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.distributed as dist
 
-            paddle.enable_static()
-
-            mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
-            assert mesh.topology == [2, 3]
-            assert mesh.processes == [2, 4, 5, 0, 1, 3]
+            mesh = auto.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+            assert mesh.shape == [2, 3]
+            assert mesh.processe_ids == [2, 4, 5, 0, 1, 3]
 
     """
 
-    def __init__(self, mesh):
-        if mesh is None or not isinstance(mesh, list):
-            raise ValueError('mesh must be an instance of list.')
+    def __init__(self, mesh=None, dim_names=None, shape=None, process_ids=None):
+        # Use shape and process_ids just for compatibility
+        # Users should not use these directly
+        if mesh is None:
+            assert shape is not None
+            assert process_ids is not None
+            mesh = np.array(process_ids).reshape(shape)
 
-        processes = _flatten_nested_list(mesh)
+        if not isinstance(mesh, list) and \
+           not isinstance(mesh, np.ndarray):
+            raise ValueError(
+                'The mesh must be an instance of list or np.ndarray.')
+        if isinstance(mesh, list):
+            mesh = np.array(mesh)
 
-        assert all(isinstance(p, int) for p in processes), \
-            ("All elements of mesh must be integer")
+        self._mesh = mesh
+        self._shape = list(self._mesh.shape)
+        self._process_ids = self._mesh.flatten().tolist()
 
-        assert min(processes) >= 0, ('All elements of mesh must be >= 0.')
+        assert all(isinstance(p, int) for p in self._process_ids), \
+            ("All elements of the mesh must be integer")
+        assert min(
+            self._process_ids) >= 0, ('All elements of the mesh must be >= 0.')
+        unique_process_ids = set(self._process_ids)
+        assert len(unique_process_ids) == len(
+            self._process_ids), ('All elements of the mesh must be unique.')
 
-        unique_processes = set(processes)
-        assert len(unique_processes) == len(processes), (
-            'All elements of mesh must be unique.')
-
-        self._topology = _get_nested_list_shape(mesh)
-        self._processes = processes
+        if dim_names is not None:
+            assert len(dim_names) == len(self._shape), \
+                ("The length of dims_names must be same as the shape of the mesh.")
+            self._dim_names = copy.deepcopy(dim_names)
+        else:
+            self._dim_names = ["d" + str(i) for i in range(len(self._shape))]
+        unique_dim_names = set(self._dim_names)
+        assert len(unique_dim_names) == len(self._dim_names), (
+            'All dim_names {} must be unique.'.format(dim_names))
 
         # Store all process meshes
         from .dist_context import get_default_distributed_context
@@ -103,31 +107,117 @@ class ProcessMesh(object):
         pg0.add_ranks(self.processes)
 
     @property
-    def topology(self):
-        r"""
-        Get the topology of logical processes belonging to this ProcessMesh.
-        This is the shape of `mesh` used to initialized this ProcessMesh.
+    def shape(self):
         """
-        return self._topology
+        Get the shape of this ProcessMesh.
+        """
+        return self._shape
 
     @property
-    def processes(self):
-        r"""
-        Get a list of all processes belonging to this ProcessMesh.
+    def process_ids(self):
         """
-        return self._processes
+        Get the process ids belonging to this ProcessMesh.
+        """
+        return self._process_ids
+
+    @property
+    def dim_names(self):
+        """
+        Get the dimension names of this ProcessMesh.
+        """
+        return self._dim_names
 
     @property
     def ndim(self):
-        r"""
-        Get the number of dimension of ProcessMesh.
         """
-        return len(self._topology)
+        Get the number of dimension of this ProcessMesh.
+        """
+        return len(self._shape)
+
+    @property
+    def mesh(self):
+        """
+        Get the underlying mesh of ProcessMesh.
+        """
+        return self._mesh
+
+    @property
+    def topology(self):
+        return self._shape
+
+    @property
+    def processes(self):
+        return self._process_ids
+
+    def __getitem__(self, index):
+        if isinstance(index, tuple):
+            new_dim_names = []
+            for i, item in enumerate(index):
+                if isinstance(item, slice):
+                    new_dim_names.append(self._dim_names[i])
+            new_mesh = self._mesh[index]
+            if new_mesh.shape:
+                return ProcessMesh(new_mesh, new_dim_names)
+            else:
+                # Wrap a scalar into a list but without dim_names
+                return ProcessMesh([new_mesh])
+        elif isinstance(index, slice):
+            new_mesh = self._mesh[index]
+            new_dim_names = self._dim_names
+            return ProcessMesh(new_mesh, new_dim_names)
+        else:
+            new_mesh = self._mesh[index]
+            new_dim_names = self._dim_names[1:]
+            return ProcessMesh(new_mesh, new_dim_names)
+
+    def __enter__(self):
+        set_current_process_mesh(self)
+        default_prog = paddle.fluid.default_main_program()
+        cur_block = default_prog.current_block()
+        self._old_var_names = list(cur_block.vars.keys())
+        self._old_op_size = len(cur_block.ops)
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        from .dist_tensor import DistributedTensor
+        from .dist_op import DistributedOperator
+        default_prog = paddle.fluid.default_main_program()
+        cur_block = default_prog.current_block()
+        new_var_names = list(cur_block.vars.keys())
+        new_op_size = len(cur_block.ops)
+        from .dist_context import get_default_distributed_context
+        default_dist_ctx = get_default_distributed_context()
+        for name in new_var_names:
+            if name not in self._old_var_names:
+                tensor = cur_block.vars[name]
+                dist_tensor = default_dist_ctx.get_dist_tensor_for_program(
+                    tensor)
+                if dist_tensor is None:
+                    dist_tensor = DistributedTensor(cur_block.vars[name],
+                                                    {"process_mesh": self})
+                    dist_tensor.dist_attr.mark_annotated("process_mesh")
+                    default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
+                else:
+                    if dist_tensor.dist_attr.process_mesh is None:
+                        dist_tensor.dist_attr.process_mesh = self
+                        dist_tensor.dist_attr.mark_annotated("process_mesh")
+
+        for idx in range(self._old_op_size, new_op_size):
+            op = cur_block.ops[idx]
+            dist_op = default_dist_ctx.get_dist_op_for_program(op)
+            if dist_op is None:
+                dist_op = DistributedOperator(op, {"process_mesh": self})
+                dist_op.dist_attr.mark_annotated("process_mesh")
+                default_dist_ctx.add_dist_op_for_program(dist_op)
+            else:
+                if dist_op.dist_attr.process_mesh is None:
+                    dist_op.dist_attr.process_mesh = self
+                    dist_op.dist_attr.mark_annotated("process_mesh")
+        reset_current_process_mesh()
 
     def __eq__(self, other):
         if not isinstance(other, ProcessMesh):
             return False
-        if self.topology != other.topology or self.processes != other.processes:
+        if self.shape != other.shape or self.process_ids != other.process_ids:
             return False
         return True
 
@@ -135,6 +225,6 @@ class ProcessMesh(object):
         return not self.__eq__(other)
 
     def __str__(self):
-        str = "shape {} and process group {}".format(self.topology,
-                                                     self.processes)
+        str = "shape {}, process_ids {}, dim_nams {}".format(
+            self.shape, self.process_ids, self.dim_names)
         return str

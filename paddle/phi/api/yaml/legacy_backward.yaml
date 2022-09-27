@@ -326,12 +326,7 @@
   forward : cast (Tensor x, DataType out_dtype) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : cast_grad
-    data_type : out_grad
+  invoke : cast (out_grad, x.dtype())
   no_need_buffer : x
 
 - backward_op : ceil_grad
@@ -2100,6 +2095,12 @@
     func : sigmoid_triple_grad
   optional : grad_grad_out_grad
   inplace : (grad_grad_x -> fwd_grad_out_grad)
+
+- backward_op : sign_grad
+  forward : sign (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  invoke : scale(out_grad, 0.0, 0.0, true)
 
 - backward_op : silu_grad
   forward : silu (Tensor x) -> Tensor(out)
