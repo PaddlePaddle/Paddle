@@ -107,11 +107,15 @@ inline static int GetDesiredBlockDim(int dim) {
   }
 }
 
-inline static int getMaxLength(int k) {
-  if (k / 5 < 1) {
-    return 1;
-  } else if (k / 5 >= 1) {
-    return min(k / 5, 5);
+inline static int getMaxLength(int k, int capability = 60) {
+  if (capability >= 70) {
+    if (k / 5 < 1) {
+      return 1;
+    } else if (k / 5 >= 1) {
+      return min(k / 5, 5);
+    }
+  } else {
+    return 5;
   }
 }
 
