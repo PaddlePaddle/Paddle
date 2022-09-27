@@ -18,9 +18,11 @@ set -e
 
 rm -rf PaddleCustomDevice && \
 git clone ${PLUGIN_URL} \
-&& pushd PaddleCustomDevice/backends/custom_cpu \
+&& pushd PaddleCustomDevice/ \
+&& git fetch origin \
 && git checkout ${PLUGIN_TAG} -b dev \ 
-&& mkdir build && pushd build && cmake .. && make -j8 && popd && popd
+&& pushd backends/custom_cpu \
+&& mkdir build && pushd build && cmake .. && make -j8 && popd && popd && popd
 
 echo "begin test use custom_cpu"
 

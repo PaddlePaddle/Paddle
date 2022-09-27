@@ -26,8 +26,10 @@ class TestCustomCPUProfilerPlugin(unittest.TestCase):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         cmd = 'rm -rf PaddleCustomDevice \
             && git clone {} \
-            && cd PaddleCustomDevice/backends/custom_cpu \
+            && git fetch origin \
+            && cd PaddleCustomDevice\
             && git checkout {} -b dev \
+            && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8'.format(
             os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG'))
         os.system(cmd)
