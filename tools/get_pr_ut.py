@@ -425,7 +425,8 @@ class PRChecker(object):
                     if ret:
                         with open('prec_delta') as delta:
                             for ut in delta:
-                                ut_list.append(ut.rstrip('\r\n'))
+                                if ut not in ut_list:
+                                    ut_list.append(ut.rstrip('\r\n'))
                     else:
                         print('PREC download prec_delta failed')
                         exit(1)
