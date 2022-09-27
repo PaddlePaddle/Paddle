@@ -13,8 +13,6 @@
 # limitations under the License.
 """This is the lib for gradient checker unittest."""
 
-from __future__ import print_function
-
 import unittest
 import six
 import collections
