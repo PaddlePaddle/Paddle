@@ -23,8 +23,8 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
-#include "paddle/fluid/distributed/collective/SplitOp.h"
 #include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/Utils.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"

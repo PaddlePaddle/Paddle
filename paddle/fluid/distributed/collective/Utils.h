@@ -108,7 +108,7 @@ void SplitTensor(const phi::DeviceContext *dev_ctx,
 
   const auto &place = dev_ctx->GetPlace();
   if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#ifdef PADDLE_WITH_GPU
     SplitDenseTensorWithType(static_cast<const phi::GPUContext *>(dev_ctx),
                              tensor,
                              &dense_list,
