@@ -70,7 +70,7 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
 
 std::size_t CountLeadingZeros(uint32_t val) {
 #if defined(__clang__) || defined(__GNUC__)
-  return __builtin_clzl(val);
+  return __builtin_clz(val);
 #elif defined(_MSC_VER)
   return __lzcnt(val);
 #else
