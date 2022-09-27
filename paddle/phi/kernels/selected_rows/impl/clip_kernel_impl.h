@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #include "paddle/phi/kernels/selected_rows/clip_kernel.h"
 
 namespace phi {
@@ -45,7 +45,7 @@ void ClipSparseKernel(const Context& dev_ctx,
                     out,
                     errors::InvalidArgument("Inplace clip is not allowed "
                                             "when x is SelectedRows"));
-  paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, x, out);
   auto* out_tensor = out->mutable_value();
   auto* out_data = out_tensor->data<T>();
