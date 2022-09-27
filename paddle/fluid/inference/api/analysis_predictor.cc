@@ -2143,7 +2143,6 @@ USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
 USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
-USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(skip_layernorm);
 USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
@@ -2172,7 +2171,11 @@ USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
+#ifdef _WIN32
+#else
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
+USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
+#endif
 USE_TRT_CONVERTER(preln_skip_layernorm)
 USE_TRT_CONVERTER(preln_residual_bias)
 USE_TRT_CONVERTER(c_allreduce_sum)

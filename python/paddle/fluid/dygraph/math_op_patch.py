@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
 from ..layers.layer_function_generator import OpProtoHolder
@@ -389,10 +387,6 @@ def monkey_patch_math_varbase():
         ('ndim', _ndim_),
         ('size', _size_),
         ('T', _T_),
-        ('__mul__',
-         _binary_creator_('__mul__', 'multiply', False, _scalar_mul_, True)),
-        ('__rmul__',
-         _binary_creator_('__rmul__', 'multiply', False, _scalar_mul_, True)),
         ('__div__',
          _binary_creator_('__div__', 'divide', False, _scalar_div_, True)),
         ('__truediv__',
@@ -427,6 +421,8 @@ def monkey_patch_math_varbase():
         "__radd__",
         '__sub__',
         '__rsub__',
+        '__mul__',
+        '__rmul__',
     ]
 
     global _already_patch_varbase
