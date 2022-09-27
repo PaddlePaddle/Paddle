@@ -393,8 +393,6 @@ def monkey_patch_math_varbase():
                                       None)),
         ('__floordiv__',
          _binary_creator_('__floordiv__', 'floor_divide', False, None, True)),
-        ('__mod__', _binary_creator_('__mod__', 'remainder', False, None,
-                                     True)),
         ('__matmul__',
          _binary_creator_('__matmul__', "matmul", False, None, True)),
         # for logical compare
@@ -420,6 +418,7 @@ def monkey_patch_math_varbase():
         '__truediv__',
         '__rdiv__',
         '__rtruediv__',
+        '__mod__',
     ]
 
     global _already_patch_varbase
