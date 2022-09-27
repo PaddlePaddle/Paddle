@@ -35,9 +35,12 @@ class TestComplexMatMulLayer(unittest.TestCase):
                 y_var = dg.to_variable(y)
                 result = paddle.matmul(x_var, y_var)
                 pd_result = result.numpy()
-                self.assertTrue(
-                    np.allclose(pd_result, np_result),
-                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n"
+                np.testing.assert_allclose(
+                    pd_result,
+                    np_result,
+                    rtol=1e-05,
+                    err_msg=
+                    '\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'
                     .format(place, pd_result[~np.isclose(pd_result, np_result)],
                             np_result[~np.isclose(pd_result, np_result)]))
 
@@ -48,9 +51,12 @@ class TestComplexMatMulLayer(unittest.TestCase):
                 y_var = dg.to_variable(y)
                 result = x_var.matmul(y_var)
                 pd_result = result.numpy()
-                self.assertTrue(
-                    np.allclose(pd_result, np_result),
-                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n"
+                np.testing.assert_allclose(
+                    pd_result,
+                    np_result,
+                    rtol=1e-05,
+                    err_msg=
+                    '\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'
                     .format(place, pd_result[~np.isclose(pd_result, np_result)],
                             np_result[~np.isclose(pd_result, np_result)]))
 

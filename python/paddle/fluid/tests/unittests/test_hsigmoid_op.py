@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -490,7 +488,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
         out2 = m(x, labels, path_table, path_code)
 
         for out in [out1, out2]:
-            self.assertTrue(np.allclose(self.out_np, out.numpy()))
+            np.testing.assert_allclose(self.out_np, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_static_api(self):
@@ -535,7 +533,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                                  fetch_list=[out1, out2])
 
             for ret in [ret1, ret2]:
-                self.assertTrue(np.allclose(self.out_np, ret))
+                np.testing.assert_allclose(self.out_np, ret, rtol=1e-05)
 
     def test_fluid_api(self):
         train_program = fluid.Program()
@@ -562,7 +560,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                 feed_dict["path_table"] = self.path_table_np
             ret, = exe.run(train_program, feed=feed_dict, fetch_list=[out])
 
-            self.assertTrue(np.allclose(ret, self.out_np))
+            np.testing.assert_allclose(ret, self.out_np, rtol=1e-05)
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program(),

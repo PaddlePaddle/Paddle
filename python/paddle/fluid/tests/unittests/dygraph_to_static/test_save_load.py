@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import os
 import tempfile
@@ -83,8 +81,12 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             program_translator.enable(False)
             dygraph_out, dygraph_loss = dygraph_net(x)
 
-        self.assertTrue(np.allclose(dygraph_out.numpy(), static_out.numpy()))
-        self.assertTrue(np.allclose(dygraph_loss.numpy(), static_loss.numpy()))
+        np.testing.assert_allclose(dygraph_out.numpy(),
+                                   static_out.numpy(),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(dygraph_loss.numpy(),
+                                   static_loss.numpy(),
+                                   rtol=1e-05)
 
 
 if __name__ == '__main__':

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -87,12 +85,12 @@ class LinearTestCase(unittest.TestCase):
         paddle.nn.utils._stride_column(linear.weight)
         expect = [[1.4349908, -0.8099171, -2.64788],
                   [-1.4981681, -1.1784115, -0.023253186]]
-        self.assertTrue(np.allclose(linear.weight.numpy(), expect))
+        np.testing.assert_allclose(linear.weight.numpy(), expect, rtol=1e-05)
 
         linear = paddle.nn.Linear(2, 3)
         expect = [[0.73261100, 0.43836895, 0.07908206],
                   [0.85075015, -1.04724526, 0.64371765]]
-        self.assertTrue(np.allclose(linear.weight.numpy(), expect))
+        np.testing.assert_allclose(linear.weight.numpy(), expect, rtol=1e-05)
 
 
 if __name__ == "__main__":

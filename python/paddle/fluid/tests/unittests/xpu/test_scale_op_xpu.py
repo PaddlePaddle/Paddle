@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -123,7 +121,7 @@ class TestScaleApiStatic(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
         out = exe.run(main_prog, feed={"x": input}, fetch_list=[out])
-        self.assertEqual(np.array_equal(out[0], input * 2.0 + 3.0), True)
+        np.testing.assert_array_equal(out[0], input * 2.0 + 3.0)
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
@@ -142,7 +140,7 @@ class TestScaleApiDygraph(unittest.TestCase):
         input = np.random.random([2, 25]).astype("float32")
         x = paddle.to_tensor(input)
         out = self._executed_api(x, scale=2.0, bias=3.0)
-        self.assertEqual(np.array_equal(out.numpy(), input * 2.0 + 3.0), True)
+        np.testing.assert_array_equal(out.numpy(), input * 2.0 + 3.0)
         paddle.enable_static()
 
 

@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-from __future__ import division
-
 import unittest
 import numpy as np
 
@@ -164,7 +161,7 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
 
             assert np.allclose(res_5, self.res_5_np)
 
-    def test_dynamic_graph(self):
+    def func_dynamic_graph(self):
         for use_cuda in ([False, True]
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
@@ -194,6 +191,11 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
             #assert np.allclose(out_4.numpy(), self.res_4_np)
 
             assert np.allclose(out_5.numpy(), self.res_5_np)
+
+    def test_dynamic_graph(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_dynamic_graph()
+        self.func_dynamic_graph()
 
 
 class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):

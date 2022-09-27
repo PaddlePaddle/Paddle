@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
 import numpy as np
 
@@ -58,7 +56,7 @@ class TestTensorScalarTypePromotionStatic(unittest.TestCase):
         rlt = exe.run(fetch_list=[c_rlt.name, c.name])
 
         self.assertEqual(rlt[0].dtype, rlt[1].dtype)
-        self.assertTrue(np.array_equal(rlt[0], rlt[1]))
+        np.testing.assert_array_equal(rlt[0], rlt[1])
 
     def test_tensor_add_scalar(self):
         # tensor(int64) + scalar(int)

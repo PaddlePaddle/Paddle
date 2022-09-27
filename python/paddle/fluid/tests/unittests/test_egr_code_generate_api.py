@@ -32,7 +32,7 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
             out_arr = out.numpy()
 
             out_arr_expected = np.add(np_x, np_y)
-            self.assertTrue(np.array_equal(out_arr, out_arr_expected))
+            np.testing.assert_array_equal(out_arr, out_arr_expected)
 
     def test_sum(self):
         with _test_eager_guard():
@@ -42,7 +42,7 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
             out = paddle.sum(x, axis=0)
             out_arr = out.numpy()
             out_arr_expected = np.sum(x_data, axis=0)
-            self.assertTrue(np.array_equal(out_arr, out_arr_expected))
+            np.testing.assert_array_equal(out_arr, out_arr_expected)
 
     def test_mm(self):
         with _test_eager_guard():
@@ -53,7 +53,7 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
             out = paddle.mm(input, mat2)
             out_arr = out.numpy()
             out_arr_expected = np.matmul(np_input, np_mat2)
-            self.assertTrue(np.allclose(out_arr, out_arr_expected))
+            np.testing.assert_allclose(out_arr, out_arr_expected, rtol=1e-05)
 
     def test_sigmoid(self):
         with _test_eager_guard():
@@ -64,7 +64,7 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
             out_arr_expected = np.array(
                 [0.40131234, 0.450166, 0.52497919,
                  0.57444252]).astype('float32')
-            self.assertTrue(np.allclose(out_arr, out_arr_expected))
+            np.testing.assert_allclose(out_arr, out_arr_expected, rtol=1e-05)
 
 
 if __name__ == "__main__":

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import logging
@@ -65,6 +63,23 @@ def dyfunc_with_third_library_logging(x_v):
     return x_v
 
 
+class A:
+
+    @staticmethod
+    def add(a, b):
+        """
+        dygraph mode, return a numpy object.
+        static mode, return a variable object.
+        """
+        return paddle.to_tensor(a.numpy() + b.numpy())
+
+
+@paddle.jit.to_static
+def dyfunc_with_staticmethod(x_v):
+    a = A()
+    return a.add(x_v, x_v)
+
+
 class TestRecursiveCall1(unittest.TestCase):
 
     def setUp(self):
@@ -91,9 +106,12 @@ class TestRecursiveCall1(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
         dygraph_res = self.get_dygraph_output()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph res is {}\nstatic_res is {}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph res is {}\nstatic_res is {}'.format(
+                dygraph_res, static_res))
 
 
 lambda_fun = lambda x: x
@@ -176,15 +194,19 @@ class TestRecursiveCall2(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph is {}\n static_res is \n{}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestThirdPartyLibrary(TestRecursiveCall2):
 
     def set_func(self):
         self.dygraph_func = dyfunc_with_third_library_logging
+
+
+class TestStaticMethod(TestRecursiveCall2):
+
+    def set_func(self):
+        self.dygraph_func = dyfunc_with_staticmethod
 
 
 # Situation 2 : test not_to_static
@@ -289,8 +311,10 @@ class TestDynamicToStaticCode2(TestDynamicToStaticCode):
         class StaticCode():
 
             def func_convert_then_not_to_static(x):
+                __return_value_0 = None
                 y = _jst.Call(func_not_to_static)(x)
-                return y
+                __return_value_0 = y
+                return __return_value_0
 
         self.answer_func = StaticCode.func_convert_then_not_to_static
 

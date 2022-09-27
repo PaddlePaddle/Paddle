@@ -112,8 +112,10 @@ class TestBase(IPUOpTest):
     def test_base(self):
         res0 = self.run_model(IPUOpTest.ExecutionMode.IPU_FP32, True)
         res1 = self.run_model(IPUOpTest.ExecutionMode.IPU_FP32, False)
-        self.assertTrue(
-            np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
+        np.testing.assert_allclose(res0.flatten(),
+                                   res1.flatten(),
+                                   rtol=1e-05,
+                                   atol=self.atol)
         self.attrs['model_path'].cleanup()
 
 
@@ -188,8 +190,10 @@ class TestSGDFP16(TestBase):
     def test_base(self):
         res0 = self.run_model(IPUOpTest.ExecutionMode.IPU_FP16, True)
         res1 = self.run_model(IPUOpTest.ExecutionMode.IPU_FP16, False)
-        self.assertTrue(
-            np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
+        np.testing.assert_allclose(res0.flatten(),
+                                   res1.flatten(),
+                                   rtol=1e-05,
+                                   atol=self.atol)
         self.attrs['model_path'].cleanup()
 
 

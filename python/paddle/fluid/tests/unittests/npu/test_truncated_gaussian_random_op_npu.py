@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -66,7 +64,7 @@ class TestTruncatedNormal(unittest.TestCase):
         cpu_w = self._test(False)
         npu_w = self._test(True)
 
-        self.assertTrue(np.allclose(npu_w, cpu_w))
+        np.testing.assert_allclose(npu_w, cpu_w)
 
 
 if __name__ == '__main__':

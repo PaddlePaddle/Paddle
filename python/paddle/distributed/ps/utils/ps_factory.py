@@ -19,7 +19,7 @@ from .public import *
 __all__ = [
     'PsProgramBuilder', 'GeoPsProgramBuilder', 'CpuSyncPsProgramBuilder',
     'CpuAsyncPsProgramBuilder', 'GpuPsProgramBuilder',
-    'HeterAsyncPsProgramBuilder', 'FlPsProgramBuilder'
+    'HeterAsyncPsProgramBuilder', 'FlPsProgramBuilder', 'NuPsProgramBuilder'
 ]
 
 
@@ -31,7 +31,10 @@ class PsProgramBuilderFactory(object):
     def _create_ps_program_builder(self, pass_ctx):
         attrs = pass_ctx._attrs
         if attrs['ps_mode'] == DistributedMode.GEO:
-            return globals()['GeoPsProgramBuilder'](pass_ctx)
+            if len(attrs['local_sparse']) != 0:
+                return globals()['NuPsProgramBuilder'](pass_ctx)
+            else:
+                return globals()['GeoPsProgramBuilder'](pass_ctx)
         elif attrs['use_ps_gpu']:
             return globals()['GpuPsProgramBuilder'](pass_ctx)
         elif attrs['is_heter_ps_mode'] and not attrs['is_fl_ps_mode']:

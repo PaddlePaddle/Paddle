@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import six
 import logging
@@ -41,8 +39,8 @@ from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 from .lr import LRScheduler
 import copy
-from paddle import _C_ops
-from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check, _current_expected_place, in_dygraph_mode
 
 __all__ = []
 
@@ -120,8 +118,8 @@ class Optimizer(object):
             The default value is None.
 
     Returns:
-       Base class for optimizer. 
-    
+       Base class for optimizer.
+
     Examples:
         .. code-block:: python
 
@@ -138,7 +136,7 @@ class Optimizer(object):
             adam.clear_grad()
 
             #Take the subclass sgd as an example
-            #optimize parameters in linear_1 and linear2 in different options. 
+            #optimize parameters in linear_1 and linear2 in different options.
             #Note that the learning_rate of linear_2 is 0.01.
             linear_1 = paddle.nn.Linear(10, 10)
             linear_2 = paddle.nn.Linear(10, 10)
@@ -155,7 +153,7 @@ class Optimizer(object):
                     'weight_decay': 0.001,
                     'learning_rate': 0.1
                 }],
-                weight_decay=0.01)                   
+                weight_decay=0.01)
             loss.backward()
             sgd.step()
             sgd.clear_grad()
@@ -277,12 +275,12 @@ class Optimizer(object):
         Get state dict information from optimizer. It contain all the tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If LRScheduler have been used, global_step will be include in state dict.
         If the optimizer never be called(minimize function), the state_dict is empty.
 
-        Args: 
+        Args:
             None
 
         Returns:
             state_dict(dict) : dict contains all the Tensor used by optimizer
-        
+
         Examples:
             .. code-block:: python
 
@@ -311,11 +309,11 @@ class Optimizer(object):
         '''
         Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LRScheduler have been used, global_step will be changed.
 
-        Args: 
+        Args:
             state_dict(dict) : Dict contains all the Tensor needed by optimizer
         Return:
             None
-        
+
         Examples:
             .. code-block:: python
 
@@ -326,7 +324,7 @@ class Optimizer(object):
                 layer_state_dict = emb.state_dict()
                 paddle.save(layer_state_dict, "emb.pdparams")
 
-                scheduler = paddle.optimizer.lr.NoamDecay(	
+                scheduler = paddle.optimizer.lr.NoamDecay(
                     d_model=0.01, warmup_steps=100, verbose=True)
                 adam = paddle.optimizer.Adam(
                     learning_rate=scheduler,
@@ -385,19 +383,23 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
+        # lr var can't be float16, for pure fp16 training, should extra handle the dtype for lr
+        _lr_dtype = paddle.get_default_dtype(
+        ) if self._dtype is None else self._dtype
+        _lr_dtype = paddle.float32 if (
+            paddle.get_default_dtype() != "float16"
+            and _lr_dtype == paddle.float16) else _lr_dtype
         if isinstance(self._learning_rate, LRScheduler):
             lr_var = self._global_learning_rate()
             # only create global lr_var once
             if not isinstance(lr_var, framework.Variable):
                 lr_name = unique_name.generate('learning_rate')
                 self._learning_rate._var_name = lr_name
-                lr_var = self.helper.create_global_variable(
-                    name=lr_name,
-                    shape=[1],
-                    persistable=True,
-                    stop_gradient=True,
-                    dtype=paddle.get_default_dtype()
-                    if self._dtype is None else self._dtype)
+                lr_var = self.helper.create_global_variable(name=lr_name,
+                                                            shape=[1],
+                                                            persistable=True,
+                                                            stop_gradient=True,
+                                                            dtype=_lr_dtype)
                 main_prog = framework.default_main_program()
                 main_prog.lr_sheduler = self._learning_rate
                 main_prog.lr_var = lr_var
@@ -419,15 +421,14 @@ class Optimizer(object):
                     name=unique_name.generate("learning_rate"),
                     shape=[1],
                     value=float(self._learning_rate),
-                    dtype=paddle.get_default_dtype()
-                    if self._dtype is None else self._dtype,
+                    dtype=_lr_dtype,
                     persistable=True)
 
     @framework.dygraph_only
     def set_lr(self, value):
         """
         :api_attr: imperative
-        
+
         Set the value of the learning rate manually in the optimizer. If the optimizer use LRScheduler,
         this API cannot be invoked, because it will lead to conflict.
 
@@ -436,7 +437,7 @@ class Optimizer(object):
 
         Returns:
             None
-          
+
         Examples:
             .. code-block:: python
 
@@ -470,10 +471,15 @@ class Optimizer(object):
         self._learning_rate = float(value)
         current_lr = self._global_learning_rate()
         if current_lr is not None:
-            if framework._non_static_mode():
-                _C_ops.fill_constant(current_lr, 'value', float(value), 'dtype',
-                                     current_lr.dtype, 'shape',
-                                     list(current_lr.shape))
+            if in_dygraph_mode():
+                place = _current_expected_place()
+                _C_ops.full_(current_lr, list(current_lr.shape), float(value),
+                             current_lr.dtype, place)
+
+            elif _in_legacy_dygraph():
+                _legacy_C_ops.fill_constant(current_lr, 'value', float(value),
+                                            'dtype', current_lr.dtype, 'shape',
+                                            list(current_lr.shape))
             else:
                 global_block = framework.default_main_program().global_block()
                 global_block.append_op(type='fill_constant',
@@ -487,7 +493,7 @@ class Optimizer(object):
 
     def get_lr(self):
         """
-        Get current learning rate of optimizer. 
+        Get current learning rate of optimizer.
         If 'LRScheduler' is not used, the return value is all the same.
         If 'LRScheduler' is used, the return value is the current scheduled learing rete.
 
@@ -876,7 +882,7 @@ class Optimizer(object):
                 a = paddle.to_tensor(value)
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
-                adam = paddle.optimizer.Adam(learning_rate = 0.01, 
+                adam = paddle.optimizer.Adam(learning_rate = 0.01,
                                             parameters = linear.parameters())
                 out = linear(a)
                 out.backward()
@@ -1013,7 +1019,7 @@ class Optimizer(object):
 
     def _create_regularization_of_grad(self, param, grad, regularization=None):
         """ Create and add backward regularization Operators
-    
+
         Function helper of append_regularization_ops.
         """
         # If no gradient or no regularization is specified,  then we don't need to do anything
@@ -1032,11 +1038,9 @@ class Optimizer(object):
         assert regularization_term is not None
 
         if framework.in_dygraph_mode():
-            if grad.is_dense() and regularization_term.is_dense():
-                return _C_ops.final_state_add_n([grad, regularization_term])
-            return _C_ops.sum([grad, regularization_term])
+            return _C_ops.add_n([grad, regularization_term])
         elif framework._in_legacy_dygraph():
-            return _C_ops.sum([grad, regularization_term])
+            return _legacy_C_ops.sum([grad, regularization_term])
 
         new_grad = grad
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
@@ -1061,22 +1065,22 @@ class Optimizer(object):
                                   parameters_and_grads,
                                   regularization=None):
         r"""Create and add backward regularization Operators
-    
+
         Creates and adds backward regularization operators in the BlockDesc.
         This will add gradients of the regularizer function to the gradients
         of the parameters and return these modified gradients. This is the
         same as implementing weight decay in optimizers for regularization.
-    
+
         Args:
             parameters_and_grads: A list of (parameters, gradients) pairs
                                   that need to be regularized.
             regularization: A global regularizer. If the parameter is not
                             set. It will be applied with regularizer.
-    
+
         Returns:
             list[(Variable, Variable)]: list of (parameters, gradients) \
             pair with the regularized gradient
-    
+
         Raises:
             Exception: Unknown regularization type
         """
@@ -1120,13 +1124,13 @@ class Optimizer(object):
         If not, new gradient will accumulat on previous gradient.
 
         There are two method to clear grad: set_to_zero or delete grad.
-        
+
         Args:
             set_to_zero (bool, optional): If set grads to zero or not, default is True.
-        
+
         Returns:
             None
-        
+
         Examples:
             .. code-block:: python
 
@@ -1137,7 +1141,7 @@ class Optimizer(object):
                 a = paddle.to_tensor(value)
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
-                adam = paddle.optimizer.Adam(learning_rate = 0.01, 
+                adam = paddle.optimizer.Adam(learning_rate = 0.01,
                                             parameters = linear.parameters())
                 out = linear(a)
                 out.backward()
@@ -1187,13 +1191,13 @@ class Optimizer(object):
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) tensor pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
-            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
-            indicate program pruning. If so, the program will be pruned by ``feed`` and 
+            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
+            indicate program pruning. If so, the program will be pruned by ``feed`` and
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
             .. code-block:: python
- 
+
                 import paddle
                 linear = paddle.nn.Linear(10, 10)
                 input = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
@@ -1232,7 +1236,7 @@ class Optimizer(object):
     def step(self):
         """
         Execute the optimizer and update parameters once.
-        
+
         Returns:
             None
 
@@ -1246,7 +1250,7 @@ class Optimizer(object):
                 a = paddle.to_tensor(value)
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
-                adam = paddle.optimizer.Adam(learning_rate = 0.01, 
+                adam = paddle.optimizer.Adam(learning_rate = 0.01,
                                             parameters = linear.parameters())
                 out = linear(a)
                 out.backward()
@@ -1351,7 +1355,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def _append_optimize_multi_tensor_op(self, target_block,
                                          parameters_and_grads):
-        """ 
+        """
         For Multi Tensor, append optimize merged_operator to block.
         """
         pass

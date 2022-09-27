@@ -174,10 +174,10 @@ class TestCUDAGraph(unittest.TestCase):
 
         y_np = y.numpy()
         y_np_expected = np.concatenate(xs_np)
-        self.assertTrue(np.array_equal(y_np, y_np_expected))
+        np.testing.assert_array_equal(y_np, y_np_expected)
         self.assertEqual(len(zs), len(xs_np))
         for i, z in enumerate(zs):
-            self.assertTrue(np.array_equal(z.numpy(), xs_np[i]))
+            np.testing.assert_array_equal(z.numpy(), xs_np[i])
 
         output_dir = 'cuda_graph_dot_{}'.format(os.getpid())
         try:
@@ -233,8 +233,8 @@ class TestCUDAGraph(unittest.TestCase):
             graph.replay()
             actual_x = np.array([[i]]).astype(dtype)
             actual_y = np.array([[i * i]]).astype(dtype)
-            self.assertTrue(np.array_equal(actual_x, x.numpy()))
-            self.assertTrue(np.array_equal(actual_y, y.numpy()))
+            np.testing.assert_array_equal(actual_x, x.numpy())
+            np.testing.assert_array_equal(actual_y, y.numpy())
 
     def test_dev_ctx_alloc(self):
         if not can_use_cuda_graph():

@@ -12,7 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/margin_cross_entropy_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,55 +24,6 @@ namespace operators {
 class MarginCrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(
-        ctx->HasInput("Logits"), "Input", "Logits", "MarginCrossEntropyOp");
-    OP_INOUT_CHECK(
-        ctx->HasInput("Label"), "Input", "Label", "MarginCrossEntropyOp");
-
-    OP_INOUT_CHECK(
-        ctx->HasOutput("Softmax"), "Output", "Softmax", "MarginCrossEntropyOp");
-    OP_INOUT_CHECK(
-        ctx->HasOutput("Loss"), "Output", "Loss", "MarginCrossEntropyOp");
-
-    auto logits_dims = ctx->GetInputDim("Logits");
-    auto labels_dims = ctx->GetInputDim("Label");
-
-    auto logits_rank = logits_dims.size();
-    auto axis = logits_rank - 1;
-    for (int i = 0; i < logits_rank; i++) {
-      if (i != axis) {
-        if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
-          PADDLE_ENFORCE_EQ(logits_dims[i],
-                            labels_dims[i],
-                            platform::errors::InvalidArgument(
-                                "Input(Logits) and Input(Label) should in "
-                                "same shape in dimensions except axis."));
-        }
-      }
-    }
-
-    if (labels_dims.size() > 1) {
-      PADDLE_ENFORCE_EQ(
-          labels_dims[logits_rank - 1],
-          1UL,
-          platform::errors::InvalidArgument(
-              "the last dimension of Input(Label) should be 1."
-              "But received: the last dimension of Input(Label) is [%d],"
-              "the last dimension is [%d]",
-              labels_dims[logits_rank - 1],
-              logits_rank - 1));
-    }
-
-    ctx->SetOutputDim("Softmax", logits_dims);
-
-    logits_dims[axis] = 1;
-    ctx->SetOutputDim("Loss", logits_dims);
-
-    ctx->ShareLoD("Logits", /*->*/ "Softmax");
-    ctx->ShareLoD("Logits", /*->*/ "Loss");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -140,29 +95,6 @@ class MarginCrossEntropyOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Loss")),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(Loss@Grad) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Softmax"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(Softmax) should be not null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Label"),
-        true,
-        platform::errors::InvalidArgument("Input(Label) should be not null."));
-
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Logits")),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Output(Logits@Grad) should be not null."));
-
-    ctx->SetOutputDim(framework::GradVarName("Logits"),
-                      ctx->GetInputDim("Softmax"));
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -194,18 +126,21 @@ class MarginCrossEntropyOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
+DECLARE_INFER_SHAPE_FUNCTOR(margin_cross_entropy,
+                            MarginCrossEntropyInferShapeFunctor,
+                            PD_INFER_META(phi::MarginCrossEntropyInferMeta));
 REGISTER_OPERATOR(
     margin_cross_entropy,
     ops::MarginCrossEntropyOp,
     ops::MarginCrossEntropyOpMaker,
     ops::MarginCrossEntropyOpGradMaker<paddle::framework::OpDesc>,
-    ops::MarginCrossEntropyOpGradMaker<paddle::imperative::OpBase>);
-
-REGISTER_OPERATOR(margin_cross_entropy_grad, ops::MarginCrossEntropyOpGrad);
-
-REGISTER_OP_CPU_KERNEL(margin_cross_entropy,
-                       ops::MarginCrossEntropyOpCPUKernel<float>,
-                       ops::MarginCrossEntropyOpCPUKernel<double>,
-                       ops::MarginCrossEntropyOpCPUKernel<plat::float16>);
+    ops::MarginCrossEntropyOpGradMaker<paddle::imperative::OpBase>,
+    MarginCrossEntropyInferShapeFunctor);
+DECLARE_INFER_SHAPE_FUNCTOR(
+    margin_cross_entropy_grad,
+    MarginCrossEntropyGradInferShapeFunctor,
+    PD_INFER_META(phi::MarginCrossEntropyGradInferMeta));
+REGISTER_OPERATOR(margin_cross_entropy_grad,
+                  ops::MarginCrossEntropyOpGrad,
+                  MarginCrossEntropyGradInferShapeFunctor);

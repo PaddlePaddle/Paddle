@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -32,7 +30,7 @@ def ref_prelu(x, weight):
     neg_indices = x <= 0
     assert x.shape == neg_indices.shape
     x_t[neg_indices] = (x_t * weight)[neg_indices]
-    return (x_t, )
+    return x_t
 
 
 def ref_prelu_nn(x, num_parameters, init):
@@ -61,7 +59,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             },
                           fetch_list=[out])
         out_ref = ref_prelu(self.x_np, weight_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def dygraph_check(self, weight_np):
         paddle.disable_static(self.place)
@@ -69,7 +67,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         weight = paddle.to_tensor(weight_np)
         out = F.prelu(x, weight)
         out_ref = ref_prelu(self.x_np, weight_np)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_static_api(self):
@@ -125,7 +123,7 @@ class TestNNPReluAPI(unittest.TestCase):
                           feed={'X': self.x_np},
                           fetch_list=[out])
         out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -134,32 +132,32 @@ class TestNNPReluAPI(unittest.TestCase):
         m = paddle.nn.PReLU()
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(num_parameters=self.x_np.shape[1])
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, self.x_np.shape[1], 0.25)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(init=0.5)
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, 1, 0.5)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(weight_attr=fluid.ParamAttr(name="weight"))
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(0.5)))
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, 1, 0.5)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         paddle.enable_static()
 

@@ -54,6 +54,7 @@
 namespace phi {
 class DenseTensor;
 class SelectedRows;
+class SparseCooTensor;
 }  // namespace phi
 
 // Users should add forward declarations here
@@ -180,6 +181,7 @@ struct VarTypeRegistryImpl {
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor,
     phi::SelectedRows,
+    phi::SparseCooTensor,
     std::vector<Scope *>,
     LoDRankTable,
     Strings,
@@ -213,7 +215,9 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
     int,
     float,
-    Vocab>;
+    Vocab,
+    std::vector<int>,
+    std::vector<float>>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -250,6 +254,7 @@ REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
 REG_PROTO_VAR_TYPE_TRAIT(Vocab, proto::VarType::VOCAB);
 REG_PROTO_VAR_TYPE_TRAIT(String, proto::VarType::STRING);
 REG_PROTO_VAR_TYPE_TRAIT(Strings, proto::VarType::STRINGS);
+REG_PROTO_VAR_TYPE_TRAIT(phi::SparseCooTensor, proto::VarType::SPARSE_COO);
 
 /** End of variable type registration */
 

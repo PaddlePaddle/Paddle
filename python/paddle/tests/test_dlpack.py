@@ -33,9 +33,8 @@ class TestDLPack(unittest.TestCase):
                 isinstance(out_from_dlpack, paddle.fluid.core.eager.Tensor))
         else:
             self.assertTrue(isinstance(out_from_dlpack, paddle.Tensor))
-        self.assertTrue(
-            np.array_equal(np.array(out_from_dlpack),
-                           np.array([1, 2, 3, 4]).astype('int')))
+        np.testing.assert_array_equal(np.array(out_from_dlpack),
+                                      np.array([1, 2, 3, 4]).astype('int'))
 
     def test_dlpack_dygraph(self):
         with _test_eager_guard():
@@ -49,7 +48,7 @@ class TestDLPack(unittest.TestCase):
         # TODO: There may be a reference count problem of to_dlpack.
         dlpack = paddle.utils.dlpack.to_dlpack(t)
         out = paddle.utils.dlpack.from_dlpack(dlpack)
-        self.assertTrue(np.allclose(numpy_data, out.numpy()))
+        np.testing.assert_allclose(numpy_data, out.numpy(), rtol=1e-05)
 
     def test_dlpack_tensor_larger_than_2dim(self):
         with _test_eager_guard():
@@ -64,9 +63,9 @@ class TestDLPack(unittest.TestCase):
         dlpack = paddle.utils.dlpack.to_dlpack(tensor)
         out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
         self.assertTrue(isinstance(out_from_dlpack, fluid.core.Tensor))
-        self.assertTrue(
-            np.array_equal(np.array(out_from_dlpack),
-                           np.array([[1], [2], [3], [4]]).astype('int')))
+        np.testing.assert_array_equal(
+            np.array(out_from_dlpack),
+            np.array([[1], [2], [3], [4]]).astype('int'))
 
         # when build with cuda
         if core.is_compiled_with_cuda():
@@ -76,9 +75,9 @@ class TestDLPack(unittest.TestCase):
             gdlpack = paddle.utils.dlpack.to_dlpack(gtensor)
             gout_from_dlpack = paddle.utils.dlpack.from_dlpack(gdlpack)
             self.assertTrue(isinstance(gout_from_dlpack, fluid.core.Tensor))
-            self.assertTrue(
-                np.array_equal(np.array(gout_from_dlpack),
-                               np.array([[1], [2], [3], [4]]).astype('int')))
+            np.testing.assert_array_equal(
+                np.array(gout_from_dlpack),
+                np.array([[1], [2], [3], [4]]).astype('int'))
 
     def func_test_dlpack_dtype_conversion(self):
         paddle.disable_static()
@@ -99,7 +98,7 @@ class TestDLPack(unittest.TestCase):
             dlpack = paddle.utils.dlpack.to_dlpack(x)
             o = paddle.utils.dlpack.from_dlpack(dlpack)
             self.assertEqual(x.dtype, o.dtype)
-            self.assertTrue(np.allclose(x.numpy(), o.numpy()))
+            np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
 
         complex_dtypes = ["complex64", "complex128"]
         for dtype in complex_dtypes:
@@ -109,7 +108,7 @@ class TestDLPack(unittest.TestCase):
             dlpack = paddle.utils.dlpack.to_dlpack(x)
             o = paddle.utils.dlpack.from_dlpack(dlpack)
             self.assertEqual(x.dtype, o.dtype)
-            self.assertTrue(np.allclose(x.numpy(), o.numpy()))
+            np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
 
     def test_dlpack_dtype_conversion(self):
         with _test_eager_guard():

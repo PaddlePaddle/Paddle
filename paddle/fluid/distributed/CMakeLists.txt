@@ -1,3 +1,4 @@
+add_subdirectory(auto_parallel)
 add_subdirectory(collective)
 add_subdirectory(store)
 if(WITH_PYTHON)

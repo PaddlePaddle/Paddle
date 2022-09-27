@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -148,11 +146,11 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
             output = self.max_norm * y_np / norm
         else:
             output = y_np
-        self.assertTrue(
-            np.allclose(np.array(out_tensor),
-                        output,
-                        atol=1e-5,
-                        equal_nan=False))
+        np.testing.assert_allclose(np.array(out_tensor),
+                                   output,
+                                   rtol=1e-05,
+                                   atol=1e-05,
+                                   equal_nan=False)
 
     def test_clip_by_norm_with_selected_ros(self):
         places = [core.CPUPlace()]

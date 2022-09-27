@@ -40,8 +40,8 @@ void DivCooScalarKernel(const Context& dev_ctx,
                         SparseCooTensor* out) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
 
-  std::vector<const DenseTensor*> ins = {&(x.non_zero_elements())};
-  std::vector<DenseTensor*> outs = {out->mutable_non_zero_elements()};
+  std::vector<const DenseTensor*> ins = {&(x.values())};
+  std::vector<DenseTensor*> outs = {out->mutable_values()};
   DivScalarFunctor<T> func(static_cast<T>(scalar));
   funcs::ElementwiseKernel<T, DivScalarFunctor<T>>(dev_ctx, ins, &outs, func);
 }
@@ -53,8 +53,8 @@ void DivCsrScalarKernel(const Context& dev_ctx,
                         SparseCsrTensor* out) {
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
 
-  std::vector<const DenseTensor*> ins = {&(x.non_zero_elements())};
-  std::vector<DenseTensor*> outs = {out->mutable_non_zero_elements()};
+  std::vector<const DenseTensor*> ins = {&(x.values())};
+  std::vector<DenseTensor*> outs = {out->mutable_values()};
   DivScalarFunctor<T> func(static_cast<T>(scalar));
   funcs::ElementwiseKernel<T, DivScalarFunctor<T>>(dev_ctx, ins, &outs, func);
 }

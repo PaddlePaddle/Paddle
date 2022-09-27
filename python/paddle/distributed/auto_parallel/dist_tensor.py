@@ -25,11 +25,11 @@ from .utils import _linear_idx2coordinate
 
 class DistributedTensor:
     """
-    DistributedTensor represents the distribution of tensor on the process group and 
+    DistributedTensor represents the distribution of tensor on the process group and
     local tensors can be created by DistributedTensor.
     Only support even sharding now and uneven sharding will be supported in the future.
-    Local tensor information can be obtained from the DistributedTensor instance object, 
-    or obtained by the static methods provided by DistributedTensor, 
+    Local tensor information can be obtained from the DistributedTensor instance object,
+    or obtained by the static methods provided by DistributedTensor,
     including shard (i.e. the index in the serial tensor), offsets, and sizes.
     """
 
@@ -163,7 +163,6 @@ class DistributedTensor:
         self._batch_dim = 0
         # Reuse the dist_attr setter to initialize _dist_attr
         self.dist_attr = dist_attr
-        self._local_sizes_map = {}
         self._local_offsets_map = {}
         self._local_shard_map = {}
         self._local_tensor_map = {}
@@ -223,20 +222,17 @@ class DistributedTensor:
         return True
 
     def local_sizes(self, rank=None):
+        """Get local sizes of the given rank."""
         rank = paddle.distributed.get_rank() if rank is None else rank
-        local_sizes = None
-        if rank in self._local_sizes_map.keys():
-            local_sizes = self._local_sizes_map[rank]
-        else:
-            global_sizes = self.serial_tensor.shape
-            dims_mapping = self.dist_attr.dims_mapping
-            shard_sizes = self.dist_attr.shard_sizes
-            processes = self.dist_attr.process_mesh.processes
-            topology = self.dist_attr.process_mesh.topology
-            local_sizes = DistributedTensor.get_local_sizes(
-                global_sizes, dims_mapping, topology, processes, rank,
-                shard_sizes)
-            self._local_sizes_map[rank] = local_sizes
+        global_sizes = self.serial_tensor.shape
+        dims_mapping = self.dist_attr.dims_mapping
+        shard_sizes = self.dist_attr.shard_sizes
+        processes = self.dist_attr.process_mesh.processes
+        topology = self.dist_attr.process_mesh.topology
+        local_sizes = DistributedTensor.get_local_sizes(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank,
+                                                        shard_sizes)
 
         return local_sizes
 
@@ -282,7 +278,6 @@ class DistributedTensor:
     def new_local_tensor(self, block=None, rank=None, name=None):
         """
         Create a new local tensor of serial tensor corresponding to rank.
-
         Args:
             block (Block): The block contains the new tensor. Default value is recommend and it will be created in the block of dist main program corresponding to the serial tensor block id. Default: None.
             rank (int): The rank id. Default value is recommend and it will be the current rank. Default: None.

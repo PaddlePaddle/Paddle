@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 from functools import partial
 import contextlib
@@ -203,12 +201,18 @@ class TestRegularizer(unittest.TestCase):
             fluid.optimizer.SGD(parameter_list=linear2.parameters(),
                                 learning_rate=1e-2).minimize(loss2)
             # they should both be applied by l1, and keep the same
-            self.assertTrue(
-                np.allclose(linear1.weight.numpy(), linear2.weight.numpy()),
-                "weight should use the regularization in fluid.ParamAttr!")
-            self.assertTrue(
-                np.allclose(linear1.bias.numpy(), linear2.bias.numpy()),
-                "bias should use the regularization in fluid.ParamAttr!")
+            np.testing.assert_allclose(
+                linear1.weight.numpy(),
+                linear2.weight.numpy(),
+                rtol=1e-05,
+                err_msg=
+                'weight should use the regularization in fluid.ParamAttr!')
+            np.testing.assert_allclose(
+                linear1.bias.numpy(),
+                linear2.bias.numpy(),
+                rtol=1e-05,
+                err_msg='bias should use the regularization in fluid.ParamAttr!'
+            )
 
 
 if __name__ == '__main__':

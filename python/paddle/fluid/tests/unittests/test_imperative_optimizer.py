@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import contextlib
 import unittest
 import numpy as np
@@ -196,19 +194,28 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                     static_param_value[static_param_name_list[i - 1]] = out[i]
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+            np.testing.assert_allclose(value,
+                                       dy_param_init_value[key],
+                                       rtol=1e-05)
 
         if core.is_compiled_with_rocm():
-            self.assertTrue(np.allclose(static_out, dy_out, atol=1e-3))
+            np.testing.assert_allclose(static_out,
+                                       dy_out,
+                                       rtol=1e-05,
+                                       atol=0.001)
         else:
-            self.assertTrue(np.allclose(static_out, dy_out))
+            np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
         for key, value in six.iteritems(static_param_value):
             if core.is_compiled_with_rocm():
-                self.assertTrue(
-                    np.allclose(value, dy_param_value[key], atol=1e-3))
+                np.testing.assert_allclose(value,
+                                           dy_param_value[key],
+                                           rtol=1e-05,
+                                           atol=0.001)
             else:
-                self.assertTrue(np.allclose(value, dy_param_value[key]))
+                np.testing.assert_allclose(value,
+                                           dy_param_value[key],
+                                           rtol=1e-05)
 
 
 class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
@@ -412,15 +419,16 @@ class TestOptimizerLearningRate(unittest.TestCase):
             adam = fluid.optimizer.Adam(0.001,
                                         parameter_list=linear.parameters())
 
-            self.assertTrue(
-                np.allclose(adam.current_step_lr(), 0.001, rtol=1e-06,
-                            atol=0.0))
+            np.testing.assert_allclose(adam.current_step_lr(),
+                                       0.001,
+                                       rtol=1e-06,
+                                       atol=0.0)
 
             for i in range(10):
                 adam.minimize(loss)
                 lr = adam.current_step_lr()
 
-                self.assertTrue(np.allclose(lr, 0.001, rtol=1e-06, atol=0.0))
+                np.testing.assert_allclose(lr, 0.001, rtol=1e-06, atol=0.0)
 
     def test_constant_lr(self):
         with _test_eager_guard():
@@ -446,15 +454,17 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 bd, value, 0),
                                         parameter_list=linear.parameters())
 
-            self.assertTrue(
-                np.allclose(adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0))
+            np.testing.assert_allclose(adam.current_step_lr(),
+                                       0.2,
+                                       rtol=1e-06,
+                                       atol=0.0)
 
             ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
             for i in range(12):
                 adam.minimize(loss)
                 lr = adam.current_step_lr()
 
-                self.assertTrue(np.allclose(lr, ret[i], rtol=1e-06, atol=0.0))
+                np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)
 
     def test_lr_decay(self):
         with _test_eager_guard():
@@ -481,15 +491,17 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 staircase=True),
                                         parameter_list=linear.parameters())
 
-            self.assertTrue(
-                np.allclose(adam.current_step_lr(), 1.0, rtol=1e-06, atol=0.0))
+            np.testing.assert_allclose(adam.current_step_lr(),
+                                       1.0,
+                                       rtol=1e-06,
+                                       atol=0.0)
 
             ret = [1.0, 1.0, 1.0, np.exp(-0.5), np.exp(-0.5)]
             for i in range(5):
                 adam.minimize(loss)
                 lr = adam.current_step_lr()
 
-                self.assertTrue(np.allclose(lr, ret[i], rtol=1e-06, atol=0.0))
+                np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)
 
     def test_lr_decay_natural_exp(self):
         with _test_eager_guard():
@@ -515,8 +527,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 adam.set_lr(lr_list[i])
                 adam.minimize(loss)
                 lr = adam.current_step_lr()
-                self.assertTrue(
-                    np.allclose(lr, lr_list[i], rtol=1e-06, atol=0.0))
+                np.testing.assert_allclose(lr, lr_list[i], rtol=1e-06, atol=0.0)
 
             lr_var = fluid.layers.create_global_var(shape=[1],
                                                     value=0.7,
@@ -524,7 +535,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
             adam.set_lr(lr_var)
             adam.minimize(loss)
             lr = adam.current_step_lr()
-            self.assertTrue(np.allclose(lr, 0.7, rtol=1e-06, atol=0.0))
+            np.testing.assert_allclose(lr, 0.7, rtol=1e-06, atol=0.0)
 
             with self.assertRaises(RuntimeError):
                 adam = fluid.optimizer.Adam(fluid.dygraph.NaturalExpDecay(

@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import numpy
+import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers import mul, data, zeros, array_write, increment
@@ -40,8 +38,8 @@ class TestExecutor(unittest.TestCase):
         out = mul(x=a, y=b)
         array_write(x=out, i=i, array=array)
 
-        a_np = numpy.random.random((100, 784)).astype('float32')
-        b_np = numpy.random.random((784, 100)).astype('float32')
+        a_np = np.random.random((100, 784)).astype('float32')
+        b_np = np.random.random((784, 100)).astype('float32')
 
         exe = Executor()
         res, res_array = exe.run(feed={
@@ -51,10 +49,10 @@ class TestExecutor(unittest.TestCase):
                                  fetch_list=[out, array])
 
         self.assertEqual((100, 100), res.shape)
-        self.assertTrue(numpy.allclose(res, numpy.dot(a_np, b_np)))
-        self.assertTrue(numpy.allclose(res_array[0], a_np))
-        self.assertTrue(numpy.allclose(res_array[1], b_np))
-        self.assertTrue(numpy.allclose(res_array[2], res))
+        np.testing.assert_allclose(res, np.dot(a_np, b_np), rtol=1e-05)
+        np.testing.assert_allclose(res_array[0], a_np, rtol=1e-05)
+        np.testing.assert_allclose(res_array[1], b_np, rtol=1e-05)
+        np.testing.assert_allclose(res_array[2], res, rtol=1e-05)
 
 
 if __name__ == '__main__':

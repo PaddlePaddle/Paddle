@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import math
 import numpy as np
 import unittest
@@ -91,13 +89,14 @@ class TestFoldOp(OpTest):
 
     def setUp(self):
         self.op_type = 'fold'
+        self.python_api = paddle.nn.functional.fold
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Y', check_eager=True)
 
 
 class TestFoldAPI(TestFoldOp):
@@ -106,6 +105,7 @@ class TestFoldAPI(TestFoldOp):
 
     def setUp(self):
         self.op_type = 'fold'
+        self.python_api = paddle.nn.functional.fold
         self.set_data()
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -118,7 +118,9 @@ class TestFoldAPI(TestFoldOp):
                 m = paddle.nn.Fold(**self.attrs)
                 m.eval()
                 result = m(input)
-                self.assertTrue(np.allclose(result.numpy(), self.outputs['Y']))
+                np.testing.assert_allclose(result.numpy(),
+                                           self.outputs['Y'],
+                                           rtol=1e-05)
 
     def test_info(self):
         str(paddle.nn.Fold(**self.attrs))
@@ -204,7 +206,7 @@ class TestFoldOpError(unittest.TestCase):
             self.assertRaises(AssertionError, test_dilations_shape)
             self.assertRaises(AssertionError, test_strides_shape)
             self.assertRaises(ValueError, test_output_size)
-            self.assertRaises(ValueError, test_output_size_2)
+            self.assertRaises(TypeError, test_output_size_2)
             self.assertRaises(ValueError, test_block_h_w)
             self.assertRaises(ValueError, test_GT_0)
 

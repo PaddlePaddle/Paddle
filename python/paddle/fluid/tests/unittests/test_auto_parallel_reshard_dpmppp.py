@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -21,7 +19,7 @@ import paddle.nn as nn
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
@@ -29,12 +27,15 @@ from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.cost import CostEstimator
+from paddle.distributed.auto_parallel.cluster import Cluster
 
 paddle.enable_static()
 _global_parallel_strategy = "dp_mp_pp"
-_global_process_mesh = auto.ProcessMesh([[[0, 1], [4, 5]], [[2, 3], [6, 7]]])
-PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]])
-PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]])
+_global_process_mesh = auto.ProcessMesh([[[0, 1], [4, 5]], [[2, 3], [6, 7]]],
+                                        dim_names=["x", "y", "z"])
+PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]], dim_names=["x", "y"])
+PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]], dim_names=["x", "y"])
 
 
 class MLPLayer(nn.Layer):
@@ -61,21 +62,17 @@ class MLPLayer(nn.Layer):
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
-        auto.shard_tensor(self.linear0.weight,
-                          dist_attr={
-                              "process_mesh": PP_MESH_0,
-                              "dims_mapping": [-1, 1]
-                          })
-        auto.shard_tensor(self.linear1.weight,
-                          dist_attr={
-                              "process_mesh": PP_MESH_1,
-                              "dims_mapping": [1, -1]
-                          })
+        auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, "y"])
+        auto.shard_tensor(self.linear1.weight, PP_MESH_1, ["y", None])
 
         out = self.norm(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = self.linear1(out)
+        param = paddle.fluid.layers.create_parameter([1024, 4096],
+                                                     paddle.float32)
+        auto.shard_tensor(param, PP_MESH_1, [None, "y"])
+        out = paddle.fluid.layers.mul(out, param)
 
         return out
 
@@ -93,16 +90,8 @@ def mlp_forward(train_program, start_program):
                             shape=[batch_size, 1],
                             dtype='float32')
 
-        auto.shard_tensor(input,
-                          dist_attr={
-                              "process_mesh": PP_MESH_0,
-                              "dims_mapping": [0, -1]
-                          })
-        auto.shard_tensor(label,
-                          dist_attr={
-                              "process_mesh": PP_MESH_1,
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(input, PP_MESH_0, ["x", None])
+        auto.shard_tensor(label, PP_MESH_1, ["x", None])
 
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
@@ -188,6 +177,21 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 2
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
+
+        # test estimator
+        cluster = Cluster()
+        cluster.gen_default_config_cluster(device_count=8)
+        cost_estimator = CostEstimator(train_program, cluster)
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context)
+        # test cache
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context)
+        assert global_cost.time > 0
+        assert max_memory > 0
+
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()

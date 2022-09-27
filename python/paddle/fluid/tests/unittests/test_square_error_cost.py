@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -41,14 +39,14 @@ class TestSquareErrorCost(unittest.TestCase):
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
-            result = exe.run(fluid.default_main_program(),
-                             feed={
-                                 "input": input_val,
-                                 "label": label_val
-                             },
-                             fetch_list=[output])
+            result, = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "input": input_val,
+                                  "label": label_val
+                              },
+                              fetch_list=[output])
 
-            self.assertTrue(np.isclose(np_result, result).all())
+            np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):

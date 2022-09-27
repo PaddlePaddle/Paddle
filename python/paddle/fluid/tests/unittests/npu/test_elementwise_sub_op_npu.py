@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -231,8 +229,8 @@ class TestSubtractNet(unittest.TestCase):
         npu_pred, npu_loss = self._test(True)
         cpu_pred, cpu_loos = self._test(False)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loos))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loos, rtol=1e-6)
 
 
 if __name__ == '__main__':

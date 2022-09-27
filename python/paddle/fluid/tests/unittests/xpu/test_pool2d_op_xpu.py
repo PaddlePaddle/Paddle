@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-from __future__ import division
-
 import sys
 
 sys.path.append("..")
@@ -340,6 +337,24 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
 
         def init_adaptive(self):
             self.adaptive = False
+
+    class TestAvgPoolAdaptive(TestPool2D_Op):
+
+        def init_adaptive(self):
+            self.adaptive = True
+
+    class TestAvgPoolAdaptiveAsyOutSize(TestPool2D_Op):
+
+        def init_adaptive(self):
+            self.adaptive = True
+
+        def init_shape(self):
+            self.shape = [8, 3, 6, 6]
+
+        def init_test_case(self):
+            self.ksize = [2, 3]
+            self.strides = [1, 1]
+            self.paddings = [0, 0, 0, 0]
 
     class TestCase1(TestPool2D_Op):
 

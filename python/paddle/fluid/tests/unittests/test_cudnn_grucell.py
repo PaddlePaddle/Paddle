@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -147,9 +145,11 @@ class TestCudnnGRU(unittest.TestCase):
         np_out = cudnn_step(step_input_np, pre_hidden_np, weight_ih, bias_ih,
                             weight_hh, bias_hh)
 
-        self.assertTrue(np.allclose(api_out.numpy(), np_out, rtol=1e-5, atol=0))
-        self.assertTrue(
-            np.allclose(named_api_out.numpy(), np_out, rtol=1e-5, atol=0))
+        np.testing.assert_allclose(api_out.numpy(), np_out, rtol=1e-05, atol=0)
+        np.testing.assert_allclose(named_api_out.numpy(),
+                                   np_out,
+                                   rtol=1e-05,
+                                   atol=0)
 
 
 class TestNonCudnnGRU(unittest.TestCase):
@@ -226,9 +226,11 @@ class TestNonCudnnGRU(unittest.TestCase):
         np_out = non_cudnn_step(step_input_np, pre_hidden_np, gate_w, gate_b,
                                 candidate_w, candidate_b)
 
-        self.assertTrue(np.allclose(api_out.numpy(), np_out, rtol=1e-5, atol=0))
-        self.assertTrue(
-            np.allclose(named_api_out.numpy(), np_out, rtol=1e-5, atol=0))
+        np.testing.assert_allclose(api_out.numpy(), np_out, rtol=1e-05, atol=0)
+        np.testing.assert_allclose(named_api_out.numpy(),
+                                   np_out,
+                                   rtol=1e-05,
+                                   atol=0)
 
 
 if __name__ == '__main__':

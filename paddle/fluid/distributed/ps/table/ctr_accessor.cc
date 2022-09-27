@@ -177,8 +177,10 @@ int32_t CtrCommonAccessor::Create(float** values, size_t num) {
     value[common_feature_value.ShowIndex()] = 0;
     value[common_feature_value.ClickIndex()] = 0;
     value[common_feature_value.SlotIndex()] = -1;
+    bool zero_init = _config.ctr_accessor_param().zero_init();
     _embed_sgd_rule->InitValue(value + common_feature_value.EmbedWIndex(),
-                               value + common_feature_value.EmbedG2SumIndex());
+                               value + common_feature_value.EmbedG2SumIndex(),
+                               zero_init);
     _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                                 value + common_feature_value.EmbedxG2SumIndex(),
                                 false);

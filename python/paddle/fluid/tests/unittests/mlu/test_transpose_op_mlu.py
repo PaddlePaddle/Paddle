@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -356,13 +354,13 @@ class TestMoveAxis(unittest.TestCase):
             exe = paddle.static.Executor()
             out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
 
-        self.assertEqual(np.array_equal(out_np, expected), True)
+        np.testing.assert_array_equal(out_np, expected)
 
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
         out = paddle.moveaxis(x, [0, 4, 3, 2], [1, 3, 2, 0])
         self.assertEqual(out.shape, [4, 2, 5, 7, 3])
-        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        np.testing.assert_array_equal(out.numpy(), expected)
         paddle.enable_static()
 
     def test_moveaxis2(self):
@@ -376,13 +374,13 @@ class TestMoveAxis(unittest.TestCase):
             exe = paddle.static.Executor()
             out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
 
-        self.assertEqual(np.array_equal(out_np, expected), True)
+        np.testing.assert_array_equal(out_np, expected)
 
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
         out = x.moveaxis(-2, -1)
         self.assertEqual(out.shape, [2, 5, 3])
-        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        np.testing.assert_array_equal(out.numpy(), expected)
         paddle.enable_static()
 
     def test_error(self):

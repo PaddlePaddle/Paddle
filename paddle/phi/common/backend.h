@@ -32,7 +32,7 @@ namespace experimental {
  * more specific, we need to distinguish the calculation method.
  *
  * Such as the kernel for CPU device, it can be a native CPU kernel,
- * or a kernel implemented by MKLDNN library.
+ * or a kernel implemented by oneDNN library.
  *
  * Note(chenweihang): HIP is not needed now, we can added it if needed
  * in the future
@@ -48,6 +48,7 @@ enum class Backend : uint8_t {
   XPU,  // XPU currently does not exist at the same time as CUDA
   NPU,  // NPU currently does not exist at the same time as CUDA
   MLU,  // MLU currently does not exist at the same time as CUDA
+  IPU,
 
   // the third library backend
   ONEDNN,
@@ -56,13 +57,11 @@ enum class Backend : uint8_t {
   // paddle kernel primitives backend
   KPS,
 
-  IPU,
-
   // end of backend types
   NUM_BACKENDS,
 
   /**
-   * [ Why we need ALL in baisc kernel key member? ]
+   * [ Why we need ALL in basic kernel key member? ]
    *
    * For Tensor, ALL represents an illegal Backend, but for Kernel, some
    * kernels may be device-independent by nature, such as reshape; and when

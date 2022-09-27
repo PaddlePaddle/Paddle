@@ -24,10 +24,11 @@ from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
-from ..cost import AllreduceSumOpCost, Transpose2OpCost, Transpose2GradOpCost
+from ..cost import Transpose2OpCost, Transpose2GradOpCost
 from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op, build_dp_costs
 from ..cost import build_comp_costs_from_descs
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.auto_parallel.cost.comm_op_cost import AllreduceSumOpCost
 
 
 class DistributedTranspose2(DistributedOperatorImplContainer):

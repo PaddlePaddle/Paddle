@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -84,7 +82,7 @@ class TestComplexConjOp(unittest.TestCase):
                     var_x = paddle.to_tensor(input)
                     result = paddle.conj(var_x).numpy()
                     target = np.conj(input)
-                    self.assertTrue(np.array_equal(result, target))
+                    np.testing.assert_array_equal(result, target)
 
     def test_conj_operator(self):
         for dtype in self._dtypes:
@@ -96,7 +94,7 @@ class TestComplexConjOp(unittest.TestCase):
                     var_x = paddle.to_tensor(input)
                     result = var_x.conj().numpy()
                     target = np.conj(input)
-                    self.assertTrue(np.array_equal(result, target))
+                    np.testing.assert_array_equal(result, target)
 
     def test_conj_static_mode(self):
 
@@ -118,7 +116,7 @@ class TestComplexConjOp(unittest.TestCase):
 
                     exe = static.Executor(place)
                     out_value = exe.run(feed=input_dict, fetch_list=[out.name])
-                    self.assertTrue(np.array_equal(np_res, out_value[0]))
+                    np.testing.assert_array_equal(np_res, out_value[0])
 
     def test_conj_api_real_number(self):
         for dtype in self._dtypes:
@@ -128,7 +126,7 @@ class TestComplexConjOp(unittest.TestCase):
                     var_x = paddle.to_tensor(input)
                     result = paddle.conj(var_x).numpy()
                     target = np.conj(input)
-                    self.assertTrue(np.array_equal(result, target))
+                    np.testing.assert_array_equal(result, target)
 
 
 if __name__ == "__main__":

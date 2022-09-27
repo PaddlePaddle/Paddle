@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -66,12 +64,36 @@ def margin_cross_entropy(logits,
     return loss, softmax
 
 
+def python_api(logits,
+               label,
+               return_softmax=False,
+               ring_id=0,
+               rank=0,
+               nrank=0,
+               margin1=1.0,
+               margin2=0.5,
+               margin3=0.0,
+               scale=64.0):
+    return paddle.nn.functional.margin_cross_entropy(
+        logits,
+        label,
+        return_softmax=return_softmax,
+        margin1=margin1,
+        margin2=margin2,
+        margin3=margin3,
+        scale=scale,
+        group=None,
+        reduction=None)
+
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestMarginCrossEntropyOp(OpTest):
 
     def initParams(self):
+        self.python_api = python_api
         self.op_type = "margin_cross_entropy"
+        self.python_out_sig = ["Loss"]
         self.axis = -1
         self.batch_dim = 5
         self.feat_dim = 41
@@ -121,10 +143,14 @@ class TestMarginCrossEntropyOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), atol=1e-5)
+        self.check_output_with_place(core.CUDAPlace(0),
+                                     atol=1e-5,
+                                     check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ["Logits"], "Loss")
+        self.check_grad_with_place(core.CUDAPlace(0), ["Logits"],
+                                   "Loss",
+                                   check_eager=True)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -138,7 +164,8 @@ class TestMarginCrossEntropyOpFP32(TestMarginCrossEntropyOp):
         self.check_grad_with_place(core.CUDAPlace(0), ["Logits"],
                                    "Loss",
                                    numeric_grad_delta=5e-2,
-                                   max_relative_error=5e-2)
+                                   max_relative_error=5e-2,
+                                   check_eager=True)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -149,13 +176,16 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), atol=5e-2)
+        self.check_output_with_place(core.CUDAPlace(0),
+                                     atol=5e-2,
+                                     check_eager=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(core.CUDAPlace(0), ["Logits"],
                                    "Loss",
                                    numeric_grad_delta=6e-1,
-                                   max_relative_error=6e-1)
+                                   max_relative_error=6e-1,
+                                   check_eager=True)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -184,13 +214,17 @@ class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
 
     def test_check_output(self):
         try:
-            self.check_output_with_place(core.CPUPlace(), atol=1e-5)
+            self.check_output_with_place(core.CPUPlace(),
+                                         atol=1e-5,
+                                         check_eager=True)
         except RuntimeError:
             pass
 
     def test_check_grad(self):
         try:
-            self.check_grad_with_place(core.CPUPlace(), ["Logits"], "Loss")
+            self.check_grad_with_place(core.CPUPlace(), ["Logits"],
+                                       "Loss",
+                                       check_eager=True)
         except RuntimeError:
             pass
 
@@ -208,6 +242,7 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
             self.places.append(paddle.fluid.CUDAPlace(0))
 
     def initParams(self):
+        self.python_out_sig = ["Loss"]
         self.seed = 2021
         self.axis = -1
         self.batch_dim = 5
@@ -356,6 +391,8 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
             self.places.append(paddle.fluid.CUDAPlace(0))
 
     def initParams(self):
+        self.python_api = python_api
+        self.python_out_sig = ["Loss"]
         self.seed = 2021
         self.axis = -1
         self.batch_dim = 10

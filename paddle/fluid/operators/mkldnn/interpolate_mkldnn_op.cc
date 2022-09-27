@@ -105,7 +105,8 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
           }
         }
       }
-      if (scale[0] > 0.0f && scale[1] > 0.0f && scale[2] > 0.0f) {
+      if (scale.size() == 3 && scale[0] > 0.0f && scale[1] > 0.0f &&
+          scale[2] > 0.0f) {
         int j = 0;
         std::vector<int64_t> in_dhw_vec = phi::vectorize(in_dhw_dims);
         std::transform(
@@ -177,18 +178,6 @@ REGISTER_OP_KERNEL(nearest_interp,
                    ops::InterpolateMKLDNNKernel<int8_t>,
                    ops::InterpolateMKLDNNKernel<uint8_t>);
 REGISTER_OP_KERNEL(bilinear_interp,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::InterpolateMKLDNNKernel<float>);
-
-REGISTER_OP_KERNEL(nearest_interp_v2,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::InterpolateMKLDNNKernel<float>,
-                   ops::InterpolateMKLDNNKernel<paddle::platform::bfloat16>,
-                   ops::InterpolateMKLDNNKernel<int8_t>,
-                   ops::InterpolateMKLDNNKernel<uint8_t>);
-REGISTER_OP_KERNEL(bilinear_interp_v2,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);

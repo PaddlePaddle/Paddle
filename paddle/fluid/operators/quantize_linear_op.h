@@ -57,10 +57,32 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
 
     if (quant_axis < 0) {
       if (!is_test) {
-        auto* out_scale = context.Output<framework::Tensor>("OutScale");
-        T* out_s = out_scale->mutable_data<T>(context.GetPlace());
+        // training
+        auto* in_accum = context.Input<framework::Tensor>("InAccum");
+        auto* in_state = context.Input<framework::Tensor>("InState");
+        phi::DenseTensor tmp_scale;
+        tmp_scale.Resize(phi::make_dim(1));
+        T* cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
+
         FindAbsMaxFunctor<DeviceContext, T>()(
-            dev_ctx, in->data<T>(), in->numel(), out_s);
+            dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
+
+        auto* out_state = context.Output<framework::Tensor>("OutState");
+        auto* out_accum = context.Output<framework::Tensor>("OutAccum");
+        auto* out_scale = context.Output<framework::Tensor>("OutScale");
+        out_state->mutable_data<T>(context.GetPlace());
+        out_accum->mutable_data<T>(context.GetPlace());
+        out_scale->mutable_data<T>(context.GetPlace());
+        float moving_rate = context.Attr<float>("moving_rate");
+
+        FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(dev_ctx,
+                                                           *in_accum,
+                                                           *in_state,
+                                                           cur_scale_data,
+                                                           moving_rate,
+                                                           out_state,
+                                                           out_accum,
+                                                           out_scale);
         ClipAndFakeQuantFunctor<DeviceContext, T>()(
             dev_ctx, *in, *out_scale, bin_cnt, round_type, out);
       } else {

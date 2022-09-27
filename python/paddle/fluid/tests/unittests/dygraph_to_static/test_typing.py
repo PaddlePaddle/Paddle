@@ -101,7 +101,7 @@ class TestTyping(unittest.TestCase):
         out = self.run_dy()
         load_net = self.save_and_load('tuple')
         load_out = load_net(self.x)
-        self.assertTrue(np.allclose(out, load_out))
+        np.testing.assert_allclose(out, load_out, rtol=1e-05)
 
 
 class TestTypingTuple(TestTyping):

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -146,8 +144,11 @@ class TestArgsortOpCPU(unittest.TestCase):
         py_outputs = self.py_argsort.forward()
         for pd_output, py_output in zip(pd_outputs, py_outputs):
             self.assertEqual(pd_output.shape, py_output.shape)
-            self.assertTrue(
-                np.allclose(pd_output, py_output, atol=0, equal_nan=False))
+            np.testing.assert_allclose(pd_output,
+                                       py_output,
+                                       rtol=1e-05,
+                                       atol=0,
+                                       equal_nan=False)
 
     def get_numerical_gradient(self, delta=1e-7):
         if self.dtype == 'float16':

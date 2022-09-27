@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -122,7 +120,7 @@ class TestFillConstantOpWithSelectedRows(unittest.TestCase):
         result_array = np.array(out.get_tensor())
         full_array = np.full((123, 92), 3.8, 'float32')
 
-        self.assertTrue(np.array_equal(result_array, full_array))
+        np.testing.assert_allclose(result_array, full_array)
 
     def test_fill_constant_with_selected_rows(self):
         places = [core.CPUPlace()]

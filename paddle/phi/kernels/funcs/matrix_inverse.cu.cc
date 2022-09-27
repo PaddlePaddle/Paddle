@@ -36,7 +36,10 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
   if (n >= 32) {
     // Copy all elements of input matrix A to a temporary memory space to
     // avoid being overriden by getrf.
-    tmp_gpu_mat_data = paddle::memory::Alloc(dev_ctx, a.numel() * sizeof(T));
+    tmp_gpu_mat_data = paddle::memory::Alloc(
+        dev_ctx.GetPlace(),
+        a.numel() * sizeof(T),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     paddle::memory::Copy(dev_ctx.GetPlace(),
                          tmp_gpu_mat_data->ptr(),
                          dev_ctx.GetPlace(),
@@ -54,7 +57,10 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
 
   // Copy the addresses of A and A_inv from host to device.
   paddle::memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
-      paddle::memory::Alloc(dev_ctx, cpu_ptrs.size() * sizeof(T*));
+      paddle::memory::Alloc(
+          dev_ctx.GetPlace(),
+          cpu_ptrs.size() * sizeof(T*),
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
                        phi::CPUPlace(),
@@ -67,7 +73,10 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
   // Allocate device memory for info and pivots.
   int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
   paddle::memory::allocation::AllocationPtr tmp_gpu_info_data =
-      paddle::memory::Alloc(dev_ctx, num_ints * sizeof(int));
+      paddle::memory::Alloc(
+          dev_ctx.GetPlace(),
+          num_ints * sizeof(int),
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);

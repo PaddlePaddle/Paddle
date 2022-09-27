@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import tempfile
 import unittest
@@ -1041,8 +1039,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
     def test_dropout_with_seed(self):
         """
         when we recompute a dropout op, make sure that the recomputed one
-	    is the same as the original var.
-	    """
+        is the same as the original var.
+        """
 
         def gen_data():
             return {
@@ -1362,8 +1360,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
                     use_save_load=True)
                 out_no_state_dict = self.check_with_opt_state_dict(
                     use_save_load=False)
-            self.assertTrue(
-                np.array_equal(out_use_state_dict, out_no_state_dict))
+            np.testing.assert_array_equal(out_use_state_dict, out_no_state_dict)
 
 
 if __name__ == '__main__':

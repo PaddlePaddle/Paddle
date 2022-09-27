@@ -10,8 +10,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -207,7 +205,7 @@ for stype in support_types:
     create_test_class(globals(),
                       XPUTestRNNOp,
                       stype,
-                      ignore_deivce_version=[core.XPUVersion.XPU1])
+                      ignore_device_version=[core.XPUVersion.XPU1])
 
 if __name__ == '__main__':
     unittest.main()

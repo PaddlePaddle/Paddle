@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import itertools
 import numpy as np
@@ -550,18 +548,41 @@ class TestquantizeOpTrain(TestquantizeOp):
     def setUp(self):
         self.set_args()
         self.op_type = "quantize_linear"
-        x = np.random.randn(31, 65).astype(self.data_type)
-        yq, scale = quantize_max_abs(x, self.max_range)
-        scale = np.array(scale).astype(self.data_type)
-        zero_point = np.zeros(scale.shape, dtype="int32")
-
-        self.inputs = {'X': x, 'Scale': scale, 'ZeroPoint': zero_point}
         self.attrs = {
             'bit_length': self.bit_length,
             'quant_axis': self.quant_axis,
+            'moving_rate': 0.9,
             'is_test': self.is_test
         }
-        self.outputs = {'Y': yq, 'OutScale': scale}
+
+        x = np.random.randn(31, 65).astype(self.data_type)
+        scale = np.array([0.001]).astype(self.data_type)
+        zero_point = np.zeros(scale.shape, dtype="int32")
+        in_accum = np.ones(1).astype(self.data_type)
+        in_state = np.ones(1).astype(self.data_type)
+        out_accum = np.zeros(1).astype(self.data_type)
+        out_state = np.zeros(1).astype(self.data_type)
+        out_accum[0] = self.attrs['moving_rate'] * in_accum[0] + np.max(
+            np.abs(x))
+        out_state[0] = self.attrs['moving_rate'] * in_state[0] + 1.0
+        out_scale = out_accum / out_state
+
+        round_out = np.round(x / out_scale * self.max_range)
+        quant_data = np.clip(round_out, -self.max_range - 1, self.max_range)
+
+        self.inputs = {
+            'X': x,
+            'Scale': scale,
+            'ZeroPoint': zero_point,
+            'InAccum': in_accum,
+            'InState': in_state,
+        }
+        self.outputs = {
+            'Y': quant_data,
+            'OutScale': out_scale,
+            'OutAccum': out_accum,
+            'OutState': out_state,
+        }
 
     def test_check_output(self):
         self.check_output()

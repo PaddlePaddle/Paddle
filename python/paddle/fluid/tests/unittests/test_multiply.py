@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
@@ -62,49 +61,49 @@ class TestMultiplyApi(unittest.TestCase):
         x_data = np.random.rand(200)
         y_data = np.random.rand(200)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test static computation graph: 2-d array
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(2, 500)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test static computation graph: broadcast
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(500)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test static computation graph: boolean
         x_data = np.random.choice([True, False], size=[200])
         y_data = np.random.choice([True, False], size=[200])
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: 1-d array
         x_data = np.random.rand(200)
         y_data = np.random.rand(200)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: 2-d array
         x_data = np.random.rand(20, 50)
         y_data = np.random.rand(20, 50)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: broadcast
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(500)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: boolean
         x_data = np.random.choice([True, False], size=[200])
         y_data = np.random.choice([True, False], size=[200])
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
     def test_multiply(self):
         with _test_eager_guard():

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -143,7 +141,7 @@ class API_TestSqueeze(unittest.TestCase):
             result, = exe.run(feed={"data1": input1},
                               fetch_list=[result_squeeze])
             expected_result = np.squeeze(input1, axis=1)
-            self.assertTrue(np.allclose(expected_result, result))
+            np.testing.assert_allclose(expected_result, result)
 
 
 class API_TestStaticSqueeze_(API_TestSqueeze):
@@ -168,7 +166,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             output = self.squeeze(input, axis=[1])
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+            np.testing.assert_allclose(expected_out, out_np)
 
     def test_out_int8(self):
         paddle.disable_static()
@@ -178,7 +176,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             output = self.squeeze(input, axis=[1])
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+            np.testing.assert_allclose(expected_out, out_np)
 
     def test_out_uint8(self):
         paddle.disable_static()
@@ -188,7 +186,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             output = self.squeeze(input, axis=[1])
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+            np.testing.assert_allclose(expected_out, out_np)
 
     def test_axis_not_list(self):
         paddle.disable_static()
@@ -198,7 +196,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             output = self.squeeze(input, axis=1)
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+            np.testing.assert_allclose(expected_out, out_np)
 
     def test_dimension_not_1(self):
         paddle.disable_static()
@@ -208,7 +206,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             output = self.squeeze(input, axis=(1, 0))
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+            np.testing.assert_allclose(expected_out, out_np)
 
 
 class API_TestDygraphSqueezeInplace(API_TestDygraphSqueeze):

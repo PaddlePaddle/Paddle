@@ -118,6 +118,11 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
             activation_quantize_type=activation_quant_type,
             weight_quantize_type=weight_quant_type)
         transform_pass.apply(main_graph)
+        transform_pass = QuantizationTransformPass(
+            scope=scope,
+            place=place,
+            activation_quantize_type=activation_quant_type,
+            weight_quantize_type=weight_quant_type)
         transform_pass.apply(test_graph)
 
         build_strategy = fluid.BuildStrategy()

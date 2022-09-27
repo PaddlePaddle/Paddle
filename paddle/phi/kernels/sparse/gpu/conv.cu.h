@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <thrust/remove.h>
+#include <thrust/sort.h>
 #include <thrust/unique.h>
 #include "paddle/phi/kernels/sparse/conv_kernel.h"
 
@@ -181,8 +182,7 @@ __global__ void UniqueKernel(const IntT* in_indexs,
   if (i < rulebook_len) {
     // atomicOr only support int
     int index = static_cast<int>(in_indexs[i]);
-    int change_index = index == 0 ? -1 : index;
-    int flag = atomicOr(out_index_table + index, change_index);
+    int flag = atomicOr(out_index_table + index, 1);
     if (flag == 0) {
       int j = atomicAdd(&count, 1);
       cache[j] = index;
@@ -549,8 +549,8 @@ int ProductRuleBook(const Context& dev_ctx,
                     int* h_offsets) {
   auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
   const int64_t non_zero_num = x.nnz();
-  const auto& non_zero_indices = x.non_zero_indices();
-  const IntT* indices_ptr = non_zero_indices.data<IntT>();
+  const auto& indices = x.indices();
+  const IntT* indices_ptr = indices.data<IntT>();
   int* counter_ptr = counter_per_kernel->data<int>();
   int* offsets_ptr = offsets_per_kernel->data<int>();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
@@ -585,12 +585,10 @@ int ProductRuleBook(const Context& dev_ctx,
   if (subm) {
     DenseTensor tmp_rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
     IntT* rulebook_ptr = tmp_rulebook.data<IntT>();
-    DenseTensor out_indices =
-        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+    DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
     DenseTensor out_values = phi::Empty<T>(dev_ctx, {x.nnz(), kernel_sizes[4]});
 
-    phi::Copy(
-        dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
+    phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &out_indices);
 
     phi::backends::gpu::GpuMemsetAsync(
         out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
@@ -603,9 +601,9 @@ int ProductRuleBook(const Context& dev_ctx,
                              dev_ctx.stream()>>>(
         out_indices.data<IntT>(), non_zero_num, d_x_dims, out_index_table_ptr);
 
-    size_t cache_size = kernel_size * 2 + kernel_size *
-                                              config.thread_per_block.x * 2 *
-                                              sizeof(int);
+    size_t cache_size =
+        kernel_size * 2 * sizeof(int) +
+        kernel_size * config.thread_per_block.x * 2 * sizeof(int);
     const int MAX_CACHE_SIZE = 48 * 1024;
     while (cache_size >= MAX_CACHE_SIZE) {
       config.thread_per_block.x /= 2;
@@ -613,7 +611,7 @@ int ProductRuleBook(const Context& dev_ctx,
       PADDLE_ENFORCE_GE(config.thread_per_block.x,
                         32,
                         phi::errors::Fatal("the shared memory is not enough"));
-      cache_size = kernel_size * 2 +
+      cache_size = kernel_size * 2 * sizeof(int) +
                    kernel_size * config.thread_per_block.x * 2 * sizeof(int);
     }
     ProductSubmRuleBookKernel<IntT><<<config.block_per_grid.x,
@@ -699,6 +697,7 @@ int ProductRuleBook(const Context& dev_ctx,
 
     phi::backends::gpu::GpuMemsetAsync(
         out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
+
     phi::backends::gpu::GpuMemsetAsync(
         unique_key_ptr, 0, sizeof(int), dev_ctx.stream());
 
@@ -712,6 +711,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                              out_index_table_ptr,
                                              out_index_ptr,
                                              unique_key_ptr);
+
     int out_nnz = 0;
     phi::backends::gpu::GpuMemcpyAsync(&out_nnz,
                                        unique_key_ptr,
@@ -719,6 +719,13 @@ int ProductRuleBook(const Context& dev_ctx,
                                        gpuMemcpyDeviceToHost,
                                        dev_ctx.stream());
     dev_ctx.Wait();
+#ifdef PADDLE_WITH_HIP
+    thrust::sort(thrust::hip::par.on(dev_ctx.stream()),
+#else
+    thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
+                 out_index_ptr,
+                 out_index_ptr + out_nnz);
 
     const int64_t sparse_dim = 4;
     phi::DenseTensor out_indices =

@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,9 @@ from ..fluid.framework import Variable
 from ..fluid import layers
 from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.executor import global_scope
+import paddle
 
 __all__ = []
 
@@ -78,7 +79,7 @@ class Lamb(Optimizer):
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             inp = paddle.uniform(shape=[10, 10], dtype='float32', min=-0.1, max=0.1)
@@ -107,6 +108,7 @@ class Lamb(Optimizer):
                  parameters=None,
                  grad_clip=None,
                  exclude_from_weight_decay_fn=None,
+                 multi_precision=False,
                  name=None):
         assert learning_rate is not None
         assert beta1 is not None
@@ -133,7 +135,7 @@ class Lamb(Optimizer):
         self._master_weights = {}
         self._used_master_weights = {}
         # TODO(zengjinle): expose API as soon as possible
-        self._multi_precision = False
+        self._multi_precision = multi_precision
 
     def _get_parameter(self, name, scope=None):
         if scope is None:
@@ -266,14 +268,21 @@ class Lamb(Optimizer):
             master_weight = None
         found_inf = self._get_auxiliary_var('found_inf')
 
+        if framework.in_dygraph_mode():
+            _C_ops.lamb_(param_and_grad[0], param_and_grad[1], lr, moment1,
+                         moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
+                         found_inf, weight_decay, self._beta1, self._beta2,
+                         self._epsilon, find_master)
+            return None
         if framework._non_static_mode():
-            _C_ops.lamb(param_and_grad[0], param_and_grad[1], lr, moment1,
-                        moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
-                        param_and_grad[0], moment1, moment2, beta1_pow_acc,
-                        beta2_pow_acc, master_weight, 'beta1', self._beta1,
-                        'beta2', self._beta2, 'epsilon', self._epsilon,
-                        'weight_decay', weight_decay, 'multi_precision',
-                        find_master)
+            _legacy_C_ops.lamb(param_and_grad[0], param_and_grad[1], lr,
+                               moment1, moment2, beta1_pow_acc, beta2_pow_acc,
+                               master_weight, param_and_grad[0], moment1,
+                               moment2, beta1_pow_acc, beta2_pow_acc,
+                               master_weight, 'beta1', self._beta1, 'beta2',
+                               self._beta2, 'epsilon', self._epsilon,
+                               'weight_decay', weight_decay, 'multi_precision',
+                               find_master)
             return None
 
         # create the lamb optimize op

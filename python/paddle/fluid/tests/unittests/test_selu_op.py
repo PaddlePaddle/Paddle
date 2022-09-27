@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import six
@@ -103,7 +101,7 @@ class TestSeluAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_selu(self.x_np, self.scale, self.alpha)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -113,7 +111,7 @@ class TestSeluAPI(unittest.TestCase):
         out2 = selu(x)
         out_ref = ref_selu(self.x_np, self.scale, self.alpha)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -123,7 +121,7 @@ class TestSeluAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_selu(self.x_np, self.scale, self.alpha)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):

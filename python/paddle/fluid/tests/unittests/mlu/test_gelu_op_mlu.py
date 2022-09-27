@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 from scipy import special
 import unittest
@@ -150,8 +148,8 @@ class TestGeluNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         mlu_pred, mlu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(mlu_pred, cpu_pred, atol=1e-3))
-        self.assertTrue(np.allclose(mlu_loss, cpu_loss, atol=1e-3))
+        np.testing.assert_allclose(mlu_pred, cpu_pred, atol=1e-3)
+        np.testing.assert_allclose(mlu_loss, cpu_loss, atol=1e-3)
 
 
 if __name__ == '__main__':

@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/new_executor/event_manager.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
+#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
@@ -41,7 +42,8 @@ class InterpreterCore {
   InterpreterCore(const platform::Place& place,
                   const BlockDesc& block,
                   const std::set<std::string>& skip_gc_vars,
-                  Scope* scope);
+                  Scope* scope,
+                  bool used_for_jit = false);
 
   ~InterpreterCore();
 
@@ -59,8 +61,15 @@ class InterpreterCore {
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
+  void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
+
+  const VariableScope* GetVariableScope() const;
+
+  void reset_scope(Scope* new_scope);
+
  private:
-  bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
+  bool BuildInplaceCheckVarIsOnlyInput(
+      const std::vector<std::vector<size_t>>& input_var2op, size_t var_index);
 
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
@@ -103,11 +112,11 @@ class InterpreterCore {
 
   bool is_build_;
 
-  const platform::Place& place_;
+  platform::Place place_;
   const BlockDesc& block_;  // not owned
-  const std::set<std::string> skip_gc_vars_;
 
   interpreter::DependencyBuilder dependency_builder_;
+  interpreter::ExecutionConfig execution_config_;
 
   // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
   // copy a new program and block, the copy_program_ here is used to
@@ -122,15 +131,12 @@ class InterpreterCore {
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
-  // last_live_ops_[i] contains the id of operatos that last access var[i]
+  // last_live_ops_[i] contains the id of operators that last access var[i]
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
   std::vector<size_t> dependecy_count_;
   std::atomic<size_t> unfinished_op_numer_{0};
-  std::vector<std::vector<size_t>> input_var2op_info_;
-
   VariableScope var_scope_;
-  bool create_local_scope_{true};
   Scope* local_scope_{nullptr};  // not owned
 
   StreamAnalyzer stream_analyzer_;
@@ -141,7 +147,6 @@ class InterpreterCore {
   std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
-  std::vector<paddle::platform::DeviceEvent> gc_event_;
 
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_deps_;
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;

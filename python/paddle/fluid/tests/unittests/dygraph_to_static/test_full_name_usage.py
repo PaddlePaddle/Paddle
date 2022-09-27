@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -65,11 +63,15 @@ class TestFullNameDecorator(unittest.TestCase):
         x = np.ones([1, 2]).astype("float32")
         answer = np.zeros([1, 2]).astype("float32")
         with fluid.dygraph.guard():
-            self.assertTrue(
-                np.allclose(dygraph_decorated_func(x).numpy(), answer))
-            self.assertTrue(np.allclose(jit_decorated_func(x).numpy(), answer))
-            self.assertTrue(
-                np.allclose(decorated_call_decorated(x).numpy(), answer))
+            np.testing.assert_allclose(dygraph_decorated_func(x).numpy(),
+                                       answer,
+                                       rtol=1e-05)
+            np.testing.assert_allclose(jit_decorated_func(x).numpy(),
+                                       answer,
+                                       rtol=1e-05)
+            np.testing.assert_allclose(decorated_call_decorated(x).numpy(),
+                                       answer,
+                                       rtol=1e-05)
             with self.assertRaises(NotImplementedError):
                 DoubleDecorated().double_decorated_func1(x)
             with self.assertRaises(NotImplementedError):

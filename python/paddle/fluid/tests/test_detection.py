@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.layers import detection
@@ -596,7 +594,7 @@ class TestGenerateProposals(LayerTest):
                     'var': variances_np
                 },
                 fetch_list=[rois, roi_probs, rois_num],
-                with_lod=True)
+                with_lod=False)
 
         with self.dynamic_graph():
             scores_dy = base.to_variable(scores_np)
@@ -617,9 +615,9 @@ class TestGenerateProposals(LayerTest):
             roi_probs_dy = roi_probs.numpy()
             rois_num_dy = rois_num.numpy()
 
-        self.assertTrue(np.array_equal(np.array(rois_stat), rois_dy))
-        self.assertTrue(np.array_equal(np.array(roi_probs_stat), roi_probs_dy))
-        self.assertTrue(np.array_equal(np.array(rois_num_stat), rois_num_dy))
+        np.testing.assert_array_equal(np.array(rois_stat), rois_dy)
+        np.testing.assert_array_equal(np.array(roi_probs_stat), roi_probs_dy)
+        np.testing.assert_array_equal(np.array(rois_num_stat), rois_num_dy)
 
 
 class TestYoloDetection(unittest.TestCase):
@@ -837,8 +835,8 @@ class TestCollectFpnPropsals(LayerTest):
             fpn_rois_dy = fpn_rois_dy.numpy()
             rois_num_dy = rois_num_dy.numpy()
 
-        self.assertTrue(np.array_equal(fpn_rois_stat, fpn_rois_dy))
-        self.assertTrue(np.array_equal(rois_num_stat, rois_num_dy))
+        np.testing.assert_array_equal(fpn_rois_stat, fpn_rois_dy)
+        np.testing.assert_array_equal(rois_num_stat, rois_num_dy)
 
     def test_collect_fpn_proposals_error(self):
 
@@ -932,7 +930,7 @@ class TestDistributeFpnProposals(LayerTest):
                     output_dy_np.append(output_np)
 
         for res_stat, res_dy in zip(output_stat_np, output_dy_np):
-            self.assertTrue(np.array_equal(res_stat, res_dy))
+            np.testing.assert_array_equal(res_stat, res_dy)
 
     def test_distribute_fpn_proposals_error(self):
         program = Program()

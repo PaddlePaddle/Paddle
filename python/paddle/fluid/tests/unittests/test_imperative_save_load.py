@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import paddle.fluid as fluid
@@ -387,8 +385,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if isinstance(v, (core.VarBase, core.eager.Tensor)):
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name]))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name])
                 else:
                     self.assertEqual(v, self.base_opti[k])
 
@@ -409,7 +407,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 base_t = self.model_base[k]
 
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testSetVariable(self):
         seed = 90
@@ -492,8 +490,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if isinstance(v, (core.VarBase, core.eager.Tensor)):
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name]))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name])
                 else:
                     self.assertEqual(v, self.base_opti[k])
 
@@ -514,7 +512,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 base_t = self.model_base[k]
 
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testSetNumpy(self):
         seed = 90
@@ -601,8 +599,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if isinstance(v, (core.VarBase, core.eager.Tensor)):
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name]))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name])
                 else:
                     self.assertEqual(v, self.base_opti[k])
 
@@ -625,7 +623,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 base_t = self.model_base[k]
 
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testSetVariableBeforeTrain(self):
         seed = 90
@@ -682,17 +680,15 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if k == "global_step":
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] + 1))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name] + 1)
 
                 if k.find("beta1_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(),
-                                       self.base_opti[v.name] * adam._beta1))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta1)
                 if k.find("beta2_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(),
-                                       self.base_opti[v.name] * adam._beta2))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta2)
 
             state_dict = ptb_model.state_dict()
 
@@ -700,7 +696,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_t = v.numpy()
 
                 base_t = self.model_base[k]
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testLoadAndSetVarBaseBeforeTrain(self):
         seed = 90
@@ -769,17 +765,15 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if k == "global_step":
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] + 1))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name] + 1)
 
                 if k.find("beta1_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(),
-                                       self.base_opti[v.name] * adam._beta1))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta1)
                 if k.find("beta2_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(),
-                                       self.base_opti[v.name] * adam._beta2))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta2)
 
             # check parameter
 
@@ -789,7 +783,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_t = v.numpy()
 
                 base_t = self.model_base[k]
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testSetNumpyBeforeTrain(self):
         seed = 90
@@ -870,17 +864,15 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if k == "global_step":
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] + 1))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name] + 1)
 
                 if k.find("beta1_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(),
-                                       self.base_opti[v.name] * adam._beta1))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta1)
                 if k.find("beta2_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(),
-                                       self.base_opti[v.name] * adam._beta2))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta2)
 
             # check parameter
 
@@ -890,7 +882,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_t = v.numpy()
 
                 base_t = self.model_base[k]
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testOnlyLoadParams(self):
         with fluid.dygraph.guard():

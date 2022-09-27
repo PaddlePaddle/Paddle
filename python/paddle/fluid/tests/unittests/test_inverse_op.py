@@ -116,7 +116,9 @@ class TestInverseAPI(unittest.TestCase):
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], np.linalg.inv(input_np)))
+            np.testing.assert_allclose(fetches[0],
+                                       np.linalg.inv(input_np),
+                                       rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -128,8 +130,9 @@ class TestInverseAPI(unittest.TestCase):
                 input_np = np.random.random([4, 4]).astype("float64")
                 input = fluid.dygraph.to_variable(input_np)
                 result = paddle.inverse(input)
-                self.assertTrue(
-                    np.allclose(result.numpy(), np.linalg.inv(input_np)))
+                np.testing.assert_allclose(result.numpy(),
+                                           np.linalg.inv(input_np),
+                                           rtol=1e-05)
 
 
 class TestInverseAPIError(unittest.TestCase):

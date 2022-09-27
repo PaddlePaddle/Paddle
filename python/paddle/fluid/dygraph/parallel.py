@@ -22,7 +22,7 @@ import warnings
 from contextlib import contextmanager
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
@@ -76,11 +76,11 @@ def prepare_context(strategy=None):
 class ParallelEnv(object):
     """
     .. note::
-        This API is not recommended, if you need to get rank and world_size, 
-        it is recommended to use ``paddle.distributed.get_rank()`` and 
+        This API is not recommended, if you need to get rank and world_size,
+        it is recommended to use ``paddle.distributed.get_rank()`` and
         ``paddle.distributed.get_world_size()`` .
 
-    This class is used to obtain the environment variables required for 
+    This class is used to obtain the environment variables required for
     the parallel execution of ``paddle.nn.Layer`` in dynamic mode.
 
     The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch``
@@ -118,20 +118,28 @@ class ParallelEnv(object):
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+        self._device_type = str(os.getenv("PADDLE_XCCL_BACKEND", ""))
 
         # imperative only support one gpu or xpu
-        if core.is_compiled_with_cuda():
-            selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
-            self._device_id = int(selected_gpus[0])
-        elif core.is_compiled_with_xpu():
-            selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
-            self._device_id = int(selected_xpus[0])
-        elif core.is_compiled_with_npu():
-            selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
-            self._device_id = int(selected_npus[0])
-        elif core.is_compiled_with_mlu():
-            selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
-            self._device_id = int(selected_mlus[0])
+        if self._device_type != "":
+            FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
+                self._device_type)
+            selected_custom_devices = os.getenv(FLAGS_selected_custom_devices,
+                                                "0").split(",")
+            self._device_id = int(selected_custom_devices[0])
+        else:
+            if core.is_compiled_with_cuda():
+                selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+                self._device_id = int(selected_gpus[0])
+            elif core.is_compiled_with_xpu():
+                selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
+                self._device_id = int(selected_xpus[0])
+            elif core.is_compiled_with_npu():
+                selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
+                self._device_id = int(selected_npus[0])
+            elif core.is_compiled_with_mlu():
+                selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
+                self._device_id = int(selected_mlus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
@@ -154,7 +162,7 @@ class ParallelEnv(object):
 
             # execute this command in terminal: export PADDLE_TRAINER_ID=0
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The rank is %d" % env.rank)
             # The rank is 0
@@ -173,7 +181,7 @@ class ParallelEnv(object):
 
             # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The world_size is %d" % env.world_size)
             # The world_size is 4
@@ -192,12 +200,22 @@ class ParallelEnv(object):
 
             # execute this command in terminal: export FLAGS_selected_gpus=1
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The device id are %d" % env.device_id)
             # The device id are 1
         """
         return self._device_id
+
+    @property
+    def device_type(self):
+        """
+        The type of custom device for parallel training.
+
+        Its value is equal to the value of the environment variable ``PADDLE_XCCL_BACKEND`` . The default value is None.
+
+        """
+        return self._device_type
 
     @property
     def current_endpoint(self):
@@ -208,10 +226,10 @@ class ParallelEnv(object):
 
         Examples:
           .. code-block:: python
-            
+
             # execute this command in terminal: export PADDLE_CURRENT_ENDPOINT=127.0.0.1:6170
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The current endpoint are %s" % env.current_endpoint)
             # The current endpoint are 127.0.0.1:6170
@@ -221,7 +239,7 @@ class ParallelEnv(object):
     @property
     def trainer_endpoints(self):
         """
-        The endpoints of all trainer nodes in the task, 
+        The endpoints of all trainer nodes in the task,
         which are used to broadcast the NCCL ID when NCCL2 is initialized.
 
         Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ENDPOINTS`` . The default value is "".
@@ -231,7 +249,7 @@ class ParallelEnv(object):
 
             # execute this command in terminal: export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The trainer endpoints are %s" % env.trainer_endpoints)
             # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
@@ -250,7 +268,7 @@ class ParallelEnv(object):
 
             # execute this command in terminal: export FLAGS_nccl_nrings=1
             import paddle.distributed as dist
-            
+
             env = dist.ParallelEnv()
             print("The nrings is %d" % env.nrings)
             # the number of ring is 1
@@ -328,7 +346,7 @@ def _split_tensors(coalesced_grads_and_grad_vars):
             attrs = ()
             attrs += ('sections', grad_var_len)
             attrs += ('axis', 0)
-            _C_ops.split(coalesced_grad, origin_grad_vars, *attrs)
+            _legacy_C_ops.split(coalesced_grad, origin_grad_vars, *attrs)
             for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
                 g_var.reshape_(shape=g_shape)
                 assert g_var.shape == g_shape
@@ -402,7 +420,7 @@ def sync_params_buffers(model,
         paddle.distributed.broadcast(coalesced_var,
                                      src=src_rank,
                                      group=comm_group,
-                                     use_calc_stream=True)
+                                     sync_op=True)
 
     for coalesced_var, origin_vars, var_shapes in coalesced_vars:
         var_len = [np.prod(v_shape) for v_shape in var_shapes]
@@ -421,43 +439,43 @@ class DataParallel(layers.Layer):
     Run the dygraph module with data parallelism.
 
     Currently, DataParallel class only supports to run the dynamic graph
-    with multi-process. 
-    
+    with multi-process.
+
     Now supports two ways to start training:
 
     1. start by ``paddle.distributed.spawn`` method, for example:
 
         ``python demo.py`` (spawn need to be called in ``__main__`` method)
-    
+
     2. start by ``paddle.distributed.launch`` module, for example:
-    
+
         ``python -m paddle.distributed.launch --gpus=0,1 demo.py`` .
 
     And the content of `demo.py` is the code of examples.
 
     Args:
         layers(Layer): The module that should be executed by data parallel.
-        strategy(ParallelStrategy, optional): (deprecated) The strategy of data parallelism, 
+        strategy(ParallelStrategy, optional): (deprecated) The strategy of data parallelism,
             contains environment configuration related to parallel execution. Default: None.
-        comm_buffer_size(int, optional):  It limits the memory size(MB) of one buffer  
-                                          parameters' gradient which is the input of communication 
+        comm_buffer_size(int, optional):  It limits the memory size(MB) of one buffer
+                                          parameters' gradient which is the input of communication
                                           calling(e.g NCCLAllReduce). Default: 25.
         last_comm_buffer_size(float, optional): It limits memory size(MB) of last buffer in communication
-                                         calling. Making the last communication buffer size small is useful to 
+                                         calling. Making the last communication buffer size small is useful to
                                          improve performance. Default: 1.
         find_unused_parameters(bool, optional): Whether to traverse the entire backward graph from the
-                                                all tensors in the return value of the wrapped model's 
-                                                forward function. For parameters not involved in loss 
-                                                calculation, their gradients will be marked as ready in 
-                                                advance to prepare reduce. Please note that all forward 
-                                                outputs derived from the wrapped model parameters must 
-                                                participate in the calculation of loss and subsequent 
+                                                all tensors in the return value of the wrapped model's
+                                                forward function. For parameters not involved in loss
+                                                calculation, their gradients will be marked as ready in
+                                                advance to prepare reduce. Please note that all forward
+                                                outputs derived from the wrapped model parameters must
+                                                participate in the calculation of loss and subsequent
                                                 gradient calculations. If not, serious error will occur.
-                                                Note that setting the find_unused_parameters to True 
+                                                Note that setting the find_unused_parameters to True
                                                 will affect computing performance. Therefore, if all parameters
-                                                are sure to participate in the loss calculation and the 
+                                                are sure to participate in the loss calculation and the
                                                 autograd graph construction, please set it False. Default: False.
-            
+
     Returns:
         Layer: The data paralleled module.
 
@@ -477,7 +495,7 @@ class DataParallel(layers.Layer):
                     super(LinearNet, self).__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
-                    
+
                 def forward(self, x):
                     return self._linear2(self._linear1(x))
 
@@ -498,7 +516,7 @@ class DataParallel(layers.Layer):
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
                 loss = loss_fn(outputs, labels)
-                
+
                 loss.backward()
 
                 adam.step()
@@ -512,9 +530,9 @@ class DataParallel(layers.Layer):
 
 
     .. note::
-        ``PyLayer`` is not supported in DataParallel. To solve problems of this kind, 
-        it's recommended to skip gradient synchronization among multiple cards by 'no_sync', 
-        and manually implement 'all_reduce' before model optimization. There is an example 
+        ``PyLayer`` is not supported in DataParallel. To solve problems of this kind,
+        it's recommended to skip gradient synchronization among multiple cards by 'no_sync',
+        and manually implement 'all_reduce' before model optimization. There is an example
         showing specific implemetation processing.
 
     Examples:
@@ -710,8 +728,8 @@ class DataParallel(layers.Layer):
     @contextmanager
     def no_sync(self):
         """
-        A context manager to stop gradient synchronization. Within no_sync(), 
-        gradients of parameters will only be accumulated on model and not 
+        A context manager to stop gradient synchronization. Within no_sync(),
+        gradients of parameters will only be accumulated on model and not
         synchronized util the first forward-backward out of this context.
 
         Examples:
@@ -726,7 +744,7 @@ class DataParallel(layers.Layer):
                     def __init__(self):
                         super(SimpleNet, self).__init__()
                         self._linear = nn.Linear(10, 1)
-                        
+
                     def forward(self, x):
                         return self._linear(x)
 
@@ -764,7 +782,7 @@ class DataParallel(layers.Layer):
                 reason="This method does not need to be called anymore.")
     def scale_loss(self, loss):
         """
-        Deprecated method, now ``scale_loss`` is an empty method,  
+        Deprecated method, now ``scale_loss`` is an empty method,
         keep this method just for compatibility.
         """
         return loss
@@ -773,7 +791,7 @@ class DataParallel(layers.Layer):
                 reason="This method does not need to be called anymore.")
     def apply_collective_grads(self):
         """
-        Deprecated method, now ``apply_collective_grads`` is an empty method, 
+        Deprecated method, now ``apply_collective_grads`` is an empty method,
         keep this method just for compatibility.
         """
         return
@@ -820,7 +838,7 @@ class DataParallel(layers.Layer):
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True
         Returns:
             None

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import io
 import tarfile
@@ -64,7 +62,7 @@ class Flowers(Dataset):
         :ref:`api_paddle_io_Dataset`. An instance of Flowers dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
             import itertools

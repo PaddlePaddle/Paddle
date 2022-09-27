@@ -54,7 +54,7 @@ class Pad3dOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
         (tensor.layout() != framework::DataLayout::kMKLDNN)) {
@@ -111,13 +111,9 @@ class Pad3dOpMaker : public framework::OpProtoAndCheckerMaker {
         "An optional string from: \"NDHWC\", \"NCDHW\". "
         "Defaults to \"NDHWC\". Specify the data format of the input data.")
         .SetDefault("NCDHW");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Pad3d Operator.
-Pad 3-d images according to 'paddings' and 'mode'. 
+Pad 3-d images according to 'paddings' and 'mode'.
 If mode is 'reflect', paddings[0] and paddings[1] must be no greater
 than width-1. The height and depth dimension have the same condition.
 

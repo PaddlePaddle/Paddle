@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -115,16 +113,20 @@ class TestHardSwishNPUWithCPU(unittest.TestCase):
         y = F.hardswish(data)
         y.sum().backward()
 
-        self.assertTrue(
-            np.allclose(self.out_y.numpy(), y.numpy()),
-            "Output of NPU HardSwish forward has diff at " + str(self.place) +
-            "\nExpect " + str(self.out_y) + "\n" + "But Got" + str(y) +
-            " in class " + self.__class__.__name__ + ".")
-        self.assertTrue(
-            np.allclose(self.out_g.numpy(), data.grad.numpy()),
-            "Output of NPU HardSwish backward has diff at " + str(self.place) +
-            "\nExpect " + str(self.out_g) + "\n" + "But Got" + str(data.grad) +
-            " in class " + self.__class__.__name__ + ".")
+        np.testing.assert_allclose(
+            self.out_y.numpy(),
+            y.numpy(),
+            err_msg="Output of NPU HardSwish forward has diff at " +
+            str(self.place) + "\nExpect " + str(self.out_y) + "\n" + "But Got" +
+            str(y) + " in class " + self.__class__.__name__ + ".",
+            rtol=1e-5)
+        np.testing.assert_allclose(
+            self.out_g.numpy(),
+            data.grad.numpy(),
+            err_msg="Output of NPU HardSwish backward has diff at " +
+            str(self.place) + "\nExpect " + str(self.out_g) + "\n" + "But Got" +
+            str(data.grad) + " in class " + self.__class__.__name__ + ".",
+            rtol=1e-5)
 
 
 if __name__ == '__main__':

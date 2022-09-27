@@ -14,8 +14,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
 #include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 
 namespace paddle {
 namespace operators {
@@ -85,7 +85,7 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<float>("gaussian_sigma",
                    "(float) "
-                   "Sigma for Gaussian decreasing function, only takes effect ",
+                   "Sigma for Gaussian decreasing function, only takes effect "
                    "when 'use_gaussian' is enabled.")
         .SetDefault(2.);
     AddOutput("Out",
@@ -116,7 +116,7 @@ independently for each class. The outputs is a 2-D LoDTenosr, for each
 image, the offsets in first dimension of LoDTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image. Now this operator has one more
-output, which is RoisNum. The size of RoisNum is N, RoisNum[i] means the number of 
+output, which is RoisNum. The size of RoisNum is N, RoisNum[i] means the number of
 detected bbox for this image.
 
 For more information on Matrix NMS, please refer to:

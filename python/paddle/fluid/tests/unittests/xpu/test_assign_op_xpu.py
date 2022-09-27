@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
@@ -70,8 +69,8 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
         res = exe.run(main_program,
                       feed={'x': feed_x},
                       fetch_list=[sums.name, x.grad_name])
-        self.assertTrue(np.allclose(res[0], feed_add))
-        self.assertTrue(np.allclose(res[1], ones / 1000.0))
+        np.testing.assert_allclose(res[0], feed_add)
+        np.testing.assert_allclose(res[1], ones / 1000.0)
 
 
 class TestAssignOpError(unittest.TestCase):

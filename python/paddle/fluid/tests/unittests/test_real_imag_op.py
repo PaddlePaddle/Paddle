@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -119,7 +117,7 @@ class TestRealAPI(unittest.TestCase):
 
                     exe = static.Executor(place)
                     out_value = exe.run(feed=input_dict, fetch_list=[out.name])
-                    self.assertTrue(np.array_equal(np_res, out_value[0]))
+                    np.testing.assert_array_equal(np_res, out_value[0])
 
     def test_in_dynamic_mode(self):
         for dtype in self.dtypes:
@@ -131,10 +129,10 @@ class TestRealAPI(unittest.TestCase):
                 with fluid.dygraph.guard(place):
                     input_t = paddle.to_tensor(input)
                     res = paddle_apis[self.api](input_t).numpy()
-                    self.assertTrue(np.array_equal(np_res, res))
+                    np.testing.assert_array_equal(np_res, res)
                     res_t = input_t.real().numpy(
                     ) if self.api is "real" else input_t.imag().numpy()
-                    self.assertTrue(np.array_equal(np_res, res_t))
+                    np.testing.assert_array_equal(np_res, res_t)
 
     def test_name_argument(self):
         with static.program_guard(static.Program()):

@@ -9,8 +9,8 @@ set(XPU_RT_LIB_NAME "libxpurt.so")
 
 if(NOT DEFINED XPU_BASE_URL)
   set(XPU_BASE_URL_WITHOUT_DATE
-      "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev")
-  set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20220731")
+      "https://baidu-kunlun-product.su.bcebos.com/KL-SDK/klsdk-dev")
+  set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20220919")
 else()
   set(XPU_BASE_URL "${XPU_BASE_URL}")
 endif()
@@ -19,7 +19,7 @@ endif()
 if(NOT DEFINED XPU_XDNN_BASE_URL)
   set(XPU_XDNN_BASE_URL_WITHOUT_DATE
       "https://klx-sdk-release-public.su.bcebos.com/xdnn/dev")
-  set(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL_WITHOUT_DATE}/20220731")
+  set(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL_WITHOUT_DATE}/20220919")
 else()
   set(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL}")
 endif()
@@ -52,7 +52,7 @@ elseif(WITH_BDCENTOS)
 elseif(WITH_UBUNTU)
   set(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
   set(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
-  set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
+  set(XPU_XCCL_DIR_NAME "xccl-ubuntu_x86_64")
   # ubuntu and centos: use output by XDNN API team
   set(XPU_XDNN_URL
       "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
@@ -68,7 +68,7 @@ elseif(WITH_CENTOS)
 else()
   set(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
   set(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
-  set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
+  set(XPU_XCCL_DIR_NAME "xccl-ubuntu_x86_64")
   # default: use output by XDNN API team
   set(XPU_XDNN_URL
       "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"

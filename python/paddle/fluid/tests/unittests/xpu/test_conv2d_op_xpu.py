@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
@@ -532,7 +531,7 @@ for stype in ['float32']:
     create_test_class(globals(),
                       XPUTestConv2DOp_NHWC,
                       stype,
-                      ignore_deivce_version=[core.XPUVersion.XPU1])
+                      ignore_device_version=[core.XPUVersion.XPU1])
 
 #---------- test SAME VALID -----------
 #create_test_padding_SAME_class(TestConv2DOp_AsyPadding)

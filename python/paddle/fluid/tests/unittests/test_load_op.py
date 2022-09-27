@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest, randomize_probability
@@ -62,7 +60,7 @@ class TestLoadOp(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
         ret = exe.run(main_prog, fetch_list=[var.name])
-        self.assertTrue(np.array_equal(self.ones, ret[0]))
+        np.testing.assert_array_equal(self.ones, ret[0])
 
 
 if __name__ == "__main__":

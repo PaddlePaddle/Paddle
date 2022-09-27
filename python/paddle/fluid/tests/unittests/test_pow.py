@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
@@ -77,61 +76,61 @@ class TestPowerAPI(unittest.TestCase):
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = np.random.rand() * 10
         res = _run_power(DYNAMIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
         res = _run_power(STATIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 1-d float tensor ** int scalar
         dims = (np.random.randint(200, 300), )
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = int(np.random.rand() * 10)
         res = _run_power(DYNAMIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
         res = _run_power(STATIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         x = (np.random.rand(*dims) * 10).astype(np.int64)
         y = int(np.random.rand() * 10)
         res = _run_power(DYNAMIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
         res = _run_power(STATIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 1-d float tensor ** 1-d float tensor
         dims = (np.random.randint(200, 300), )
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.rand(*dims) * 10).astype(np.float64)
         res = _run_power(DYNAMIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
         res = _run_power(STATIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 1-d int tensor ** 1-d int tensor
         dims = (np.random.randint(200, 300), )
         x = (np.random.rand(*dims) * 10).astype(np.int64)
         y = (np.random.rand(*dims) * 10).astype(np.int64)
         res = _run_power(DYNAMIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
         res = _run_power(STATIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 1-d int tensor ** 1-d int tensor
         dims = (np.random.randint(200, 300), )
         x = (np.random.rand(*dims) * 10).astype(np.int32)
         y = (np.random.rand(*dims) * 10).astype(np.int32)
         res = _run_power(DYNAMIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
         res = _run_power(STATIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 1-d int tensor ** 1-d int tensor
         dims = (np.random.randint(200, 300), )
         x = (np.random.rand(*dims) * 10).astype(np.float32)
         y = (np.random.rand(*dims) * 10).astype(np.float32)
         res = _run_power(DYNAMIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
         res = _run_power(STATIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test broadcast
         dims = (np.random.randint(1, 10), np.random.randint(5, 10),
@@ -139,9 +138,9 @@ class TestPowerAPI(unittest.TestCase):
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.rand(dims[-1]) * 10).astype(np.float64)
         res = _run_power(DYNAMIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
         res = _run_power(STATIC, x, y)
-        self.assertTrue(np.allclose(res, np.power(x, y)))
+        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
 
 class TestPowerError(unittest.TestCase):

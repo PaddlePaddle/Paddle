@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
@@ -26,7 +25,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (OpTest,
                                                   convert_float_to_uint16,
                                                   convert_uint16_to_float)
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import op_test
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
@@ -205,11 +204,11 @@ class TestSumOpError(unittest.TestCase):
 
         def test_empty_list_input():
             with fluid.dygraph.guard():
-                fluid._C_ops.sum([])
+                fluid._legacy_C_ops.sum([])
 
         def test_list_of_none_input():
             with fluid.dygraph.guard():
-                fluid._C_ops.sum([None])
+                fluid._legacy_C_ops.sum([None])
 
         self.assertRaises(Exception, test_empty_list_input)
         self.assertRaises(Exception, test_list_of_none_input)

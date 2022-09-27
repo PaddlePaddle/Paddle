@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import contextlib
 import unittest
 import numpy as np
@@ -58,8 +56,8 @@ class TestDataParallelStateDict(unittest.TestCase):
             for k, v in single_state.items():
                 self.assertTrue(k in parallel_state)
 
-                self.assertTrue(
-                    np.array_equal(v.numpy(), parallel_state[k].numpy()))
+                np.testing.assert_array_equal(v.numpy(),
+                                              parallel_state[k].numpy())
 
                 base_para[k] = v.numpy()
 
@@ -75,7 +73,7 @@ class TestDataParallelStateDict(unittest.TestCase):
             parallel_state = parallel_mlp.state_dict()
 
             for k, v in parallel_state.items():
-                self.assertTrue(np.array_equal(v.numpy(), base_para[k]))
+                np.testing.assert_array_equal(v.numpy(), base_para[k])
 
             parallel_mlp.load_dict(base_para)
 

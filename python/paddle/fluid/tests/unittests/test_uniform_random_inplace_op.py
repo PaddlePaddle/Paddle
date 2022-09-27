@@ -131,7 +131,7 @@ class TestUniformRandomInplaceOpDistribution(unittest.TestCase):
         hist, _ = np.histogram(tensor.numpy()[0], bins=self.bins)
         prob = hist / float(self.shape[0])
         prob_expect = np.ones((self.bins, )) / float(self.bins)
-        self.assertTrue(np.allclose(prob, prob_expect, rtol=0, atol=1e-2))
+        np.testing.assert_allclose(prob, prob_expect, rtol=0, atol=0.01)
 
 
 class TestUniformRandomInplaceOpError(unittest.TestCase):
@@ -170,7 +170,7 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
 
-    def test_uniform_random_inplace_grad(self):
+    def run_(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         def test_grad():
@@ -191,33 +191,12 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
             test_grad()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-
-class TestUniformRandomInplaceGradOldDygraph(unittest.TestCase):
-
-    def setUp(self):
-        self.shape = (1000, 784)
-
     def test_uniform_random_inplace_grad(self):
+        self.run_()
+
+    def test_uniform_random_inplace_grad_old_dygraph(self):
         _enable_legacy_dygraph()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-
-        def test_grad():
-            tensor_a = paddle.ones(self.shape)
-            tensor_a.stop_gradient = False
-            tensor_b = tensor_a * 0.5
-            tensor_b.uniform_(min=-2, max=2)
-            loss = tensor_b.sum()
-            loss.backward()
-            uniform_grad = tensor_b.grad.numpy()
-            self.assertTrue((uniform_grad == 0).all())
-
-        places = ['cpu']
-        if fluid.core.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
-            paddle.set_device(place)
-            test_grad()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+        self.run_()
         _disable_legacy_dygraph()
 
 

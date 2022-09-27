@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 
@@ -370,21 +369,6 @@ void RowwiseSum<phi::GPUContext, double>::operator()(
 
 template struct RowwiseMean<phi::GPUContext, float>;
 template struct RowwiseMean<phi::GPUContext, double>;
-
-template <typename T>
-struct ElementwiseAddTo<phi::GPUContext, T> {
-  void operator()(phi::GPUContext* ctx,
-                  const paddle::framework::Tensor& src,
-                  paddle::framework::Tensor* dst) {
-    auto in = paddle::framework::EigenVector<T>::Flatten(src);
-    auto out = paddle::framework::EigenVector<T>::Flatten(*dst);
-    auto& place = *(ctx->eigen_device());
-    out.device(place) = out + in;
-  }
-};
-
-template struct ElementwiseAddTo<phi::GPUContext, phi::dtype::float16>;
-template struct ElementwiseAddTo<phi::GPUContext, phi::dtype::bfloat16>;
 
 }  // namespace funcs
 }  // namespace phi

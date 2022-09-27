@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
@@ -381,7 +380,7 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
             x_np, weight_np, bias_np, 'float32')
 
         def assert_equal(x, y):
-            self.assertTrue(np.array_equal(x, y))
+            np.testing.assert_array_equal(x, y)
 
         assert_equal(y_np_1, y_np_2)
         assert_equal(x_g_np_1, x_g_np_2)
@@ -417,7 +416,9 @@ class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
         return y_np, x_g_np, w_g_np, b_g_np
 
     def test_main(self):
-        if (not core.is_compiled_with_cuda()) or (core.cudnn_version() < 8100):
+        if (not core.is_compiled_with_cuda()) or (
+                core.cudnn_version() <
+                8100) or (paddle.device.cuda.get_device_capability()[0] < 8):
             return
         x_np = np.random.random([10, 20]).astype('float32')
         weight_np = np.random.random([20]).astype('float32')
@@ -429,7 +430,7 @@ class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
             x_np, weight_np, bias_np, 'bfloat16')
 
         def assert_equal(x, y):
-            self.assertTrue(np.allclose(x, y, atol=1.e-1))
+            np.testing.assert_allclose(x, y, rtol=1e-05, atol=0.1)
 
         assert_equal(y_np_1, y_np_2)
         assert_equal(x_g_np_1, x_g_np_2)

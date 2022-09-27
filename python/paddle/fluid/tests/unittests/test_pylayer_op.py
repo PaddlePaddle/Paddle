@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -480,7 +478,7 @@ class TestPyLayer(unittest.TestCase):
                 super(Layer, self).__init__()
 
             def forward(self, data):
-                data = paddle.nn.functional.relu(data)
+                data = data**2
                 z = paddle.tanh(data)
                 z = cus_tanh.apply(data)
                 return z.mean()
@@ -506,7 +504,6 @@ class TestPyLayer(unittest.TestCase):
 
                 @staticmethod
                 def forward(ctx, x):
-                    ctx.mark_dirty(x)
                     return x
 
                 @staticmethod
@@ -543,7 +540,6 @@ class TestPyLayer(unittest.TestCase):
 
                 @staticmethod
                 def forward(ctx, x):
-                    ctx.mark_dirty(x)
                     return x
 
                 @staticmethod
@@ -578,7 +574,6 @@ class TestPyLayer(unittest.TestCase):
 
                 @staticmethod
                 def forward(ctx, x):
-                    ctx.mark_dirty(x)
                     return x
 
                 @staticmethod
@@ -612,8 +607,6 @@ class TestPyLayer(unittest.TestCase):
 
             @staticmethod
             def forward(ctx, x):
-                if in_dygraph_mode():
-                    ctx.mark_dirty(x)
                 return x
 
             @staticmethod
@@ -710,6 +703,7 @@ class TestPyLayer(unittest.TestCase):
 
                 @staticmethod
                 def forward(ctx, x):
+                    ctx.mark_not_inplace(x)
                     return x, x + x
 
                 @staticmethod
@@ -728,6 +722,7 @@ class TestPyLayer(unittest.TestCase):
 
                 @staticmethod
                 def forward(ctx, x):
+                    ctx.mark_not_inplace(x)
                     ctx.set_materialize_grads(False)
                     return x, x + x
 

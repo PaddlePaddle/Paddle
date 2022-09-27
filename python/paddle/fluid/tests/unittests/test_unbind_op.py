@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
@@ -50,14 +48,14 @@ class TestUnbind(unittest.TestCase):
             x = paddle.to_tensor(np_x)
             x.stop_gradient = False
             [res_1, res_2] = paddle.unbind(x, 0)
-            self.assertTrue(np.array_equal(res_1, np_x[0, 0:100]))
-            self.assertTrue(np.array_equal(res_2, np_x[1, 0:100]))
+            np.testing.assert_array_equal(res_1, np_x[0, 0:100])
+            np.testing.assert_array_equal(res_2, np_x[1, 0:100])
 
             out = paddle.add_n([res_1, res_2])
 
             np_grad = np.ones(x.shape, np.float32)
             out.backward()
-            self.assertTrue(np.array_equal(x.grad.numpy(), np_grad))
+            np.testing.assert_array_equal(x.grad.numpy(), np_grad)
 
     def test_unbind_dygraph_final_state(self):
         with _test_eager_guard():

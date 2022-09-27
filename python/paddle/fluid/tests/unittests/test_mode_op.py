@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -123,13 +121,13 @@ class TestModeOpKernels(unittest.TestCase):
             for axis in self.axises:
                 value_expect, indice_expect = cal_mode(self.inputs, axis)
                 v, inds = paddle.mode(tensor, axis)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
                 value_expect, indice_expect = cal_mode(self.inputs,
                                                        axis,
                                                        keepdim=True)
                 v, inds = paddle.mode(tensor, axis, keepdim=True)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
         def test_gpu_kernel():
             paddle.set_device('gpu')
@@ -137,13 +135,13 @@ class TestModeOpKernels(unittest.TestCase):
             for axis in self.axises:
                 value_expect, indice_expect = cal_mode(self.inputs, axis)
                 v, inds = paddle.mode(tensor, axis)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
                 value_expect, indice_expect = cal_mode(self.inputs,
                                                        axis,
                                                        keepdim=True)
                 v, inds = paddle.mode(tensor, axis, keepdim=True)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
         paddle.disable_static()
         test_cpu_kernel()
@@ -182,7 +180,7 @@ class TestModeOpInStatic(unittest.TestCase):
             exe = paddle.static.Executor(paddle.CPUPlace())
             paddle_result = exe.run(feed={"x": self.input_data},
                                     fetch_list=[result])[0]
-            self.assertTrue(np.allclose(paddle_result, expect_value))
+            np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
 
 
 if __name__ == '__main__':

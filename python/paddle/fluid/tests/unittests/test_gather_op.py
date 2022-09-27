@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
@@ -251,7 +249,7 @@ class API_TestGather(unittest.TestCase):
             },
                               fetch_list=[out])
             expected_output = np.array([[3, 4], [5, 6]])
-        self.assertTrue(np.allclose(result, expected_output))
+        np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
     def test_out2(self):
         with paddle.static.program_guard(paddle.static.Program(),
@@ -272,7 +270,7 @@ class API_TestGather(unittest.TestCase):
             },
                               fetch_list=[out])
             expected_output = gather_numpy(x_np, index_np, axis_np[0])
-        self.assertTrue(np.allclose(result, expected_output))
+        np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
 
 class API_TestDygraphGather(unittest.TestCase):
@@ -286,7 +284,7 @@ class API_TestDygraphGather(unittest.TestCase):
         output = paddle.fluid.layers.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([[3, 4], [5, 6]])
-        self.assertTrue(np.allclose(output_np, expected_output))
+        np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)
         paddle.enable_static()
 
     def test_out12(self):
@@ -298,7 +296,7 @@ class API_TestDygraphGather(unittest.TestCase):
         output = paddle.gather(x, index, axis=0)
         output_np = output.numpy()
         expected_output = gather_numpy(input_1, index_1, axis=0)
-        self.assertTrue(np.allclose(output_np, expected_output))
+        np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)
         paddle.enable_static()
 
     def test_zero_index(self):
@@ -341,7 +339,7 @@ class API_TestDygraphGather(unittest.TestCase):
                 gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
                 return gpu_value
 
-        self.assertTrue(np.array_equal(test_dygraph(), test_static_graph()))
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
 
 
 class TestGathertError(unittest.TestCase):

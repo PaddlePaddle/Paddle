@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -92,7 +90,7 @@ class TestViewAsComplexAPI(unittest.TestCase):
         with dygraph.guard():
             x = paddle.to_tensor(self.x)
             out_np = paddle.as_complex(x).numpy()
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_static(self):
         mp, sp = static.Program(), static.Program()
@@ -103,7 +101,7 @@ class TestViewAsComplexAPI(unittest.TestCase):
         exe = static.Executor()
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():
@@ -120,7 +118,7 @@ class TestViewAsRealAPI(unittest.TestCase):
         with dygraph.guard():
             x = paddle.to_tensor(self.x)
             out_np = paddle.as_real(x).numpy()
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_static(self):
         mp, sp = static.Program(), static.Program()
@@ -131,7 +129,7 @@ class TestViewAsRealAPI(unittest.TestCase):
         exe = static.Executor()
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():

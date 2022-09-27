@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -1133,19 +1131,19 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     4]] = out[k]
         if _in_legacy_dygraph():
-            self.assertTrue(
-                np.array_equal(static_avg_cost_value, dy_avg_cost_value))
-            self.assertTrue(
-                np.array_equal(static_sum_cost_value, dy_sum_cost_value))
-            self.assertTrue(
-                np.array_equal(static_predict_value, dy_predict_value))
-            self.assertTrue(
-                np.array_equal(static_token_num_value, dy_token_num_value))
+            np.testing.assert_array_equal(static_avg_cost_value,
+                                          dy_avg_cost_value)
+            np.testing.assert_array_equal(static_sum_cost_value,
+                                          dy_sum_cost_value)
+            np.testing.assert_array_equal(static_predict_value,
+                                          dy_predict_value)
+            np.testing.assert_array_equal(static_token_num_value,
+                                          dy_token_num_value)
 
             for key, value in six.iteritems(static_param_init):
-                self.assertTrue(np.array_equal(value, dy_param_init[key]))
+                np.testing.assert_array_equal(value, dy_param_init[key])
             for key, value in six.iteritems(static_param_updated):
-                self.assertTrue(np.array_equal(value, dy_param_updated[key]))
+                np.testing.assert_array_equal(value, dy_param_updated[key])
 
         # compare eager result with imperative result
         with guard():
@@ -1157,16 +1155,26 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             with _test_eager_guard():
                 eager_avg_cost_value, eager_sum_cost_value, eager_predict_value, eager_token_num_value, \
                     eager_param_init, eager_param_updated = run_dygraph()
-        self.assertTrue(np.allclose(dy_avg_cost_value, eager_avg_cost_value))
-        self.assertTrue(np.allclose(dy_sum_cost_value, eager_sum_cost_value))
+        np.testing.assert_allclose(dy_avg_cost_value,
+                                   eager_avg_cost_value,
+                                   rtol=1e-05)
+        np.testing.assert_allclose(dy_sum_cost_value,
+                                   eager_sum_cost_value,
+                                   rtol=1e-05)
 
-        self.assertTrue(np.allclose(dy_predict_value, eager_predict_value))
-        self.assertTrue(np.allclose(dy_token_num_value, eager_token_num_value))
+        np.testing.assert_allclose(dy_predict_value,
+                                   eager_predict_value,
+                                   rtol=1e-05)
+        np.testing.assert_allclose(dy_token_num_value,
+                                   eager_token_num_value,
+                                   rtol=1e-05)
 
         for key, value in six.iteritems(static_param_init):
-            self.assertTrue(np.array_equal(value, eager_param_init[key]))
+            np.testing.assert_array_equal(value, eager_param_init[key])
         for key, value in six.iteritems(dy_param_updated):
-            self.assertTrue(np.allclose(value, eager_param_updated[key]))
+            np.testing.assert_allclose(value,
+                                       eager_param_updated[key],
+                                       rtol=1e-05)
 
 
 if __name__ == '__main__':

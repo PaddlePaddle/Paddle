@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import logging
@@ -29,7 +27,7 @@ from paddle.jit import to_static
 
 def dyfunc_generator():
     for i in range(100):
-        yield paddle.to_tensor([i] * 10)
+        yield paddle.fluid.dygraph.to_variable([i] * 10)
 
 
 def main_func():

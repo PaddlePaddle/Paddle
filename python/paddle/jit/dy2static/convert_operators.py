@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
 from ...fluid.dygraph.dygraph_to_static.convert_operators import cast_bool_if_necessary  # noqa: F401
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_assert  # noqa: F401
@@ -26,6 +25,6 @@ from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_shape_c
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_dtype  # noqa: F401
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_shape  # noqa: F401
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_while_loop  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import unpack_by_structure, indexable  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import unpack_by_structure, indexable, convert_attr  # noqa: F401
 
 __all__ = []
