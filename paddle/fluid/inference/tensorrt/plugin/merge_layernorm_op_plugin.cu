@@ -98,9 +98,10 @@ __global__ void merge_layernorm_v2(T *out,
     if (col_id < n) {
       size_t output_idx =
           batch_offset + H_idx * output_H_stride + W_idx * n + col_id;
-      out[output_idx] = static_cast<T>(
-          local_out[i] * s_variance * static_cast<float>(__ldg(&gamma[col_id])) +
-          static_cast<float>(__ldg(&beta[col_id])));
+      out[output_idx] =
+          static_cast<T>(local_out[i] * s_variance *
+                             static_cast<float>(__ldg(&gamma[col_id])) +
+                         static_cast<float>(__ldg(&beta[col_id])));
     }
   }
 }
@@ -121,20 +122,9 @@ void invokeMergeLayernorm(T *output,
         "H(W) of merge layernorm should be a multiple of 2."));
   }
   dim3 grid(W / 2, H / 2, batch);
-  int blockSize = 4 * n;
-  blockSize = (blockSize + 31) / 32 * 32;
-  // TODO(wangbojun)
-  // if (blockSize >= 768)
-  {
-    blockSize = ((blockSize / 4) + 31) / 32 * 32;
-    merge_layernorm_v2<T><<<grid, blockSize, 0, stream>>>(
-        output, input, gamma, beta, layernorm_eps, batch, H / 2, W / 2, n * 4);
-  }
-  /*
-  else
-    merge_layernorm<T><<<grid, blockSize, 0, stream>>>(output, input, gamma,
-  beta, batch, H/2, W/2, n*4);
-  */
+  int blockSize = (n + 31) / 32 * 32;
+  merge_layernorm_v2<T><<<grid, blockSize, 0, stream>>>(
+      output, input, gamma, beta, layernorm_eps, batch, H / 2, W / 2, n * 4);
 }
 
 template void invokeMergeLayernorm<float>(float *output,
@@ -293,16 +283,6 @@ nvinfer1::DimsExprs MergeLayernormPluginDynamic::getOutputDimensions(
   return ret;
 }
 
-// template <typename T>
-// __global__ void print_float(const T* src, int start, int end, int lineLen){
-//     for (int i=start;i<end;i++){
-//         printf("%f, ",static_cast<float>(src[i]));
-//         if((i-start)%lineLen==lineLen-1){
-//             printf("\r\n");
-//         }
-//     }
-// }
-
 int MergeLayernormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc,
@@ -321,16 +301,6 @@ int MergeLayernormPluginDynamic::enqueue(
       platform::errors::InvalidArgument(
           "The MergeLayernorm TRT Plugin get invalid input_resolution %d",
           input_resolution));
-
-  // printf("@@@ eps_:%f, batch:%d, input_res:%d, dim:%d
-  // \r\n",eps_,batch,input_resolution,dim); cudaDeviceSynchronize();
-  // print_float<float><<<1,1>>>(reinterpret_cast<const
-  // float*>(scale_device_.get()),0,10,10); cudaDeviceSynchronize();
-  // printf("\r\n");
-  // cudaDeviceSynchronize();
-  // print_float<float><<<1,1>>>(reinterpret_cast<const
-  // float*>(bias_device_.get()),0,10,10); cudaDeviceSynchronize();
-  // printf("\r\n");
 
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(3) << "TRT Plugin DataType selected. MergeLayernorm-->fp32";
