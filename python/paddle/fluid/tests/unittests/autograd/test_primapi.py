@@ -152,6 +152,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
     ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
     ('abs', paddle.abs, (np.random.uniform(-10, 10,
                                            (10, 10)), ), None, 'float32'),
+    ('rsqrt', paddle.rsqrt, (np.random.rand(100, 200), ), None, 'float32'),
 ))
 # paddle.where, paddle.pow, paddle.maximum has no double grad definition,
 # can not compute forward grad use double trick
@@ -267,6 +268,7 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          (np.random.rand(3, 3), np.random.rand(3, 3)),
          (np.random.rand(3, 3), ), 'float64'),
         ('sin', paddle.sin, (np.random.rand(100, 200), ), None, 'float32'),
+        ('rsqrt', paddle.rsqrt, (np.random.rand(100, 200), ), None, 'float32'),
         ('cos', paddle.cos, (np.random.rand(200, 90), ), None, 'float32'),
         ('exp', paddle.exp, (np.random.rand(299, 320), ), None, 'float32'),
         # In where op, grad of condition computed by paddle.static.gradients is None,
@@ -316,7 +318,39 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          lambda x: paddle.var(x, axis=1, unbiased=False),
          (np.random.rand(10, 20, 30), ), None, 'float32'),
         ('var_with_keepdim', lambda x: paddle.var(x, axis=1, keepdim=True),
-         (np.random.rand(10, 20, 30), ), None, 'float32')))
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('bn', lambda x, w, b: paddle.nn.functional.batch_norm(
+            x, paddle.ones((10, )), paddle.ones(
+                (10, )), w, b), (np.random.rand(10, 10), np.random.rand(10),
+                                 np.random.rand(10)), None, 'float32'),
+        ('bn_train', lambda x, w, b: paddle.nn.functional.batch_norm(
+            x, paddle.ones((10, )), paddle.ones((10, )), w, b, training=True),
+         (np.random.rand(
+             10, 10), np.random.rand(10), np.random.rand(10)), None, 'float32'),
+        ('bn_nhwc', lambda x, w, b: paddle.nn.functional.batch_norm(
+            x,
+            paddle.ones((10, )) + 1,
+            paddle.ones((10, )),
+            w,
+            b,
+            training=True,
+            data_format='NHWC',
+        ), (np.random.rand(
+            10, 10), np.random.rand(10), np.random.rand(10)), None, 'float32'),
+        ('bn_global_stat',
+         lambda x, w, b: paddle.nn.functional.batch_norm(x,
+                                                         paddle.ones(
+                                                             (10, )) + 3.2,
+                                                         paddle.ones(
+                                                             (10, )) + 6.7,
+                                                         w,
+                                                         b,
+                                                         training=True,
+                                                         data_format='NHWC',
+                                                         use_global_stats=True),
+         (np.random.rand(
+             10, 10), np.random.rand(10), np.random.rand(10)), None, 'float32'),
+    ))
 class TestGrad(unittest.TestCase):
 
     def setUp(self):

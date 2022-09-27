@@ -55,7 +55,7 @@ class LegacyPyLayerContext(object):
         """
         Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
 
-        .. note::
+        Note:
             This API should be called at most once, and only inside `forward`.
 
         Args:
@@ -341,7 +341,7 @@ class EagerPyLayerContext(object):
         """
         Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
 
-        .. note::
+        Note:
             This API should be called at most once, and only inside `forward`.
 
         Args:

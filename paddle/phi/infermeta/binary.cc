@@ -90,32 +90,6 @@ void AllValueCompareInferMeta(const MetaTensor& x,
   out->set_dtype(DataType::BOOL);
 }
 
-void EmbeddingInferMeta(const MetaTensor& input,
-                        const MetaTensor& weight,
-                        int64_t padding_idx,
-                        MetaTensor* out) {
-  auto table_dims = weight.dims();
-  auto ids_dims = input.dims();
-  int ids_rank = ids_dims.size();
-  VLOG(5) << "ids rank is " << ids_rank << std::endl;
-  PADDLE_ENFORCE_EQ(
-      table_dims.size(),
-      2,
-      phi::errors::InvalidArgument(
-          "ShapeError: The dimensions of the 'lookup table' must be 2. "
-          "But received lookup table's dimensions = %d, "
-          "lookup table's shape = [%s].",
-          table_dims.size(),
-          table_dims));
-
-  auto output_dims = phi::vectorize(ids_dims);
-  output_dims.push_back(table_dims[1]);
-
-  out->set_dims(phi::make_ddim(output_dims));
-  out->set_dtype(weight.dtype());
-  out->share_lod(input);
-}
-
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
@@ -1196,7 +1170,6 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
                         int64_t padding_idx,
-                        bool sparse,
                         MetaTensor* out) {
   const auto& table_dims = weight.dims();
   const auto& ids_dims = x.dims();
