@@ -198,22 +198,10 @@ def recompute(op):
     return RecomputeOperator(op)
 
 
-# _g_fetched_tensors = {}
-
-# def fetch(tensor, name=None):
-#     if name is None:
-#         _g_fetched_tensors[tensor.name] = tensor
-#     else:
-#         _g_fetched_tensors[name] = tensor
-
-# def _get_fetches():
-#     return _g_fetched_tensors
-
 _g_collections = {}
 
 
 class CollectionNames(object):
-    FEEDS = "feeds"
     FETCHES = "fetches"
 
 
@@ -225,12 +213,12 @@ def get_collection(name):
     return _g_collections[name]
 
 
-def add_to_collection(collection_name, value, value_name=None):
+def add_to_collection(collection_name, value, name=None):
     if collection_name not in _g_collections:
         _g_collections[collection_name] = []
     else:
-        if value_name is not None:
-            _g_collections[collection_name].append((value_name, value))
+        if name is not None:
+            _g_collections[collection_name].append((name, value))
         else:
             _g_collections[collection_name].append((None, value))
 

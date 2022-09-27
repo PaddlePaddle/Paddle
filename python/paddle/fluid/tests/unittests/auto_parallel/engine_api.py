@@ -46,6 +46,8 @@ class_num = 10
 paddle.seed(44)
 
 is_fetch = True
+is_feed = True
+my_feed_vars = []
 
 
 class MyDataset(Dataset):
@@ -92,16 +94,20 @@ class MLPLayer(nn.Layer):
     def forward(self, input):
         out = auto.shard_op(self.norm, PP_MESH_0)(input)
         out = self.linear0(out)
+        if is_feed:
+            my_feed_vars.append((out, out.shape))
         out = F.gelu(out, approximate=True)
         out = auto.shard_op(self.linear1, PP_MESH_1)(out)
         out = self.dropout(out)
         out = self.linear2(out)
+        if is_feed:
+            my_feed_vars.append((out, out.shape))
         if is_fetch:
-            auto.fetch(out, "my_out")
+            auto.fetch(out, "my_fetch")
         return out
 
 
-def train(fetch):
+def train(fetch=True):
     global is_fetch
     is_fetch = fetch
     mlp = MLPLayer(hidden_size=hidden_size,
@@ -145,7 +151,11 @@ def train(fetch):
     temp_dir.cleanup()
 
 
-def train_callable():
+def train_callable(fetch=True, feed=True):
+    global is_fetch
+    is_fetch = fetch
+    global is_feed
+    is_feed = feed
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    dropout_ratio=0.1,
@@ -163,29 +173,67 @@ def train_callable():
 
     engine = auto.Engine(mlp, loss, optimizer, metric, strategy=strategy)
 
+    feed_dict = {}
+    for feed_var, shape in my_feed_vars:
+        feed_dict[feed_var.name] = np.zeros(shape, dtype="float32")
+
+    # Build normal dataloader
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     train_dataloader = engine.dataloader(train_dataset,
+                                         return_list=False,
                                          batch_size=batch_size,
                                          mode="train")
-    for _ in train_dataloader:
-        outs = engine(mode="train")
+    for data in train_dataloader:
+        outs = engine(data, feeds=feed_dict, mode="train")
 
     # eval
     eval_dataset2 = MyDataset(batch_size)
     eval_dataloader = engine.dataloader(eval_dataset2,
                                         batch_size=batch_size,
                                         mode="eval")
-    for _ in eval_dataloader:
-        outs = engine(mode="eval")
+    for data in eval_dataloader:
+        outs = engine(data, feeds=feed_dict, mode="eval")
 
     # predict
     test_dataset = MyDataset(batch_size)
     predict_dataloader = engine.dataloader(test_dataset,
                                            batch_size=batch_size,
                                            mode="predict")
-    for _ in predict_dataloader:
-        outs = engine(mode="predict")
+    for data in predict_dataloader:
+        outs = engine(data, feeds=feed_dict, mode="predict")
+
+    # save
+    temp_dir = tempfile.TemporaryDirectory()
+    model_filename = os.path.join(temp_dir.name, 'mlp')
+    engine.save(model_filename, training=True)
+    engine.load(model_filename)
+    temp_dir.cleanup()
+
+    # Build dataloader from generator
+    # train
+    train_dataset = MyDataset(batch_num * batch_size)
+    train_dataloader = engine.dataloader_from_generator(train_dataset,
+                                                        batch_size=batch_size,
+                                                        mode="train")
+    for data in train_dataloader:
+        outs = engine(data, feeds=feed_dict, mode="train")
+
+    # eval
+    eval_dataset2 = MyDataset(batch_size)
+    eval_dataloader = engine.dataloader_from_generator(eval_dataset2,
+                                                       batch_size=batch_size,
+                                                       mode="eval")
+    for data in eval_dataloader:
+        outs = engine(data, feeds=feed_dict, mode="eval")
+
+    # predict
+    test_dataset = MyDataset(batch_size)
+    predict_dataloader = engine.dataloader_from_generator(test_dataset,
+                                                          batch_size=batch_size,
+                                                          mode="predict")
+    for data in predict_dataloader:
+        outs = engine(data, feeds=feed_dict, mode="predict")
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
@@ -198,4 +246,5 @@ def train_callable():
 if __name__ == "__main__":
     train(fetch=True)
     train(fetch=False)
-    train_callable()
+    train_callable(fetch=True, feed=False)
+    train_callable(fetch=True, feed=True)

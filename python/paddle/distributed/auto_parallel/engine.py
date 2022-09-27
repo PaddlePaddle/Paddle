@@ -43,7 +43,7 @@ from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
-from .dist_loader import NonIterableGeneratorLoader
+from .dist_loader import DistributedDataLoaderFromGenerator, DistributedDataLoader
 from .utils import print_program_with_dist_attr, to_list
 from .utils import get_logger, get_dist_attr
 from .process_group import new_process_group, get_all_process_groups
@@ -185,6 +185,7 @@ class Engine:
         self._dist_main_progs = defaultdict(dict)  # dist main programs
         self._dist_startup_progs = defaultdict(dict)  # dist startup programs
         self._feed_vars = {}
+        self._feed_vars_list = {}
         self._fetch_vars = {}
         self._planners = {}
         self._mode_init_states = {
@@ -208,18 +209,41 @@ class Engine:
         self._initialize(mode)
         self._mode_init_states[mode] = True
 
-    def _prepare_feed(self, user_feeds=None, mode="train"):
+    def _prepare_feed(self, sample=None, user_feeds=None, mode="train"):
+        feeds = {}
+        feed_vars_name = [var.name for var in self._feed_vars_list[mode]]
+        if sample is not None:
+            if isinstance(sample, list):
+                if len(sample) == 1 and isinstance(sample[0], dict):
+                    assert len(sample[0]) == len(feed_vars_name), \
+                        "The length of sample {} should be the same as the length of feed vars {} ".format(
+                            sample[0].keys(), feed_vars_name)
+                    for name, data in sample[0].items():
+                        assert name in feed_vars_name, "Cannot find the name {} in feed data {}".format(
+                            name, feed_vars_name)
+                        feeds[name] = data
+                else:
+                    assert len(sample) == len(feed_vars_name), \
+                        "The length of sample {} should be the same as the length of feed vars {} ".format(
+                            len(sample), len(feed_vars_name))
+                    for name, data in zip(feed_vars_name, sample):
+                        feeds[name] = data
+            elif isinstance(sample, dict):
+                assert len(sample) == len(feed_vars_name), \
+                    "The length of sample {} should be the same as the length of feed vars {} ".format(
+                        sample.keys(), feed_vars_name)
+                for name, data in sample.items():
+                    assert name in feed_vars_name, "Cannot find the name {} in feed data {}".format(
+                        name, feed_vars_name)
+                    feeds[name] = data
+            else:
+                raise ValueError("Unsupported sample type {}".format(
+                    type(sample).__name__))
         if user_feeds is not None:
             assert isinstance(user_feeds, dict), \
                 "user_feeds must be a dict, but receive {}".format(type(user_feeds).__name__)
-        feeds = {}
-        # TODO: add inputs and labels feed dict
-        for name, var in get_collection(CollectionNames.FEEDS):
-            assert name is not None, "No name defined for feed var"
-            feeds[name] = var
-        if user_feeds is not None:
-            for name, var in user_feeds.items():
-                feeds[name] = var
+            for name, data in user_feeds.items():
+                feeds[name] = data
         return feeds
 
     def _prepare_fetch(self, user_fetches=None, mode="train"):
@@ -380,6 +404,7 @@ class Engine:
         inputs_var = self._dist_contexts[mode].serial_feed_vars["inputs"]
         labels_var = self._dist_contexts[mode].serial_feed_vars["labels"]
         block = self._dist_contexts[mode].serial_main_program.global_block()
+        # TODO: check this feed_list
         feed_list = []
         for var in inputs_var + labels_var:
             if var.name in block.vars:
@@ -540,13 +565,8 @@ class Engine:
         self.inputs_spec = self._validate_spec(self.inputs_spec)
         self.labels_spec = self._validate_spec(self.labels_spec)
 
-    def __call__(self,
-                 inputs=None,
-                 labels=None,
-                 feeds=None,
-                 fetches=None,
-                 mode="train"):
-        feed_dict = self._prepare_feed(feeds, mode)
+    def __call__(self, sample=None, feeds=None, fetches=None, mode="train"):
+        feed_dict = self._prepare_feed(sample, feeds, mode)
         fetch_list, fetch_new_names, fetch_sections = self._prepare_fetch(
             fetches, mode)
         try:
@@ -562,7 +582,7 @@ class Engine:
                         fetch_sections)
         return outs
 
-    # TODO: need a better to print the log
+    # TODO: need a better way to print the log
     def _print_log(self,
                    outs,
                    mode="train",
@@ -687,9 +707,18 @@ class Engine:
 
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine._prepare_program('train')` first."
-        train_dataloader = self._prepare_dataloader(train_data, batch_size,
-                                                    epochs, steps_per_epoch,
-                                                    collate_fn)
+        train_dataloader = self._prepare_dataloader_from_generator(
+            dataset=train_data,
+            capacity=70,
+            # use_double_buffer=use_double_buffer,
+            iterable=False,
+            # return_list=return_list,
+            # use_multiprocess=use_multiprocess,
+            # drop_last=drop_last,
+            batch_size=batch_size,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch,
+            collate_fn=collate_fn)
 
         fetch_list, fetch_new_names, fetch_sections = self._prepare_fetch(
             mode=self.mode)
@@ -782,11 +811,20 @@ class Engine:
 
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine._prepare_program('eval')` first."
-        valid_dataloader = self._prepare_dataloader(valid_data,
-                                                    batch_size,
-                                                    steps_per_epoch=steps,
-                                                    collate_fn=collate_fn)
-
+        valid_dataloader = self._prepare_dataloader_from_generator(
+            dataset=valid_data,
+            # feed_list=feed_list,
+            capacity=70,
+            # use_double_buffer=use_double_buffer,
+            iterable=False,
+            # return_list=return_list,
+            # use_multiprocess=use_multiprocess,
+            # drop_last=drop_last,
+            # places=places,
+            batch_size=batch_size,
+            # epochs=epochs,
+            steps_per_epoch=steps,
+            collate_fn=collate_fn)
         fetch_list, fetch_new_names, fetch_sections = self._prepare_fetch(
             mode=self.mode)
 
@@ -865,10 +903,20 @@ class Engine:
 
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine._prepare_program('predict')` first."
-        test_dataloader = self._prepare_dataloader(test_data,
-                                                   batch_size,
-                                                   steps_per_epoch=steps,
-                                                   collate_fn=collate_fn)
+        test_dataloader = self._prepare_dataloader_from_generator(
+            dataset=test_data,
+            # feed_list=feed_list,
+            capacity=70,
+            # use_double_buffer=use_double_buffer,
+            iterable=False,
+            # return_list=return_list,
+            # use_multiprocess=use_multiprocess,
+            # drop_last=drop_last,
+            # places=places,
+            batch_size=batch_size,
+            # epochs=epochs,
+            steps_per_epoch=steps,
+            collate_fn=collate_fn)
 
         fetch_list, fetch_new_names, fetch_sections = self._prepare_fetch(
             mode=self.mode)
@@ -895,14 +943,20 @@ class Engine:
 
     def dataloader(self,
                    dataset,
-                   sample_split=1,
+                   return_list=True,
                    batch_size=1,
+                   shuffle=False,
+                   drop_last=False,
+                   collate_fn=None,
+                   num_workers=0,
+                   use_buffer_reader=True,
+                   use_shared_memory=True,
+                   timeout=0,
+                   worker_init_fn=None,
                    epochs=1,
                    steps_per_epoch=None,
-                   collate_fn=None,
-                   mode="train",
-                   from_generator=True):
-        assert from_generator, "Only support from_generator for now"
+                   sample_split=1,
+                   mode="train"):
         self.mode = mode
         inputs, labels = self._split_sample_item(dataset, sample_split)
         self._infer_sample_spec(inputs, labels, batch_size)
@@ -910,16 +964,137 @@ class Engine:
             self._prepare_program(self.mode)
         else:
             self._switch_mode("train")
-        dataloader = self._prepare_dataloader(dataset, batch_size, epochs,
-                                              steps_per_epoch, collate_fn)
+        dataloader = self._prepare_dataloader(
+            dataset,
+            return_list=return_list,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=drop_last,
+            collate_fn=collate_fn,
+            num_workers=num_workers,
+            use_buffer_reader=use_buffer_reader,
+            use_shared_memory=use_shared_memory,
+            timeout=timeout,
+            worker_init_fn=worker_init_fn,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch)
         return dataloader
 
     def _prepare_dataloader(self,
                             dataset,
-                            batch_size,
+                            return_list=True,
+                            batch_size=1,
+                            shuffle=False,
+                            drop_last=False,
+                            collate_fn=None,
+                            num_workers=0,
+                            use_buffer_reader=True,
+                            use_shared_memory=True,
+                            timeout=0,
+                            worker_init_fn=None,
                             epochs=1,
-                            steps_per_epoch=None,
-                            collate_fn=None):
+                            steps_per_epoch=None):
+
+        if self._strategy.gradient_merge and batch_size is not None:
+            assert batch_size % self._k_steps == 0, \
+                "Requires batch_size:[{}] to be divisible by k_steps:[{}].".format(batch_size, self._k_steps)
+            batch_size //= self._k_steps
+
+        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
+        dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
+        dist_context = self._dist_contexts[self.mode]
+        dist_main_block = dist_main_prog.global_block()
+
+        # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
+        # Cause predict_program does not contain labels var,
+        # then we will add labels var from serial_program to dist_program,
+        # that maintains the length of feed_list equal to the length of dataset's values.
+        inputs_var = self._feed_vars[self.mode]["inputs"]
+        labels_var = self._feed_vars[self.mode]["labels"]
+        feed_list = []
+        for var in inputs_var + labels_var:
+            if var.name in dist_main_block.vars:
+                feed_list.append(dist_main_block.vars[var.name])
+            else:
+                copy_var = dist_main_block._clone_variable(var, var.persistable)
+                copy_var.desc.set_original_id(var.desc.original_id())
+                feed_list.append(copy_var)
+        self._feed_vars_list[self.mode] = feed_list
+
+        # insert read op at the end of program
+        places = paddle.static.cuda_places()
+        with static.program_guard(dist_main_prog, dist_startup_prog):
+            dataloader = DistributedDataLoader(
+                dataset,
+                feed_list=feed_list,
+                places=places,
+                return_list=return_list,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+                collate_fn=collate_fn,
+                num_workers=num_workers,
+                use_buffer_reader=use_buffer_reader,
+                use_shared_memory=use_shared_memory,
+                timeout=timeout,
+                worker_init_fn=worker_init_fn,
+                epochs=epochs,
+                steps_per_epoch=steps_per_epoch,
+                split_data=self._strategy.split_data,
+                data_parallel_world_size=self._dp_world_sizes,
+                data_parallel_rank=self._dp_ranks)
+
+        return dataloader
+
+    def dataloader_from_generator(self,
+                                  dataset,
+                                  capacity=70,
+                                  use_double_buffer=True,
+                                  iterable=True,
+                                  return_list=False,
+                                  use_multiprocess=False,
+                                  drop_last=True,
+                                  batch_size=1,
+                                  epochs=1,
+                                  steps_per_epoch=None,
+                                  collate_fn=None,
+                                  sample_split=1,
+                                  mode="train"):
+        self.mode = mode
+        inputs, labels = self._split_sample_item(dataset, sample_split)
+        self._infer_sample_spec(inputs, labels, batch_size)
+        if not self._mode_init_states[self.mode]:
+            self._prepare_program(self.mode)
+        else:
+            self._switch_mode("train")
+        dataloader = self._prepare_dataloader_from_generator(
+            dataset=dataset,
+            # feed_list=feed_list,
+            capacity=capacity,
+            use_double_buffer=use_double_buffer,
+            iterable=iterable,
+            return_list=return_list,
+            use_multiprocess=use_multiprocess,
+            drop_last=drop_last,
+            # places=places,
+            batch_size=batch_size,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch,
+            collate_fn=collate_fn)
+        return dataloader
+
+    def _prepare_dataloader_from_generator(self,
+                                           dataset,
+                                           capacity=None,
+                                           use_double_buffer=True,
+                                           iterable=True,
+                                           return_list=False,
+                                           use_multiprocess=False,
+                                           drop_last=True,
+                                           batch_size=1,
+                                           epochs=1,
+                                           steps_per_epoch=None,
+                                           collate_fn=None):
 
         if self._strategy.gradient_merge and batch_size is not None:
             assert batch_size % self._k_steps == 0, \
@@ -956,17 +1131,23 @@ class Engine:
         # insert read op at the end of program
         places = paddle.static.cuda_places()
         with static.program_guard(dist_main_prog, dist_startup_prog):
-            dataloader = NonIterableGeneratorLoader(
-                dataset,
-                feed_list,
-                places,
-                batch_size,
-                epochs,
-                steps_per_epoch,
-                collate_fn,
+            dataloader = DistributedDataLoaderFromGenerator(
+                dataset=dataset,
+                feed_list=feed_list,
+                capacity=capacity,
+                use_double_buffer=use_double_buffer,
+                iterable=iterable,
+                return_list=return_list,
+                use_multiprocess=use_multiprocess,
+                drop_last=drop_last,
+                places=places,
+                batch_size=batch_size,
+                epochs=epochs,
+                steps_per_epoch=steps_per_epoch,
+                collate_fn=collate_fn,
+                split_data=self._strategy.split_data,
                 data_parallel_world_size=self._dp_world_sizes,
-                data_parallel_rank=self._dp_ranks,
-                split_data=self._strategy.split_data)
+                data_parallel_rank=self._dp_ranks)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)

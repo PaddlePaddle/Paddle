@@ -27,7 +27,6 @@ from .reshard import Resharder
 from .partitioner import Partitioner
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
-from .dist_loader import NonIterableGeneratorLoader
 from .utils import make_data_unshard, set_grad_var_shape
 from .utils import print_program_with_dist_attr, to_list
 from .utils import get_logger
