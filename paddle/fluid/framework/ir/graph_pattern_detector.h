@@ -1940,6 +1940,37 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(reshape4_out);
 };
 
+//
+// \bref pattern looking for reverse circlic shift in window attention.
+//       The reverse circlic shift based on roll op,
+//       therefore, reverse_roll were adopted as pattern and fused op name.
+//
+struct ReverseRollPattern : public PatternBase{
+  ReverseRollPattern(PDPattern* pattern,
+                                 const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reverse_roll") {}
+
+  PDNode* operator()(PDNode* in);
+  PATTERN_DECL_NODE(window_mha_i00_op);
+  PATTERN_DECL_NODE(window_mha_i00_out);
+  PATTERN_DECL_NODE(matmul_i10_op);
+  PATTERN_DECL_NODE(matmul_i10_out);
+  PATTERN_DECL_NODE(elw_add_i20_op);
+  PATTERN_DECL_NODE(elw_add_i20_out);
+  PATTERN_DECL_NODE(reshape2_00_op);
+  PATTERN_DECL_NODE(reshape2_00_out);
+  PATTERN_DECL_NODE(reshape2_10_op);
+  PATTERN_DECL_NODE(reshape2_10_out);
+  PATTERN_DECL_NODE(transpose2_20_op);
+  PATTERN_DECL_NODE(transpose2_20_out);
+  PATTERN_DECL_NODE(reshape2_30_op);
+  PATTERN_DECL_NODE(reshape2_30_out);
+  PATTERN_DECL_NODE(roll_40_op);
+  PATTERN_DECL_NODE(roll_40_out);
+  PATTERN_DECL_NODE(reshape2_50_op);
+  PATTERN_DECL_NODE(reshaep2_50_out);
+};
+
 // Add support int8 flag
 struct AddSupportInt8 : public PatternBase {
   AddSupportInt8(PDPattern* pattern, const std::string& name_scope)
