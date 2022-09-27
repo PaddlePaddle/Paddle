@@ -15,8 +15,6 @@
 Unit testing for affine_channel_op
 """
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest

@@ -18,7 +18,6 @@ Usage:
     python check_op_kernel_same_dtypes.py > all_kernels.txt
     python check_op_kernel_same_dtypes.py OP_KERNEL_DTYPE_DEV.spec OP_KERNEL_DTYPE_PR.spec > is_valid
 """
-from __future__ import print_function
 import sys
 import re
 import collections

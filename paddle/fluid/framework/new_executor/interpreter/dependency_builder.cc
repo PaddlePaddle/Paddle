@@ -70,14 +70,14 @@ const std::map<int, std::set<int>>& DependencyBuilder::Build(
   BuildOpHappensBefore();
   ShrinkDownstreamMap();
 
+  if (is_sequential_run) {
+    AddDependencyForSequentialRun();
+  }
+
   AddDependencyForCoalesceTensorOp();
   AddDependencyForCommunicationOp();
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
-
-  if (is_sequential_run) {
-    AddDependencyForSequentialRun();
-  }
 
   is_build_ = true;
 
@@ -335,6 +335,10 @@ void DependencyBuilder::AddDownstreamOp(int prior_op_idx,
 
   if (op_happens_before_.size() != 0) {
     for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+      if (op_happens_before_[op_idx][prior_op_idx]) {
+        op_happens_before_[op_idx][posterior_op_idx] = true;
+      }
+
       if (op_happens_before_[posterior_op_idx][op_idx]) {
         op_happens_before_[prior_op_idx][op_idx] = true;
       }
@@ -461,10 +465,6 @@ void DependencyBuilder::BuildDownstreamMap() {
       AddDownstreamOp(dep_op, op);
     }
   }
-
-  VLOG(6) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
-  VLOG(6) << "downstream_map: " << std::endl
-          << StringizeDownstreamMap(op_downstream_map_);
 }
 
 void DependencyBuilder::BuildOpHappensBefore() {
@@ -542,8 +542,9 @@ void DependencyBuilder::ShrinkDownstreamMap() {
     }
     op_downstream_map_.at(i) = minumum_nexts;
   }
-  VLOG(6) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
-  VLOG(6) << "downstream_map: " << std::endl
+  VLOG(8) << "Finish shrink downstream map";
+  VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
+  VLOG(8) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map_);
 }
 
