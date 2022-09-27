@@ -22,7 +22,7 @@ template <typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
-  framework::DDim x_dims = x_grad->dims();
+  phi::DDim x_dims = x_grad->dims();
 
   auto out_vec_dims = phi::vectorize(out_grad->dims());
 
