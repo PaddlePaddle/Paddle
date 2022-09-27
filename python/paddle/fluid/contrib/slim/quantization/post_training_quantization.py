@@ -470,25 +470,31 @@ class PostTrainingQuantization(object):
         else:
             main_graph = IrGraph(core.Graph(self._program.desc), for_test=True)
             return main_graph
-
+    
     def _adaround_apply(self):
         assert self._algo != "min_max", "The algo should not be min_max."
         if self._algo in ["KL", "hist"]:
             scale_dict = self._quantized_var_threshold
         else:
             scale_dict = self._quantized_threshold
-        run_adaround(self._data_loader,
-                     self._program,
-                     self._fetch_list,
-                     self._executor,
-                     self._scope,
-                     self._place,
-                     self._quantized_op_pairs,
-                     self._weight_op_pairs,
-                     scale_dict,
-                     num_iterations=self._batch_nums,
-                     bias_correction=self._bias_correction,
-                     lr=self._learning_rate)
+        self._program = run_adaround(self._data_loader,
+                    self._program,
+                    self._feed_list,
+                    self._fetch_list,
+                    self._executor,
+                    self._scope,
+                    self._place,
+                    self._quantized_op_pairs,
+                    self._input_var_names,
+                    self._weight_op_pairs,
+                    scale_dict=copy.deepcopy(scale_dict),
+                    num_iterations=self._batch_nums,
+                    bias_correction=self._bias_correction,
+                    lr=self._learning_rate,
+                    weight_quantize_type=self._weight_quantize_type,
+                    epochs=20,
+                    qdrop=self._qdrop,
+                    model_name=self._model_name)
 
     def save_quantized_model(self,
                              save_model_path,
