@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import errno
 import inspect
 import logging
@@ -441,8 +439,6 @@ def save_to_file(path, content):
 def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
                          **kwargs):
     """
-    :api_attr: Static Graph
-
     Save current model and its parameters to given path. i.e.
     Given path_prefix = "/path/to/modelname", after invoking
     save_inference_model(path_prefix, feed_vars, fetch_vars, executor),
@@ -459,7 +455,7 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
 
             - program(Program): specify a program if you don't want to use default main program.
 
-            - clip_extra(bool): set to True if you want to clip extra information for every operator.
+            - clip_extra(bool): the flag indicating whether to clip extra information for every operator. Default: True.
 
     Returns:
         None

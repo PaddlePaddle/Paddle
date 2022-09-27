@@ -318,7 +318,39 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          lambda x: paddle.var(x, axis=1, unbiased=False),
          (np.random.rand(10, 20, 30), ), None, 'float32'),
         ('var_with_keepdim', lambda x: paddle.var(x, axis=1, keepdim=True),
-         (np.random.rand(10, 20, 30), ), None, 'float32')))
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('bn', lambda x, w, b: paddle.nn.functional.batch_norm(
+            x, paddle.ones((10, )), paddle.ones(
+                (10, )), w, b), (np.random.rand(10, 10), np.random.rand(10),
+                                 np.random.rand(10)), None, 'float32'),
+        ('bn_train', lambda x, w, b: paddle.nn.functional.batch_norm(
+            x, paddle.ones((10, )), paddle.ones((10, )), w, b, training=True),
+         (np.random.rand(
+             10, 10), np.random.rand(10), np.random.rand(10)), None, 'float32'),
+        ('bn_nhwc', lambda x, w, b: paddle.nn.functional.batch_norm(
+            x,
+            paddle.ones((10, )) + 1,
+            paddle.ones((10, )),
+            w,
+            b,
+            training=True,
+            data_format='NHWC',
+        ), (np.random.rand(
+            10, 10), np.random.rand(10), np.random.rand(10)), None, 'float32'),
+        ('bn_global_stat',
+         lambda x, w, b: paddle.nn.functional.batch_norm(x,
+                                                         paddle.ones(
+                                                             (10, )) + 3.2,
+                                                         paddle.ones(
+                                                             (10, )) + 6.7,
+                                                         w,
+                                                         b,
+                                                         training=True,
+                                                         data_format='NHWC',
+                                                         use_global_stats=True),
+         (np.random.rand(
+             10, 10), np.random.rand(10), np.random.rand(10)), None, 'float32'),
+    ))
 class TestGrad(unittest.TestCase):
 
     def setUp(self):
