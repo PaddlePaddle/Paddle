@@ -48,25 +48,20 @@ py::object PythonRpcHandler::Deserialize(const std::string& obj) {
   return pyDeserialize_(py::bytes(obj));
 }
 
-PythonRpcHandler* PythonRpcHandler::python_rpc_handler_ = nullptr;
+std::shared_ptr<PythonRpcHandler> PythonRpcHandler::python_rpc_handler_ =
+    nullptr;
 std::mutex PythonRpcHandler::lock_;
 
-PythonRpcHandler* PythonRpcHandler::GetInstance() {
+std::shared_ptr<PythonRpcHandler> PythonRpcHandler::GetInstance() {
   if (python_rpc_handler_ == nullptr) {
     std::lock_guard<std::mutex> guard(lock_);
     if (python_rpc_handler_ == nullptr) {
-      python_rpc_handler_ = new PythonRpcHandler;
+      python_rpc_handler_ = std::make_shared<PythonRpcHandler>();
       return python_rpc_handler_;
     }
   }
   return python_rpc_handler_;
 }
 
-void PythonRpcHandler::Clear() {
-  if (python_rpc_handler_ == nullptr) {
-    delete python_rpc_handler_;
-    python_rpc_handler_ = nullptr;
-  }
-}
 }  // namespace distributed
 }  // namespace paddle

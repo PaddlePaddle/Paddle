@@ -57,7 +57,8 @@ class RpcService : public RpcBaseService {
               << cntl->local_side() << ": "
               << " (attached=" << cntl->request_attachment() << ")";
     std::string py_func_str = request->message();
-    PythonRpcHandler *python_handler = PythonRpcHandler::GetInstance();
+    std::shared_ptr<PythonRpcHandler> python_handler =
+        PythonRpcHandler::GetInstance();
     // acquire gil, because native Python objects are used
     py::gil_scoped_acquire ag;
     py::object py_func_obj = python_handler->Deserialize(py_func_str);

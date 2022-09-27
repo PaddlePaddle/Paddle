@@ -36,7 +36,8 @@ class FutureWrapper {
     assert(!PyGILState_Check());
     auto s = fut_.get();
     py::gil_scoped_acquire ag;
-    PythonRpcHandler *python_handler = PythonRpcHandler::GetInstance();
+    std::shared_ptr<PythonRpcHandler> python_handler =
+        PythonRpcHandler::GetInstance();
     py::object obj = python_handler->Deserialize(py::bytes(s));
     return obj;
   }

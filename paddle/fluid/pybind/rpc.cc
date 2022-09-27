@@ -130,11 +130,5 @@ void GetAllServiceInfos(py::module* m) {
       },
       py::call_guard<py::gil_scoped_release>());
 }
-void ClearPythonRpcHandler(py::module* m) {
-  m->def("rpc_clear_python_rpc_handler", []() {
-    auto instance = PythonRpcHandler::GetInstance();
-    instance->Clear();
-  });
-}
 }  // namespace pybind
 }  // namespace paddle

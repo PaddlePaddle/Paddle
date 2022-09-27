@@ -29,7 +29,9 @@ namespace distributed {
 
 class PYBIND11_EXPORT PythonRpcHandler {
  public:
-  static PythonRpcHandler* GetInstance();
+  PythonRpcHandler();
+  ~PythonRpcHandler() = default;
+  static std::shared_ptr<PythonRpcHandler> GetInstance();
   // Run a pickled Python function and return the result py::object
   py::object RunPythonFunc(const py::object& pythonFunc);
 
@@ -39,17 +41,10 @@ class PYBIND11_EXPORT PythonRpcHandler {
   // Deserialize a string into a py::object
   py::object Deserialize(const std::string& obj);
 
-  // clear python_rpc_handler instance, otherwise memory leak will lead to
-  // _tstate_lock is released
-  void Clear();
-
  private:
-  PythonRpcHandler();
-  ~PythonRpcHandler() = default;
-
   DISABLE_COPY_AND_ASSIGN(PythonRpcHandler);
 
-  static PythonRpcHandler* python_rpc_handler_;
+  static std::shared_ptr<PythonRpcHandler> python_rpc_handler_;
   // Ref to `paddle.distributed.fleet.rpc.internal.run_py_func`.
   py::object pyRunFunction_;
 
