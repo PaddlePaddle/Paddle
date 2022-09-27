@@ -15,7 +15,7 @@ if(WITH_XPU)
   cc_library(
     kernel_factory
     SRCS kernel_factory.cc
-    DEPS phi_enforce fluid_convert_utils xpu_op_list)
+    DEPS phi_enforce fluid_convert_utils convert_utils xpu_op_list)
 else()
   cc_library(
     kernel_factory

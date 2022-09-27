@@ -18,6 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 #endif
 
 DECLARE_bool(enable_api_kernel_fallback);
@@ -116,11 +117,11 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   }
 #endif
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+  auto op_type = TransToFluidOpName(kernel_name);
   bool is_xpu_unsupport =
-      paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
-          !paddle::platform::is_xpu_support_op(op.Type(),
-                                               expected_kernel_key) ||
-      paddle::platform::is_in_xpu_black_list(op.Type());
+      kernel_key.backend() == Backend::XPU &&
+          !paddle::platform::is_xpu_support_op(op_type, expected_kernel_key) ||
+      paddle::platform::is_in_xpu_black_list(op_type);
 
 #endif
   auto kernel_iter = iter->second.find(kernel_key);
