@@ -84,7 +84,7 @@ class AudioClassificationDataset(paddle.io.Dataset):
                                               **self.feat_config)
             else:
                 feature_extractor = feat_func(**self.feat_config)
-            record['feat'] = feature_extractor(waveform).squeeze(0).numpy()
+            record['feat'] = feature_extractor(waveform).squeeze(0)
         else:
             record['feat'] = waveform
         record['label'] = label
@@ -92,8 +92,7 @@ class AudioClassificationDataset(paddle.io.Dataset):
 
     def __getitem__(self, idx):
         record = self._convert_to_record(idx)
-        return np.array(record['feat']).transpose(), np.array(record['label'],
-                                                              dtype=np.int64)
+        return record['feat'], record['label']
 
     def __len__(self):
         return len(self.files)

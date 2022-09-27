@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .esc50 import ESC50
+from .tess import TESS
 
-__all__ = ["ESC50"]
+__all__ = ["ESC50", "TESS"]
