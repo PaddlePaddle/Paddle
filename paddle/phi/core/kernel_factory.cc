@@ -136,6 +136,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
       || paddle::platform::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
+
 #endif
   ) {
     // Fallback CPU backend
