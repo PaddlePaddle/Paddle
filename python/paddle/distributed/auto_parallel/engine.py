@@ -619,7 +619,7 @@ class Engine:
                 string = '[train] ' + ''.join(list(train_logs.keys()))
                 self._logger.info(string.format(*list(train_logs.values())))
 
-            if valid_data and epoch % valid_freq == 0:
+            if valid_data and (epoch + 1) % valid_freq == 0:
                 self.evaluate(valid_data, valid_sample_split, batch_size,
                               valid_steps, collate_fn, callbacks)
                 self._switch_mode("train")
