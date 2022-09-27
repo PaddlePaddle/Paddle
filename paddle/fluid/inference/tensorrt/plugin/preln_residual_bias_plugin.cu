@@ -31,6 +31,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
 #define FINAL_MASK 0xffffffff
 template <typename T, int NUM>
 __inline__ __device__ T warpReduceSumV2(T *val) {
@@ -77,7 +78,8 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
     const half2 *__restrict gamma,
     const half2 *__restrict beta,
     int m,
-    int n) {
+    int n,
+    float epsilon) {
   __shared__ float s_mean;
   __shared__ float s_variance;
   float x_sum = 0.0f;
@@ -119,7 +121,7 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
 
   if (threadIdx.x == 0) {
     s_mean = sums[0] / n / 2;
-    s_variance = rsqrtf(sums[1] / n / 2 - s_mean * s_mean + 1e-6f);
+    s_variance = rsqrtf(sums[1] / n / 2 - s_mean * s_mean + epsilon);
   }
   __syncthreads();
 
@@ -137,6 +139,7 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
     normed_output[index] = val;
   }
 }
+#endif
 
 using half = phi::dtype::float16;
 
@@ -428,7 +431,8 @@ int PrelnResidualBiasPluginDynamic::enqueue(
           (const half2 *)scale,
           (const half2 *)layernorm_bias,
           rows,
-          half_n);
+          half_n,
+          epsilon);
     } else {
       paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
                                                                   uint8_t,
