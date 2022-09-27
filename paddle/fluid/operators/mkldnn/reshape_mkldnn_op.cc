@@ -104,7 +104,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferInOutShape(const framework::ExecutionContext& ctx,
-
                        framework::DDim& x_dims,            // NOLINT
                        framework::DDim& out_dims) const {  // NOLINT
     switch (op_name) {
