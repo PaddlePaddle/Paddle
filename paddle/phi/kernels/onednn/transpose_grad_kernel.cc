@@ -65,4 +65,4 @@ void TransposeGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    transpose2_grad, OneDNN, ALL_LAYOUT, phi::TransposeGradKernel, float) {}
+    transpose_grad, OneDNN, ALL_LAYOUT, phi::TransposeGradKernel, float) {}
