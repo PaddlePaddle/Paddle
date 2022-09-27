@@ -370,6 +370,12 @@ def _p2p_helper(tensor_send_next,
                                  rank_id=mp_rank,
                                  group=_hcg.recv_prev_group,
                                  use_calc_stream=sync_recv))
+                if sync_recv:
+                    allgather_partial(d,
+                                      nranks=mp_degree,
+                                      rank_id=mp_rank,
+                                      group=mp_group,
+                                      use_calc_stream=True)
         else:
             tasks.append(
                 recv_partial(tensor_recv_prev,
@@ -378,6 +384,12 @@ def _p2p_helper(tensor_send_next,
                              rank_id=mp_rank,
                              group=_hcg.recv_prev_group,
                              use_calc_stream=sync_recv))
+            if sync_recv:
+                allgather_partial(tensor_recv_prev,
+                                  nranks=mp_degree,
+                                  rank_id=mp_rank,
+                                  group=mp_group,
+                                  use_calc_stream=True)
 
     if tensor_send_next is not None:
         if isinstance(tensor_send_next, tuple):
@@ -410,6 +422,12 @@ def _p2p_helper(tensor_send_next,
                                  rank_id=mp_rank,
                                  group=_hcg.recv_next_group,
                                  use_calc_stream=sync_recv))
+                if sync_recv:
+                    allgather_partial(d,
+                                      nranks=mp_degree,
+                                      rank_id=mp_rank,
+                                      group=mp_group,
+                                      use_calc_stream=True)
 
         else:
             tasks.append(
@@ -419,6 +437,12 @@ def _p2p_helper(tensor_send_next,
                              rank_id=mp_rank,
                              group=_hcg.recv_next_group,
                              use_calc_stream=sync_recv))
+            if sync_recv:
+                allgather_partial(tensor_recv_next,
+                                  nranks=mp_degree,
+                                  rank_id=mp_rank,
+                                  group=mp_group,
+                                  use_calc_stream=True)
 
     if not sync_recv and in_dygraph_mode():
         # wait irecv tasks in eager dygraph mode with new comm library
@@ -426,26 +450,27 @@ def _p2p_helper(tensor_send_next,
             assert task is not None
             task.wait()
 
-    tensors_for_all_gather = []
-    if tensor_recv_prev is not None:
-        if isinstance(tensor_recv_prev, tuple):
-            for d in tensor_recv_prev:
-                tensors_for_all_gather.append(d)
-        else:
-            tensors_for_all_gather.append(tensor_recv_prev)
-    if tensor_recv_next is not None:
-        if isinstance(tensor_recv_next, tuple):
-            for d in tensor_recv_next:
-                tensors_for_all_gather.append(d)
-        else:
-            tensors_for_all_gather.append(tensor_recv_next)
+    if not sync_recv:
+        tensors_for_all_gather = []
+        if tensor_recv_prev is not None:
+            if isinstance(tensor_recv_prev, tuple):
+                for d in tensor_recv_prev:
+                    tensors_for_all_gather.append(d)
+            else:
+                tensors_for_all_gather.append(tensor_recv_prev)
+        if tensor_recv_next is not None:
+            if isinstance(tensor_recv_next, tuple):
+                for d in tensor_recv_next:
+                    tensors_for_all_gather.append(d)
+            else:
+                tensors_for_all_gather.append(tensor_recv_next)
 
-    for tensor in tensors_for_all_gather:
-        allgather_partial(tensor,
-                          nranks=mp_degree,
-                          rank_id=mp_rank,
-                          group=mp_group,
-                          use_calc_stream=True)
+        for tensor in tensors_for_all_gather:
+            allgather_partial(tensor,
+                              nranks=mp_degree,
+                              rank_id=mp_rank,
+                              group=mp_group,
+                              use_calc_stream=True)
 
     return tensor_recv_prev, tensor_recv_next
 
