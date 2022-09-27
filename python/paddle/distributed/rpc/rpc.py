@@ -17,6 +17,8 @@ import socket
 from collections import namedtuple
 import pickle
 from contextlib import closing
+import time
+import datetime
 
 import paddle
 import paddle.fluid.core as core
@@ -256,6 +258,48 @@ def _invoke_rpc(name, fn, timeout_ms, args, kwargs):
     return future
 
 
+def _barrier_by_tcp_store():
+    import sys
+    timeout = sys.maxsize
+    global_rank = paddle.distributed.get_rank()
+    global_world_size = paddle.distributed.get_world_size()
+
+    if global_world_size < 2:
+        return
+
+    barrier_prefix = "Barrier/" + _default_group_name + "/"
+    is_master = (global_rank == 0)
+
+    def _check_keys_ready(wait_keys):
+        start_time = time.time()
+        while len(wait_keys) > 0:
+            time.sleep(0.1)
+            elapse_time = time.time() - start_time
+            if datetime.timedelta(seconds=elapse_time) > timeout:
+                raise RuntimeError(
+                    "Timeout while initializing process group {}."
+                    "Keys {} are not ready sinck rank {} is waiting them."
+                    "Two reason may cause this error:\n 1. The create process group api should be called by all ranks.\n"
+                    " 2. Try to increase the waiting time.\n".format(
+                        _default_group_name, wait_keys, global_rank))
+            wait_keys = list(
+                filter(lambda key: int(_default_store.get(key)) != 1,
+                       wait_keys))
+
+    # all the workers set their exiting key and exit
+    # the master will wait for all workers' exiting key, ensure to exit in the end
+    if is_master:
+        wait_keys = [
+            barrier_prefix + str(rank) for rank in range(1, global_world_size)
+        ]
+        _check_keys_ready(wait_keys)
+        _default_store.add(barrier_prefix + str(0), 1)
+    else:
+        _default_store.add(barrier_prefix + str(global_rank), 1)
+        wait_keys = [barrier_prefix + str(0)]
+        _check_keys_ready(wait_keys)
+
+
 def shutdown():
     """
     Perform a shutdown of the RPC agent, stop the server and destroy the agent.
@@ -270,7 +314,8 @@ def shutdown():
                         master_endpoint="127.0.0.1:8001")
             rpc.shutdown()
     """
-    paddle.distributed.barrier(group=_default_group)
+    # never timeout
+    _barrier_by_tcp_store()
     core.rpc_stop_server()
     core.rpc_clear_python_rpc_handler()
     logger.info("Trainer {}: rpc shutdown!".format(dist.get_rank()))
