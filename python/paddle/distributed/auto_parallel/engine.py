@@ -534,15 +534,22 @@ class Engine:
     def _infer_sample_spec(self, inputs, labels, batch_size):
         self.inputs_spec = []
         self.labels_spec = []
+        num_shards = self._strategy.dataset.num_shards
+
+        def _adjust_item_spec(num_shards, spec):
+            if num_shards > 1 and len(spec.shape) > 1:
+                spec.shape[0] = spec.shape[0] * num_shards
 
         def _infer_item_spec(item, name, batch_size, specs):
             if isinstance(item, np.ndarray):
                 spec = InputSpec.from_numpy(item, name)
                 if batch_size is None:
+                    _adjust_item_spec(num_shards, spec)
                     specs.append(spec)
                 else:
                     specs.append(spec.batch(batch_size))
             elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
+                _adjust_item_spec(num_shards, spec)
                 spec = InputSpec.from_tensor(item, name)
                 if batch_size is None:
                     specs.append(spec)
