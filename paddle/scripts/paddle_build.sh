@@ -988,7 +988,6 @@ function check_whl_size() {
         set +x
     pr_so_size=`du -m ${PADDLE_ROOT}/build/pr_whl/libpaddle.so|awk '{print $1}'`
     echo "pr_so_size: ${pr_so_size}"
-
     dev_so_size=`du -m ${PADDLE_ROOT}/build/python/paddle/fluid/libpaddle.so|awk '{print $1}'`
     echo "dev_so_size: ${dev_so_size}"
 
