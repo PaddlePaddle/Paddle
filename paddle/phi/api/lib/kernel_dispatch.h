@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -117,12 +118,23 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   }
 
   void operator()(const std::vector<Tensor>& x) {
-    const phi::TensorBase& tensor = *x.at(0).impl();
-    key_set.backend_set =
-        key_set.backend_set | detail::GetTensorBackendSet(tensor);
-    // TODO(chenweihang): select multi layout and dtype
-    key_set.layout = tensor.layout();
-    key_set.dtype = tensor.dtype();
+    if (!x.empty()) {
+      const phi::TensorBase& tensor = *x.at(0).impl();
+
+      PADDLE_ENFORCE_EQ(
+          tensor.dtype() != DataType::COMPLEX64 &&
+              tensor.dtype() != DataType::COMPLEX128,
+          true,
+          phi::errors::Unimplemented(
+              "ParseKernelKeyByInputArgs haven't supported vector<Tensor> with "
+              "DataType::COMPLEX64 or DataType::COMPLEX128 yet"));
+
+      key_set.backend_set =
+          key_set.backend_set | detail::GetTensorBackendSet(tensor);
+      // TODO(chenweihang): select multi layout and dtype
+      key_set.layout = tensor.layout();
+      key_set.dtype = tensor.dtype();
+    }
   }
 
   void operator()(const paddle::optional<Tensor>& x) {
