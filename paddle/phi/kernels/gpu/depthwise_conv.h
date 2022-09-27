@@ -101,8 +101,9 @@ __forceinline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
 template <typename T>
 __forceinline__ __device__ T BlockReduceSum(T val, unsigned mask = FINAL_MASK) {
   static __shared__ T shared[WARP_SIZE];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
+  int tid = threadIdx.y * blockDim.x + threadIdx.x;
+  int lane = tid & 0x1f;
+  int wid = tid >> 5;
 
   val = WarpReduceSum<T>(val, mask);
 
@@ -112,7 +113,7 @@ __forceinline__ __device__ T BlockReduceSum(T val, unsigned mask = FINAL_MASK) {
   __syncthreads();
 
   // align block_span to WARP_SIZE
-  int block_span = (blockDim.x + WARP_SIZE - 1) >> 5;
+  int block_span = (blockDim.x * blockDim.y + WARP_SIZE - 1) >> 5;
   val = (lane < block_span) ? shared[lane] : static_cast<T>(0.0f);
   val = WarpReduceSum<T>(val, mask);
 
@@ -827,9 +828,7 @@ __global__ void KernelDepthwiseConvInputGradSp(
 }
 
 // Cuda kernel to compute the depthwise convolution backprop w.r.t. filter.
-// loop_batch: to determine where to loop in 'batch' dimension. This param is
-// to make most cases have better performance
-template <typename T, bool fuse_relu_before_conv, bool loop_batch>
+template <typename T, bool fuse_relu_before_conv>
 __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
     const T* output_grad_data,
     const T* input_data,
@@ -851,6 +850,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
     const int dilate_width,
     T* filter_grad_data) {
   T f_grad(0);
+  const bool loop_batch = output_height * output_width >= WARP_SIZE;
 
   int kw_id = blockIdx.x;
   int kh_id = blockIdx.y;
@@ -864,27 +864,30 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
   const int w_offset = kw_id * dilate_width - padding_width;
 
   if (loop_batch) {
-    for (int bid = 0; bid < num; ++bid) {
-      for (int id = threadIdx.x; id < ohw; id += blockDim.x) {
-        int og_h = id / output_width;
-        int og_w = id - og_h * output_width;
+    for (int og_w = threadIdx.x; og_w < output_width; og_w += blockDim.x) {
+      for (int bid = 0; bid < num; ++bid) {
+        for (int og_h = threadIdx.y; og_h < output_height; og_h += blockDim.y) {
+          int i_h = og_h * stride_height + h_offset;
+          int i_w = og_w * stride_width + w_offset;
 
-        int i_h = og_h * stride_height + h_offset;
-        int i_w = og_w * stride_width + w_offset;
-
-        if (i_w >= 0 && i_w < input_width && i_h >= 0 && i_h < input_height) {
-          int input_offset =
-              ((bid * input_channels + ic_id) * input_height + i_h) *
-                  input_width +
-              i_w;
-          int output_grad_offset = (bid * output_channels + oc_id) * ohw + id;
-          if (fuse_relu_before_conv) {
-            f_grad += output_grad_data[output_grad_offset] *
-                      static_cast<T>(max(
-                          0.0f, static_cast<double>(input_data[input_offset])));
-          } else {
-            f_grad +=
-                output_grad_data[output_grad_offset] * input_data[input_offset];
+          if (i_w >= 0 && i_w < input_width && i_h >= 0 && i_h < input_height) {
+            int input_offset =
+                ((bid * input_channels + ic_id) * input_height + i_h) *
+                    input_width +
+                i_w;
+            int output_grad_offset =
+                ((bid * output_channels + oc_id) * output_height + og_h) *
+                    output_width +
+                og_w;
+            if (fuse_relu_before_conv) {
+              f_grad +=
+                  output_grad_data[output_grad_offset] *
+                  static_cast<T>(
+                      max(0.0f, static_cast<double>(input_data[input_offset])));
+            } else {
+              f_grad += output_grad_data[output_grad_offset] *
+                        input_data[input_offset];
+            }
           }
         }
       }
@@ -918,7 +921,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
   }
 
   T val = BlockReduceSum<T>(f_grad);
-  if (threadIdx.x == 0) {
+  if (threadIdx.x == 0 && threadIdx.y == 0) {
     filter_grad_data[idx] = val;
   }
 }
@@ -1094,7 +1097,7 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
   }
   if (c_filter_multiplier == 0 || c_filter == -1) {
     if (data_layout != DataLayout::kNHWC) {
-      KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv, false>(
+      KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv>(
           output_grad_data,
           input_data,
           num,
@@ -1138,7 +1141,7 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
     }
   } else {
     if (data_layout != DataLayout::kNHWC) {
-      KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv, true>(
+      KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv>(
           output_grad_data,
           input_data,
           num,
@@ -1577,8 +1580,18 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
     dim3 threads;
     dim3 grid;
     if (data_layout != DataLayout::kNHWC) {
-      threads = dim3(std::min(block_size, output_height * output_width));
+      if (output_width > 1024 && output_width <= 2048) {
+        block_size = (output_width - 1) / 2 + 1;
+      } else if (output_width > 512 && output_width <= 1024) {
+        block_size = output_width;
+      }
+      blocks = std::min(std::max(block_size / output_width, 1), output_height);
       grid = dim3(ksize_width, ksize_height, output_channels);
+      threads = dim3(std::min(output_width, block_size), blocks, 1);
+      if (output_height * output_width < WARP_SIZE) {
+        threads = dim3(
+            std::min(block_size, batch_size * output_height * output_width));
+      }
     } else {
       blocks = std::min(
           std::max(block_size / output_channels, 1),
@@ -1596,10 +1609,6 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
           stride_height == stride_width && stride_height == c_stride &&        \
           (ksize_height == ksize_width && ksize_height == c_filter ||          \
            c_filter == -1)) {                                                  \
-    if (c_filter == -1) {                                                      \
-      threads = dim3(                                                          \
-          std::min(block_size, batch_size * output_height * output_width));    \
-    }                                                                          \
     if (data_layout != DataLayout::kNHWC) {                                    \
       KernelDepthwiseConvFilterGradSp<T,                                       \
                                       c_filter_multiplier,                     \
