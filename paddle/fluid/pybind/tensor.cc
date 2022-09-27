@@ -1115,10 +1115,9 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](const phi::SparseCooTensor &self) -> int64_t {
              return self.numel();
            })
-      .def("indices",
-           [](const phi::SparseCooTensor &self) -> framework::Tensor {
-             return self.indices();
-           });
+      .def("indices", [](const phi::SparseCooTensor &self) -> phi::DenseTensor {
+        return self.indices();
+      });
 }
 
 }  // namespace pybind
