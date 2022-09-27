@@ -59,6 +59,7 @@ def handle_ut_file_map(rootPath):
     utNotSuccess_list = []
     ut_map_path = "%s/build/ut_map" % rootPath
     files = os.listdir(ut_map_path)
+    print("ljd_debug:", files)
     ut_file_map = {}
     count = 0
     not_success_file = open("%s/build/prec_delta" % rootPath, 'w')
@@ -68,6 +69,7 @@ def handle_ut_file_map(rootPath):
         coverage_info = '%s/%s/coverage.info.tmp' % (ut_map_path, ut)
         if os.path.exists(coverage_info):
             filename = '%s/%s/related_%s.txt' % (ut_map_path, ut, ut)
+            print("related:", filename)
             f = open(filename)
             lines = f.readlines()
             for line in lines:
@@ -95,8 +97,10 @@ def handle_ut_file_map(rootPath):
     print(utNotSuccess_list)
 
     for ut in files:
+        print("---------------------")
         if ut not in utNotSuccess_list:
             filename = '%s/%s/notrelated_%s.txt' % (ut_map_path, ut, ut)
+            print("notrelated:", filename)
             f = open(filename)
             lines = f.readlines()
             for line in lines:

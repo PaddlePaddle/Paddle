@@ -1877,7 +1877,10 @@ function precise_card_test_single {
             fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
-        find paddle/fluid -name *.gcda | xargs rm -f #delete gcda
+        find paddle/fluid -name '*.gcda' | xargs rm -f #delete gcda
+        find paddle/phi -name '*.gcda' | xargs rm -f #delete gcda
+        find paddle/utils -name '*.gcda' | xargs rm -f #delete gcda
+
     done
 }
 
@@ -2032,17 +2035,14 @@ set -x
     mkdir -p ${PADDLE_ROOT}/build/pytest
     ljd_testcases='^test_op_signature$|^variant_test$'
     precise_card_test_single "$ljd_testcases" 1
-    wait;
+    wait
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
-    
-    #analyze the mapping between unit tests and .cu files
-    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
-
-    wait;
     #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
     get_failedUts_precise_map_file
-
+    #analyze the mapping between unit tests and .cu files
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
+    wait;
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
     wait;
@@ -2143,13 +2143,6 @@ set -x
 function get_failedUts_precise_map_file {
     if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
         rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
-        #remove pile to full h/cu file
-        python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'remove_pile_from_h_file' ${PADDLE_ROOT}
-        cd ${PADDLE_ROOT}/build
-        cmake_base ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        pip uninstall -y paddlepaddle-gpu
-        pip install ${PADDLE_ROOT}/build/python/dist/*whl
         precise_card_test_single "$rerun_tests"
         wait;
         
