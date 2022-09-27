@@ -1113,6 +1113,20 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   return 1;
 }
 
+void AddPyMethodDefs(std::vector<PyMethodDef>* vector, PyMethodDef* methods) {
+  if (!vector->empty()) {
+    // remove nullptr terminator
+    vector->pop_back();
+  }
+  while (true) {
+    vector->push_back(*methods);
+    if (!methods->ml_name) {
+      break;
+    }
+    methods++;
+  }
+}
+
 static void TensorDealloc(TensorObject* self) {
   if (self->weakrefs != NULL)
     PyObject_ClearWeakRefs(reinterpret_cast<PyObject*>(self));
@@ -1124,6 +1138,7 @@ extern struct PyGetSetDef variable_properties[];
 extern struct PyGetSetDef string_tensor_variable_properties[];
 
 extern PyMethodDef variable_methods[];
+extern PyMethodDef math_op_patch_methods[];
 extern PyMethodDef string_tensor_variable_methods[];
 
 PyNumberMethods number_methods;
@@ -1132,6 +1147,10 @@ PyMappingMethods mapping_methods;
 
 void BindEager(pybind11::module* module) {
   auto m = module->def_submodule("eager");
+
+  static std::vector<PyMethodDef> methods;
+  AddPyMethodDefs(&methods, variable_methods);
+  AddPyMethodDefs(&methods, math_op_patch_methods);
 
   auto heap_type = reinterpret_cast<PyHeapTypeObject*>(
       PyType_Type.tp_alloc(&PyType_Type, 0));
@@ -1144,7 +1163,7 @@ void BindEager(pybind11::module* module) {
   type->tp_as_number = &number_methods;
   type->tp_as_sequence = &sequence_methods;
   type->tp_as_mapping = &mapping_methods;
-  type->tp_methods = variable_methods;
+  type->tp_methods = methods.data();
   type->tp_getset = variable_properties;
   type->tp_init = TensorInit;
   type->tp_new = TensorNew;

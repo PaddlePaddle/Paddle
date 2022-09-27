@@ -98,6 +98,12 @@ class FetchV2Op : public framework::OperatorWithKernel {
         return framework::OpKernelType(framework::proto::VarType::FP32,
                                        platform::CPUPlace());
       }
+    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
+      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
+      if (!src_item.initialized()) {
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
+      }
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       if (src_item.empty() || !src_item[0].IsInitialized()) {
@@ -163,6 +169,12 @@ class FetchV2Kernel {
         dst_item->ShareDataWith(src_item);
         dst_item->set_lod(src_item.lod());
       }
+    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
+      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
+      if (!src_item.initialized()) {
+        return;
+      }
+      fetch_list->at(col) = src_item;
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       framework::LoDTensorArray tmp(src_item.size());

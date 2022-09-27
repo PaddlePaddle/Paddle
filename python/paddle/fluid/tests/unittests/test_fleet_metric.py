@@ -13,7 +13,6 @@
 # limitations under the License.
 """Test fleet metric."""
 
-from __future__ import print_function
 import numpy as np
 import paddle
 import paddle.fluid as fluid

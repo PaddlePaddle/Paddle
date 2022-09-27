@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 from collections import defaultdict
 from collections.abc import Iterable
@@ -181,9 +179,9 @@ def _fallback_legacy_dygraph():
     global _in_eager_mode_
     global _is_first_import_
     need_fallback = False
-    # Only enable eager on CPU/GPU
-    is_not_support = core.is_compiled_with_xpu() or core.is_compiled_with_npu(
-    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu()
+    # Only enable eager on CPU/GPU/XPU
+    is_not_support = core.is_compiled_with_npu() or core.is_compiled_with_ipu(
+    ) or core.is_compiled_with_mlu()
 
     if _in_eager_mode_ and is_not_support:
         # switch into legacy dygraph mode
@@ -245,8 +243,8 @@ def _non_static_mode():
 
 @signature_safe_contextmanager
 def _test_eager_guard(place=None):
-    # FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
-    # only GPU/CPU. Remove this after we improve this feature.
+    # FIXME(dev): We haven't fully verified eager mode on NPU et.al but
+    # only GPU/CPU/XPU. Remove this after we improve this feature.
     already_fallback = _fallback_legacy_dygraph()
     if not already_fallback:
         _disable_legacy_dygraph()
@@ -1377,6 +1375,9 @@ class Variable(object):
 
         if dtype == core.VarDesc.VarType.STRINGS:
             type = core.VarDesc.VarType.STRINGS
+            lod_level = None
+
+        if type == core.VarDesc.VarType.SPARSE_COO:
             lod_level = None
 
         self.belong_to_optimizer = belong_to_optimizer
