@@ -809,18 +809,8 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         infer_meta_context.EmplaceBackOutputs(std::move(outputs));
       }
     } else {
-      auto output_var = std::move(ctx->GetOutputVarPtrs(out_name));
-      if (output_var.size() == 1) {
-        infer_meta_context.EmplaceBackOutput(
-            std::move(CompatMetaTensor(ctx->IsRuntime())));
-      } else {
-        paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
-            outputs;
-        for (size_t i = 0; i < output_var.size(); ++i) {
-          outputs.emplace_back(std::move(CompatMetaTensor(ctx->IsRuntime())));
-        }
-        infer_meta_context.EmplaceBackOutputs(std::move(outputs));
-      }
+      infer_meta_context.EmplaceBackOutput(
+          std::move(CompatMetaTensor(ctx->IsRuntime())));
     }
   }
 

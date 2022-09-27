@@ -109,21 +109,14 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     if (it == var_map_out_->end() || it->second.empty()) {
       return false;
     }
-    if (allow_null) {
-      for (auto& output : it->second) {
-        if (output != nullptr) {
-          return true;
-        }
-      }
-      return false;
-    } else {
+    if (!allow_null) {
       for (auto& output : it->second) {
         if (output == nullptr) {
           return false;
         }
       }
-      return true;
     }
+    return true;
   }
 
   framework::AttrReader Attrs() const override {
