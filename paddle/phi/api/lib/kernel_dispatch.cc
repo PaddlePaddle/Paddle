@@ -72,7 +72,7 @@ std::size_t CountLeadingZeros(uint32_t val) {
 #if defined(__clang__) || defined(__GNUC__)
   return __builtin_clzl(val);
 #elif defined(_MSC_VER)
-  return __lzcnt32(val);
+  return __lzcnt(val);
 #else
   if (val == 0) {
     return 32;
