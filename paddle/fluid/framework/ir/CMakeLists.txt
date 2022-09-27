@@ -128,6 +128,7 @@ if(WITH_TENSORRT)
   pass_library(remove_padding_recover_padding_pass inference)
   pass_library(delete_remove_padding_recover_padding_pass inference)
   pass_library(layernorm_shift_partition_fuse_pass inference)
+  pass_library(reverse_roll_fuse_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
