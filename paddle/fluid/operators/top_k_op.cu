@@ -127,7 +127,8 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
                                                         input_height));
         default:
           PADDLE_THROW(platform::errors::Fatal(
-              "the input k has error in the topk cuda kernel."));
+              "the input k has error when use getMaxLength function to get the "
+              "maxLength."));
       });
       default:
         PADDLE_THROW(platform::errors::Unavailable(
