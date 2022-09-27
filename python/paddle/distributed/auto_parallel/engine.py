@@ -685,6 +685,12 @@ class Engine:
             ) and self.model.model.__class__.__name__ == 'GPTForPretraining':
                 exact_ckpts = self.model.model.gpt.checkpoints
                 exact_ckpts.pop()
+        elif isinstance(self.model.model, paddle.nn.Layer):
+            if hasattr(
+                    self.model.model, "gpt"
+            ) and self.model.model.__class__.__name__ == 'ErnieForPretraining':
+                exact_ckpts = self.model.model.ernie.checkpoints
+                exact_ckpts.pop()
         # modify strategy
         if self.strategy.recompute:
             config["checkpoints"] = exact_ckpts[:]
