@@ -2333,6 +2333,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
+      "reverse_roll",
       "lookup_table"};
 };
 

@@ -76,6 +76,7 @@ list(
   fill_constant_op.cc
   fused_token_prune_op.cc
   layernorm_shift_partition_op.cc
+  reverse_roll_op.cc
   generic_and_custom_plugin_creater.cc
   fused_lookup_tables_op.cc)
 

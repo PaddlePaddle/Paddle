@@ -46,12 +46,12 @@ namespace framework {
 namespace ir {
     void ReverseRollFusePass::ApplyImpl(ir::Graph* graph) const {
         GraphPatternDetector gpd;
-        const std::string pattern_name = "reverse_roll_fuse";
+        const std::string pattern_name = "reverse_roll";
         FusePassBase::Init(pattern_name, graph);
         // auto* scope = param_scope();
         PDNode* x = gpd.mutable_pattern()
                     ->NewNode("x")
-                    ->assert_is_op_input("multihead_matmul", "X")
+                    ->assert_is_op_input("multihead_matmul", "Input")
                     ->AsInput();
         patterns::ReverseRollPattern reverse_roll_pattern(
             gpd.mutable_pattern(), scope_name_);
@@ -60,10 +60,33 @@ namespace ir {
         auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
             GET_NODES;
+            int window_number = PADDLE_GET_CONST(int, window_mha_i00_op->Op()->GetAttr("window_number"));
+            int head_number = PADDLE_GET_CONST(int, window_mha_i00_op->Op()->GetAttr("head_number"));
+            std::vector<int> shape_attr =
+                PADDLE_GET_CONST(std::vector<int>, reshape2_00_op->Op()->GetAttr("shape"));
+            int window_size_h=shape_attr[1];
+            if(window_size_h<0){
+                return;
+            }
+            int window_size_w=shape_attr[2];
+            if(window_size_h!=window_size_w){
+                return;
+            }
+            int window_size=window_size_h;
+            int window_len=window_size_h*window_size_w;
+            int input_resolution = static_cast<int>(std::sqrt(window_number))*window_size_h;
+
             OpDesc reverse_roll_desc(reshape2_00_op->Op()->Block());
             reverse_roll_desc.SetType("reverse_roll");
             reverse_roll_desc.SetInput("X",{elw_add_i20_out->Name()});
             reverse_roll_desc.SetOutput("Out",{reshaep2_50_out->Name()});
+            reverse_roll_desc.SetAttr("window_number", window_number);
+            reverse_roll_desc.SetAttr("head_number", head_number);
+            reverse_roll_desc.SetAttr("window_size",window_size);
+            reverse_roll_desc.SetAttr("window_len", window_len);
+            // do reverse circlic shift, shift_size window_size / 2
+            reverse_roll_desc.SetAttr("shift_size", window_size/2);
+            reverse_roll_desc.SetAttr("input_resolution",input_resolution);
             auto reverse_roll_node = graph->CreateOpNode(&reverse_roll_desc);
             IR_NODE_LINK_TO(elw_add_i20_out,reverse_roll_node);
             IR_NODE_LINK_TO(reverse_roll_node,reshaep2_50_out);

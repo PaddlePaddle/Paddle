@@ -3662,7 +3662,7 @@ PDNode* patterns::ReverseRollPattern::operator()(PDNode* in){
 
   auto reshape2_10_op=pattern->NewNode(reshape2_10_op_repr())
                              ->assert_is_op("reshape2");
-  auto reshape2_10_out=pattern->NewNode(reshape2_00_out_repr())
+  auto reshape2_10_out=pattern->NewNode(reshape2_10_out_repr())
                               ->AsIntermediate()
                               ->assert_is_op_output("reshape2","Out")
                               ->assert_is_op_input("transpose2","X");
@@ -3676,7 +3676,7 @@ PDNode* patterns::ReverseRollPattern::operator()(PDNode* in){
 
   auto reshape2_30_op=pattern->NewNode(reshape2_30_op_repr())
                              ->assert_is_op("reshape2");
-  auto reshape2_30_out=pattern->NewNode(reshape2_30_op_repr())
+  auto reshape2_30_out=pattern->NewNode(reshape2_30_out_repr())
                               ->AsIntermediate()
                               ->assert_is_op_output("reshape2","Out")
                               ->assert_is_op_input("roll","X");
