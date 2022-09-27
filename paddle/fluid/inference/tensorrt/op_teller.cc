@@ -85,7 +85,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         "cosh",     "asin",  "acos",
         "atan",     "asinh", "atanh",
         "ceil",     "floor", "erf",
-        "silu",     "celu"};
+        "silu",     "celu",  "logsigmoid"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -2202,7 +2202,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
-      "celu"};
+      "celu",
+      "logsigmoid"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2314,7 +2315,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
-      "celu"};
+      "celu",
+      "logsigmoid"};
 };
 
 struct GenericPluginTeller : public Teller {
