@@ -78,6 +78,7 @@ list(
   fill_constant_op.cc
   fused_token_prune_op.cc
   layernorm_shift_partition_op.cc
+  reverse_roll_op.cc
   generic_and_custom_plugin_creater.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)

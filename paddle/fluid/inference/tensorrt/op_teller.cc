@@ -2312,7 +2312,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "fused_token_prune",
-      "layernorm_shift_partition"};
+      "layernorm_shift_partition",
+      "reverse_roll"};
 };
 
 struct GenericPluginTeller : public Teller {
