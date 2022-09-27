@@ -182,11 +182,17 @@ class OperatorBase {
   }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE_NE(
-        attrs_.find(name),
-        attrs_.end(),
-        platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
-    return PADDLE_GET_CONST(T, attrs_.at(name));
+    auto it = attrs_.find(name);
+    if (it == attrs_.end()) {
+      it = runtime_attrs_.find(name);
+      PADDLE_ENFORCE_NE(
+          it,
+          runtime_attrs_.end(),
+          platform::errors::NotFound(
+              "(%s) is not found in AttributeMap and RuntimeAttributeMap.",
+              name));
+    }
+    return PADDLE_GET_CONST(T, it->second);
   }
   void SetAttr(const std::string& name, const Attribute& v) {
     PADDLE_ENFORCE_EQ(
