@@ -483,7 +483,10 @@ std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
   } else if (PyObject_IsInstance(obj,
                                  reinterpret_cast<PyObject*>(
                                      g_framework_lodtensorarray_pytype))) {
-    return ::pybind11::handle(obj).cast<framework::LoDTensorArray>();
+    for (auto& tensor :
+         (::pybind11::handle(obj).cast<framework::LoDTensorArray>())) {
+      result.emplace_back(tensor);
+    }
   } else if (obj == Py_None) {
     return {};
   } else {
@@ -1384,14 +1387,12 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   auto type_name = std::string(type->tp_name);
   if (type_name == "list" || type_name == "tuple" ||
       type_name == "numpy.ndarray") {
-    std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
+    std::vector<int64_t> value = CastPyArg2Longs(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
-
   } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);
-
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "

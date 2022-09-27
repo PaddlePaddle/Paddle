@@ -30,6 +30,10 @@ class TestHybridPipeParallelWithVirtualStage(TestMultipleGpus):
         self.run_mnist_2gpu(
             'hybrid_parallel_pp_transformer_with_virtual_stage.py')
 
+    def test_hybrid_parallel_save_load_with_virtual_stage(self):
+        self.run_mnist_2gpu(
+            'hybrid_parallel_pp_save_load_with_virtual_stage.py')
+
 
 if __name__ == "__main__":
     os.environ["FLAGS_enable_eager_mode"] = "1"

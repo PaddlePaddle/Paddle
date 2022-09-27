@@ -36,11 +36,11 @@ __all__ = ["decorate"]
 
 class OptimizerWithMixedPrecision(object):
     """
-    Optimizer with mixed-precision (MP) training. This is a wrapper of a common 
+    Optimizer with mixed-precision (MP) training. This is a wrapper of a common
     optimizer, plus the support of mixed-precision pre-training. The object
-    of this class almost has the same behavior as the common optimizer, with the 
-    methods `minimize()`, `backward()`, `apply_gradients()` implemented. 
-    Additionally, it enables the MP training automatically, i.e, the creation 
+    of this class almost has the same behavior as the common optimizer, with the
+    methods `minimize()`, `backward()`, `apply_gradients()` implemented.
+    Additionally, it enables the MP training automatically, i.e, the creation
     and maintenance of master parameters, scaling of loss, etc.
 
     Args:
@@ -48,14 +48,14 @@ class OptimizerWithMixedPrecision(object):
         amp_lists (CustomOpLists): An CustomOpLists object.
         init_loss_scaling (float): The initial loss scaling factor.
         use_dynamic_loss_scaling (bool): Whether to use dynamic loss scaling.
-        incr_every_n_steps(int): Increases loss scaling every n consecutive 
+        incr_every_n_steps(int): Increases loss scaling every n consecutive
                                  steps with finite gradients.
-        decr_every_n_nan_or_inf(int): Decreases loss scaling every n 
-                                      accumulated steps with nan or 
+        decr_every_n_nan_or_inf(int): Decreases loss scaling every n
+                                      accumulated steps with nan or
                                       inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
+        incr_ratio(float): The multiplier to use when increasing the loss
                            scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
+        decr_ratio(float): The less-than-one-multiplier to use when decreasing
                            the loss scaling.
         use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
         use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
@@ -155,7 +155,7 @@ class OptimizerWithMixedPrecision(object):
 
         Args:
             loss (Variable): The loss Variable to minimize.
-            startup_program (Program|None): The startup Program for initializing 
+            startup_program (Program|None): The startup Program for initializing
                                        parameters in `parameter_list`.
             parameter_list (list|None): A list of Variables to update.
             no_grad_set (set|None): A set of Variables should be ignored.
@@ -163,7 +163,7 @@ class OptimizerWithMixedPrecision(object):
                                    backward operator for one parameter.
 
         Returns:
-            A list of (param, grad), which is a tuple of a parameter and its 
+            A list of (param, grad), which is a tuple of a parameter and its
             gradient respectively, and the scaled loss.
         """
         train_program = loss.block.program
@@ -244,9 +244,9 @@ class OptimizerWithMixedPrecision(object):
                  use_fp16_test=False):
         """
         Init the amp training, such as cast fp32 parameters to fp16 type.
-  
+
         Args:
-            place(CUDAPlace): place is used to initialize 
+            place(CUDAPlace): place is used to initialize
                 fp16 parameters with fp32 values.
             scope(Scope): The scope is used to find fp32 parameters.
             test_program(Program): The program is used for testing.
@@ -273,7 +273,7 @@ class OptimizerWithMixedPrecision(object):
                         loss = paddle.mean(hidden)
                     # 2) Create the optimizer and set `multi_precision` to True.
                     # Setting `multi_precision` to True can avoid the poor accuracy
-                    # or the slow convergence in a way. 
+                    # or the slow convergence in a way.
                     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
                     amp_list = paddle.static.amp.CustomOpLists(
@@ -293,9 +293,9 @@ class OptimizerWithMixedPrecision(object):
                     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                     optimizer.amp_init(place, scope=paddle.static.global_scope())
-                    
+
                 if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-                    run_example_code()       
+                    run_example_code()
         """
         assert self._train_program is not None, \
             "Please call the minimize method first."
@@ -311,12 +311,12 @@ class OptimizerWithMixedPrecision(object):
 
     def apply_gradients(self, params_grads):
         """
-        Check scaled gradients to determine whether to update loss scaling and update 
+        Check scaled gradients to determine whether to update loss scaling and update
         parameters by their scaled gradients.
-  
+
         Args:
             params_grads (list): A list of params and scaled grads.
-    
+
         Returns:
             A list of optimize operators.
         """
@@ -538,21 +538,21 @@ def decorate(optimizer,
              use_dynamic_loss_scaling=True,
              use_pure_fp16=False,
              use_fp16_guard=None):
-    """ 
+    """
     Decorate the given optimizer to adapt to the mixed-precision training.
 
     Args:
         optimizer(Optimizer): A common Optimizer.
         amp_lists (CustomOpLists): An CustomOpLists object.
         init_loss_scaling(float): The initial loss scaling factor.
-        incr_every_n_steps(int): Increases loss scaling every n consecutive 
+        incr_every_n_steps(int): Increases loss scaling every n consecutive
                                  steps with finite gradients.
-        decr_every_n_nan_or_inf(int): Decreases loss scaling every n 
-                                      accumulated steps with nan or 
+        decr_every_n_nan_or_inf(int): Decreases loss scaling every n
+                                      accumulated steps with nan or
                                       inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
+        incr_ratio(float): The multiplier to use when increasing the loss
                            scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
+        decr_ratio(float): The less-than-one-multiplier to use when decreasing
                            the loss scaling.
         use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling.
         use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
@@ -560,7 +560,7 @@ def decorate(optimizer,
                            Default None, which means that its value equals to `use_pure_fp16`.
 
     Returns:
-        An optimizer acting like a normal one but with mixed-precision training 
+        An optimizer acting like a normal one but with mixed-precision training
         enabled.
 
     Examples 1:
@@ -604,7 +604,7 @@ def decorate(optimizer,
                     loss = paddle.mean(hidden)
                 # 2) Create the optimizer and set `multi_precision` to True.
                 # Setting `multi_precision` to True can avoid the poor accuracy
-                # or the slow convergence in a way. 
+                # or the slow convergence in a way.
                 optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                 # 3) These ops in `custom_black_list` will keep in the float32 computation type.
                 amp_list = paddle.static.amp.CustomOpLists(
@@ -624,7 +624,7 @@ def decorate(optimizer,
                 # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                 # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                 optimizer.amp_init(place, scope=paddle.static.global_scope())
-                
+
             if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
                 run_example_code()
     """

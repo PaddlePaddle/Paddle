@@ -295,6 +295,7 @@ bool AnalysisPredictor::Init(
     }
   }
 #endif
+  inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
 }
 
@@ -1054,14 +1055,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseFcPadding(config_.use_fc_padding());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
-  if (model_precision_ == phi::DataType::FLOAT32) {
-    argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
-  } else {
-    // TODO(inference): mixed precision temporarily not support memory_optim
-    LOG_FIRST_N(WARNING, 1) << "mixed precision model temporarily not support "
-                               "memory optim, so we just turn off that.";
-    argument_.SetEnableMemoryOptim(false);
-  }
+  argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   argument_.SetPredictorID(predictor_id_);
@@ -1626,6 +1620,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun() {
+  inference::DisplayMemoryInfo(place_, "before run");
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "ZeroCopyRun will use the fleet executor.";
@@ -1663,6 +1658,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
 #endif
 
   executor_->Run();
+  inference::DisplayMemoryInfo(place_, "after run");
 
   if (config_.shape_range_info_collected()) {
     CollectShapeRangeInfo();
@@ -2115,6 +2111,7 @@ USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
 USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
+USE_TRT_CONVERTER(matmul_v2);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(exp);
@@ -2192,6 +2189,9 @@ USE_TRT_CONVERTER(sum)
 USE_TRT_CONVERTER(shape)
 USE_TRT_CONVERTER(fill_constant)
 USE_TRT_CONVERTER(fused_token_prune)
+USE_TRT_CONVERTER(layernorm_shift_partition)
+USE_TRT_CONVERTER(generic_plugin_creater)
+USE_TRT_CONVERTER(custom_plugin_creater)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)

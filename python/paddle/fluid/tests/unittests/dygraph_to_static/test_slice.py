@@ -284,5 +284,23 @@ class TestPaddleStridedSlice(unittest.TestCase):
         np.testing.assert_array_equal(sl.numpy(), array_slice)
 
 
+def slice_zero_shape_tensor(x):
+    y = x[1:2]
+    return y
+
+
+class TestSliceZeroShapeTensor(unittest.TestCase):
+
+    def test_slice(self):
+        paddle.disable_static()
+        x = paddle.ones([0, 0, 0, 0])
+        y = slice_zero_shape_tensor(x)
+        np.testing.assert_equal(y.shape, [0, 0, 0, 0])
+
+        static_func = paddle.jit.to_static(slice_zero_shape_tensor)
+        y = static_func(x)
+        np.testing.assert_equal(y.shape, [0, 0, 0, 0])
+
+
 if __name__ == '__main__':
     unittest.main()
