@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import warnings
 from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
@@ -128,7 +127,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         otherwise the program will throw an exception and exit.
 
     .. code-block:: text
-    
+
             x is a Tensor.
                 padding_idx = -1
                 x.data = [[1, 3], [2, 4], [4, 127]]
@@ -171,7 +170,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
 

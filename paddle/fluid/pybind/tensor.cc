@@ -430,7 +430,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("zero_copy") = false,
            R"DOC(
         Set the data of Tensor on place with given numpy array.
-        
+
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace|MLUPlace): The place where the
@@ -613,7 +613,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
            Args:
                 recursive_sequence_lengths (list[list[int]]): The recursive sequence lengths.
-           
+
            Returns:
                 None.
 
@@ -644,7 +644,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
            Returns:
                list[list[int]]: The lod of the Tensor.
-           
+
            Examples:
                .. code-block:: python
 
@@ -668,7 +668,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             return new_lod;
           },
           R"DOC(
-           Return the recursive sequence lengths corresponding to of the LodD 
+           Return the recursive sequence lengths corresponding to of the LodD
            of the Tensor.
 
            Returns:
@@ -1105,6 +1105,20 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
         return new_rows;
       });
+
+  py::class_<phi::SparseCooTensor>(m, "SparseCooTensor")
+      .def("__init__",
+           [](phi::SparseCooTensor &instance) {
+             new (&instance) phi::SparseCooTensor();
+           })
+      .def("numel",
+           [](const phi::SparseCooTensor &self) -> int64_t {
+             return self.numel();
+           })
+      .def("indices",
+           [](const phi::SparseCooTensor &self) -> framework::Tensor {
+             return self.indices();
+           });
 }
 
 }  // namespace pybind

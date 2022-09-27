@@ -77,7 +77,7 @@ void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
 
   size_t max_num_runs = accuracy_check ? 2 : max_num_benchmark_runs;
   for (size_t i = 0; i < max_num_runs; i++) {
-    input_tensor0 = matmul_dygraph_function(input_tensor0, Y, false, false);
+    input_tensor0 = matmul_ad_func(input_tensor0, Y, false, false);
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};

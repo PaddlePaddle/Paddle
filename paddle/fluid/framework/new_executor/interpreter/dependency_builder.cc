@@ -16,16 +16,6 @@
 
 #include <queue>
 
-// The difference between "sequential_run" and "serial_run":
-// "sequential_run" dispatches OPs one by one according to the sequence in the
-// Program, while "serial_run" ensures that all Ops are scheduled in a singal
-// thread. In standalone executor, "sequential_run" is also "serial_run", while
-// "serial_run" is not necessarily "sequential_run".
-PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
-                            false,
-                            "Enable sequential execution for standalone "
-                            "executor, only applied to GPU OPs.");
-
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -53,33 +43,6 @@ bool IsCommunicationOp(const std::string& op_name) {
   return false;
 }
 
-// check whether exists prior_op -> ... -> posterior_op to avoid building loops
-bool IsDependency(int prior_op_idx,
-                  int posterior_op_idx,
-                  const std::map<int, std::set<int>>& downstream_map) {
-  std::queue<int> q;
-  q.push(prior_op_idx);
-
-  while (!q.empty()) {
-    int op_idx = q.front();
-    q.pop();
-
-    auto it = downstream_map.find(op_idx);
-    if (it != downstream_map.end()) {
-      for (int downstream_op_idx : it->second) {
-        if (downstream_op_idx == posterior_op_idx) {
-          return true;
-        }
-
-        // no need for double enqueue checking since DAG is assumed
-        q.push(downstream_op_idx);
-      }
-    }
-  }
-
-  return false;
-}
-
 const std::string StringizeDownstreamMap(
     const std::map<int, std::set<int>>& downstream_map) {
   std::ostringstream oss;
@@ -94,7 +57,7 @@ const std::string StringizeDownstreamMap(
 }
 
 const std::map<int, std::set<int>>& DependencyBuilder::Build(
-    const std::vector<Instruction>& instructions) {
+    const std::vector<Instruction>& instructions, bool is_sequential_run) {
   PADDLE_ENFORCE_EQ(
       is_build_,
       false,
@@ -112,7 +75,7 @@ const std::map<int, std::set<int>>& DependencyBuilder::Build(
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
 
-  if (FLAGS_new_executor_sequential_run) {
+  if (is_sequential_run) {
     AddDependencyForSequentialRun();
   }
 
@@ -324,8 +287,9 @@ void DependencyBuilder::AddDependencyForReadOp() {
   for (size_t read_op_idx : read_ops) {
     for (size_t downstream_op_idx : startup_ops) {
       if (read_op_idx != downstream_op_idx &&
-          !IsDependency(downstream_op_idx, read_op_idx, op_downstream_map_))
+          !op_happens_before_[downstream_op_idx][read_op_idx]) {
         AddDownstreamOp(read_op_idx, downstream_op_idx);
+      }
     }
   }
 }
@@ -531,7 +495,7 @@ void DependencyBuilder::BuildOpHappensBefore() {
                                 next,
                                 op_idx));
           op_happens_before_[op_idx][next] = true;
-          VLOG(8) << "happens before: " << op_idx << " " << next;
+          VLOG(10) << "happens before: " << op_idx << " " << next;
           q.push(next);
         }
       }

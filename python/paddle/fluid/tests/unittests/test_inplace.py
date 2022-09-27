@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -492,6 +490,29 @@ class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
     def inplace_api_processing(self, var):
         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
         return var.subtract_(input_var_2)
+
+
+class TestDygraphInplaceRemainder(TestDygraphInplaceAdd):
+
+    def non_inplace_api_processing(self, var):
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.remainder(input_var_2)
+
+    def inplace_api_processing(self, var):
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.remainder_(input_var_2)
+
+    def test_leaf_inplace_var_error(self):
+        pass
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
 
 
 class TestLossIsInplaceVar(unittest.TestCase):

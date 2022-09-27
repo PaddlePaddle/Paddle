@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from functools import reduce
 
 import collections
@@ -204,6 +203,15 @@ def get_optimize_ops(_program, remote_sparse=[]):
                     "op_role",
                     int(core.op_proto_and_checker_maker.OpRole.Backward))
                 continue
+            opt_ops.append(op)
+    return opt_ops
+
+
+def get_datanorm_ops(_program):
+    block = _program.global_block()
+    opt_ops = []
+    for op in block.ops:
+        if op.type == 'data_norm':
             opt_ops.append(op)
     return opt_ops
 
@@ -602,7 +610,7 @@ def find_heter_ops(program, default_device="cpu"):
                     if no_grad_var in var2idx:
                         """
                        insert sum op & remove sum op from var2idx and origin place
-  
+
                        """
                         op_list = list(block.ops)
                         sum_op = op_list[var2idx[no_grad_var]]
@@ -1326,7 +1334,7 @@ def build_var_distributed(context):
 
     context["param_name_to_grad_name"] = param_name_to_grad_name
     context["grad_name_to_param_name"] = grad_name_to_param_name
-    '''    
+    '''
     print("public build_var_distributed origin_sparse_pairs:",
         context["origin_sparse_pairs"])
     print("public build_var_distributed origin_for_dense:",

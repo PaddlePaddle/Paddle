@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -616,7 +612,7 @@ class PaddingRNNTestBase(unittest.TestCase):
                                     parallel=True,
                                     use_program_cache=True):
         '''
-        Test that train ppl of padding mode is same to that of static mode 
+        Test that train ppl of padding mode is same to that of static mode
         '''
         config = RNNConfig('test', 'padding')
         with fluid.scope_guard(fluid.Scope()):

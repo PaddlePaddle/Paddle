@@ -169,7 +169,12 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   // NOTE(winter-wang): in npu device, D2H kernel is asynchronous. need to
   // explicit synchronization.
 #ifdef PADDLE_WITH_ASCEND_CL
-  if (op_type == kMemcpyD2H) {
+  if (op_type == kMemcpyD2H && platform::is_npu_place(dev_ctx->GetPlace())) {
+    dev_ctx->Wait();
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (op_type == kMemcpyD2H && platform::is_custom_place(dev_ctx->GetPlace())) {
     dev_ctx->Wait();
   }
 #endif
@@ -212,10 +217,10 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
     out_layout = framework::DataLayout::kNCHW;
   }
 
-  if (in_layout == framework::DataLayout::MKLDNN &&
-      out_layout != framework::DataLayout::MKLDNN) {
+  if (in_layout == framework::DataLayout::ONEDNN &&
+      out_layout != framework::DataLayout::ONEDNN) {
     auto target_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
-    VLOG(4) << "TransDataLayoutFromMKLDNN: " << in_layout << "->"
+    VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
             << target_layout;
 
     if (out_layout == DataLayout::kNCHW &&
@@ -363,11 +368,12 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                         src_place));
   if (IsSupportedHetePlace(dst_place)) {
     op_type = kMemcpyH2D;
-    int dst_place_type = platform::is_gpu_place(dst_place)   ? 0
-                         : platform::is_npu_place(dst_place) ? 1
-                         : platform::is_ipu_place(dst_place) ? 3
-                         : platform::is_xpu_place(dst_place) ? 2
-                                                             : -1;
+    int dst_place_type = platform::is_gpu_place(dst_place)      ? 0
+                         : platform::is_npu_place(dst_place)    ? 1
+                         : platform::is_ipu_place(dst_place)    ? 3
+                         : platform::is_xpu_place(dst_place)    ? 2
+                         : platform::is_custom_place(dst_place) ? 6
+                                                                : -1;
     attr_map = {{"dst_place_type", dst_place_type}};
   } else if (IsSupportedHetePlace(src_place)) {
     op_type = kMemcpyD2H;

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid.layers as layers
@@ -223,6 +221,7 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
         for op in main_program.block(0).ops:
             if op.type == "while":
                 for out_name in op.output("Out"):
+                    if out_name in op.input("Condition"): continue
                     self.assertTrue(
                         out_name in op.input("X"),
                         "In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{}` not meet the precondition."

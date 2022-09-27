@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import os
 import sys
@@ -28,7 +26,7 @@ def start_local_trainers(cluster,
                          training_script_args,
                          eager_mode=True,
                          log_dir=None):
-    from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+    from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
     current_env = copy.copy(os.environ.copy())
     #paddle broadcast ncclUniqueId use socket, and
@@ -84,7 +82,7 @@ def start_local_trainers(cluster,
 
 
 def get_cluster_from_args(selected_gpus):
-    from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+    from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
     cluster_node_ips = '127.0.0.1'
     node_ip = '127.0.0.1'
@@ -108,7 +106,7 @@ def get_cluster_from_args(selected_gpus):
 class TestMultipleCustomCPU(unittest.TestCase):
 
     def run_mnist_2custom_cpu(self, target_file_name, eager_mode=True):
-        from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+        from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
         selected_devices = [0, 1]
         cluster = None
@@ -136,7 +134,12 @@ class TestProcessGroup(TestMultipleCustomCPU):
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        cmd = 'rm -rf PaddleCustomDevice && git clone https://github.com/PaddlePaddle/PaddleCustomDevice.git && cd PaddleCustomDevice/backends/custom_cpu && mkdir build && cd build && cmake .. && make -j8'
+        cmd = 'rm -rf PaddleCustomDevice \
+            && git clone {} \
+            && cd PaddleCustomDevice/backends/custom_cpu \
+            && git checkout {} -b dev \
+            && mkdir build && cd build && cmake .. && make -j8'.format(
+            os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG'))
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
@@ -145,7 +148,7 @@ class TestProcessGroup(TestMultipleCustomCPU):
             cur_dir, 'PaddleCustomDevice/backends/custom_cpu/build')
 
     def test_process_group_xccl(self):
-        from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+        from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
         self.run_mnist_2custom_cpu('process_group_xccl.py')
 

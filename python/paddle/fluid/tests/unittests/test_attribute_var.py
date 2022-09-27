@@ -96,6 +96,10 @@ class TestDropout(UnittestBase):
             infer_out = self.infer_prog()
             self.assertEqual(infer_out.shape, (10, 10))
 
+            self.assertEqual(
+                main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
+                p.name)
+
 
 class TestTileTensorList(UnittestBase):
 

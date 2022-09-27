@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import tempfile
 import unittest
 import os
@@ -36,7 +34,7 @@ from paddle.nn.layer.transformer import _convert_param_attr_to_list
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.distributed import fleet
 
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
@@ -136,7 +134,7 @@ cluster_json = """
           "source_global_id": 0,
           "target_global_id": 4,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 1,
@@ -160,7 +158,7 @@ cluster_json = """
           "source_global_id": 1,
           "target_global_id": 4,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 2,
@@ -208,13 +206,13 @@ cluster_json = """
           "source_global_id": 3,
           "target_global_id": 4,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 4,
           "target_global_id": 9,
           "type": "NET",
-          "bandwidth": 1 
+          "bandwidth": 1
         }
       ]
     },
@@ -288,7 +286,7 @@ cluster_json = """
           "source_global_id": 5,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 6,
@@ -312,7 +310,7 @@ cluster_json = """
           "source_global_id": 6,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 7,
@@ -336,7 +334,7 @@ cluster_json = """
           "source_global_id": 7,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 8,
@@ -360,16 +358,16 @@ cluster_json = """
           "source_global_id": 8,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 9,
           "target_global_id": 4,
           "type": "NET",
-          "bandwidth": 1 
+          "bandwidth": 1
         }
       ]
-    } 
+    }
   ]
 }
 """
@@ -414,37 +412,25 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(self.linear0.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[0],
-                                  "dims_mapping": [-1, 1]
-                              })
-            auto.shard_tensor(self.linear1.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[0],
-                                  "dims_mapping": [1, -1]
-                              })
-            auto.shard_tensor(self.linear2.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[1],
-                                  "dims_mapping": [-1, 1]
-                              })
-            auto.shard_tensor(self.linear3.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[1],
-                                  "dims_mapping": [1, -1]
-                              })
+            auto.shard_tensor(self.linear0.weight, _global_process_mesh[0],
+                              [None, "y"])
+
+            auto.shard_tensor(self.linear1.weight, _global_process_mesh[0],
+                              ["y", None])
+
+            auto.shard_tensor(self.linear2.weight, _global_process_mesh[1],
+                              [None, "y"])
+
+            auto.shard_tensor(self.linear3.weight, _global_process_mesh[1],
+                              ["y", None])
 
         out = self.norm(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = self.linear1(out)
 
-        auto.shard_tensor(out,
-                          dist_attr={
-                              "process_mesh": _global_process_mesh[1],
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(out, _global_process_mesh[1], ["x", None])
+
         out = self.linear2(out)
         out = F.gelu(out, approximate=True)
         out = self.linear3(out)
@@ -464,11 +450,7 @@ def mlp_forward(train_program, start_program):
                             dtype='float32')
 
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(input,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[0],
-                                  "dims_mapping": [0, -1]
-                              })
+            auto.shard_tensor(input, _global_process_mesh[0], ["x", None])
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
                        initializer_range=0.02)
@@ -548,7 +530,10 @@ class TestAutoParallelMapper(unittest.TestCase):
         global _global_num_stages
         _global_num_stages = 2
         global _global_process_mesh
-        _global_process_mesh = [[[0, 1], [2, 3]], [[4, 5], [6, 7]]]
+        _global_process_mesh = [
+            auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"]),
+            auto.ProcessMesh([[4, 5], [6, 7]], dim_names=["x", "y"])
+        ]
         processes = [0, 1, 2, 3, 4, 5, 6, 7]
 
         dist_programs = {}

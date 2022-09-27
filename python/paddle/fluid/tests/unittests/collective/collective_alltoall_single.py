@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -69,7 +66,7 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
                                     output,
                                     in_split_sizes,
                                     out_split_sizes,
-                                    use_calc_stream=False,
+                                    sync_op=False,
                                     group=group)
         task.wait()
 

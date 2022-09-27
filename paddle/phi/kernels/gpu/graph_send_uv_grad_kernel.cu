@@ -108,7 +108,7 @@ void CalculateGrad(const Context& ctx,
       DenseTensor x_grad_out = phi::Sum<T, Context>(
           ctx,
           x_grad_v2,
-          reduce_idx,
+          phi::IntArray(reduce_idx),
           paddle::experimental::CppTypeToDataType<T>::Type(),
           true);
 #ifdef PADDLE_WITH_HIP
@@ -190,7 +190,7 @@ void CalculateGrad(const Context& ctx,
       DenseTensor x_grad_out = phi::Sum<T, Context>(
           ctx,
           x_grad_v2,
-          reduce_idx,
+          phi::IntArray(reduce_idx),
           paddle::experimental::CppTypeToDataType<T>::Type(),
           true);
 #ifdef PADDLE_WITH_HIP

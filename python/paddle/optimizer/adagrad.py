@@ -22,7 +22,7 @@ __all__ = []
 
 class Adagrad(Optimizer):
     r"""
-    The Adaptive Gradient optimizer (Adagrad for short) use an optimization described 
+    The Adaptive Gradient optimizer (Adagrad for short) use an optimization described
     in paper: `Adaptive Subgradient Methods for Online Learning and
     Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
 
@@ -45,22 +45,22 @@ class Adagrad(Optimizer):
             It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. And you can specify different options for \
-            different parameter groups such as the learning rate, weight decay, etc, \
-            then the parameters are list of dict. Note that the learning_rate in paramter groups \
-            represents the scale of base learning_rate. \
-	    The default value is None in static mode, at this time all parameters will be updated.
-	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-	    It canbe a float value as coeff of L2 regularization or \
-	    :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
-	    If a parameter has set regularizer using :ref:`api_paddle_fluid_param_attr_aramAttr` already, \
-	    the regularization setting here in optimizer will be ignored for this parameter. \
-	    Otherwise, the regularization setting here in optimizer will take effect. \
-	    Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies, 
-            ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None, 
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+            This parameter is required in dygraph mode. And you can specify different options for
+            different parameter groups such as the learning rate, weight decay, etc,
+            then the parameters are list of dict. Note that the learning_rate in paramter groups
+            represents the scale of base learning_rate.
+            The default value is None in static mode, at this time all parameters will be updated.
+        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
+            It canbe a float value as coeff of L2 regularization or
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_fluid_param_attr_aramAttr` already,
+            the regularization setting here in optimizer will be ignored for this parameter.
+            Otherwise, the regularization setting here in optimizer will take effect.
+            Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies,
+            ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None,
             meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -100,7 +100,7 @@ class Adagrad(Optimizer):
                     'weight_decay': 0.001,
                     'learning_rate': 0.1,
                 }],
-                weight_decay=0.01)                   
+                weight_decay=0.01)
             out.backward()
             adagrad.step()
             adagrad.clear_grad()

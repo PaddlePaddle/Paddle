@@ -26,7 +26,8 @@ PD_REGISTER_KERNEL(set_value,
                    double,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(set_value_with_tensor,
                    CPU,
                    ALL_LAYOUT,
@@ -35,4 +36,5 @@ PD_REGISTER_KERNEL(set_value_with_tensor,
                    double,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::float16) {}

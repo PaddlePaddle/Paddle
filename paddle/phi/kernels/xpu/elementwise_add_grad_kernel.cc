@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/elementwise_add_grad_kernel.h"
+
 #include <memory>
 #include <string>
-
-#include "paddle/phi/kernels/elementwise_add_grad_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"

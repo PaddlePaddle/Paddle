@@ -166,17 +166,17 @@ def fluid_softmax_with_cross_entropy(logits,
                                      axis=-1):
     r"""
 
-    This operator implements the cross entropy loss function with softmax. This function 
-    combines the calculation of the softmax operation and the cross entropy loss function 
+    This operator implements the cross entropy loss function with softmax. This function
+    combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
     softmax operator since that would produce incorrect results.
 
-    When the attribute :attr:`soft_label` is set :attr:`False`, this operators 
-    expects mutually exclusive hard labels, each sample in a batch is in exactly 
-    one class with a probability of 1.0. Each sample in the batch will have a 
+    When the attribute :attr:`soft_label` is set :attr:`False`, this operators
+    expects mutually exclusive hard labels, each sample in a batch is in exactly
+    one class with a probability of 1.0. Each sample in the batch will have a
     single label.
 
     The equation is as follows:
@@ -184,54 +184,46 @@ def fluid_softmax_with_cross_entropy(logits,
     1) Hard label (one-hot label, so every sample has exactly one class)
 
     .. math::
-
-        loss_j =  -\\text{logits}_{label_j} +
-        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logits}_i)\\right), j = 1,..., K
+        \\loss_j=-\text{logits}_{label_j} +\log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right), j = 1,..., K
 
     2) Soft label (each sample can have a distribution over all classes)
 
     .. math::
-
-        loss_j =  -\\sum_{i=0}^{K}\\text{label}_i
-        \\left(\\text{logits}_i - \\log\\left(\\sum_{i=0}^{K}
-        \\exp(\\text{logits}_i)\\right)\\right), j = 1,...,K
+        \\loss_j= -\sum_{i=0}^{K}\text{label}_i\left(\text{logits}_i - \log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right)\right), j = 1,...,K
 
     3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated first by:
 
     .. math::
-
-        max_j &= \\max_{i=0}^{K}{\\text{logits}_i}
-
-        log\\_max\\_sum_j &= \\log\\sum_{i=0}^{K}\\exp(logits_i - max_j)
-
-        softmax_j &= \\exp(logits_j - max_j - {log\\_max\\_sum}_j)
+        \\max_j&=\max_{i=0}^{K}{\text{logits}_i} \\
+                log\_max\_sum_j &= \log\sum_{i=0}^{K}\exp(logits_i - max_j)\\
+                softmax_j &= \exp(logits_j - max_j - {log\_max\_sum}_j)
 
     and then cross entropy loss is calculated by softmax and label.
 
     Args:
         logits (Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
         label (Tensor): The ground truth  ``Tensor`` , data type is the same
-            as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`, 
-            Label is a ``Tensor``  in the same shape with :attr:`logits`. 
-            If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor`` 
+            as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`,
+            Label is a ``Tensor``  in the same shape with :attr:`logits`.
+            If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor``
             in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
         soft_label (bool, optional): A flag to indicate whether to interpretant the given
             labels as soft labels. Default False.
         ignore_index (int, optional): Specifies a target value that is ignored and does
                                       not contribute to the input gradient. Only valid
-                                      if :attr:`soft_label` is set to :attr:`False`. 
+                                      if :attr:`soft_label` is set to :attr:`False`.
                                       Default: kIgnoreIndex(-100).
         numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
                                               numerically stable algorithm. Only valid
-                                              when :attr:`soft_label` is :attr:`False` 
-                                              and GPU is used. When :attr:`soft_label` 
-                                              is :attr:`True` or CPU is used, the 
+                                              when :attr:`soft_label` is :attr:`False`
+                                              and GPU is used. When :attr:`soft_label`
+                                              is :attr:`True` or CPU is used, the
                                               algorithm is always numerically stable.
                                               Note that the speed may be slower when use
                                               stable algorithm. Default: True.
         return_softmax (bool, optional): A flag indicating whether to return the softmax
                                          along with the cross entropy loss. Default: False.
-        axis (int, optional): The index of dimension to perform softmax calculations. It 
+        axis (int, optional): The index of dimension to perform softmax calculations. It
                               should be in range :math:`[-1, rank - 1]`, while :math:`rank`
                               is the rank of input :attr:`logits`. Default: -1.
 
@@ -308,42 +300,42 @@ def fluid_softmax_with_cross_entropy(logits,
 
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
-    """ 
-  
+    """
+
     Npair loss requires paired data. Npair loss has two parts: the first part is L2
     regularizer on the embedding vector; the second part is cross entropy loss which
     takes the similarity matrix of anchor and positive as logits.
-  
+
     For more information, please refer to:
     `Improved Deep Metric Learning with Multi class N pair Loss Objective <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/papers/nips16_npairmetriclearning.pdf>`_
-  
+
     Args:
-      anchor(Tensor): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
+      anchor(Tensor): embedding vector for the anchor image. shape=[batch_size, embedding_dims],
                         the data type is float32 or float64.
-      positive(Tensor): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
+      positive(Tensor): embedding vector for the positive image. shape=[batch_size, embedding_dims],
                         the data type is float32 or float64.
       labels(Tensor): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
       l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
 
-  
+
     Returns:
       A Tensor representing the npair loss, the data type is the same as anchor, the shape is [1].
-  
+
     Examples:
 
       .. code-block:: python
-  
+
           import paddle
-          
+
           DATATYPE = "float32"
-  
+
           anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
           positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
           labels = paddle.rand(shape=(18,), dtype=DATATYPE)
-          
+
           npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
           print(npair_loss)
-  
+
     """
     check_variable_and_dtype(anchor, 'anchor', ['float32', 'float64'],
                              'npair_loss')
@@ -480,10 +472,9 @@ def edit_distance(input,
         NOTE: This Api is different from fluid.metrics.EditDistance
 
     Returns:
-	Tuple:
-
-        distance(Tensor): edit distance result, its data type is float32, and its shape is (batch_size, 1).
-        sequence_num(Tensor): sequence number, its data type is float32, and its shape is (1,).
+        Tuple:
+            distance(Tensor): edit distance result, its data type is float32, and its shape is (batch_size, 1).
+            sequence_num(Tensor): sequence number, its data type is float32, and its shape is (1,).
 
     Examples:
         .. code-block:: python
@@ -862,15 +853,18 @@ def hsigmoid_loss(input,
     """
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
+
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
     For each class(word), there's a unique path from root to itself, hsigmoid calculate the cost for each non-leaf node on
     the path, and sum them to get a total cost.
-    Comparing to softmax, the OP can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
+
+    Comparing to softmax, hsigmoid can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
     represents the number of classes or the size of word dict.
 
-    The OP supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
-    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_. For the custom
-    tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
+    The API supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
+    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_.
+
+    For the custom tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
 
     1. Using a custom word dict to build a binary tree, each leaf node should be an word in the word dict.
     2. Creating a dict map word_id -> path that from the word to the root node, we call it path_table.
@@ -1115,7 +1109,7 @@ def margin_ranking_loss(input,
         reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Returns: 
+    Returns:
         Tensor, if :attr:`reduction` is ``'mean'`` or ``'sum'``, the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Examples:
@@ -1167,8 +1161,9 @@ def margin_ranking_loss(input,
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                              'margin_rank_loss')
 
-    out = paddle.subtract(other, input)
-    out = paddle.multiply(out, label)
+    out = paddle.subtract(input, other)
+    neg_label = paddle.neg(label)
+    out = paddle.multiply(neg_label, out)
 
     if margin != 0.0:
         margin_var = out.block.create_var(dtype=out.dtype)
@@ -1201,7 +1196,7 @@ def margin_ranking_loss(input,
 
 def l1_loss(input, label, reduction='mean', name=None):
     r"""
-    This operator computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
+    Computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
 
     If `reduction` set to ``'none'``, the loss is:
 
@@ -1232,8 +1227,8 @@ def l1_loss(input, label, reduction='mean', name=None):
 
     Returns:
         Tensor, the L1 Loss of Tensor ``input`` and ``label``.
-            If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
-            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+        If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
+        If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
         .. code-block:: python
@@ -1262,11 +1257,8 @@ def l1_loss(input, label, reduction='mean', name=None):
             "received %s, which is not allowed." % reduction)
 
     if in_dygraph_mode():
-        unreduced = _elementwise_op_in_dygraph(input,
-                                               label,
-                                               axis=-1,
-                                               act='abs',
-                                               op_name='elementwise_sub')
+        unreduced = _C_ops.abs(_C_ops.subtract(input, label))
+
         if reduction == 'mean':
             return _C_ops.mean_all(unreduced)
         elif reduction == 'sum':
@@ -1425,7 +1417,7 @@ def nll_loss(input,
 
 def kl_div(input, label, reduction='mean', name=None):
     r"""
-    This operator calculates the Kullback-Leibler divergence loss
+    Calculate the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
     log-probability and Input(Target) is the probability.
 
@@ -1470,31 +1462,26 @@ def kl_div(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn.functional as F
 
             shape = (5, 20)
-            input = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
+            x = paddle.uniform(shape, min=-10, max=10).astype('float32')
+            target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='batchmean')
+            pred_loss = F.kl_div(x, target, reduction='batchmean')
             # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='mean')
+            pred_loss = F.kl_div(x, target, reduction='mean')
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='sum')
+            pred_loss = F.kl_div(x, target, reduction='sum')
             # shape=[1]
 
             # 'none' reduction, loss shape is same with input shape
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='none')
+            pred_loss = F.kl_div(x, target, reduction='none')
             # shape=[5, 20]
 
     """
@@ -1742,9 +1729,7 @@ def margin_cross_entropy(logits,
 
     .. hint::
         The API supports single GPU and multi GPU, and don't supports CPU.
-
         For data parallel mode, set ``group=False``.
-
         For model parallel mode, set ``group=None`` or the group instance return by paddle.distributed.new_group.
         And logits.shape[-1] can be different at each rank.
 
@@ -1756,7 +1741,7 @@ def margin_cross_entropy(logits,
         margin2 (float, optional): m2 of margin loss, default value is `0.5`.
         margin3 (float, optional): m3 of margin loss, default value is `0.0`.
         scale (float, optional): s of margin loss, default value is `64.0`.
-        group (Group, optional): The group instance return by paddle.distributed.new_group 
+        group (Group, optional): The group instance return by paddle.distributed.new_group
             or ``None`` for global default group or ``False`` for data parallel (do not communication cross ranks).
             Default is ``None``.
         return_softmax (bool, optional): Whether return softmax probability. Default value is `False`.
@@ -1767,12 +1752,12 @@ def margin_cross_entropy(logits,
                     Default value is `'mean'`.
 
     Returns:
-        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
-            `return_softmax` is False, otherwise the tuple \
-            (loss, softmax), softmax is shard_softmax when \
-            using model parallel, otherwise softmax is in \
-            the same shape with input logits. If ``reduction == None``, \
-            the shape of loss is ``[N, 1]``, otherwise the shape is ``[1]``.
+        Tensor|tuple[Tensor, Tensor], return the cross entropy loss if
+            `return_softmax` is False, otherwise the tuple (loss, softmax),
+            softmax is shard_softmax when using model parallel, otherwise
+            softmax is in the same shape with input logits. If
+            ``reduction == None``, the shape of loss is ``[N, 1]``, otherwise
+            the shape is ``[1]``.
 
     Examples:
 
@@ -1812,7 +1797,7 @@ def margin_cross_entropy(logits,
         print(label)
         print(loss)
         print(softmax)
-        
+
         #Tensor(shape=[2, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #       [[ 0.85204151, -0.55557678,  0.04994566,  0.71986042],
         #        [-0.20198586, -0.35270476, -0.55182702,  0.09749021]])
@@ -1873,7 +1858,7 @@ def margin_cross_entropy(logits,
         print(loss)
         print(softmax)
 
-        # python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py 
+        # python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py
         ## for rank0 input
         #Tensor(shape=[4, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #       [[ 0.32888934,  0.02408748, -0.02763289,  0.18173063],
@@ -2030,6 +2015,91 @@ def softmax_with_cross_entropy(logits,
                                numeric_stable_mode=True,
                                return_softmax=False,
                                axis=-1):
+    r"""
+    This operator implements the cross entropy loss function with softmax. This function
+    combines the calculation of the softmax operation and the cross entropy loss function
+    to provide a more numerically stable gradient.
+
+    Because this operator performs a softmax on logits internally, it expects
+    unscaled logits. This operator should not be used with the output of
+    softmax operator since that would produce incorrect results.
+
+    When the attribute :attr:`soft_label` is set :attr:`False`, this operators
+    expects mutually exclusive hard labels, each sample in a batch is in exactly
+    one class with a probability of 1.0. Each sample in the batch will have a
+    single label.
+
+    The equation is as follows:
+
+    1) Hard label (one-hot label, so every sample has exactly one class)
+
+    .. math::
+        \\loss_j=-\text{logits}_{label_j} +\log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right), j = 1,..., K
+
+    2) Soft label (each sample can have a distribution over all classes)
+
+    .. math::
+        \\loss_j= -\sum_{i=0}^{K}\text{label}_i\left(\text{logits}_i - \log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right)\right), j = 1,...,K
+
+    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated first by:
+
+    .. math::
+        \\max_j&=\max_{i=0}^{K}{\text{logits}_i} \\
+                log\_max\_sum_j &= \log\sum_{i=0}^{K}\exp(logits_i - max_j)\\
+                softmax_j &= \exp(logits_j - max_j - {log\_max\_sum}_j)
+
+    and then cross entropy loss is calculated by softmax and label.
+
+    Args:
+        logits (Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
+        label (Tensor): The ground truth  ``Tensor`` , data type is the same
+            as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`,
+            Label is a ``Tensor``  in the same shape with :attr:`logits`.
+            If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor``
+            in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
+        soft_label (bool, optional): A flag to indicate whether to interpretant the given
+            labels as soft labels. Default False.
+        ignore_index (int, optional): Specifies a target value that is ignored and does
+                                      not contribute to the input gradient. Only valid
+                                      if :attr:`soft_label` is set to :attr:`False`.
+                                      Default: kIgnoreIndex(-100).
+        numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
+                                              numerically stable algorithm. Only valid
+                                              when :attr:`soft_label` is :attr:`False`
+                                              and GPU is used. When :attr:`soft_label`
+                                              is :attr:`True` or CPU is used, the
+                                              algorithm is always numerically stable.
+                                              Note that the speed may be slower when use
+                                              stable algorithm. Default: True.
+        return_softmax (bool, optional): A flag indicating whether to return the softmax
+                                         along with the cross entropy loss. Default: False.
+        axis (int, optional): The index of dimension to perform softmax calculations. It
+                              should be in range :math:`[-1, rank - 1]`, while :math:`rank`
+                              is the rank of input :attr:`logits`. Default: -1.
+
+    Returns:
+        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
+                                                    `return_softmax` is False, otherwise the tuple \
+                                                    (loss, softmax), softmax is in the same shape \
+                                                    with input logits and cross entropy loss is in \
+                                                    the same shape with input logits except shape \
+                                                    in dimension :attr:`axis` as 1.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            data = np.random.rand(128).astype("float32")
+            label = np.random.rand(1).astype("int64")
+            data = paddle.to_tensor(data)
+            label = paddle.to_tensor(label)
+            linear = paddle.nn.Linear(128, 100)
+            x = linear(data)
+            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
+            print(out)
+    """
     return fluid_softmax_with_cross_entropy(logits, label, soft_label,
                                             ignore_index, numeric_stable_mode,
                                             return_softmax, axis)
@@ -2045,18 +2115,18 @@ def cross_entropy(input,
                   use_softmax=True,
                   name=None):
     r"""
-    By default, this operator implements the cross entropy loss function with softmax. This function 
-    combines the calculation of the softmax operation and the cross entropy loss function 
-    to provide a more numerically stable computing. 
+    By default, this operator implements the cross entropy loss function with softmax. This function
+    combines the calculation of the softmax operation and the cross entropy loss function
+    to provide a more numerically stable computing.
 
     This operator will calculate the cross entropy loss function without softmax when use_softmax=False.
 
-    By default, this operator will calculate the mean of the result, and you can also affect 
-    the default behavior by using the reduction parameter. Please refer to the part of 
+    By default, this operator will calculate the mean of the result, and you can also affect
+    the default behavior by using the reduction parameter. Please refer to the part of
     parameters for details.
 
     This operator can be used to calculate the softmax cross entropy loss with soft and hard labels.
-    Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels 
+    Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels
     mean the probability of the actual label, 0.6, 0.8, 0.2, etc.
 
     The calculation of this operator includes the following two steps.
@@ -2111,7 +2181,7 @@ def cross_entropy(input,
             1.1. Hard labels (soft_label = False)
 
             .. math::
-                \\loss_j=loss_j*weight[label_j] 
+                \\loss_j=loss_j*weight[label_j]
 
 
             1.2. Soft labels (soft_label = True)
@@ -2121,21 +2191,21 @@ def cross_entropy(input,
 
         2. reduction
 
-            2.1 if the ``reduction`` parameter is ``none`` 
+            2.1 if the ``reduction`` parameter is ``none``
 
                 Return the previous result directly
 
-            2.2 if the ``reduction`` parameter is ``sum`` 
+            2.2 if the ``reduction`` parameter is ``sum``
 
                 Return the sum of the previous results
 
             .. math::
                \\loss=\sum_{j}loss_j
 
-            2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to 
-            the ``weight`` parameter as follows. 
+            2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to
+            the ``weight`` parameter as follows.
 
-            2.3.1. If the  ``weight``  parameter is ``None`` 
+            2.3.1. If the  ``weight``  parameter is ``None``
 
                    Return the average value of the previous results
 
@@ -2149,7 +2219,7 @@ def cross_entropy(input,
             1. Hard labels (soft_label = False)
 
             .. math::
-                \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j] 
+                \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j]
 
             2. Soft labels (soft_label = True)
 
@@ -2162,11 +2232,11 @@ def cross_entropy(input,
         - **input** (Tensor)
 
             Input tensor, the data type is float32, float64. Shape is
-        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
+        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
 
-            Note: 
+            Note:
 
-                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the 
+                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
@@ -2177,20 +2247,20 @@ def cross_entropy(input,
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
-            2. If soft_label=True, the shape and data type should be same with ``input`` , 
+            2. If soft_label=True, the shape and data type should be same with ``input`` ,
             and the sum of the labels for each sample should be 1.
 
         - **weight** (Tensor, optional)
 
-            a manual rescaling weight given to each class. 
-            If given, has to be a Tensor of size C and the data type is float32, float64. 
+            a manual rescaling weight given to each class.
+            If given, has to be a Tensor of size C and the data type is float32, float64.
             Default is ``'None'`` .
 
         - **ignore_index** (int64, optional)
 
             Specifies a target value that is ignored
-            and does not contribute to the loss. A negative value means that no label 
-            value needs to be ignored. Only valid when soft_label = False.  
+            and does not contribute to the loss. A negative value means that no label
+            value needs to be ignored. Only valid when soft_label = False.
             Default is ``-100`` .
 
         - **reduction** (str, optional)
@@ -2204,14 +2274,14 @@ def cross_entropy(input,
 
         - **soft_label** (bool, optional)
 
-            Indicate whether label is soft. 
+            Indicate whether label is soft.
             Default is ``False``.
 
         - **axis** (int, optional)
 
-            The index of dimension to perform softmax calculations. 
-            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the 
-            number of dimensions of input :attr:`input`. 
+            The index of dimension to perform softmax calculations.
+            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the
+            number of dimensions of input :attr:`input`.
             Default is ``-1`` .
 
         - **use_softmax** (bool, optional)
@@ -2233,9 +2303,9 @@ def cross_entropy(input,
 
         If :attr:`reduction` is ``'none'``:
 
-        1. If soft_label = False, the dimension of return value is the same with ``label`` . 
+        1. If soft_label = False, the dimension of return value is the same with ``label`` .
 
-        2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
+        2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` .
 
 
     Examples:
@@ -2248,10 +2318,10 @@ def cross_entropy(input,
             N=100
             C=200
             reduction='mean'
-            input =  paddle.rand([N, C], dtype='float64')  
+            input =  paddle.rand([N, C], dtype='float64')
             label =  paddle.randint(0, C, shape=[N], dtype='int64')
-            weight = paddle.rand([C], dtype='float64') 
-            
+            weight = paddle.rand([C], dtype='float64')
+
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
@@ -2275,9 +2345,9 @@ def cross_entropy(input,
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                  logits,  
-                                                                  labels, 
-                                                                  soft_label=True, 
+                                                                  logits,
+                                                                  labels,
+                                                                  soft_label=True,
                                                                   axis=axis,
                                                                   weight=weight,
                                                                   reduction=reduction)
@@ -2670,12 +2740,12 @@ def sigmoid_focal_loss(logit,
     it is used in one-stage object detection where the foreground-background class
     imbalance is extremely high.
 
-    This operator measures focal loss function as follows: 
+    This operator measures focal loss function as follows:
 
     .. math::
            Out = -Labels * alpha * {(1 - \sigma(Logit))}^{gamma}\log(\sigma(Logit)) - (1 - Labels) * (1 - alpha) * {\sigma(Logit)}^{gamma}\log(1 - \sigma(Logit))
 
-    We know that :math:`\sigma(Logit) = \frac{1}{1 + \exp(-Logit)}`. 
+    We know that :math:`\sigma(Logit) = \frac{1}{1 + \exp(-Logit)}`.
 
     Then, if :attr:`normalizer` is not None, this operator divides the
     normalizer tensor on the loss `Out`:
@@ -2702,7 +2772,7 @@ def sigmoid_focal_loss(logit,
             For object detection task, it is the number of positive samples.
             If set to None, the focal loss will not be normalized. Default is None.
         alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
-            it should be between 0 and 1.  Default value is set to 0.25. 
+            it should be between 0 and 1.  Default value is set to 0.25.
         gamma(int|float, optional): Hyper-parameter to modulate the easy and hard examples.
             Default value is set to 2.0.
         reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -2859,45 +2929,58 @@ def multi_label_soft_margin_loss(input,
                                  reduction="mean",
                                  name=None):
     r"""
+    Calculate a multi-class multi-classification
+    hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
+    and output :math:`y` (which is a 2D `Tensor` of target class indices).
+    For each sample in the mini-batch:
 
-        Parameters:
-            input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
-            label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
-            weight (Tensor,optional): a manual rescaling weight given to each class.
-                    If given, has to be a Tensor of size C and the data type is float32, float64.
-                    Default is ``'None'`` .
-            reduction (str, optional): Indicate how to average the loss by batch_size,
-                    the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-                    If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-                    If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-                    If :attr:`reduction` is ``'sum'``, the summed loss is returned.
-                    Default: ``'mean'``
-            name (str, optional): Name for the operation (optional, default is None).
-                    For more information, please refer to :ref:`api_guide_Name`.
+    .. math::
+        \text{loss}(x, y) = \sum_{ij}\frac{\max(0, 1 - (x[y[j]] - x[i]))}{\text{x.size}(0)}
 
-	Shape:
-            input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
-            label: N-D Tensor, same shape as the input.
-            weight:N-D Tensor, the shape is [N,1]
-            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
+    where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`, \
+    :math:`y \in \left\{0, \; \cdots , \; \text{y.size}(0) - 1\right\}`, \
+    :math:`0 \leq y[j] \leq \text{x.size}(0)-1`, \
+    and :math:`i \neq y[j]` for all :math:`i` and :math:`j`.
+    :math:`y` and :math:`x` must have the same size.
 
-	Returns:
-            Tensor, The tensor variable storing the multi_label_soft_margin_loss of input and label.
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
+        weight (Tensor,optional): a manual rescaling weight given to each class.
+                If given, has to be a Tensor of size C and the data type is float32, float64.
+                Default is ``'None'`` .
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                Default: ``'mean'``
+        name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
 
-	Examples:
-            .. code-block:: python
+    Shape:
+        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
+        label: N-D Tensor, same shape as the input.
+        weight:N-D Tensor, the shape is [N,1]
+        output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
-                import paddle
-                import paddle.nn.functional as F
-                input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
-                # label elements in {1., -1.}
-                label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
-                loss = F.multi_label_soft_margin_loss(input, label, reduction='none')
-                print(loss)
-                # Tensor([3.49625897, 0.71111226, 0.43989015])
-                loss = F.multi_label_soft_margin_loss(input, label, reduction='mean')
-                print(loss)
-                # Tensor([1.54908717])
+    Returns:
+        Tensor, The tensor variable storing the multi_label_soft_margin_loss of input and label.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
+            # label elements in {1., -1.}
+            label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
+            loss = F.multi_label_soft_margin_loss(input, label, reduction='none')
+            print(loss)
+            # Tensor([3.49625897, 0.71111226, 0.43989015])
+            loss = F.multi_label_soft_margin_loss(input, label, reduction='mean')
+            print(loss)
+            # Tensor([1.54908717])
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -2935,7 +3018,7 @@ def multi_label_soft_margin_loss(input,
 
 def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
     r"""
-    This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    Calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
     This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
     and is typically used for learning nonlinear embeddings or semi-supervised learning.
 
@@ -3165,7 +3248,7 @@ def triplet_margin_with_distance_loss(input,
     .. math::
         d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_p
 
-    or user can defined their own distance functions. `margin` is a nonnegative margin representing the minimum difference 
+    or user can defined their own distance functions. `margin` is a nonnegative margin representing the minimum difference
     between the positive and negative distances that is required for the loss to be 0. If `swap` is true, it will compare distance of (input, negative) with
     distance of (negative, positive) and change it to the smaller one. For more details see http://www.bmva.org/bmvc/2016/papers/paper119/paper119.pdf.
 
@@ -3181,10 +3264,10 @@ def triplet_margin_with_distance_loss(input,
             The shape of label is the same as the shape of input.
 
         distance_function (callable, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
-	
-	    margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
-            between the positive and negative distances required for the loss to be 0.
-	
+
+        margin (float, optional): A nonnegative margin representing the minimum difference
+            between the positive and negative distances required for the loss to be 0. Default value is :math:`1`.
+
         swap (bool, optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
 
@@ -3196,7 +3279,7 @@ def triplet_margin_with_distance_loss(input,
             Default: ``'mean'``
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-	    
+
     Returns:
         Output: Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 

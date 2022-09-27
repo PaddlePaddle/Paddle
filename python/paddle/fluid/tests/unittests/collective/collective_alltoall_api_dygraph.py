@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import argparse
 import os
@@ -45,12 +43,9 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.to_tensor(indata)
             tindata = paddle.split(tindata, 2, axis=0)
-            tout_data = []
-            paddle.distributed.alltoall(tindata, tout_data)
-            output_data = []
-            for data in tout_data:
-                output_data.append(data.numpy())
-            return output_data
+            toutdata = []
+            paddle.distributed.alltoall(tindata, toutdata)
+            return [data.numpy() for data in toutdata]
 
 
 if __name__ == "__main__":

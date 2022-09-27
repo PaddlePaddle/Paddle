@@ -113,8 +113,7 @@ R"(
 static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
 {
   PyThreadState *tstate = nullptr;
-  try
-  {
+  try {
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
@@ -123,8 +122,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     %s
-  }
-  catch(...) {
+  } catch(...) {
     if (tstate) {
       PyEval_RestoreThread(tstate);
     }
@@ -361,11 +359,9 @@ static std::string GenerateCoreOpsInfoMap() {
   std::string result =
       "static PyObject * eager_get_core_ops_args_info(PyObject *self) {\n"
       "  PyThreadState *tstate = nullptr;\n"
-      "  try\n"
-      "  {\n"
+      "  try {\n"
       "    return ToPyObject(core_ops_legacy_args_info);\n"
-      "  }\n"
-      "  catch(...) {\n"
+      "  } catch(...) {\n"
       "    if (tstate) {\n"
       "      PyEval_RestoreThread(tstate);\n"
       "    }\n"
@@ -376,11 +372,9 @@ static std::string GenerateCoreOpsInfoMap() {
       "\n"
       "static PyObject * eager_get_core_ops_args_type_info(PyObject *self) {\n"
       "  PyThreadState *tstate = nullptr;\n"
-      "  try\n"
-      "  {\n"
+      "  try {\n"
       "    return ToPyObject(core_ops_legacy_args_type_info);\n"
-      "  }\n"
-      "  catch(...) {\n"
+      "  } catch(...) {\n"
       "    if (tstate) {\n"
       "      PyEval_RestoreThread(tstate);\n"
       "    }\n"
@@ -391,11 +385,9 @@ static std::string GenerateCoreOpsInfoMap() {
       "\n"
       "static PyObject * eager_get_core_ops_returns_info(PyObject *self) {\n"
       "  PyThreadState *tstate = nullptr;\n"
-      "  try\n"
-      "  {\n"
+      "  try {\n"
       "    return ToPyObject(core_ops_legacy_returns_info);\n"
-      "  }\n"
-      "  catch(...) {\n"
+      "  } catch(...) {\n"
       "    if (tstate) {\n"
       "      PyEval_RestoreThread(tstate);\n"
       "    }\n"
@@ -516,10 +508,10 @@ int main(int argc, char* argv[]) {
   auto op_funcs = GenerateOpFunctions();
   auto core_ops_infos = GenerateCoreOpsInfoMap();
   std::string core_ops_infos_registry =
-      "{\"get_core_ops_args_info\", "
+      "  {\"get_core_ops_args_info\", "
       "(PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, "
       "\"C++ interface function for eager_get_core_ops_args_info.\"},\n"
-      "{\"get_core_ops_args_type_info\", "
+      "  {\"get_core_ops_args_type_info\", "
       "(PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info, "
       "METH_NOARGS, "
       "\"C++ interface function for eager_get_core_ops_args_type_info.\"},\n"
@@ -553,7 +545,7 @@ int main(int argc, char* argv[]) {
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
 
-      << "  BindFinalStateEagerOpFunctions(&m);\n\n"
+      << "  BindFinalStateEagerOpFunctions(&m);\n"
       << "}\n\n"
       << "} // namespace pybind\n"
       << "} // namespace paddle\n";
