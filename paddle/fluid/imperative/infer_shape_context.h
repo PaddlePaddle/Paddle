@@ -281,7 +281,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         var_map_out_->end(),
         platform::errors::NotFound("Can not find [%s] in outputs.", name));
     for (auto& var : it->second) {
-      res.emplace_back(var->MutableVar());
+      if (var) {
+        res.emplace_back(var->MutableVar());
+      } else {
+        res.emplace_back(framework::InferShapeVarPtr());
+      }
     }
     return res;
   }
