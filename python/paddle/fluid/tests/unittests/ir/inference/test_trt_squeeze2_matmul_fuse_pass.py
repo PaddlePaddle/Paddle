@@ -27,15 +27,15 @@ import hypothesis.strategies as st
 
 class TestSqueeze2MatmulFusePass(PassAutoScanTest):
     """
-        x_var  
-          |          
-       squeeze2 
+        x_var
+          |
+       squeeze2
           \
     squeeze2_out_var    y_var
              \           /
                  matmul      bias_var
                     \          /
-                   elementwise_add  
+                   elementwise_add
     """
 
     def sample_predictor_configs(self, program_config):

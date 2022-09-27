@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 import paddle
 import collections
@@ -32,7 +31,7 @@ class ParallelMode(object):
     - DATA_PARALLEL: Distribute input data to different devices.
     - TENSOR_PARALLEL: Shards tensors in the network to different devices.
     - PIPELINE_PARALLEL: Place different layers of the network on different devices.
-    - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states 
+    - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states
                          corresponding to the parameters to each device.
 
     Examples:

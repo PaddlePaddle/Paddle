@@ -154,7 +154,7 @@ class AbsDoubleGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const framework::OpKernelType& expected_kernel_type) const override {
     return framework::OpKernelType(
         framework::TransToProtoVarType(tensor.dtype()),
         tensor.place(),

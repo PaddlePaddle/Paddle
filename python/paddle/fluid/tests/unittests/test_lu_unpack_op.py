@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from op_test import OpTest
 import unittest
 import itertools
@@ -225,7 +224,7 @@ class TestLU_UnpackAPI(unittest.TestCase):
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors
@@ -282,7 +281,7 @@ class TestLU_UnpackAPI(unittest.TestCase):
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors

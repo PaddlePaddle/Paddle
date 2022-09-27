@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from collections import Counter
 
 from ..static import Variable, device_guard
@@ -128,7 +127,7 @@ def slice(input, axes, starts, ends):
                 ends = [-1, 1000]       # -1 denotes the reverse 0th position of dimension 0.
             Then:
                 result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
-    
+
     Args:
         input (Tensor): A ``Tensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to .
@@ -141,10 +140,6 @@ def slice(input, axes, starts, ends):
 
     Returns:
         Tensor:  A ``Tensor``. The data type is same as ``input``.
-
-    Raises:
-        TypeError: The type of ``starts`` must be list, tuple or Tensor.
-        TypeError: The type of ``ends`` must be list, tuple or Tensor.
 
     Examples:
         .. code-block:: python
@@ -420,12 +415,6 @@ def transpose(x, perm, name=None):
 
 def unstack(x, axis=0, num=None):
     """
-    :alias_main: paddle.unstack
-	:alias: paddle.unstack,paddle.tensor.unstack,paddle.tensor.manipulation.unstack
-	:old_api: paddle.fluid.layers.unstack
-
-    **UnStack Layer**
-
     This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
 
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
@@ -440,9 +429,6 @@ def unstack(x, axis=0, num=None):
 
     Returns:
         list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
-
-    Raises:
-        ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
 
     Examples:
         .. code-block:: python
@@ -505,7 +491,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     For each value `v` in `input`, we reset it to a new value according to the
     following formula:
     ::
-   
+
         v = v - shard_id * shard_size if shard_id * shard_size <= v < (shard_id+1) * shard_size else ignore_value
 
     That is, the value `v` is set to the new offset within the range represented by the shard `shard_id`
@@ -820,16 +806,16 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
     """
     Note:
         This API is ONLY available in Dygraph mode.
-	
+
     This function fill the value into the x Tensor's diagonal inplace.
-    
+
     Args:
         x(Tensor): ``x`` is the original Tensor
         value(Scale): ``value`` is the value to filled in x
         offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
         wrap(bool,optional): the diagonal 'wrapped' after N columns for tall matrices.
         name(str,optional): Name for the operation (optional, default is None)
-    
+
     Returns:
         Tensor: Tensor with diagonal filled with value.
 
@@ -1017,7 +1003,7 @@ def concat(x, axis=0, name=None):
         x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16,
             float32, float64, int32, int64, int8, uint8. All the Tensors in ``x`` must have same data type.
         axis (int|Tensor, optional): Specify the axis to operate on the input Tensors.
-            It's a scalar with data type int or a Tensor with shape [1] and data type int32 
+            It's a scalar with data type int or a Tensor with shape [1] and data type int32
             or int64. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as ``axis+R``. Default is 0.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1027,9 +1013,9 @@ def concat(x, axis=0, name=None):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
-            
+
             x1 = paddle.to_tensor([[1, 2, 3],
                                    [4, 5, 6]])
             x2 = paddle.to_tensor([[11, 12, 13],
@@ -1130,10 +1116,12 @@ def concat(x, axis=0, name=None):
 
 def broadcast_tensors(input, name=None):
     """
-    This OP broadcast a list of tensors following broadcast semantics
+    Broadcast a list of tensors following broadcast semantics
 
-    .. note::
-        If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
@@ -1303,23 +1291,23 @@ def rot90(x, k=1, axes=[0, 1], name=None):
 
           data = paddle.arange(4)
           data = paddle.reshape(data, (2, 2))
-          print(data) 
+          print(data)
           #[[0, 1],
           # [2, 3]]
 
           y = paddle.rot90(data, 1, [0, 1])
-          print(y) 
+          print(y)
           #[[1, 3],
           # [0, 2]]
 
           y= paddle.rot90(data, -1, [0, 1])
-          print(y) 
+          print(y)
           #[[2, 0],
           # [3, 1]]
 
           data2 = paddle.arange(8)
           data2 = paddle.reshape(data2, (2,2,2))
-          print(data2) 
+          print(data2)
           #[[[0, 1],
           #  [2, 3]],
           # [[4, 5],
@@ -1385,7 +1373,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
 
     Note:
-        The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode. 
+        The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode.
         If you want to use the Tensor copy version, please use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
 
     For Example:
@@ -1427,10 +1415,6 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         Tensor: A tensor with the contents of the input tensor, with input \
                   axes flattened by indicated start axis and end axis. \
                   A Tensor with data type same as input x.
-
-    Raises:
-        ValueError: If x is not a Tensor.
-        ValueError: If start_axis or stop_axis is illegal.
 
     Examples:
 
@@ -1535,9 +1519,9 @@ def flatten_(x, start_axis=0, stop_axis=-1, name=None):
 
 def roll(x, shifts, axis=None, name=None):
     """
-    Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that 
-    roll beyond the last position are re-introduced at the first according to 'shifts'. 
-    If a axis is not specified, 
+    Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that
+    roll beyond the last position are re-introduced at the first according to 'shifts'.
+    If a axis is not specified,
     the tensor will be flattened before rolling and then restored to the original shape.
 
     Args:
@@ -1554,7 +1538,7 @@ def roll(x, shifts, axis=None, name=None):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0],
@@ -1625,13 +1609,13 @@ def roll(x, shifts, axis=None, name=None):
 
 def stack(x, axis=0, name=None):
     """
-    Stacks all the input tensors ``x`` along ``axis`` dimemsion. 
+    Stacks all the input tensors ``x`` along ``axis`` dimemsion.
     All tensors must be of the same shape and same dtype.
-    
-    For example, given N tensors of shape [A, B], if ``axis == 0``, the shape of stacked 
-    tensor is [N, A, B]; if ``axis == 1``, the shape of stacked 
+
+    For example, given N tensors of shape [A, B], if ``axis == 0``, the shape of stacked
+    tensor is [N, A, B]; if ``axis == 1``, the shape of stacked
     tensor is [A, N, B], etc.
-    
+
 
     .. code-block:: text
 
@@ -1679,35 +1663,35 @@ def stack(x, axis=0, name=None):
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x``
                                      must be of the same shape and dtype. Supported data types: float32, float64, int32, int64.
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
-                              where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
+                              where ``R`` is the number of dimensions of the first input tensor ``x[0]``.
                               If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        
+
     Returns:
         Tensor: The stacked tensor with same data type as input.
 
-    Example:    
+    Example:
         .. code-block:: python
 
             import paddle
-            
+
             x1 = paddle.to_tensor([[1.0, 2.0]])
             x2 = paddle.to_tensor([[3.0, 4.0]])
             x3 = paddle.to_tensor([[5.0, 6.0]])
-	    
+
             out = paddle.stack([x1, x2, x3], axis=0)
             print(out.shape)  # [3, 1, 2]
             print(out)
             # [[[1., 2.]],
             #  [[3., 4.]],
             #  [[5., 6.]]]
-	    
-	    out = paddle.stack([x1, x2, x3], axis=-2)
-	    print(out.shape)  # [1, 3, 2]
-	    print(out)
-	    # [[[1., 2.],
-	    #   [3., 4.],
-	    #   [5., 6.]]]
+
+        out = paddle.stack([x1, x2, x3], axis=-2)
+        print(out.shape)  # [1, 3, 2]
+        print(out)
+        # [[[1., 2.],
+        #   [3., 4.],
+        #   [5., 6.]]]
     """
     axis = 0 if axis is None else axis
 
@@ -1763,27 +1747,27 @@ def stack(x, axis=0, name=None):
 def split(x, num_or_sections, axis=0, name=None):
     """
     Split the input tensor into multiple sub-Tensors.
-    
+
     Args:
         x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, uint8, int8, int32 or int64.
-        num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections`` 
+        num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections``
             indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
             sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
             The length of the list must not  be larger than the ``x`` 's size of specified ``axis``.
-        axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type 
+        axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type
             ``int`` or a ``Tensor`` with shape [1] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Tensor): The list of segmented Tensors.
-    
+
     Example:
         .. code-block:: python
-            
+
             import paddle
-            
+
             # x is a Tensor of shape [3, 9, 5]
             x = paddle.rand([3, 9, 5])
 
@@ -1801,7 +1785,7 @@ def split(x, num_or_sections, axis=0, name=None):
             print(out0.shape)  # [3, 2, 5]
             print(out1.shape)  # [3, 3, 5]
             print(out2.shape)  # [3, 4, 5]
-            
+
             # axis is negative, the real axis is (rank(x) + axis)=1
             out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=-2)
             print(out0.shape)  # [3, 3, 5]
@@ -1926,16 +1910,58 @@ def split(x, num_or_sections, axis=0, name=None):
     return outs
 
 
+def vsplit(x, num_or_sections, name=None):
+    """
+    Split the input tensor into multiple sub-Tensors along the vertical axis, which is equivalent to ``paddle.split`` with ``axis=0``.
+
+    Args:
+        x (Tensor): A Tensor whose dimension must be greater than 1. The data type is bool, float16, float32, float64, uint8, int8, int32 or int64.
+        num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections``
+            indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
+            If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
+            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
+            The length of the list must not  be larger than the ``x`` 's size of axis 0.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+    Returns:
+        list[Tensor], The list of segmented Tensors.
+
+    Example:
+        .. code-block:: python
+
+            import paddle
+
+            # x is a Tensor of shape [8, 6, 7]
+            x = paddle.rand([8, 6, 7])
+            out0, out1, out2 = paddle.vsplit(x, num_or_sections=2)
+            print(out0.shape)  # [4, 6, 7]
+            print(out1.shape)  # [4, 6, 7]
+            out0, out1, out2 = paddle.vsplit(x, num_or_sections=[1, 3, 4])
+            print(out0.shape)  # [1, 6, 7]
+            print(out1.shape)  # [3, 6, 7]
+            print(out2.shape)  # [4, 6, 7]
+            out0, out1, out2 = paddle.vsplit(x, num_or_sections=[2, 3, -1])
+            print(out0.shape)  # [2, 6, 7]
+            print(out1.shape)  # [3, 6, 7]
+            print(out2.shape)  # [3, 6, 7]
+    """
+    if x.ndim < 2:
+        raise ValueError(
+            "The input tensor's dimension must be greater than 1, but got {}".
+            format(x.ndim))
+    return split(x, num_or_sections, axis=0, name=name)
+
+
 def squeeze(x, axis=None, name=None):
     """
-    Squeeze the dimension(s) of size 1 of input tensor x's shape. 
-    
-    Note that the output Tensor will share data with origin Tensor and doesn't have a 
-    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
+    Squeeze the dimension(s) of size 1 of input tensor x's shape.
+
+    Note that the output Tensor will share data with origin Tensor and doesn't have a
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version,
     please use `Tensor.clone` like ``squeeze_clone_x = x.squeeze().clone()``.
 
-    If axis is provided, it will remove the dimension(s) by given axis that of size 1. 
-    If the dimension of given axis is not of size 1, the dimension remain unchanged. 
+    If axis is provided, it will remove the dimension(s) by given axis that of size 1.
+    If the dimension of given axis is not of size 1, the dimension remain unchanged.
     If axis is not provided, all dims equal of size 1 will be removed.
 
     .. code-block:: text
@@ -1955,11 +1981,11 @@ def squeeze(x, axis=None, name=None):
             axis = 0
           Output:
             out.shape = [3, 1, 5]
-        
+
         Case4:
 
           Input:
-            x.shape = [1, 3, 1, 5]  # If the dimension of one given axis (3) is not of size 1, the dimension remain unchanged. 
+            x.shape = [1, 3, 1, 5]  # If the dimension of one given axis (3) is not of size 1, the dimension remain unchanged.
             axis = [0, 2, 3]
           Output:
             out.shape = [3, 5]
@@ -1967,7 +1993,7 @@ def squeeze(x, axis=None, name=None):
         Case4:
 
           Input:
-            x.shape = [1, 3, 1, 5]  # If axis is negative, axis = axis + ndim (number of dimensions in x). 
+            x.shape = [1, 3, 1, 5]  # If axis is negative, axis = axis + ndim (number of dimensions in x).
             axis = [-2]
           Output:
             out.shape = [1, 3, 5]
@@ -1987,7 +2013,7 @@ def squeeze(x, axis=None, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.rand([5, 1, 10])
             output = paddle.squeeze(x, axis=1)
 
@@ -2075,7 +2101,8 @@ def unique_consecutive(x,
     r"""
     Eliminates all but the first element from every consecutive group of equivalent elements.
 
-    .. note:: This function is different from :func:`paddle.unique` in the sense that this function
+    Note:
+        This function is different from :func:`paddle.unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
 
     Args:
@@ -2097,21 +2124,21 @@ def unique_consecutive(x,
     Example:
         .. code-block:: python
 
-            import paddle 
+            import paddle
 
             x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
-            output = paddle.unique_consecutive(x) # 
+            output = paddle.unique_consecutive(x) #
             np_output = output.numpy() # [1 2 3 1 2]
             _, inverse, counts = paddle.unique_consecutive(x, return_inverse=True, return_counts=True)
             np_inverse = inverse.numpy() # [0 0 1 1 2 3 3 4]
             np_counts = inverse.numpy() # [2 2 1 2 1]
 
             x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
-            output = paddle.unique_consecutive(x, axis=0) # 
+            output = paddle.unique_consecutive(x, axis=0) #
             np_output = output.numpy() # [2 1 3 0 1 2 1 3 2 1 3]
 
             x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
-            output = paddle.unique_consecutive(x, axis=0) # 
+            output = paddle.unique_consecutive(x, axis=0) #
             np_output = output.numpy()
             # [[2 1 3]
             #  [3 0 1]
@@ -2206,7 +2233,7 @@ def unique(x,
         name(str, optional): Name for the operation. For more information, please refer to
             :ref:`api_guide_Name`. Default: None.
 
-    Returns: 
+    Returns:
         tuple (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is \
             provided only if `return_index` is True. `inverse` is provided only if `return_inverse` \
             is True. `counts` is provided only if `return_counts` is True.
@@ -2229,7 +2256,7 @@ def unique(x,
             np_unique = unique.numpy() # [0 1 2 3]
 
             unique = paddle.unique(x, axis=0)
-            np_unique = unique.numpy() 
+            np_unique = unique.numpy()
             # [[2 1 3]
             #  [3 0 1]]
     """
@@ -2318,14 +2345,14 @@ def unsqueeze(x, axis, name=None):
     required argument axis, a dimension or list of dimensions that will be inserted.
     Dimension indices in axis are as seen in the output tensor.
 
-    Note that the output Tensor will share data with origin Tensor and doesn't have a 
-    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
+    Note that the output Tensor will share data with origin Tensor and doesn't have a
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version,
     please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
 
     Args:
         x (Tensor): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
-        axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . 
-                                    If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. 
+        axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` .
+                                    If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
                                     If ``axis`` is negative, ``axis = axis + ndim(x) + 1``.
         name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
@@ -2340,15 +2367,15 @@ def unsqueeze(x, axis, name=None):
 
             x = paddle.rand([5, 10])
             print(x.shape)  # [5, 10]
-            
+
             out1 = paddle.unsqueeze(x, axis=0)
             print(out1.shape)  # [1, 5, 10]
-            
-            out2 = paddle.unsqueeze(x, axis=[0, 2]) 
+
+            out2 = paddle.unsqueeze(x, axis=[0, 2])
             print(out2.shape)  # [1, 5, 1, 10]
 
             axis = paddle.to_tensor([0, 1, 2])
-            out3 = paddle.unsqueeze(x, axis=axis) 
+            out3 = paddle.unsqueeze(x, axis=axis)
             print(out3.shape)  # [1, 1, 1, 5, 10]
 
             # out1, out2, out3 share data with x in dygraph mode
@@ -2356,7 +2383,7 @@ def unsqueeze(x, axis, name=None):
             print(out1[0, 0, 0]) # [10.]
             print(out2[0, 0, 0, 0]) # [10.]
             print(out3[0, 0, 0, 0, 0]) # [10.]
-            
+
     """
     input = x
     axes = axis
@@ -2459,7 +2486,7 @@ def gather(x, index, axis=None, name=None):
                 Then:
 
                 out = [[3, 4],
-                       [5, 6]] 
+                       [5, 6]]
 
     Args:
         x (Tensor): The source input tensor with rank>=1. Supported data type is
@@ -2472,7 +2499,7 @@ def gather(x, index, axis=None, name=None):
 
     Returns:
         output (Tensor): The output is a tensor with the same rank as ``x``.
-    
+
     Examples:
 
         .. code-block:: python
@@ -2537,7 +2564,7 @@ def unbind(input, axis=0):
 
     Args:
         input (Tensor): The input variable which is an N-D Tensor, data type being float32, float64, int32 or int64.
-        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind. 
+        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind.
             If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
         list(Tensor): The list of segmented Tensor variables.
@@ -2549,7 +2576,7 @@ def unbind(input, axis=0):
 
             # input is a Tensor which shape is [3, 4, 5]
             input = paddle.rand([3, 4, 5])
-       
+
             [x0, x1, x2] = paddle.unbind(input, axis=0)
             # x0.shape [4, 5]
             # x1.shape [4, 5]
@@ -2595,9 +2622,9 @@ def scatter(x, index, updates, overwrite=True, name=None):
     """
     **Scatter Layer**
     Output is obtained by updating the input on selected indices based on updates.
-    
+
     .. code-block:: python
-    
+
         import numpy as np
         #input:
         x = np.array([[1, 1], [2, 2], [3, 3]])
@@ -2619,32 +2646,32 @@ def scatter(x, index, updates, overwrite=True, name=None):
         out = np.array([[3, 3], [6, 6], [1, 1]])
         out.shape # [3, 2]
 
-    **NOTICE**: The order in which updates are applied is nondeterministic, 
+    **NOTICE**: The order in which updates are applied is nondeterministic,
     so the output will be nondeterministic if index contains duplicates.
 
     Args:
         x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
         index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
         updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
-        overwrite (bool): The mode that updating the output when there are same indices. 
-            
+        overwrite (bool): The mode that updating the output when there are same indices.
+
             If True, use the overwrite mode to update the output of the same index,
-	        if False, use the accumulate mode to update the output of the same index.Default value is True.
-        
+            if False, use the accumulate mode to update the output of the same index.Default value is True.
+
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
- 
+
     Returns:
         Tensor: The output is a Tensor with the same shape as x.
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
             index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
             updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
-  
+
             output1 = paddle.scatter(x, index, updates, overwrite=False)
             # [[3., 3.],
             #  [6., 6.],
@@ -2764,7 +2791,7 @@ def scatter_nd_add(x, index, updates, name=None):
             index = paddle.to_tensor([[1, 1],
                                     [0, 1],
                                     [1, 3]], dtype='int64')
-            
+
             output = paddle.scatter_nd_add(x, index, updates)
             print(output.shape)
             # [3, 5, 9, 10]
@@ -2838,24 +2865,24 @@ def scatter_nd(index, updates, shape, name=None):
 def chunk(x, chunks, axis=0, name=None):
     """
     Split the input tensor into multiple sub-Tensors.
-    
+
     Args:
         x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
         chunks(int): The number of tensor to be split along the certain axis.
-        axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type 
+        axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type
             ``int`` or a ``Tensor`` with shape [1] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Tensor): The list of segmented Tensors.
-    
+
     Example:
         .. code-block:: python
-            
+
             import numpy as np
             import paddle
-            
+
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
             x = paddle.to_tensor(x_np)
@@ -2865,7 +2892,7 @@ def chunk(x, chunks, axis=0, name=None):
             # out1.shape [3, 3, 5]
             # out2.shape [3, 3, 5]
 
-            
+
             # axis is negative, the real axis is (rank(x) + axis) which real
             # value is 1.
             out0, out1, out2 = paddle.chunk(x, chunks=3, axis=-2)
@@ -3049,7 +3076,7 @@ def broadcast_to(x, shape, name=None):
     Args:
         x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
-            should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32. 
+            should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -3139,7 +3166,7 @@ def expand(x, shape, name=None):
     Args:
         x (Tensor): The input Tensor, its data type is bool, float32, float64, int32 or int64.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
-            should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32. 
+            should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
         name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
@@ -3223,8 +3250,8 @@ def reshape(x, shape, name=None):
     Changes the shape of ``x`` without changing its data.
 
     Note that the output Tensor will share data with origin Tensor and doesn't
-    have a Tensor copy in ``dygraph`` mode. 
-    If you want to use the Tensor copy version, please use `Tensor.clone` like 
+    have a Tensor copy in ``dygraph`` mode.
+    If you want to use the Tensor copy version, please use `Tensor.clone` like
     ``reshape_clone_x = x.reshape([-1]).clone()``.
 
     Some tricks exist when specifying the target shape.
@@ -3499,17 +3526,17 @@ def gather_nd(x, index, name=None):
 
     Returns:
         output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
-    
+
     Examples:
 
         .. code-block:: python
-            
+
             import paddle
-            
+
             x = paddle.to_tensor([[[1, 2], [3, 4], [5, 6]],
                                   [[7, 8], [9, 10], [11, 12]]])
             index = paddle.to_tensor([[0, 1]])
-            
+
             output = paddle.gather_nd(x, index) #[[3, 4]]
 
     """
@@ -3609,7 +3636,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             strides_1 = [1, 1, 1]
             strides_2 = [1, 1, 2]
             sliced_1 = paddle.strided_slice(x, axes=axes, starts=starts, ends=ends, strides=strides_1)
-            # sliced_1 is x[:, 1:3:1, 0:2:1, 2:4:1].                                
+            # sliced_1 is x[:, 1:3:1, 0:2:1, 2:4:1].
             # example 2:
             # attr starts is a list which contain tensor Tensor.
             minus_3 = paddle.full(shape=[1], fill_value=-3, dtype='int32')
@@ -3734,44 +3761,44 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
 
 def tensordot(x, y, axes=2, name=None):
     r"""
-    This function computes a contraction, which sum the product of elements from two tensors along the given axes. 
+    This function computes a contraction, which sum the product of elements from two tensors along the given axes.
 
     Args:
         x (Tensor): The left tensor for contraction with data type ``float32`` or ``float64``.
         y (Tensor): The right tensor for contraction with the same data type as ``x``.
         axes (int|tuple|list|Tensor, optional):  The axes to contract for ``x`` and ``y``, defaulted to integer ``2``.
 
-            1. It could be a non-negative integer ``n``, 
+            1. It could be a non-negative integer ``n``,
                in which the function will sum over the last ``n`` axes of ``x`` and the first ``n`` axes of ``y`` in order.
-        
-            2. It could be a 1-d tuple or list with data type ``int``, in which ``x`` and ``y`` will be contracted along the same given axes. 
+
+            2. It could be a 1-d tuple or list with data type ``int``, in which ``x`` and ``y`` will be contracted along the same given axes.
                For example, ``axes`` =[0, 1] applies contraction along the first two axes for ``x`` and the first two axes for ``y``.
-        
-            3. It could be a tuple or list containing one or two 1-d tuple|list|Tensor with data type ``int``. 
-               When containing one tuple|list|Tensor, the data in tuple|list|Tensor specified the same axes for ``x`` and ``y`` to contract. 
-               When containing two tuple|list|Tensor, the first will be applied to ``x`` and the second to ``y``. 
+
+            3. It could be a tuple or list containing one or two 1-d tuple|list|Tensor with data type ``int``.
+               When containing one tuple|list|Tensor, the data in tuple|list|Tensor specified the same axes for ``x`` and ``y`` to contract.
+               When containing two tuple|list|Tensor, the first will be applied to ``x`` and the second to ``y``.
                When containing more than two tuple|list|Tensor, only the first two axis sequences will be used while the others will be ignored.
-        
-            4. It could be a tensor, in which the ``axes`` tensor will be translated to a python list 
-               and applied the same rules described above to determine the contraction axes. 
+
+            4. It could be a tensor, in which the ``axes`` tensor will be translated to a python list
+               and applied the same rules described above to determine the contraction axes.
                Note that the ``axes`` with Tensor type is ONLY available in Dygraph mode.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property. 
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name` .
 
-    Return: 
-        Output (Tensor): The contraction result with the same data type as ``x`` and ``y``. 
+    Return:
+        Output (Tensor): The contraction result with the same data type as ``x`` and ``y``.
         In general, :math:`output.ndim = x.ndim + y.ndim - 2 \times n_{axes}`, where :math:`n_{axes}` denotes the number of axes to be contracted.
-    
+
     NOTES:
-        1. This function supports tensor broadcast, 
+        1. This function supports tensor broadcast,
            the size in the corresponding dimensions of ``x`` and ``y`` should be equal, or applies to the broadcast rules.
-        2. This function also supports axes expansion, 
-           when the two given axis sequences for ``x`` and ``y`` are of different lengths, 
-           the shorter sequence will expand the same axes as the longer one at the end. 
-           For example, if ``axes`` =[[0, 1, 2, 3], [1, 0]], 
-           the axis sequence for ``x`` is [0, 1, 2, 3], 
+        2. This function also supports axes expansion,
+           when the two given axis sequences for ``x`` and ``y`` are of different lengths,
+           the shorter sequence will expand the same axes as the longer one at the end.
+           For example, if ``axes`` =[[0, 1, 2, 3], [1, 0]],
+           the axis sequence for ``x`` is [0, 1, 2, 3],
            while the corresponding axis sequences for ``y`` will be expanded from [1, 0] to [1, 0, 2, 3].
-  
+
     Examples:
         .. code-block:: python
 
@@ -3780,7 +3807,7 @@ def tensordot(x, y, axes=2, name=None):
             data_type = 'float64'
 
             # For two 2-d tensor x and y, the case axes=0 is equivalent to outer product.
-            # Note that tensordot supports empty axis sequence, so all the axes=0, axes=[], axes=[[]], and axes=[[],[]] are equivalent cases.   
+            # Note that tensordot supports empty axis sequence, so all the axes=0, axes=[], axes=[[]], and axes=[[],[]] are equivalent cases.
             x = paddle.arange(4, dtype=data_type).reshape([2, 2])
             y = paddle.arange(4, dtype=data_type).reshape([2, 2])
             z = paddle.tensordot(x, y, axes=0)
@@ -3842,7 +3869,7 @@ def tensordot(x, y, axes=2, name=None):
             # z = [[23217330., 24915630., 26613930., 28312230.],
             #      [24915630., 26775930., 28636230., 30496530.],
             #      [26613930., 28636230., 30658530., 32680830.],
-            #      [28312230., 30496530., 32680830., 34865130.]] 
+            #      [28312230., 30496530., 32680830., 34865130.]]
     """
     op_type = 'tensordot'
     input_dtype = ['float32', 'float64']
@@ -3941,12 +3968,12 @@ def tensordot(x, y, axes=2, name=None):
 
 
 def as_complex(x, name=None):
-    """Transform a real tensor to a complex tensor. 
-    
+    """Transform a real tensor to a complex tensor.
+
     The data type of the input tensor is 'float32' or 'float64', and the data
     type of the returned tensor is 'complex64' or 'complex128', respectively.
 
-    The shape of the input tensor is ``(* ,2)``, (``*`` means arbitary shape), i.e. 
+    The shape of the input tensor is ``(* ,2)``, (``*`` means arbitary shape), i.e.
     the size of the last axis shoule be 2, which represent the real and imag part
     of a complex number. The shape of the returned tensor is ``(*,)``.
 
@@ -3956,7 +3983,7 @@ def as_complex(x, name=None):
 
     Returns:
         Tensor: The output. Data type is 'complex64' or 'complex128', with the same precision as the input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -3986,9 +4013,9 @@ def as_complex(x, name=None):
 
 
 def as_real(x, name=None):
-    """Transform a complex tensor to a real tensor. 
-    
-    The data type of the input tensor is 'complex64' or 'complex128', and the data 
+    """Transform a complex tensor to a real tensor.
+
+    The data type of the input tensor is 'complex64' or 'complex128', and the data
     type of the returned tensor is 'float32' or 'float64', respectively.
 
     When the shape of the input tensor is ``(*, )``, (``*`` means arbitary shape),
@@ -4001,7 +4028,7 @@ def as_real(x, name=None):
 
     Returns:
         Tensor: The output. Data type is 'float32' or 'float64', with the same precision as the input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -4119,7 +4146,7 @@ def moveaxis(x, source, destination, name=None):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
 
             x = paddle.ones([3, 2, 4])
@@ -4128,7 +4155,7 @@ def moveaxis(x, source, destination, name=None):
 
             x = paddle.ones([2, 3])
             paddle.moveaxis(x, 0, 1).shape # equivalent to paddle.t(x)
-            # [3, 2]  
+            # [3, 2]
     """
     src = [source] if isinstance(source, int) else source
     dst = [destination] if isinstance(destination, int) else destination
@@ -4240,11 +4267,11 @@ def take_along_axis(arr, indices, axis):
         arr (Tensor) : The input Tensor. Supported data types are float32 and float64.
         indices (Tensor) : Indices to take along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr. Supported data type are int and int64.
-        axis (int) : The axis to take 1d slices along. 
+        axis (int) : The axis to take 1d slices along.
 
-    Returns: 
+    Returns:
         Tensor: The indexed element, same dtype with arr
-    
+
     Examples:
         .. code-block:: python
 
@@ -4305,11 +4332,11 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         arr (Tensor) : The Destination Tensor. Supported data types are float32 and float64.
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr. Supported data type are int and int64.
-        axis (int) : The axis to put 1d slices along. 
+        axis (int) : The axis to put 1d slices along.
         reduce (string | optinal) : The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
-    Returns : 
+    Returns :
         Tensor: The indexed element, same dtype with arr
-    
+
     Examples:
         .. code-block:: python
 
@@ -4388,36 +4415,6 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
                                          "Reduce", reduce)
 
 
-def _index_add_params_check(x, index, input_axis, add_value):
-    dims = len(x.shape)
-    add_value_dims = len(add_value.shape)
-
-    if input_axis >= 0:
-        axis = input_axis
-    else:
-        axis = input_axis + dims
-
-    check_axis = axis
-    if check_axis >= dims or check_axis < -dims:
-        raise ValueError("Axis should be in range [-rank(x), rank(x)).")
-
-    if isinstance(index, Variable):
-        if index.dtype not in [paddle.int64, paddle.int32]:
-            raise TypeError("The index dtype should be int32 or int64.")
-        if len(index.shape) != 1:
-            raise ValueError("The index should be a 1-D Tensor.")
-
-    if dims != add_value_dims:
-        raise ValueError(
-            "The add_value does not support broadcast now. It must have the same dimension as x."
-        )
-    for i in range(dims):
-        if i != axis and x.shape[i] != add_value.shape[i]:
-            raise ValueError(
-                "The add_value.shape[i] should be equal to x.shape[i] when i != axis."
-            )
-
-
 def index_add(x, index, axis, value, name=None):
     """
     Adds the elements of the input tensor with value tensor by selecting the indices in the order given in index.
@@ -4426,7 +4423,7 @@ def index_add(x, index, axis, value, name=None):
         x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
         index (Tensor): The 1-D Tensor containing the indices to index.
             The data type of ``index`` must be int32 or int64.
-        axis (int): The dimension in which we index. 
+        axis (int): The dimension in which we index.
         value (Tensor): The tensor used to add the elements along the target axis.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -4448,8 +4445,6 @@ def index_add(x, index, axis, value, name=None):
             #  [1 1 1]
             #  [2 2 2]]
     """
-    _index_add_params_check(x, index, axis, value)
-
     if in_dygraph_mode():
         return _C_ops.index_add(x, index, value, axis)
 
@@ -4480,8 +4475,8 @@ def index_add(x, index, axis, value, name=None):
 def index_add_(x, index, axis, value, name=None):
     """
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_tensor_index_add`.
-    
+    Please refer to :ref:`api_paddle_index_add`.
+
     Examples:
         .. code-block:: python
 
@@ -4497,8 +4492,6 @@ def index_add_(x, index, axis, value, name=None):
             #  [2, 1, 2]
             #  [2, 1, 2]]
     """
-
-    _index_add_params_check(x, index, axis, value)
     return _C_ops.index_add_(x, index, value, axis)
 
 

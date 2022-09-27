@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import ast
 import astor
 import atexit
@@ -35,6 +33,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import assign
 import collections
 from functools import reduce
+import warnings
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
@@ -43,6 +42,7 @@ DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
 DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
 GET_ARGS_FUNC_PREFIX = 'get_args'
 SET_ARGS_FUNC_PREFIX = 'set_args'
+ALREADY_D2S = '__already_d2s'
 ARGS_NAME = '__args'
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
 ORIGI_INFO = "Original information of source code for ast node."
@@ -50,7 +50,7 @@ ORIGI_INFO = "Original information of source code for ast node."
 
 class BaseNodeVisitor(gast.NodeVisitor):
     """
-    Implement customized NodeVisitor inherited from gast.NodeVisitor. 
+    Implement customized NodeVisitor inherited from gast.NodeVisitor.
     Ancestor nodes are traced to easily support more operations of currently
     visited node.
     """
@@ -91,6 +91,9 @@ FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
 FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
 FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
 
+RE_PYNAME = '[a-zA-Z0-9_]+'
+RE_PYMODULE = '[a-zA-Z0-9_]+\.'
+
 # FullArgSpec is valid from Python3. Defined a Namedtuple to
 # to make it available in Python2.
 FullArgSpec = collections.namedtuple('FullArgSpec', [
@@ -106,7 +109,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     data can be various-length. This API is used in translating dygraph into
     static graph.
 
-     Note: 
+     Note:
         The default :code:`stop_gradient` attribute of the Tensor created by
         this API is true, which means the gradient won't be passed backward
         through the data Tensor. Set :code:`var.stop_gradient = False` If
@@ -117,7 +120,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
            for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape. You can
            set "None" at a dimension to indicate the dimension can be of any
-           size. For example, it is useful to set changeable batch size as "None" 
+           size. For example, it is useful to set changeable batch size as "None"
        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: float32
@@ -142,21 +145,6 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
                                          lod_level=lod_level,
                                          is_data=True,
                                          need_check_feed=False)
-
-
-def create_undefined_var_like(variable):
-    """ create a undefined var with the same shape and dtype like varaible.
-    """
-    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
-    var = data_layer_not_check(unique_name.generate("undefined_var"),
-                               variable.shape, variable.dtype)
-    var.stop_gradient = False
-    helper = LayerHelper('create_undefined_var_like', **locals())
-    saved_block_ids = helper.main_program.current_block_idx
-    helper.main_program.current_block_idx = 0
-    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
-    helper.main_program.current_block_idx = saved_block_ids
-    return var
 
 
 def create_undefined_variable():
@@ -334,8 +322,8 @@ def is_numpy_api(node):
             func_str, "numpy"))
         # BUG: np.random.uniform doesn't have module and cannot be analyzed
         # TODO: find a better way
-        if not module_result:
-            return func_str.startswith("numpy.") or func_str.startswith("np.")
+        return module_result or (func_str.startswith("numpy.")
+                                 or func_str.startswith("np."))
     except Exception:
         return False
 
@@ -1010,8 +998,8 @@ def slice_is_num(slice_node):
 class NameScope:
 
     def __init__(self):
-        """ 
-            A NameScope is a object which manager all the variable names. 
+        """
+            A NameScope is a object which manager all the variable names.
             only FunctionDef and Controlflow node will have a namescope property.
 
             type can be "function" and "controlflow"
@@ -1024,6 +1012,7 @@ class NameScope:
         self.father = None  # point to the nearest function name scope.
         self.w_vars = set()  # all qualified + normal names been stored
         self.created = set()  # useful for control flow compatibility
+        # only valid in control_flow nodes
         # may be remove later.
         self.push_pop_vars = set()  # we call push and pop in the vars
 
@@ -1031,7 +1020,7 @@ class NameScope:
         self.father = father
 
     def existed_vars(self):
-        """ vars existing in current scope. 
+        """ vars existing in current scope.
             they must not contain qualified names.
         """
         local_vars = self.w_vars - self.globals - self.nonlocals - self.args
@@ -1045,15 +1034,54 @@ class NameScope:
         return self.w_vars
 
     def variadic_length_vars(self):
-        return self.push_pop_vars
+        """
+        At present, we do not support global append, such as
+
+        import numpy as np
+        a = []
+        def func():
+            a.append() # global names `a`, we will raise a warning.
+            p.append(a, 1) # global names `np`, we will raise a warning.
+        """
+        non_global_push_pop_names = []
+        for var in self.push_pop_vars:
+            if self._is_simple_name(var) and self.is_global_var(var):
+                warnings.warn(
+                    f"Find variable `{var}` defined in global scope"
+                    f" and call `{var}.append() or {var}.pop()`"
+                    f", which will be ignored and never be transfered into"
+                    f" tensor array.")
+            else:
+                non_global_push_pop_names.append(var)
+        return set(non_global_push_pop_names)
 
     def control_flow_vars(self):
         valid_names = self.w_vars
         tmp = self.father.global_vars & valid_names,
         return {"global": tmp, "nonlocal": self.w_vars - tmp}
 
-    def global_vars(self):
-        return self.globals
+    def _is_simple_name(self, name):
+        if '.' in name or '[' in name: return False
+        return True
+
+    def is_global_var(self, name):
+        """
+        Return whether the name is a var created in global scope.
+        Search from bottom to top. If it is not created or modified,
+        it means global vars; otherwise, it means local vars.
+        Only valid after FunctionNameLivenessAnalysis visitor.
+        """
+        assert self._is_simple_name(
+            name), "is_global_var accept a simple name, but get `{name}`."
+        ancestor = self
+        while ancestor is not None:
+            if name in ancestor.globals: return True
+            if name in (ancestor.nonlocals | ancestor.w_vars): return False
+            ancestor = ancestor.father
+        return True
+
+    def is_local_var(self, name):
+        return not self.is_global_var(name)
 
     def merge_from(self, name_scope):
         self.globals |= name_scope.globals
@@ -1067,16 +1095,16 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
     """ analyze the liveness of a function.
 
         every variables stored in this scope will be collected,
-        in addition with global/nonlocal information and 
+        in addition with global/nonlocal information and
         push_pop information.
 
         1. global variable is stored in node.var_globals.
         2. nonlocal variable is stored in node.var_nonlocals.
         3. arguments is stored in node.var_args.
-        4. if a variable's push and pop attribute is called, 
+        4. if a variable's push and pop attribute is called,
            it will be collected in push_pop_vars. They are
            used for transformation to tensor_array.
-           NOTE: push_pop_vars **may not** in w_vars. 
+           NOTE: push_pop_vars **may not** in w_vars.
            a.push(0) don't modify the variable a, but the content
            of a.
 
@@ -1094,13 +1122,13 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
                 q = 12
                 b.push(1)
                 c.pop()
-        
-        After this visitor we have: 
+
+        After this visitor we have:
         # node is the FunctionDef node with name: "func"
         node.pd_scope = NameScope(
             globals = ['i', 'j'],
             nonlocals = ['x', 'y'],
-            args = ['args', 'kargs'], 
+            args = ['args', 'kargs'],
             wr_vars = ['a', 'i', 'q', 'm', 'c', 'b']
             push_pop_vars = ['b', 'c']
         )
@@ -1134,7 +1162,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
     def visit_ListComp(self, node):
         """ [ i for i in range(10) ]
-            In this case, `i` will not created in FunctionScope. 
+            In this case, `i` will not created in FunctionScope.
             We don't collect `i` by not calling generic_visit.
         """
         pass
@@ -1157,7 +1185,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
                 self._get_argument_names(node))
 
         def post_func():
-            """ NOTE: why we need merge w_vars and push_pop_vars here ? 
+            """ NOTE: why we need merge w_vars and push_pop_vars here ?
                 because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
             """
             from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import WHILE_CONDITION_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX, FOR_BODY_PREFIX
@@ -1186,7 +1214,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         """
         self._reset_name_scope(node)
         self.scope_node_stack.append(node)
-        self._current_name_scope().father = self._nearest_function_scope()
+        self._current_name_scope().set_father(self._nearest_function_scope())
         if pre_func: pre_func()
         self.generic_visit(node)
         if post_func: post_func()
@@ -1245,7 +1273,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
     def _get_argument_names(self, node):
         """ get all arguments name in the functiondef node.
-            this node is local to the function and shouldn't 
+            this node is local to the function and shouldn't
             be created.
         """
         assert isinstance(
@@ -1274,16 +1302,13 @@ def create_get_args_node(names):
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
-    mapped = list(filter(lambda n: '.' not in n, names))
-    nonlocal_names = sorted(
-        mapped,
-        key=mapped.index)  # to keep the order, we can't use set() to unique
+    node = create_nonlocal_stmt_nodes(names)
     if not names:
         return empty_node()
-    if not nonlocal_names:
+    if node == []:
         nonlocal_vars = "\n"
     else:
-        nonlocal_vars = "nonlocal " + ",".join(nonlocal_names)
+        nonlocal_vars = ast_to_source_code(node[0])
     template = """
     def {func_name}():
         {nonlocal_vars}
@@ -1314,16 +1339,13 @@ def create_set_args_node(names):
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
-    mapped = list(filter(lambda n: '.' not in n, names))
-    nonlocal_names = sorted(
-        mapped,
-        key=mapped.index)  # to keep the order, we can't use set() to unique
+    node = create_nonlocal_stmt_nodes(names)
     if not names:
         return empty_node()
-    if not nonlocal_names:
+    if node == []:
         nonlocal_vars = "\n"
     else:
-        nonlocal_vars = "nonlocal " + ",".join(nonlocal_names)
+        nonlocal_vars = ast_to_source_code(node[0])
     template = """
     def {func_name}({args}):
         {nonlocal_vars}
@@ -1341,6 +1363,7 @@ def create_nonlocal_stmt_nodes(names):
     assert isinstance(names, (list, tuple))
 
     mapped = list(filter(lambda n: '.' not in n, names))
+    mapped = list(filter(lambda n: '[' not in n, mapped))
     names = sorted(
         mapped,
         key=mapped.index)  # to keep the order, we can't use set() to unique
@@ -1351,7 +1374,7 @@ def create_nonlocal_stmt_nodes(names):
 
 
 class GetterSetterHelper:
-    """ we have two classes of names in setter and getter function: 
+    """ we have two classes of names in setter and getter function:
         w_vars(loop_vars) + push_pop_vars
         To simplify the setter logic in convert_while and convert_cond,
         we extract the helper class here.
@@ -1400,5 +1423,5 @@ def create_name_str(name_ids):
     if not name_ids:
         return 'None'
 
-    names_str = ["'%s'" % name for name in name_ids]
+    names_str = ["'%s'" % (name.replace("'", "\\'")) for name in name_ids]
     return "(%s, )" % ','.join(names_str)

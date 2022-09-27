@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 import six
 
@@ -49,7 +47,7 @@ def _same_or_split_var(p_name, var_name):
 def _get_optimizer_input_shape(op_type, varkey, orig_shape, param_shape):
     """
     Returns the shape for optimizer inputs that need to be reshaped when
-    Param and Grad is split to multiple servers. 
+    Param and Grad is split to multiple servers.
     """
     # HACK(typhoonzero) : Should use functions of corresponding optimizer in
     # optimizer.py to get the shape, do not bind this in the transpiler.

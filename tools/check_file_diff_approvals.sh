@@ -205,12 +205,25 @@ if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 46782768 12538138 6836917 22561442 6888866 16605440
 fi
 
+HAS_PADDLE_GET=`git diff -U0 upstream/$BRANCH $FILTER |grep "^+" |grep -o -m 1 "paddle::get" || true`
+if [ ${HAS_PADDLE_GET} ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="paddle::get is not recommended for direct use, because it may throw an bad_variant_access exception without any stack information, so please use PADDLE_GET(_**)(dtype, value) series macros here. If these macros cannot meet your needs, please use try-catch to handle paddle::get and request chenwhql (Recommend), luotao1 or lanxianghit review and approve.\n"
+    check_approval 1 6836917 47554610 22561442
+fi
+
 # infrt needs to temporarily use LOG(FATAL) during the debugging period, and will replace it with standard error format in the future.
 NO_INFRT_FILES=`git diff --name-only upstream/develop | grep -v "tools/\|paddle/infrt/" || true`
 HAS_LOG_FATAL=`git diff -U0 upstream/$BRANCH $NO_INFRT_FILES |grep "^+" |grep -o -m 1 "LOG(FATAL)" || true`
 if [ ${NO_INFRT_FILES} ] && [ ${HAS_LOG_FATAL} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="LOG(FATAL) is not recommended, because it will throw exception without standard stack information, so please use PADDLE_THROW macro here. If you have to use LOG(FATAL) here, please request chenwhql (Recommend), luotao1 or lanxianghit review and approve.\n"
     check_approval 1 6836917 47554610 22561442
+fi
+
+FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
+HAS_LEGACY_KERNEL_REGISTRATION=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -oE -m 1 "REGISTER_OP[A-Z_]{1,9}KERNEL[_FUNCTOR|_WITH_CUSTOM_TYPE|_EX]*" || true`
+if [ ${HAS_LEGACY_KERNEL_REGISTRATION} ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="In principle, adding an OpKernel needs to be in the phi/kernels directory. If you must add an OpKernel in the fluid/operators directory, please request one of the RD (chenwhql, zyfncg, YuanRisheng, phlrain) review and approve.\n"
+    check_approval 1 chenwhql zyfncg YuanRisheng phlrain
 fi
 
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
@@ -238,9 +251,9 @@ if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 chenwhql zyfncg
   fi
 
-HAS_MODIFIED_API_COMPAT_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/yaml/api_compat.yaml" || true`
+HAS_MODIFIED_API_COMPAT_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/yaml/op_compat.yaml" || true`
 if [ "${HAS_MODIFIED_API_COMPAT_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by chenwhql or zyfncg for paddle/phi/api/yaml/api_compat.yaml changes, which manages the extra params of Op and name mapping between Yaml and OpMaker. In order to ensure compatibility of framework, this file isn't allowed to be modified at will!\n"
+    echo_line="You must be approved by chenwhql or zyfncg for paddle/phi/api/yaml/op_compat.yaml changes, which manages the extra params of Op and name mapping between Yaml and OpMaker. In order to ensure compatibility of framework, this file isn't allowed to be modified at will!\n"
     check_approval 1 chenwhql zyfncg
 fi
 
@@ -430,8 +443,8 @@ fi
 
 SKIP_CI=`git log --pretty=oneline|grep $AGILE_REVISION |grep -w "test=document_fix" || true`
 if [[ ${SKIP_CI} ]];then
-    echo_line="You must have one RD (tianshuo78520a (Recommend),zhiqiu ,phlrain ) approval you add test=document_fix method in commit skips CI"
-    check_approval 1 tianshuo78520a zhiqiu phlrain
+    echo_line="You must have one RD (tianshuo78520a (Recommend), zhiqiu, phlrain ) or PM (Ligoml) approval you add test=document_fix method in commit skips CI"
+    check_approval 1 tianshuo78520a zhiqiu phlrain Ligoml
 fi
 
 # Get the list of PR authors with unresolved unit test issues

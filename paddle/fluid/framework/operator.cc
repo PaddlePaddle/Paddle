@@ -1890,7 +1890,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   PADDLE_ENFORCE_NE(
       kernels_iter,
       all_op_kernels.end(),
-      platform::errors::Unavailable(
+      platform::errors::Unimplemented(
           "There are no kernels which are registered in the %s operator.",
           type_));
 
@@ -2382,6 +2382,17 @@ void OperatorWithKernel::ParseInputDataType(
       t = &var->Get<LoDTensor>();
     } else if (var->IsType<phi::SelectedRows>()) {
       t = &(var->Get<phi::SelectedRows>().value());
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      const phi::SparseCooTensor* sp_t = &(var->Get<phi::SparseCooTensor>());
+      PADDLE_ENFORCE_EQ(
+          sp_t->initialized(),
+          true,
+          platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
+                                            "contains uninitialized Tensor.",
+                                            Type(),
+                                            name));
+      *data_type = paddle::framework::TransToProtoVarType(sp_t->dtype());
+      return;
     } else if (var->IsType<LoDTensorArray>()) {
       auto t_arr = &var->Get<LoDTensorArray>();
       for (size_t j = 0; j < t_arr->size(); j++) {
@@ -2419,6 +2430,29 @@ void OperatorWithKernel::ParseMultiInputDataType(
         t = &var->Get<LoDTensor>();
       } else if (var->IsType<phi::SelectedRows>()) {
         t = &(var->Get<phi::SelectedRows>().value());
+      } else if (var->IsType<phi::SparseCooTensor>()) {
+        const phi::SparseCooTensor* sp_t = &(var->Get<phi::SparseCooTensor>());
+        PADDLE_ENFORCE_EQ(
+            sp_t->initialized(),
+            true,
+            platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
+                                              "contains uninitialized Tensor.",
+                                              Type(),
+                                              name));
+        proto::VarType::Type tmp =
+            paddle::framework::TransToProtoVarType(sp_t->dtype());
+        PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
+                       platform::errors::InvalidArgument(
+                           "The DataType of %s Op's duplicable or different "
+                           "slot Variable %s must be "
+                           "consistent or reigster GetExpectedKernelType. The "
+                           "current variable type is (%s), but the "
+                           "previous variable type is (%s).",
+                           Type(),
+                           name,
+                           DataTypeToString(tmp),
+                           DataTypeToString(*data_type)));
+        *data_type = tmp;
       } else if (var->IsType<LoDTensorArray>()) {
         auto t_arr = &var->Get<LoDTensorArray>();
         for (size_t j = 0; j < t_arr->size(); j++) {
@@ -2663,15 +2697,13 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } else if (var->IsType<phi::SelectedRows>()) {
         tensor_in = &(var->Get<phi::SelectedRows>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<phi::SparseCooTensor>()) {
+        tensor_in = &(var->Get<phi::SparseCooTensor>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::LoDTensorArray>()) {
         need_prepare_phi_data_ = true;
-        paddle::small_vector<const phi::TensorBase*> tensor_vector;
-        auto& tensor_array = var->Get<framework::LoDTensorArray>();
-        for (auto& t : tensor_array) {
-          tensor_vector.emplace_back(&t);
-        }
-        phi_kernel_context->EmplaceBackInputsWithoutSetRange(tensor_vector);
-        end_idx += tensor_array.size() - 1;
+        tensor_in = &(var->Get<framework::LoDTensorArray>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
@@ -2713,17 +2745,14 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else if (var->template IsType<phi::SelectedRows>()) {
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<phi::SparseCooTensor>()) {
+          tensor_out = var->template GetMutable<phi::SparseCooTensor>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::LoDTensorArray>()) {
-          paddle::small_vector<phi::TensorBase*> tensor_vector;
-          auto* tensor_array =
-              var->template GetMutable<framework::LoDTensorArray>();
+          tensor_out = var->template GetMutable<framework::LoDTensorArray>();
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
-          for (auto& t : *tensor_array) {
-            tensor_vector.emplace_back(&t);
-          }
-          phi_kernel_context->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-          end_idx += tensor_array->size() - 1;
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",

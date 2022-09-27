@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle
 import unittest
 import numpy as np
@@ -439,6 +438,21 @@ class API_TestSplit5(unittest.TestCase):
                 ex_out = np.split(input_1, [5])
                 ex_out = ex_out[0]
                 np.testing.assert_allclose(ex_out, re, rtol=1e-05)
+
+
+class API_TestSplit6(unittest.TestCase):
+
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
+            x0, x1 = paddle.split(data, num_or_sections=[1, 1], axis=0)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input1 = np.random.random([2, 10]).astype('float64')
+            r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
+            ex_x0, ex_x1 = np.split(input1, (1, ), axis=0)
+            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
 
 
 class API_TestDygraphFluidSplit(unittest.TestCase):

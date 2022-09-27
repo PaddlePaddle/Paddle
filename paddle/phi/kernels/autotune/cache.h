@@ -289,6 +289,10 @@ class AutoTuneCache {
     return auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
+  CudnnAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
+    return cudnn_auto_tune_map_[static_cast<int64_t>(algo_type)];
+  }
+
   CudnnAlgorithmsCacheMap& GetConvForward() {
     return cudnn_auto_tune_map_[static_cast<int64_t>(
         AlgorithmType::kConvForward)];

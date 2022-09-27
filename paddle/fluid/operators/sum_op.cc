@@ -9,15 +9,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/sum_op.h"
-
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -31,94 +33,6 @@ using framework::Tensor;
 class SumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "sum");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "sum");
-
-    if (ctx->IsRuntime() && ctx->GetOutputsVarType("Out")[0] ==
-                                framework::proto::VarType::LOD_TENSOR_ARRAY) {
-      return;  // skip runtime infershape when is tensor array;
-    }
-
-    auto x_var_types = ctx->GetInputsVarType("X");
-    auto x_dims = ctx->GetInputsDim("X");
-
-    auto N = x_dims.size();
-    PADDLE_ENFORCE_GT(
-        N,
-        0,
-        platform::errors::InvalidArgument(
-            "The input tensor X's dimensions of SumOp "
-            "should be larger than 0. But received X's dimensions %d, "
-            "X's shape = [%s].",
-            N,
-            &x_dims));
-    if (N == 1) {
-      VLOG(3) << "Warning: SumOp have only one input, may waste memory";
-    }
-
-    framework::DDim in_dim({0});
-    for (size_t i = 0; i < x_dims.size(); ++i) {
-      auto& x_dim = x_dims[i];
-      // x_dim.size() == 1 means the real dim of selected rows is [0]
-      if (x_var_types[i] == framework::proto::VarType::SELECTED_ROWS &&
-          x_dim.size() == 1) {
-        continue;
-      }
-      if (phi::product(x_dim) == 0) {
-        continue;
-      }
-      if (phi::product(in_dim) == 0) {
-        in_dim = x_dim;
-      } else {
-        if (ctx->IsRuntime()) {
-          PADDLE_ENFORCE_EQ(in_dim,
-                            x_dim,
-                            platform::errors::InvalidArgument(
-                                "The input tensor X of SumOp must"
-                                " have same shape. But received X[0]'s shape = "
-                                "[%s], X[%d]'s shape = [%s].",
-                                in_dim,
-                                i,
-                                x_dim));
-        } else {
-          PADDLE_ENFORCE_EQ(
-              in_dim.size(),
-              x_dim.size(),
-              platform::errors::InvalidArgument(
-                  "The input tensor X of SumOp must have same "
-                  "dimensions. But received X[0]'s dimensions = %d, X[0]'s "
-                  "shape = "
-                  "[%s], X[%d]'s dimensions = %d, X[%d]'s shape = [%s].",
-                  in_dim.size(),
-                  in_dim,
-                  i,
-                  x_dim.size(),
-                  i,
-                  x_dim));
-          // if in_dim or x_dim has -1, not check equal
-          for (int j = 0; j < x_dim.size(); ++j) {
-            if (x_dim[j] == -1 || in_dim[j] == -1) {
-              continue;
-            }
-            PADDLE_ENFORCE_EQ(
-                in_dim[j],
-                x_dim[j],
-                platform::errors::InvalidArgument(
-                    "The input tensor X of SumOp must have same shape "
-                    "if not -1."
-                    "But received X[0]'s shape = [%s], X[%d]'s shape = [%s].",
-                    in_dim,
-                    i,
-                    x_dim));
-          }
-        }
-      }
-    }
-    ctx->SetOutputDim("Out", in_dim);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -334,6 +248,7 @@ class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
         op.SetInput("X", og);
         op.SetOutput("Out", InputGradsType{x_grad});
         op.SetAttr("scale", 1.0f);
+        op.SetDefaultAttrsMap(DefaultAttrsMap());
       }
       return node;
     } else {
@@ -349,18 +264,16 @@ DECLARE_INPLACE_OP_INFERER(SumInplaceInferer, {"X", "Out"});
 
 namespace ops = paddle::operators;
 
+namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(sum,
+                            AddNInferShapeFunctor,
+                            PD_INFER_META(phi::AddNTensorArrayInferMeta));
+
 REGISTER_OPERATOR(sum,
                   ops::SumOp,
                   ops::SumOpMaker,
                   ops::SumGradDescMaker,
                   ops::SumGradOpBaseMaker,
                   ops::SumOpVarTypeInference,
-                  ops::SumInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    sum,
-    ops::SumKernel<phi::CPUContext, float>,
-    ops::SumKernel<phi::CPUContext, double>,
-    ops::SumKernel<phi::CPUContext, int>,
-    ops::SumKernel<phi::CPUContext, paddle::platform::bfloat16>,
-    ops::SumKernel<phi::CPUContext, int64_t>);
+                  ops::SumInplaceInferer,
+                  AddNInferShapeFunctor);

@@ -48,8 +48,8 @@ def _trainable(param):
 
 
 class ShardingStage2(nn.Layer):
-    """ 
-    A wrapper for Sharding Stage2 Layer in Dygraph. 
+    """
+    A wrapper for Sharding Stage2 Layer in Dygraph.
     .. warning: ShardingStage2 encapsulates the layer strategy and integrates it into the nn.Layer.
     .. ZeRO: https://arxiv.org/pdf/1910.02054.pdf.
     """
@@ -285,7 +285,7 @@ class ShardingStage2(nn.Layer):
             dist.broadcast(buffer,
                            self._global_root_rank,
                            self._group,
-                           use_calc_stream=True)
+                           sync_op=True)
         # Multi stream operation will be supported later
         dist.wait(tensor=buffer, group=self._group, use_calc_stream=True)
 
@@ -340,7 +340,7 @@ class ShardingStage2(nn.Layer):
                             tensor=param.grad,
                             dst=self._group.ranks[dst_rank],
                             group=self._group,
-                            use_calc_stream=True),
+                            sync_op=True),
                                  callback=cleanup))
 
                     # Multi stream operation will be supported later
@@ -396,7 +396,7 @@ class ShardingStage2(nn.Layer):
                                 tensor=grad_storage.buffer,
                                 dst=self._group.ranks[grad_storage.destination],
                                 group=self._group,
-                                use_calc_stream=True),
+                                sync_op=True),
                                      callback=cleanup))
 
                         # Multi stream operation will be supported later

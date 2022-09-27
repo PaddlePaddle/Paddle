@@ -38,11 +38,6 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config = MetaConfig());
 
-void EmbeddingInferMeta(const MetaTensor& input,
-                        const MetaTensor& weight,
-                        int64_t padding_idx,
-                        MetaTensor* out);
-
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
@@ -119,6 +114,19 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
 
+void Conv2dTransposeInferMeta(const MetaTensor& x,
+                              const MetaTensor& filter,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings,
+                              const std::vector<int>& output_padding,
+                              const IntArray& output_size,
+                              const std::string& padding_algorithm,
+                              int groups,
+                              const std::vector<int>& dilations,
+                              const std::string& data_format,
+                              MetaTensor* out,
+                              MetaConfig config = MetaConfig());
+
 void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
@@ -188,7 +196,6 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
                         int64_t padding_idx,
-                        bool sparse,
                         MetaTensor* out);
 
 void ExpandAsInferMeta(const MetaTensor& x,
@@ -344,6 +351,10 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            bool out_int32,
                            bool right,
                            MetaTensor* out);
+
+void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
+                              const MetaTensor& mask,
+                              MetaTensor* out);
 
 void SegmentPoolInferMeta(const MetaTensor& x,
                           const MetaTensor& segment_ids,

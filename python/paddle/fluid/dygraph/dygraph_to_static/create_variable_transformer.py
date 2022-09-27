@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
@@ -41,6 +39,7 @@ class CreateVariableTransformer(BaseTransformer):
 
     def visit_FunctionDef(self, node):
         #attributes = set(filter(lambda x: '.' in x, node.pd_scope.modified_vars()))
+        self.generic_visit(node)
         bodys = node.body
         names = sorted(node.pd_scope.created_vars())
         for name in names:

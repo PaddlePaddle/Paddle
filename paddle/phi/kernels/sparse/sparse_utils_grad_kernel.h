@@ -22,16 +22,16 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void CooValuesGradKernel(const Context& dev_ctx,
+void ValuesCooGradKernel(const Context& dev_ctx,
                          const SparseCooTensor& x,
                          const DenseTensor& out_grad,
                          SparseCooTensor* x_grad);
 
 template <typename T, typename Context>
-void SparseCooToDenseGradKernel(const Context& dev_ctx,
-                                const SparseCooTensor& x,
-                                const DenseTensor& out_grad,
-                                SparseCooTensor* x_grad);
+void CooToDenseGradKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          const DenseTensor& out_grad,
+                          SparseCooTensor* x_grad);
 
 template <typename T, typename Context>
 void SparseCooTensorGradKernel(const Context& dev_ctx,
