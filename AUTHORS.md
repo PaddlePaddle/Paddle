@@ -97,6 +97,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | zhouwei25 | Wei Zhou |
 | littletomatodonkey | Ruo-Yu Guo |
 | zhupengyang | Zhu Pengyang |
+| zhiqiu | Qiu-Liang Chen |
 | DesmonDay | Siming Dai |
 | thisjiang | jiangcheng |
 | yghstill | Guanghua Yu |
