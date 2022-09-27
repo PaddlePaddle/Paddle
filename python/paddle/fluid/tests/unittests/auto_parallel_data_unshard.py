@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import copy
@@ -23,7 +21,7 @@ import random
 import paddle
 import paddle.nn as nn
 import paddle.fluid.core as core
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 import paddle.nn.functional as F
 from paddle.distributed import fleet
 

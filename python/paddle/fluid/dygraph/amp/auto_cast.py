@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 from paddle.fluid import core
 import contextlib
@@ -76,7 +75,7 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
 
-PURE_FP16_WHITE_LIST = {''}
+PURE_FP16_WHITE_LIST = set()
 PURE_FP16_BLACK_LIST = {
     'lookup_table',
     'lookup_table_v2',

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -619,7 +617,7 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
         h_t = \sigma (W x_t + U h_{t-1})
     weights:
         - W
-	- U
+        - U
     vars:
         - x
     memories:

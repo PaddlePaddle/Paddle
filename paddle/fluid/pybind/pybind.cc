@@ -229,6 +229,23 @@ bool IsCompiledWithNCCL() {
 #endif
 }
 
+bool IsCompiledWithMPI() {
+#ifdef PADDLE_WITH_MPI
+  return true;
+#else
+  return false;
+#endif
+}
+
+// NOTE some mpi lib can support cuda aware, support it in the future.
+bool IsCompiledWithMPIAWARE() {
+#ifdef PADDLE_WITH_MPI_AWARE
+  return true;
+#else
+  return false;
+#endif
+}
+
 bool IsCompiledWithROCM() {
 #ifndef PADDLE_WITH_HIP
   return false;
@@ -1718,6 +1735,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_nccl", IsCompiledWithNCCL);
+  m.def("is_compiled_with_mpi", IsCompiledWithMPI);
+  m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("is_compiled_with_mlu", IsCompiledWithMLU);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
@@ -1917,6 +1936,9 @@ All parameter, weight, gradient are variables in Paddle.
             for (size_t i = 0; i < self.size(); ++i) {
               if (data_is_lod_tensor(self[i])) {
                 auto &data = PADDLE_GET(LoDTensor, self[i]);
+                res[i] = py::cast(std::move(data));
+              } else if (data_is_sparse_coo_tensor(self[i])) {
+                auto &data = PADDLE_GET(phi::SparseCooTensor, self[i]);
                 res[i] = py::cast(std::move(data));
               } else {
                 auto &data = PADDLE_GET(LoDTensorArray, self[i]);
@@ -2503,19 +2525,14 @@ All parameter, weight, gradient are variables in Paddle.
     return res;
   });
 
-  m.def("enable_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance()
-        .EnableLayoutAutoTune();
-  });
+  m.def("enable_layout_autotune",
+        [] { return egr::Controller::Instance().EnableLayoutAutoTune(); });
 
-  m.def("disable_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance()
-        .DisableLayoutAutoTune();
-  });
+  m.def("disable_layout_autotune",
+        [] { return egr::Controller::Instance().DisableLayoutAutoTune(); });
 
-  m.def("use_layout_autotune", [] {
-    return paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune();
-  });
+  m.def("use_layout_autotune",
+        [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
 
   BindFleetWrapper(&m);
   BindIO(&m);

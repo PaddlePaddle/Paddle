@@ -365,7 +365,6 @@ register_unity_group(
   split_op.cu.cc
   activation_cudnn_op.cu.cc
   assign_value_op.cu.cc
-  merge_selected_rows_op.cu.cc
   run_program_op.cu.cc
   warpctc_op.cu.cc)
 register_unity_group(
@@ -469,7 +468,6 @@ register_unity_group(
   lookup_table_v2_op.cu
   margin_rank_loss_op.cu
   masked_select_op.cu
-  merge_selected_rows_op.cu
   lstmp_op.cu
   shuffle_channel_op.cu
   softmax_cudnn_op.cu

@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import pickle
 import warnings
@@ -397,7 +395,7 @@ def _parse_save_configs(configs):
     inner_config.output_spec = configs.get('output_spec', None)
     inner_config.with_hook = configs.get('with_hook', False)
     inner_config.combine_params = configs.get("combine_params", False)
-    inner_config.clip_extra = configs.get("clip_extra", False)
+    inner_config.clip_extra = configs.get("clip_extra", True)
     inner_config.skip_forward = configs.get("skip_forward", False)
 
     return inner_config
@@ -1090,8 +1088,9 @@ def save(layer, path, input_spec=None, **configs):
                                                ordered_vars)),
                                     filename=params_filename)
         # save property
-        property_filename = file_prefix + INFER_PROPERTY_SUFFIX
-        _save_property(property_filename, property_vals)
+        property_save_path = os.path.join(os.path.normpath(model_path),
+                                          file_prefix + INFER_PROPERTY_SUFFIX)
+        _save_property(property_save_path, property_vals)
 
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:
@@ -1649,7 +1648,7 @@ class TracedLayer(object):
                 check_type(
                     f, "each element of fetch", int,
                     "fluid.dygraph.jit.TracedLayer.save_inference_model")
-        clip_extra = kwargs.get('clip_extra', False)
+        clip_extra = kwargs.get('clip_extra', True)
         # path check
         file_prefix = os.path.basename(path)
         if file_prefix == "":

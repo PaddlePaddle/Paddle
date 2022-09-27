@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
