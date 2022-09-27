@@ -563,13 +563,13 @@ static PyObject* tensor__div__method(TensorObject* self,
     float other = 0.0;
     if (PyFloat_Check(other_obj)) {
       other = CastPyArg2AttrFloat(other_obj, 0);
-      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-          _supported_int_dtype_.end()) {
-        eager_gil_scoped_release guard;
-        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-      }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+    }
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
     }
     {
       eager_gil_scoped_release guard;
@@ -626,6 +626,14 @@ static PyObject* tensor__div__method(TensorObject* self,
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
   }
+  if (self_tensor.dtype() != DataType::FLOAT32) {
+    eager_gil_scoped_release guard;
+    self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+  }
+  if (other_tensor.dtype() != DataType::FLOAT32) {
+    eager_gil_scoped_release guard;
+    other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
+  }
 
   // 4. calculation
   VLOG(6) << "Calling divide_ad_func in tensor__div__method";
@@ -667,14 +675,14 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     if (PyFloat_Check(other_obj)) {
       other_float = CastPyArg2AttrFloat(other_obj, 0);
       has_other_float = true;
-      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-          _supported_int_dtype_.end()) {
-        eager_gil_scoped_release guard;
-        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-      }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_float = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
       has_other_float = true;
+    }
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
     }
   }
 
@@ -731,6 +739,14 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
+  }
+  if (self_tensor.dtype() != DataType::FLOAT32) {
+    eager_gil_scoped_release guard;
+    self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+  }
+  if (other_tensor.dtype() != DataType::FLOAT32) {
+    eager_gil_scoped_release guard;
+    other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
   }
 
   // 4. calculation
