@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from ..layer_helper import LayerHelper, unique_name
 from ..framework import Variable, in_dygraph_mode, _in_legacy_dygraph
 import paddle

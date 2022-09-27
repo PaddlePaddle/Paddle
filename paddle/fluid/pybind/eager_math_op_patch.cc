@@ -103,7 +103,7 @@ void SetDevice(paddle::platform::Place place) {
   if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::SetDeviceId(place.device);
-    VLOG(1) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+    VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
             << " from " << static_cast<int>(place.device);
 #else
     PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
@@ -114,7 +114,7 @@ void SetDevice(paddle::platform::Place place) {
   if (paddle::platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceManager::SetDevice(place);
-    VLOG(1) << "CurrentDeviceId: "
+    VLOG(6) << "CurrentDeviceId: "
             << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from "
             << static_cast<int>(place.device);
 #else
@@ -139,6 +139,8 @@ paddle::experimental::Tensor CallScalarFuction(
 
   } else if (op_type == "rsub") {
     ret = scale_ad_func(self_tensor, phi::Scalar(-1.0), other, true);
+  } else if (op_type == "mul") {
+    ret = scale_ad_func(self_tensor, phi::Scalar(other), 0.0, true);
   }
 
   return ret;
@@ -431,6 +433,107 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__mul__method(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  paddle::platform::RecordEvent pythonc_record_event(
+      "__mul__ pybind_patch_func",
+      paddle::platform::TracerEventType::UserDefined,
+      1);
+
+  EAGER_TRY
+  VLOG(6) << "Running Eager tensor__mul__method";
+
+  // Set Device ID
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+  SetDevice(place);
+
+  paddle::experimental::Tensor ret;
+  paddle::experimental::Tensor self_tensor = self->tensor;
+
+  PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+
+  // 1. scalar exists cases
+  if ((PyFloat_Check(other_obj) || PyLong_Check(other_obj)) &&
+      !PyBool_Check(other_obj)) {
+    float other = 0.0;
+    if (PyFloat_Check(other_obj)) {
+      other = CastPyArg2AttrFloat(other_obj, 0);
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      }
+    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+    }
+    {
+      eager_gil_scoped_release guard;
+      ret = CallScalarFuction(self_tensor, other, "mul");
+    }
+    return ToPyObject(ret);
+  }
+
+  // 2. create or get tensor for other_obj
+  paddle::experimental::Tensor other_tensor;
+  if (!PyCheckTensor(other_obj)) {
+    paddle::experimental::Scalar value =
+        CastPyArg2Scalar(other_obj, "__mul__", 0);
+    if (PyComplex_Check(other_obj)) {
+      eager_gil_scoped_release guard;
+      other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+    } else {
+      eager_gil_scoped_release guard;
+      other_tensor =
+          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+    }
+  } else {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  }
+
+  // 3. promote types or unify right var type to left var
+  phi::DataType lhs_dtype = self_tensor.dtype();
+  phi::DataType rhs_dtype = other_tensor.dtype();
+  if (lhs_dtype != rhs_dtype) {
+    // note: only op_type in _supported_promote_complex_types_ should promote
+    // dtype
+    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
+        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
+      phi::DataType promote_dtype =
+          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
+              framework::TransToProtoVarType(lhs_dtype),
+              framework::TransToProtoVarType(rhs_dtype)));
+      if (lhs_dtype != promote_dtype) {
+        // cast
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, promote_dtype);
+      }
+      if (rhs_dtype != promote_dtype) {
+        eager_gil_scoped_release guard;
+        other_tensor = cast_ad_func(other_tensor, promote_dtype);
+      }
+    } else {
+      LOG(WARNING)
+          << "The dtype of left and right Tensor are not the same, left "
+             "dtype is "
+          << lhs_dtype << ", but right dtype is " << rhs_dtype
+          << ", the right dtype will convert to " << lhs_dtype;
+      eager_gil_scoped_release guard;
+      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    }
+  }
+
+  // 4. calculation
+  VLOG(6) << "Calling multiply_ad_func in tensor__mul__method";
+  {
+    eager_gil_scoped_release guard;
+    ret = multiply_ad_func(self_tensor, other_tensor);
+  }
+
+  return ToPyObject(ret);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef math_op_patch_methods[] = {
     {"__add__",
      (PyCFunction)(void (*)(void))tensor__add__method,
@@ -446,6 +549,14 @@ PyMethodDef math_op_patch_methods[] = {
      NULL},
     {"__rsub__",
      (PyCFunction)(void (*)(void))tensor__rsub__method,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"__mul__",
+     (PyCFunction)(void (*)(void))tensor__mul__method,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"__rmul__",
+     (PyCFunction)(void (*)(void))tensor__mul__method,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {NULL, NULL, 0, NULL}};

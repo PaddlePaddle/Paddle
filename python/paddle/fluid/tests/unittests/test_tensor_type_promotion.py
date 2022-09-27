@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
 import numpy as np
 import warnings
@@ -62,8 +60,7 @@ class TestTensorTypePromotion(unittest.TestCase):
     def test_operator(self):
         with _test_eager_guard():
             self.setUp()
-            # add and sub has been sunk to cpp level, there is no warnings to catch by this test.
-            self.mul_operator()
+            # add / sub / mul has been sunk to cpp level, there is no warnings to catch by this test.
             self.div_operator()
         self.setUp()
         self.add_operator()
