@@ -99,7 +99,7 @@ __global__ void merge_layernorm_v2(T *out,
       size_t output_idx =
           batch_offset + H_idx * output_H_stride + W_idx * n + col_id;
       out[output_idx] = static_cast<T>(
-          local_out[i] * s_variance * static_cast<float> __ldg(&gamma[col_id]) +
+          local_out[i] * s_variance * static_cast<float>(__ldg(&gamma[col_id])) +
           static_cast<float>(__ldg(&beta[col_id])));
     }
   }
