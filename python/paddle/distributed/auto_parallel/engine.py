@@ -687,7 +687,7 @@ class Engine:
                 exact_ckpts.pop()
         elif isinstance(self.model.model, paddle.nn.Layer):
             if hasattr(
-                    self.model.model, "gpt"
+                    self.model.model, "ernie"
             ) and self.model.model.__class__.__name__ == 'ErnieForPretraining':
                 exact_ckpts = self.model.model.ernie.checkpoints
                 exact_ckpts.pop()
