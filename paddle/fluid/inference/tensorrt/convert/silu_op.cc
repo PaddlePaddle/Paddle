@@ -59,6 +59,7 @@ class SiluOpConverter : public OpConverter {
             output_num));
 
     nvinfer1::ILayer* layer = nullptr;
+
     auto* sigmoid = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *input, nvinfer1::ActivationType::kSIGMOID);
     layer = TRT_ENGINE_ADD_LAYER(engine_,
@@ -66,6 +67,7 @@ class SiluOpConverter : public OpConverter {
                                  *input,
                                  *(sigmoid->getOutput(0)),
                                  nvinfer1::ElementWiseOperation::kPROD);
+
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "silu", {output_name}, test_mode);
   }

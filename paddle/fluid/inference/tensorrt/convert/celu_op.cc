@@ -89,6 +89,7 @@ class CeluOpConverter : public OpConverter {
                                  *relu->getOutput(0),
                                  *min_input,
                                  nvinfer1::ElementWiseOperation::kSUM);
+
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "celu", {output_name}, test_mode);
   }
