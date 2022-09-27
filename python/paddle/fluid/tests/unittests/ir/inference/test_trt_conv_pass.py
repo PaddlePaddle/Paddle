@@ -22,6 +22,8 @@ import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
 
+os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
+
 
 class TensorRTSubgraphPassConvTest(InferencePassTest):
 

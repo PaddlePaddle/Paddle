@@ -61,8 +61,8 @@ EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(
   assert(beta.count == gamma.count);
   mBeta.convertAndCopy(beta, nvinfer1::DataType::kFLOAT);
   mGamma.convertAndCopy(gamma, nvinfer1::DataType::kFLOAT);
-  copyToDevice(mGamma, sizeof(float) * mGamma.count, mGammaDev);
-  copyToDevice(mBeta, sizeof(float) * mBeta.count, mBetaDev);
+  copyToDevice(&mGamma, sizeof(float) * mGamma.count, &mGammaDev);
+  copyToDevice(&mBeta, sizeof(float) * mBeta.count, &mBetaDev);
   for (size_t i = 0; i < mIdsEmb_.size(); ++i) {
     assert(mIdsEmb_[i].count % mLd == 0);
     mIdsVocabSize.push_back(int32_t(mIdsEmb_[i].count / mLd));
@@ -96,8 +96,8 @@ EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(
     mIdsVocabSize.push_back(tem);
   }
   char const* d = static_cast<char const*>(data);
-  mBeta.convertAndCopy(d, mLd, nvinfer1::DataType::kFLOAT);
-  mGamma.convertAndCopy(d, mLd, nvinfer1::DataType::kFLOAT);
+  mBeta.convertAndCopy(&d, mLd, nvinfer1::DataType::kFLOAT);
+  mGamma.convertAndCopy(&d, mLd, nvinfer1::DataType::kFLOAT);
   for (int32_t i = 0; i < nbLookupTables_; ++i) {
     nvinfer1::Weights pre_tem_weight;
     pre_tem_weight.type = mType;
@@ -565,10 +565,10 @@ void EmbLayerNormVarSeqlenPluginBase::serialize(void* buffer) const noexcept {
   }
   char* d = static_cast<char*>(buffer);
   size_t const wordSize = getElementSize(mType);
-  serFromDev(d, mBetaDev.get(), mLd);
-  serFromDev(d, mGammaDev.get(), mLd);
+  serFromDev(&d, mBetaDev.get(), mLd);
+  serFromDev(&d, mGammaDev.get(), mLd);
   for (size_t i = 0; i < mIdsEmbDev.size(); ++i) {
-    serFromDev(d,
+    serFromDev(&d,
                static_cast<char*>(mIdsEmbDev[i]),
                mLd * mIdsVocabSize[i] * wordSize);
   }
@@ -673,7 +673,7 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginHFaceCreator::createPlugin(
   nvinfer1::Weights beta;
   nvinfer1::Weights gamma;
   std::vector<nvinfer1::Weights> IdsEmb;
-  bool output_fp16 = initializeFields(fc, beta, gamma, IdsEmb);
+  bool output_fp16 = initializeFields(fc, &beta, &gamma, &IdsEmb);
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
   EmbLayerNormVarSeqlenPluginHFace* p = new EmbLayerNormVarSeqlenPluginHFace(
       name,
@@ -691,7 +691,7 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginMTronCreator::createPlugin(
   nvinfer1::Weights beta;
   nvinfer1::Weights gamma;
   std::vector<nvinfer1::Weights> IdsEmb;
-  bool output_fp16 = initializeFields(fc, beta, gamma, IdsEmb);
+  bool output_fp16 = initializeFields(fc, &beta, &gamma, &IdsEmb);
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
   EmbLayerNormVarSeqlenPluginMTron* p = new EmbLayerNormVarSeqlenPluginMTron(
       name,
