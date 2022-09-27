@@ -112,7 +112,14 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
                  << "] is not registered.";
   }
 #endif
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+  bool is_xpu_unsupport =
+      paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
+          !paddle::platform::is_xpu_support_op(op.Type(),
+                                               expected_kernel_key) ||
+      paddle::platform::is_in_xpu_black_list(op.Type());
 
+#endif
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&
@@ -130,7 +137,11 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_key,
           kernel_name));
 
-  if (FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) {
+  if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+      || is_xpu_unsupport
+#endif
+  ) {
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
