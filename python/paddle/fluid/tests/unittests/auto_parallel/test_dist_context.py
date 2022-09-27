@@ -25,7 +25,7 @@ import paddle.static as static
 import paddle.nn.functional as F
 
 from paddle.distributed import fleet
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
@@ -34,7 +34,10 @@ paddle.enable_static()
 batch_size = 4
 hidden_size = 1024
 sequence_len = 512
-_g_process_mesh = [[0, 1], [2, 3]]
+_g_process_mesh = [
+    auto.ProcessMesh([0, 1], dim_names=["x"]),
+    auto.ProcessMesh([2, 3], dim_names=["x"])
+]
 
 
 def get_random_inputs_and_labels(input_shape, label_shape):
@@ -82,18 +85,10 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         out = self.norm(input)
-        auto.shard_tensor(self.linear0.weight,
-                          dist_attr={
-                              "process_mesh": _g_process_mesh[0],
-                              "dims_mapping": [-1, 0]
-                          })
+        auto.shard_tensor(self.linear0.weight, _g_process_mesh[0], [None, "x"])
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
-        auto.shard_tensor(self.linear1.weight,
-                          dist_attr={
-                              "process_mesh": _g_process_mesh[1],
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(self.linear1.weight, _g_process_mesh[1], ["x", None])
         out = self.linear1(out)
 
         return out
@@ -123,16 +118,8 @@ def get_program():
         dataloader.set_batch_generator(batch_generator_creator(),
                                        places=paddle.static.cuda_places())
         # data dist_attr
-        auto.shard_tensor(input,
-                          dist_attr={
-                              "process_mesh": _g_process_mesh[0],
-                              "dims_mapping": [0, -1, -1]
-                          })
-        auto.shard_tensor(label,
-                          dist_attr={
-                              "process_mesh": _g_process_mesh[0],
-                              "dims_mapping": [0, -1, -1]
-                          })
+        auto.shard_tensor(input, _g_process_mesh[0], ["x", None, None])
+        auto.shard_tensor(label, _g_process_mesh[0], ["x", None, None])
 
         mlp_start = MLPLayer(hidden_size=hidden_size,
                              intermediate_size=4 * hidden_size,

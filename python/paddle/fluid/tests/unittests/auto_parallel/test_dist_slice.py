@@ -14,7 +14,7 @@
 
 import unittest
 import paddle
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
@@ -25,11 +25,9 @@ def make_program_dp2():
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": auto.ProcessMesh([0, 1]),
-                              "dims_mapping": [0, -1, -1]
-                          })
+        auto.shard_tensor(x, auto.ProcessMesh([0, 1], dim_names=["x"]),
+                          ["x", None, None])
+
         tmp_0 = x[0]
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]
@@ -42,11 +40,9 @@ def make_program_serial():
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": auto.ProcessMesh([0]),
-                              "dims_mapping": [-1, -1, -1]
-                          })
+        auto.shard_tensor(x, auto.ProcessMesh([0], dim_names=["x"]),
+                          [None, None, None])
+
         tmp_0 = x[0]
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]

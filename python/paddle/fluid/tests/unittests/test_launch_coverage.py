@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 import subprocess
 import os
@@ -23,7 +22,7 @@ import unittest
 import paddle.fluid as fluid
 
 from argparse import ArgumentParser, REMAINDER
-from paddle.distributed.utils import _print_arguments, get_gpus, get_cluster_from_args
+from paddle.distributed.utils.launch_utils import _print_arguments, get_gpus, get_cluster_from_args
 from paddle.distributed.fleet.launch_utils import find_free_ports
 
 

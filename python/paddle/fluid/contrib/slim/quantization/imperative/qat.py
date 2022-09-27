@@ -223,7 +223,8 @@ class ImperativeQuantAware(object):
 
         self._quantize_inputs = ImperativeQuantizeInputs(**kwargs)
 
-        self._quantize_outputs = ImperativeQuantizeOutputs(moving_rate)
+        self._quantize_outputs = ImperativeQuantizeOutputs(
+            moving_rate, activation_bits)
 
     def quantize(self, model):
         """
@@ -412,16 +413,18 @@ class ImperativeQuantizeOutputs(object):
     Calculate the output scales for target layers.
     """
 
-    def __init__(self, moving_rate=0.9):
+    def __init__(self, moving_rate=0.9, activation_bits=8):
         """
         The constructor for ImperativeQuantizeOutputs.
 
         Args:
             moving_rate(float): The decay coefficient of moving average.
                                 The default value is 0.9.
+            activation_bits(int, optional): quantization bit number for activation. Default is 8.
         """
         super(ImperativeQuantizeOutputs, self).__init__()
         self._moving_rate = moving_rate
+        self._activation_bits = activation_bits
 
     def apply(self, model):
         """
@@ -478,7 +481,7 @@ class ImperativeQuantizeOutputs(object):
                 the saved model. Default None.
             onnx_format (bool, optional): Whether to export the quantized model
                 with format of ONNX. Default is False.
-            **configs (dict, optional): Other save configuration options for
+            **config (dict, optional): Other save configuration options for
                 compatibility. We do not recommend using these configurations,
                 they may be removed in the future. If not necessary, DO NOT use
                 them. Default None.
@@ -518,27 +521,30 @@ class ImperativeQuantizeOutputs(object):
                                    model_filename=model_filename,
                                    params_filename=params_filename))
 
-        self._gather_scales(infer_program, scope, fetch_targets)
+        if not onnx_format:
+            self._gather_scales(infer_program, scope, fetch_targets)
 
-        # Remove `moving_average_abs_max_scale` node in sub graphs.
-        graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
-        for sub_graph in graph.all_sub_graphs():
-            for _op in sub_graph.all_op_nodes():
-                if _op.name() == "moving_average_abs_max_scale":
-                    sub_graph.safe_remove_nodes(_op)
-            sub_graph.resolve_hazard()
-        infer_program = graph.to_program()
-
-        self._set_skip_quant_attr(infer_program)
-
-        clip_extra = False
-        if onnx_format:
+            # Remove `moving_average_abs_max_scale` node in sub graphs.
             graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
-            transform_pass = ReplaceFakeQuantDequantPass(scope, place)
+            for sub_graph in graph.all_sub_graphs():
+                for _op in sub_graph.all_op_nodes():
+                    if _op.name() == "moving_average_abs_max_scale":
+                        sub_graph.safe_remove_nodes(_op)
+                sub_graph.resolve_hazard()
+            infer_program = graph.to_program()
+
+            self._set_skip_quant_attr(infer_program)
+
+            clip_extra = False
+        else:
+            graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
+            transform_pass = ReplaceFakeQuantDequantPass(
+                scope, place, quant_bits=self._activation_bits)
             transform_pass.apply(graph)
 
             quant_weight_pass = QuantWeightPass(scope, place)
             quant_weight_pass.apply(graph)
+
             infer_program = graph.to_program()
 
             clip_extra = True

@@ -50,21 +50,10 @@ using framework::ir::Graph;
 using framework::ir::Node;
 
 using GraphNodeVec = std::vector<Node*>;
-using GraphNodeSet = std::unordered_set<Node*>;
 using GraphNodeMap = std::unordered_map<Node*, Node*>;
 
-namespace {
-// The delim(`;`) that is used to split the FLAGS_allow_cinn_ops
-// & FLAGS_deny_cinn_ops.
-constexpr char kDelim[] = ";";
-
-const std::unordered_map<std::string, std::unordered_set<std::string>>
-    kDenyParamMap = {{"batch_norm", {"ReserveSpace"}},
-                     {"batch_norm_grad", {"ReserveSpace"}}};
-
-const std::unordered_set<std::string> kDefaultDenyOps = {"feed", "fetch"};
-
-std::unordered_set<std::string> GetDenyVarNames(const GraphNodeSet& cluster) {
+std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
+    const GraphNodeSet& cluster) const {
   std::unordered_set<std::string> deny_var_set;
 
   auto get_debug_info = [](const std::unordered_set<std::string>& var_names) {
@@ -78,16 +67,16 @@ std::unordered_set<std::string> GetDenyVarNames(const GraphNodeSet& cluster) {
   };
 
   for (auto* op : cluster) {
-    if (kDenyParamMap.count(op->Name())) {
+    if (deny_param_cond.count(op->Name())) {
       const auto* desc = op->Op();
       PADDLE_ENFORCE_NE(desc,
                         nullptr,
                         platform::errors::PreconditionNotMet(
                             "The Op %s's OpDesc should not be NULL, which has "
-                            "a parameter in kDenyParamMap.",
+                            "a parameter in deny_param_cond.",
                             op->Name().c_str()));
 
-      auto deny_param_names = kDenyParamMap.at(op->Name());
+      auto deny_param_names = deny_param_cond.at(op->Name());
       VLOG(4) << "We found deny param " << get_debug_info(deny_param_names)
               << " in op [" << op->Name() << "].";
 
@@ -117,6 +106,11 @@ std::unordered_set<std::string> GetDenyVarNames(const GraphNodeSet& cluster) {
 
   return deny_var_set;
 }
+
+namespace {
+// The delim(`;`) that is used to split the FLAGS_allow_cinn_ops
+// & FLAGS_deny_cinn_ops.
+constexpr char kDelim[] = ";";
 
 std::unordered_set<std::string> StringSplit(const std::string& str,
                                             const std::string& delim) {
@@ -561,30 +555,38 @@ static bool IsInplaceOp(const OpDesc& op_desc) {
 void SearchAllSubgraphs(Graph* graph) {
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
-  auto teller = [&allow_ops, &deny_ops](const Node* node) {
+  OpTransInfo trans_info;
+  auto teller = [&allow_ops, &deny_ops, &trans_info](const Node* node) {
     const auto& node_name = node->Name();
     bool registered = ::cinn::frontend::OpMapperRegistry::Global()->Find(
                           node_name) != nullptr;
+    // skip the dynamic ops
+    bool is_dynamic = false;
+    if (trans_info.dynamic_op_cond.count(node_name)) {
+      is_dynamic = trans_info.dynamic_op_cond.at(node_name)(node);
+    }
     // if the op type is registered in CINN and allow_ops is not empty, return
     // true only when it is in allow_ops
     if (!allow_ops.empty()) {
-      return registered && allow_ops.count(node_name);
+      return registered && !is_dynamic && allow_ops.count(node_name);
     }
     // if the op type is registered in CINN and deny_ops is not empty, return
     // true only when it is not in deny_ops
     if (!deny_ops.empty()) {
-      return registered && !deny_ops.count(node_name);
+      return registered && !is_dynamic && !deny_ops.count(node_name);
     }
 
     // if the user doesn't set FLAGS_allow_cinn_ops and FLAGS_deny_cinn_ops,
     // return true only when it is registered in CINN
-    return registered && !kDefaultDenyOps.count(node_name) &&
-           (node->IsOp() && !IsInplaceOp(*node->Op()));
+    return registered && !trans_info.default_deny_ops.count(node_name) &&
+           !is_dynamic && (node->IsOp() && !IsInplaceOp(*node->Op()));
   };
   VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
   VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();
+  LOG(INFO) << "--- [build_cinn_pass] detected " << clusters.size()
+            << " cinn supported subgraphs";
 
   auto cluster_debug_info = [](const GraphNodeSet& cluster) {
     std::string res = "(";
@@ -601,7 +603,7 @@ void SearchAllSubgraphs(Graph* graph) {
     // Classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
 
-    auto deny_var_set = GetDenyVarNames(cluster_set);
+    auto deny_var_set = trans_info.GetDenyVarNames(cluster_set);
 
     GraphNodeSet cluster_inputs, cluster_outputs, cluster_internals;
     AnalyseClusterVariables(cluster_set,

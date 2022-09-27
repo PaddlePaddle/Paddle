@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -30,6 +29,7 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"
 #endif
@@ -354,15 +354,14 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
       framework::TransToProtoVarType(src_selected_rows.value().dtype());
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
-#define PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(dev_ctx_type, cpp_type)           \
-  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {         \
-    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);              \
-    paddle::operators::math::SelectedRowsAddToTensor<dev_ctx_type, cpp_type> \
-        functor;                                                             \
-    functor(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),                         \
-            src_selected_rows,                                               \
-            dst_tensor);                                                     \
-    return;                                                                  \
+#define PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(dev_ctx_type, cpp_type)       \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {     \
+    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);          \
+    phi::funcs::SelectedRowsAddToTensor<dev_ctx_type, cpp_type> functor; \
+    functor(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),                     \
+            src_selected_rows,                                           \
+            dst_tensor);                                                 \
+    return;                                                              \
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -406,15 +405,14 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
   dst_tensor->Resize(src_tensor.dims());
   dst_tensor->mutable_data(place, src_tensor.dtype());
 
-#define PADDLE_SELECTED_ROWS_ADD_TENSOR(dev_ctx_type, cpp_type)            \
-  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {       \
-    paddle::operators::math::SelectedRowsAddTensor<dev_ctx_type, cpp_type> \
-        functor;                                                           \
-    functor(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),                       \
-            src_selected_rows,                                             \
-            src_tensor,                                                    \
-            dst_tensor);                                                   \
-    return;                                                                \
+#define PADDLE_SELECTED_ROWS_ADD_TENSOR(dev_ctx_type, cpp_type)        \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {   \
+    phi::funcs::SelectedRowsAddTensor<dev_ctx_type, cpp_type> functor; \
+    functor(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),                   \
+            src_selected_rows,                                         \
+            src_tensor,                                                \
+            dst_tensor);                                               \
+    return;                                                            \
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -469,15 +467,14 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
   phi::SelectedRows* dst_selected_rows =
       GetEmptyInnerTensor<phi::SelectedRows>(dst_var.get());
 
-#define PADDLE_SELECTED_ROWS_ADD(dev_ctx_type, cpp_type)               \
-  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {   \
-    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);        \
-    paddle::operators::math::scatter::MergeAdd<dev_ctx_type, cpp_type> \
-        merge_add;                                                     \
-    merge_add(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),                 \
-              src_selected_rows,                                       \
-              dst_selected_rows);                                      \
-    return dst_var;                                                    \
+#define PADDLE_SELECTED_ROWS_ADD(dev_ctx_type, cpp_type)             \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
+    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);      \
+    phi::funcs::scatter::MergeAdd<dev_ctx_type, cpp_type> merge_add; \
+    merge_add(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),               \
+              src_selected_rows,                                     \
+              dst_selected_rows);                                    \
+    return dst_var;                                                  \
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

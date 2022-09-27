@@ -24,7 +24,7 @@ import pickle
 import time
 import paddle
 from paddle.fluid.backward import append_backward
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
 from paddle.fluid import program_guard
@@ -42,6 +42,7 @@ from .utils import make_data_unshard
 from .utils import set_grad_var_shape
 from .utils import print_program_with_dist_attr
 from .utils import SerialProgramInfo
+from .utils import get_logger
 from .reshard import Resharder
 from .cluster import Cluster
 from .mapper import mapping

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import math
 import re
@@ -100,7 +99,8 @@ def linspace(start, stop, num, dtype=None, name=None):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
     if in_dygraph_mode():
-        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, dtype)
+        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, dtype,
+                               _current_expected_place())
     if _in_legacy_dygraph():
         return _legacy_C_ops.linspace(tensor_start, tensor_stop, tensor_num,
                                       'dtype', dtype)

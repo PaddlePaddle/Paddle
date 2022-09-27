@@ -20,8 +20,6 @@ parse training set and test set into paddle reader creators.
 
 """
 
-from __future__ import print_function
-
 import six
 import tarfile
 import gzip

@@ -16,16 +16,6 @@
 
 #include <queue>
 
-// The difference between "sequential_run" and "serial_run":
-// "sequential_run" dispatches OPs one by one according to the sequence in the
-// Program, while "serial_run" ensures that all Ops are scheduled in a singal
-// thread. In standalone executor, "sequential_run" is also "serial_run", while
-// "serial_run" is not necessarily "sequential_run".
-PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
-                            false,
-                            "Enable sequential execution for standalone "
-                            "executor, only applied to GPU OPs.");
-
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -67,7 +57,7 @@ const std::string StringizeDownstreamMap(
 }
 
 const std::map<int, std::set<int>>& DependencyBuilder::Build(
-    const std::vector<Instruction>& instructions) {
+    const std::vector<Instruction>& instructions, bool is_sequential_run) {
   PADDLE_ENFORCE_EQ(
       is_build_,
       false,
@@ -85,7 +75,7 @@ const std::map<int, std::set<int>>& DependencyBuilder::Build(
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
 
-  if (FLAGS_new_executor_sequential_run) {
+  if (is_sequential_run) {
     AddDependencyForSequentialRun();
   }
 
@@ -505,7 +495,7 @@ void DependencyBuilder::BuildOpHappensBefore() {
                                 next,
                                 op_idx));
           op_happens_before_[op_idx][next] = true;
-          VLOG(8) << "happens before: " << op_idx << " " << next;
+          VLOG(10) << "happens before: " << op_idx << " " << next;
           q.push(next);
         }
       }

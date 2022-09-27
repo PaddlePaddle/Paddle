@@ -559,38 +559,26 @@ class CoalesceGradTensorPass : public ir::Pass {
         all_persistable = false;
       }
     }
+    VLOG(4) << "all_persistable:" << all_persistable;
+    VLOG(4) << "any_persistable:" << all_persistable;
+    // NOTE. In scope_buffered_ssa_graph_executor, after each execution of
+    // DropScope(), non persistable vars will be Erase or Clear. So
+    // coalesce_tensor op needs to be executed again after the execution
+    // of DropScope().
 
-    if (all_persistable) {
-      // All grads are persistable, only need to be executed once at the
-      // beginning.
-      result->Get<details::ProgramDescs>(details::kStartupProgramDescs)
-          .emplace_back();
-      ProgramDesc &program_desc =
-          result->Get<details::ProgramDescs>(details::kStartupProgramDescs)
-              .back();
-      auto *global_block = program_desc.MutableBlock(0);
-      AppendAllocSpaceForVarsOp(params_name,
-                                grads_name,
-                                fused_var_name,
-                                dtype,
-                                all_persistable,
-                                global_block);
-    } else {
-      // NOTE. In scope_buffered_ssa_graph_executor, after each execution of
-      // DropScope(), non persistable vars will be Erase or Clear. So
-      // coalesce_tensor op needs to be executed again after the execution
-      // of DropScope().
-      result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
-      ProgramDesc &program_desc =
-          result->Get<details::ProgramDescs>(details::kProgramDescs).back();
-      auto *global_block = program_desc.MutableBlock(0);
-      AppendAllocSpaceForVarsOp(params_name,
-                                grads_name,
-                                fused_var_name,
-                                dtype,
-                                any_persistable,
-                                global_block);
-    }
+    // we can make fused_output persistable, so the memeory is not cleared
+    // and coalesce_tensor op do nothing if the inputs are already continue.
+
+    result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
+    ProgramDesc &program_desc =
+        result->Get<details::ProgramDescs>(details::kProgramDescs).back();
+    auto *global_block = program_desc.MutableBlock(0);
+    AppendAllocSpaceForVarsOp(params_name,
+                              grads_name,
+                              fused_var_name,
+                              dtype,
+                              any_persistable,
+                              global_block);
   }
 
   void AppendAllocSpaceForVarsOp(const std::vector<std::string> &params_name,
@@ -599,13 +587,15 @@ class CoalesceGradTensorPass : public ir::Pass {
                                  const proto::VarType::Type &dtype,
                                  bool persistable,
                                  BlockDesc *global_block) const {
+    auto fused_out_var = global_block->Var(fused_var_name);
+    fused_out_var->SetPersistable(persistable);
+
     auto op_desc = global_block->AppendOp();
     op_desc->SetType("coalesce_tensor");
     op_desc->SetInput("Input", params_name);
     op_desc->SetOutput("Output", grads_name);
     op_desc->SetOutput("FusedOutput", {fused_var_name});
     op_desc->SetAttr("dtype", static_cast<int>(dtype));
-
     op_desc->SetAttr("persist_output", persistable);
   }
 };
