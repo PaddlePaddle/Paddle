@@ -15,7 +15,7 @@ import unittest
 
 import numpy as np
 import os
-import paddle.audio
+import paddle
 import itertools
 from parameterized import parameterized
 
@@ -27,47 +27,46 @@ def parameterize(*params):
 class TestAudioDatasets(unittest.TestCase):
 
     @parameterize(["dev", "train"], [40, 64])
-    def test_tess_dataset(self, mode: str, params: int):
+    def test_esc50_dataset(self, mode: str, params: int):
         """
-        TESS dataset
+        ESC50 dataset
         Reference:
-            Toronto emotional speech set (TESS) https://tspace.library.utoronto.ca/handle/1807/24487
-            https://doi.org/10.5683/SP2/E8H2MF
+            ESC: Dataset for Environmental Sound Classification
+            http://dx.doi.org/10.1145/2733373.2806390
         """
         archieve = {
             'url':
-            'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set_lite.zip',
-            'md5': '9ffb5e3adf28d4d6b787fa94bd59b975',
-        }  #small part of TESS dataset for test.
-        tess_dataset = paddle.audio.datasets.TESS(mode=mode,
-                                                  feat_type='mfcc',
-                                                  n_mfcc=params,
-                                                  archieve=archieve)
-        idx = np.random.randint(0, 30)
-        elem = tess_dataset[idx]
+            'https://bj.bcebos.com/paddleaudio/datasets/ESC-50-master-lite.zip',
+            'md5': '1e9ba53265143df5b2804a743f2d1956',
+        }  #small part of ESC50 dataset for test.
+        esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+                                                    feat_type='mfcc',
+                                                    n_mfcc=params,
+                                                    archieve=archieve)
+        idx = np.random.randint(0, 6)
+        elem = esc50_dataset[idx]
         self.assertTrue(elem[0].shape[1] == params)
-        self.assertTrue(0 <= elem[1] <= 6)
+        self.assertTrue(0 <= elem[1] <= 2)
 
-        tess_dataset = paddle.audio.datasets.TESS(mode=mode,
-                                                  feat_type='spectrogram',
-                                                  n_fft=params)
-        elem = tess_dataset[idx]
+        esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+                                                    feat_type='spectrogram',
+                                                    n_fft=params)
+        elem = esc50_dataset[idx]
         self.assertTrue(elem[0].shape[1] == (params // 2 + 1))
-        self.assertTrue(0 <= elem[1] <= 6)
+        self.assertTrue(0 <= elem[1] <= 2)
 
-        tess_dataset = paddle.audio.datasets.TESS(mode="dev",
-                                                  feat_type='logmelspectrogram',
-                                                  n_mels=params)
-        elem = tess_dataset[idx]
+        esc50_dataset = paddle.audio.datasets.ESC50(
+            mode=mode, feat_type='logmelspectrogram', n_mels=params)
+        elem = esc50_dataset[idx]
         self.assertTrue(elem[0].shape[1] == params)
-        self.assertTrue(0 <= elem[1] <= 6)
+        self.assertTrue(0 <= elem[1] <= 2)
 
-        tess_dataset = paddle.audio.datasets.TESS(mode="dev",
-                                                  feat_type='melspectrogram',
-                                                  n_mels=params)
-        elem = tess_dataset[idx]
+        esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+                                                    feat_type='melspectrogram',
+                                                    n_mels=params)
+        elem = esc50_dataset[idx]
         self.assertTrue(elem[0].shape[1] == params)
-        self.assertTrue(0 <= elem[1] <= 6)
+        self.assertTrue(0 <= elem[1] <= 2)
 
 
 if __name__ == '__main__':

@@ -68,21 +68,17 @@ class AudioClassificationDataset(paddle.io.Dataset):
     def _convert_to_record(self, idx):
         file, label = self.files[idx], self.labels[idx]
 
-        if self.sample_rate is None:
-            waveform, sample_rate = paddle.audio.backends.load(file)
-            self.sample_rate = sample_rate
-        else:
-            waveform, sample_rate = paddle.audio.backends.load(
-                file, sr=self.sample_rate)
+        waveform, sample_rate = paddle.audio.backends.load(file)
+        self.sample_rate = sample_rate
 
         feat_func = feat_funcs[self.feat_type]
 
         record = {}
         if len(waveform.shape) == 2:
-            waveform = waveform.squeeze(0)  #1D input
-        waveform = paddle.to_tensor(waveform,
-                                    dtype=paddle.float32).unsqueeze(0)  # (C, T)
+            waveform = waveform.squeeze(0)  # 1D input
+        waveform = paddle.to_tensor(waveform, dtype=paddle.float32)
         if feat_func is not None:
+            waveform = waveform.unsqueeze(0)  # (batch_size, T)
             if self.feat_type is not 'spectrogram':
                 feature_extractor = feat_func(sr=self.sample_rate,
                                               **self.feat_config)
