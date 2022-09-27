@@ -587,23 +587,15 @@ class TestUniformDtype(unittest.TestCase):
             out = paddle.tensor.random.uniform([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
+        def test_uniform_fp16():
+            out = paddle.uniform(shape=[2, 3], dtype=paddle.float16)
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
+
         test_default_fp64()
         test_default_fp32()
+        test_uniform_fp16()
 
         paddle.enable_static()
-
-
-class TestUniformFP16(unittest.TestCase):
-
-    def test_uniform_fp16(self):
-        if (paddle.in_dynamic_mode()):
-            out = paddle.uniform(shape=[2, 3], dtype=paddle.float16)
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
-        else:
-            paddle.disable_static()
-            out = paddle.uniform(shape=[2, 3], dtype=paddle.float16)
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
-            paddle.enable_static()
 
 
 class TestRandomValue(unittest.TestCase):
