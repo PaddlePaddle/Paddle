@@ -52,7 +52,7 @@ class CinnCompiledObject;
 
 namespace operators::details {
 
-using CinnTensor = ::cinn::hlir::Tensor;
+using CinnTensor = ::cinn::hlir::framework::Tensor;
 using CinnScope = ::cinn::hlir::framework::Scope;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 
