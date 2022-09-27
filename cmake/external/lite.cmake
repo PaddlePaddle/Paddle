@@ -52,7 +52,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG b5d26dae0ccf7e7ebc2f946f068ac2bc67b1fd96)
+    set(LITE_GIT_TAG 14cd147499540c4bee6c50d32e727278e95e17a5)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -86,7 +86,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      GIT_REPOSITORY "${GIT_URL}/pangyoki/Paddle-Lite.git"
+      GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
       GIT_TAG ${LITE_GIT_TAG}
       PREFIX ${LITE_PREFIX_DIR}
       PATCH_COMMAND
@@ -136,7 +136,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      GIT_REPOSITORY "${GIT_URL}/pangyoki/Paddle-Lite.git"
+      GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
       GIT_TAG ${LITE_GIT_TAG}
       PREFIX ${LITE_PREFIX_DIR}
       UPDATE_COMMAND ""
