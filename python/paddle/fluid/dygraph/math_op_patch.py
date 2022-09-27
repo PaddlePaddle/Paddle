@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
 from ..layers.layer_function_generator import OpProtoHolder
