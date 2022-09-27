@@ -94,7 +94,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     paddle.distributed.broadcast(shape_gpu,
                                  src=src_rank,
                                  group=model_parallel_group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
 
     if mp_rank != 0:
         input_data = paddle.zeros(shape_gpu, dtype=dtype)
@@ -104,7 +104,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     paddle.distributed.broadcast(input_data,
                                  src=src_rank,
                                  group=model_parallel_group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
 
     if mp_rank != 0:
         if in_dygraph_mode():
@@ -186,7 +186,7 @@ def sharding_reduce_gradients(parameter_list, hcg):
                     paddle.distributed.all_reduce(
                         param.grad,
                         group=hcg.get_sharding_parallel_group(),
-                        use_calc_stream=True)
+                        sync_op=True)
 
                 elif _in_legacy_dygraph():
                     g_var = param._grad_ivar()
