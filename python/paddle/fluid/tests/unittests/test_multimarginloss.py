@@ -150,7 +150,7 @@ def test_static_data_shape(place,
 
         exe = paddle.static.Executor(place)
         static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
-    return static_result
+    return static_result[0]
 
 
 def test_dygraph(place,
@@ -248,9 +248,9 @@ class TestMultiMarginLoss(unittest.TestCase):
                     label_np=label,
                     reduction=reduction,
                 )
-                self.assertTrue(np.allclose(static_result, expected))
-                self.assertTrue(np.allclose(static_result, dy_result))
-                self.assertTrue(np.allclose(dy_result, expected))
+                np.testing.assert_allclose(static_result, expected)
+                np.testing.assert_allclose(static_result, dy_result)
+                np.testing.assert_allclose(dy_result, expected)
                 static_functional = test_static(place=place,
                                                 input_np=input,
                                                 label_np=label,
@@ -261,9 +261,9 @@ class TestMultiMarginLoss(unittest.TestCase):
                                              label=label,
                                              reduction=reduction,
                                              functional=True)
-                self.assertTrue(np.allclose(static_functional, expected))
-                self.assertTrue(np.allclose(static_functional, dy_functional))
-                self.assertTrue(np.allclose(dy_functional, expected))
+                np.testing.assert_allclose(static_functional, expected)
+                np.testing.assert_allclose(static_functional, dy_functional)
+                np.testing.assert_allclose(dy_functional, expected)
 
     def test_MultiMarginLoss_error(self):
         paddle.disable_static()
@@ -330,9 +330,9 @@ class TestMultiMarginLoss(unittest.TestCase):
             label_np=label,
             reduction=reduction,
         )
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected)
+        np.testing.assert_allclose(static_result, dy_result)
+        np.testing.assert_allclose(dy_result, expected)
         static_functional = test_static(place=place,
                                         p=p,
                                         input_np=input,
@@ -345,9 +345,9 @@ class TestMultiMarginLoss(unittest.TestCase):
                                      label=label,
                                      reduction=reduction,
                                      functional=True)
-        self.assertTrue(np.allclose(static_functional, expected))
-        self.assertTrue(np.allclose(static_functional, dy_functional))
-        self.assertTrue(np.allclose(dy_functional, expected))
+        np.testing.assert_allclose(static_functional, expected)
+        np.testing.assert_allclose(static_functional, dy_functional)
+        np.testing.assert_allclose(dy_functional, expected)
 
     def test_MultiMarginLoss_weight(self):
         batch_size = 5
@@ -380,9 +380,9 @@ class TestMultiMarginLoss(unittest.TestCase):
             weight_np=weight,
             reduction=reduction,
         )
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected)
+        np.testing.assert_allclose(static_result, dy_result)
+        np.testing.assert_allclose(dy_result, expected)
         static_functional = test_static(place=place,
                                         input_np=input,
                                         label_np=label,
@@ -395,9 +395,9 @@ class TestMultiMarginLoss(unittest.TestCase):
                                      weight=weight,
                                      reduction=reduction,
                                      functional=True)
-        self.assertTrue(np.allclose(static_functional, expected))
-        self.assertTrue(np.allclose(static_functional, dy_functional))
-        self.assertTrue(np.allclose(dy_functional, expected))
+        np.testing.assert_allclose(static_functional, expected)
+        np.testing.assert_allclose(static_functional, dy_functional)
+        np.testing.assert_allclose(dy_functional, expected)
 
     def test_MultiMarginLoss_static_data_shape(self):
         batch_size = 5

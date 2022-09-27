@@ -3553,9 +3553,7 @@ def multi_margin_loss(input,
                 "The weight's shape[0] should be equal to input's shape[1]"
                 "but received weight's shape[0]: {} and input's shape[1]: {}".
                 format(weight.shape[0], input.shape[1]))
-        weight = weight.reshape((-1, weight.shape[0]))
-        weight = paddle.repeat_interleave(weight, label.shape[0], 0)
-        weight = paddle.index_sample(weight, label)
+        weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
         loss = paddle.mean(
             paddle.pow(
                 paddle.clip(weight *
