@@ -10,15 +10,20 @@ import paddleslim.dist as dist
 import math
 import copy
 from ....log_helper import get_logger
-from .utils import load_variable_data, set_variable_data, stable_sigmoid, quant_tensor, dequant_tensor, _channelwise_quant_axis1_ops, calculate_quant_cos_error, bias_correction_w, soft_rounding_weights, isolate_blocks, _get_op_output_var_names, _get_op_input_var_names,insert_drop_quant_deqaunt
+from .utils import load_variable_data, set_variable_data, stable_sigmoid, quant_tensor, dequant_tensor, _channelwise_quant_axis1_ops, calculate_quant_cos_error, bias_correction_w, isolate_blocks, _get_op_output_var_names, _get_op_input_var_names, insert_drop_quant_deqaunt, insert_soft_rounding
 
 _logger = get_logger(__name__,
                      logging.INFO,
                      fmt='%(asctime)s-%(levelname)s: %(message)s')
 GAMMA = -0.1
 ZETA = 1.1
+
+def _sigmoid(x):
+    return 1/(1+paddle.exp(-x))
+
+
 def compute_soft_rounding(alpha_v):
-    return paddle.clip(paddle.nn.functional.sigmoid(alpha_v) * (ZETA - GAMMA) +
+    return paddle.clip(_sigmoid(alpha_v) * (ZETA - GAMMA) +
                              GAMMA,
                              0,
                              1)
@@ -150,6 +155,10 @@ def run_adaround(data_loader,
     print(weight_quantize_type)
     print(qdrop)
 
+    model_name='YOLOv7'
+    epochs = 40
+    qdrop=False
+
 
     def _floor(weight_var_names, scale_dict, scope, place):
         for name in weight_var_names:
@@ -230,6 +239,105 @@ def run_adaround(data_loader,
 
         # print(blocks)
         # print(block_weights_names)  
+    
+    
+    elif model_name=='YOLOv5':
+        print("run yolov5s")
+        data_name_map={'x2paddle_images':'x2paddle_images'}
+        
+        blocks = [['x2paddle_images','concat_1.tmp_0'],
+                ['concat_1.tmp_0', 'sigmoid_74.tmp_0'],
+                ['elementwise_mul_14','concat_2.tmp_0'],
+                ['concat_2.tmp_0', 'sigmoid_84.tmp_0'],
+                ['elementwise_mul_24','concat_4.tmp_0'],
+                ['concat_4.tmp_0','sigmoid_92.tmp_0'],
+                ['conv2d_93.tmp_0','sigmoid_93.tmp_0'],
+                ['concat_5.tmp_0','conv2d_99.tmp_0'],
+                ['concat_7.tmp_0', 'concat_8.tmp_0'],
+                ['concat_8.tmp_0','sigmoid_104.tmp_0'],
+                ['elementwise_mul_44','sigmoid_108.tmp_0'],
+                ['elementwise_mul_44','sigmoid_105.tmp_0'],
+                ['concat_9.tmp_0','concat_13.tmp_0'],
+                ['concat_13.tmp_0','sigmoid_111.tmp_0'],
+                ['elementwise_mul_54','sigmoid_115.tmp_0'],
+                ['elementwise_mul_54','sigmoid_112.tmp_0'],
+                ['concat_14.tmp_0','sigmoid_119.tmp_0']]
+
+        block_weights_names = [['conv2d_{}.w_0'.format(i) for i in range(14)],
+                                ['conv2d_14.w_0'],
+                            ['conv2d_{}.w_0'.format(i) for i in range(15, 24)],
+                            ['conv2d_24.w_0'],
+                            ['conv2d_{}.w_0'.format(i) for i in range(25, 32)],
+                            ['conv2d_32.w_0'],
+                            ['conv2d_33.w_0'],
+                            ['conv2d_{}.w_0'.format(i) for i in range(34, 40)],
+                            ['conv2d_{}.w_0'.format(i) for i in range(40, 44)],
+                            ['conv2d_44.w_0'],
+                            ['conv2d_46.w_0'],
+                            ['conv2d_45.w_0'],
+                            ['conv2d_{}.w_0'.format(i) for i in range(47, 51)],
+                            ['conv2d_51.w_0'],
+                            ['conv2d_53.w_0'],
+                            ['conv2d_52.w_0'],
+                            ['conv2d_{}.w_0'.format(i) for i in range(54, 60)]]
+
+
+
+
+        # print(blocks)
+        # print(block_weights_names)  
+    
+    elif model_name=='YOLOv7':
+        print("run yolov7s")
+        data_name_map={'x2paddle_images':'x2paddle_images'}
+        
+        blocks = [['x2paddle_images','concat_2.tmp_0'],
+                 ['concat_2.tmp_0','sigmoid_112.tmp_0'],
+                 ['elementwise_mul_20','concat_4.tmp_0'],
+                 ['elementwise_mul_20','sigmoid_114.tmp_0'],
+                 ['concat_4.tmp_0','sigmoid_123.tmp_0'],
+                 ['elementwise_mul_31','concat_8.tmp_0'],
+                 ['concat_8.tmp_0','sigmoid_141.tmp_0'],
+                 ['elementwise_mul_49','sigmoid_142.tmp_0'],
+                 ['concat_9.tmp_0','sigmoid_149.tmp_0'],
+                 ['elementwise_mul_57','sigmoid_150.tmp_0'],
+                 ['concat_11.tmp_0','sigmoid_157.tmp_0'],
+                 ['conv2d_159.tmp_0','sigmoid_162.tmp_0'],
+                 ['elementwise_mul_65','sigmoid_160.tmp_0'],
+                 ['elementwise_mul_65','sigmoid_161.tmp_0'],
+                 ['concat_13.tmp_0','sigmoid_169.tmp_0'],
+                 ['conv2d_171.tmp_0','sigmoid_174.tmp_0'],
+                 ['elementwise_mul_80','sigmoid_172.tmp_0'],
+                 ['elementwise_mul_80','sigmoid_173.tmp_0'],
+                 ['concat_16.tmp_0','sigmoid_183.tmp_0']]
+
+        block_weights_names = [['conv2d_{}.w_0'.format(i) for i in range(20)],
+                                ['conv2d_20.w_0'],
+                                list(set(['conv2d_{}.w_0'.format(i) for i in range(21,31)])-{'conv2d_22.w_0'}),
+                                ['conv2d_22.w_0'],
+                                ['conv2d_31.w_0'],
+                                list(set(['conv2d_{}.w_0'.format(i) for i in range(32,49)])-{'conv2d_33.w_0'}),
+                                ['conv2d_49.w_0'],
+                                ['conv2d_50.w_0'],
+                                ['conv2d_{}.w_0'.format(i) for i in range(51,58)],
+                                ['conv2d_58.w_0'],
+                                ['conv2d_{}.w_0'.format(i) for i in range(59,66)],
+                                ['conv2d_67.w_0','conv2d_70.w_0'],
+                                ['conv2d_68.w_0'],
+                                ['conv2d_66.w_0','conv2d_69.w_0'],
+                                ['conv2d_{}.w_0'.format(i) for i in range(71,78)],
+                                ['conv2d_79.w_0','conv2d_82.w_0'],
+                                ['conv2d_80.w_0'],
+                                ['conv2d_78.w_0','conv2d_81.w_0'],
+                                ['conv2d_{}.w_0'.format(i) for i in range(83,92)]]
+
+
+
+
+
+        # print(blocks)
+        # print(block_weights_names)  
+    
     else:
         data_name_map = {}
 
@@ -237,14 +345,14 @@ def run_adaround(data_loader,
             data_name_map[name] = name
         blocks = []
         block_weights_names = []
-        def get_layer():
+        def get_blocks():
             for name in weight_var_names:
                 block_weights_names.append([name])
                 block_ = []
                 block_.append(input_weight_pairs[name][0])
                 block_.append(quantized_op_pairs[name])
                 blocks.append(block_)
-        get_layer()
+        get_blocks()
 
 
     dist.merge(
@@ -261,7 +369,7 @@ def run_adaround(data_loader,
         insert_drop_quant_deqaunt(student_program, scale_dict)
     
     #insert soft rounding on the weights
-    soft_rounding_weights(program=student_program, weight_names=weight_var_names, scales=copy.deepcopy(scale_dict), scope=scope, weight_quantize_type=weight_quantize_type, exe=exe)
+    insert_soft_rounding(program=student_program, weight_names=weight_var_names, scales=copy.deepcopy(scale_dict), scope=scope, weight_quantize_type=weight_quantize_type)
 
     #Divided into blocks
     isolate_blocks(student_program, blocks)
@@ -308,12 +416,12 @@ def run_adaround(data_loader,
         # save adaround/qdrop/brecq model
         # feed_var = None
         # for var in student_program.list_vars():
-        #     if var.name == feed_list[0].name:
+        #     if var.name == feed_list[0]:
         #         feed_var = var
         # path_prefix = "./adaround_model"+str(k)
         # paddle.static.save_inference_model(path_prefix, feed_var, [v for v in train_fetches_loss.values()], exe, program=tmp_program)
 
-
+        # return
 
 
 
@@ -374,7 +482,6 @@ def run_adaround(data_loader,
 
 
     return fp32_program
-
 
 
 
