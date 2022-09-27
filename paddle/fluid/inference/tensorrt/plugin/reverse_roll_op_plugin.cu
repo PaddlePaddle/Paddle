@@ -47,18 +47,9 @@ __global__ void reverse_roll(T*        dst,
     const int idx_in_window = (H_idx % window_size) * window_size + (W_idx % window_size);
     const int input_offset  = (batch_idx * window_num + window_idx) * window_len + idx_in_window;
     const int output_offset = (batch_idx * H + H_idx_shifted) * W + W_idx_shifted;
-    __shared__ T shift_array[1025];
     for (int tid = threadIdx.x; tid < dim; tid += blockDim.x) {
-        shift_array[tid] = src[input_offset * dim + tid];
+        dst[output_offset * dim + tid] = src[input_offset * dim + tid];
     }
-    __syncthreads();
-    for (int tid = threadIdx.x; tid < dim; tid += blockDim.x) {
-        dst[output_offset * dim + tid] = shift_array[tid];
-    }
-
-    // for (int tid = threadIdx.x; tid < dim; tid += blockDim.x) {
-    //     dst[output_offset * dim + tid] = src[input_offset * dim + tid];
-    // }
 }
 
 // src is [batch*window_num, window_len, dim]
