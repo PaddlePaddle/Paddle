@@ -324,16 +324,18 @@ class ImperativeQuantizeInputs(object):
                 "%s is unspported to be quantized." % layer
 
         quantize_type = {
-            'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max'
+            'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max',
+            'lsq_weight', 'channel_wise_lsq_weight'
         }
+        act_quantize_type = {'moving_average_abs_max', 'lsq_act'}
         assert weight_quantize_type != 'moving_average_abs_max' \
             and weight_quantize_type in quantize_type, \
             "Unsupported weight_quantize_type: %s. It can only " \
             "be abs_max or channel_wise_abs_max." % weight_quantize_type
         # TODO (jc): activation_quantize_type supports range_abs_max
-        assert activation_quantize_type == 'moving_average_abs_max', \
+        assert activation_quantize_type in act_quantize_type, \
             "Unsupported activation_quantize_type: %s. It can " \
-            "only be moving_average_abs_max now." \
+            "only be moving_average_abs_max or lsq_act now." \
             % activation_quantize_type
 
         bits_check = lambda bits: isinstance(bits, int) \
