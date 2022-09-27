@@ -1436,12 +1436,12 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
           stride_height == stride_width && stride_height == c_stride && \
           (ksize_height == ksize_width && ksize_height == c_filter ||   \
            c_filter == -1)) {                                           \
-    if (c_filter == -1) {                                               \
-      threads.x = block_size;                                           \
-      grid.x = grid_size;                                               \
-      threads.y = threads.z = grid.y = grid.z = 1;                      \
-    }                                                                   \
     if (data_layout != DataLayout::kNHWC) {                             \
+      if (c_filter == -1) {                                             \
+        threads.x = block_size;                                         \
+        grid.x = grid_size;                                             \
+        threads.y = threads.z = grid.y = grid.z = 1;                    \
+      }                                                                 \
       KernelDepthwiseConvInputGradSp<T,                                 \
                                      c_filter_multiplier,               \
                                      c_stride,                          \
