@@ -119,6 +119,13 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       std::vector<phi::DenseTensor>& out_tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
 
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      const BroadcastOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 
@@ -204,6 +211,13 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       std::vector<phi::DenseTensor>& tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const ReduceOptions& opts) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      const ReduceOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> Scatter(
       std::vector<phi::DenseTensor>& in_tensors,

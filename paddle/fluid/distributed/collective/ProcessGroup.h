@@ -125,6 +125,16 @@ class ProcessGroup {
         "ProcessGroup%s does not support broadcast", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
+      std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
+      std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
+      const BroadcastOptions&,
+      bool) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support broadcast with sync_op flag",
+        GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -246,6 +256,16 @@ class ProcessGroup {
       const ReduceOptions& opts) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support Reduce", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Reduce(
+      std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
+      std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
+      const ReduceOptions&,
+      bool) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support Reduce with sync_op flag",
+        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Scatter(

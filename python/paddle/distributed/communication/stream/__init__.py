@@ -14,7 +14,9 @@
 
 from .all_gather import all_gather
 from .all_reduce import all_reduce
-from .send import send
+from .broadcast import broadcast
+from .reduce import reduce
 from .recv import recv
+from .send import send
 
-__all__ = ["all_gather", "all_reduce", "send", "recv"]
+__all__ = ["all_reduce", "broadcast", "reduce", "recv", "send"]

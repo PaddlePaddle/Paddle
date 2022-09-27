@@ -177,6 +177,24 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+              "broadcast",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 int src,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                distributed::BroadcastOptions opts{src};
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Broadcast(tensors, tensors, opts, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("src"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
               "barrier",
               [](distributed::ProcessGroup &self, std::vector<int> place_ids) {
                 distributed::BarrierOptions opts;
@@ -499,6 +517,27 @@ void BindDistributed(py::module *m) {
               py::arg("dst"),
               py::arg("op") = distributed::ReduceOp::SUM,
               py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "reduce",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_in_tensor,
+                 int dst,
+                 distributed::ReduceOp op,
+                 bool sync_op) {
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                distributed::ReduceOptions opts{op, dst};
+                auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Reduce(tensors, tensors, opts, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("dst"),
+              py::arg("op"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
           .def(
               "scatter",
               [](distributed::ProcessGroup &self,
@@ -650,6 +689,48 @@ void BindDistributed(py::module *m) {
               py::arg("out"),
               py::arg("num"),
               py::arg("id"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "broadcast_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 int src) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                distributed::BroadcastOptions opts{src};
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Broadcast(tensors,
+                                      tensors,
+                                      opts,
+                                      /*sync_op*/ true,
+                                      /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("src"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "reduce_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_in_tensor,
+                 int dst,
+                 distributed::ReduceOp op) {
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                distributed::ReduceOptions opts{op, dst};
+                auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Reduce(tensors,
+                                   tensors,
+                                   opts,
+                                   /*sync_op*/ true,
+                                   /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("dst"),
+              py::arg("op"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(

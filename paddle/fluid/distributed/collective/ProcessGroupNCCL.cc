@@ -628,6 +628,40 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
       CommType::BROADCAST);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    const BroadcastOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          ncclComm_t comm,
+          const gpuStream_t& stream) {
+        const auto root =
+            opts.source_rank * in_tensors.size() + opts.source_root;
+        return platform::dynload::ncclBroadcast(
+            input.data(),
+            output.data(),
+            input.numel(),
+            platform::ToNCCLDataType(input.type()),
+            root,
+            comm,
+            stream);
+      },
+      CommType::BROADCAST,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
     const BarrierOptions& opts) {
   // Only support single card single process
@@ -1199,6 +1233,38 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
             stream));
       },
       CommType::REDUCE);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ReduceOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](const phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          ncclComm_t comm,
+          const gpuStream_t& stream) {
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
+            input.data(),
+            output.data(),
+            input.numel(),
+            platform::ToNCCLDataType(input.dtype()),
+            ToNCCLRedType(opts.reduce_op),
+            opts.root_rank,
+            comm,
+            stream));
+      },
+      CommType::REDUCE,
+      sync_op,
+      use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
