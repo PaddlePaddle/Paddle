@@ -22,6 +22,7 @@ import paddle.distributed as dist
 import numpy as np
 
 MASTER_ENDPOINT = "127.0.0.1:8765"
+paddle.device.set_device("cpu")
 
 
 def find_free_port():
