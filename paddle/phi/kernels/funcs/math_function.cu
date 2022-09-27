@@ -60,13 +60,13 @@ template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
 
 #define DEFINE_GPU_TRANS(RANK)                                     \
   template struct Transpose<phi::GPUContext, bool, RANK>;          \
-  template struct Transpose<phi::GPUContext, int16_t, RANK>;       \
   template struct Transpose<phi::GPUContext, unsigned char, RANK>; \
   template struct Transpose<phi::GPUContext, float, RANK>;         \
   template struct Transpose<phi::GPUContext, double, RANK>;        \
   template struct Transpose<phi::GPUContext, float16, RANK>;       \
   template struct Transpose<phi::GPUContext, bfloat16, RANK>;      \
   template struct Transpose<phi::GPUContext, int8_t, RANK>;        \
+  template struct Transpose<phi::GPUContext, int16_t, RANK>;       \
   template struct Transpose<phi::GPUContext, int32_t, RANK>;       \
   template struct Transpose<phi::GPUContext, int64_t, RANK>;       \
   template struct Transpose<phi::GPUContext,                       \
