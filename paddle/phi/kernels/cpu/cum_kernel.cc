@@ -75,7 +75,6 @@ void ScanKernel(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(out);
-  // using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   int pre = 1;
   int post = 1;

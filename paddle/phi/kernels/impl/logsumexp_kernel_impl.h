@@ -16,17 +16,17 @@
 #include <type_traits>
 #include <vector>
 
-#include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/logsumexp_kernel.h"
 
 namespace phi {
 
-#define HANDLE_DIM(NDIM, RDIM)                               \
-  if (ndim == NDIM && rdim == RDIM) {                        \
-    ReduceFunctor<Context, T, NDIM, RDIM, LogsumexpFunctor>( \
-        dev_ctx, x, out, axis, keepdim);                     \
+#define HANDLE_DIM(NDIM, RDIM)                                      \
+  if (ndim == NDIM && rdim == RDIM) {                               \
+    funcs::ReduceFunctor<Context, T, NDIM, RDIM, LogsumexpFunctor>( \
+        dev_ctx, x, out, axis, keepdim);                            \
   }
 
 struct LogsumexpFunctor {

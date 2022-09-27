@@ -232,7 +232,8 @@ class BaseTestCases:
                                 np_logcumsumexp_grad(self.inputs['X'],
                                                      1 / self.inputs['X'].size,
                                                      **self.attrs)
-                            ])
+                            ],
+                            max_relative_error=5e-07)
 
         def input_and_attrs(self):
             raise NotImplementedError()

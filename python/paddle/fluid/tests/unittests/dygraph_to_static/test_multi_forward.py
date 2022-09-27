@@ -35,8 +35,8 @@ class MyLayer(paddle.nn.Layer):
 class TestBackward(unittest.TestCase):
 
     def test_order_0(self):
-        """ 
-        loss = 1 * w * 1 + 2 * w * 2 
+        """
+        loss = 1 * w * 1 + 2 * w * 2
         delta_w = 5
         """
         model = MyLayer()
@@ -49,8 +49,8 @@ class TestBackward(unittest.TestCase):
         self.assertEqual(model.linear.weight.grad, 5)
 
     def test_order_1(self):
-        """ 
-        loss = 2 * w * 2  + 1 * w * 1 
+        """
+        loss = 2 * w * 2  + 1 * w * 1
         delta_w = 5
         """
         model = MyLayer()

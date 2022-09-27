@@ -81,12 +81,12 @@ cluster_json = """
 mapping_josn = """
 [
   {
-    "hostname": "machine1", 
-    "addr": "127.0.0.1", 
-    "port": "768", 
-    "ranks": 
+    "hostname": "machine1",
+    "addr": "127.0.0.1",
+    "port": "768",
+    "ranks":
       {
-        "0": [1], 
+        "0": [1],
         "1": [0]
       }
   }

@@ -35,7 +35,7 @@ paddle.enable_static()
 
 def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     """
-    Decode proposals by anchors and bbox_deltas from RPN 
+    Decode proposals by anchors and bbox_deltas from RPN
     """
     offset = 1 if pixel_offset else 0
     # proposals: xmin, ymin, xmax, ymax
@@ -132,7 +132,7 @@ def filter_boxes(boxes, min_size, im_shape, pixel_offset=True):
 
 def iou(box_a, box_b, pixel_offset=True):
     """
-	Apply intersection-over-union overlap between box_a and box_b
+    Apply intersection-over-union overlap between box_a and box_b
     """
     xmin_a = min(box_a[0], box_a[2])
     ymin_a = min(box_a[1], box_a[3])

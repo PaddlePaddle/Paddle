@@ -94,8 +94,6 @@ class TestCumsumOp(unittest.TestCase):
             z = np.cumsum(data_np, axis=-2)
             np.testing.assert_allclose(z, out[5], rtol=1e-05)
             self.assertTrue(out[6].dtype == np.float16)
-            # z = np.cumsum(data_np.astype(np.float16))
-            # np.testing.assert_allclose(z, out[6], rtol=5e-03)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())

@@ -65,7 +65,7 @@ class TestOriginInfo(unittest.TestCase):
         self.func = simple_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 10, 11]
+        self.static_abs_lineno_list = [9, 11, 12]
 
     def set_dygraph_info(self):
         self.line_num = 3
@@ -93,7 +93,6 @@ class TestOriginInfo(unittest.TestCase):
         self.static_func, _ = ast_to_func(transformed_ast, self.dygraph_func)
         info_map = create_and_update_origin_info_map(dygraph_ast,
                                                      self.static_func)
-
         return info_map
 
     def test_origin_info_map(self):
@@ -149,7 +148,7 @@ class TestOriginInfoWithNestedFunc(TestOriginInfo):
         self.func = nested_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 11, 12, 13, 14]
+        self.static_abs_lineno_list = [9, 12, 14, 16, 17]
 
     def set_dygraph_info(self):
         self.line_num = 5
@@ -174,7 +173,7 @@ class TestOriginInfoWithDecoratedFunc(TestOriginInfo):
         self.func = decorated_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 10]
+        self.static_abs_lineno_list = [9, 11]
 
     def set_dygraph_info(self):
         self.line_num = 2
@@ -208,7 +207,7 @@ class TestOriginInfoWithDecoratedFunc2(TestOriginInfo):
         self.func = decorated_func2
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 10]
+        self.static_abs_lineno_list = [9, 11]
 
     def set_dygraph_info(self):
         self.line_num = 2

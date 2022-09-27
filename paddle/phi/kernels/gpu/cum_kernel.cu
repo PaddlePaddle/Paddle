@@ -149,8 +149,9 @@ struct LogAddExp {
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    MT exp_val = std::exp(static_cast<MT>(std::min(a, b) - std::max(a, b)));
-    return static_cast<T>(std::log(1 + exp_val)) + std::max(a, b);
+    T _min = a > b ? b : a;
+    T _max = a > b ? a : b;
+    return static_cast<T>(__logf(1 + __expf(_min - _max))) + _max;
   }
 };
 

@@ -104,7 +104,7 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "W is thewidth of output. ");
     AddComment(R"DOC(
 **DeformablePSROIPooling Operator**
-DeformablePSROIPooling is a new method based Region of interest pooling 
+DeformablePSROIPooling is a new method based Region of interest pooling
 (also known as RoI pooling).
 The operator has four steps:
 

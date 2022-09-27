@@ -164,40 +164,38 @@ class WeightNorm(object):
 
 def weight_norm(layer, name='weight', dim=0):
     r"""
-    This weight_norm layer applies weight normalization to a parameter according to the 
+    Applies weight normalization to a parameter according to the
     following formula:
 
     .. math::
 
         \mathbf{w} = g \dfrac{v}{\|v\|}
 
-    Weight normalization is a reparameterization of the weight vectors in a neural network that 
-    decouples the magnitude of those weight vectors from their direction. Weight normalization 
-    replaces the parameter specified by `name`(eg: 'weight') with two parameters: one parameter 
-    specifying the magnitude (eg: 'weight_g') and one parameter specifying the direction 
-    (eg: 'weight_v'). Weight normalization has been implemented as discussed in this paper: 
+    Weight normalization is a reparameterization of the weight vectors in a neural network that
+    decouples the magnitude of those weight vectors from their direction. Weight normalization
+    replaces the parameter specified by `name`(eg: 'weight') with two parameters: one parameter
+    specifying the magnitude (eg: 'weight_g') and one parameter specifying the direction
+    (eg: 'weight_v'). Weight normalization has been implemented as discussed in this paper:
     `Weight Normalization: A Simple Reparameterization to Accelerate Training of Deep Neural Networks
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
 
     Parameters:
         layer(Layer): Layer of paddle, which has weight.
         name(str, optional): Name of the weight parameter. Default: 'weight'.
-        dim(int, optional): Dimension over which to compute the norm. Dim is a non-negative number 
-              which is less than the rank of weight Tensor. For Example, dim can be chosen from 0, 
-              1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw] and rank is 4. 
+        dim(int, optional): Dimension over which to compute the norm. Dim is a non-negative number
+              which is less than the rank of weight Tensor. For Example, dim can be chosen from 0,
+              1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw] and rank is 4.
               If dim is set to None, meaning that all elements will be normalized. Default: 0.
-    
+
     Returns:
         Origin layer with weight norm hook.
 
     Examples:
         .. code-block:: python
 
-          import numpy as np
           from paddle.nn import Conv2D
           from paddle.nn.utils import weight_norm
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
           conv = Conv2D(3, 5, 3)
           wn = weight_norm(conv)
           print(conv.weight_g.shape)
@@ -218,11 +216,11 @@ def remove_weight_norm(layer, name='weight'):
         name(str, optional): Name of the weight parameter. Default: 'weight'.
 
     Returns:
-        Origin layer without weight norm
+        Layer, the origin layer without weight norm
 
     Examples:
         .. code-block:: python
-          
+
             import paddle
             from paddle.nn import Conv2D
             from paddle.nn.utils import weight_norm, remove_weight_norm

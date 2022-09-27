@@ -180,26 +180,26 @@ CropTensor Operator.
 Crop input into output, as specified by offsets and shape.
 
 There are three ways to set the offsets:
-1. Input 'OffsetsTensor: It is a tensor list. It should be set as a list that 
-                         contains tensor variable in python configure script. 
+1. Input 'OffsetsTensor: It is a tensor list. It should be set as a list that
+                         contains tensor variable in python configure script.
                          This way is suitable for dynamic offsets.
-2. Input 'Offsets': It is a variable and can be output of other operators. 
+2. Input 'Offsets': It is a variable and can be output of other operators.
                     This way is suitable for dynamic offsets.
-3. Attribute 'offsets': It will be set in python configure script. This way 
+3. Attribute 'offsets': It will be set in python configure script. This way
                         is suitable for fixed offsets.
 
-You CANNOT use these three ways at the same time. An exception will be raised 
-if input 'OffsetsTensor' or 'Offset' is configured and meanwhile the attribute 'offsets' is 
+You CANNOT use these three ways at the same time. An exception will be raised
+if input 'OffsetsTensor' or 'Offset' is configured and meanwhile the attribute 'offsets' is
 not empty.
 
 There are three ways to set shape:
 1. Input 'ShapeTensor': It is a tensor list. It should be set as a list that contains
-                        tensor variable in python configure script. This way is suitable 
+                        tensor variable in python configure script. This way is suitable
                         for dynamic shape.
-2. Input 'Shape': It is a Variable and can be output of other operators. This way is suitable 
+2. Input 'Shape': It is a Variable and can be output of other operators. This way is suitable
                   for dynamic shape.
-2. Attribute 'shape': crop input X into the shape described by a list<int>. The size of shape 
-                      list should be the same as the dimension size of input X. This way is 
+2. Attribute 'shape': crop input X into the shape described by a list<int>. The size of shape
+                      list should be the same as the dimension size of input X. This way is
                       suitable for fixed shape.
 
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
