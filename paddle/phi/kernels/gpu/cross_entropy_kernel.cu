@@ -186,9 +186,9 @@ __global__ void CrossEntropyHardLabel(T* loss,
   if (ids < n * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
     assert(lbl >= 0 && lbl < dim || lbl == ignore_idx);
-    if (lbl < 0 || lbl >= dim) {  // label is invalid
+    if (lbl < 0 || lbl >= dim) {  // label is out of bound
       loss[ids] = static_cast<T>(0.0);
-    } else {  // label is valid
+    } else {
       int64_t idx = idx_n * dim * d + lbl * d + idx_d;
       if (IgnoreIndex == true) {
         // IgnoreIndex is true
