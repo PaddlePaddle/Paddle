@@ -2098,10 +2098,11 @@ set +x
             is_exclusive=''
             is_multicard=''
             is_nightly=''
+            
             matchstr=''
             testcase=''
     done <<< "$test_cases";
-    
+
 
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
