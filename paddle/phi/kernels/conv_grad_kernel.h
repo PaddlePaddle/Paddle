@@ -67,4 +67,44 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                              DenseTensor* input_grad,
                              DenseTensor* filter_grad);
 
+template <typename T, typename Context>
+void ConvGradGradKernel(const Context& dev_ctx,
+                        const DenseTensor& input,
+                        const DenseTensor& filter,
+                        const DenseTensor& out_grad,
+                        const paddle::optional<DenseTensor>& input_grad_grad,
+                        const paddle::optional<DenseTensor>& filter_grad_grad,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& paddding_algorithm,
+                        int groups,
+                        const std::vector<int>& dilations,
+                        const std::string& data_format,
+                        bool use_addto,
+                        int workspace_size_MB,
+                        bool exhaustive_search,
+                        DenseTensor* input_grad,
+                        DenseTensor* filter_grad,
+                        DenseTensor* out_grad_grad);
+
+template <typename T, typename Context>
+void Conv3DGradGradKernel(const Context& dev_ctx,
+                          const DenseTensor& input,
+                          const DenseTensor& filter,
+                          const DenseTensor& out_grad,
+                          const paddle::optional<DenseTensor>& input_grad_grad,
+                          const paddle::optional<DenseTensor>& filter_grad_grad,
+                          const std::vector<int>& strides,
+                          const std::vector<int>& paddings,
+                          const std::string& paddding_algorithm,
+                          int groups,
+                          const std::vector<int>& dilations,
+                          const std::string& data_format,
+                          bool use_addto,
+                          int workspace_size_MB,
+                          bool exhaustive_search,
+                          DenseTensor* input_grad,
+                          DenseTensor* filter_grad,
+                          DenseTensor* out_grad_grad);
+
 }  // namespace phi
