@@ -34,12 +34,9 @@ KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"strides",
                           "paddings",
                           "padding_algorithm",
-                          "groups",
                           "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search"},
+                          "groups",
+                          "data_format"},
                          {"Input@GRAD", "Filter@GRAD"});
 }
 

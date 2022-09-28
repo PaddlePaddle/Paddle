@@ -56,7 +56,7 @@ void ConvCudnnKernel(const Context& ctx,
           << has_exhaustive_search;
   bool exhaustive_search_attr =
       has_exhaustive_search
-          ? paddle::get<bool>(ctx.GetDnnAttr("exhaustive_search"))
+          ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("exhaustive_search"))
           : false;
   bool exhaustive_search =
       FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;

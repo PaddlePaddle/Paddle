@@ -26,12 +26,9 @@ void ConvGradKernel(const Context& dev_ctx,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings,
                     const std::string& paddding_algorithm,
-                    int groups,
                     const std::vector<int>& dilations,
+                    int groups,
                     const std::string& data_format,
-                    bool use_addto,
-                    int workspace_size_MB,
-                    bool exhaustive_search,
                     DenseTensor* input_grad,
                     DenseTensor* filter_grad);
 

@@ -43,12 +43,9 @@ void Conv3DGradKernel(const Context& dev_ctx,
                     strides,
                     paddings,
                     paddding_algorithm,
-                    groups,
                     dilations,
+                    groups,
                     data_format,
-                    use_addto,
-                    workspace_size_MB,
-                    exhaustive_search,
                     input_grad,
                     filter_grad);
 }

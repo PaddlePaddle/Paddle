@@ -44,12 +44,9 @@ void ConvCudnnGradKernel(const Context& ctx,
                          const std::vector<int>& strides_t,
                          const std::vector<int>& paddings_t,
                          const std::string& padding_algorithm,
-                         int groups,
                          const std::vector<int>& dilations_t,
+                         int groups,
                          const std::string& data_format,
-                         bool use_addto,
-                         int workspace_size_MB,
-                         bool exhaustive_search_t,
                          DenseTensor* input_grad,
                          DenseTensor* filter_grad) {
   if (input_grad) {
@@ -59,11 +56,25 @@ void ConvCudnnGradKernel(const Context& ctx,
     ctx.template Alloc<T>(filter_grad);
   }
 
+  bool has_use_addto = ctx.HasDnnAttr("use_addto");
+  VLOG(4) << "GPUContext contains `use_addto`: " << has_use_addto;
+  bool use_addto = has_use_addto
+                       ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("use_addto"))
+                       : false;
+
   std::vector<int> dilations = dilations_t;
   std::vector<int> strides = strides_t;
   std::vector<int> paddings = paddings_t;
 
-  bool exhaustive_search = FLAGS_cudnn_exhaustive_search || exhaustive_search_t;
+  bool has_exhaustive_search = ctx.HasDnnAttr("exhaustive_search");
+  VLOG(4) << "GPUContext contains `exhaustive_search`: "
+          << has_exhaustive_search;
+  bool exhaustive_search_attr =
+      has_exhaustive_search
+          ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("exhaustive_search"))
+          : false;
+  bool exhaustive_search =
+      FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;
   bool deterministic = FLAGS_cudnn_deterministic;
   auto exhaustive_deterministic = exhaustive_search && deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_deterministic,
@@ -616,12 +627,9 @@ void Conv3DCudnnGradKernel(const Context& dev_ctx,
                          strides,
                          paddings,
                          paddding_algorithm,
-                         groups,
                          dilations,
+                         groups,
                          data_format,
-                         use_addto,
-                         workspace_size_MB,
-                         exhaustive_search,
                          input_grad,
                          filter_grad);
 }
@@ -650,12 +658,9 @@ void DepthwiseConvCudnnGradKernel(const Context& dev_ctx,
                          strides,
                          paddings,
                          paddding_algorithm,
-                         groups,
                          dilations,
+                         groups,
                          data_format,
-                         use_addto,
-                         workspace_size_MB,
-                         exhaustive_search,
                          input_grad,
                          filter_grad);
 }
