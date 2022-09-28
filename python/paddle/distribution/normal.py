@@ -16,6 +16,7 @@ import math
 import warnings
 
 import numpy as np
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid import core
@@ -196,18 +197,22 @@ class Normal(distribution.Distribution):
             else:
                 return output
 
-    def rsample(self, shape=(), seed=0):
+    def rsample(self, shape=()):
         """Generate reparameterized samples of the specified shape.
 
         Args:
           shape (Sequence[int], optional): Shape of the generated samples.
-          seed (int): Python integer number.
 
         Returns:
           Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-        return self.sample(shape, seed)
+        if not isinstance(shape, Iterable):
+            raise TypeError('sample shape must be Iterable object.')
+
+        shape = self._extend_shape(tuple(shape))
+        eps = paddle.normal(shape=shape)
+        return (self.loc + eps * self.scale)
 
     def entropy(self):
         r"""Shannon entropy in nats.

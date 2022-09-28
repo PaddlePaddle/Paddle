@@ -19,7 +19,7 @@ from paddle.distribution.transformed_distribution import TransformedDistribution
 
 
 class LogNormal(TransformedDistribution):
-    r"""The Normal distribution with location `loc` and `scale` parameters.
+    r"""The LogNormal distribution with location `loc` and `scale` parameters.
 
     .. math::
 
@@ -43,8 +43,8 @@ class LogNormal(TransformedDistribution):
     * :math:`scale = \sigma`: is the stddevs of the underlying Normal distribution.
 
     Args:
-        loc(int|float|list|tuple|numpy.ndarray|Tensor): The means of normal distribution.
-        scale(int|float|list|tuple|numpy.ndarray|Tensor): The stddevs of normal distribution.
+        loc(int|float|list|tuple|numpy.ndarray|Tensor): The means of the underlying Normal distribution.
+        scale(int|float|list|tuple|numpy.ndarray|Tensor): The stddevs of the underlying Normal distribution.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:

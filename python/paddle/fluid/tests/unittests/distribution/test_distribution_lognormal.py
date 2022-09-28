@@ -22,8 +22,8 @@ import unittest
 from paddle.distribution.kl import kl_divergence
 from paddle.distribution.normal import Normal
 from paddle.distribution.lognormal import LogNormal
-from test_distribution import DistributionNumpy
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+from test_distribution import DistributionNumpy
 
 
 class LogNormalNumpy(DistributionNumpy):
