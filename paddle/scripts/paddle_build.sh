@@ -1152,36 +1152,12 @@ function check_diff_file_for_coverage() {
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
 }
 
-function check_change_of_unittest() {
-    generate_unittest_spec "PR"
-    check_approvals_of_unittest 2
-}
+
 
 function check_sequence_op_unittest(){
     /bin/bash ${PADDLE_ROOT}/tools/check_sequence_op.sh
 }
 
-function generate_unittest_spec() {
-    spec_kind=$1
-    if [ "$spec_kind" == "DEV" ]; then
-        cat <<EOF
-        ============================================
-        Generate unit tests.spec of develop.
-        ============================================
-EOF
-    elif [ "$spec_kind" == "PR" ]; then
-        cat <<EOF
-        ============================================
-        Generate unit tests.spec of this PR.
-        ============================================
-EOF
-    else
-        echo "Not supported $1"
-        exit 1
-    fi
-    spec_path=${PADDLE_ROOT}/paddle/fluid/UNITTEST_${spec_kind}.spec
-    ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' > ${spec_path}
-}
 
 
 function assert_api_spec_approvals() {
@@ -2510,6 +2486,8 @@ set -x
         export TEST_NUM_PERCENT_CASES=0.15
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
+        #check change of pr_unnitests and dev_unnitests
+        check_approvals_of_unittest 2
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         fi
@@ -3563,7 +3541,6 @@ function main() {
       gpu_cicheck_coverage)
         parallel_test
         check_coverage
-        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       check_coverage_build)
         check_coverage_build
