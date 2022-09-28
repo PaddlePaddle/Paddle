@@ -31,6 +31,8 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/tensor_utils.h"
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace framework {
 
@@ -259,6 +261,7 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
   ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
+    if (var == nullptr) return;
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
@@ -281,7 +284,9 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
-    var->SetShape(vectorize(dims));
+    if (var) {
+      var->SetShape(vectorize(dims));
+    }
   }
 }
 
@@ -289,6 +294,7 @@ void CompatMetaTensor::set_dtype(phi::DataType dtype) {
   ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
+    if (var == nullptr) return;
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
@@ -304,7 +310,9 @@ void CompatMetaTensor::set_dtype(phi::DataType dtype) {
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
-    var->SetDataType(paddle::framework::TransToProtoVarType(dtype));
+    if (var) {
+      var->SetDataType(paddle::framework::TransToProtoVarType(dtype));
+    }
   }
 }
 
@@ -337,6 +345,7 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
   ValidCheck(meta_tensor);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
+    if (var == nullptr) return;
     if (var->IsType<phi::DenseTensor>() && meta_tensor.is_dense()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->lod =
@@ -351,8 +360,10 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
       VLOG(3) << "input metatensor is not LoDTensor or LoDTensorArray.";
       return;
     }
-    var->SetLoDLevel(
-        static_cast<const CompatMetaTensor&>(meta_tensor).GetCompileTimeLoD());
+    if (var) {
+      var->SetLoDLevel(static_cast<const CompatMetaTensor&>(meta_tensor)
+                           .GetCompileTimeLoD());
+    }
   }
 }
 
