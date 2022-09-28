@@ -678,6 +678,7 @@ EOF
             echo "========================================="
         fi
         bash $PADDLE_ROOT/tools/check_added_ut.sh
+        check_approvals_of_unittest 2
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
             ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
@@ -3530,7 +3531,6 @@ function main() {
         enable_unused_var_check
         parallel_test
         check_coverage
-        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cpu_cicheck_coverage)
         check_diff_file_for_coverage
@@ -3603,7 +3603,6 @@ function main() {
       maccheck_py35)
         cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       macbuild)
         cmake_gen ${PYTHON_ABI:-""}
