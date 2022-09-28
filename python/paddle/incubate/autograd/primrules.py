@@ -23,7 +23,7 @@ from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
                       fill_const, gather, ge, gt, log, matmul, max, mul, ne,
                       neg, reduce_sum, reshape, scatter_add, select, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, rsqrt)
+                      transpose, bernoulli, rsqrt)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -78,6 +78,7 @@ log
 select
 equal
 elementwise_pow
+dropout
 
 These original ops are partially supported:
 
@@ -213,6 +214,20 @@ def fill_any_like_orig2prim(op, x):
                       shape=x.shape,
                       dtype=convert_np_dtype_to_dtype_(
                           convert_dtype(INT_DTYPE_2_STRING[op.attr('dtype')])))
+
+
+@REGISTER_ORIG2PRIM('fill_constant')
+def fill_const_orig2prim(op,
+                         shape_tensor=None,
+                         shape_tensor_list=None,
+                         value_tensor=None):
+    if shape_tensor or shape_tensor_list or value_tensor:
+        raise TypeError(
+            'fill_const_orig2prim currently not support Tensor input of shape and value.'
+        )
+    return fill_const(value=op.attr('value'),
+                      shape=op.attr('shape'),
+                      dtype=paddle.dtype(op.attr('dtype')))
 
 
 @REGISTER_ORIG2PRIM('sum')
@@ -391,7 +406,7 @@ def pow_orig2prim(op, x, y):
 
 @REGISTER_ORIG2PRIM('square')
 def square_orig2prim(op, x):
-    return primops.pow(x, fill_const(2., x.shape, x.dtype))
+    return primops.square(x)
 
 
 @REGISTER_ORIG2PRIM('elementwise_max')
@@ -425,6 +440,30 @@ def gelu_orig2prim(op, x):
                 erf(mul(x, fill_const(1 / math.sqrt(2.), x.shape, x.dtype)))))
 
 
+@REGISTER_ORIG2PRIM('dropout')
+def dropout_orig2prim(op, seed_t, x):
+    assert seed_t is None, 'Can not lower dropout into prim ops with seedtensor.'
+    mask = bernoulli(shape=x.shape, dtype=x.dtype, p=op.attr('dropout_prob'))
+    if op.attr('dropout_implementation') == 'upscale_in_train':
+        if op.attr('is_test') == False:
+            out = div(
+                mul(x, mask),
+                fill_const(1.0 - op.attr('dropout_prob'), x.shape, x.dtype))
+            return primops.cast(mask, dtype=paddle.uint8), out
+        else:
+            return primops.cast(mask, dtype=paddle.uint8), x
+    elif op.attr('dropout_implementation') == 'downgrade_in_infer':
+        if op.attr('is_test') == False:
+            return primops.cast(mask, dtype=paddle.uint8), mul(x, mask)
+        else:
+            return primops.cast(mask, dtype=paddle.uint8), mul(
+                x, fill_const(1.0 - op.attr('dropout_prob'), x.shape, x.dtype))
+    else:
+        raise RuntimeError(
+            'Unsupported dropout_implementation, only support upscale_in_train and downgrade_in_infer'
+        )
+
+
 @REGISTER_ORIG2PRIM('reduce_sum')
 def reduce_sum_orig2prim(op, x):
     axes = tuple(range(0, len(
@@ -436,12 +475,35 @@ def reduce_sum_orig2prim(op, x):
 def reduce_mean_orig2prim(op, x):
     axes = tuple(range(0, len(
         x.shape))) if op.attr('reduce_all') else op.attr('dim')
-    sum = reduce_sum(x, axis=axes, keepdim=op.attr('keep_dim'))
-    norm = fill_const(shape=sum.shape,
-                      value=functools.reduce(operator.mul,
-                                             [x.shape[axis] for axis in axes]),
-                      dtype=sum.dtype)
-    return div(sum, norm)
+    return primops.mean(x, axes, op.attr('keep_dim'))
+
+
+@REGISTER_ORIG2PRIM('batch_norm')
+def batch_norm_orig2prim(op, bias, run_mean, momentum_tensor, scale, run_var,
+                         x):
+    momentum = op.attr('momentum')
+    eps = op.attr('epsilon')
+    is_test = op.attr('is_test')
+    data_layout = op.attr('data_layout')
+    use_global_stats = op.attr('use_global_stats')
+    trainable_statistics = op.attr('trainable_statistics')
+    reserve_space = None if len(
+        op.output_names) == 5 else get_output_var_list(op)[1]
+
+    feature_axis = 1 if data_layout in ('NC', 'NCL', 'NCHW',
+                                        'NCHWD') else len(x.shape) - 1
+    use_run_stat = (is_test and (not trainable_statistics)) or use_global_stats
+
+    return primops.batch_norm(x,
+                              feature_axis,
+                              scale,
+                              bias,
+                              run_mean,
+                              run_var,
+                              eps=eps,
+                              momentum=momentum,
+                              use_run_stat=use_run_stat,
+                              reserve_space=reserve_space)
 
 
 @REGISTER_ORIG2PRIM('size')
@@ -595,6 +657,14 @@ def fill_constant_prim2orig(op):
     return paddle.full(shape=op.attr('shape'),
                        fill_value=op.attr('value'),
                        dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
+
+
+@REGISTER_PRIM2ORIG('bernoulli_p')
+def bernoulli_prim2orig(op):
+    t = paddle.full(shape=op.attr('shape'),
+                    fill_value=op.attr('p'),
+                    dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
+    return paddle.bernoulli(t)
 
 
 @REGISTER_PRIM2ORIG('select_p')

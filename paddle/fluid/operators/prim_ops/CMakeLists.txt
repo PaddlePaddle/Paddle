@@ -36,6 +36,7 @@ set(PRIM_OP_SRCS
     pow_p_op.cc
     max_p_op.cc
     erf_p_op.cc
+    bernoulli_p_op.cc
     abs_p_op.cc
     cast_p_op.cc
     rsqrt_p_op.cc)

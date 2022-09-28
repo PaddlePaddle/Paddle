@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 from collections import defaultdict
 from collections.abc import Iterable
@@ -1377,6 +1375,9 @@ class Variable(object):
 
         if dtype == core.VarDesc.VarType.STRINGS:
             type = core.VarDesc.VarType.STRINGS
+            lod_level = None
+
+        if type == core.VarDesc.VarType.SPARSE_COO:
             lod_level = None
 
         self.belong_to_optimizer = belong_to_optimizer
@@ -5931,6 +5932,8 @@ class Program(object):
                     "activation_bits", "bit_length", "quantize_weight_bits",
                     "weight_quant_scale"
                 ]
+                for extra_attr_name in extra_attrs_map.keys():
+                    op.remove_attr(extra_attr_name)
                 remove_attr_list = []
                 for name in op.attr_names():
                     if quant:
@@ -5939,7 +5942,7 @@ class Program(object):
                         if name.endswith("_threshold"):
                             continue
                     if len(extra_attrs_map) > 0:
-                        if name in extra_attrs_map or name in common_clipped_attrs_list:
+                        if name in common_clipped_attrs_list:
                             op.remove_attr(name)
                         continue
                     find = False

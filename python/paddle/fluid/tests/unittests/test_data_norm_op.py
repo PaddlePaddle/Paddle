@@ -13,8 +13,6 @@
 # limitations under the License.
 """This is unit test of Test data_norm Op."""
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid.core as core
