@@ -39,6 +39,51 @@ using ExecutorPrepareContext = framework::ExecutorPrepareContext;
 
 using InterpreterCore = framework::InterpreterCore;
 
+namespace details {
+static void BuildScopeForConditionalBlockOp(
+    const paddle::framework::InterpreterCore &interpreter_core,
+    const paddle::framework::BlockDesc &block,
+    paddle::framework::Scope *scope) {
+  for (auto &var_desc : block.AllVars()) {
+    auto var_name = var_desc->Name();
+    if (var_name == framework::kEmptyVarName) {
+      continue;
+    }
+    VLOG(3) << "[BuildScopeForConditionalBlockOp]"
+            << "start:" << var_name;
+    if (var_desc->Persistable()) {
+      VLOG(3) << "[BuildScopeForConditionalBlockOp]"
+              << "Don't process persistent: " << var_name;
+      // } else if (!scope->FindLocalVar(var_name)) {
+      //   auto* ptr = scope->Var(var_name);
+      //   InitializeVariable(ptr, var_desc->GetType());
+      //   VLOG(3) << "[BuildScopeForConditionalBlockOp]"
+      //           << "Create Variable " << var_name << " locally, which pointer
+      //           is "
+      //           << ptr << "Variable Type "
+      //           << static_cast<int>(var_desc->GetType());
+    } else {
+      auto *ptr = scope->Var(var_name);
+      InitializeVariable(ptr, var_desc->GetType());
+      VLOG(3) << "[BuildScopeForConditionalBlockOp]"
+              << "Not Found locally and created: " << var_name;
+    }
+  }
+
+  auto &data_transfer_added_vars =
+      interpreter_core.GetVariableScope()->DataTransferAddedVars();
+  for (size_t i = 0; i < data_transfer_added_vars.size(); i++) {
+    auto *ptr = scope->Var(data_transfer_added_vars[i].first);
+    InitializeVariable(ptr,
+                       static_cast<paddle::framework::proto::VarType::Type>(
+                           data_transfer_added_vars[i].second));
+    VLOG(3) << "[BuildScopeForConditionalBlockOp]"
+            << "Initialize Transfer Added Variable "
+            << data_transfer_added_vars[i].first;
+  }
+}
+}  // namespace details
+
 class ConditionalBlockOp : public ConditionalOp {
  public:
   ConditionalBlockOp(const std::string &type,
@@ -78,12 +123,18 @@ class ConditionalBlockOp : public ConditionalOp {
       // PE call executor, cannot know which call this
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
       VLOG(10) << "[tmp debug]" << scopes->size();
-      if (1 || scopes->size() == 0 || !FLAGS_control_flow_use_new_executor ||
+
+      if (scopes->size() == 0 || !FLAGS_control_flow_use_new_executor ||
           !FLAGS_control_flow_use_new_executor_cache) {
         scopes->resize(1);
         scopes->front() = &scope.NewScope();
       }
       VLOG(10) << "[tmp debug]" << scopes->size() << " " << scopes->front();
+
+      if (scope.kids().size() == 0) {
+        scopes->front() = &scope.NewScope();
+      }
+
       auto &cur_scope = *scopes->front();
 #ifdef PADDLE_WITH_MKLDNN
       // (jczaja) Executor on being destroyed clears oneDNN cache and
@@ -100,6 +151,9 @@ class ConditionalBlockOp : public ConditionalOp {
 
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
+      // print block
+      VLOG(10) << "block id:" << block->ID();
+      VLOG(10) << *block;
       auto &skip_vars =
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
       // print cur_scope
@@ -135,6 +189,7 @@ class ConditionalBlockOp : public ConditionalOp {
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core;
         } else {
+          details::BuildScopeForConditionalBlockOp(*core, *block, &cur_scope);
           core->reset_scope(&cur_scope);
         }
 
@@ -231,6 +286,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
       VLOG(3) << "Conditional Grad block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
 
+      // print block
+      VLOG(10) << "block id:" << block->ID();
+      VLOG(10) << *block;
+
       // print scope
       VLOG(10) << "scope contains: \n";
       VLOG(10) << framework::GenScopeTreeDebugInfo(
@@ -254,6 +313,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
               dev_place, *block, skip_gc_vars, &cur_scope, false));
           core->SetUsedForControlFlowOp(true);
         } else {
+          details::BuildScopeForConditionalBlockOp(*core, *block, &cur_scope);
           core->reset_scope(&cur_scope);
         }
         core->Run({}, false);
