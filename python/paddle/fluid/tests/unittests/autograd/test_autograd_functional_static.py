@@ -21,6 +21,8 @@ import paddle.fluid as fluid
 
 import config
 import utils
+from utils import (_compute_numerical_batch_jacobian,
+                   _compute_numerical_jacobian)
 
 paddle.enable_static()
 

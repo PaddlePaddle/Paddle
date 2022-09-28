@@ -17,7 +17,8 @@ import uuid
 import numpy as np
 import paddle
 from numpy.random import randint, randn
-from paddle.incubate.autograd import primops
+from paddle.incubate.autograd import primops, primx
+from paddle.incubate.autograd import utils as prim_utils
 
 import config
 import utils

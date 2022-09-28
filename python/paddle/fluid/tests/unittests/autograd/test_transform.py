@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import numpy as np
 
 import paddle
 from paddle.incubate.autograd.primx import Transform, orig2prim, prim2orig

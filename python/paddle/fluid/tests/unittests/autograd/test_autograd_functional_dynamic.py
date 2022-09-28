@@ -19,13 +19,17 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+import paddle.compat as cpt
 import paddle.nn.functional as F
 from paddle.incubate.autograd.utils import as_tensors
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 import config
 import utils
-from utils import matmul, mul, nested, o2, reduce, reduce_dim
+from utils import (_compute_numerical_batch_hessian, _compute_numerical_hessian,
+                   _compute_numerical_vhp, _compute_numerical_jacobian,
+                   _compute_numerical_batch_jacobian)
+from utils import matmul, mul, nested, o2, pow, reduce, reduce_dim, unuse
 
 
 def make_v(f, inputs):
