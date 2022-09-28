@@ -168,7 +168,10 @@ class ProcessMesh(object):
         else:
             new_mesh = self._mesh[index]
             new_dim_names = self._dim_names[1:]
-            return ProcessMesh(new_mesh, new_dim_names)
+            if new_mesh.shape:
+                return ProcessMesh(new_mesh, new_dim_names)
+            else:
+                return ProcessMesh([new_mesh])
 
     def __enter__(self):
         set_current_process_mesh(self)
