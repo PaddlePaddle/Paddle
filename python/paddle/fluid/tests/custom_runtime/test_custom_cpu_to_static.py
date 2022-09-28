@@ -17,6 +17,7 @@ import sys
 import time
 import unittest
 import numpy as np
+import tempfile
 
 EPOCH_NUM = 1
 BATCH_SIZE = 1024
@@ -94,22 +95,26 @@ class TestCustomCPUPlugin(unittest.TestCase):
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        repo_dir = '{}_plugin'.format(__file__)
-        cmd = 'rm -rf {} \
-            && git clone {} {} \
-            && cd {} \
+        self.temp_dir = tempfile.TemporaryDirectory()
+        cmd = 'cd {} \
+            && git clone {} \
+            && cd PaddleCustomDevice \
             && git fetch origin \
             && git checkout {} -b dev \
             && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8'.format(
-            repo_dir, os.getenv('PLUGIN_URL'), repo_dir, repo_dir,
+            self.temp_dir.name, os.getenv('PLUGIN_URL'),
             os.getenv('PLUGIN_TAG'))
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
-            cur_dir, '{}/backends/custom_cpu/build'.format(repo_dir))
+            cur_dir, '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
+                self.temp_dir.name))
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_custom_cpu_plugin(self):
         self._test_to_static()
