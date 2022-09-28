@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import numpy as np
-import scipy.stats
 import config
-
-from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
-from paddle.distribution.normal import Normal
-from paddle.distribution.lognormal import LogNormal
-from test_distribution_lognormal import LogNormalNumpy
+import numpy as np
+import paddle
+import scipy.stats
+import unittest
 from paddle.distribution.kl import kl_divergence
+from paddle.distribution.lognormal import LogNormal
+from paddle.distribution.normal import Normal
+from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+from test_distribution_lognormal import LogNormalNumpy
 
 
 @place(config.DEVICES)

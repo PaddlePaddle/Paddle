@@ -13,18 +13,17 @@
 # limitations under the License.
 
 import math
-import unittest
-import scipy.stats
-
-import numpy as np
-import paddle
 
 import config
-from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+import numpy as np
+import paddle
+import scipy.stats
+import unittest
+from paddle.distribution.kl import kl_divergence
 from paddle.distribution.normal import Normal
 from paddle.distribution.lognormal import LogNormal
 from test_distribution import DistributionNumpy
-from paddle.distribution.kl import kl_divergence
+from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
 
 class LogNormalNumpy(DistributionNumpy):
