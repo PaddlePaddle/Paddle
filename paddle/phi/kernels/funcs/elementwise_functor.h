@@ -524,6 +524,19 @@ struct RemainderFunctor<
   }
 };
 
+template <>
+struct RemainderFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float b_float = static_cast<float>(b);
+    float res = fmod(static_cast<float>(a), b_float);
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
+    return static_cast<dtype::float16>(res);
+  }
+};
+
 template <typename T, typename Enable = void>
 struct InverseRemainderFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
@@ -547,7 +560,7 @@ struct InverseRemainderFunctor<
 template <typename T>
 struct ElementwiseHeavisideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-    return a == static_cast<T>(0) ? b : static_cast<T>(a > 0);
+    return a == static_cast<T>(0) ? b : static_cast<T>(a > static_cast<T>(0));
   }
 };
 
@@ -557,7 +570,7 @@ struct FloorDivideFunctor {
 #ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
 #endif
-    return static_cast<T>(std::trunc(a / b));
+    return static_cast<T>(a / b);
   }
 };
 
@@ -567,7 +580,7 @@ struct InverseFloorDivideFunctor {
 #ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
 #endif
-    return static_cast<T>(std::trunc(b / a));
+    return static_cast<T>(b / a);
   }
 };
 
@@ -592,5 +605,16 @@ struct ElementwisePowFunctor {
     return std::pow(a, b);
   }
 };
+
+template <>
+struct ElementwisePowFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float f_a = static_cast<float>(a);
+    float f_b = static_cast<float>(b);
+    return static_cast<dtype::float16>(std::pow(f_a, f_b));
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi

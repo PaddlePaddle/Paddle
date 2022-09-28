@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -24,7 +25,7 @@ namespace phi {
 template <typename T, typename Context>
 void Pool2dKernel(const Context& ctx,
                   const DenseTensor& x,
-                  const std::vector<int>& kernel_size,
+                  const IntArray& kernel_size,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool ceil_mode,
@@ -39,7 +40,7 @@ void Pool2dKernel(const Context& ctx,
 template <typename T, typename Context>
 void Pool2dGPUDNNKernel(const Context& ctx,
                         const DenseTensor& x,
-                        const std::vector<int>& kernel_size,
+                        const IntArray& kernel_size,
                         const std::vector<int>& strides,
                         const std::vector<int>& paddings,
                         bool ceil_mode,

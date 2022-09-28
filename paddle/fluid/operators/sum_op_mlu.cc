@@ -12,13 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/operators/sum_op.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
+using SelectedRows = phi::SelectedRows;
+using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
 class SumMLUKernel : public framework::OpKernel<T> {
@@ -28,7 +31,7 @@ class SumMLUKernel : public framework::OpKernel<T> {
     if (out_var->IsType<framework::LoDTensor>()) {
       // init
       auto *out = out_var->GetMutable<framework::LoDTensor>();
-      auto ins = ctx.MultiInput<Tensor>("X");
+      auto ins = ctx.MultiInput<phi::DenseTensor>("X");
       out->mutable_data<T>(ctx.GetPlace());
       auto place = ctx.GetPlace();
       int ins_size = static_cast<int>(ins.size());

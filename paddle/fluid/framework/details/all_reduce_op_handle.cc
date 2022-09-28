@@ -248,7 +248,7 @@ void AllReduceOpHandle::AllReduceFunc(
                      ->FindVar(out_var_names[0])
                      ->GetMutable<LoDTensor>();
 
-    // Reduce All Tensor to trg in CPU
+    // Reduce All phi::DenseTensor to trg in CPU
     ReduceBufferData func(lod_tensor_data, trg.data(), numel);
     VisitDataType(framework::TransToProtoVarType(trg.dtype()), func);
 

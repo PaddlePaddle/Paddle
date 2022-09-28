@@ -286,7 +286,7 @@ struct TestBroadcastOpHandle {
     }
 
     p::CPUPlace cpu_place;
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float* ct = result_tensor.data<float>();
 
@@ -312,7 +312,7 @@ struct TestBroadcastOpHandle {
                           "the expected, expect %s, but got %s.",
                           lod,
                           tensor.lod()));
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopySync(tensor, cpu_place, &result_tensor);
     float* ct = result_tensor.mutable_data<float>(cpu_place);
     for (int64_t k = 0; k < phi::product(kDims); ++k) {

@@ -80,10 +80,10 @@ class CenterLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("need_update", "whether need to update center info.");
     AddComment(R"DOC(
 **CenterLoss operator**
-implemention of the center loss function in the papper<<A Discriminative 
+implemention of the center loss function in the papper<<A Discriminative
 Feature Learning Approach for Deep Face Recognition>>, equations in this  implement
 is:loss = 1/2 * (x-y)^2 ,where x(X) means the deep feature(output of last hidden layer )
-and y(Label) the target label 
+and y(Label) the target label
 )DOC");
   }
 };

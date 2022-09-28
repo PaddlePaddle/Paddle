@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import multiprocessing
 import os
 import signal
@@ -21,9 +19,7 @@ import six
 import sys
 import warnings
 
-from paddle.distributed.utils import _print_arguments
-from paddle.distributed.utils import _prepare_trainer_env
-from paddle.distributed.utils import get_host_name_ip
+from paddle.distributed.utils.launch_utils import _print_arguments, _prepare_trainer_env, get_host_name_ip
 from paddle.distributed.cloud_utils import get_cluster_and_pod, _get_trainers_num
 from paddle.distributed.fleet.launch import get_cluster_from_args
 from paddle.distributed.fleet.cloud_utils import use_paddlecloud

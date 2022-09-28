@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = framework::DataLayout;
 using NPUAttribute = framework::NPUAttribute;
 using NPUAttributeMap = framework::NPUAttributeMap;

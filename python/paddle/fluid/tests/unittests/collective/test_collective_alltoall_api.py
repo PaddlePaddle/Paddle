@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
@@ -31,10 +30,16 @@ class TestCollectiveAllToAllAPI(TestDistBase):
         self.check_with_place("collective_alltoall_api.py", "alltoall", "nccl")
 
     def test_alltoall_nccl_dygraph(self):
-        self.check_with_place("collective_alltoall_api_dygraph.py",
-                              "alltoall",
-                              "nccl",
-                              static_mode="0")
+        dtypes_to_test = [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+            'bool'
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_alltoall_api_dygraph.py",
+                                  "alltoall",
+                                  "nccl",
+                                  static_mode="0",
+                                  dtype=dtype)
 
 
 if __name__ == '__main__':

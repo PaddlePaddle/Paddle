@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import os
 from .layer_function_generator import generate_layer_fn, generate_activation_fn, generate_inplace_fn, add_sample_code
 from ..framework import core
@@ -218,7 +217,7 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.tanhshrink(x) 
+        out = F.tanhshrink(x)
         print(out)
         # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
 
@@ -485,7 +484,7 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softplus(x) 
+        out = F.softplus(x)
         print(out)
         # [0.513015, 0.598139, 0.744397, 0.854355]
 
@@ -500,7 +499,7 @@ Examples:
         import paddle.nn.functional as F
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softsign(x) 
+        out = F.softsign(x)
         print(out)
         # [-0.285714, -0.166667, 0.0909091, 0.230769]
 
@@ -541,11 +540,11 @@ Returns:
     Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
-    
+
     .. code-block:: python
-    
+
         import paddle
-        
+
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.erf(x)
         print(out)

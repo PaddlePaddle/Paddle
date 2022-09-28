@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 class ROIPoolOp : public framework::OperatorWithKernel {
@@ -124,7 +124,7 @@ The operator has three steps:
 
 3. Copying these max values to the output buffer
 
-ROI Pooling for Faster-RCNN. The link below is a further introduction: 
+ROI Pooling for Faster-RCNN. The link below is a further introduction:
 https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
     )DOC");
   }

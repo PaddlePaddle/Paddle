@@ -30,7 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
   case (dim): {                        \
@@ -38,11 +38,26 @@ using Tensor = framework::Tensor;
     __VA_ARGS__;                       \
   } break
 
-#define FIXED_BLOCK_DIM(...)                \
-  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__); \
-  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__); \
-  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);  \
+#define FIXED_MAXLENGTH_BASE(MaxLength, ...) \
+  case (MaxLength): {                        \
+    constexpr auto maxLength = (MaxLength);  \
+    __VA_ARGS__;                             \
+  } break
+
+#define FIXED_BLOCK_DIM(...)                 \
+  FIXED_BLOCK_DIM_BASE(1024, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_BASE(512, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);   \
   FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
+
+#define FIXED_MAXLENGTH(...)              \
+  FIXED_MAXLENGTH_BASE(1, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(2, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(3, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(4, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(5, ##__VA_ARGS__)
 
 template <typename DeviceContext, typename T>
 class TopkOpCUDAKernel : public framework::OpKernel<T> {
@@ -52,12 +67,12 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
-    auto* indices = ctx.Output<Tensor>("Indices");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
     int k = static_cast<int>(ctx.Attr<int>("k"));
 
-    auto* k_t = ctx.Input<Tensor>("K");
+    auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
       Tensor k_host;
       framework::TensorCopySync(*k_t, platform::CPUPlace(), &k_host);
@@ -95,18 +110,25 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     // TODO(typhoonzero): refine this kernel.
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
-    switch (GetDesiredBlockDim(input_width)) {
-      FIXED_BLOCK_DIM(
-          KeMatrixTopK<T, 5, kBlockDim>
-          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
-                                                      k,
-                                                      indices_data,
-                                                      input_data,
-                                                      input_width,
-                                                      input_width,
-                                                      static_cast<int>(k),
-                                                      gridx,
-                                                      input_height));
+    paddle::platform::GpuLaunchConfig config =
+        paddle::platform::GetGpuLaunchConfig1D(dev_ctx, input_width);
+    switch (config.thread_per_block.x) {
+      FIXED_BLOCK_DIM(switch (getMaxLength(k)) {
+        FIXED_MAXLENGTH(
+            KeMatrixTopK<T, maxLength, kBlockDim>
+            <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
+                                                        k,
+                                                        indices_data,
+                                                        input_data,
+                                                        input_width,
+                                                        input_width,
+                                                        static_cast<int>(k),
+                                                        gridx,
+                                                        input_height));
+        default:
+          PADDLE_THROW(platform::errors::Fatal(
+              "the input k has error in the topk cuda kernel."));
+      });
       default:
         PADDLE_THROW(platform::errors::Unavailable(
             "Calculation error occurred in TopK Operator's CUDA Kernel."));
@@ -122,10 +144,12 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(context.GetPlace()),
         true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
-    auto* x = context.Input<Tensor>("X");
-    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* indices = context.Input<Tensor>("Indices");
-    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* indices = context.Input<phi::DenseTensor>("Indices");
+    auto* x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     T* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     const T* out_grad_data = out_grad->data<T>();

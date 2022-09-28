@@ -64,7 +64,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     const std::string& var_name,
-    const framework::Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
@@ -80,9 +80,7 @@ framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     // op. Treat this as NCHW (default data_format value)
     if (dl != framework::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
-          expected_kernel_type.data_type_,
-          tensor.place(),
-          framework::StringToDataLayout(data_format));
+          expected_kernel_type.data_type_, tensor.place(), dl);
     }
   }
 #endif
@@ -121,7 +119,8 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<std::vector<int>>("output_size",
                             "(vector<int> default: []), the "
                             "size of the output tensor")
-      .SetDefault({});
+      .SetDefault({})
+      .SupportTensor();
   AddAttr<int>("groups",
                "(int default:1), the groups number of the convolution "
                "transpose operator. ")
@@ -398,10 +397,10 @@ namespace ops = paddle::operators;
 // conv2d_transpose
 DECLARE_INFER_SHAPE_FUNCTOR(conv2d_transpose,
                             Conv2dTranposeInferShapeFunctor,
-                            PD_INFER_META(phi::ConvTransposeInferMeta));
+                            PD_INFER_META(phi::Conv2dTransposeInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(conv2d_transpose_grad,
                             Conv2dTranposeGradInferShapeFunctor,
-                            PD_INFER_META(phi::ConvTransposeGradInferMeta));
+                            PD_INFER_META(phi::Conv2dTransposeGradInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(
     conv2d_transpose_grad_grad,
     Conv2dTranposeDoubleGradInferShapeFunctor,
@@ -443,10 +442,10 @@ REGISTER_OPERATOR(conv3d_transpose_grad,
 // depthwise conv2d_transpose
 DECLARE_INFER_SHAPE_FUNCTOR(depthwise_conv2d_transpose,
                             DepthWiseConv2dTranposeInferShapeFunctor,
-                            PD_INFER_META(phi::ConvTransposeInferMeta));
+                            PD_INFER_META(phi::Conv2dTransposeInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(depthwise_conv2d_transpose_grad,
                             DepthWiseConv2dTranposeGradInferShapeFunctor,
-                            PD_INFER_META(phi::ConvTransposeGradInferMeta));
+                            PD_INFER_META(phi::Conv2dTransposeGradInferMeta));
 
 REGISTER_OPERATOR(depthwise_conv2d_transpose,
                   ops::ConvTransposeOp,

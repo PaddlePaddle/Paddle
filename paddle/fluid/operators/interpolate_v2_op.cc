@@ -25,7 +25,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
@@ -444,8 +443,6 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    framework::LibraryType library = framework::LibraryType::kPlain;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -453,17 +450,19 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
     // TODO(danqing): support other interp_method
     if (this->CanMKLDNNBeUsed(ctx, data_type) &&
         (interp_method == "nearest" || interp_method == "bilinear")) {
-      layout = framework::DataLayout::kMKLDNN;
-      library = framework::LibraryType::kMKLDNN;
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
 
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -550,32 +549,28 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
                  "can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , "
                  "can be \'1\' for src_idx = scale*dst_index .")
         .SetDefault(1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"
-          for nearest neighbor interpolation and \"bilinear\" for bilinear 
+          for nearest neighbor interpolation and \"bilinear\" for bilinear
           interpolation and \"linear\" for linear interpolation..
 
           Nearest neighbor interpolation is to perform nearest neighbor interpolation
-          in both the 3rd dimension(in height direction) and the 4th dimension(in width 
+          in both the 3rd dimension(in height direction) and the 4th dimension(in width
           direction) on input tensor.
-           
-          Linear interpolation is the method of using a line connecting two known quantities 
-          to determine the value of an unknown quantity between the two known quantities. 
-          
-          Bilinear interpolation is an extension of linear interpolation for 
-          interpolating functions of two variables (e.g. H-direction and 
-          W-direction in this op) on a rectilinear 2D grid. The key idea is 
-          to perform linear interpolation first in one direction, and then 
+
+          Linear interpolation is the method of using a line connecting two known quantities
+          to determine the value of an unknown quantity between the two known quantities.
+
+          Bilinear interpolation is an extension of linear interpolation for
+          interpolating functions of two variables (e.g. H-direction and
+          W-direction in this op) on a rectilinear 2D grid. The key idea is
+          to perform linear interpolation first in one direction, and then
           again in the other direction.
 
-          Trilinear interpolation is an extension of linear interpolation for 
-          interpolating functions of three variables (e.g. D-direction, 
-          H-direction and W-direction in this op) on a rectilinear 3D grid. 
+          Trilinear interpolation is an extension of linear interpolation for
+          interpolating functions of three variables (e.g. D-direction,
+          H-direction and W-direction in this op) on a rectilinear 3D grid.
           The linear interpolation is performed on three directions.
 
           Bicubic interpolation is an extension of cubic interpolation for interpolating
@@ -583,24 +578,24 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
           smoother than corresponding surfaces obtained by bilinear interpolation or
           nearest-neighbor interpolation.
 
-          Align_corners and align_mode are optional parameters,the calculation method 
+          Align_corners and align_mode are optional parameters,the calculation method
           of interpolation can be selected by them.
-          
+
           Example:
 
           For scale:
-          
+
             if align_corners = True and out_{size}>1 :
 
               scale_{factor} = (in_{size}-1.0)/(out_{size}-1.0)
-            
+
             else:
-              
+
               scale_{factor} = float(in_{size}/out_{size})
-            
-          
+
+
           Nearest neighbor interpolation:
-          
+
           if:
               align_corners = False
 
@@ -623,16 +618,16 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
 
           if:
               align_corners = False , align_mode = 0
-              
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
-              
+
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
           else:
-           
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
 
@@ -643,17 +638,17 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
 
           if:
               align_corners = False , align_mode = 0
-              
+
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
-              
+
               D_out = (D_{in}+0.5) * scale_{factor} - 0.5
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
           else:
-           
+
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
 
@@ -675,13 +670,13 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
-          For details of nearest neighbor interpolation, please refer to Wikipedia: 
+          For details of nearest neighbor interpolation, please refer to Wikipedia:
           https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
 
-          For details of bilinear interpolation, please refer to Wikipedia: 
+          For details of bilinear interpolation, please refer to Wikipedia:
           https://en.wikipedia.org/wiki/Bilinear_interp_v2olation
 
-          For details of trilinear interpolation, please refer to Wikipedia: 
+          For details of trilinear interpolation, please refer to Wikipedia:
           https://en.wikipedia.org/wiki/Trilinear_interp_v2olation
 
           For details of bicubic interpolation, please refer to Wikipedia:
@@ -717,7 +712,7 @@ class InterpolateV2OpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;

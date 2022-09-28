@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
 
@@ -110,21 +110,20 @@ class LayerNormOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 
 #ifdef PADDLE_WITH_MKLDNN
     int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        begin_norm_axis == ctx.Input<Tensor>("X")->dims().size() - 1) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+        begin_norm_axis ==
+            ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
 
-    return framework::OpKernelType(
-        input_data_type, ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -171,22 +170,6 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "greater than zero. But received [%d].",
                                 begin_norm_axis));
         });
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false)
-        .AsExtra();
-
     AddComment(R"DOC(
 Assume feature vectors exist on dimensions
 :attr:`begin_norm_axis ... rank(input)` and calculate the moment statistics

@@ -13,7 +13,6 @@
 # limitations under the License.
 """Test cloud role maker."""
 
-from __future__ import print_function
 import os
 import unittest
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
