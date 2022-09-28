@@ -573,11 +573,11 @@ class TestNormalSampleStaic(unittest.TestCase):
             n = 100000
             self.sample_shape = (n, )
             self.rsample_shape = (n, )
-            self.paddle_lognormal = Normal(loc=loc, scale=scale)
-            mean = self.paddle_lognormal.mean
-            variance = self.paddle_lognormal.variance
-            samples = self.paddle_lognormal.sample(self.sample_shape)
-            rsamples = self.paddle_lognormal.rsample(self.rsample_shape)
+            self.paddle_normal = Normal(loc=loc, scale=scale)
+            mean = self.paddle_normal.mean
+            variance = self.paddle_normal.variance
+            samples = self.paddle_normal.sample(self.sample_shape)
+            rsamples = self.paddle_normal.rsample(self.rsample_shape)
         fetch_list = [mean, variance, samples, rsamples]
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
