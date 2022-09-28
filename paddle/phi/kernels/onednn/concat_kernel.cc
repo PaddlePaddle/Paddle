@@ -156,7 +156,7 @@ void ConcatKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(concat,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::ConcatKernel,
                    float,
                    phi::dtype::bfloat16,
