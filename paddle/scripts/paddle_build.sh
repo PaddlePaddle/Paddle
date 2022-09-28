@@ -1859,7 +1859,13 @@ function precise_card_test_single {
         fi
         set -x
         find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
         
         # python
@@ -1997,10 +2003,12 @@ set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
 
-    precise_card_test_single "$single_card_tests" 1
-    precise_card_test_single "$single_card_tests_1" 1
-    precise_card_test_single "$multiple_card_tests" 2
-    precise_card_test_single "$exclusive_tests"
+    #precise_card_test_single "$single_card_tests" 1
+    #precise_card_test_single "$single_card_tests_1" 1
+    #precise_card_test_single "$multiple_card_tests" 2
+    #precise_card_test_single "$exclusive_tests"
+    ljd_testcases='^test_op_signature$|^variant_test$'
+    precise_card_test_single "$ljd_testcases" 1
     wait;
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
     
