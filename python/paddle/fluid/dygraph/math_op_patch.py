@@ -396,8 +396,6 @@ def monkey_patch_math_varbase():
         # for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None, True)),
-        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None, True)),
-        ('__le__', _binary_creator_('__le__', 'less_equal', False, None, True)),
         ('__array_ufunc__', None)
     ]
 
@@ -412,10 +410,10 @@ def monkey_patch_math_varbase():
         '__truediv__',
         '__rdiv__',
         '__rtruediv__',
-        '__gt__',
-        '__ge__',
         '__mod__',
         '__matmul__',
+        '__gt__',
+        '__ge__',
         '__lt__',
         '__le__',
     ]
