@@ -37,13 +37,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
 namespace distributed {
@@ -212,11 +212,10 @@ inline void MergeVars(const std::string &var_name,
     }
     phi::CPUContext dev_ctx;
     if (merge_add) {
-      paddle::operators::math::scatter::MergeAdd<phi::CPUContext, T> merge_add;
+      phi::funcs::scatter::MergeAdd<phi::CPUContext, T> merge_add;
       merge_add(dev_ctx, inputs, out_slr);
     } else {
-      paddle::operators::math::scatter::MergeAverage<phi::CPUContext, T>
-          merge_average;
+      phi::funcs::scatter::MergeAverage<phi::CPUContext, T> merge_average;
       merge_average(dev_ctx, inputs, out_slr);
     }
 

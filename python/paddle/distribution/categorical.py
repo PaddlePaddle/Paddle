@@ -31,9 +31,9 @@ from paddle.tensor import arange, concat, gather_nd, multinomial
 
 class Categorical(distribution.Distribution):
     r"""
-    Categorical distribution is a discrete probability distribution that 
-    describes the possible results of a random variable that can take on 
-    one of K possible categories, with the probability of each category 
+    Categorical distribution is a discrete probability distribution that
+    describes the possible results of a random variable that can take on
+    one of K possible categories, with the probability of each category
     separately specified.
 
     The probability mass function (pmf) is:
@@ -267,9 +267,9 @@ class Categorical(distribution.Distribution):
     def probs(self, value):
         """Probabilities of the given category (``value``).
 
-        If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as 
+        If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as
         category, and the others represents the different distributions.
-        At the same time, if ``vlaue`` is 1-D Tensor, ``value`` will be broadcast to the 
+        At the same time, if ``vlaue`` is 1-D Tensor, ``value`` will be broadcast to the
         same number of distributions as ``logits``.
         If ``value`` is not 1-D Tensor, ``value`` should have the same number distributions
         with ``logits. That is, ``value[:-1] = logits[:-1]``.

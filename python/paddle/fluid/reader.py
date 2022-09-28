@@ -129,7 +129,7 @@ class DataLoaderBase(object):
 
     def next(self):
         '''
-        Get the next item in the DataLoader object. This method    
+        Get the next item in the DataLoader object. This method
         should not be called by users directly. It is used for
         implementing iterator protocol of Python 2.x inside
         PaddlePaddle framework.
@@ -312,7 +312,7 @@ class DataLoader(object):
         do nothing to data from dataset.
 
 
-    Args:  
+    Args:
         dataset(Dataset): the dataset to load data from, should be an
             instance of subclass of :code:`paddle.io.Dataset` or
             :code:`paddle.io.IterableDataset`.
@@ -321,15 +321,15 @@ class DataLoader(object):
             :attr:`feed_list` must be set if :attr:`return_list` is
             False. Default None.
         places(list(Place)|tuple(Place)|list(str), optional): a list of Place,
-            to put data onto, :attr:`places` can be None, if 
+            to put data onto, :attr:`places` can be None, if
             :attr:`places` is None, default place(CPUPlace or CUDAPlace(0))
             will be used. Default None. If ``places`` is list of string,
             the string in the list can be ``cpu``, ``gpu:x`` and ``gpu_pinned``,
             where ``x`` is the index of the GPUs.
-        return_list (bool, optional): whether the return value on each device is 
+        return_list (bool, optional): whether the return value on each device is
             presented as a list. If :attr:`return_list=False`, the return
             value on each device would be a dict of str -> Tensor, where
-            the key of the dict is the name of each fed Tensors. If 
+            the key of the dict is the name of each fed Tensors. If
             :attr:`return_list=True`, the return value on each device would
             be a list(Tensor). :attr:`return_list` can only be True
             in dynamic graph mode. Default True.
@@ -352,9 +352,9 @@ class DataLoader(object):
             0(same as :attr::`np.stack(..., axis=0)`). Default None
         num_workers(int, optional): the number of subprocess to load data, 0 for no
             subprocess used and loading data in main process. Default 0
-        use_buffer_reader (bool, optional): whether to use bufferred reader. 
+        use_buffer_reader (bool, optional): whether to use bufferred reader.
             If use_buffer_reader=True, the DataLoader would prefetch
-            batch data asynchronously, so it would speed up data feeding 
+            batch data asynchronously, so it would speed up data feeding
             and occupies a little more CPU or GPU memory, i.e., the memory
             of one batch input data. Default True.
         prefetch_factor (int, optional): Number of batch data the DataLoader would prefetch
@@ -375,7 +375,7 @@ class DataLoader(object):
         DataLoader: an iterable object for data iterating, each elemnet of the generated data is a Tensor.
 
     Examples:
-        
+
         .. code-block:: python
 
             import numpy as np
@@ -585,60 +585,60 @@ class DataLoader(object):
         .. note::
           **The framework ensures that the data loading order of DataLoader is exactly the same as the user-defined data source.**
 
-        Create a DataLoader object for loading data from Python generator. 
+        Create a DataLoader object for loading data from Python generator.
         Data would be prefetched using Python thread and be pushed
         into a queue asynchronously.
 
         The created DataLoader object provides 3 methods to set the data source
-        :code:`set_sample_generator` , :code:`set_sample_list_generator` and 
+        :code:`set_sample_generator` , :code:`set_sample_list_generator` and
         :code:`set_batch_generator` . Please see the following example codes
         to know their usages.
-        
+
         If iterable = True, the created DataLoader object is a Python generator
         object, which is iterable using for-range loop.
 
-        If iterable = False, the created DataLoader object provides 
+        If iterable = False, the created DataLoader object provides
         :code:`start()` and :code:`reset()` method to control the data reading
         process.
 
-        Args:  
+        Args:
             feed_list (list(Tensor)|tuple(Tensor)): feed Tensor list.
                 The Tensors should be created by :code:`fluid.data()`.
             capacity (int): capacity of the queue maintained in DataLoader.
-                The unit is batch number. Set larger capacity if your reader 
-                is fast. 
-            use_double_buffer (bool): whether to use double_buffer_reader. 
-                If use_double_buffer=True, the DataLoader would prefetch next 
-                batch data asynchronously, so it would speed up data feeding 
+                The unit is batch number. Set larger capacity if your reader
+                is fast.
+            use_double_buffer (bool): whether to use double_buffer_reader.
+                If use_double_buffer=True, the DataLoader would prefetch next
+                batch data asynchronously, so it would speed up data feeding
                 and occupies a little more CPU or GPU memory, i.e., the memory
-                of one batch input data. 
-            iterable (bool): whether the created DataLoader is iterable. 
-            return_list (bool): whether the return value on each device is 
-                presented as a list. It is only valid when iterable=True. 
-                If return_list=False, the return value on each device would 
-                be a dict of str -> LoDTensor, where the key of the dict is 
-                the name of each fed Tensors. If return_list=True, the 
+                of one batch input data.
+            iterable (bool): whether the created DataLoader is iterable.
+            return_list (bool): whether the return value on each device is
+                presented as a list. It is only valid when iterable=True.
+                If return_list=False, the return value on each device would
+                be a dict of str -> LoDTensor, where the key of the dict is
+                the name of each fed Tensors. If return_list=True, the
                 return value on each device would be a list(LoDTensor). It is
                 recommended to use return_list=False in static graph mode and
-                use return_list=True in dygraph mode.  
+                use return_list=True in dygraph mode.
             use_multiprocess (bool): whether to use multi-process to speed up
                 the data loading process in dygraph. Note: this parameter only
                 can be used in the dygraph mode. In the static graph mode,
                 whether this parameter is set or not has no effect.
                 The Default value is False.
             drop_last (bool): whether to drop the last batches whose number is
-                less than the CPU core/GPU card number. The default value is 
+                less than the CPU core/GPU card number. The default value is
                 True. In training phase, users should not set drop_last=False,
-                because all CPU cores/GPU cards must read data from DataLoader. 
+                because all CPU cores/GPU cards must read data from DataLoader.
                 In inference phase, users can set drop_last=False, so that the
                 last batches whose number is less than the CPU core/GPU card
-                number can be tested. 
+                number can be tested.
 
         Returns:
             loader (DataLoader): the created DataLoader object.
 
         Examples 1:
-            
+
             .. code-block:: python
 
                 '''
@@ -651,7 +651,7 @@ class DataLoader(object):
                 import paddle.nn.functional as F
 
 
-                BATCH_NUM = 10 
+                BATCH_NUM = 10
                 BATCH_SIZE = 16
                 EPOCH_NUM = 4
 
@@ -660,7 +660,7 @@ class DataLoader(object):
                 ITERABLE = True # whether the created DataLoader object is iterable
                 USE_GPU = False # whether to use GPU
 
-                DATA_FORMAT = 'batch_generator' # data format of data source user provides 
+                DATA_FORMAT = 'batch_generator' # data format of data source user provides
 
                 paddle.enable_static()
 
@@ -679,7 +679,7 @@ class DataLoader(object):
 
                 # If the data generator yields one sample each time,
                 # use DataLoader.set_sample_generator to set the data source.
-                def sample_generator_creator(): 
+                def sample_generator_creator():
                     def __reader__():
                         for _ in range(BATCH_NUM * BATCH_SIZE):
                             image, label = get_random_images_and_labels([784], [1])
@@ -691,7 +691,7 @@ class DataLoader(object):
                 # use DataLoader.set_sample_list_generator to set the data source.
                 def sample_list_generator_creator():
                     def __reader__():
-                        for _ in range(BATCH_NUM): 
+                        for _ in range(BATCH_NUM):
                             sample_list = []
                             for _ in range(BATCH_SIZE):
                                 image, label = get_random_images_and_labels([784], [1])
@@ -699,25 +699,25 @@ class DataLoader(object):
 
                             yield sample_list
 
-                    return __reader__ 
+                    return __reader__
 
-                # If the data generator yields a batch each time, 
+                # If the data generator yields a batch each time,
                 # use DataLoader.set_batch_generator to set the data source.
                 def batch_generator_creator():
                     def __reader__():
                         for _ in range(BATCH_NUM):
-                            batch_image, batch_label = get_random_images_and_labels([BATCH_SIZE, 784], [BATCH_SIZE, 1]) 
+                            batch_image, batch_label = get_random_images_and_labels([BATCH_SIZE, 784], [BATCH_SIZE, 1])
                             yield batch_image, batch_label
 
                     return __reader__
 
-                # If DataLoader is iterable, use for loop to train the network 
+                # If DataLoader is iterable, use for loop to train the network
                 def train_iterable(exe, prog, loss, loader):
                     for _ in range(EPOCH_NUM):
                         for data in loader():
                             exe.run(prog, feed=data, fetch_list=[loss])
 
-                # If DataLoader is not iterable, use start() and reset() method to control the process 
+                # If DataLoader is not iterable, use start() and reset() method to control the process
                 def train_non_iterable(exe, prog, loss, loader):
                     for _ in range(EPOCH_NUM):
                         loader.start() # call DataLoader.start() before each epoch starts
@@ -725,7 +725,7 @@ class DataLoader(object):
                             while True:
                                 exe.run(prog, fetch_list=[loss])
                         except paddle.core.EOFException:
-                            loader.reset() # call DataLoader.reset() after catching EOFException 
+                            loader.reset() # call DataLoader.reset() after catching EOFException
 
                 def set_data_source(loader, places):
                     if DATA_FORMAT == 'sample_generator':
@@ -740,7 +740,7 @@ class DataLoader(object):
                 image = static.data(name='image', shape=[None, 784], dtype='float32')
                 label = static.data(name='label', shape=[None, 1], dtype='int64')
 
-                # Define DataLoader 
+                # Define DataLoader
                 loader = paddle.io.DataLoader.from_generator(feed_list=[image, label], capacity=16, iterable=ITERABLE)
 
                 # Define network
@@ -748,10 +748,10 @@ class DataLoader(object):
 
                 # Set data source of DataLoader
                 #
-                # If DataLoader is iterable, places must be given and the number of places must be the same with device number.  
-                #  - If you are using GPU, call `paddle.static.cuda_places()` to get all GPU places. 
-                #  - If you are using CPU, call `paddle.static.cpu_places()` to get all CPU places. 
-                # 
+                # If DataLoader is iterable, places must be given and the number of places must be the same with device number.
+                #  - If you are using GPU, call `paddle.static.cuda_places()` to get all GPU places.
+                #  - If you are using CPU, call `paddle.static.cpu_places()` to get all CPU places.
+                #
                 # If DataLoader is not iterable, places can be None.
                 places = static.cuda_places() if USE_GPU else static.cpu_places()
                 set_data_source(loader, places)
@@ -772,7 +772,7 @@ class DataLoader(object):
             .. code-block:: python
 
                 '''
-                Example in dynamic graph mode. 
+                Example in dynamic graph mode.
                 '''
                 import numpy as np
 
@@ -850,21 +850,21 @@ class DataLoader(object):
                 import numpy as np
                 import os
 
-                # We use 2 CPU cores to run inference network 
+                # We use 2 CPU cores to run inference network
                 os.environ['CPU_NUM'] = '2'
 
                 paddle.enable_static()
 
                 # The data source has only 3 batches, which can not be
                 # divided evenly to each CPU core
-                def batch_generator():  
+                def batch_generator():
                     for i in range(3):
-                        yield np.array([i+1]).astype('float32'), 
+                        yield np.array([i+1]).astype('float32'),
 
-                x = static.data(name='x', shape=[None], dtype='float32')  
+                x = static.data(name='x', shape=[None], dtype='float32')
                 y = x * x
 
-                def run_inference(drop_last): 
+                def run_inference(drop_last):
                     loader = paddle.io.DataLoader.from_generator(feed_list=[x],
                             capacity=8, drop_last=drop_last)
                     loader.set_batch_generator(batch_generator, static.cpu_places())
@@ -902,21 +902,21 @@ class DataLoader(object):
           This API will be deprecated in the future, it is recommended to use
           :code:`paddle.io.DataLoader` which supports multi-processes acceleration.
 
-        Create an iterable DataLoader object for loading data from Dataset.    
+        Create an iterable DataLoader object for loading data from Dataset.
         Dataset is only supported in Linux system currently.
 
         Args:
             dataset (InMemoryDataset|QueueDataset): the dataset object.
-            places (list(CUDAPlace)|list(CPUPlace)|list(str)): places where the result 
-                data should be converted. If places is list of string, the string in the list 
-                can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where x is the index of the GPUs.   
-            drop_last (bool): whether to drop the last batch whose sample 
+            places (list(CUDAPlace)|list(CPUPlace)|list(str)): places where the result
+                data should be converted. If places is list of string, the string in the list
+                can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where x is the index of the GPUs.
+            drop_last (bool): whether to drop the last batch whose sample
                 number is less than batch size. If drop_last = True, they
-                would be dropped. If drop_last = False, they would be kept. 
+                would be dropped. If drop_last = False, they would be kept.
 
         Returns:
-            loader (DataLoader): the created DataLoader object, which can be 
-                treated as a Python generator.   
+            loader (DataLoader): the created DataLoader object, which can be
+                treated as a Python generator.
 
         Examples:
 
@@ -946,7 +946,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
     """
     The GeneratorLoader of dygraph
 
-    The multiprocess dygraph GeneratorLoader's most functions are different from 
+    The multiprocess dygraph GeneratorLoader's most functions are different from
     static graph GeneratorLoader, Separate implementation to keep code readable.
     """
 
@@ -1527,31 +1527,31 @@ class GeneratorLoader(DataLoaderBase):
 
 class PyReader(DataLoaderBase):
     r"""
-    Create a reader object for data feeding in Python. 
+    Create a reader object for data feeding in Python.
     Data would be prefetched using Python thread and be pushed
-    into a queue asynchronously. Data in the queue would be extracted 
+    into a queue asynchronously. Data in the queue would be extracted
     automatically when `Executor.run(...)` is called.
 
-    Args:  
+    Args:
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
             The variables should be created by :code:`fluid.layers.data()`.
         capacity (int): capacity of the queue maintained in PyReader.
-            The unit is batch number. Set larger capacity if your reader 
-            is fast. 
-        use_double_buffer (bool): whether to use double_buffer_reader. 
-            If use_double_buffer=True, PyReader would prefetch next 
-            batch data asynchronously, so it would speed up data feeding 
+            The unit is batch number. Set larger capacity if your reader
+            is fast.
+        use_double_buffer (bool): whether to use double_buffer_reader.
+            If use_double_buffer=True, PyReader would prefetch next
+            batch data asynchronously, so it would speed up data feeding
             and occupies a little more CPU or GPU memory, i.e., the memory
-            of one batch input data. 
-        iterable (bool): whether the created PyReader is iterable. 
-        return_list (bool): whether the return value on each device is 
-            presented as a list. It is only valid when iterable=True. 
-            If return_list=False, the return value on each device would 
-            be a dict of str -> LoDTensor, where the key of the dict is 
-            the name of each fed variables. If return_list=True, the 
+            of one batch input data.
+        iterable (bool): whether the created PyReader is iterable.
+        return_list (bool): whether the return value on each device is
+            presented as a list. It is only valid when iterable=True.
+            If return_list=False, the return value on each device would
+            be a dict of str -> LoDTensor, where the key of the dict is
+            the name of each fed variables. If return_list=True, the
             return value on each device would be a list(LoDTensor). It is
             recommended to use return_list=False in static graph mode and
-            use return_list=True in dygraph mode. 
+            use return_list=True in dygraph mode.
 
     Returns:
         the created reader object.
@@ -1561,11 +1561,11 @@ class PyReader(DataLoaderBase):
 
     Examples:
         1. If iterable = False, the created PyReader object is almost the
-           same as :code:`fluid.layers.py_reader()`. Operators would be 
-           inserted into the program. User should call :code:`start()` 
+           same as :code:`fluid.layers.py_reader()`. Operators would be
+           inserted into the program. User should call :code:`start()`
            before each epoch and catch :code:`fluid.core.EOFException`
-           thrown by :code:`Executor.run()` when epoch ends. Once the 
-           exception is caught, user should call :code:`reset()` to reset 
+           thrown by :code:`Executor.run()` when epoch ends. Once the
+           exception is caught, user should call :code:`reset()` to reset
            the reader manually.
 
         .. code-block:: python
@@ -1577,10 +1577,10 @@ class PyReader(DataLoaderBase):
            EPOCH_NUM = 3
            ITER_NUM = 5
            BATCH_SIZE = 3
-           
+
            def network(image, label):
                # User-defined network, here is an example of softmax regression.
-               predict = fluid.layers.fc(input=image, size=10, act='softmax')           
+               predict = fluid.layers.fc(input=image, size=10, act='softmax')
                return fluid.layers.cross_entropy(input=predict, label=label)
 
            def reader_creator_random_image_and_label(height, width):
@@ -1615,12 +1615,12 @@ class PyReader(DataLoaderBase):
                        reader.reset()
                        break
 
- 
+
         2. If iterable=True, the created PyReader object is decoupled with
-           the program. No operator would be inserted into the program. 
-           In this case, the created reader is a Python generator, which 
-           is iterable. User should feed the data yielded from PyReader 
-           object into :code:`Executor.run(feed=...)`.  
+           the program. No operator would be inserted into the program.
+           In this case, the created reader is a Python generator, which
+           is iterable. User should feed the data yielded from PyReader
+           object into :code:`Executor.run(feed=...)`.
 
         .. code-block:: python
 
@@ -1634,7 +1634,7 @@ class PyReader(DataLoaderBase):
 
            def network(image, label):
                # User-defined network, here is an example of softmax regression.
-               predict = fluid.layers.fc(input=image, size=10, act='softmax')           
+               predict = fluid.layers.fc(input=image, size=10, act='softmax')
                return fluid.layers.cross_entropy(input=predict, label=label)
 
            def reader_creator_random_image(height, width):
@@ -1642,7 +1642,7 @@ class PyReader(DataLoaderBase):
                    for i in range(ITER_NUM):
                        fake_image = np.random.uniform(low=0, high=255, size=[height, width])
                        fake_label = np.ones([1])
-                       yield fake_image, fake_label 
+                       yield fake_image, fake_label
                return reader
 
            image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
@@ -1653,17 +1653,17 @@ class PyReader(DataLoaderBase):
            reader.decorate_sample_list_generator(
                paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
                    fluid.core.CPUPlace())
-           
+
            loss = network(image, label)
            executor = fluid.Executor(fluid.CPUPlace())
            executor.run(fluid.default_startup_program())
-           
+
            for _ in range(EPOCH_NUM):
                for data in reader():
                    executor.run(feed=data, fetch_list=[loss])
 
 
-        3. If return_list=True, the return values would be presented as list instead of dict. 
+        3. If return_list=True, the return values would be presented as list instead of dict.
            This is usually used in dygraph mode.
 
         .. code-block:: python
@@ -1719,12 +1719,12 @@ class PyReader(DataLoaderBase):
 
     def start(self):
         '''
-        Start the data feeding thread. 
-        Can only call when the reader object is not iterable.  
-        
+        Start the data feeding thread.
+        Can only call when the reader object is not iterable.
+
 	Example:
 	    .. code-block:: python
-    
+
                 import paddle
                 import paddle.fluid as fluid
                 import numpy as np
@@ -1756,9 +1756,9 @@ class PyReader(DataLoaderBase):
 
     def reset(self):
         '''
-        Reset the reader object when :code:`fluid.core.EOFException` raises. 
+        Reset the reader object when :code:`fluid.core.EOFException` raises.
         Can only call when the reader object is not iterable.
-        
+
         Example:
             .. code-block:: python
 
@@ -1786,7 +1786,7 @@ class PyReader(DataLoaderBase):
                             executor.run(feed=None)
                         except fluid.core.EOFException:
                             reader.reset()
-                            break        
+                            break
 
         '''
         self._loader.reset()
@@ -1798,13 +1798,13 @@ class PyReader(DataLoaderBase):
                                   places=None):
         '''
         Set the data source of the PyReader object.
-        
+
         The provided :code:`sample_generator` should be a Python generator,
         which yields list(numpy.ndarray)-typed data of each sample.
 
         :code:`places` must be set when the PyReader object is iterable.
 
-        If all inputs have no lods, this method is faster than 
+        If all inputs have no lods, this method is faster than
         :code:`decorate_sample_list_generator(paddle.batch(sample_generator, ...))` .
 
         Args:
@@ -1812,7 +1812,7 @@ class PyReader(DataLoaderBase):
                 list(numpy.ndarray)-typed sample data.
             batch_size (int): batch size. Must be larger than 0.
             drop_last (bool): Whether to drop the last batch when sample number
-                is less than batch_size. 
+                is less than batch_size.
             places (None|list(CUDAPlace)|list(CPUPlace)): place list. Must
                 be provided when PyReader is iterable.
 
@@ -1825,10 +1825,10 @@ class PyReader(DataLoaderBase):
                 EPOCH_NUM = 3
                 ITER_NUM = 15
                 BATCH_SIZE = 3
-        
+
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = fluid.layers.fc(input=image, size=10, act='softmax')           
+                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
                     return fluid.layers.cross_entropy(input=predict, label=label)
 
                 def random_image_and_label_generator(height, width):
@@ -1856,26 +1856,26 @@ class PyReader(DataLoaderBase):
                 for _ in range(EPOCH_NUM):
                     for data in reader():
                         executor.run(feed=data, fetch_list=[loss])
-    
+
         '''
         self._loader.set_sample_generator(sample_generator, batch_size,
                                           drop_last, places)
 
     def decorate_sample_list_generator(self, reader, places=None):
         '''
-        Set the data source of the PyReader object. 
+        Set the data source of the PyReader object.
 
         The provided :code:`reader` should be a Python generator,
-        which yields list(numpy.ndarray) typed batched data. 
-        
+        which yields list(numpy.ndarray) typed batched data.
+
         :code:`places` must be set when the PyReader object is iterable.
 
         Args:
-            reader (generator): Python generator that yields 
-                list(numpy.ndarray)-typed batched data. 
+            reader (generator): Python generator that yields
+                list(numpy.ndarray)-typed batched data.
             places (None|list(CUDAPlace)|list(CPUPlace)): place list. Must
                 be provided when PyReader is iterable.
-        
+
         Example:
             .. code-block:: python
 
@@ -1889,7 +1889,7 @@ class PyReader(DataLoaderBase):
 
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = fluid.layers.fc(input=image, size=10, act='softmax')           
+                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
                     return fluid.layers.cross_entropy(input=predict, label=label)
 
                 def random_image_and_label_generator(height, width):
@@ -1910,7 +1910,7 @@ class PyReader(DataLoaderBase):
                 reader.decorate_sample_list_generator(
                     paddle.batch(user_defined_generator, batch_size=BATCH_SIZE),
                     fluid.core.CPUPlace())
-                
+
                 loss = network(image, label)
                 executor = fluid.Executor(fluid.core.CPUPlace())
                 executor.run(fluid.default_startup_program())
@@ -1918,7 +1918,7 @@ class PyReader(DataLoaderBase):
                 for _ in range(EPOCH_NUM):
                     for data in reader():
                         executor.run(feed=data, fetch_list=[loss])
-                 
+
         '''
         self._loader.set_sample_list_generator(reader, places)
 
@@ -1946,10 +1946,10 @@ class PyReader(DataLoaderBase):
                 EPOCH_NUM = 3
                 ITER_NUM = 15
                 BATCH_SIZE = 3
-               
+
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = fluid.layers.fc(input=image, size=10, act='softmax')           
+                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
                     return fluid.layers.cross_entropy(input=predict, label=label)
 
                 def random_image_and_label_generator(height, width):
@@ -1970,7 +1970,7 @@ class PyReader(DataLoaderBase):
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
                 reader.decorate_batch_generator(user_defined_generator, fluid.CPUPlace())
-                
+
                 loss = network(image, label)
                 executor = fluid.Executor(fluid.CPUPlace())
                 executor.run(fluid.default_startup_program())

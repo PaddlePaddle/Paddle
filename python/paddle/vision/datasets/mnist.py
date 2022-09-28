@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import gzip
 import struct
@@ -44,12 +42,12 @@ class MNIST(Dataset):
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
             If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
-            
+
     Returns:
         :ref:`api_paddle_io_Dataset`. An instance of MNIST dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
             import itertools
@@ -226,12 +224,12 @@ class FashionMNIST(MNIST):
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
             If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
-            
+
     Returns:
         :ref:`api_paddle_io_Dataset`. An instance of FashionMNIST dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
             import itertools
