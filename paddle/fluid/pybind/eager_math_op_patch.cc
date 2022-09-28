@@ -224,11 +224,10 @@ static PyObject* tensor__add__method(TensorObject* self,
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
       }
     } else {
-      LOG(WARNING)
-          << "The dtype of left and right Tensor are not the same, left "
-             "dtype is "
-          << lhs_dtype << ", but right dtype is " << rhs_dtype
-          << ", the right dtype will convert to " << lhs_dtype;
+      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                 "dtype is "
+              << lhs_dtype << ", but right dtype is " << rhs_dtype
+              << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
@@ -320,11 +319,10 @@ static PyObject* tensor__sub__method(TensorObject* self,
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
       }
     } else {
-      LOG(WARNING)
-          << "The dtype of left and right Tensor are not the same, left "
-             "dtype is "
-          << lhs_dtype << ", but right dtype is " << rhs_dtype
-          << ", the right dtype will convert to " << lhs_dtype;
+      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                 "dtype is "
+              << lhs_dtype << ", but right dtype is " << rhs_dtype
+              << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
@@ -414,11 +412,10 @@ static PyObject* tensor__rsub__method(TensorObject* self,
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
       }
     } else {
-      LOG(WARNING)
-          << "The dtype of left and right Tensor are not the same, left "
-             "dtype is "
-          << lhs_dtype << ", but right dtype is " << rhs_dtype
-          << ", the right dtype will convert to " << lhs_dtype;
+      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                 "dtype is "
+              << lhs_dtype << ", but right dtype is " << rhs_dtype
+              << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
@@ -515,11 +512,10 @@ static PyObject* tensor__mul__method(TensorObject* self,
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
       }
     } else {
-      LOG(WARNING)
-          << "The dtype of left and right Tensor are not the same, left "
-             "dtype is "
-          << lhs_dtype << ", but right dtype is " << rhs_dtype
-          << ", the right dtype will convert to " << lhs_dtype;
+      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                 "dtype is "
+              << lhs_dtype << ", but right dtype is " << rhs_dtype
+              << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
@@ -617,11 +613,10 @@ static PyObject* tensor__div__method(TensorObject* self,
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
       }
     } else {
-      LOG(WARNING)
-          << "The dtype of left and right Tensor are not the same, left "
-             "dtype is "
-          << lhs_dtype << ", but right dtype is " << rhs_dtype
-          << ", the right dtype will convert to " << lhs_dtype;
+      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                 "dtype is "
+              << lhs_dtype << ", but right dtype is " << rhs_dtype
+              << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
@@ -733,11 +728,10 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
       }
     } else {
-      LOG(WARNING)
-          << "The dtype of left and right Tensor are not the same, left "
-             "dtype is "
-          << lhs_dtype << ", but right dtype is " << rhs_dtype
-          << ", the right dtype will convert to " << lhs_dtype;
+      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                 "dtype is "
+              << lhs_dtype << ", but right dtype is " << rhs_dtype
+              << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
@@ -829,10 +823,10 @@ static PyObject* tensor__gt__method(TensorObject* self,
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
   if (lhs_dtype != rhs_dtype) {
-    LOG(WARNING) << "The dtype of left and right Tensor are not the same, left "
-                    "dtype is "
-                 << lhs_dtype << ", but right dtype is " << rhs_dtype
-                 << ", the right dtype will convert to " << lhs_dtype;
+    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+               "dtype is "
+            << lhs_dtype << ", but right dtype is " << rhs_dtype
+            << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
   }
@@ -914,10 +908,10 @@ static PyObject* tensor__ge__method(TensorObject* self,
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
   if (lhs_dtype != rhs_dtype) {
-    LOG(WARNING) << "The dtype of left and right Tensor are not the same, left "
-                    "dtype is "
-                 << lhs_dtype << ", but right dtype is " << rhs_dtype
-                 << ", the right dtype will convert to " << lhs_dtype;
+    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+               "dtype is "
+            << lhs_dtype << ", but right dtype is " << rhs_dtype
+            << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
   }
@@ -1000,11 +994,10 @@ static PyObject* tensor__mod__method(TensorObject* self,
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
   if (lhs_dtype != rhs_dtype) {
-    LOG(WARNING)
-        << "The  dtype of left and right Tensor are not the same, left "
-           "dtype is "
-        << lhs_dtype << ", but right dtype is " << rhs_dtype
-        << ", the right dtype will convert to " << lhs_dtype;
+    VLOG(6) << "The  dtype of left and right Tensor are not the same, left "
+               "dtype is "
+            << lhs_dtype << ", but right dtype is " << rhs_dtype
+            << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
   }
@@ -1101,11 +1094,10 @@ static PyObject* tensor__matmul__method(TensorObject* self,
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
       }
     } else {
-      LOG(WARNING)
-          << "The dtype of left and right Tensor are not the same, left "
-             "dtype is "
-          << lhs_dtype << ", but right dtype is " << rhs_dtype
-          << ", the right dtype will convert to " << lhs_dtype;
+      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                 "dtype is "
+              << lhs_dtype << ", but right dtype is " << rhs_dtype
+              << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
@@ -1187,10 +1179,10 @@ static PyObject* tensor__lt__method(TensorObject* self,
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
   if (lhs_dtype != rhs_dtype) {
-    LOG(WARNING) << "The dtype of left and right Tensor are not the same, left "
-                    "dtype is "
-                 << lhs_dtype << ", but right dtype is " << rhs_dtype
-                 << ", the right dtype will convert to " << lhs_dtype;
+    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+               "dtype is "
+            << lhs_dtype << ", but right dtype is " << rhs_dtype
+            << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
   }
@@ -1272,10 +1264,10 @@ static PyObject* tensor__le__method(TensorObject* self,
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
   if (lhs_dtype != rhs_dtype) {
-    LOG(WARNING) << "The dtype of left and right Tensor are not the same, left "
-                    "dtype is "
-                 << lhs_dtype << ", but right dtype is " << rhs_dtype
-                 << ", the right dtype will convert to " << lhs_dtype;
+    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+               "dtype is "
+            << lhs_dtype << ", but right dtype is " << rhs_dtype
+            << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
   }
