@@ -17,7 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
@@ -31,7 +31,7 @@ class OneHotV2NPUKernel : public framework::OpKernel<T> {
     int depth = ctx.Attr<int>("depth");
 
     if (ctx.HasInput("depth_tensor")) {
-      auto* depth_tensor = ctx.Input<Tensor>("depth_tensor");
+      auto* depth_tensor = ctx.Input<phi::DenseTensor>("depth_tensor");
       std::vector<int32_t> depth_data;
       framework::TensorToVector(*depth_tensor, dev_ctx, &depth_data);
       depth = depth_data[0];

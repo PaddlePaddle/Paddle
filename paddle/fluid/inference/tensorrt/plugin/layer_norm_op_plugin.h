@@ -31,8 +31,8 @@ namespace plugin {
 class LayerNormPlugin : public PluginTensorRT {
   std::vector<float> bias_;
   std::vector<float> scale_;
-  framework::Tensor mean_t;
-  framework::Tensor variance_t;
+  phi::DenseTensor mean_t;
+  phi::DenseTensor variance_t;
   int begin_norm_axis_;
   float eps_;
   std::vector<int64_t> mean_shape_;
@@ -225,10 +225,11 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, with_fp16_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -264,8 +265,8 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
  private:
   std::vector<float> bias_;
   std::vector<float> scale_;
-  framework::Tensor mean_t;
-  framework::Tensor variance_t;
+  phi::DenseTensor mean_t;
+  phi::DenseTensor variance_t;
   int begin_norm_axis_;
   float eps_;
   std::vector<int64_t> mean_shape_;

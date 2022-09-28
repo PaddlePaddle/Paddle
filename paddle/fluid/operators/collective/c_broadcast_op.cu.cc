@@ -73,10 +73,10 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
       if (out != x) {
         framework::TensorCopy(
-            *static_cast<const framework::Tensor*>(x),
+            *static_cast<const phi::DenseTensor*>(x),
             place,
             *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<framework::Tensor*>(out));
+            static_cast<phi::DenseTensor*>(out));
       }
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(

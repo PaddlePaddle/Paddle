@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import, division, print_function
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Layer, Linear

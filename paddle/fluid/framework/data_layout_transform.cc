@@ -55,8 +55,8 @@ void CastDataLayout::apply() {
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
                      const OpKernelType& expected_kernel_type,
-                     const Tensor& in,
-                     Tensor* out) {
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out) {
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_type_for_var.place_,
                                       expected_kernel_type.place_),
@@ -97,7 +97,8 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
 
-void* GetDataFromTensor(const Tensor& tensor, dnnl::memory::data_type type) {
+void* GetDataFromTensor(const phi::DenseTensor& tensor,
+                        dnnl::memory::data_type type) {
   switch (type) {
     case dnnl::memory::data_type::f32:
       return platform::to_void_cast(tensor.data<float>());
@@ -117,8 +118,8 @@ void* GetDataFromTensor(const Tensor& tensor, dnnl::memory::data_type type) {
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
-                               const Tensor& in,
-                               Tensor* out) {
+                               const phi::DenseTensor& in,
+                               phi::DenseTensor* out) {
   auto in_layout = kernel_type_for_var.data_layout_;
   auto out_layout = expected_kernel_type.data_layout_;
   auto place = expected_kernel_type.place_;
@@ -139,8 +140,8 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
                                     DataLayout out_layout,
-                                    const Tensor& in,
-                                    Tensor* out,
+                                    const phi::DenseTensor& in,
+                                    phi::DenseTensor* out,
                                     platform::Place place,
                                     bool always_copy) {
   // Set default as NCHW in case not specified

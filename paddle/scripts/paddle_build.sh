@@ -235,7 +235,7 @@ function cmake_base() {
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DWITH_INFRT=${WITH_INFRT:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
-        -DPY_VERSION=${PY_VERSION:-2.7}
+        -DPY_VERSION=${PY_VERSION:-3.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_PSCORE=${distibuted_flag}
         -DWITH_PSLIB=${WITH_PSLIB:-OFF}
@@ -290,7 +290,7 @@ EOF
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DWITH_INFRT=${WITH_INFRT:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
-        -DPY_VERSION=${PY_VERSION:-2.7} \
+        -DPY_VERSION=${PY_VERSION:-3.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
@@ -1154,10 +1154,6 @@ function check_diff_file_for_coverage() {
 
 function check_change_of_unittest() {
     generate_unittest_spec "PR"
-    fetch_upstream_develop_if_not_exist
-    git reset --hard upstream/$BRANCH
-    cmake_gen $1
-    generate_unittest_spec "DEV"
     check_approvals_of_unittest 2
 }
 
