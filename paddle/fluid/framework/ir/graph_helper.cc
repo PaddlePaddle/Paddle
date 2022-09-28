@@ -17,6 +17,7 @@ limitations under the License. */
 #include <queue>
 #include <stack>
 
+#include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -519,11 +520,11 @@ static void ReplaceAllReduceOp(const Node &node,
   desc2.SetType("c_allreduce_sum");
 
   if (node.IsWrappedBy<details::OpHandleBase>()) {
-    details::OpHandleBase &op_hander =
+    details::OpHandleBase &op_handler =
         const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
 
     // set inputs
-    auto in_var_handles = op_hander.Inputs();
+    auto in_var_handles = op_handler.Inputs();
     std::vector<std::string> in_names;
     for (const auto &in : in_var_handles) {
       if (dynamic_cast<details::DummyVarHandle *>(in) != nullptr) {
@@ -543,7 +544,7 @@ static void ReplaceAllReduceOp(const Node &node,
 
     desc2.SetInput("X", {name});
     // set outputs
-    auto out_var_handles = op_hander.Outputs();
+    auto out_var_handles = op_handler.Outputs();
     std::vector<std::string> out_names;
     for (const auto &out : out_var_handles) {
       if (dynamic_cast<details::DummyVarHandle *>(out) != nullptr) {
@@ -554,9 +555,18 @@ static void ReplaceAllReduceOp(const Node &node,
     desc2.SetOutput("Out", {name});
 
     int ring_id = platform::NCCLCommContext::Instance().GetRingId(
-        dynamic_cast<details::NCCLOpHandleBase *>(&op_hander)->GetComm());
+        dynamic_cast<details::NCCLOpHandleBase *>(&op_handler)->GetComm());
     desc2.SetAttr("ring_id", ring_id);
     desc2.SetAttr("use_calc_stream", true);
+
+    // handle grad merge
+    if (dynamic_cast<details::FusedGradMergeAllReduceOpHandle *>(&op_handler)) {
+      VLOG(4) << "FusedGradMergeAllReduceOpHandle: add cond to c_allreduce_sum";
+      auto cond_name =
+          dynamic_cast<details::FusedGradMergeAllReduceOpHandle *>(&op_handler)
+              ->GradMergeCondName();
+      desc2.SetInput("Cond", {cond_name});
+    }
   }
 
   desc1.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
@@ -780,6 +790,7 @@ void GraphToProgram(const Graph &graph,
     VLOG(8) << "Merge main programs";
     MergePrograms(program, program_descs, /*append=*/false);
   }
+  // handle startup program
 }
 
 static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(

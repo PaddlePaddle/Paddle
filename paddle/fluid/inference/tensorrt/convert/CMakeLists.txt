@@ -30,7 +30,6 @@ list(
   transpose_op.cc
   flatten_op.cc
   flatten_contiguous_range_op.cc
-  emb_eltwise_layernorm.cc
   skip_layernorm.cc
   scale_op.cc
   slice_op.cc
@@ -57,7 +56,6 @@ list(
   bilinear_interp_v2_op.cc
   pool3d_op.cc
   deformable_conv_op.cc
-  preln_emb_eltwise_layernorm.cc
   strided_slice_op.cc
   preln_skip_layernorm.cc
   roll_op.cc
@@ -79,6 +77,11 @@ list(
   fused_token_prune_op.cc
   layernorm_shift_partition_op.cc
   generic_and_custom_plugin_creater.cc)
+
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+  list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
+       preln_emb_eltwise_layernorm.cc)
+endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)

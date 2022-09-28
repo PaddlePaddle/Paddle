@@ -120,8 +120,8 @@ class AutoTuneBase {
 
   template <typename Context, typename... Args>
   float RunAndMeasureKernel(const Context& ctx, const int idx, Args&&... args) {
-    // Regard 1st run as warmup. Judge the result by the time cost of rest run
-    // cycles.
+    // Regard 1st run as warmup, judge the compare result by the time cost
+    // of rest cycles.
     constexpr int repeats = 3;
     phi::GpuTimer timer;
     float time_cost = 0;
@@ -153,19 +153,14 @@ template <typename T, typename KernelType>
 class TransposeAutoTuner : public AutoTuneBase<T, KernelType> {
  public:
   static AutoTuneBase<T, KernelType>* Instance(KernelType kernel) {
+    static std::once_flag transpose_init_flag_;
     static std::unique_ptr<AutoTuneBase<T, KernelType>> instance_;
-    std::call_once(init_flag_, [&] {
+    std::call_once(transpose_init_flag_, [&] {
       instance_.reset(new AutoTuneBase<T, KernelType>(kernel));
     });
     return instance_.get();
   }
-
- private:
-  static std::once_flag init_flag_;
 };
-
-template <typename T, typename KernelType>
-std::once_flag TransposeAutoTuner<T, KernelType>::init_flag_;
 
 template <typename T, typename RetureType, typename... Args>
 static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>>*

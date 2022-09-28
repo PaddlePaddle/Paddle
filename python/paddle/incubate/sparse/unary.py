@@ -511,7 +511,7 @@ def coalesce(x):
             #[[0, 1], [1, 2]]
             print(sp_x.values())
             #[3.0, 3.0]
-	"""
+    """
     return _C_ops.sparse_coalesce(x)
 
 
