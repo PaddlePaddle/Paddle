@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 import socket
 from contextlib import closing
@@ -55,10 +56,6 @@ def paddle_add(a, b):
     return res
 
 
-def add(a, b):
-    return a + b
-
-
 def run_rpc_sync(
     rank,
     world_size,
@@ -74,8 +71,33 @@ def run_rpc_sync(
         world_size,
         master_endpoint,
     )
-    res = dist.rpc.rpc_sync("worker0", fn, args=args, kwargs=kwargs)
+    res = dist.rpc.rpc_sync(worker_name(0), fn, args=args, kwargs=kwargs)
     queue.put(res)
+    dist.rpc.shutdown()
+
+
+def run_rpc_sync_master_working(
+    rank,
+    world_size,
+    master_endpoint,
+    queue,
+    fn,
+    args=None,
+    kwargs=None,
+):
+    dist.rpc.init_rpc(
+        worker_name(rank),
+        rank,
+        world_size,
+        master_endpoint,
+    )
+    if dist.get_rank() == 0:
+        for i in range(1, dist.get_rank()):
+            res = dist.rpc.rpc_sync(worker_name(i),
+                                    fn,
+                                    args=args,
+                                    kwargs=kwargs)
+            queue.put(res)
     dist.rpc.shutdown()
 
 
@@ -94,8 +116,33 @@ def run_rpc_async(
         world_size,
         master_endpoint,
     )
-    res = dist.rpc.rpc_async("worker0", fn, args=args, kwargs=kwargs)
+    res = dist.rpc.rpc_async(worker_name(0), fn, args=args, kwargs=kwargs)
     queue.put(res.wait())
+    dist.rpc.shutdown()
+
+
+def run_rpc_async_master_working(
+    rank,
+    world_size,
+    master_endpoint,
+    queue,
+    fn,
+    args=None,
+    kwargs=None,
+):
+    dist.rpc.init_rpc(
+        worker_name(rank),
+        rank,
+        world_size,
+        master_endpoint,
+    )
+    if dist.get_rank() == 0:
+        for i in range(1, dist.get_rank()):
+            res = dist.rpc.rpc_async(worker_name(i),
+                                     fn,
+                                     args=args,
+                                     kwargs=kwargs)
+            queue.put(res.wait())
     dist.rpc.shutdown()
 
 
@@ -150,8 +197,8 @@ class RpcTestBase(unittest.TestCase):
 class TestRpc(RpcTestBase):
 
     def test_one_server_sync_paddle_add(self):
-        a = np.random.random((10, 1000))
-        b = np.random.random((10, 1000))
+        a = np.random.random((10, 100))
+        b = np.random.random((10, 100))
         res = np.add(a, b)
         args = (a, b)
         queues = self.run_rpc(True, 1, paddle_add, args)
@@ -159,8 +206,8 @@ class TestRpc(RpcTestBase):
         np.testing.assert_allclose(out, res, rtol=1e-05)
 
     def test_one_server_async_paddle_add(self):
-        a = np.random.random((10, 1000))
-        b = np.random.random((10, 1000))
+        a = np.random.random((10, 100))
+        b = np.random.random((10, 100))
         res = np.add(a, b)
         args = (a, b)
         queues = self.run_rpc(False, 1, paddle_add, args)
@@ -168,8 +215,8 @@ class TestRpc(RpcTestBase):
         np.testing.assert_allclose(out, res, rtol=1e-05)
 
     def test_two_server_sync_paddle_add(self):
-        a = np.random.random((10, 1000))
-        b = np.random.random((10, 1000))
+        a = np.random.random((10, 100))
+        b = np.random.random((10, 100))
         res = np.add(a, b)
         args = (a, b)
         queues = self.run_rpc(True, 2, paddle_add, args)
@@ -179,8 +226,8 @@ class TestRpc(RpcTestBase):
         np.testing.assert_allclose(out2, res, rtol=1e-05)
 
     def test_two_server_async_paddle_add(self):
-        a = np.random.random((10, 1000))
-        b = np.random.random((10, 1000))
+        a = np.random.random((10, 100))
+        b = np.random.random((10, 100))
         res = np.add(a, b)
         args = (a, b)
         queues = self.run_rpc(False, 2, paddle_add, args)
@@ -189,45 +236,67 @@ class TestRpc(RpcTestBase):
         np.testing.assert_allclose(out1, res, rtol=1e-05)
         np.testing.assert_allclose(out2, res, rtol=1e-05)
 
-    def test_one_server_sync_add(self):
-        a = np.random.random((10, 1000))
-        b = np.random.random((10, 1000))
+
+class TestSingleProcessRpc(unittest.TestCase):
+
+    def setUp(self):
+        self.server_endpoint = server_endpoint()
+        os.environ["PADDLE_SERVER_ENDPOINT"] = self.server_endpoint
+        dist.rpc.init_rpc(
+            worker_name(0),
+            0,
+            1,
+            server_endpoint(),
+        )
+        print("Single Process RPC setUp...")
+
+    def tearDown(self):
+        dist.rpc.shutdown()
+        print("Single Process RPC tearDown...")
+
+    def test_sync_rpc_paddle_add(self):
+        a = np.random.random((10, 100))
+        b = np.random.random((10, 100))
         res = np.add(a, b)
         args = (a, b)
-        queues = self.run_rpc(True, 1, add, args)
-        out = queues[0].get()
+        out = dist.rpc.rpc_sync(worker_name(0), paddle_add, args=args)
         np.testing.assert_allclose(out, res, rtol=1e-05)
 
-    def test_one_server_async_add(self):
-        a = np.random.random((10, 1000))
-        b = np.random.random((10, 1000))
+    def test_async_rpc_paddle_add(self):
+        a = np.random.random((10, 100))
+        b = np.random.random((10, 100))
         res = np.add(a, b)
         args = (a, b)
-        queues = self.run_rpc(False, 1, add, args)
-        out = queues[0].get()
+        out = dist.rpc.rpc_async(worker_name(0), paddle_add, args=args).wait()
         np.testing.assert_allclose(out, res, rtol=1e-05)
 
-    def test_two_server_sync_add(self):
-        a = np.random.random((10, 1000))
-        b = np.random.random((10, 1000))
-        res = np.add(a, b)
-        args = (a, b)
-        queues = self.run_rpc(True, 2, add, args)
-        out1 = queues[0].get()
-        out2 = queues[1].get()
-        np.testing.assert_allclose(out1, res, rtol=1e-05)
-        np.testing.assert_allclose(out2, res, rtol=1e-05)
+    def test_get_service_info(self):
+        info = dist.rpc.get_service_info(worker_name(0))
+        self.assertEqual(info.name, worker_name(0))
+        self.assertEqual(info.rank, 0)
+        ip, port = self.server_endpoint.split(":")
+        port = int(port)
+        self.assertEqual(info.ip, ip)
+        self.assertEqual(info.port, port)
 
-    def test_two_server_async_add(self):
-        a = np.random.random((10, 1000))
-        b = np.random.random((10, 1000))
-        res = np.add(a, b)
-        args = (a, b)
-        queues = self.run_rpc(False, 2, add, args)
-        out1 = queues[0].get()
-        out2 = queues[1].get()
-        np.testing.assert_allclose(out1, res, rtol=1e-05)
-        np.testing.assert_allclose(out2, res, rtol=1e-05)
+    def test_get_all_service_infos(self):
+        infos = dist.rpc.get_all_service_infos()
+        info = infos[0]
+        self.assertEqual(info.name, worker_name(0))
+        self.assertEqual(info.rank, 0)
+        ip, port = self.server_endpoint.split(":")
+        port = int(port)
+        self.assertEqual(info.ip, ip)
+        self.assertEqual(info.port, port)
+
+    def test_get_current_service_info(self):
+        info = dist.rpc.get_current_service_info()
+        self.assertEqual(info.name, worker_name(0))
+        self.assertEqual(info.rank, 0)
+        ip, port = self.server_endpoint.split(":")
+        port = int(port)
+        self.assertEqual(info.ip, ip)
+        self.assertEqual(info.port, port)
 
 
 if __name__ == "__main__":
