@@ -393,8 +393,6 @@ def monkey_patch_math_varbase():
                                       None)),
         ('__floordiv__',
          _binary_creator_('__floordiv__', 'floor_divide', False, None, True)),
-        ('__matmul__',
-         _binary_creator_('__matmul__', "matmul", False, None, True)),
         # for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None, True)),
@@ -417,6 +415,7 @@ def monkey_patch_math_varbase():
         '__gt__',
         '__ge__',
         '__mod__',
+        '__matmul__',
     ]
 
     global _already_patch_varbase
