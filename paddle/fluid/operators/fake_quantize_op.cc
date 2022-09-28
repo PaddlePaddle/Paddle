@@ -828,6 +828,33 @@ $$Out = X$$
   }
 };
 
+class MovingAverageAbsMaxScaleWithoutOutOpMaker
+    : public MovingAverageAbsMaxScaleOpMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor) Input is float data type.");
+    AddInput("InAccum", "Last accum.").AsDispensable();
+    AddInput("InState", "Last state.").AsDispensable();
+    AddOutput("OutScale", " Current scale");
+    AddOutput("OutState", "(Tensor) state buffer.").AsDispensable();
+    AddOutput("OutAccum", "(Tensor) accum buffer.").AsDispensable();
+    AddAttr<float>("moving_rate", "(float, default 0.9) moving rate.")
+        .SetDefault(0.9);
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set true for inference only and false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
+    AddComment(R"DOC(
+MovingAverageAbsMaxScale operator is only used for calculating the quantization scale.
+And it will not quantize the input tensor.
+
+$$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
+$$Out = X$$
+
+)DOC");
+  }
+};
+
 class StrightThroughEstimatorGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -937,6 +964,15 @@ REGISTER_OPERATOR(
     ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
     ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(moving_average_abs_max_scale,
+                       ops::MovingAverageAbsMaxScaleKernel<CPU, float>);
+
+REGISTER_OPERATOR(
+    moving_average_abs_max_scale_without_out,
+    ops::MovingAverageAbsMaxScaleOp,
+    ops::MovingAverageAbsMaxScaleWithoutOutOpMaker,
+    ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
+    ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(moving_average_abs_max_scale_without_out,
                        ops::MovingAverageAbsMaxScaleKernel<CPU, float>);
 
 REGISTER_OPERATOR(stright_throuth_estimator_grad,

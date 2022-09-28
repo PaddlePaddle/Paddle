@@ -38,6 +38,9 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(moving_average_abs_max_scale,
                         ops::MovingAverageAbsMaxScaleKernel<CUDA, float>,
                         ops::MovingAverageAbsMaxScaleKernel<CUDA, float16>);
+REGISTER_OP_CUDA_KERNEL(moving_average_abs_max_scale_without_out,
+                        ops::MovingAverageAbsMaxScaleKernel<CUDA, float>,
+                        ops::MovingAverageAbsMaxScaleKernel<CUDA, float16>);
 REGISTER_OP_CUDA_KERNEL(
     fake_quantize_dequantize_moving_average_abs_max,
     ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CUDA, float>,

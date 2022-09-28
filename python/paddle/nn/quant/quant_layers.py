@@ -378,6 +378,87 @@ class MovingAverageAbsMaxScale(Layer):
             attrs = ('moving_rate', self._moving_rate, 'is_test',
                      not self.training)
 
+            if self._reduce_type == "max":
+                paddle.distributed.all_reduce(
+                    self._scale, op=paddle.distributed.ReduceOp.MAX)
+
+            state = self._state if self.training else None
+            accum = self._accum if self.training else None
+
+            _, _, _ = _legacy_C_ops.moving_average_abs_max_scale_without_out(
+                input, accum, state, self._scale, state, accum, *attrs)
+            return input
+
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'MovingAverageAbsMaxScale')
+
+        attrs = {'moving_rate': self._moving_rate, 'is_test': not self.training}
+        inputs = {"X": [input]}
+        outputs = {"OutScale": [self._scale]}
+
+        if self.training:
+            inputs['InState'] = [self._state]
+            inputs['InAccum'] = [self._accum]
+            outputs['OutState'] = [self._state]
+            outputs['OutAccum'] = [self._accum]
+
+        self._helper.append_op(type="moving_average_abs_max_scale_without_out",
+                               inputs=inputs,
+                               outputs=outputs,
+                               attrs=attrs)
+        return input
+
+
+class QuantStub(Layer):
+
+    def __init__(self,
+                 name=None,
+                 moving_rate=0.9,
+                 dtype='float32',
+                 reduce_type=None):
+        r"""
+        MovingAverageMaxScale layer is used to calculating the output quantization
+        scale of Layer. Its computational formula is described as below:
+
+        :math:`scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)`
+        :math:`Out = X`
+        """
+        super(QuantStub, self).__init__()
+        self._moving_rate = moving_rate
+        self._reduce_type = reduce_type
+        scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
+        scale_name = unique_name.generate(scale_prefix)
+        scale_attr = ParamAttr(name=scale_name,
+                               initializer=Constant(0),
+                               trainable=False)
+        self._scale = self.create_parameter(shape=[1],
+                                            attr=scale_attr,
+                                            dtype=dtype)
+        self._scale.stop_gradient = True
+
+        state_prefix = "{}.state".format(name) if name else 'outscale.state'
+        state_attr = ParamAttr(name=unique_name.generate(state_prefix),
+                               initializer=Constant(0),
+                               trainable=False)
+        self._state = self.create_parameter(shape=[1],
+                                            attr=state_attr,
+                                            dtype=dtype)
+        self._state.stop_gradient = True
+
+        accum_prefix = "{}.accum".format(name) if name else 'outscale.accum'
+        accum_attr = ParamAttr(name=unique_name.generate(accum_prefix),
+                               initializer=Constant(0),
+                               trainable=False)
+        self._accum = self.create_parameter(shape=[1],
+                                            attr=accum_attr,
+                                            dtype=dtype)
+        self._accum.stop_gradient = True
+
+    def forward(self, input):
+        if in_dynamic_mode():
+            attrs = ('moving_rate', self._moving_rate, 'is_test',
+                     not self.training)
+
             quant_out = _varbase_creator(type=input.type,
                                          name="{}.tmp".format(input.name),
                                          shape=input.shape,
@@ -396,7 +477,7 @@ class MovingAverageAbsMaxScale(Layer):
             return out
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                                 'MovingAverageAbsMaxScale')
+                                 'QuantStub')
 
         attrs = {'moving_rate': self._moving_rate, 'is_test': not self.training}
         inputs = {"X": [input]}
@@ -420,9 +501,6 @@ class MovingAverageAbsMaxScale(Layer):
                                attrs=attrs)
 
         return quant_out
-
-
-QuantStub = MovingAverageAbsMaxScale
 
 
 class QuantizedConv2D(Layer):
