@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import tempfile
 import unittest
@@ -1041,8 +1039,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
     def test_dropout_with_seed(self):
         """
         when we recompute a dropout op, make sure that the recomputed one
-	    is the same as the original var.
-	    """
+        is the same as the original var.
+        """
 
         def gen_data():
             return {

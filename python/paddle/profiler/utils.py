@@ -36,8 +36,10 @@ class RecordEvent(ContextDecorator):
     Interface for recording a time range by user defined.
 
     Args:
-        name(str): Name of the record event
-        event_type(TracerEventType, optional): Optional, default value is TracerEventType.PythonUserDefined. It is reserved for internal purpose, and it is better not to specify this parameter.
+        name (str): Name of the record event.
+        event_type (TracerEventType, optional): Optional, default value is
+            `TracerEventType.PythonUserDefined`. It is reserved for internal
+            purpose, and it is better not to specify this parameter.
 
     Examples:
         .. code-block:: python
@@ -59,7 +61,7 @@ class RecordEvent(ContextDecorator):
             record_event.end()
 
     **Note**:
-        RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of RECORD.
+        RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of `RECORD`.
     """
 
     def __init__(
@@ -134,7 +136,7 @@ def load_profiler_result(filename: str):
         filename(str): Name of the exported protobuf file of profiler data.
 
     Returns:
-        ProfilerResult object, which stores profiling data.
+        ``ProfilerResult`` object, which stores profiling data.
 
     Examples:
         .. code-block:: python

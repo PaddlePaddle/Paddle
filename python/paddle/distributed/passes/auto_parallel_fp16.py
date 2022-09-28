@@ -368,6 +368,10 @@ class FP16State(object):
         for cast_name, src_name, dst_dtype, src_dtype, slot_name in self.forward_input_cast_ops[
                 forward_op_id]:
 
+            # some forward output is not need by backward computation, e.g. logit in softmax_with_cross_entropy
+            if slot_name not in op.input_names:
+                continue
+
             # rename input
             assert src_name in op.input(
                 slot_name), "var: {} not in op's {}. {}".format(
@@ -379,12 +383,15 @@ class FP16State(object):
 
             # create cast grad
             grad_slot_name = slot_name + "@GRAD"
-            assert grad_slot_name in op.output_names
+            assert grad_slot_name in op.output_names, "[{}], Current Op: {}".format(
+                grad_slot_name, str(op))
+
+            # some forward input maybe stop_gradient=True, e.g. input_mask
             if len(op.output(grad_slot_name)) == 0:
-                var = block.var(src_name)
-                assert var.stop_gradient is True
                 continue
-            assert len(op.output(grad_slot_name)) == 1
+            assert len(
+                op.output(grad_slot_name)) == 1, "[{}], Current Op: {}".format(
+                    grad_slot_name, str(op))
             grad_name = op.output(grad_slot_name)[0]
             grad = block.var(grad_name)
             grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)

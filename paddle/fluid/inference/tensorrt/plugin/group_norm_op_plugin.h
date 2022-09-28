@@ -105,10 +105,10 @@ class GroupNormPlugin : public PluginTensorRT {
  private:
   std::vector<float> scale_;
   std::vector<float> bias_;
-  framework::Tensor scale_t;
-  framework::Tensor bias_t;
-  framework::Tensor mean_t;
-  framework::Tensor variance_t;
+  phi::DenseTensor scale_t;
+  phi::DenseTensor bias_t;
+  phi::DenseTensor mean_t;
+  phi::DenseTensor variance_t;
   int groups_;
   float eps_;
   std::vector<int64_t> mean_shape_;
@@ -187,10 +187,11 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, mean_shape_);
     SerializeValue(&buffer, variance_shape_);
   }
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -226,10 +227,10 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
  private:
   std::vector<float> scale_;
   std::vector<float> bias_;
-  framework::Tensor scale_t;
-  framework::Tensor bias_t;
-  framework::Tensor mean_t;
-  framework::Tensor variance_t;
+  phi::DenseTensor scale_t;
+  phi::DenseTensor bias_t;
+  phi::DenseTensor mean_t;
+  phi::DenseTensor variance_t;
   int groups_;
   float eps_;
   std::vector<int64_t> mean_shape_;

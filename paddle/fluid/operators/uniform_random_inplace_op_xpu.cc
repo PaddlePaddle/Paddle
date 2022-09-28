@@ -75,7 +75,7 @@ template <typename T>
 class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (dx) {
       T *data = dx->mutable_data<T>(ctx.GetPlace());
       int64_t size = dx->numel();

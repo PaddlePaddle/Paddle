@@ -18,7 +18,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
@@ -26,7 +26,7 @@ class LabelSmoothMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in_t = ctx.Input<LoDTensor>("X");
-    auto* dist_t = ctx.Input<Tensor>("PriorDist");
+    auto* dist_t = ctx.Input<phi::DenseTensor>("PriorDist");
     auto* out_t = ctx.Output<LoDTensor>("Out");
     auto epsilon = ctx.Attr<float>("epsilon");
     auto epsilon_gt = 1.0f - epsilon;
@@ -55,7 +55,7 @@ class LabelSmoothMLUKernel : public framework::OpKernel<T> {
                         epsilon);
     } else {
       auto& dev_ctx = ctx.template device_context<MLUDeviceContext>();
-      framework::Tensor dist_tensor =
+      phi::DenseTensor dist_tensor =
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1, label_dim}, dev_ctx);
       MLUCnnlTensorDesc dist_desc(dist_tensor);
       auto value = static_cast<T>(1.0f / label_dim);

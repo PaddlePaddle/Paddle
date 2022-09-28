@@ -328,7 +328,12 @@
 - op : batch_norm
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
-  invoke : batch_norm_impl(x, scale, bias, mean, variance, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics, fuse_with_relu)
+  infer_meta:
+    func : BatchNormInferMeta
+  kernel :
+    func : batch_norm
+    data_type : x
+  view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
 
 - op : bce_loss
@@ -643,12 +648,15 @@
   backward : cumsum_grad
 
 - op : decode_jpeg
-  args : (Tensor x, str mode)
+  args : (Tensor x, str mode, Place place)
   output : Tensor(out)
   infer_meta :
     func : DecodeJpegInferMeta
+    param : [x, mode]
   kernel :
     func : decode_jpeg
+    param : [x, mode]
+    backend : place
 
 - op : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
@@ -798,7 +806,14 @@
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
   output : Tensor
-  invoke : embedding_impl(x, weight, padding_idx, sparse)
+  infer_meta :
+    func : EmbeddingInferMeta
+    param : [x, weight, padding_idx]
+  kernel :
+    func : embedding {dense, dense -> dense}
+           sparse_weight_embedding {dense, selected_rows -> dense}
+    param : [x, weight, padding_idx]
+    data_type : weight
   backward : embedding_grad
 
 - op : empty
@@ -3006,3 +3021,12 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
+
+- op: bincount
+  args: (Tensor x, Tensor weights, Scalar minlength)
+  output: Tensor(out)
+  infer_meta:
+    func: BincountInferMeta
+  kernel:
+    func: bincount
+  optional: weights

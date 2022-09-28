@@ -21,7 +21,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class ResnetBasicBlockAttr {
  public:
@@ -49,11 +49,11 @@ class ResnetBasicBlockAttr {
     global_stats = test_mode || use_global_stats;
 
     // init shape
-    auto input1 = ctx.Input<Tensor>("X");
-    auto filter1 = ctx.Input<Tensor>("Filter1");
-    auto conv1_out = ctx.Output<Tensor>("Conv1");
-    auto filter2 = ctx.Input<Tensor>("Filter2");
-    auto conv2_out = ctx.Output<Tensor>("Conv2");
+    auto input1 = ctx.Input<phi::DenseTensor>("X");
+    auto filter1 = ctx.Input<phi::DenseTensor>("Filter1");
+    auto conv1_out = ctx.Output<phi::DenseTensor>("Conv1");
+    auto filter2 = ctx.Input<phi::DenseTensor>("Filter2");
+    auto conv2_out = ctx.Output<phi::DenseTensor>("Conv2");
     conv1_input_shape = phi::vectorize<int>(input1->dims());
     conv1_output_shape = phi::vectorize<int>(conv1_out->dims());
     conv1_filter_shape = phi::vectorize<int>(filter1->dims());
@@ -69,8 +69,8 @@ class ResnetBasicBlockAttr {
     conv2_output_numel = conv2_out->numel();
 
     if (has_shortcut) {
-      auto filter3 = ctx.Input<Tensor>("Filter3");
-      auto conv3_out = ctx.Output<Tensor>("Conv3");
+      auto filter3 = ctx.Input<phi::DenseTensor>("Filter3");
+      auto conv3_out = ctx.Output<phi::DenseTensor>("Conv3");
       conv3_input_shape = phi::vectorize<int>(input1->dims());
       conv3_output_shape = phi::vectorize<int>(conv3_out->dims());
       conv3_filter_shape = phi::vectorize<int>(filter3->dims());
@@ -137,11 +137,11 @@ class ResnetBasicBlockGradAttr {
     find_max = ctx.Attr<bool>("find_conv_input_max");
 
     // init shape
-    auto input1 = ctx.Input<Tensor>("X");
-    auto filter1 = ctx.Input<Tensor>("Filter1");
-    auto conv1_out = ctx.Input<Tensor>("Conv1");
-    auto filter2 = ctx.Input<Tensor>("Filter2");
-    auto conv2_out = ctx.Input<Tensor>("Conv2");
+    auto input1 = ctx.Input<phi::DenseTensor>("X");
+    auto filter1 = ctx.Input<phi::DenseTensor>("Filter1");
+    auto conv1_out = ctx.Input<phi::DenseTensor>("Conv1");
+    auto filter2 = ctx.Input<phi::DenseTensor>("Filter2");
+    auto conv2_out = ctx.Input<phi::DenseTensor>("Conv2");
     conv1_input_shape = phi::vectorize<int>(input1->dims());
     conv1_output_shape = phi::vectorize<int>(conv1_out->dims());
     conv1_filter_shape = phi::vectorize<int>(filter1->dims());
@@ -157,8 +157,8 @@ class ResnetBasicBlockGradAttr {
     conv2_output_numel = conv2_out->numel();
 
     if (has_shortcut) {
-      auto filter3 = ctx.Input<Tensor>("Filter3");
-      auto conv3_out = ctx.Input<Tensor>("Conv3");
+      auto filter3 = ctx.Input<phi::DenseTensor>("Filter3");
+      auto conv3_out = ctx.Input<phi::DenseTensor>("Conv3");
       conv3_input_shape = phi::vectorize<int>(input1->dims());
       conv3_output_shape = phi::vectorize<int>(conv3_out->dims());
       conv3_filter_shape = phi::vectorize<int>(filter3->dims());
@@ -307,19 +307,19 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("It must use XPUPlace."));
 
     // input
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* filter1 = ctx.Input<Tensor>("Filter1");
-    const Tensor* scale1 = ctx.Input<Tensor>("Scale1");
-    const Tensor* bias1 = ctx.Input<Tensor>("Bias1");
-    const Tensor* filter2 = ctx.Input<Tensor>("Filter2");
-    const Tensor* scale2 = ctx.Input<Tensor>("Scale2");
-    const Tensor* bias2 = ctx.Input<Tensor>("Bias2");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* filter1 = ctx.Input<phi::DenseTensor>("Filter1");
+    const phi::DenseTensor* scale1 = ctx.Input<phi::DenseTensor>("Scale1");
+    const phi::DenseTensor* bias1 = ctx.Input<phi::DenseTensor>("Bias1");
+    const phi::DenseTensor* filter2 = ctx.Input<phi::DenseTensor>("Filter2");
+    const phi::DenseTensor* scale2 = ctx.Input<phi::DenseTensor>("Scale2");
+    const phi::DenseTensor* bias2 = ctx.Input<phi::DenseTensor>("Bias2");
 
     // output
-    Tensor* conv1_output = ctx.Output<Tensor>("Conv1");
-    Tensor* conv2_output = ctx.Output<Tensor>("Conv2");
-    Tensor* conv2_input = ctx.Output<Tensor>("Conv2Input");
-    Tensor* output = ctx.Output<Tensor>("Y");
+    phi::DenseTensor* conv1_output = ctx.Output<phi::DenseTensor>("Conv1");
+    phi::DenseTensor* conv2_output = ctx.Output<phi::DenseTensor>("Conv2");
+    phi::DenseTensor* conv2_input = ctx.Output<phi::DenseTensor>("Conv2Input");
+    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Y");
 
     auto place = ctx.GetPlace();
     auto x_data = reinterpret_cast<const XPUT*>(x->data<T>());
@@ -348,19 +348,23 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
 
     // init find max
     if (attr.find_max) {
-      Tensor* max_input1 = ctx.Output<Tensor>("MaxInput1");
-      Tensor* max_filter1 = ctx.Output<Tensor>("MaxFilter1");
+      phi::DenseTensor* max_input1 = ctx.Output<phi::DenseTensor>("MaxInput1");
+      phi::DenseTensor* max_filter1 =
+          ctx.Output<phi::DenseTensor>("MaxFilter1");
       conv1_input_max_data = max_input1->mutable_data<float>(place);
       conv1_filter_max_data = max_filter1->mutable_data<float>(place);
 
-      Tensor* max_input2 = ctx.Output<Tensor>("MaxInput2");
-      Tensor* max_filter2 = ctx.Output<Tensor>("MaxFilter2");
+      phi::DenseTensor* max_input2 = ctx.Output<phi::DenseTensor>("MaxInput2");
+      phi::DenseTensor* max_filter2 =
+          ctx.Output<phi::DenseTensor>("MaxFilter2");
       conv2_input_max_data = max_input2->mutable_data<float>(place);
       conv2_filter_max_data = max_filter2->mutable_data<float>(place);
 
       if (attr.has_shortcut) {
-        Tensor* max_input3 = ctx.Output<Tensor>("MaxInput3");
-        Tensor* max_filter3 = ctx.Output<Tensor>("MaxFilter3");
+        phi::DenseTensor* max_input3 =
+            ctx.Output<phi::DenseTensor>("MaxInput3");
+        phi::DenseTensor* max_filter3 =
+            ctx.Output<phi::DenseTensor>("MaxFilter3");
         conv3_input_max_data = max_input3->mutable_data<float>(place);
         conv3_filter_max_data = max_filter3->mutable_data<float>(place);
       }
@@ -373,8 +377,8 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
     // 1. short
     const XPUT* z_out_data = nullptr;
     if (attr.has_shortcut) {
-      Tensor* conv3_out = ctx.Output<Tensor>("Conv3");
-      const Tensor* filter3 = ctx.Input<Tensor>("Filter3");
+      phi::DenseTensor* conv3_out = ctx.Output<phi::DenseTensor>("Conv3");
+      const phi::DenseTensor* filter3 = ctx.Input<phi::DenseTensor>("Filter3");
       auto conv3_filter_data =
           reinterpret_cast<const XPUT*>(filter3->data<T>());
       auto conv3_output_data =
@@ -414,8 +418,8 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
                  attr.group);
 
       // bn3
-      const Tensor* scale3 = ctx.Input<Tensor>("Scale3");
-      const Tensor* bias3 = ctx.Input<Tensor>("Bias3");
+      const phi::DenseTensor* scale3 = ctx.Input<phi::DenseTensor>("Scale3");
+      const phi::DenseTensor* bias3 = ctx.Input<phi::DenseTensor>("Bias3");
       auto bias3_data = bias3->data<float>();
       auto scale3_data = scale3->data<float>();
 
@@ -423,10 +427,14 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_XDNN_NOT_NULL(bn3_output_data);
 
       if (!attr.global_stats) {
-        Tensor* saved_mean3 = ctx.Output<Tensor>("SavedMean3");
-        Tensor* saved_invstd3 = ctx.Output<Tensor>("SavedInvstd3");
-        Tensor* running_mean3 = ctx.Output<Tensor>("Mean3Out");
-        Tensor* running_var3 = ctx.Output<Tensor>("Var3Out");
+        phi::DenseTensor* saved_mean3 =
+            ctx.Output<phi::DenseTensor>("SavedMean3");
+        phi::DenseTensor* saved_invstd3 =
+            ctx.Output<phi::DenseTensor>("SavedInvstd3");
+        phi::DenseTensor* running_mean3 =
+            ctx.Output<phi::DenseTensor>("Mean3Out");
+        phi::DenseTensor* running_var3 =
+            ctx.Output<phi::DenseTensor>("Var3Out");
 
         auto saved_mean3_data = saved_mean3->mutable_data<float>(place);
         auto saved_invstd3_data = saved_invstd3->mutable_data<float>(place);
@@ -455,8 +463,8 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
                                          0);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm_fusion");
       } else {
-        const auto* mean3 = ctx.Input<Tensor>("Mean3");
-        const auto* var3 = ctx.Input<Tensor>("Var3");
+        const auto* mean3 = ctx.Input<phi::DenseTensor>("Mean3");
+        const auto* var3 = ctx.Input<phi::DenseTensor>("Var3");
         const auto* mean3_data = mean3->data<float>();
         const auto* variance3_data = var3->data<float>();
         r = xpu::batch_norm_infer<XPUT>(dev_ctx.x_context(),
@@ -513,10 +521,13 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
 
     // 3. bn1 + relu
     if (!attr.global_stats) {
-      Tensor* saved_mean1 = ctx.Output<Tensor>("SavedMean1");
-      Tensor* saved_invstd1 = ctx.Output<Tensor>("SavedInvstd1");
-      Tensor* running_mean1 = ctx.Output<Tensor>("Mean1Out");
-      Tensor* running_var1 = ctx.Output<Tensor>("Var1Out");
+      phi::DenseTensor* saved_mean1 =
+          ctx.Output<phi::DenseTensor>("SavedMean1");
+      phi::DenseTensor* saved_invstd1 =
+          ctx.Output<phi::DenseTensor>("SavedInvstd1");
+      phi::DenseTensor* running_mean1 =
+          ctx.Output<phi::DenseTensor>("Mean1Out");
+      phi::DenseTensor* running_var1 = ctx.Output<phi::DenseTensor>("Var1Out");
 
       auto saved_mean1_data = saved_mean1->mutable_data<float>(place);
       auto saved_invstd1_data = saved_invstd1->mutable_data<float>(place);
@@ -549,8 +560,8 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
       auto bn1_output_data = RAII_GUARD.alloc<XPUT>(attr.conv1_output_numel);
       PADDLE_ENFORCE_XDNN_NOT_NULL(bn1_output_data);
 
-      const auto* mean1 = ctx.Input<Tensor>("Mean1");
-      const auto* var1 = ctx.Input<Tensor>("Var1");
+      const auto* mean1 = ctx.Input<phi::DenseTensor>("Mean1");
+      const auto* var1 = ctx.Input<phi::DenseTensor>("Var1");
       const auto* mean_data = mean1->data<float>();
       const auto* variance_data = var1->data<float>();
       r = xpu::batch_norm_infer<XPUT>(dev_ctx.x_context(),
@@ -580,8 +591,9 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
     XPUT* conv2_filter_l3_data =
         RAII_GUARD.alloc_l3<XPUT>(attr.conv2_filter_numel);
     if (attr.find_max) {
-      Tensor* max_input2 = ctx.Output<Tensor>("MaxInput2");
-      Tensor* max_filter2 = ctx.Output<Tensor>("MaxFilter2");
+      phi::DenseTensor* max_input2 = ctx.Output<phi::DenseTensor>("MaxInput2");
+      phi::DenseTensor* max_filter2 =
+          ctx.Output<phi::DenseTensor>("MaxFilter2");
       conv2_input_max_data = max_input2->mutable_data<float>(place);
       conv2_filter_max_data = max_filter2->mutable_data<float>(place);
 
@@ -615,10 +627,13 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
 
     // 5. bn2
     if (!attr.global_stats) {
-      Tensor* saved_mean2 = ctx.Output<Tensor>("SavedMean2");
-      Tensor* saved_var2 = ctx.Output<Tensor>("SavedInvstd2");
-      Tensor* running_mean2 = ctx.Output<Tensor>("Mean2Out");
-      Tensor* running_var2 = ctx.Output<Tensor>("Var2Out");
+      phi::DenseTensor* saved_mean2 =
+          ctx.Output<phi::DenseTensor>("SavedMean2");
+      phi::DenseTensor* saved_var2 =
+          ctx.Output<phi::DenseTensor>("SavedInvstd2");
+      phi::DenseTensor* running_mean2 =
+          ctx.Output<phi::DenseTensor>("Mean2Out");
+      phi::DenseTensor* running_var2 = ctx.Output<phi::DenseTensor>("Var2Out");
 
       auto saved_mean2_data = saved_mean2->mutable_data<float>(place);
       auto saved_var2_data = saved_var2->mutable_data<float>(place);
@@ -650,8 +665,8 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
       auto bn2_out_data = RAII_GUARD.alloc<XPUT>(attr.conv2_output_numel);
       PADDLE_ENFORCE_XDNN_NOT_NULL(bn2_out_data);
 
-      const auto* mean2 = ctx.Input<Tensor>("Mean2");
-      const auto* var2 = ctx.Input<Tensor>("Var2");
+      const auto* mean2 = ctx.Input<phi::DenseTensor>("Mean2");
+      const auto* var2 = ctx.Input<phi::DenseTensor>("Var2");
       const auto* mean_data = mean2->data<float>();
       const auto* variance_data = var2->data<float>();
       r = xpu::batch_norm_infer<XPUT>(dev_ctx.x_context(),
@@ -694,48 +709,69 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
         true,
         platform::errors::PreconditionNotMet("It must use XPUPlace."));
 
-    const Tensor* y_grad = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    const Tensor* y = ctx.Input<Tensor>("Y");
+    const phi::DenseTensor* y_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    const phi::DenseTensor* y = ctx.Input<phi::DenseTensor>("Y");
 
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* filter1 = ctx.Input<Tensor>("Filter1");
-    const Tensor* scale1 = ctx.Input<Tensor>("Scale1");
-    const Tensor* filter2 = ctx.Input<Tensor>("Filter2");
-    const Tensor* scale2 = ctx.Input<Tensor>("Scale2");
-    const Tensor* saved_mean1 = ctx.Input<Tensor>("SavedMean1");
-    const Tensor* saved_invstd1 = ctx.Input<Tensor>("SavedInvstd1");
-    const Tensor* saved_mean2 = ctx.Input<Tensor>("SavedMean2");
-    const Tensor* saved_invstd2 = ctx.Input<Tensor>("SavedInvstd2");
-    const Tensor* conv1_out = ctx.Input<Tensor>("Conv1");
-    const Tensor* conv2_out = ctx.Input<Tensor>("Conv2");
-    const Tensor* conv2_input = ctx.Input<Tensor>("Conv2Input");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* filter1 = ctx.Input<phi::DenseTensor>("Filter1");
+    const phi::DenseTensor* scale1 = ctx.Input<phi::DenseTensor>("Scale1");
+    const phi::DenseTensor* filter2 = ctx.Input<phi::DenseTensor>("Filter2");
+    const phi::DenseTensor* scale2 = ctx.Input<phi::DenseTensor>("Scale2");
+    const phi::DenseTensor* saved_mean1 =
+        ctx.Input<phi::DenseTensor>("SavedMean1");
+    const phi::DenseTensor* saved_invstd1 =
+        ctx.Input<phi::DenseTensor>("SavedInvstd1");
+    const phi::DenseTensor* saved_mean2 =
+        ctx.Input<phi::DenseTensor>("SavedMean2");
+    const phi::DenseTensor* saved_invstd2 =
+        ctx.Input<phi::DenseTensor>("SavedInvstd2");
+    const phi::DenseTensor* conv1_out = ctx.Input<phi::DenseTensor>("Conv1");
+    const phi::DenseTensor* conv2_out = ctx.Input<phi::DenseTensor>("Conv2");
+    const phi::DenseTensor* conv2_input =
+        ctx.Input<phi::DenseTensor>("Conv2Input");
 
-    const Tensor* filter3 = ctx.Input<Tensor>("Filter3");
-    const Tensor* conv3_out = ctx.Input<Tensor>("Conv3");
-    const Tensor* scale3 = ctx.Input<Tensor>("Scale3");
-    const Tensor* saved_mean3 = ctx.Input<Tensor>("SavedMean3");
-    const Tensor* saved_invstd3 = ctx.Input<Tensor>("SavedInvstd3");
+    const phi::DenseTensor* filter3 = ctx.Input<phi::DenseTensor>("Filter3");
+    const phi::DenseTensor* conv3_out = ctx.Input<phi::DenseTensor>("Conv3");
+    const phi::DenseTensor* scale3 = ctx.Input<phi::DenseTensor>("Scale3");
+    const phi::DenseTensor* saved_mean3 =
+        ctx.Input<phi::DenseTensor>("SavedMean3");
+    const phi::DenseTensor* saved_invstd3 =
+        ctx.Input<phi::DenseTensor>("SavedInvstd3");
 
-    const Tensor* conv1_input_max = ctx.Input<Tensor>("MaxInput1");
-    const Tensor* conv1_filter_max = ctx.Input<Tensor>("MaxFilter1");
-    const Tensor* conv2_input_max = ctx.Input<Tensor>("MaxInput2");
-    const Tensor* conv2_filter_max = ctx.Input<Tensor>("MaxFilter2");
-    const Tensor* conv3_input_max = ctx.Input<Tensor>("MaxInput3");
-    const Tensor* conv3_filter_max = ctx.Input<Tensor>("MaxFilter3");
+    const phi::DenseTensor* conv1_input_max =
+        ctx.Input<phi::DenseTensor>("MaxInput1");
+    const phi::DenseTensor* conv1_filter_max =
+        ctx.Input<phi::DenseTensor>("MaxFilter1");
+    const phi::DenseTensor* conv2_input_max =
+        ctx.Input<phi::DenseTensor>("MaxInput2");
+    const phi::DenseTensor* conv2_filter_max =
+        ctx.Input<phi::DenseTensor>("MaxFilter2");
+    const phi::DenseTensor* conv3_input_max =
+        ctx.Input<phi::DenseTensor>("MaxInput3");
+    const phi::DenseTensor* conv3_filter_max =
+        ctx.Input<phi::DenseTensor>("MaxFilter3");
 
-    Tensor* x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    Tensor* filter1_grad =
-        ctx.Output<Tensor>(framework::GradVarName("Filter1"));
-    Tensor* scale1_grad = ctx.Output<Tensor>(framework::GradVarName("Scale1"));
-    Tensor* bias1_grad = ctx.Output<Tensor>(framework::GradVarName("Bias1"));
-    Tensor* filter2_grad =
-        ctx.Output<Tensor>(framework::GradVarName("Filter2"));
-    Tensor* scale2_grad = ctx.Output<Tensor>(framework::GradVarName("Scale2"));
-    Tensor* bias2_grad = ctx.Output<Tensor>(framework::GradVarName("Bias2"));
-    Tensor* filter3_grad =
-        ctx.Output<Tensor>(framework::GradVarName("Filter3"));
-    Tensor* scale3_grad = ctx.Output<Tensor>(framework::GradVarName("Scale3"));
-    Tensor* bias3_grad = ctx.Output<Tensor>(framework::GradVarName("Bias3"));
+    phi::DenseTensor* x_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    phi::DenseTensor* filter1_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter1"));
+    phi::DenseTensor* scale1_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale1"));
+    phi::DenseTensor* bias1_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias1"));
+    phi::DenseTensor* filter2_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter2"));
+    phi::DenseTensor* scale2_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale2"));
+    phi::DenseTensor* bias2_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias2"));
+    phi::DenseTensor* filter3_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter3"));
+    phi::DenseTensor* scale3_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale3"));
+    phi::DenseTensor* bias3_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias3"));
 
     // attrs
     ResnetBasicBlockGradAttr attr(ctx);
