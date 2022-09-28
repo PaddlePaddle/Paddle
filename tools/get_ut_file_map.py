@@ -59,6 +59,7 @@ def handle_ut_file_map(rootPath):
     utNotSuccess_list = []
     ut_map_path = "%s/build/ut_map" % rootPath
     files = os.listdir(ut_map_path)
+    #.
     ut_file_map = {}
     count = 0
     not_success_file = open("%s/build/prec_delta" % rootPath, 'w')
