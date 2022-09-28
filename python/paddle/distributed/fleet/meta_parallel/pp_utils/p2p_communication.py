@@ -173,9 +173,14 @@ def _partial_send_op(tensor, group, use_calc_stream, ring_id, dst, nranks,
     elif in_dygraph_mode():
         group = paddle.distributed.collective._get_default_group(
         ) if group is None else group
-        comm_op = group.process_group.send_partial_on_calc_stream \
-            if use_calc_stream else group.process_group.send_partial
-        return comm_op(tensor, dst_rank_in_group, nranks, rank_id)
+        if use_calc_stream:
+            task = group.process_group.send_partial_on_calc_stream(
+                tensor, dst, nranks, rank_id)
+            task.wait()
+            return None
+        else:
+            return group.process_group.send_partial(tensor, dst, nranks,
+                                                    rank_id)
 
 
 def send_partial(tensor,
@@ -214,9 +219,14 @@ def _partial_recv_op(tensor, group, use_calc_stream, ring_id, src, nranks,
     elif in_dygraph_mode():
         group = paddle.distributed.collective._get_default_group(
         ) if group is None else group
-        comm_op = group.process_group.recv_partial_on_calc_stream \
-            if use_calc_stream else group.process_group.recv_partial
-        return comm_op(tensor, src_rank_in_group, nranks, rank_id)
+        if use_calc_stream:
+            task = group.process_group.recv_partial_on_calc_stream(
+                tensor, src, nranks, rank_id)
+            task.wait()
+            return None
+        else:
+            return group.process_group.recv_partial(tensor, src, nranks,
+                                                    rank_id)
 
 
 def recv_partial(tensor,
@@ -254,9 +264,14 @@ def _partial_allgather_op(tensor, group, use_calc_stream, ring_id, nranks,
     elif in_dygraph_mode():
         group = paddle.distributed.collective._get_default_group(
         ) if group is None else group
-        comm_op = group.process_group.all_gather_partial_on_calc_stream \
-            if use_calc_stream else group.process_group.all_gather_partial
-        return comm_op(tensor, tensor, nranks, rank_id)
+        if use_calc_stream:
+            task = group.process_group.all_gather_partial_on_calc_stream(
+                tensor, tensor, nranks, rank_id)
+            task.wait()
+            return None
+        else:
+            return group.process_group.all_gather_partial(
+                tensor, tensor, nranks, rank_id)
 
 
 def allgather_partial(tensor,
