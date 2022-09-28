@@ -21,7 +21,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using framework::DataLayout;
 
 template <typename T>
@@ -48,7 +48,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    auto x_vec_dims = framework::vectorize(x->dims());
+    auto x_vec_dims = phi::vectorize(x->dims());
 
     mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
     platform::ReorderMKLDNNHandler reorder_handler(
@@ -140,7 +140,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    auto dout_vec_dims = framework::vectorize(dout->dims());
+    auto dout_vec_dims = phi::vectorize(dout->dims());
 
     mkldnn::memory::data_type dout_type =
         framework::ToMKLDNNDataType(dout->type());
