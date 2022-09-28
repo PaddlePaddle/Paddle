@@ -241,6 +241,39 @@ class TestSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
         ]
 
 
+class TestRSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
+
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'rsqrt_p'
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
+        self.prim_input = {
+            'X': X,
+        }
+        self.prim_output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.prim_attrs = {}
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
+
+        self.all_ops = [
+            # prim op:
+            'rsqrt_p',
+            # jvp op:
+            'div_p',
+            'div_p',
+            'mul_p',
+            'fill_constant_p',
+            # 'sqrt_p',
+            # transpose op:
+        ]
+
+
 class TestTanhPJVPAndTranspose(TestAddPJVPAndTranspose):
 
     def init_data(self):
@@ -430,6 +463,42 @@ class TestAbsPJVPAndTranspose(TestAddPJVPAndTranspose):
             'fill_constant_p',
             'sub_p',
             # transpose op:
+        ]
+
+
+class TestCastPJVPAndTranspose(TestAddPJVPAndTranspose):
+
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'cast_p'
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
+        self.prim_input = {
+            'X': X,
+        }
+        self.prim_output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.prim_attrs = {'dtype': paddle.float64}
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
+
+        # Set transpose
+        check_dot = lambda v: True
+        Y_BAR = paddle.static.data(name='Y_BAR', shape=[5, 6], dtype='float')
+        self.transpose_args = (check_dot, Y_BAR)
+        self.transpose_out_shape_map = {0: X}
+
+        self.all_ops = [
+            # prim op:
+            'cast_p',
+            # jvp op:
+            'cast_p',
+            # transpose op:
+            'cast_p'
         ]
 
 

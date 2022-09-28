@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import argparse
 import os
@@ -49,9 +47,7 @@ class TestCollectiveAllreduceNewGroupAPI(TestCollectiveAPIRunnerBase):
                                   shape=[10, 1000],
                                   dtype='float32')
             gp = paddle.distributed.new_group([0, 1])
-            paddle.distributed.all_reduce(tindata,
-                                          group=gp,
-                                          use_calc_stream=True)
+            paddle.distributed.all_reduce(tindata, group=gp, sync_op=True)
             return [tindata]
 
 

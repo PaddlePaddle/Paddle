@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import logging
@@ -313,8 +311,10 @@ class TestDynamicToStaticCode2(TestDynamicToStaticCode):
         class StaticCode():
 
             def func_convert_then_not_to_static(x):
+                __return_value_0 = None
                 y = _jst.Call(func_not_to_static)(x)
-                return y
+                __return_value_0 = y
+                return __return_value_0
 
         self.answer_func = StaticCode.func_convert_then_not_to_static
 

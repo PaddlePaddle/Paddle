@@ -22,7 +22,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using StringPairMap = std::unordered_map<std::string, std::pair<bool, Tensor>>;
+using StringPairMap =
+    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 
 class ComputePropagateScalesMkldnnPass : public FusePassBase {
  public:
@@ -38,11 +39,11 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
 
  private:
   void GetTensorFromVector(const std::vector<float>& data_v,
-                           Tensor* tensor) const;
+                           phi::DenseTensor* tensor) const;
 
   void GetQuantInfo(ir::Graph* graph, StringPairMap* var_quant_scales) const;
 
-  std::vector<float> GetScales(Tensor* tensor, int axis) const;
+  std::vector<float> GetScales(phi::DenseTensor* tensor, int axis) const;
 
   void ComputeVarScales(ir::Graph* graph,
                         Scope* scope,
@@ -54,7 +55,7 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
   void ComputeSingleGruWeightScales(Scope* scope,
                                     const std::string& wx_var_name,
                                     const std::string& wh_var_name,
-                                    Tensor* tensor) const;
+                                    phi::DenseTensor* tensor) const;
 
   void ComputeGruWeightScales(ir::Graph* graph,
                               Scope* scope,
@@ -65,7 +66,7 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
   void ComputeSingleLstmWeightScales(Scope* scope,
                                      const std::string& wx_var_name,
                                      const std::string& wh_var_name,
-                                     Tensor* tensor) const;
+                                     phi::DenseTensor* tensor) const;
 
   void ComputeLstmWeightScales(ir::Graph* graph,
                                Scope* scope,

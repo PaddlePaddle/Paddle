@@ -48,15 +48,16 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
 
         A = paddle.tanh(X0)
         B = paddle.tanh(X1)
-        Y = paddle.add(A, B)
+        C = paddle.rsqrt(B)
+        Y = paddle.add(A, C)
 
         self.orig_xs = [X0, X1]
         self.orig_ys = [
             Y,
         ]
 
-        self.orig_ops = ['tanh', 'tanh', 'elementwise_add']
-        self.orig2prim_ops = ['tanh_p', 'tanh_p', 'add_p']
+        self.orig_ops = ['tanh', 'tanh', 'elementwise_add', 'rsqrt']
+        self.orig2prim_ops = ['tanh_p', 'tanh_p', 'add_p', 'rsqrt_p']
         self.linearize_ops = self.orig2prim_ops + [
             # call fill_const() in linearize() function
             'fill_constant_p',
@@ -71,6 +72,10 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             'fill_constant_p',
             'mul_p',
             'add_p',
+            'fill_constant_p',
+            'div_p',
+            'div_p',
+            'mul_p',
         ]
         self.transpose_ops = self.orig2prim_ops + [
             # call fill_const() in transpose() function
@@ -84,6 +89,10 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             'mul_p',
             'sub_p',
             'fill_constant_p',
+            'mul_p',
+            'div_p',
+            'div_p',
+            'fill_constant_p',
             # transposed op
             'mul_p',
             'mul_p'
@@ -92,13 +101,16 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             'tanh', 'tanh', 'add_p', 'fill_constant', 'fill_constant',
             'fill_constant', 'elementwise_mul', 'sub_p', 'fill_constant',
             'elementwise_mul', 'sub_p', 'fill_constant', 'elementwise_mul',
-            'elementwise_mul'
+            'elementwise_mul', 'rsqrt', 'fill_constant', 'elementwise_div',
+            'elementwise_div', 'elementwise_mul'
         ]
         self.prim2orig_ops = [
             'tanh', 'tanh', 'elementwise_add', 'fill_constant', 'fill_constant',
             'fill_constant', 'elementwise_mul', 'elementwise_sub',
             'fill_constant', 'elementwise_mul', 'elementwise_sub',
-            'fill_constant', 'elementwise_mul', 'elementwise_mul'
+            'fill_constant', 'elementwise_mul', 'elementwise_mul', 'rsqrt',
+            'fill_constant', 'elementwise_div', 'elementwise_div',
+            'elementwise_mul'
         ]
 
     def test_run(self):

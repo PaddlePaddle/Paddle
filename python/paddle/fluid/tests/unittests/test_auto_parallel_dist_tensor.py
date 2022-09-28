@@ -17,7 +17,7 @@ import unittest
 
 import paddle
 from paddle.fluid import core
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
@@ -71,7 +71,7 @@ class TestDistributedTensor(unittest.TestCase):
 
     def test_new_local_tensor(self):
         test_auto_parallel_reshard._global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1])
+            mesh=[0, 1], dim_names=["x"])
         test_auto_parallel_reshard._global_parallel_strategy = "dp"
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
