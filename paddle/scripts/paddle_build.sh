@@ -1877,7 +1877,8 @@ function precise_card_test_single {
             fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
-        ##delete gcda
+        #delete gcda
+        
         find paddle/fluid -name *.gcda | xargs rm -f 
     done
 }
