@@ -1093,7 +1093,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         tensors_vector_list_str = "{ " + ",".join(
             amp_tensors_vector_list) + " }"
 
-        if len(amp_tensors_vector_list) == 0 or forward_api_name == "shape":
+        if len(amp_tensors_vector_list) == 0:  # or forward_api_name == "shape":
             layout_logic_str = ""
         else:
             after_call_str = f"{returns_type_str} {result_name} = {forward_function_name}({layout_inputs_call_args_str});\n"
