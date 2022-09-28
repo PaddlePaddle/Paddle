@@ -1434,7 +1434,7 @@ int32_t GraphTable::load_edges(const std::string &path,
   VLOG(0) << "Begin GraphTable::load_edges() edge_type[" << edge_type << "]";
   if (FLAGS_graph_load_in_parallel) {
     std::vector<std::future<std::pair<uint64_t, uint64_t>>> tasks;
-    for (int i = 0; i < paths.size(); i++) {
+    for (int i = 0; i < static_cast<int>(paths.size()); i++) {
       tasks.push_back(load_node_edge_task_pool->enqueue(
           [&, i, idx, this]() -> std::pair<uint64_t, uint64_t> {
             return parse_edge_file(paths[i], idx, reverse_edge);
@@ -1893,8 +1893,8 @@ int GraphTable::get_all_id(int type_id,
   MergeShardVector shard_merge(output, slice_num);
   auto &search_shards = type_id == 0 ? edge_shards : feature_shards;
   std::vector<std::future<size_t>> tasks;
-  for (int idx = 0; idx < search_shards.size(); idx++) {
-    for (int j = 0; j < search_shards[idx].size(); j++) {
+  for (int idx = 0; idx < static_cast<int>(search_shards.size()); idx++) {
+    for (int j = 0; j < static_cast<int>(search_shards[idx].size()); j++) {
       tasks.push_back(_shards_task_pool[j % task_pool_size_]->enqueue(
           [&search_shards, idx, j, slice_num, &shard_merge]() -> size_t {
             std::vector<std::vector<uint64_t>> shard_keys;
@@ -1917,8 +1917,8 @@ int GraphTable::get_all_neighbor_id(
   MergeShardVector shard_merge(output, slice_num);
   auto &search_shards = type_id == 0 ? edge_shards : feature_shards;
   std::vector<std::future<size_t>> tasks;
-  for (int idx = 0; idx < search_shards.size(); idx++) {
-    for (int j = 0; j < search_shards[idx].size(); j++) {
+  for (int idx = 0; idx < static_cast<int>(search_shards.size()); idx++) {
+    for (int j = 0; j < static_cast<int>(search_shards[idx].size()); j++) {
       tasks.push_back(_shards_task_pool[j % task_pool_size_]->enqueue(
           [&search_shards, idx, j, slice_num, &shard_merge]() -> size_t {
             std::vector<std::vector<uint64_t>> shard_keys;
@@ -1970,7 +1970,7 @@ int GraphTable::get_all_neighbor_id(
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<size_t>> tasks;
   VLOG(3) << "begin task, task_pool_size_[" << task_pool_size_ << "]";
-  for (int i = 0; i < search_shards.size(); i++) {
+  for (int i = 0; i < static_cast<int>(search_shards.size()); i++) {
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
         [&search_shards, i, slice_num, &shard_merge]() -> size_t {
           std::vector<std::vector<uint64_t>> shard_keys;
@@ -1996,7 +1996,7 @@ int GraphTable::get_all_feature_ids(
   MergeShardVector shard_merge(output, slice_num);
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<size_t>> tasks;
-  for (int i = 0; i < search_shards.size(); i++) {
+  for (int i = 0; i < static_cast<int>(search_shards.size()); i++) {
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
         [&search_shards, i, slice_num, &shard_merge]() -> size_t {
           std::vector<std::vector<uint64_t>> shard_keys;

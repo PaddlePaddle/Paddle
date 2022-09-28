@@ -46,7 +46,7 @@ int32_t MemorySparseTable::Initialize() {
   profiler.register_profiler("pserver_sparse_select_all");
   InitializeValue();
   _shards_task_pool.resize(_task_pool_size);
-  for (int i = 0; i < _shards_task_pool.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(_shards_task_pool.size()); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
   VLOG(0) << "initalize MemorySparseTable succ";
@@ -213,7 +213,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string>& file_list,
   int o_start_idx = _shard_idx * _avg_local_shard_num;
   int o_end_idx = o_start_idx + _real_local_shard_num;
 
-  if (start_idx >= file_list.size()) {
+  if (start_idx >= static_cast<int>(file_list.size())) {
     return 0;
   }
   size_t feature_value_size =
@@ -224,7 +224,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string>& file_list,
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = start_idx; i < end_idx; ++i) {
+  for (int i = start_idx; i < end_idx; ++i) {
     FsChannelConfig channel_config;
     channel_config.path = file_list[i];
     channel_config.converter = _value_accesor->Converter(load_param).converter;
@@ -243,7 +243,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string>& file_list,
       int m_local_shard_id = i % _m_avg_local_shard_num;
       std::unordered_set<size_t> global_shard_idx;
       std::string global_shard_idx_str;
-      for (size_t j = o_start_idx; j < o_end_idx; ++j) {
+      for (int j = o_start_idx; j < o_end_idx; ++j) {
         if ((j % _avg_local_shard_num) % _m_real_local_shard_num ==
             m_local_shard_id) {
           global_shard_idx.insert(j);
@@ -300,7 +300,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string>& file_list,
 }
 
 void MemorySparseTable::Revert() {
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     _local_shards_new[i].clear();
   }
 }
@@ -441,7 +441,7 @@ int32_t MemorySparseTable::SavePatch(const std::string& path, int save_param) {
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < _m_real_local_shard_num; ++i) {
+  for (int i = 0; i < _m_real_local_shard_num; ++i) {
     FsChannelConfig channel_config;
     channel_config.path = paddle::string::format_string("%s/part-%03d-%05d",
                                                         table_path.c_str(),
@@ -463,7 +463,7 @@ int32_t MemorySparseTable::SavePatch(const std::string& path, int save_param) {
       auto write_channel =
           _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
 
-      for (size_t j = 0; j < _real_local_shard_num; ++j) {
+      for (int j = 0; j < _real_local_shard_num; ++j) {
         if (j % _m_real_local_shard_num == i) {
           auto& shard = _local_shards_patch_model[j];
           for (auto it = shard.begin(); it != shard.end(); ++it) {
@@ -546,14 +546,14 @@ int64_t MemorySparseTable::CacheShuffle(
   int feasign_size = 0;
   std::vector<paddle::framework::Channel<std::pair<uint64_t, std::string>>>
       tmp_channels;
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     tmp_channels.push_back(
         paddle::framework::MakeChannel<std::pair<uint64_t, std::string>>());
   }
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>& writer =
         writers[i];
     writer.Reset(tmp_channels[i].get());
@@ -581,7 +581,7 @@ int64_t MemorySparseTable::CacheShuffle(
   // size: " << feasign_size << " and start sparse cache data shuffle real local
   // shard num: " << _real_local_shard_num;
   std::vector<std::pair<uint64_t, std::string>> local_datas;
-  for (size_t idx_shard = 0; idx_shard < _real_local_shard_num; ++idx_shard) {
+  for (int idx_shard = 0; idx_shard < _real_local_shard_num; ++idx_shard) {
     paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>& writer =
         writers[idx_shard];
     auto channel = writer.channel();
@@ -604,9 +604,9 @@ int64_t MemorySparseTable::CacheShuffle(
         send_index[i] = i;
       }
       std::random_shuffle(send_index.begin(), send_index.end());
-      for (auto index = 0u; index < shuffle_node_num; ++index) {
+      for (int index = 0; index < shuffle_node_num; ++index) {
         int i = send_index[index];
-        if (i == _shard_idx) {
+        if (i == static_cast<int>(_shard_idx)) {
           continue;
         }
         if (ars[i].Length() == 0) {

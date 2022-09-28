@@ -353,7 +353,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
       os.clear();
       os.str("");
       os << values_[param_col_ids_[0]][y] << " 0";
-      for (int x = 2; x < param_col_ids_.size(); ++x) {
+      for (int x = 2; x < static_cast<int>(param_col_ids_.size()); ++x) {
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }
@@ -365,7 +365,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
       os.clear();
       os.str("");
       os << values_[param_col_ids_[0]][y];
-      for (int x = 1; x < param_col_ids_.size(); ++x) {
+      for (int x = 1; x < static_cast<int>(param_col_ids_.size()); ++x) {
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }

@@ -292,7 +292,7 @@ void SparseSharedAdamSGDRule::UpdateValueWork(float* w,
   lr *= sqrt(1 - beta2_pow_) / (1 - beta1_pow_);
   double sum_gsum = 0.0;
   double sum_g2sum = 0.0;
-  for (int i = 0; i < _embedding_dim; i++) {
+  for (int i = 0; i < static_cast<int>(_embedding_dim); i++) {
     // Calculation
     double new_gsum =
         _beta1_decay_rate * gsum_ + (1 - _beta1_decay_rate) * g[i];
@@ -313,7 +313,7 @@ void SparseSharedAdamSGDRule::UpdateValueWork(float* w,
 void SparseSharedAdamSGDRule::InitValueWork(float* value,
                                             float* sgd,
                                             bool zero_init) {
-  for (int i = 0; i < _embedding_dim; ++i) {
+  for (int i = 0; i < static_cast<int>(_embedding_dim); ++i) {
     if (zero_init) {
       value[i] = 0.0;
       BoundValue(value[i]);
@@ -327,7 +327,7 @@ void SparseSharedAdamSGDRule::InitValueWork(float* value,
     }
   }
   // init rule gsum and g2sum
-  for (int i = GSumIndex(); i < Beta1PowIndex(); i++) {
+  for (int i = GSumIndex(); i < static_cast<int>(Beta1PowIndex()); i++) {
     sgd[i] = 0.0;
   }
   // init beta1_pow and beta2_pow
