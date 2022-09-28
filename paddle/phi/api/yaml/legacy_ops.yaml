@@ -648,12 +648,15 @@
   backward : cumsum_grad
 
 - op : decode_jpeg
-  args : (Tensor x, str mode)
+  args : (Tensor x, str mode, Place place)
   output : Tensor(out)
   infer_meta :
     func : DecodeJpegInferMeta
+    param : [x, mode]
   kernel :
     func : decode_jpeg
+    param : [x, mode]
+    backend : place
 
 - op : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)

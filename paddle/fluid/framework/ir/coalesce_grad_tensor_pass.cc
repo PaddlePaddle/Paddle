@@ -560,7 +560,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       }
     }
     VLOG(4) << "all_persistable:" << all_persistable;
-    VLOG(4) << "any_persistable:" << all_persistable;
+    VLOG(4) << "any_persistable:" << any_persistable;
     // NOTE. In scope_buffered_ssa_graph_executor, after each execution of
     // DropScope(), non persistable vars will be Erase or Clear. So
     // coalesce_tensor op needs to be executed again after the execution
