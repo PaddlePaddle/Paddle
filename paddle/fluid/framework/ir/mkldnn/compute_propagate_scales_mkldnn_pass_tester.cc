@@ -59,7 +59,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     pass.reset(new ComputePropagateScalesMkldnnPass());
   }
 
-  std::vector<float> GetScales(Tensor* tensor, int axis) const {
+  std::vector<float> GetScales(phi::DenseTensor* tensor, int axis) const {
     return pass->GetScales(tensor, axis);
   }
 
@@ -164,7 +164,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
           graph, &scope, wx_name, wh_name, &var_quant_scales);
     }
     bool is_unsigned;
-    framework::Tensor wx_result_tensor;
+    phi::DenseTensor wx_result_tensor;
 
     std::tie(is_unsigned, wx_result_tensor) = var_quant_scales[wx_var_names];
     ASSERT_EQ(is_unsigned, false);
@@ -235,7 +235,7 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, get_scales_function) {
   const auto& values = positive_and_negative_values;
   float max_val = *std::max_element(values.begin(), values.end());
 
-  framework::Tensor var_tensor;
+  phi::DenseTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size(), 1));
   std::copy(begin(values),
             end(values),
@@ -273,7 +273,7 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
   ComputeVarScales(graph, &scope, ops, weight_name, axis, &var_quant_scales);
 
   bool is_unsigned;
-  framework::Tensor result_tensor;
+  phi::DenseTensor result_tensor;
 
   std::tie(is_unsigned, result_tensor) = var_quant_scales[weight_var_name];
 

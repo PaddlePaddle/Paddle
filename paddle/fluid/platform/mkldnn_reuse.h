@@ -31,7 +31,7 @@ namespace paddle {
 namespace platform {
 
 using framework::DataLayout;
-using framework::Tensor;
+
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
 
@@ -236,7 +236,7 @@ class MatMulV2MKLDNNHandler
     }
 
     if (ctx.HasInput("ResidualData")) {
-      auto* residual_data = ctx.Input<Tensor>("ResidualData");
+      auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
       auto residual_data_tz = phi::vectorize(residual_data->dims());
       auto residual_data_md = memory::desc(residual_data_tz,
                                            MKLDNNGetDataType<OT>(),
@@ -273,22 +273,20 @@ class MatMulV2MKLDNNHandler
     return fake_strides;
   }
 
-  std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
+  std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor* input) {
     const YT* input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
                                             to_void_cast<YT>(input_data));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      paddle::framework::Tensor* output) {
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output) {
     // We cannot use base AcquireDstMemory as it makes an allocation request
     // base on DST memory primitive size. This is fine in general, but in MatMul
     // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence Tensor size is bigger that dst memory
-    // primitive size. So would we request less memory that is there and it
-    // triggers an
-    // assertion.  So as there is no 'any' format here we can leave default size
-    // of Tensor as computed in ComputeInferShape
+    // pointer for every new batch. Hence phi::DenseTensor size is bigger that
+    // dst memory primitive size. So would we request less memory that is there
+    // and it triggers an assertion.  So as there is no 'any' format here we can
+    // leave default size of phi::DenseTensor as computed in ComputeInferShape
     OT* ptr = output->mutable_data<OT>(this->place_);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
@@ -377,7 +375,7 @@ class ReorderMKLDNNHandler {
     return sub_mem_p;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output,
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output,
                                                  const MKLDNNMemoryFormat& fmt,
                                                  platform::Place place) {
     auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
@@ -387,7 +385,7 @@ class ReorderMKLDNNHandler {
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      framework::Tensor* output,
+      phi::DenseTensor* output,
       const dnnl::memory::desc& src_md,
       platform::Place place) {
     if (vtype_dst_ == vtype_) {
@@ -404,7 +402,7 @@ class ReorderMKLDNNHandler {
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      framework::Tensor* output,
+      phi::DenseTensor* output,
       const std::vector<int64_t>& dims,
       const MKLDNNMemoryFormat& fmt,
       platform::Place place) {

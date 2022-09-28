@@ -192,7 +192,7 @@ class MKLDNNConvBatchNormPassTest {
     return prog;
   }
 
-  void FillTensorWithRandomData(Tensor* tnsr,
+  void FillTensorWithRandomData(phi::DenseTensor* tnsr,
                                 float lowb,
                                 float upb,
                                 platform::CPUPlace place) {
@@ -206,7 +206,7 @@ class MKLDNNConvBatchNormPassTest {
     }
   }
 
-  void CompareTensors(Tensor* tensor1, Tensor* tensor2) {
+  void CompareTensors(phi::DenseTensor* tensor1, phi::DenseTensor* tensor2) {
     // check dims
     for (int i = 0; i < tensor1->numel(); ++i) {
       EXPECT_NEAR(tensor1->data<float>()[i], tensor2->data<float>()[i], 1e-3);
@@ -306,7 +306,7 @@ class MKLDNNConvBatchNormPassTest {
     // Need to copy result over as the same scope is used in both executors
     // so first result will be overwritten by second
     auto* m_tensor = exe.FindTensor("m");
-    Tensor no_ir_result;
+    phi::DenseTensor no_ir_result;
     TensorCopy(*m_tensor, place, &no_ir_result);
 
     graph.reset(pass->Apply(graph.release()));

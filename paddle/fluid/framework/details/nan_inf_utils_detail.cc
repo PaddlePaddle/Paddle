@@ -332,7 +332,7 @@ void TensorCheckerVisitor<phi::CPUContext>::apply(
 template <>
 void tensor_check<phi::CPUContext>(const std::string& op_type,
                                    const std::string& var_name,
-                                   const framework::Tensor& tensor,
+                                   const phi::DenseTensor& tensor,
                                    const platform::Place& place) {
   TensorCheckerVisitor<phi::CPUContext> vistor(
       op_type, var_name, tensor, place);
@@ -348,7 +348,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
       platform::errors::NotFound(
           "Cannot find var: `%s` in op `%s`.", var_name, op_type));
 
-  const Tensor* tensor{nullptr};
+  const phi::DenseTensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
     tensor = &var->Get<framework::LoDTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
@@ -371,7 +371,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
+        "phi::DenseTensor[%s] use gpu place. PaddlePaddle must compile with "
+        "GPU.",
         var_name));
 #endif
     return;
@@ -400,10 +401,13 @@ void CheckVarHasNanOrInf(const std::string& op_type,
         flag,
         true,
         platform::errors::Fatal(
-            "Operator %s output Tensor %s contains Inf.", op_type, var_name));
+            "Operator %s output phi::DenseTensor %s contains Inf.",
+            op_type,
+            var_name));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Tensor[%s] use xpu place. PaddlePaddle must compile with XPU.",
+        "phi::DenseTensor[%s] use xpu place. PaddlePaddle must compile with "
+        "XPU.",
         var_name));
 #endif
     return;
@@ -431,10 +435,13 @@ void CheckVarHasNanOrInf(const std::string& op_type,
         flag,
         true,
         platform::errors::Fatal(
-            "Operator %s output Tensor %s contains Inf.", op_type, var_name));
+            "Operator %s output phi::DenseTensor %s contains Inf.",
+            op_type,
+            var_name));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Tensor[%s] use npu place. PaddlePaddle must compile with NPU.",
+        "phi::DenseTensor[%s] use npu place. PaddlePaddle must compile with "
+        "NPU.",
         var_name));
 #endif
     return;
@@ -473,8 +480,8 @@ using NpuOpRunner = paddle::operators::NpuOpRunner;
 
 constexpr int FLOAT_STATUS_SIZE = 8;
 
-static framework::Tensor& npu_float_status() {
-  static framework::Tensor float_status;
+static phi::DenseTensor& npu_float_status() {
+  static phi::DenseTensor float_status;
   return float_status;
 }
 
@@ -494,7 +501,7 @@ void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
   flag.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
   NpuOpRunner("NPUAllocFloatStatus", {}, {flag}).Run(stream);
 
-  framework::Tensor tmp;
+  phi::DenseTensor tmp;
   tmp.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
   NpuOpRunner("NPUClearFloatStatus", {tmp}, {flag}).Run(stream);
 }
@@ -503,7 +510,7 @@ void PrintNpuVarInfo(const std::string& op_type,
                      const std::string& var_name,
                      const framework::Variable* var,
                      const platform::Place& place) {
-  const Tensor* tensor{nullptr};
+  const phi::DenseTensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
     tensor = &var->Get<framework::LoDTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
@@ -528,7 +535,7 @@ void PrintNpuVarInfo(const std::string& op_type,
   VLOG(10) << "begin check " << op_type << " var_name:" << var_name
            << ", place:" << tensor->place() << ", numel:" << tensor->numel();
 
-  framework::Tensor cpu_tensor;
+  phi::DenseTensor cpu_tensor;
   cpu_tensor.Resize(tensor->dims());
   cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype());
   framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
@@ -575,13 +582,13 @@ static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
   auto stream = dev_ctx->stream();
 
   auto& flag = npu_float_status();
-  Tensor tmp;
+  phi::DenseTensor tmp;
   tmp.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
   // NPUGetFloatStatus updates data on input in-place.
   // tmp is only placeholder.
   NpuOpRunner("NPUGetFloatStatus", {flag}, {tmp}).Run(stream);
 
-  framework::Tensor cpu_tensor;
+  phi::DenseTensor cpu_tensor;
   auto cpu_place = platform::CPUPlace();
   float* cpu_data = static_cast<float*>(
       cpu_tensor.mutable_data<float>({FLOAT_STATUS_SIZE}, cpu_place));

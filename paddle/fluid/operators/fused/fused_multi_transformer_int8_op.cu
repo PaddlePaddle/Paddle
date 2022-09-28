@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/attn_gemm_int8.h"
-#include "paddle/fluid/operators/fused/fused_multi_transformer_op.h"
+#include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -25,9 +25,9 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     using U = LayerNormParamType<T>;
     auto &dev_ctx = ctx.cuda_device_context();
 
-    auto *time_step = ctx.Input<Tensor>("TimeStep");
+    auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
     // 0. input
-    auto *input_x = ctx.Input<Tensor>("X");
+    auto *input_x = ctx.Input<phi::DenseTensor>("X");
     const auto input_x_dims = input_x->dims();
     int bsz = input_x_dims[0];
     int seq_len = input_x_dims[1];
@@ -48,10 +48,11 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
     // dequant output scales, tensor, size = [num_layers, n], n is gemm output
     // size
-    auto *qkv_out_scale = ctx.Input<Tensor>("QKVOutScale");
-    auto *out_linear_out_scale = ctx.Input<Tensor>("OutLinearOutScale");
-    auto *ffn1_out_scale = ctx.Input<Tensor>("FFN1OutScale");
-    auto *ffn2_out_scale = ctx.Input<Tensor>("FFN2OutScale");
+    auto *qkv_out_scale = ctx.Input<phi::DenseTensor>("QKVOutScale");
+    auto *out_linear_out_scale =
+        ctx.Input<phi::DenseTensor>("OutLinearOutScale");
+    auto *ffn1_out_scale = ctx.Input<phi::DenseTensor>("FFN1OutScale");
+    auto *ffn2_out_scale = ctx.Input<phi::DenseTensor>("FFN2OutScale");
 
     int qkv_out_scale_n = qkv_out_scale->dims()[1];
     int out_linear_out_scale_n = out_linear_out_scale->dims()[1];
@@ -61,8 +62,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto ln_scales = ctx.MultiInput<Tensor>("LnScale");
-    auto ln_biases = ctx.MultiInput<Tensor>("LnBias");
+    auto ln_scales = ctx.MultiInput<phi::DenseTensor>("LnScale");
+    auto ln_biases = ctx.MultiInput<phi::DenseTensor>("LnBias");
 
     auto ln_compute =
         AttnLayerNorm<T, T, int8_t>(dev_ctx, epsilon, bsz_seq, dim_embed);
@@ -76,8 +77,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     // 2. qkv
     // x: qkv's input [batch_size, seq_len, dim_embed]
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
-    auto qkv_weights = ctx.MultiInput<Tensor>("QKVW");
-    auto qkv_biases = ctx.MultiInput<Tensor>("QKVBias");
+    auto qkv_weights = ctx.MultiInput<phi::DenseTensor>("QKVW");
+    auto qkv_biases = ctx.MultiInput<phi::DenseTensor>("QKVBias");
     const bool trans_qkvw = ctx.Attr<bool>("trans_qkvw");
     const auto qkv_w_dims = qkv_weights[0]->dims();
     int num_head = trans_qkvw ? qkv_w_dims[1] : qkv_w_dims[2];
@@ -100,10 +101,10 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         true, "upscale_in_train", 0.0, true, true, 0, nullptr);
     auto fmha_compute =
         FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
-    auto *src_mask = ctx.Input<Tensor>("SrcMask");
-    auto cache_kvs = ctx.MultiInput<Tensor>("CacheKV");
-    auto cache_kv_outs = ctx.MultiOutput<Tensor>("CacheKVOut");
-    // auto *time_step = ctx.Input<Tensor>("TimeStep");
+    auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
+    auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
+    auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
+    // auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
 
     auto out_seq_len = seq_len;
     if (time_step) {
@@ -156,8 +157,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         dev_ctx.Alloc<T>(&fmha_out, fmha_out.numel() * sizeof(T));
 
     // 4. out_linear
-    auto out_linear_weights = ctx.MultiInput<Tensor>("OutLinearW");
-    auto out_linear_biases = ctx.MultiInput<Tensor>("OutLinearBias");
+    auto out_linear_weights = ctx.MultiInput<phi::DenseTensor>("OutLinearW");
+    auto out_linear_biases = ctx.MultiInput<phi::DenseTensor>("OutLinearBias");
     int ring_id = ctx.Attr<int>("ring_id");
     // (transA, transB, compute_bias) = (false, false, false)
     AttnMatmulINT8<T> out_linear_compute(
@@ -171,8 +172,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     FusedDropoutLayerNormHelper<T, uint8_t>
         fused_dropout_layernorm_helper_for_post_layernorm(
             dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
-    auto ffn_ln_scales = ctx.MultiInput<Tensor>("FFNLnScale");
-    auto ffn_ln_biases = ctx.MultiInput<Tensor>("FFNLnBias");
+    auto ffn_ln_scales = ctx.MultiInput<phi::DenseTensor>("FFNLnScale");
+    auto ffn_ln_biases = ctx.MultiInput<phi::DenseTensor>("FFNLnBias");
     Tensor bias_dropout_residual_out, dropout_mask_out;
     T *bias_dropout_residual_out_data = nullptr;
     if (pre_layer_norm) {
@@ -186,8 +187,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         &dropout_mask_out, dropout_mask_out.numel() * sizeof(uint8_t));
 
     // 6. ffn matmul1
-    auto ffn1_weights = ctx.MultiInput<Tensor>("FFN1Weight");
-    auto ffn1_biases = ctx.MultiInput<Tensor>("FFN1Bias");
+    auto ffn1_weights = ctx.MultiInput<phi::DenseTensor>("FFN1Weight");
+    auto ffn1_biases = ctx.MultiInput<phi::DenseTensor>("FFN1Bias");
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
     int dim_ffn = ffn1_weight_dim[0];
@@ -213,8 +214,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         &ffn1_dropout_mask, ffn1_dropout_mask.numel() * sizeof(uint8_t));
 
     // 8. ffn2 matmul
-    auto ffn2_weights = ctx.MultiInput<Tensor>("FFN2Weight");
-    auto ffn2_biases = ctx.MultiInput<Tensor>("FFN2Bias");
+    auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
+    auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
     AttnMatmulINT8<T> ffn2_linear_compute(
         dev_ctx, bsz_seq, dim_embed, dim_ffn, false);
 
@@ -245,7 +246,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                            output_workspace.numel() * sizeof(int32_t));
 
     // calc
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
     auto *from_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     Tensor *from_tensor = out;
     Tensor tmp_out;
