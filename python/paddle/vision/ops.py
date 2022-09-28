@@ -22,6 +22,7 @@ from ..fluid.initializer import Normal
 from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from paddle.common_ops_import import *
 from paddle import _C_ops, _legacy_C_ops
+from ..framework import _current_expected_place
 
 __all__ = [  #noqa
     'yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D',
@@ -149,16 +150,6 @@ def yolo_loss(x,
 
     Returns:
         Tensor: A 1-D tensor with shape [N], the value of yolov3 loss
-
-    Raises:
-        TypeError: Input x of yolov3_loss must be Tensor
-        TypeError: Input gtbox of yolov3_loss must be Tensor
-        TypeError: Input gtlabel of yolov3_loss must be Tensor
-        TypeError: Input gtscore of yolov3_loss must be None or Tensor
-        TypeError: Attr anchors of yolov3_loss must be list or tuple
-        TypeError: Attr class_num of yolov3_loss must be an integer
-        TypeError: Attr ignore_thresh of yolov3_loss must be a float number
-        TypeError: Attr use_label_smooth of yolov3_loss must be a bool value
 
     Examples:
       .. code-block:: python
@@ -347,12 +338,6 @@ def yolo_box(x,
         and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification
         scores of boxes.
 
-    Raises:
-        TypeError: Input x of yolov_box must be Tensor
-        TypeError: Attr anchors of yolo box must be list or tuple
-        TypeError: Attr class_num of yolo box must be an integer
-        TypeError: Attr conf_thresh of yolo box must be a float number
-
     Examples:
 
     .. code-block:: python
@@ -511,9 +496,7 @@ def deform_conv2d(x,
     Returns:
         Tensor: The tensor variable storing the deformable convolution \
                   result. A Tensor with type float32, float64.
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
+
     Examples:
         .. code-block:: python
 
@@ -1038,7 +1021,9 @@ def decode_jpeg(x, mode='unchanged', name=None):
 
             print(img.shape)
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.decode_jpeg(x, mode, _current_expected_place())
+    elif _non_static_mode():
         return _legacy_C_ops.decode_jpeg(x, "mode", mode)
 
     inputs = {'X': x}

@@ -142,11 +142,22 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
           op_with_kernel->Type())) {
     auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+    auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
     VLOG(6) << "phi_kernel_key " << phi_kernel_key << "\n";
+    VLOG(6) << "phi_kernel_name " << phi_kernel_name << "\n";
 
     if (op_with_kernel->PhiKernel()->IsValid()) {
       run_phi_kernel = true;
     }
+
+    // For data transfer ops, they should not fallback to cpu.
+    // Though they're device-independent operations,
+    // their implementations are device-related.
+    // For example, consider changing the layout of a gpu tensor
+    // while the gpu kernel of transfer_layout op does not exist.
+    // To use the cpu kernel, you must insert memcpy_d2h/mepcpy_h2d op
+    // in addition. But such operation should not be done here.
+    // Maybe in future we will support this.
   }
 
   // 3. Execute transfer op and construct OpFuncNode
