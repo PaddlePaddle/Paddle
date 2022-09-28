@@ -792,14 +792,14 @@ static PyObject* tensor__mod__method(TensorObject* self,
     if (PyFloat_Check(other_obj)) {
       other_float = CastPyArg2AttrFloat(other_obj, 0);
       has_other_float = true;
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_float = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
       has_other_float = true;
-    }
-    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-        _supported_int_dtype_.end()) {
-      eager_gil_scoped_release guard;
-      self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
     }
   }
 
