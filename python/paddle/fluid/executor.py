@@ -346,6 +346,7 @@ def _add_feed_fetch_ops(program,
     tmp_program = program.clone()
 
     global_block = tmp_program.global_block()
+
     if feed_var_name in global_block.vars:
         feed_var = global_block.var(feed_var_name)
     else:
