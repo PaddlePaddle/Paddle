@@ -2101,6 +2101,7 @@ set +x
             matchstr=''
             testcase=''
     done <<< "$test_cases";
+    
 
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
