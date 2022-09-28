@@ -620,6 +620,11 @@ class PSGPUWrapper {
     return afs_handler_.open_reader(filename);
   }
 
+  std::shared_ptr<paddle::ps::AfsWriter> OpenWriter(
+      const std::string& filename) {
+    return afs_handler_.open_writer(filename);
+  }
+
   void InitAfsApi(const std::string& fs_name,
                   const std::string& fs_user,
                   const std::string& pass_wd,
