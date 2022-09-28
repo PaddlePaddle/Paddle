@@ -588,6 +588,9 @@ class TestUniformDtype(unittest.TestCase):
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
         def test_dygraph_fp16():
+            if not paddle.is_compiled_with_cuda():
+                paddle.enable_static()
+                return
             paddle.set_device('gpu')
             out = paddle.uniform([2, 3], dtype=paddle.float16)
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
