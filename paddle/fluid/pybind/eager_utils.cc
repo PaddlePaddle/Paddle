@@ -145,7 +145,9 @@ bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
 
 int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return static_cast<int>(PyLong_AsLong(obj));
+    // some cases for python int is too large to convert to C long in windows ,
+    // but convert to C long long is work.
+    return static_cast<int>(PyLong_AsLongLong(obj));
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
