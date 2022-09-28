@@ -78,7 +78,7 @@ class AudioClassificationDataset(paddle.io.Dataset):
         waveform = paddle.to_tensor(waveform, dtype=paddle.float32)
         if feat_func is not None:
             waveform = waveform.unsqueeze(0)  # (batch_size, T)
-            if self.feat_type is not 'spectrogram':
+            if self.feat_type != 'spectrogram':
                 feature_extractor = feat_func(sr=self.sample_rate,
                                               **self.feat_config)
             else:
