@@ -16,9 +16,10 @@ __all__ = []
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import dygraph_only
+from paddle import in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 
-@dygraph_only
 def relu(x, name=None):
     """
     sparse relu activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -45,7 +46,17 @@ def relu(x, name=None):
             out = paddle.incubate.sparse.nn.functional.relu(sparse_x)
             # [0., 0., 1.]
     """
-    return _C_ops.sparse_relu(x)
+    if in_dynamic_mode():
+        return _C_ops.sparse_relu(x)
+    else:
+        op_type = 'sparse_relu'
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(type=op_type,
+                         inputs={'x': x},
+                         outputs={'out': out},
+                         attrs={})
+        return out
 
 
 @dygraph_only
