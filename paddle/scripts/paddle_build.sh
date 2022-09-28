@@ -416,6 +416,8 @@ function build_base() {
     collect_ccache_hits
 
     if [ "$build_error" != 0 ];then
+        df -lh
+        sleep 100h
         exit 7;
     fi
 }
