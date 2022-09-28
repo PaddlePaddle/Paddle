@@ -456,6 +456,9 @@ EOF
         PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
+        PR_soSize=$($com ${PADDLE_ROOT}/build/paddle/fluid/pybind/liblibpaddle.so |awk '{print $1}')
+        echo "PR so Size: $PR_soSize"
+        echo "ipipe_log_param_PR_so_Size: $PR_soSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
 }
 
