@@ -207,34 +207,6 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
 
     // for parameter prefetch
     AddAttr<bool>("remote_prefetch", "").SetDefault(false);
-    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.")
-        .SetDefault(0)
-        .AsExtra();
-    AddAttr<std::vector<int64_t>>("height_sections",
-                                  "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int64_t>({}))
-        .AsExtra();
-    AddAttr<std::vector<std::string>>(
-        "epmap",
-        "(string vector, default 127.0.0.1:6164)"
-        "Server endpoints in the order of input variables for mapping")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<std::string>>(
-        "table_names",
-        "(string vector, the split table names that will be fetched from "
-        "parameter server)"
-        "in the order of input variables for mapping")
-        .SetDefault({})
-        .AsExtra();
-
-    AddAttr<std::vector<int>>("custom_neg_classes",
-                              "This attribute only be used in unitest. Classes "
-                              "in this list wiil be used as negative classes "
-                              "for every samples. Under normal conditions, "
-                              "user should avoid setting this attribute.")
-        .SetDefault({})
-        .AsExtra();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference "
                   "only, false for training.")
