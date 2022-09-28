@@ -547,9 +547,9 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     """
     if dtype is None:
         dtype = paddle.framework.get_default_dtype()
-        if dtype not in ['float32', 'float64', 'float16']:
+        if dtype not in ['float32', 'float64']:
             raise TypeError(
-                "uniform/rand only supports [float32, float64, float16], but the default dtype is {}"
+                "uniform/rand only supports [float32, float64], but the default dtype is {}"
                 .format(dtype))
 
     if not isinstance(dtype, core.VarDesc.VarType):

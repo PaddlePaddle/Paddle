@@ -575,7 +575,7 @@ class TestUniformDtype(unittest.TestCase):
             paddle.framework.set_default_dtype('float16')
             paddle.tensor.random.uniform([2, 3])
 
-        #self.assertRaises(TypeError, test_default_fp16)
+        self.assertRaises(TypeError, test_default_fp16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -587,9 +587,13 @@ class TestUniformDtype(unittest.TestCase):
             out = paddle.tensor.random.uniform([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
-        test_default_fp16()
+        def test_dygraph_fp16():
+            out = paddle.uniform([2, 3], dtype=paddle.float16)
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
+
         test_default_fp64()
         test_default_fp32()
+        test_dygraph_fp16()
 
         paddle.enable_static()
 
