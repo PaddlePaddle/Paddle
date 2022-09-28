@@ -110,6 +110,7 @@ class TestAudioDatasets(unittest.TestCase):
             self.assertTrue(wav_info.sample_rate, self.sr)
             self.assertTrue(wav_info.num_channels, self.num_channels)
             self.assertTrue(wav_info.bits_per_sample, 16)
+            paddle.audio.backends.set_backend("wave_backend")
         except ImportError:
             pass
 

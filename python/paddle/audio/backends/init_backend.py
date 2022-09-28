@@ -18,6 +18,8 @@ from . import wave_backend
 from . import backend
 from typing import List
 
+import paddle
+
 __all__ = [
     'get_current_audio_backend', 'list_available_backends', 'set_backend'
 ]
@@ -104,6 +106,7 @@ def set_backend(backend_name: str):
 
     for func in ["save", "load", "info"]:
         setattr(backend, func, getattr(module, func))
+        setattr(paddle.audio.backends, func, getattr(module, func))
 
 
 def _init_set_audio_backend():
