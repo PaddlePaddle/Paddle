@@ -1727,6 +1727,7 @@ class Resharder:
     def _remove_global_process_mesh(self):
         """Remove global process mesh from dist_context.process_meshes"""
         processes = set()
+        counts = 0
         process_mesh_count = len(self.dist_context.process_meshes)
         if process_mesh_count > 1:
             global_process_mesh_idx = None
@@ -1737,8 +1738,8 @@ class Resharder:
                     self.dist_context.process_meshes):
                 if len(set(process_mesh.processes)) == len(processes):
                     global_process_mesh_idx = idx
-                    break
-            if global_process_mesh_idx is not None:
+                    counts += 1
+            if counts == 1 and global_process_mesh_idx is not None:
                 self.dist_context.process_meshes.pop(idx)
 
     def _change_subblock_op_input_and_output(self, block_idx, block):
