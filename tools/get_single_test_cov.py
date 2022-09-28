@@ -23,6 +23,7 @@ def getFNDAFile(rootPath, test):
     filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, test)
     fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
     os.system('touch %s' % fn_filename)
+    print("code go here to get fnda.tmp")
     f = open(filename)
     lines = f.readlines()
     for line in lines:
@@ -34,6 +35,7 @@ def getFNDAFile(rootPath, test):
             if hit != 0:
                 os.system('echo %s >> %s' % (line, fn_filename))
     f.close()
+    print("fn_filename", fn_filename)
 
 
 def analysisFNDAFile(rootPath, test):
@@ -79,17 +81,20 @@ def analysisFNDAFile(rootPath, test):
                     os.system('echo %s >> %s' %
                               (clazz_filename, notrelated_ut_map_file))
     f.close()
+    print("related:", related_file_list)
+    print("not related:", notrelated_ut_map_file)
 
 
 def getCovinfo(rootPath, test):
     ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
+    print("ut_map_path:", ut_map_path)
     os.system(
         'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
         % ut_map_path)
+    print("code go here to get coverage.info.tmp")
     os.system(
-        "cd %s && lcov --extract coverage.info '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/paddle/fluid/framework/*' '/paddle/paddle/fluid/imperative/*' '/paddle/paddle/fluid/inference/*' '/paddle/paddle/fluid/memory/*' '/paddle/paddle/fluid/operators/*' '/paddle/paddle/fluid/string/*' '/paddle/paddle/fluid/distributed/*' '/paddle/paddle/fluid/platform/*' '/paddle/paddle/fluid/pybind/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
+        "cd %s && lcov --extract coverage.info '/paddle/paddle/fluid/framework/*' '/paddle/paddle/fluid/imperative/*' '/paddle/paddle/fluid/inference/*' '/paddle/paddle/fluid/memory/*' '/paddle/paddle/fluid/operators/*' '/paddle/paddle/fluid/string/*' '/paddle/paddle/fluid/distributed/*' '/paddle/paddle/fluid/platform/*' '/paddle/paddle/fluid/pybind/*' '/paddle/build/*' '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
         % ut_map_path)
-
     os.system('rm -rf %s/paddle' % ut_map_path)
     os.system('rm -rf %s/coverage.info' % ut_map_path)
     getFNDAFile(rootPath, test)
