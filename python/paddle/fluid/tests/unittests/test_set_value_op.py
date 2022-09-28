@@ -14,8 +14,6 @@
 
 # Test set_value op in static mode
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
