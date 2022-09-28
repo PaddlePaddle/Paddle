@@ -2201,7 +2201,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
-      "layernorm_shift_partition"};
+      "layernorm_shift_partition",
+      "lookup_table"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2312,7 +2313,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "fused_token_prune",
-      "layernorm_shift_partition"};
+      "layernorm_shift_partition",
+      "lookup_table"};
 };
 
 struct GenericPluginTeller : public Teller {
