@@ -36,6 +36,13 @@ struct ServiceInfo {
   uint32_t port_;
   ServiceInfo(std::string name, uint32_t id, std::string ip, uint32_t port)
       : name_(std::move(name)), id_(id), ip_(std::move(ip)), port_(port) {}
+
+  std::string to_string() const {
+    std::string info = "{name: " + name_ + ", rank: " + std::to_string(id_) +
+                       ", ip: " + ip_ + ", port: " + std::to_string(port_) +
+                       "}";
+    return info;
+  }
 };
 
 class OnRpcDone : public google::protobuf::Closure {

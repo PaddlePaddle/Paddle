@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import os
-import socket
 from collections import namedtuple
 import pickle
-from contextlib import closing
 import time
 import datetime
 
@@ -30,6 +28,7 @@ from paddle.distributed.collective import (
     _default_group_name,
     Group,
 )
+from paddle.distributed.launch.context import Node
 
 ServiceInfo = namedtuple("ServiceInfo", ["name", "rank", "ip", "port"])
 
@@ -68,23 +67,11 @@ def _exchange_all_service_infos():
     return all_infos
 
 
-def _free_port():
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-        s.bind(('', 0))
-        return s.getsockname()[1]
-
-
-def _get_host_ip():
-    try:
-        hostname = socket.gethostname()
-        ip = socket.gethostbyname(socket.getfqdn(hostname))
-        return ip
-    except:
-        return '127.0.0.1'
-
-
 def _gen_endpoint():
-    return "{}:{}".format(_get_host_ip(), _free_port())
+    node = Node()
+    ip = node.get_host_ip()
+    free_port = node.get_free_port()
+    return "{}:{}".format(ip, free_port)
 
 
 def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
@@ -324,12 +311,80 @@ def shutdown():
 
 
 def get_service_info(name):
+    """
+    Get service information by service name.
+
+    Examples:
+        run on server `11.11.11.10`
+        .. code-block:: python
+            import paddle.distributed.rpc as rpc
+            import os
+
+            os.environ["PADDLE_SERVER_ENDPOINT"] = "11.11.11.10:8002"
+            rpc.init_rpc("worker0", rank=0, world_size=1,
+                        master_endpoint="127.0.0.1:8001")
+
+            print(rpc.get_service_info("worker0))
+            # {name: worker0, rank: 0, ip: 11.11.11.10, port: 8002}
+
+            rpc.shutdown()
+    """
     return core.rpc_get_service_info(name)
 
 
 def get_all_service_infos():
+    """
+    Get all service informations.
+
+    Examples:
+        run on server `11.11.11.10`:
+            .. code-block:: python
+
+                # On server 0:
+                import paddle.distributed.rpc as rpc
+                import os
+
+                os.environ["PADDLE_SERVER_ENDPOINT"] = "11.11.11.10:8002"
+                rpc.init_rpc("worker0", rank=0, world_size=2,
+                        master_endpoint="11.11.11.10:8001")
+
+                print(rpc.get_all_service_infos())
+                # [{name: worker0, rank: 0, ip: 11.11.11.10, port: 8002},
+                # {name: worker1, rank: 1, ip: 11.11.11.11, port: 8002}]
+
+                rpc.shutdown()
+
+        run on server `11.11.11.11`:
+            .. code-block:: python
+                # On server 1:
+                import paddle.distributed.rpc as rpc
+                import os
+
+                os.environ["PADDLE_SERVER_ENDPOINT"] = "11.11.11.11:8002"
+                rpc.init_rpc("worker1", rank=1, world_size=2,
+                        master_endpoint="11.11.11.10:8001")
+                rpc.shutdown()
+    """
     return core.rpc_get_all_service_infos()
 
 
 def get_current_service_info():
+    """
+    Get current service information.
+
+    Examples:
+        run on server `11.11.11.10`
+        .. code-block:: python
+            import paddle.distributed.rpc as rpc
+            import os
+
+            os.environ["PADDLE_SERVER_ENDPOINT"] = "11.11.11.10:8002"
+            rpc.init_rpc("worker0", rank=0, world_size=1,
+                        master_endpoint="127.0.0.1:8001")
+
+            print(rpc.get_current_service_info())
+            # {name: worker0, rank: 0, ip: 11.11.11.10, port: 8002}
+
+            rpc.shutdown()
+    """
     return core.rpc_get_current_service_info()

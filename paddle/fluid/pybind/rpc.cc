@@ -29,9 +29,11 @@ void BindServiceInfo(py::module* m) {
   py::class_<ServiceInfo>(*m, "ServiceInfo")
       .def(py::init<std::string, uint32_t, std::string, uint32_t>())
       .def_readonly("name", &ServiceInfo::name_)
-      .def_readonly("id", &ServiceInfo::id_)
+      .def_readonly("rank", &ServiceInfo::id_)
       .def_readonly("ip", &ServiceInfo::ip_)
-      .def_readonly("port", &ServiceInfo::port_);
+      .def_readonly("port", &ServiceInfo::port_)
+      .def("__str__", &ServiceInfo::to_string)
+      .def("__repr__", &ServiceInfo::to_string);
 }
 void BindFuture(py::module* m) {
   py::class_<FutureWrapper, std::shared_ptr<FutureWrapper>>(*m, "Future")
