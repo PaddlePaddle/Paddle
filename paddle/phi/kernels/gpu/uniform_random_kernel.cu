@@ -74,23 +74,13 @@ void UniformRandomRawKernel(const Context& dev_ctx,
     funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
   } else {
     // Use OP seed
-    if (std::is_same<T, double>()) {
-      auto func = UniformGenerator<double>(min.to<float>(),
-                                           max.to<float>(),
-                                           seed,
-                                           diag_num,
-                                           diag_step,
-                                           diag_val);
-      IndexKernel<double, UniformGenerator<double>>(dev_ctx, out, func);
-    } else {
-      auto func = UniformGenerator<T>(static_cast<T>(min.to<float>()),
-                                      static_cast<T>(max.to<float>()),
-                                      seed,
-                                      diag_num,
-                                      diag_step,
-                                      static_cast<T>(diag_val));
-      IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
-    }
+    auto func = UniformGenerator<T>(static_cast<T>(min.to<float>()),
+                                    static_cast<T>(max.to<float>()),
+                                    seed,
+                                    diag_num,
+                                    diag_step,
+                                    static_cast<T>(diag_val));
+    IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
   }
 }
 
