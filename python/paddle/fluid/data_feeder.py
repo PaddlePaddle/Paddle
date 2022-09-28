@@ -39,6 +39,7 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.INT32: 'int32',
     core.VarDesc.VarType.INT64: 'int64',
     core.VarDesc.VarType.UINT8: 'uint8',
+    core.VarDesc.VarType.UINT16: 'uint16',
     core.VarDesc.VarType.COMPLEX64: 'complex64',
     core.VarDesc.VarType.COMPLEX128: 'complex128',
 }

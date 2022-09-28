@@ -1183,20 +1183,22 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.FP64
     elif dtype == np.float16:
         return core.VarDesc.VarType.FP16
-    elif dtype == np.int32:
-        return core.VarDesc.VarType.INT32
+    elif dtype == np.uint8:
+        return core.VarDesc.VarType.UINT8
+    elif dtype == np.uint16:
+        return core.VarDesc.VarType.UINT16
+    elif dtype == np.int8:
+        return core.VarDesc.VarType.INT8
     elif dtype == np.int16:
         return core.VarDesc.VarType.INT16
+    elif dtype == np.int32:
+        return core.VarDesc.VarType.INT32
     elif dtype == np.int64:
         return core.VarDesc.VarType.INT64
     elif dtype == np.bool_:
         return core.VarDesc.VarType.BOOL
     elif dtype == bfloat16:
         return core.VarDesc.VarType.BF16
-    elif dtype == np.uint8:
-        return core.VarDesc.VarType.UINT8
-    elif dtype == np.int8:
-        return core.VarDesc.VarType.INT8
     elif dtype == np.complex64:
         return core.VarDesc.VarType.COMPLEX64
     elif dtype == np.complex128:
