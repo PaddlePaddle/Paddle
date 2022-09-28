@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
 import seresnext_net

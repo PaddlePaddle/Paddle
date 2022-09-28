@@ -15,7 +15,6 @@
 TestCases for Monitor
 """
 
-from __future__ import print_function
 import paddle
 
 paddle.enable_static()
