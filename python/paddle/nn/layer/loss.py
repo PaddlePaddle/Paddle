@@ -1705,7 +1705,7 @@ class MultiMarginLoss(Layer):
 
             margin (float, Optional):Default: :math:`1`.
 
-	        weight (Tensor,optional): a manual rescaling weight given to each class.
+            weight (Tensor,optional): a manual rescaling weight given to each class.
                     If given, has to be a Tensor of shape (C,) and the data type is float32, float64.
                     Default is ``'None'`` .
 

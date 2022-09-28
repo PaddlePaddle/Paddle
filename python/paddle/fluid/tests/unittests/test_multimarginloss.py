@@ -98,7 +98,7 @@ def test_static(place,
 
         exe = paddle.static.Executor(place)
         static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
-    return static_result
+    return static_result[0]
 
 
 def test_static_data_shape(place,
@@ -150,7 +150,7 @@ def test_static_data_shape(place,
 
         exe = paddle.static.Executor(place)
         static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
-    return static_result[0]
+    return static_result
 
 
 def test_dygraph(place,
