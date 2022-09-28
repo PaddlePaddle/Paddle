@@ -77,6 +77,8 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("optim_input_shape",
               new std::map<std::string, std::vector<int>>(
                   argument->optim_input_shape()));
+    // Now, shape tensor value setting is not explicit set by user,
+    // it is collected through API CollectShapeRangeInfo.
     pass->Set("max_shape_tensor",
               new std::map<std::string, std::vector<int>>());
     pass->Set("min_shape_tensor",

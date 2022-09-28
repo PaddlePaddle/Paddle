@@ -1743,6 +1743,8 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     shape_info_[name].emplace_back(shape);
 
     // We need collect value range for shape tensor for Paddle-TRT's use
+    // This is a simple method to identify all shape tensors with some mistakes,
+    // but it doesn't matter.
     auto is_shape_tensor = tensor->numel() <= 7 && tensor->numel() >= 1;
     if (tensor->dtype() == paddle::experimental::DataType::INT32 &&
         is_shape_tensor) {
@@ -1756,14 +1758,9 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
                    tensor->data<int>(),
                    tensor->numel() * sizeof(int),
                    cudaMemcpyDeviceToHost);
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
       }
-      std::cout << cudaGetErrorString(cudaGetLastError()) << std::endl;
       shape_tensor_value_[name].emplace_back(int32_host);
-    } else if (tensor->dtype() == paddle::experimental::DataType::INT64 &&
-               is_shape_tensor) {
-      // auto int64_data = tensor.data<int64_t>();
-      // auto hah = std::vector<int64_t>(int64_data, int64_data +
-      // tensor.numel()); shape_tensor_value_[name].emplace_back(hah);
     }
   }
 }

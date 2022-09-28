@@ -277,6 +277,8 @@ void TensorRTEngine::FreezeNetwork() {
       }
 
       for (auto &input : min_shape_tensor_) {
+        if (!itensor_map_.count(input.first)) continue;
+        if (!GetITensor(input.first)->isShapeTensor()) continue;
         optim_profiles_[i]->setShapeValues(input.first.c_str(),
                                            nvinfer1::OptProfileSelector::kMIN,
                                            input.second.data(),
