@@ -2007,6 +2007,7 @@ set -x
     #precise_card_test_single "$single_card_tests_1" 1
     #precise_card_test_single "$multiple_card_tests" 2
     #precise_card_test_single "$exclusive_tests"
+    ##test
     ljd_testcases='^test_op_signature$|^variant_test$'
     precise_card_test_single "$ljd_testcases" 1
     wait;
