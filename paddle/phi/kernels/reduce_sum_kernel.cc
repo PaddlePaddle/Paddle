@@ -73,7 +73,7 @@ PD_REGISTER_KERNEL(sum,
 }
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(sum, KPS, ALL_LAYOUT, phi::SumKernel, float) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
@@ -82,4 +82,8 @@ PD_REGISTER_KERNEL(sum, KPS, ALL_LAYOUT, phi::SumKernel, float) {
 #if defined(PADDLE_WITH_MKLDNN)
 PD_REGISTER_KERNEL(
     sum, OneDNN, ALL_LAYOUT, phi::SumKernel, float, phi::dtype::bfloat16) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(sum, XPU, ALL_LAYOUT, phi::SumKernel, float) {}
 #endif

@@ -547,12 +547,6 @@ def max_pool1d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the input is not a 3-D tensor.
-        ShapeError: If the output's shape calculated is not greater than 0.
-
     Examples:
         .. code-block:: python
 
@@ -1079,11 +1073,6 @@ def max_pool2d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
-
     Examples:
         .. code-block:: python
 
@@ -1219,11 +1208,6 @@ def max_pool3d(x,
 
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
 
     Examples:
         .. code-block:: python
@@ -1652,8 +1636,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     Returns:
             Tensor: The output tensor of adaptive pooling result. The data type is same
                       as input tensor.
-    Raises:
-            ValueError: 'output_size' should be an integer.
+
     Examples:
         .. code-block:: python
 

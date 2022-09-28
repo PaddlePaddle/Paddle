@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from full_pascalvoc_test_preprocess import main_pascalvoc_preprocess
 import numpy as np
 import paddle.fluid.core as core
@@ -23,6 +21,7 @@ import os
 
 
 class Test_Preprocess(unittest.TestCase):
+
     def test_local_convert(self):
         os.system("python full_pascalvoc_test_preprocess.py --choice=local")
 
