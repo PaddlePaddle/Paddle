@@ -52,10 +52,10 @@ class RpcService : public RpcBaseService {
     brpc::ClosureGuard done_guard(done);
 
     brpc::Controller *cntl = static_cast<brpc::Controller *>(cntl_base);
-    LOG(INFO) << "InvokeRpc API: Received request[log_id=" << cntl->log_id()
-              << "] from " << cntl->remote_side() << " to "
-              << cntl->local_side() << ": "
-              << " (attached=" << cntl->request_attachment() << ")";
+    VLOG(2) << "InvokeRpc API: Received request[log_id=" << cntl->log_id()
+            << "] from " << cntl->remote_side() << " to " << cntl->local_side()
+            << ": "
+            << " (attached=" << cntl->request_attachment() << ")";
     std::string py_func_str = request->message();
     std::shared_ptr<PythonRpcHandler> python_handler =
         PythonRpcHandler::GetInstance();

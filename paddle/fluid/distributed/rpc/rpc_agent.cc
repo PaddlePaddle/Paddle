@@ -96,10 +96,10 @@ void OnRpcDone::Run() {
   std::unique_ptr<OnRpcDone> self_guard(this);
   if (!cntl_.Failed()) {
     promise_->set_value(response_.message());
-    LOG(INFO) << "Received response from " << cntl_.remote_side() << " to "
-              << cntl_.local_side()
-              << " (attached=" << cntl_.response_attachment() << ")"
-              << " latency=" << cntl_.latency_us() << "us";
+    VLOG(2) << "Received response from " << cntl_.remote_side() << " to "
+            << cntl_.local_side()
+            << " (attached=" << cntl_.response_attachment() << ")"
+            << " latency=" << cntl_.latency_us() << "us";
   } else {
     LOG(ERROR) << cntl_.ErrorText();
   }
