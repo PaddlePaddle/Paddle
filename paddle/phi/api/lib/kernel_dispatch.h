@@ -120,20 +120,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   void operator()(const std::vector<Tensor>& x) {
     if (!x.empty()) {
       const phi::TensorBase& tensor = *x.at(0).impl();
-
-      PADDLE_ENFORCE_EQ(tensor.dtype() != DataType::COMPLEX64 &&
-                            tensor.dtype() != DataType::COMPLEX128,
-                        true,
-                        phi::errors::Unimplemented(
-                            "Function ParseKernelKeyByInputArgs hasn't "
-                            "supported vector<Tensor> with "
-                            "DataType::COMPLEX64 or DataType::COMPLEX128 yet"));
-
-      key_set.backend_set =
-          key_set.backend_set | detail::GetTensorBackendSet(tensor);
-      // TODO(chenweihang): select multi layout and dtype
-      key_set.layout = tensor.layout();
-      key_set.dtype = tensor.dtype();
+      AssignKernelKeySet(tensor);
     }
   }
 
