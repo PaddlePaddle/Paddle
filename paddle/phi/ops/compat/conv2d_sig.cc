@@ -47,12 +47,9 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
                          {"strides",
                           "paddings",
                           "padding_algorithm",
-                          "groups",
                           "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search"},
+                          "groups",
+                          "data_format"},
                          {"DInput", "DFilter", "DDOutput"});
 }
 

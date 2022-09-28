@@ -676,12 +676,9 @@ void ConvCudnnGradGradKernel(
     const std::vector<int>& strides,
     const std::vector<int>& paddings_t,
     const std::string& padding_algorithm,
-    int groups,
     const std::vector<int>& dilations_t,
+    int groups,
     const std::string& data_format,
-    bool use_addto,
-    int workspace_size_MB,
-    bool exhaustive_search_t,
     DenseTensor* input_grad,
     DenseTensor* filter_grad,
     DenseTensor* out_grad_grad) {
@@ -717,7 +714,15 @@ void ConvCudnnGradGradKernel(
   T* transformed_dx = nullptr;
   std::vector<int> dilations = dilations_t;
 
-  bool exhaustive_search = FLAGS_cudnn_exhaustive_search || exhaustive_search_t;
+  bool has_exhaustive_search = ctx.HasDnnAttr("exhaustive_search");
+  VLOG(4) << "GPUContext contains `exhaustive_search`: "
+          << has_exhaustive_search;
+  bool exhaustive_search_attr =
+      has_exhaustive_search
+          ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("exhaustive_search"))
+          : false;
+  bool exhaustive_search =
+      FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;
   bool deterministic = FLAGS_cudnn_deterministic;
   auto exhaustive_deterministic = exhaustive_search && deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_deterministic,
@@ -1328,12 +1333,9 @@ void DepthwiseConvDoubleGradGPUDNNKernel(
                              strides,
                              paddings_t,
                              padding_algorithm,
-                             groups,
                              dilations_t,
+                             groups,
                              data_format,
-                             use_addto,
-                             workspace_size_MB,
-                             exhaustive_search_t,
                              input_grad,
                              filter_grad,
                              out_grad_grad);
@@ -1368,12 +1370,9 @@ void Conv3DCudnnGradGradKernel(
                              strides,
                              paddings_t,
                              padding_algorithm,
-                             groups,
                              dilations_t,
+                             groups,
                              data_format,
-                             use_addto,
-                             workspace_size_MB,
-                             exhaustive_search_t,
                              input_grad,
                              filter_grad,
                              out_grad_grad);
