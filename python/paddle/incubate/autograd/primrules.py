@@ -23,7 +23,7 @@ from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
                       fill_const, gather, ge, gt, log, matmul, max, mul, ne,
                       neg, reduce_sum, reshape, scatter_add, select, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, rsqrt)
+                      transpose, bernoulli, rsqrt)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -78,6 +78,7 @@ log
 select
 equal
 elementwise_pow
+dropout
 
 These original ops are partially supported:
 
@@ -439,6 +440,30 @@ def gelu_orig2prim(op, x):
                 erf(mul(x, fill_const(1 / math.sqrt(2.), x.shape, x.dtype)))))
 
 
+@REGISTER_ORIG2PRIM('dropout')
+def dropout_orig2prim(op, seed_t, x):
+    assert seed_t is None, 'Can not lower dropout into prim ops with seedtensor.'
+    mask = bernoulli(shape=x.shape, dtype=x.dtype, p=op.attr('dropout_prob'))
+    if op.attr('dropout_implementation') == 'upscale_in_train':
+        if op.attr('is_test') == False:
+            out = div(
+                mul(x, mask),
+                fill_const(1.0 - op.attr('dropout_prob'), x.shape, x.dtype))
+            return primops.cast(mask, dtype=paddle.uint8), out
+        else:
+            return primops.cast(mask, dtype=paddle.uint8), x
+    elif op.attr('dropout_implementation') == 'downgrade_in_infer':
+        if op.attr('is_test') == False:
+            return primops.cast(mask, dtype=paddle.uint8), mul(x, mask)
+        else:
+            return primops.cast(mask, dtype=paddle.uint8), mul(
+                x, fill_const(1.0 - op.attr('dropout_prob'), x.shape, x.dtype))
+    else:
+        raise RuntimeError(
+            'Unsupported dropout_implementation, only support upscale_in_train and downgrade_in_infer'
+        )
+
+
 @REGISTER_ORIG2PRIM('reduce_sum')
 def reduce_sum_orig2prim(op, x):
     axes = tuple(range(0, len(
@@ -632,6 +657,14 @@ def fill_constant_prim2orig(op):
     return paddle.full(shape=op.attr('shape'),
                        fill_value=op.attr('value'),
                        dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
+
+
+@REGISTER_PRIM2ORIG('bernoulli_p')
+def bernoulli_prim2orig(op):
+    t = paddle.full(shape=op.attr('shape'),
+                    fill_value=op.attr('p'),
+                    dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
+    return paddle.bernoulli(t)
 
 
 @REGISTER_PRIM2ORIG('select_p')
