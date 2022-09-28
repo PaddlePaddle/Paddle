@@ -16,9 +16,9 @@
 
 set -e
 
-rm -rf PaddleCustomDevice && \
-git clone ${PLUGIN_URL} \
-&& pushd PaddleCustomDevice/ \
+rm -rf fleet_PaddleCustomDevice && \
+git clone ${PLUGIN_URL} fleet_PaddleCustomDevice \
+&& pushd fleet_PaddleCustomDevice/ \
 && git fetch origin \
 && git checkout ${PLUGIN_TAG} -b dev \ 
 && pushd backends/custom_cpu \
@@ -28,7 +28,7 @@ echo "begin test use custom_cpu"
 
 export FLAGS_selected_custom_cpus=0,1
 export CUSTOM_CPU_VISIBLE_DEVICES=0,1
-export CUSTOM_DEVICE_ROOT=PaddleCustomDevice/backends/custom_cpu/build
+export CUSTOM_DEVICE_ROOT=fleet_PaddleCustomDevice/backends/custom_cpu/build
 
 distributed_args="--devices=0,1"
 python -m paddle.distributed.fleet.launch ${distributed_args} custom_device_multi_process_collective.py fleetlaunch_custom_cpu

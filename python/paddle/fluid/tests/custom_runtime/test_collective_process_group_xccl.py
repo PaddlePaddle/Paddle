@@ -136,18 +136,25 @@ class TestProcessGroup(TestMultipleCustomCPU):
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        cmd = 'rm -rf PaddleCustomDevice \
-            && git clone {} \
-            && cd PaddleCustomDevice/backends/custom_cpu \
+        repo_dir = '{}_plugin'.format(__file__)
+        cmd = 'rm -rf {} \
+            && git clone {} {} \
+            && cd {} \
+            && git fetch origin \
             && git checkout {} -b dev \
+            && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8'.format(
-            os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG'))
+            repo_dir, os.getenv('PLUGIN_URL'), repo_dir, repo_dir,
+            os.getenv('PLUGIN_TAG'))
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
-            cur_dir, 'PaddleCustomDevice/backends/custom_cpu/build')
+            cur_dir, '{}/backends/custom_cpu/build'.format(repo_dir))
+        os.environ['FLAGS_selected_custom_cpus'] = '0,1'
+        os.environ['CUSTOM_CPU_VISIBLE_DEVICES'] = '0,1'
+        os.environ['PADDLE_XCCL_BACKEND'] = 'custom_cpu'
 
     def test_process_group_xccl(self):
         from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc

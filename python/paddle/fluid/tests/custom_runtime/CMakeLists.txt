@@ -8,7 +8,6 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
     "test_*.py")
   string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-  list(REMOVE_ITEM TEST_OPS test_collective_process_group_xccl)
   foreach(TEST_OP ${TEST_OPS})
     py_test(${TEST_OP}
             SRCS ${TEST_OP}.py ENVS FLAGS_allocator_strategy=naive_best_fit

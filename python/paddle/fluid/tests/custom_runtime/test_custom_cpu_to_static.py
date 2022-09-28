@@ -94,20 +94,22 @@ class TestCustomCPUPlugin(unittest.TestCase):
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        cmd = 'rm -rf PaddleCustomDevice \
-            && git clone {} \
+        repo_dir = '{}_plugin'.format(__file__)
+        cmd = 'rm -rf {} \
+            && git clone {} {} \
+            && cd {} \
             && git fetch origin \
-            && cd PaddleCustomDevice\
             && git checkout {} -b dev \
             && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8'.format(
-            os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG'))
+            repo_dir, os.getenv('PLUGIN_URL'), repo_dir, repo_dir,
+            os.getenv('PLUGIN_TAG'))
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
-            cur_dir, 'PaddleCustomDevice/backends/custom_cpu/build')
+            cur_dir, '{}/backends/custom_cpu/build'.format(repo_dir))
 
     def test_custom_cpu_plugin(self):
         self._test_to_static()
