@@ -107,15 +107,11 @@ inline static int GetDesiredBlockDim(int dim) {
   }
 }
 
-inline static int getMaxLength(int k, int capability = 60) {
-  if (capability >= 70) {
-    if (k / 5 < 1) {
-      return 1;
-    } else if (k / 5 >= 1) {
-      return min(k / 5, 5);
-    }
-  } else {
-    return 5;
+inline static int getMaxLength(int k) {
+  if (k / 5 < 1) {
+    return 1;
+  } else if (k / 5 >= 1) {
+    return min(k / 5, 5);
   }
 }
 
@@ -358,16 +354,11 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
     }
     if (--(*k) == 0) break;
 
-    if (MaxLength < 5) {
-      if (*beam >= MaxLength) break;
-    } else {
-      unsigned mask = 0u;
-      CREATE_SHFL_MASK(mask, true);
-      if (tid_max / 32 == wid) {
-        if (platform::CudaShuffleSync(mask, *beam, tid_max % 32, 32) ==
-            MaxLength)
-          break;
-      }
+    unsigned mask = 0u;
+    CREATE_SHFL_MASK(mask, true);
+    if (tid_max / 32 == wid) {
+      if (platform::CudaShuffleSync(mask, *beam, tid_max % 32, 32) == MaxLength)
+        break;
     }
   }
 }

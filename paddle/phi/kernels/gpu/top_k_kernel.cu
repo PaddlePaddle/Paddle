@@ -190,25 +190,24 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
-      FIXED_BLOCK_DIM(
-          switch (ops::getMaxLength(k, dev_ctx.GetComputeCapability())) {
-            FIXED_MAXLENGTH(
-                ops::KeMatrixTopK<T, maxLength, kBlockDim>
-                <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
-                                                            k,
-                                                            indices_data,
-                                                            input_data,
-                                                            input_width,
-                                                            input_width,
-                                                            static_cast<int>(k),
-                                                            gridx,
-                                                            input_height,
-                                                            largest));
-            default:
-              PADDLE_THROW(
-                  errors::Fatal("the input k has error when use getMaxLength "
-                                "function to get the maxLength."));
-          });
+      FIXED_BLOCK_DIM(switch (ops::getMaxLength(k)) {
+        FIXED_MAXLENGTH(
+            ops::KeMatrixTopK<T, maxLength, kBlockDim>
+            <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
+                                                        k,
+                                                        indices_data,
+                                                        input_data,
+                                                        input_width,
+                                                        input_width,
+                                                        static_cast<int>(k),
+                                                        gridx,
+                                                        input_height,
+                                                        largest));
+        default:
+          PADDLE_THROW(
+              errors::Fatal("the input k has error when use getMaxLength "
+                            "function to get the maxLength."));
+      });
 #endif
       default:
         PADDLE_THROW(errors::Fatal(
@@ -300,25 +299,24 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
-      FIXED_BLOCK_DIM(
-          switch (ops::getMaxLength(k, dev_ctx.GetComputeCapability())) {
-            FIXED_MAXLENGTH(ops::KeMatrixTopK<T, maxLength, kBlockDim>
-                            <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
-                                trans_out.data<T>(),
-                                k,
-                                trans_ind.data<int64_t>(),
-                                trans_input.data<T>(),
-                                input_width,
-                                input_width,
-                                static_cast<int>(k),
-                                gridx,
-                                input_height,
-                                largest));
-            default:
-              PADDLE_THROW(
-                  errors::Fatal("the input k has error when use getMaxLength "
-                                "function to get the maxLength."));
-          });
+      FIXED_BLOCK_DIM(switch (ops::getMaxLength(k)) {
+        FIXED_MAXLENGTH(ops::KeMatrixTopK<T, maxLength, kBlockDim>
+                        <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+                            trans_out.data<T>(),
+                            k,
+                            trans_ind.data<int64_t>(),
+                            trans_input.data<T>(),
+                            input_width,
+                            input_width,
+                            static_cast<int>(k),
+                            gridx,
+                            input_height,
+                            largest));
+        default:
+          PADDLE_THROW(
+              errors::Fatal("the input k has error when use getMaxLength "
+                            "function to get the maxLength."));
+      });
 #endif
       default:
         PADDLE_THROW(errors::Fatal(
