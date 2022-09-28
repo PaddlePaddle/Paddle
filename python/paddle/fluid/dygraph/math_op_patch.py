@@ -416,6 +416,8 @@ def monkey_patch_math_varbase():
         '__ge__',
         '__mod__',
         '__matmul__',
+        '__lt__',
+        '__le__',
     ]
 
     global _already_patch_varbase
