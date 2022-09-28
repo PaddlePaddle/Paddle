@@ -346,7 +346,6 @@ def _add_feed_fetch_ops(program,
     tmp_program = program.clone()
 
     global_block = tmp_program.global_block()
-    print("test")
     if feed_var_name in global_block.vars:
         feed_var = global_block.var(feed_var_name)
     else:
@@ -1560,7 +1559,7 @@ class Executor(object):
 
             use_standalone_executor_for_distribution = os.environ.get(
                 'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
-                None) in [1, '1', True, 'True', 'true']
+                1) in [1, '1', True, 'True', 'true']
 
             compiled = isinstance(program,
                                   compiler.CompiledProgram) or isinstance(
