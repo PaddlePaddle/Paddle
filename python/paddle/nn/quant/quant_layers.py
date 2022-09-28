@@ -26,6 +26,7 @@ from paddle.fluid.log_helper import get_logger
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.nn import Layer
+from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
 
 __all__ = [
     'FakeQuantAbsMax',
@@ -653,7 +654,8 @@ class QuantizedLinear(Layer):
                 dtype=self._dtype,
                 quant_on_weight=True,
                 channel_num=self.weight.shape[self._linear_quant_axis],
-                quant_axis=self._linear_quant_axis)
+                quant_axis=self._linear_quant_axis,
+                quant_linear=True)
 
         if act_quant_layer is not None:
             self._fake_quant_input = act_quant_layer()
@@ -946,10 +948,29 @@ def _get_fake_quant_type(quant_type, **kwargs):
         assert call_args["channel_num"] is not None, (
             "You need to input channel_num"
             "when you use channel_wise_abs_max strategy.")
+    elif quant_type == 'lsq_weight':
+        call_args["all_postive"] = kwargs.get("all_postive", False)
+        call_args["per_channel"] = False
+        call_args["channel_num"] = 1
+        call_args["quant_linear"] = kwargs.get("quant_linear", False)
+    elif quant_type == 'channel_wise_lsq_weight':
+        quant_type = 'lsq_weight'
+        call_args["all_postive"] = kwargs.get("all_postive", False)
+        call_args["per_channel"] = True
+        call_args["channel_num"] = kwargs.get("channel_num", None)
+        call_args["quant_linear"] = kwargs.get("quant_linear", False)
+        assert call_args["channel_num"] is not None, (
+            "You need to input channel_num"
+            "when you use channel_wise_abs_max strategy.")
+    elif quant_type == 'lsq_act':
+        call_args["all_postive"] = kwargs.get("all_postive", False)
+        call_args["symmetric"] = kwargs.get("symmetric", True)
     fake_quant_map = {
         'abs_max': FakeQuantAbsMax,
         'moving_average_abs_max': FakeQuantMovingAverageAbsMax,
-        'channel_wise_abs_max': FakeQuantChannelWiseAbsMax
+        'channel_wise_abs_max': FakeQuantChannelWiseAbsMax,
+        'lsq_weight': FakeQuantWeightLSQPlus,
+        'lsq_act': FakeQuantActLSQPlus
     }
 
     return fake_quant_map[quant_type](**call_args)

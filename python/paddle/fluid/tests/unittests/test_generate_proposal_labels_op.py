@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -231,10 +229,10 @@ def _box_to_delta(ex_boxes, gt_boxes, weights):
 def _expand_bbox_targets(bbox_targets_input, class_nums, is_cls_agnostic):
     class_labels = bbox_targets_input[:, 0]
     fg_inds = np.where(class_labels > 0)[0]
-    #if is_cls_agnostic:
-    #	class_labels = [1 if ll > 0 else 0 for ll in class_labels]
-    #    class_labels = np.array(class_labels, dtype=np.int32)
-    #	class_nums = 2
+    # if is_cls_agnostic:
+    #     class_labels = [1 if ll > 0 else 0 for ll in class_labels]
+    #     class_labels = np.array(class_labels, dtype=np.int32)
+    #     class_nums = 2
     bbox_targets = np.zeros((class_labels.shape[0],
                              4 * class_nums if not is_cls_agnostic else 4 * 2))
     bbox_inside_weights = np.zeros(bbox_targets.shape)

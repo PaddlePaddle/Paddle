@@ -520,7 +520,7 @@ def _lower(block, reverse, blacklist):
 @framework.static_only
 def orig2prim(block=None):
     """
-    .. note::
+    Note:
         **This API is ONLY available in the static mode.**
         **Args block must be None or current block of main program.**
 
@@ -544,7 +544,7 @@ def orig2prim(block=None):
 @framework.static_only
 def prim2orig(block=None, blacklist=None):
     """
-    .. note::
+    Note:
         **ONLY available in the static mode.**
         **Args block must be None or current block of main program.**
 

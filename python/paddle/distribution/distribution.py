@@ -19,8 +19,6 @@
 #            'sampling_id',
 #            'Uniform']
 
-from __future__ import print_function
-
 import math
 import warnings
 
@@ -119,7 +117,7 @@ class Distribution(object):
     def probs(self, value):
         """Probability density/mass function.
 
-        .. note::
+        Note:
 
             This method will be deprecated in the future, please use `prob`
             instead.

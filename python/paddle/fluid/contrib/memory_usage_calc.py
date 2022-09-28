@@ -20,8 +20,6 @@ batch size to fully utilize a GPU.
 This API is still under active development and may change drastically.
 """
 
-from __future__ import print_function
-
 import six
 
 from .. import core
