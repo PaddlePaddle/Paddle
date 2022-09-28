@@ -25,6 +25,9 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_op_list.h"
+#endif
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -185,13 +188,23 @@ PreparedOp PrepareImpl(
   phi::KernelSignature kernel_signature;
   phi::KernelKey phi_kernel_key;
   std::string phi_kernel_name;
+
+#ifdef PADDLE_WITH_MKLDNN
+  if (!paddle::platform::in_mkldnn_white_list(op.type_)) {
+    auto input_data_type = op.IndicateVarDataType(dygraph_exe_ctx, "X");
+    if (op.CanMKLDNNBeUsed(dygraph_exe_ctx, input_data_type)) {
+      expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
+      expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+    }
+  }
+#endif
+
 #if defined(PADDLE_WITH_XPU)
   bool is_xpu_unsupport =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
           !paddle::platform::is_xpu_support_op(op.Type(),
                                                expected_kernel_key) ||
       paddle::platform::is_in_xpu_black_list(op.Type());
-
 #endif
 
   bool has_phi_kernel = false;

@@ -548,7 +548,8 @@ void build_op_func_list(const platform::Place& place,
           if (op_with_kernel->PhiKernel()->IsValid()) {
             run_phi_kernel = true;
           } else {
-            if (!op_with_kernel->SupportsKernelType(expected_kernel_key)) {
+            if (!op_with_kernel->SupportsKernelType(expected_kernel_key,
+                                                    exec_ctx)) {
               auto phi_cpu_kernel_key = FallBackToCpu(
                   expected_kernel_key, phi_kernel_key, *op_with_kernel);
               op_with_kernel->ResetPhiKernel(

@@ -50,6 +50,7 @@ class DenseTensor;
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
 
 #ifdef PADDLE_WITH_MLU
@@ -1352,7 +1353,7 @@ bool OperatorWithKernel::SupportsMKLDNN(
 }
 
 bool OperatorWithKernel::SupportsKernelType(
-    const OpKernelType& kernel_type) const {
+    const OpKernelType& kernel_type, const ExecutionContext& exe_ctx) const {
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
   if (kernels_iter == all_op_kernels.end()) return false;
@@ -1383,6 +1384,18 @@ bool OperatorWithKernel::SupportsKernelType(
     return kernel_iter != kernels.end() &&
            paddle::platform::is_xpu_support_op(type_, kernel_type) &&
            !paddle::platform::is_in_xpu_black_list(type_);
+  }
+#endif
+
+#ifdef PADDLE_WITH_MKLDNN
+  if (!paddle::platform::in_mkldnn_white_list(type_)) {
+    auto input_data_type = IndicateVarDataType(exe_ctx, "X");
+    if (this->CanMKLDNNBeUsed(exe_ctx, input_data_type)) {
+      auto tmp_kernel_type = kernel_type;
+      tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
+      tmp_kernel_type.data_layout_ = framework::DataLayout::kMKLDNN;
+      return kernel_iter != kernels.end();
+    }
   }
 #endif
 
@@ -1543,6 +1556,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
     } else {
       phi_kernel_name = kernel_signature_->name;
+
+#ifdef PADDLE_WITH_MKLDNN
+      if (!paddle::platform::in_mkldnn_white_list(type_)) {
+        auto input_data_type = IndicateVarDataType(exe_ctx, "X");
+        if (this->CanMKLDNNBeUsed(exe_ctx, input_data_type)) {
+          kernel_type_.library_type_ = framework::LibraryType::kMKLDNN;
+          kernel_type_.data_layout_ = framework::DataLayout::kMKLDNN;
+        }
+      }
+#endif
+
 // NOTE(Liu-xiandong):In my ctest, this branch do not be executed,
 // I can't understand it, it's really confusing.
 // But we still need to keep this to avoid errors.
@@ -1617,6 +1641,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     } else {
       auto& all_op_kernels = AllOpKernels();
       auto kernels_iter = all_op_kernels.find(type_);
+
+#ifdef PADDLE_WITH_MKLDNN
+      if (!paddle::platform::in_mkldnn_white_list(type_)) {
+        auto input_data_type = IndicateVarDataType(exe_ctx, "X");
+        if (this->CanMKLDNNBeUsed(exe_ctx, input_data_type)) {
+          kernel_type_.library_type_ = framework::LibraryType::kMKLDNN;
+          kernel_type_.data_layout_ = framework::DataLayout::kMKLDNN;
+        }
+      }
+#endif
 
 // NOTE(Liu-xiandong): If we can't find heterogeneous kernel in phi,
 // we need to select the heterogeneous kernel in fluid, but the kernel
@@ -1766,6 +1800,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
     const ExecutionContext& ctx) const {
   auto expected_kernel_key = this->GetExpectedKernelType(ctx);
+
+#ifdef PADDLE_WITH_MKLDNN
+  if (!paddle::platform::in_mkldnn_white_list(type_)) {
+    auto input_data_type = IndicateVarDataType(ctx, "X");
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
+      expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+    }
+  }
+#endif
+
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
       expected_kernel_key.place_ = platform::CPUPlace();
