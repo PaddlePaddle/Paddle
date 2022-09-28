@@ -1560,7 +1560,7 @@ class Executor(object):
 
             use_standalone_executor_for_distribution = os.environ.get(
                 'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
-                1) in [1, '1', True, 'True', 'true']
+                None) in [1, '1', True, 'True', 'true']
 
             compiled = isinstance(program,
                                   compiler.CompiledProgram) or isinstance(
