@@ -4725,6 +4725,78 @@ MLURNNDesc::~MLURNNDesc() {
                                                  output));
 }
 
+/* static */ void MLUCnnl::SmoothL1LossForward(
+    const ExecutionContext& ctx,
+    const cnnlTensorDescriptor_t x_desc,
+    const void* x,
+    const cnnlTensorDescriptor_t t_desc,
+    const void* target,
+    const float beta,
+    const cnnlSmoothL1LossAlgorithm_t algorithm,
+    const cnnlTensorDescriptor_t y_desc,
+    void* y) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetSmoothL1LossForwardWorkspaceSize(
+      handle, x_desc, algorithm, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSmoothL1LossForward_v2(handle,
+                                                        x_desc,
+                                                        x,
+                                                        t_desc,
+                                                        target,
+                                                        beta,
+                                                        algorithm,
+                                                        workspace_ptr,
+                                                        workspace_size,
+                                                        y_desc,
+                                                        y));
+}
+
+/* static */ void MLUCnnl::SmoothL1LossBackward(
+    const ExecutionContext& ctx,
+    const cnnlTensorDescriptor_t x_desc,
+    const void* x,
+    const cnnlTensorDescriptor_t target_desc,
+    const void* target,
+    const cnnlTensorDescriptor_t dy_desc,
+    const void* dy,
+    const float beta,
+    const cnnlSmoothL1LossAlgorithm_t algorithm,
+    const cnnlTensorDescriptor_t dx_desc,
+    void* dx) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetSmoothL1LossBackwardWorkspaceSize(
+      handle, x_desc, algorithm, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSmoothL1LossBackward_v2(handle,
+                                                         x_desc,
+                                                         x,
+                                                         target_desc,
+                                                         target,
+                                                         dy_desc,
+                                                         dy,
+                                                         beta,
+                                                         algorithm,
+                                                         workspace_ptr,
+                                                         workspace_size,
+                                                         dx_desc,
+                                                         dx));
+}
+
 /* static */ void MLUCnnl::EmbeddingForward(
     const ExecutionContext& ctx,
     const int padding_idx,
