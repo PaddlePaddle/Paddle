@@ -19,7 +19,7 @@ import paddle.distributed as dist
 import test_collective_api_base as test_collective_base
 
 
-class StreamReduceTestCase():
+class StreamScatterTestCase():
 
     def __init__(self):
         self._sync_op = eval(os.getenv("sync_op"))
@@ -43,24 +43,42 @@ class StreamReduceTestCase():
                                                       dtype=self._dtype,
                                                       seed=seed))
 
+        src_rank = 1
+        src_data = test_data_list[src_rank]
+        result1 = src_data[0:src_data.shape[0] // 2]
+        result2 = src_data[src_data.shape[0] // 2:]
+
         rank = dist.get_rank()
+
+        # case 1: pass a pre-sized tensor list
         tensor = paddle.to_tensor(test_data_list[rank])
-        task = dist.stream.reduce(tensor,
-                                  dst=1,
-                                  sync_op=self._sync_op,
-                                  use_calc_stream=self._use_calc_stream)
+        t1, t2 = paddle.split(tensor, 2, axis=0)
+        task = dist.stream.scatter(t1, [t1, t2],
+                                   src=src_rank,
+                                   sync_op=self._sync_op,
+                                   use_calc_stream=self._use_calc_stream)
         if not self._sync_op:
             task.wait()
-
-        result = sum(test_data_list)
-        if rank == 1:
-            assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+        if rank == src_rank:
+            assert np.allclose(t1, result2, rtol=1e-05, atol=1e-05)
         else:
-            assert np.allclose(tensor,
-                               test_data_list[rank],
-                               rtol=1e-05,
-                               atol=1e-05)
+            assert np.allclose(t1, result1, rtol=1e-05, atol=1e-05)
+
+        # case 2: pass a pre-sized tensor
+        tensor = paddle.to_tensor(src_data)
+        t1 = paddle.empty_like(t1)
+        task = dist.stream.scatter(t1,
+                                   tensor,
+                                   src=src_rank,
+                                   sync_op=self._sync_op,
+                                   use_calc_stream=self._use_calc_stream)
+        if not self._sync_op:
+            task.wait()
+        if rank == src_rank:
+            assert np.allclose(t1, result2, rtol=1e-05, atol=1e-05)
+        else:
+            assert np.allclose(t1, result1, rtol=1e-05, atol=1e-05)
 
 
 if __name__ == "__main__":
-    StreamReduceTestCase().run_test_case()
+    StreamScatterTestCase().run_test_case()

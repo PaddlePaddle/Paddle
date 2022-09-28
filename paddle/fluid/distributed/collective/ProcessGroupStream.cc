@@ -114,6 +114,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Reduce(
       "ProcessGroup%s does not support do reduce", GetBackendName()));
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Scatter(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ScatterOptions& opts,
+    bool sync_op) {
+  return Scatter(in_tensors,
+                 out_tensors,
+                 opts,
+                 sync_op,
+                 /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Scatter(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "ProcessGroup%s does not support do scatter", GetBackendName()));
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
     std::vector<phi::DenseTensor>& tensors, int dst_rank, bool sync_op) {
   return Send(tensors,

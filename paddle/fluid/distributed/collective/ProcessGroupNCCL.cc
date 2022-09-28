@@ -1320,6 +1320,68 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
       CommType::SCATTER);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(out_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          ncclComm_t comm,
+          const gpuStream_t& stream) {
+        PADDLE_ENFORCE_EQ(
+            output.numel(),
+            input.numel() / size_,
+            platform::errors::InvalidArgument(
+                "Input and output tensors should have the same shape."));
+        size_t offset = 0;
+        if (rank_ == opts.root_rank) {
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+          for (auto i = 0; i < size_; i++) {
+            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+                GetPointerByOffset(input.data(), offset, input.dtype()),
+                input.numel() / size_,
+                platform::ToNCCLDataType(input.dtype()),
+                i,
+                comm,
+                stream));
+            offset += input.numel() / size_;
+          }
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+              output.data(),
+              input.numel() / size_,
+              platform::ToNCCLDataType(input.dtype()),
+              opts.root_rank,
+              comm,
+              stream));
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+        } else {
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+              output.data(),
+              input.numel() / size_,
+              platform::ToNCCLDataType(input.dtype()),
+              opts.root_rank,
+              comm,
+              stream));
+        }
+      },
+      CommType::SCATTER,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::_ReduceScatterBase(
     phi::DenseTensor& out_tensor,
     phi::DenseTensor& in_tensor,

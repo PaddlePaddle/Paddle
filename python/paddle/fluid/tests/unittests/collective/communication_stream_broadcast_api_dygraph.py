@@ -36,13 +36,12 @@ class StreamBroadcastTestCase():
     def run_test_case(self):
         dist.init_parallel_env()
 
-        rank = 1
-        result = test_collective_base.create_test_data(shape=self._shape,
-                                                       dtype=self._dtype,
-                                                       seed=self._seeds[rank])
+        src_rank = 1
+        result = test_collective_base.create_test_data(
+            shape=self._shape, dtype=self._dtype, seed=self._seeds[src_rank])
         tensor = paddle.to_tensor(result)
         task = dist.stream.broadcast(tensor,
-                                     src=rank,
+                                     src=src_rank,
                                      sync_op=self._sync_op,
                                      use_calc_stream=self._use_calc_stream)
         if not self._sync_op:

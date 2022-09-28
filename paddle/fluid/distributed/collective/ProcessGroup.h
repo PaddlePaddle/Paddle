@@ -255,7 +255,7 @@ class ProcessGroup {
       std::vector<phi::DenseTensor>&,  // NOLINT
       const ReduceOptions& opts) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support Reduce", GetBackendName()));
+        "ProcessGroup%s does not support reduce", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
@@ -264,16 +264,26 @@ class ProcessGroup {
       const ReduceOptions&,
       bool) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support Reduce with sync_op flag",
+        "ProcessGroup%s does not support reduce with sync_op flag",
         GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Scatter(
       std::vector<phi::DenseTensor>&,  // NOLINT
       std::vector<phi::DenseTensor>&,  // NOLINT
-      const ScatterOptions&) {         // NOLINT
+      const ScatterOptions&) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support Scatter", GetBackendName()));
+        "ProcessGroup%s does not support scatter", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Scatter(
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      const ScatterOptions&,
+      bool) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support scatter with sync_op flag",
+        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(

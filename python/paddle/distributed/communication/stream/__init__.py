@@ -17,6 +17,7 @@ from .all_reduce import all_reduce
 from .broadcast import broadcast
 from .reduce import reduce
 from .recv import recv
+from .scatter import scatter
 from .send import send
 
-__all__ = ["all_reduce", "broadcast", "reduce", "recv", "send"]
+__all__ = ["all_reduce", "broadcast", "reduce", "recv", "scatter", "send"]
