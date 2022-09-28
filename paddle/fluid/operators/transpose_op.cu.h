@@ -1196,8 +1196,7 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
   if (!ret) {
     auto* tuner =
         phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
-    tuner->AddCallBack(
-        phi::autotune::MakeCallback<T>(SimplifyThenLaunch<phi::GPUContext, T>));
+    tuner->AddCallBack(SimplifyThenLaunch<phi::GPUContext, T>);
 
     size_t key = phi::autotune::TransposeKey(
         phi::vectorize(in.dims()),
