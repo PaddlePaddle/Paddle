@@ -82,9 +82,9 @@ class DataParallelOptimizationPass(PassBase):
             self._analyze_program()
             self._prune_grad_scaling()
             self._calc_comm_overlap()
-            # grad_group = self._fuse_allreduce()
+            grad_group = self._fuse_allreduce()
 
-        # self.summary(grad_group)
+        self.summary(grad_group)
 
     def _prune_grad_scaling(self):
 

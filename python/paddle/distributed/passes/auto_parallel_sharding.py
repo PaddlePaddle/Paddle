@@ -187,8 +187,27 @@ class ShardingPass(PassBase):
 
                     if self._is_parameter_in_local_shard(param_name):
                         reversed_x.append(input_name)
-                op.desc.set_input('X', reversed_x)
-                op.desc.set_output('Out', reversed_x)
+                # NOTE: When `reversed_x` is [], check_finite_and_unscale will be replaced by `fill_constant` op.
+                # The output of check_finite_and_unscale is be set False
+                if reversed_x:
+                    op.desc.set_input('X', reversed_x)
+                    op.desc.set_output('Out', reversed_x)
+                else:
+                    if op.type == "check_finite_and_unscale":
+                        out_name = op.output_arg_names[0]
+                        out_var = main_block.vars[out_name]
+                        main_block._remove_op(idx, sync=False)
+                        main_block._insert_op_without_sync(
+                            idx,
+                            type="fill_constant",
+                            outputs={"Out": out_var},
+                            attrs={
+                                "shape": out_var.shape,
+                                "dtype": out_var.dtype,
+                                "value": 0,
+                            })
+                    else:
+                        main_block._remove_op(idx, sync=False)
 
         main_block._sync_with_cpp()
 
