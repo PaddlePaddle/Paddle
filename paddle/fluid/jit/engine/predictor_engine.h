@@ -140,26 +140,14 @@ class PredictorEngine : public BaseEngine {
     utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, scope_.get());
     VLOG(6) << framework::GenScopeTreeDebugInfo(scope_.get());
     AnalysisConfig config;
-    // Hold pdmodel path in FunctionInfo
-    if (info->FunctionName() == "forward_attention_decoder") {
-      config.SetProgFile(
-          "/workspace/paddle_build/test/u2/chunk_wenetspeech_static/"
-          "export.jit.forward_attention_decoder.pdmodel");
-    } else if (info->FunctionName() == "forward_encoder_chunk") {
-      config.SetProgFile(
-          "/workspace/paddle_build/test/u2/chunk_wenetspeech_static/"
-          "export.jit.forward_encoder_chunk.pdmodel");
-    } else if (info->FunctionName() == "ctc_activation") {
-      config.SetProgFile(
-          "/workspace/paddle_build/test/u2/chunk_wenetspeech_static/"
-          "export.jit.ctc_activation.pdmodel");
-    }
+    config.SetProgFile(info->PdModelPath());
 
     if (platform::is_gpu_place(place_)) {
       config.EnableUseGpu(100, place_.GetDeviceId());
     } else if (platform::is_cpu_place(place_)) {
       config.DisableGpu();
     }
+    // config.EnableMKLDNN();
     config.SwitchIrOptim(true);
     // config.SwitchIrDebug(true);
 

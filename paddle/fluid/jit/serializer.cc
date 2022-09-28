@@ -54,7 +54,7 @@ Layer Deserializer::operator()(const std::string& path,
 
     param_names_set.insert(persist_var_names.begin(), persist_var_names.end());
     info_map[func_name] = std::make_shared<FunctionInfo>(
-        func_name, persist_var_names, program_desc);
+        func_name, persist_var_names, program_desc, it.second);
   }
 
   VariableMap params_dict;
@@ -71,6 +71,7 @@ Layer Deserializer::operator()(const std::string& path,
   for (auto it = info_map.begin(); it != info_map.end(); ++it) {
     const std::string& func_name = it->first;
     auto& info = it->second;
+
     // if (FLAGS_jit_engine_type == "Executor") {
     //   VLOG(3) << "Add function type: ExecutorEngine. Function name: "
     //           << func_name;
