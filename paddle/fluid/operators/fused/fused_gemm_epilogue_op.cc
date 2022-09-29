@@ -20,7 +20,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
  public:

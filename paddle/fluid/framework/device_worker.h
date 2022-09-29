@@ -31,7 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #endif
 
-#include <map>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/heter_util.h"
@@ -60,15 +59,15 @@ class Scope;
 namespace paddle {
 namespace framework {
 
-std::string PrintLodTensor(Tensor* tensor,
+std::string PrintLodTensor(phi::DenseTensor* tensor,
                            int64_t start,
                            int64_t end,
                            char separator = ',',
                            bool need_leading_separator = false);
-void PrintLodTensor(Tensor* tensor,
+void PrintLodTensor(phi::DenseTensor* tensor,
                     int64_t start,
                     int64_t end,
-                    std::string& output_str,
+                    std::string& output_str,  // NOLINT
                     char separator = ',',
                     bool need_leading_separator = false);
 std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);

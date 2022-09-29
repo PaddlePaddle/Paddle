@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/requantize_op.h"
@@ -24,7 +24,7 @@ namespace operators {
 using dnnl::memory;
 using dnnl::reorder;
 using platform::to_void_cast;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 namespace {
 
@@ -38,13 +38,13 @@ template <typename T>
 class ReQuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto scale_in = ctx.Attr<float>("Scale_in");
     auto shift_in = ctx.Attr<float>("Shift_in");
     auto scale_out = ctx.Attr<float>("Scale_out");
     auto shift_out = ctx.Attr<float>("Shift_out");
     bool with_shift = shift_in != 0.0f || shift_out != 0.0f;
-    auto* output = ctx.Output<Tensor>("Output");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
 
     PADDLE_ENFORCE_NE(
         scale_in,

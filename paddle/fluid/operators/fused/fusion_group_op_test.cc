@@ -26,10 +26,10 @@ namespace operators {
 using CPUKernelFunc = std::function<void(size_t n, std::vector<void*> args)>;
 
 template <typename T>
-framework::Tensor* CreateTensor(framework::Scope* scope,
-                                const platform::Place& place,
-                                const std::string& name,
-                                const std::vector<int64_t>& shape) {
+phi::DenseTensor* CreateTensor(framework::Scope* scope,
+                               const platform::Place& place,
+                               const std::string& name,
+                               const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   if (shape.size() > 0) {
@@ -39,7 +39,7 @@ framework::Tensor* CreateTensor(framework::Scope* scope,
 }
 
 template <typename T>
-void SetupRandomCPUTensor(framework::Tensor* tensor,
+void SetupRandomCPUTensor(phi::DenseTensor* tensor,
                           const std::vector<int64_t>& shape) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
@@ -104,10 +104,10 @@ void PrepareDeviceCode(platform::Place place,
 
 void CheckOutputs(framework::Scope* scope,
                   const std::vector<std::string>& output_names,
-                  std::vector<framework::Tensor>* cpu_tensors,
+                  std::vector<phi::DenseTensor>* cpu_tensors,
                   size_t num_inputs,
                   CPUKernelFunc cpu_kernel_func) {
-  std::vector<framework::Tensor> cpu_outputs;
+  std::vector<phi::DenseTensor> cpu_outputs;
   cpu_outputs.resize(output_names.size());
   for (size_t j = 0; j < output_names.size(); ++j) {
     auto* var = scope->Var(output_names[j]);
@@ -158,11 +158,11 @@ void TestMain(const std::vector<std::string>& input_names,
   framework::Scope scope;
 
   // Prepare input tensors.
-  std::vector<framework::Tensor> cpu_tensors;
+  std::vector<phi::DenseTensor> cpu_tensors;
   cpu_tensors.resize(input_names.size() + output_names.size());
   for (size_t i = 0; i < input_names.size(); ++i) {
     SetupRandomCPUTensor<float>(&(cpu_tensors[i]), input_shapes[i]);
-    framework::Tensor* dev_tensor =
+    phi::DenseTensor* dev_tensor =
         CreateTensor<float>(&scope, place, input_names[i], input_shapes[i]);
     paddle::framework::TensorCopySync(cpu_tensors[i], place, dev_tensor);
   }

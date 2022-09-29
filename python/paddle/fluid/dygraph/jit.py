@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import pickle
 import warnings
@@ -1650,7 +1648,7 @@ class TracedLayer(object):
                 check_type(
                     f, "each element of fetch", int,
                     "fluid.dygraph.jit.TracedLayer.save_inference_model")
-        clip_extra = kwargs.get('clip_extra', False)
+        clip_extra = kwargs.get('clip_extra', True)
         # path check
         file_prefix = os.path.basename(path)
         if file_prefix == "":

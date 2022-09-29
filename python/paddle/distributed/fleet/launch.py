@@ -54,8 +54,6 @@ launch a process on each of the given gpu card or cpu machine.
                 your_training_py (arg1 arg2 and all others)
 """
 
-from __future__ import print_function
-
 import shutil
 import sys
 import tempfile

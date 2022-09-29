@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
@@ -34,16 +34,19 @@ class PositiveNegativePairKernel : public framework::OpKernel<T> {
   };
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto score_t = context.Input<Tensor>("Score");
-    auto label_t = context.Input<Tensor>("Label");
-    auto query_t = context.Input<Tensor>("QueryID");
-    auto acc_positive_t = context.Input<Tensor>("AccumulatePositivePair");
-    auto acc_negative_t = context.Input<Tensor>("AccumulateNegativePair");
-    auto acc_neutral_t = context.Input<Tensor>("AccumulateNeutralPair");
-    auto positive_t = context.Output<Tensor>("PositivePair");
-    auto negative_t = context.Output<Tensor>("NegativePair");
-    auto neutral_t = context.Output<Tensor>("NeutralPair");
-    auto weight_t = context.Input<Tensor>("Weight");
+    auto score_t = context.Input<phi::DenseTensor>("Score");
+    auto label_t = context.Input<phi::DenseTensor>("Label");
+    auto query_t = context.Input<phi::DenseTensor>("QueryID");
+    auto acc_positive_t =
+        context.Input<phi::DenseTensor>("AccumulatePositivePair");
+    auto acc_negative_t =
+        context.Input<phi::DenseTensor>("AccumulateNegativePair");
+    auto acc_neutral_t =
+        context.Input<phi::DenseTensor>("AccumulateNeutralPair");
+    auto positive_t = context.Output<phi::DenseTensor>("PositivePair");
+    auto negative_t = context.Output<phi::DenseTensor>("NegativePair");
+    auto neutral_t = context.Output<phi::DenseTensor>("NeutralPair");
+    auto weight_t = context.Input<phi::DenseTensor>("Weight");
 
     auto score = score_t->data<T>();
     auto label = label_t->data<T>();

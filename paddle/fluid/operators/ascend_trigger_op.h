@@ -33,8 +33,8 @@ class AscendTriggerCPUKernel : public framework::OpKernel<T> {
     auto ascend_ptr = paddle::framework::AscendInstance::GetInstance();
     auto graph_idx = ctx.Attr<int>("graph_idx");
     VLOG(4) << "AscendTrigger Kernel, begin to run graph: " << graph_idx;
-    auto inputs = ctx.MultiInput<framework::Tensor>("FeedList");
-    auto outputs = ctx.MultiOutput<framework::Tensor>("FetchList");
+    auto inputs = ctx.MultiInput<phi::DenseTensor>("FeedList");
+    auto outputs = ctx.MultiOutput<phi::DenseTensor>("FetchList");
     ascend_ptr->RunAscendSubgraph(graph_idx, inputs, &outputs);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

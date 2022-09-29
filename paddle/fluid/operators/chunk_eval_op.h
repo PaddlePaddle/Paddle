@@ -23,7 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
@@ -191,12 +190,13 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     auto* inference = context.Input<LoDTensor>("Inference");
     auto place = inference->place();
     auto* label = context.Input<LoDTensor>("Label");
-    auto* precision = context.Output<Tensor>("Precision");
-    auto* recall = context.Output<Tensor>("Recall");
-    auto* f1 = context.Output<Tensor>("F1-Score");
-    auto* num_infer_chunks = context.Output<Tensor>("NumInferChunks");
-    auto* num_label_chunks = context.Output<Tensor>("NumLabelChunks");
-    auto* num_correct_chunks = context.Output<Tensor>("NumCorrectChunks");
+    auto* precision = context.Output<phi::DenseTensor>("Precision");
+    auto* recall = context.Output<phi::DenseTensor>("Recall");
+    auto* f1 = context.Output<phi::DenseTensor>("F1-Score");
+    auto* num_infer_chunks = context.Output<phi::DenseTensor>("NumInferChunks");
+    auto* num_label_chunks = context.Output<phi::DenseTensor>("NumLabelChunks");
+    auto* num_correct_chunks =
+        context.Output<phi::DenseTensor>("NumCorrectChunks");
 
     const int64_t* inference_data = inference->data<int64_t>();
     const int64_t* label_data = label->data<int64_t>();
@@ -219,7 +219,7 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
 
     if (use_padding) {
       auto dim1 = inference->dims()[1];
-      auto* seq_length_t = context.Input<Tensor>("SeqLength");
+      auto* seq_length_t = context.Input<phi::DenseTensor>("SeqLength");
       auto* seq_length_data = seq_length_t->data<int64_t>();
       num_sequences = seq_length_t->dims()[0];
 

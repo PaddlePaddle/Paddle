@@ -52,8 +52,8 @@ static std::unordered_set<std::string> CanBeUsedBySelectedRows = {
     "abs", "abs_grad", "square", "square_grad", "sqrt", "sqrt_grad"};
 
 inline void ExtractActivationTensor(const framework::ExecutionContext& context,
-                                    const framework::Tensor** X,
-                                    framework::Tensor** Out) {
+                                    const phi::DenseTensor** X,
+                                    phi::DenseTensor** Out) {
   auto x_var = context.InputVar("X");
   auto out_var = context.OutputVar("Out");
   PADDLE_ENFORCE_NOT_NULL(x_var,
@@ -70,8 +70,8 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
     *Out = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
         out_var);
   } else {
-    *X = context.Input<framework::Tensor>("X");
-    *Out = context.Output<framework::Tensor>("Out");
+    *X = context.Input<phi::DenseTensor>("X");
+    *Out = context.Output<phi::DenseTensor>("Out");
   }
 
   PADDLE_ENFORCE_NOT_NULL(
@@ -84,10 +84,10 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
 template <ActBwdOpFwdDeps kDepValue>
 inline void ExtractActivationGradTensor(
     const framework::ExecutionContext& context,
-    const framework::Tensor** X,
-    const framework::Tensor** Out,
-    const framework::Tensor** dOut,
-    framework::Tensor** dX) {
+    const phi::DenseTensor** X,
+    const phi::DenseTensor** Out,
+    const phi::DenseTensor** dOut,
+    phi::DenseTensor** dX) {
   auto out_grad_var = context.InputVar(framework::GradVarName("Out"));
   auto x_grad_var = context.OutputVar(framework::GradVarName("X"));
   const framework::Variable* out_var = nullptr;
@@ -129,9 +129,9 @@ inline void ExtractActivationGradTensor(
     }
 
   } else {
-    *Out = context.Input<framework::Tensor>("Out");
-    *dOut = context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    *dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    *Out = context.Input<phi::DenseTensor>("Out");
+    *dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    *dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     if (out_var) {
       *Out = &(out_var->Get<framework::LoDTensor>());
@@ -156,7 +156,7 @@ inline void ExtractActivationGradTensor(
     if (CanBeUsedBySelectedRows.count(context.Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     } else {
-      *X = context.Input<framework::Tensor>("X");
+      *X = context.Input<phi::DenseTensor>("X");
     }
   } else {
     VLOG(10) << " Inplace activation of Op : " << context.Type();
@@ -171,8 +171,8 @@ class ActivationKernel
   using T = typename Functor::ELEMENT_TYPE;
 
   void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor* X = nullptr;
-    framework::Tensor* Out = nullptr;
+    const phi::DenseTensor* X = nullptr;
+    phi::DenseTensor* Out = nullptr;
     ExtractActivationTensor(context, &X, &Out);
     Out->mutable_data<T>(context.GetPlace());
 
@@ -205,8 +205,8 @@ class ActivationGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor *X, *Out, *dOut;
-    framework::Tensor* dX = nullptr;
+    const phi::DenseTensor *X, *Out, *dOut;
+    phi::DenseTensor* dX = nullptr;
     X = Out = dOut = nullptr;
     ExtractActivationGradTensor<Functor::FwdDeps()>(
         context, &X, &Out, &dOut, &dX);
@@ -391,11 +391,10 @@ template <typename DeviceContext, typename T>
 class ELUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<framework::Tensor>("X");
-    auto* Out = context.Input<framework::Tensor>("Out");
-    auto* dOut =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* X = context.Input<phi::DenseTensor>("X");
+    auto* Out = context.Input<phi::DenseTensor>("Out");
+    auto* dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     const float alpha = context.Attr<float>("alpha");
     dX->mutable_data<T>(context.GetPlace());
 
@@ -426,12 +425,12 @@ template <typename T>
 struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
   void operator()(const Device& dev,
-                  const framework::Tensor* X,
-                  const framework::Tensor* Out,
-                  const framework::Tensor* ddX,
-                  framework::Tensor* ddOut,
-                  framework::Tensor* dOut,
-                  framework::Tensor* dX) const {
+                  const phi::DenseTensor* X,
+                  const phi::DenseTensor* Out,
+                  const phi::DenseTensor* ddX,
+                  phi::DenseTensor* ddOut,
+                  phi::DenseTensor* dOut,
+                  phi::DenseTensor* dX) const {
     auto* d = dev.eigen_device();
     auto ddx = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "DDX", "AbsGradGrad"));
@@ -451,11 +450,11 @@ struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
 // others. Impliment extraction kernel separately here.
 inline void ExtractDoubleGradTensorWithInputDOut(
     const framework::ExecutionContext& ctx,
-    const framework::Tensor** X,
-    const framework::Tensor** ddX,
-    framework::Tensor** dX,
-    const framework::Tensor** dOut,
-    framework::Tensor** ddOut) {
+    const phi::DenseTensor** X,
+    const phi::DenseTensor** ddX,
+    phi::DenseTensor** dX,
+    const phi::DenseTensor** dOut,
+    phi::DenseTensor** ddOut) {
   // extract ddX(output), ddOut(input)
   auto ddx_var = ctx.InputVar("DDX");
   auto ddo_var = ctx.OutputVar("DDOut");
@@ -464,9 +463,9 @@ inline void ExtractDoubleGradTensorWithInputDOut(
       platform::errors::NotFound(
           "Cannot get input Variable Out, variable name = %s",
           ctx.InputName("DDX")));
-  *ddX = ctx.Input<framework::Tensor>("DDX");
+  *ddX = ctx.Input<phi::DenseTensor>("DDX");
   if (ddo_var) {
-    *ddOut = ctx.Output<framework::Tensor>("DDOut");
+    *ddOut = ctx.Output<phi::DenseTensor>("DDOut");
   }
   PADDLE_ENFORCE_NOT_NULL(
       ddX,
@@ -482,15 +481,15 @@ inline void ExtractDoubleGradTensorWithInputDOut(
           "Cannot get input Variable Out, variable name = %s",
           ctx.InputName("X")));
   auto dx_var = ctx.OutputVar("DX");
-  *X = ctx.Input<framework::Tensor>("X");
+  *X = ctx.Input<phi::DenseTensor>("X");
   if (dx_var) {
-    *dX = ctx.Output<framework::Tensor>("DX");
+    *dX = ctx.Output<phi::DenseTensor>("DX");
   }
 
   // extract dOut(input)
   auto dout_var = ctx.InputVar("DOut");
   if (dout_var) {
-    *dOut = ctx.Input<framework::Tensor>("DOut");
+    *dOut = ctx.Input<phi::DenseTensor>("DOut");
   }
 }
 
