@@ -52,6 +52,7 @@ class LayoutAutoTune(unittest.TestCase):
             self.assertEqual(paddle.fluid.core.use_layout_autotune(), True)
             paddle.fluid.core.disable_layout_autotune()
         self.assertEqual(paddle.fluid.core.use_layout_autotune(), False)
+        self.use_autoune()
 
     def setUp(self):
         self.use_autoune()
