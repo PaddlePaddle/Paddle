@@ -17,8 +17,6 @@ import os
 import sys
 import paddle
 import paddle.fluid as fluid
-import unittest
-import paddle.fluid.layers as layers
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 import pickle
 from paddle.fluid.framework import _enable_legacy_dygraph
