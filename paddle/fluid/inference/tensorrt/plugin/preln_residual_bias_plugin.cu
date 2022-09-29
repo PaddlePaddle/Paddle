@@ -69,7 +69,7 @@ __inline__ __device__ T blockReduceSumV2(T *val) {
   return (T)0.0f;
 }
 
-template<int UNROLL_FACTOR>
+template <int UNROLL_FACTOR>
 __global__ void generalAddBiasResidualLayerNormOpt2(
     half2 *normed_output,
     half2 *output,
@@ -141,18 +141,18 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
   }
 }
 
-#define HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(UNROLL_FACTOR)                                                               \
-  generalAddBiasResidualLayerNormOpt2<UNROLL_FACTOR><<<rows, block, 0, stream>>>(                                           \
-      reinterpret_cast<half2 *>(layernorm_dst),                                                                             \
-      reinterpret_cast<half2 *>(dst),                                                                                       \
-      (const half2 *)bias,                                                                                                  \
-      (const half2 *)input2,                                                                                                \
-      (const half2 *)input1,                                                                                                \
-      (const half2 *)fp16_scale_gpu_,                                                                                       \
-      (const half2 *)fp16_bias_gpu_,                                                                                        \
-        rows,                                                                                                               \
-      half_n,                                                                                                               \
-      epsilon);
+#define HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(UNROLL_FACTOR)                \
+  generalAddBiasResidualLayerNormOpt2<UNROLL_FACTOR>                         \
+      <<<rows, block, 0, stream>>>(reinterpret_cast<half2 *>(layernorm_dst), \
+                                   reinterpret_cast<half2 *>(dst),           \
+                                   (const half2 *)bias,                      \
+                                   (const half2 *)input2,                    \
+                                   (const half2 *)input1,                    \
+                                   (const half2 *)fp16_scale_gpu_,           \
+                                   (const half2 *)fp16_bias_gpu_,            \
+                                   rows,                                     \
+                                   half_n,                                   \
+                                   epsilon);
 
 #endif
 
@@ -170,7 +170,7 @@ int PrelnResidualBiasPluginDynamic::initialize() TRT_NOEXCEPT {
              scale_.data(),
              scale_size_ * sizeof(float),
              cudaMemcpyHostToDevice);
-  if (with_fp16_){
+  if (with_fp16_) {
     cudaMalloc(&fp16_bias_gpu_, sizeof(half) * bias_size_);
     cudaMemcpy(fp16_bias_gpu_,
                fp16_bias_.data(),
@@ -267,10 +267,8 @@ int PrelnResidualBiasPluginDynamic::getNbOutputs() const TRT_NOEXCEPT {
 
 size_t PrelnResidualBiasPluginDynamic::getSerializationSize() const
     TRT_NOEXCEPT {
-  size_t ser_size = SerializedSize(bias_) + 
-                    SerializedSize(fp16_bias_) + 
-                    SerializedSize(scale_) +
-                    SerializedSize(fp16_scale_) +
+  size_t ser_size = SerializedSize(bias_) + SerializedSize(fp16_bias_) +
+                    SerializedSize(scale_) + SerializedSize(fp16_scale_) +
                     SerializedSize(fp32_ele_bias_) +
                     SerializedSize(fp16_ele_bias_) +
                     SerializedSize(bias_size_) + SerializedSize(scale_size_) +
@@ -467,23 +465,24 @@ int PrelnResidualBiasPluginDynamic::enqueue(
       int rolls_per_thread = half_n / block.x;
       int unroll_factor = 8;
       while (unroll_factor > rolls_per_thread && unroll_factor > 1) {
-          unroll_factor /= 2;
+        unroll_factor /= 2;
       }
-      switch(unroll_factor){
-        case 1 :
+      switch (unroll_factor) {
+        case 1:
           HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(1);
           break;
-        case 2 :
+        case 2:
           HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(2);
           break;
-        case 4 :
+        case 4:
           HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(4);
           break;
-        case 8 :
+        case 8:
           HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(8);
           break;
-        default :
-          PADDLE_THROW(platform::errors::Fatal("Invalid UNROLL_FACTOR in preln_residual_bias trt plugin."));
+        default:
+          PADDLE_THROW(platform::errors::Fatal(
+              "Invalid UNROLL_FACTOR in preln_residual_bias trt plugin."));
       }
 
     } else {

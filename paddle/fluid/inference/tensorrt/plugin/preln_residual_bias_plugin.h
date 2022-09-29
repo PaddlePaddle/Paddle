@@ -52,11 +52,11 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
     std::copy(ele_bias, ele_bias + ele_bias_size, fp16_ele_bias_.data());
     std::copy(bias, bias + bias_size, bias_.data());
     std::copy(scale, scale + scale_size, scale_.data());
-    for(int i=0;i<bias_size;i++){
-      fp16_bias_[i]=static_cast<half>(bias[i]);
+    for (int i = 0; i < bias_size; i++) {
+      fp16_bias_[i] = static_cast<half>(bias[i]);
     }
-    for(int i=0;i<scale_size;i++){
-      fp16_scale_[i]=static_cast<half>(scale[i]);
+    for (int i = 0; i < scale_size; i++) {
+      fp16_scale_[i] = static_cast<half>(scale[i]);
     }
   }
 
@@ -111,7 +111,6 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
                                           int nb_inputs,
                                           nvinfer1::IExprBuilder& expr_builder)
       TRT_NOEXCEPT override;
-
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* in_out,
                                  int nb_inputs,
@@ -143,11 +142,11 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
 
  private:
   // bias for fp32 mode
-  std::vector<float> bias_; 
+  std::vector<float> bias_;
   // bias for fp16 mode
   std::vector<half> fp16_bias_;
   // scale for fp32 mode
-  std::vector<float> scale_; 
+  std::vector<float> scale_;
   // scale for fp16 mode
   std::vector<half> fp16_scale_;
   std::vector<float> fp32_ele_bias_;
