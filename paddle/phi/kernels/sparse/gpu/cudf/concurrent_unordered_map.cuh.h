@@ -644,7 +644,7 @@ x.second );
   }
   */
 
-  __forceinline__ __device__ const_iterator find(const key_type& k) {
+  __forceinline__ __device__ mapped_type find(const key_type& k) {
     size_type key_hash = m_hf(k);
     size_type hash_tbl_idx = key_hash % m_hashtbl_size;
 
@@ -653,28 +653,17 @@ x.second );
     size_type counter = 0;
     while (0 == begin_ptr) {
       value_type* tmp_ptr = m_hashtbl_values + hash_tbl_idx;
-      const key_type tmp_val = tmp_ptr->first;
-      if (m_equal(k, tmp_val)) {
-        begin_ptr = tmp_ptr;
-        break;
+      const key_type tmp_key = tmp_ptr->first;
+      if (m_equal(k, tmp_key)) {
+        return tmp_ptr->second;
       }
-      if (m_equal(unused_key, tmp_val) || counter > m_hashtbl_size) {
-        begin_ptr = m_hashtbl_values + m_hashtbl_size;
-        break;
-      }
-      if (m_enable_collision_stat) {
-        atomicAdd(&m_query_collisions, 1);
+      if (m_equal(unused_key, tmp_key) || counter > m_hashtbl_size) {
+        return 0;
       }
       hash_tbl_idx = (hash_tbl_idx + 1) % m_hashtbl_size;
       ++counter;
     }
-
-    if (m_enable_collision_stat) {
-      atomicAdd(&m_query_times, 1);
-    }
-
-    return const_iterator(
-        m_hashtbl_values, m_hashtbl_values + m_hashtbl_size, begin_ptr);
+    return 0;
   }
 
   template <typename aggregation_type,
@@ -834,27 +823,6 @@ x.second );
     CUDA_RT_CALL(cudaMemPrefetchAsync(this, sizeof(*this), dev_id, stream));
 
     return 0;
-  }
-
-  template <class comparison_type = key_equal,
-            typename hash_value_type = typename Hasher::result_type>
-  __forceinline__ __device__ const_iterator
-  accum(const value_type& x,
-        comparison_type keys_equal = key_equal(),
-        bool precomputed_hash = false,
-        hash_value_type precomputed_hash_value = 0) {
-    const key_type& dst_key = x.first;
-    auto it = find(dst_key);
-
-    if (it == end()) {
-      return it;
-    }
-
-    value_type* dst = it.getter();
-
-    accum_existing_value_atomic(dst->second, x);
-
-    return it;
   }
 
   __host__ void print_collision(int id) {

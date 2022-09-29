@@ -164,6 +164,37 @@ inline void GatherV2(const GPUContext& dev_ctx,
   }
 }
 
+template <typename Key, typename Element>
+struct Table {
+  virtual __device__ void insert(Key key, Element element){};
+  virtual __device__ Element find(Key key){};
+  virtual __device__ Element find(Key key) const {};
+};
+
+template <typename Key, typename Element>
+struct NormalTable : Table<Key,Element> {
+  Element* normal_table_ptr = nullptr;
+  NormalTable(Element* normal_table_ptr) : normal_table_ptr(normal_table_ptr){};
+  __device__ void insert(Key key, Element element) {
+    normal_table_ptr[key] = element;
+  };
+  __device__ Element find(Key key) { return normal_table_ptr[key]; };
+  __device__ Element find(Key key) const { return normal_table_ptr[key]; };
+};
+
+template <typename Key, typename Element>
+struct HashTable : Table<Key, Element> {
+  concurrent_unordered_map<Key, Element, -1>* hash_table_ptr = nullptr;
+  HashTable(concurrent_unordered_map<Key, Element, -1>* hash_table_ptr)
+      : hash_table_ptr(hash_table_ptr){};
+  ~HashTable() {delete hash_table_ptr;};
+  __device__ void insert(Key key, Element element) {
+    hash_table_ptr->insert(thrust::pair<Key, Element>(key, element));
+  };
+  __device__ Element find(Key key) { return hash_table_ptr->find(key); };
+  __device__ Element find(Key key) const { return hash_table_ptr->find(key); };
+};
+
 // unique the out indexs in rulebook
 template <typename IntT>
 __global__ void UniqueKernel(const IntT* in_indexs,
@@ -303,7 +334,7 @@ template <typename IntT, typename Table>
 __global__ void GetOutIndexTable(const IntT* indices,
                                  const IntT non_zero_num,
                                  const Dims4D dims,
-                                 Table out_index_table) {
+                                 Table* out_index_table_ptr) {
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT batch = indices[i];
     IntT in_z = indices[i + non_zero_num];
@@ -311,7 +342,7 @@ __global__ void GetOutIndexTable(const IntT* indices,
     IntT in_x = indices[i + 3 * non_zero_num];
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
     int element = i == 0 ? -1 : i;
-    out_index_table.insert(index, element);
+    out_index_table_ptr->insert(index, element);
   }
 }
 
@@ -377,7 +408,7 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                           const Dims4D paddings,
                                           const Dims4D dilations,
                                           const Dims4D strides,
-                                          const Table out_index_table,
+                                          Table* out_index_table_ptr,
                                           T* rulebook,
                                           int* counter) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -419,7 +450,7 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
             T out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
                 batch, out_x, out_y, out_z, out_dims);
-            int real_out_index = out_index_table.find(out_index);
+            int real_out_index = out_index_table_ptr->find(out_index);
             if (real_out_index != 0) {
               real_out_index = real_out_index == -1 ? 0 : real_out_index;
               in_i = i;
@@ -517,45 +548,6 @@ inline void CallThrustScan(const GPUContext& dev_ctx,
                                      dev_ctx.stream());
 }
 
-template<typename Key, typename Element>
-struct FastTable{
-  concurrent_unordered_map<Key, Element, -1>* hash_table_ptr = nullptr;
-  int* table_ptr = nullptr;
-  const bool hash = false;
-  const Element ElementNotFound = 0;
-  FastTable(concurrent_unordered_map<Key, Element, -1>* hash_table_ptr,
-        int* table_ptr,
-        bool hash)
-      : hash_table_ptr(hash_table_ptr), table_ptr(table_ptr), hash(hash){};
-  __device__ void insert(Key key,Element element) {
-    if (hash) {
-      hash_table_ptr->insert(thrust::pair<Key, Element>(key, element));
-      return;
-    }
-    table_ptr[key] = element;
-  }
-  __device__ Element find(Key key) {
-    if(hash) {
-      auto it = hash_table_ptr->find(key);
-      if(hash_table_ptr->end().getter() != it.getter()) {
-        return it.getter()->second;
-      }
-      return ElementNotFound;
-    }
-    return table_ptr[key];
-  }
-
-  __device__ Element find(Key key) const {
-    if (hash) {
-      auto it = hash_table_ptr->find(key);
-      if (hash_table_ptr->end().getter() != it.getter()) {
-        return it.getter()->second;
-      }
-      return ElementNotFound;
-    }
-    return table_ptr[key];
-  }
-};
 
 // the basic algorithm can refer to convolution_kernel.cc or
 // the second paper
@@ -622,9 +614,11 @@ int ProductRuleBook(const Context& dev_ctx,
     table_size *= out_dims[i];
   }
 
+      printf("\naaaaa\n");
   if (subm) {
-    int* out_index_table_ptr = nullptr;
-    concurrent_unordered_map<int, int, -1>* out_index_hash_table_ptr = nullptr;
+      printf("\n00000\n");
+    int* normal_table_ptr = nullptr;
+    concurrent_unordered_map<int, int, -1>* hash_table_ptr = nullptr;
     int max_non_zero_num = 136000;
     int64_t min_dense_size = 41 * 1600 * 1408;
     float min_sparsity = 1 - (float)max_non_zero_num / (float)min_dense_size;
@@ -633,19 +627,32 @@ int ProductRuleBook(const Context& dev_ctx,
       dense_size *= out_dims[i];
     }
     float sparsity = 1 - (float)non_zero_num/(float)dense_size;
-    bool hash = false;
-    DenseTensor out_index_table;
-    if(non_zero_num > max_non_zero_num || dense_size < min_dense_size || sparsity < min_dense_size) {
-      out_index_table = phi::Empty<int>(dev_ctx, {table_size});
-      out_index_table_ptr = out_index_table.data<int>();
+    DenseTensor normal_table;
+    Table<int, int>* out_index_table_ptr = nullptr;
+    printf("\nnnz:%d,dense_size:%d,sparsity:%f\n",non_zero_num,dense_size,sparsity);
+    printf("\nr_nnz:%d,r_dense_size:%d,r_sparsity:%f\n",max_non_zero_num,min_dense_size,min_sparsity);
+    //if(non_zero_num > max_non_zero_num || dense_size < min_dense_size || sparsity < min_dense_size) {
+    if(false) {
+      printf("\n11111\n");
+      normal_table = phi::Empty<int>(dev_ctx, {table_size});
+      normal_table_ptr = normal_table.data<int>();
       phi::backends::gpu::GpuMemsetAsync(
-          out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
+          normal_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
+          NormalTable<int, int> h_table(normal_table_ptr);
+          cudaMalloc(&out_index_table_ptr, sizeof(NormalTable<int,int>));
+          cudaMemcpy(out_index_table_ptr, &h_table, sizeof(NormalTable<int,int>), cudaMemcpyHostToDevice);
     } else {
-      hash = true;
-      out_index_hash_table_ptr = new concurrent_unordered_map<int,int, -1>(non_zero_num*2.5, -1);
+      printf("\n22222\n");
+      hash_table_ptr =
+          new concurrent_unordered_map<int, int, -1>(non_zero_num * 2.5, -1);
+      HashTable<int, int> h_table(hash_table_ptr);
+      cudaMalloc(&out_index_table_ptr, sizeof(HashTable<int, int>));
+      cudaMemcpy(out_index_table_ptr,
+                 &h_table,
+                 sizeof(HashTable<int, int>),
+                 cudaMemcpyHostToDevice);
     }
 
-    FastTable<int, int> out_index_fast_table(out_index_hash_table_ptr, out_index_table_ptr, hash);
     DenseTensor tmp_rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
     IntT* rulebook_ptr = tmp_rulebook.data<IntT>();
     DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
@@ -659,7 +666,7 @@ int ProductRuleBook(const Context& dev_ctx,
                              config.thread_per_block,
                              0,
                              dev_ctx.stream()>>>(
-        out_indices.data<IntT>(), non_zero_num, d_x_dims, out_index_fast_table);
+        out_indices.data<IntT>(), non_zero_num, d_x_dims, out_index_table_ptr);
 
     size_t cache_size =
         kernel_size * 2 * sizeof(int) +
@@ -685,7 +692,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                                           d_paddings,
                                                           d_dilations,
                                                           d_strides,
-                                                          out_index_fast_table,
+                                                          out_index_table_ptr,
                                                           rulebook_ptr,
                                                           counter_ptr);
 
@@ -712,7 +719,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                              non_zero_num,
                                              out_rulebook_ptr);
     *rulebook = out_rulebook;
-    delete out_index_hash_table_ptr;
+    if (nullptr != hash_table_ptr) delete hash_table_ptr;
+    cudaFree(out_index_table_ptr);
 
     return rulebook_len;
 
