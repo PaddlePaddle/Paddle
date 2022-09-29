@@ -190,7 +190,7 @@ PreparedOp PrepareImpl(
   std::string phi_kernel_name;
 
 #ifdef PADDLE_WITH_MKLDNN
-  if (!paddle::platform::in_mkldnn_white_list(op.type_)) {
+  if (!paddle::platform::in_mkldnn_white_list(op.Type())) {
     auto input_data_type = op.IndicateVarDataType(dygraph_exe_ctx, "X");
     if (op.CanMKLDNNBeUsed(dygraph_exe_ctx, input_data_type)) {
       expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
