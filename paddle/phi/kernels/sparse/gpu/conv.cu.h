@@ -1,11 +1,8 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -164,37 +161,6 @@ inline void GatherV2(const GPUContext& dev_ctx,
   }
 }
 
-template <typename Key, typename Element>
-struct Table {
-  virtual __device__ void insert(Key key, Element element){};
-  virtual __device__ Element find(Key key){};
-  virtual __device__ Element find(Key key) const {};
-};
-
-template <typename Key, typename Element>
-struct NormalTable : Table<Key,Element> {
-  Element* normal_table_ptr = nullptr;
-  NormalTable(Element* normal_table_ptr) : normal_table_ptr(normal_table_ptr){};
-  __device__ void insert(Key key, Element element) {
-    normal_table_ptr[key] = element;
-  };
-  __device__ Element find(Key key) { return normal_table_ptr[key]; };
-  __device__ Element find(Key key) const { return normal_table_ptr[key]; };
-};
-
-template <typename Key, typename Element>
-struct HashTable : Table<Key, Element> {
-  concurrent_unordered_map<Key, Element, -1>* hash_table_ptr = nullptr;
-  HashTable(concurrent_unordered_map<Key, Element, -1>* hash_table_ptr)
-      : hash_table_ptr(hash_table_ptr){};
-  ~HashTable() {delete hash_table_ptr;};
-  __device__ void insert(Key key, Element element) {
-    hash_table_ptr->insert(thrust::pair<Key, Element>(key, element));
-  };
-  __device__ Element find(Key key) { return hash_table_ptr->find(key); };
-  __device__ Element find(Key key) const { return hash_table_ptr->find(key); };
-};
-
 // unique the out indexs in rulebook
 template <typename IntT>
 __global__ void UniqueKernel(const IntT* in_indexs,
@@ -330,19 +296,36 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
   }
 }
 
-template <typename IntT, typename Table>
+template <typename IntT>
 __global__ void GetOutIndexTable(const IntT* indices,
                                  const IntT non_zero_num,
                                  const Dims4D dims,
-                                 Table* out_index_table_ptr) {
+                                 int* out_index_table) {
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT batch = indices[i];
     IntT in_z = indices[i + non_zero_num];
     IntT in_y = indices[i + 2 * non_zero_num];
     IntT in_x = indices[i + 3 * non_zero_num];
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
-    int element = i == 0 ? -1 : i;
-    out_index_table_ptr->insert(index, element);
+    out_index_table[index] = i == 0 ? -1 : i;
+  }
+}
+
+template <typename IntT>
+__global__ void GetOutIndexTable(
+    const IntT* indices,
+    const IntT non_zero_num,
+    const Dims4D dims,
+    concurrent_unordered_map<int, int, -1>* out_index_table_ptr) {
+  CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
+    IntT batch = indices[i];
+    IntT in_z = indices[i + non_zero_num];
+    IntT in_y = indices[i + 2 * non_zero_num];
+    IntT in_x = indices[i + 3 * non_zero_num];
+    IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
+
+    int value = i == 0 ? -1 : i;
+    out_index_table_ptr->insert(thrust::pair<IntT, int>(index, value));
   }
 }
 
@@ -399,7 +382,7 @@ __global__ void CopyRuleBook(const int* counters,
   }
 }
 
-template <typename T, typename Table>
+template <typename T>
 __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                           const Dims4D x_dims,
                                           const Dims4D kernel_dims,
@@ -408,7 +391,90 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                           const Dims4D paddings,
                                           const Dims4D dilations,
                                           const Dims4D strides,
-                                          Table* out_index_table_ptr,
+                                          const int* out_index_table,
+                                          T* rulebook,
+                                          int* counter) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int kernel_size = kernel_dims[3] * kernel_dims[2] * kernel_dims[1];
+  extern __shared__ int counter_buf[];  // kernel_size
+  int* counter_buf2 = counter_buf + kernel_size;
+  // length = kernel_size * blockDim.x * 2;
+  int* rulebook_buf = counter_buf + kernel_size * 2;
+
+  const int offset = kernel_size * non_zero_num;
+  for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
+    counter_buf[i] = 0;
+  }
+  __syncthreads();
+
+  for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
+    int kernel_index = 0;
+    T batch = x_indices[i];
+    T in_z = x_indices[i + non_zero_num];
+    T in_y = x_indices[i + 2 * non_zero_num];
+    T in_x = x_indices[i + 3 * non_zero_num];
+    for (int kz = 0; kz < kernel_dims[1]; kz++) {
+      for (int ky = 0; ky < kernel_dims[2]; ky++) {
+        for (int kx = 0; kx < kernel_dims[3]; kx++) {
+          int in_i = -1, out_index = -1, kernel_i = -1;
+          if (phi::funcs::sparse::Check(x_dims,
+                                        kernel_dims,
+                                        paddings,
+                                        dilations,
+                                        strides,
+                                        in_x,
+                                        in_y,
+                                        in_z,
+                                        kx,
+                                        ky,
+                                        kz)) {
+            T out_z = (in_z + paddings[1] - kz * dilations[1]) / strides[1];
+            T out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
+            T out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
+            out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
+                batch, out_x, out_y, out_z, out_dims);
+            int real_out_index = out_index_table[out_index];
+            if (real_out_index != 0) {
+              real_out_index = real_out_index == -1 ? 0 : real_out_index;
+              in_i = i;
+              int buf_i = atomicAdd(&counter_buf[kernel_index], 1);
+              kernel_i = kernel_index;
+              rulebook_buf[kernel_index * blockDim.x + buf_i] = in_i;
+              rulebook_buf[kernel_index * blockDim.x +
+                           kernel_size * blockDim.x + buf_i] = real_out_index;
+            }
+          }
+          ++kernel_index;
+        }
+      }
+    }
+  }
+  __syncthreads();
+  for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
+    counter_buf2[i] = atomicAdd(&counter[i], counter_buf[i]);
+  }
+  __syncthreads();
+  for (int i = 0; i < kernel_size; i++) {
+    if (threadIdx.x < counter_buf[i]) {
+      // rulebook[i * non_zero_num + counter_buf2[i] + threadIdx.x] = i;
+      rulebook[i * non_zero_num + counter_buf2[i] + threadIdx.x] =
+          rulebook_buf[i * blockDim.x + threadIdx.x];
+      rulebook[i * non_zero_num + offset + counter_buf2[i] + threadIdx.x] =
+          rulebook_buf[i * blockDim.x + kernel_size * blockDim.x + threadIdx.x];
+    }
+  }
+}
+
+template <typename T>
+__global__ void ProductSubmRuleBookKernel(const T* x_indices,
+                                          const Dims4D x_dims,
+                                          const Dims4D kernel_dims,
+                                          const Dims4D out_dims,
+                                          const int64_t non_zero_num,
+                                          const Dims4D paddings,
+                                          const Dims4D dilations,
+                                          const Dims4D strides,
+                                          concurrent_unordered_map<int,int,-1>* out_index_table_ptr,
                                           T* rulebook,
                                           int* counter) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -548,7 +614,6 @@ inline void CallThrustScan(const GPUContext& dev_ctx,
                                      dev_ctx.stream());
 }
 
-
 // the basic algorithm can refer to convolution_kernel.cc or
 // the second paper
 // example:
@@ -614,44 +679,15 @@ int ProductRuleBook(const Context& dev_ctx,
     table_size *= out_dims[i];
   }
 
-      printf("\naaaaa\n");
   if (subm) {
-      printf("\n00000\n");
-    int* normal_table_ptr = nullptr;
-    concurrent_unordered_map<int, int, -1>* hash_table_ptr = nullptr;
-    int max_non_zero_num = 136000;
-    int64_t min_dense_size = 41 * 1600 * 1408;
-    float min_sparsity = 1 - (float)max_non_zero_num / (float)min_dense_size;
-    int64_t dense_size = 1;
-    for (int i = 0; i < out_dims.size() - 1; i++) {
-      dense_size *= out_dims[i];
-    }
-    float sparsity = 1 - (float)non_zero_num/(float)dense_size;
-    DenseTensor normal_table;
-    Table<int, int>* out_index_table_ptr = nullptr;
-    printf("\nnnz:%d,dense_size:%d,sparsity:%f\n",non_zero_num,dense_size,sparsity);
-    printf("\nr_nnz:%d,r_dense_size:%d,r_sparsity:%f\n",max_non_zero_num,min_dense_size,min_sparsity);
-    //if(non_zero_num > max_non_zero_num || dense_size < min_dense_size || sparsity < min_dense_size) {
-    if(false) {
-      printf("\n11111\n");
-      normal_table = phi::Empty<int>(dev_ctx, {table_size});
-      normal_table_ptr = normal_table.data<int>();
-      phi::backends::gpu::GpuMemsetAsync(
-          normal_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
-          NormalTable<int, int> h_table(normal_table_ptr);
-          cudaMalloc(&out_index_table_ptr, sizeof(NormalTable<int,int>));
-          cudaMemcpy(out_index_table_ptr, &h_table, sizeof(NormalTable<int,int>), cudaMemcpyHostToDevice);
-    } else {
-      printf("\n22222\n");
-      hash_table_ptr =
-          new concurrent_unordered_map<int, int, -1>(non_zero_num * 2.5, -1);
-      HashTable<int, int> h_table(hash_table_ptr);
-      cudaMalloc(&out_index_table_ptr, sizeof(HashTable<int, int>));
-      cudaMemcpy(out_index_table_ptr,
-                 &h_table,
-                 sizeof(HashTable<int, int>),
-                 cudaMemcpyHostToDevice);
-    }
+    bool hash = true;
+    constexpr int max_table_size = 136000;
+    constexpr int min_nnz = 1 * 41 * 1600 * 1408;
+    constexpr float min_sparsity = 1 - (float)max_table_size / (float)min_nnz;
+    if (table_size > max_table_size) hash = false;
+    if (non_zero_num < min_nnz) hash = false;
+    float sparsity = 1 - (float)non_zero_num / (float)table_size;
+    if (sparsity < min_sparsity) hash = false;
 
     DenseTensor tmp_rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
     IntT* rulebook_ptr = tmp_rulebook.data<IntT>();
@@ -660,69 +696,149 @@ int ProductRuleBook(const Context& dev_ctx,
 
     phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &out_indices);
 
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
-    GetOutIndexTable<IntT><<<config.block_per_grid,
-                             config.thread_per_block,
-                             0,
-                             dev_ctx.stream()>>>(
-        out_indices.data<IntT>(), non_zero_num, d_x_dims, out_index_table_ptr);
+    if (hash) {
+      auto out_index_table_ptr =
+          new concurrent_unordered_map<int, int, -1>(non_zero_num * 2.5, -1);
 
-    size_t cache_size =
-        kernel_size * 2 * sizeof(int) +
-        kernel_size * config.thread_per_block.x * 2 * sizeof(int);
-    const int MAX_CACHE_SIZE = 48 * 1024;
-    while (cache_size >= MAX_CACHE_SIZE) {
-      config.thread_per_block.x /= 2;
-      config.block_per_grid.x *= 2;
-      PADDLE_ENFORCE_GE(config.thread_per_block.x,
-                        32,
-                        phi::errors::Fatal("the shared memory is not enough"));
-      cache_size = kernel_size * 2 * sizeof(int) +
-                   kernel_size * config.thread_per_block.x * 2 * sizeof(int);
+      auto config =
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+      GetOutIndexTable<IntT><<<config.block_per_grid,
+                               config.thread_per_block,
+                               0,
+                               dev_ctx.stream()>>>(out_indices.data<IntT>(),
+                                                   non_zero_num,
+                                                   d_x_dims,
+                                                   out_index_table_ptr);
+
+      size_t cache_size =
+          kernel_size * 2 * sizeof(int) +
+          kernel_size * config.thread_per_block.x * 2 * sizeof(int);
+      const int MAX_CACHE_SIZE = 48 * 1024;
+      while (cache_size >= MAX_CACHE_SIZE) {
+        config.thread_per_block.x /= 2;
+        config.block_per_grid.x *= 2;
+        PADDLE_ENFORCE_GE(
+            config.thread_per_block.x,
+            32,
+            phi::errors::Fatal("the shared memory is not enough"));
+        cache_size = kernel_size * 2 * sizeof(int) +
+                     kernel_size * config.thread_per_block.x * 2 * sizeof(int);
+      }
+      ProductSubmRuleBookKernel<IntT><<<config.block_per_grid.x,
+                                        config.thread_per_block.x,
+                                        cache_size,
+                                        dev_ctx.stream()>>>(indices_ptr,
+                                                            d_x_dims,
+                                                            d_kernel_dims,
+                                                            d_out_dims,
+                                                            non_zero_num,
+                                                            d_paddings,
+                                                            d_dilations,
+                                                            d_strides,
+                                                            out_index_table_ptr,
+                                                            rulebook_ptr,
+                                                            counter_ptr);
+
+      out->SetMember(out_indices, out_values, out_dims, false);
+
+      CallThrustScan(
+          dev_ctx, counter_ptr, kernel_size, offsets_ptr, h_counter, h_offsets);
+
+      dev_ctx.Wait();
+      int rulebook_len =
+          h_offsets[kernel_size - 1] + h_counter[kernel_size - 1];
+      DenseTensor out_rulebook =
+          phi::Empty<IntT>(dev_ctx, {rulebook_rows, rulebook_len});
+      IntT* out_rulebook_ptr = out_rulebook.data<IntT>();
+      config =
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+      cache_size = kernel_size * 2 * sizeof(int);
+      CopyRuleBook<IntT><<<config.block_per_grid,
+                           config.thread_per_block,
+                           cache_size,
+                           dev_ctx.stream()>>>(counter_ptr,
+                                               offsets_ptr,
+                                               rulebook_ptr,
+                                               rulebook_len,
+                                               kernel_size,
+                                               non_zero_num,
+                                               out_rulebook_ptr);
+      *rulebook = out_rulebook;
+
+      return rulebook_len;
+    } else {
+      DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
+      int* out_index_table_ptr = out_index_table.data<int>();
+      phi::backends::gpu::GpuMemsetAsync(
+          out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
+
+      auto config =
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+      GetOutIndexTable<IntT><<<config.block_per_grid,
+                               config.thread_per_block,
+                               0,
+                               dev_ctx.stream()>>>(out_indices.data<IntT>(),
+                                                   non_zero_num,
+                                                   d_x_dims,
+                                                   out_index_table_ptr);
+
+      size_t cache_size =
+          kernel_size * 2 * sizeof(int) +
+          kernel_size * config.thread_per_block.x * 2 * sizeof(int);
+      const int MAX_CACHE_SIZE = 48 * 1024;
+      while (cache_size >= MAX_CACHE_SIZE) {
+        config.thread_per_block.x /= 2;
+        config.block_per_grid.x *= 2;
+        PADDLE_ENFORCE_GE(
+            config.thread_per_block.x,
+            32,
+            phi::errors::Fatal("the shared memory is not enough"));
+        cache_size = kernel_size * 2 * sizeof(int) +
+                     kernel_size * config.thread_per_block.x * 2 * sizeof(int);
+      }
+      ProductSubmRuleBookKernel<IntT><<<config.block_per_grid.x,
+                                        config.thread_per_block.x,
+                                        cache_size,
+                                        dev_ctx.stream()>>>(indices_ptr,
+                                                            d_x_dims,
+                                                            d_kernel_dims,
+                                                            d_out_dims,
+                                                            non_zero_num,
+                                                            d_paddings,
+                                                            d_dilations,
+                                                            d_strides,
+                                                            out_index_table_ptr,
+                                                            rulebook_ptr,
+                                                            counter_ptr);
+
+      out->SetMember(out_indices, out_values, out_dims, false);
+
+      CallThrustScan(
+          dev_ctx, counter_ptr, kernel_size, offsets_ptr, h_counter, h_offsets);
+
+      dev_ctx.Wait();
+      int rulebook_len =
+          h_offsets[kernel_size - 1] + h_counter[kernel_size - 1];
+      DenseTensor out_rulebook =
+          phi::Empty<IntT>(dev_ctx, {rulebook_rows, rulebook_len});
+      IntT* out_rulebook_ptr = out_rulebook.data<IntT>();
+      config =
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+      cache_size = kernel_size * 2 * sizeof(int);
+      CopyRuleBook<IntT><<<config.block_per_grid,
+                           config.thread_per_block,
+                           cache_size,
+                           dev_ctx.stream()>>>(counter_ptr,
+                                               offsets_ptr,
+                                               rulebook_ptr,
+                                               rulebook_len,
+                                               kernel_size,
+                                               non_zero_num,
+                                               out_rulebook_ptr);
+      *rulebook = out_rulebook;
+
+      return rulebook_len;
     }
-    ProductSubmRuleBookKernel<IntT><<<config.block_per_grid.x,
-                                      config.thread_per_block.x,
-                                      cache_size,
-                                      dev_ctx.stream()>>>(indices_ptr,
-                                                          d_x_dims,
-                                                          d_kernel_dims,
-                                                          d_out_dims,
-                                                          non_zero_num,
-                                                          d_paddings,
-                                                          d_dilations,
-                                                          d_strides,
-                                                          out_index_table_ptr,
-                                                          rulebook_ptr,
-                                                          counter_ptr);
-
-    out->SetMember(out_indices, out_values, out_dims, false);
-
-    CallThrustScan(
-        dev_ctx, counter_ptr, kernel_size, offsets_ptr, h_counter, h_offsets);
-
-    dev_ctx.Wait();
-    int rulebook_len = h_offsets[kernel_size - 1] + h_counter[kernel_size - 1];
-    DenseTensor out_rulebook =
-        phi::Empty<IntT>(dev_ctx, {rulebook_rows, rulebook_len});
-    IntT* out_rulebook_ptr = out_rulebook.data<IntT>();
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
-    cache_size = kernel_size * 2 * sizeof(int);
-    CopyRuleBook<IntT><<<config.block_per_grid,
-                         config.thread_per_block,
-                         cache_size,
-                         dev_ctx.stream()>>>(counter_ptr,
-                                             offsets_ptr,
-                                             rulebook_ptr,
-                                             rulebook_len,
-                                             kernel_size,
-                                             non_zero_num,
-                                             out_rulebook_ptr);
-    *rulebook = out_rulebook;
-    if (nullptr != hash_table_ptr) delete hash_table_ptr;
-    cudaFree(out_index_table_ptr);
-
-    return rulebook_len;
 
   } else {
     DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
