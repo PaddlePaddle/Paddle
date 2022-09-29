@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
 import os
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
