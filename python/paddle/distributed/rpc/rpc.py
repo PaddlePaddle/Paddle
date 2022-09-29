@@ -131,7 +131,7 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
     Returns:
         Returns the result of running ``fn`` with ``args`` and ``kwargs``.
 
-    Example:
+    Examples:
         run on server 0:
             .. code-block:: python
 
@@ -175,7 +175,7 @@ def rpc_async(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
         on. When completed, the return value of ``fn`` on ``args`` and
         ``kwargs`` can be got by `fut.wait()`
 
-    Example:
+    Examples:
         run on server 0:
             .. code-block:: python
 
