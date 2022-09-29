@@ -61,8 +61,8 @@ void IpuBackend::Compile(framework::ir::Graph* graph,
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
-void IpuBackend::Run(const std::vector<const framework::Tensor*>& inputs,
-                     const std::vector<framework::Tensor*>& outputs,
+void IpuBackend::Run(const std::vector<const phi::DenseTensor*>& inputs,
+                     const std::vector<phi::DenseTensor*>& outputs,
                      const framework::ExecutionContext& ctx) {
   timer_->Start();
   executor_->Run(inputs, outputs, ctx);

@@ -61,7 +61,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
         platform::errors::PreconditionNotMet("The var should not be nullptr"));
 
     if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<framework::Tensor>()) {
+        var->IsType<phi::DenseTensor>()) {
       auto *t = var->GetMutable<framework::LoDTensor>();
 
       platform::CPUPlace cpu_place;
@@ -126,7 +126,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
       auto var_name = var_node->Var()->Name();
       auto *var = scope->FindLocalVar(var_name);
       if (var->IsType<framework::LoDTensor>() ||
-          var->IsType<framework::Tensor>()) {
+          var->IsType<phi::DenseTensor>()) {
         auto *t = var->GetMutable<framework::LoDTensor>();
         params_total_bytes += t->numel() * experimental::SizeOf(t->dtype());
       }
@@ -135,7 +135,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
 
   {
     // Alloc memory in pool to store all parameters.
-    framework::Tensor ts;
+    phi::DenseTensor ts;
     ts.mutable_data(place, params_total_bytes);
   }
 
@@ -160,7 +160,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
                               platform::errors::PreconditionNotMet(
                                   "The var should not be nullptr"));
       if (var->IsType<framework::LoDTensor>() ||
-          var->IsType<framework::Tensor>()) {
+          var->IsType<phi::DenseTensor>()) {
         auto *t = var->GetMutable<framework::LoDTensor>();
         auto var_data_type = var_node->Var()->GetDataType();
         VLOG(5) << "var_name is " << var_name << ", data type is "

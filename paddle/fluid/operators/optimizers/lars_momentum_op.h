@@ -49,7 +49,7 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
       auto g = framework::EigenVector<T>::Flatten(*(grad[i]));
       auto rescale_g = rescale_grad * g;
 
-      framework::Tensor p_norm_t, g_norm_t;
+      phi::DenseTensor p_norm_t, g_norm_t;
       p_norm_t.Resize({1});
       g_norm_t.Resize({1});
       p_norm_t.mutable_data<T>(ctx.GetPlace());

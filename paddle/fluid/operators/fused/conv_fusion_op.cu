@@ -27,7 +27,7 @@ namespace paddle {
 namespace operators {
 
 #if PADDLE_WITH_HIP || CUDNN_VERSION >= 7100
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
@@ -45,11 +45,11 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* filter = ctx.Input<Tensor>("Filter");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* residual = ctx.Input<Tensor>("ResidualData");
-    auto* output = ctx.Output<Tensor>("Output");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* residual = ctx.Input<phi::DenseTensor>("ResidualData");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
     dev_ctx.template Alloc<T>(output, output->numel() * sizeof(T));
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
@@ -523,10 +523,10 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 #endif
     std::vector<int> channels = ctx.Attr<std::vector<int>>("split_channels");
     if (channels.size()) {
-      auto outs = ctx.MultiOutput<framework::Tensor>("Outputs");
+      auto outs = ctx.MultiOutput<phi::DenseTensor>("Outputs");
       if (x_dims[0] == 1) {
         // share data with Output
-        framework::Tensor t;
+        phi::DenseTensor t;
         t.ShareDataWith(*output);
         auto y_dims = output->dims();
         t.Resize({y_dims[1], y_dims[2], y_dims[3]});

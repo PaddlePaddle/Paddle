@@ -20,8 +20,6 @@ User can also implement their own learning_rate_decay
 strategy according to this module.
 """
 
-from __future__ import print_function
-
 import math
 import numbers
 

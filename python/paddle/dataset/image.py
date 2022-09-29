@@ -30,8 +30,6 @@ the image layout as follows.
   be keep consistent between the training and inference period.
 """
 
-from __future__ import print_function
-
 import six
 import numpy as np
 # FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
