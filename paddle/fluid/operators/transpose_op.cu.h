@@ -971,16 +971,21 @@ inline void LaunchPermuteKernel(const phi::GPUContext& ctx,
                                 const T* src,
                                 T* dst) {
   size_t main_count = count / VecSize;
-  auto params = PermuteParams<Rank, IndexT>(dims, perm);
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, main_count);
 
   if (perm_type == PermuteType::kNormalPermute) {
     size_t tail_count = count - main_count * VecSize;
     size_t offset = count - tail_count;
+    auto params = PermuteParams<Rank, IndexT>(dims, perm);
+
     GeneralPermuteKernel<T, IndexT, VecSize, Rank>
         <<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
             params, src, dst, main_count, tail_count, offset);
   } else {
+    std::vector<size_t> vec_dims(dims);
+    vec_dims[dims.size() - 1] /= VecSize;
+    auto params = PermuteParams<Rank, IndexT>(vec_dims, perm);
+
     VectorizedPermuteKernel<T, IndexT, VecSize, Rank>
         <<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
             params, main_count, src, dst);
@@ -1016,52 +1021,48 @@ inline void LaunchPermuteRankDispatch(const phi::GPUContext& ctx,
 #undef CALL_DISPATCH_RANK
 }
 
-// Aim at transposing the last 2 dimensions. Refer from
+// Aim at transposing the last 2 dimensions. Reference from
 // https://developer.nvidia.com/blog/efficient-matrix-transpose-cuda-cc/
 template <typename T, typename IndexT, int VecSize>
 __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
                                      T* dst_data,
                                      IndexT rows,
-                                     IndexT cols) {
-  using VecT = phi::AlignedVector<T, VecSize>;
-
-  __shared__ VecT tile[kTileSize][kShareCol];
-  T* single_tile = reinterpret_cast<T*>(tile);
+                                     IndexT cols,
+                                     IndexT round_tile_rows,
+                                     IndexT round_tile_cols) {
+  __shared__ T s_data[kTileSize * kShareCol];
 
   IndexT col_in_matrix = blockIdx.x * kTileSize + threadIdx.x;
   IndexT offset = blockIdx.z * rows * cols;
 
-  // Vectorized load data from src into shared memory. [rows, cols]
-  const VecT* __restrict__ src =
-      reinterpret_cast<const VecT* __restrict__>(src_data);
+  // load data from src into shared memory. [rows, cols]
+  if (col_in_matrix < cols) {
+    IndexT row_range = (blockIdx.y < round_tile_rows)
+                           ? kTileSize
+                           : (rows - kTileSize * round_tile_rows);
 
-  for (IndexT tile_y = threadIdx.y; tile_y < kTileSize; tile_y += kBlockRows) {
-    IndexT row_in_matrix = tile_y + blockIdx.y * kTileSize;
-
-    if (col_in_matrix < cols && row_in_matrix < rows) {
-      tile[tile_y][threadIdx.x] =
-          src[offset + row_in_matrix * cols + col_in_matrix];
+#pragma unroll
+    for (int tile_y = threadIdx.y; tile_y < row_range; tile_y += kBlockRows) {
+      IndexT row_in_matrix = tile_y + blockIdx.y * kTileSize;
+      s_data[tile_y * kShareCol + threadIdx.x] =
+          src_data[offset + row_in_matrix * cols + col_in_matrix];
     }
   }
-
-  // Singularized load data from shared memory into dst.
+  // Write data from shared memory into dst.
   // and dst_cols = rows, dst_rows = cols, [cols * Vecsize, rows]
   col_in_matrix = blockIdx.y * kTileSize + threadIdx.x;
-  offset = offset * VecSize + col_in_matrix;
-  IndexT tile_x_idx = threadIdx.x * (kShareCol * VecSize);
-
+  offset = offset + col_in_matrix;
   __syncthreads();
 
-  for (IndexT tile_y = threadIdx.y; tile_y < kTileSize; tile_y += kBlockRows) {
-    IndexT row_in_matrix = tile_y + blockIdx.x * kTileSize;
-    IndexT dst_idx = offset + row_in_matrix * VecSize * rows;
-    IndexT tile_idx = tile_x_idx + tile_y * VecSize;
-    if (col_in_matrix < /*dst_cols=*/rows &&
-        row_in_matrix < /*dst_rows=*/cols) {
+  if (col_in_matrix < /*dst_cols=*/rows) {
+    IndexT row_range = (blockIdx.x < round_tile_cols)
+                           ? kTileSize
+                           : (cols - kTileSize * round_tile_cols);
 #pragma unroll
-      for (auto i = 0; i < VecSize; ++i) {
-        dst_data[dst_idx + i * rows] = single_tile[tile_idx + i];
-      }
+    for (int tile_y = threadIdx.y; tile_y < row_range; tile_y += kBlockRows) {
+      IndexT row_in_matrix = tile_y + blockIdx.x * kTileSize;
+      dst_data[offset + row_in_matrix * rows] =
+          s_data[threadIdx.x * kShareCol + tile_y];
     }
   }
 }
@@ -1087,7 +1088,8 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
   dim3 threads(kTileSize, kBlockRows, 1);
 
   BatchTransposeKernel<T, IndexT, VecSize>
-      <<<blocks, threads, 0, ctx.stream()>>>(src, dst, rows, cols);
+      <<<blocks, threads, 0, ctx.stream()>>>(
+          src, dst, rows, cols, num_tile_rows - 1, num_tile_cols - 1);
 }
 
 template <typename T, typename IndexT>
@@ -1132,15 +1134,15 @@ inline void LaunchWithDispatchIndex(const phi::GPUContext& ctx,
                                     const std::vector<int>& perm,
                                     const T* src,
                                     T* dst) {
-  if (count < std::numeric_limits<uint32_t>::max()) {
-    LaunchWithDispatchVecSize<T, uint32_t>(ctx,
-                                           vec_size,
-                                           perm_type,
-                                           dims,
-                                           perm,
-                                           src,
-                                           dst,
-                                           static_cast<uint32_t>(count));
+  if (count < std::numeric_limits<int>::max()) {
+    LaunchWithDispatchVecSize<T, int>(ctx,
+                                      vec_size,
+                                      perm_type,
+                                      dims,
+                                      perm,
+                                      src,
+                                      dst,
+                                      static_cast<int>(count));
   } else {
     int64_t cnt = static_cast<int64_t>(count);
     LaunchWithDispatchVecSize<T, int64_t>(ctx,
@@ -1154,16 +1156,31 @@ inline void LaunchWithDispatchIndex(const phi::GPUContext& ctx,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T>
 inline void SimplifyThenLaunch(const int rank,
-                               const DeviceContext& ctx,
+                               const phi::GPUContext& ctx,
                                const Tensor& in,
                                Tensor* out,
                                const std::vector<int32_t>& perm) {
   int sm_count = ctx.GetSMCount();
   auto src_dims = phi::vectorize<size_t>(in.dims());
+  std::cout << "Before DimsSimplifier" << std::endl;
+
   auto simplifier = DimsSimplifier<T>(
       sm_count, rank, perm, src_dims, in.data<T>(), out->data<T>());
+
+  std::cout << "PermType: " << simplifier.GetPermType() << std::endl;
+  std::cout << "Vec_Size: " << simplifier.GetVecSize() << std::endl;
+  std::cout << "Dims : [";
+  for (auto i = 0; i < simplifier.GetDims().size(); ++i) {
+    std::cout << simplifier.GetDims()[i] << ", ";
+  }
+  std::cout << " ]" << std::endl;
+  std::cout << "Perm : [";
+  for (auto i = 0; i < simplifier.GetPerm().size(); ++i) {
+    std::cout << simplifier.GetPerm()[i] << ", ";
+  }
+  std::cout << " ]" << std::endl;
 
   if (simplifier.GetPermType() == PermuteType::kCopy) {
     // If perm is [0,1,2,3], then just operate a DtoD copy.
@@ -1194,10 +1211,8 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
     ret = TransposeSimple<T>::run(ctx, in, perm, out);
   }
   if (!ret) {
-    auto* tuner =
-        phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
-    tuner->AddCallBack(
-        phi::autotune::MakeCallback<T>(SimplifyThenLaunch<phi::GPUContext, T>));
+    auto* tuner = phi::autotune::MakeTransposeTuner<T>(TransCompute<T>);
+    tuner->AddCallBack(phi::autotune::MakeCallback<T>(SimplifyThenLaunch<T>));
 
     size_t key = phi::autotune::TransposeKey(
         phi::vectorize(in.dims()),

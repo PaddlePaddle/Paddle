@@ -190,9 +190,6 @@ class DimsSimplifier {
       if (tmp_size > 1) {
         type_ = kVecPermute;
         vec_size = tmp_size;
-
-        // For stride calculation of src_data index.
-        dims_[rank_ - 1] /= vec_size;
       }
     }
 
@@ -201,31 +198,18 @@ class DimsSimplifier {
     if ((rank_ == 2 && perm_[1] == 0 && perm_[0] == 1) ||
         (rank_ == 3 && perm_[2] == 1 && perm_[1] == 2)) {
       type_ = PermuteType::kTranspose;
-
-      // Compared with vectorized load or read, set config to let more
-      // sm work simultaneously affect more according to performance.
-      constexpr int threads = kTileSize * kTileSize;
-      int blocks = count_ / threads;
-      if (blocks < sm_count) {
-        vec_size = 1;
-      } else {
-        int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
-        // With bytes limitation of shared_memory, the VecSize shall be
-        // restricted for the type whose byte-size is less than 8 (double).
-        int type_vec =
-            sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, dims_[rank_ - 1]);
-        for (int i = type_vec; i > 0; i /= 2) {
-          if (blocks / i >= sm_count) {
-            break;
-          }
-          // When blocks is smaller than sm_count, a test shown that decrease
-          // vec_size to make blocks close to sm_count would gain performance.
-          vec_size = i;
-        }
-      }
-
-      dims_[rank_ - 1] /= vec_size;
-      count_ /= vec_size;
+      vec_size = 1;
+      // int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
+      // // With bytes limitation of shared_memory, the VecSize shall be
+      // // restricted for the type whose byte-size is less than 8 (double).
+      // int type_vec =
+      //     sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, dims_[rank_ - 1]);
+      // for (int i = type_vec; i > 0; i /= 2) {
+      //   if (blocks / i >= sm_count) {
+      //     break;
+      //   }
+      //   vec_size = i;
+      // }
     }
     return vec_size;
   }
