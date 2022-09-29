@@ -107,3 +107,10 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | FrostML | Zheng-Xi Liu |
 | jiangjiajun | jiangjiajun |
 | dingjiaweiww | dingjiawei |
+| gglin001 | Allen Guo |
+| yaozhixin | Zhixin Yao |
+| XBWGC | Xiaobing Wang |
+| jianghaicheng | Haicheng Jiang |
+| czr-gc | Zhaorui Chen |
+| zhao-han | Han Zhao |
+| yiakwy, yiakwy-xpu-ml-framework-team | Yi Wang |
