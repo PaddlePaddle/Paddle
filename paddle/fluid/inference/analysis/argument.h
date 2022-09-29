@@ -242,6 +242,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_shape_range_info_path,
                       TensorRtShapeRangeInfoPath,
                       std::string);
+  DECL_ARGUMENT_FIELD(tensorrt_shape_tensor_value_info_path,
+                      TensorRtShapeTensorValueInfoPath,
+                      std::string);
   DECL_ARGUMENT_FIELD(tensorrt_tuned_dynamic_shape,
                       TensorRtTunedDynamicShape,
                       bool);

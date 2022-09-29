@@ -77,7 +77,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("optim_input_shape",
               new std::map<std::string, std::vector<int>>(
                   argument->optim_input_shape()));
-    // Now, shape tensor value setting is not explicit set by user,
+    // Now, shape tensor value is not explicit set by user,
     // it is collected through API CollectShapeRangeInfo.
     pass->Set("max_shape_tensor",
               new std::map<std::string, std::vector<int>>());
@@ -85,6 +85,7 @@ void IRPassManager::CreatePasses(Argument *argument,
               new std::map<std::string, std::vector<int>>());
     pass->Set("optim_shape_tensor",
               new std::map<std::string, std::vector<int>>());
+
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
@@ -206,6 +207,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",
                 new std::string(argument->tensorrt_shape_range_info_path()));
+      pass->Set(
+          "trt_shape_tensor_value_info_path",
+          new std::string(argument->tensorrt_shape_tensor_value_info_path()));
       pass->Set("trt_allow_build_at_runtime",
                 new bool(argument->tensorrt_allow_build_at_runtime()));
       pass->Set(

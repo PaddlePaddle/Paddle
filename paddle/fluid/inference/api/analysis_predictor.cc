@@ -99,7 +99,7 @@ using inference::tensorrt::TRTInt8Calibrator;
 #endif
 
 int AnalysisPredictor::clone_num_ = 1;
-
+const char shape_tensor_file_suffix_[40] = "_shape_tensor_value.txt";
 namespace {
 bool IsPersistable(const framework::VarDesc *var) {
   if (var->Persistable() &&
@@ -1092,6 +1092,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
     argument_.SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
+    argument_.SetTensorRtShapeTensorValueInfoPath(
+        config_.shape_range_info_path() + shape_tensor_file_suffix_);
     argument_.SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
@@ -1765,11 +1767,14 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
   }
 }
 
-void AnalysisPredictor::StatisticShapeRangeInfo() {
+void AnalysisPredictor::StatisticShapeRangeInfo(
+    const std::map<std::string, std::vector<std::vector<int32_t>>>
+        &map_shape_range,
+    const std::string &file_path) {
   std::map<std::string, std::vector<int32_t>> min_shapes;
   std::map<std::string, std::vector<int32_t>> max_shapes;
   std::map<std::string, std::vector<int32_t>> opt_shapes;
-  for (auto it : shape_info_) {
+  for (auto it : map_shape_range) {
     auto name = it.first;
     auto shapes = it.second;
 
@@ -1805,53 +1810,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
   }
 
   inference::SerializeShapeRangeInfo(
-      config_.shape_range_info_path(), min_shapes, max_shapes, opt_shapes);
-}
-
-void AnalysisPredictor::StatisticShapeTensorValueInfo() {
-  std::map<std::string, std::vector<int32_t>> min_shapes;
-  std::map<std::string, std::vector<int32_t>> max_shapes;
-  std::map<std::string, std::vector<int32_t>> opt_shapes;
-  for (auto it : shape_tensor_value_) {
-    auto name = it.first;
-    auto shapes = it.second;
-
-    std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
-    std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
-    std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());
-
-    auto ShapeMaxFreq = [](const std::map<int32_t, int32_t> &m) -> int32_t {
-      std::vector<std::pair<int32_t, int32_t>> counter;
-      for (auto &it : m) counter.push_back(it);
-      std::sort(
-          counter.begin(),
-          counter.end(),
-          [](std::pair<int32_t, int32_t> &a, std::pair<int32_t, int32_t> &b) {
-            return a.second > b.second;
-          });
-      return counter[0].first;
-    };
-
-    for (size_t d = 0; d < shapes[0].size(); ++d) {
-      std::map<int32_t, int32_t> counter;
-      for (size_t i = 0; i < shapes.size(); ++i) {
-        counter[shapes[i][d]] += 1;
-        if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
-        if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
-      }
-      opt_shape[d] = ShapeMaxFreq(counter);
-    }
-
-    min_shapes[name] = min_shape;
-    max_shapes[name] = max_shape;
-    opt_shapes[name] = opt_shape;
-  }
-
-  inference::SerializeShapeRangeInfo(
-      config_.shape_range_info_path() + "_shape_tensor_value.txt",
-      min_shapes,
-      max_shapes,
-      opt_shapes);
+      file_path, min_shapes, max_shapes, opt_shapes);
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {
@@ -2073,8 +2032,10 @@ AnalysisPredictor::~AnalysisPredictor() {
 #endif
 
   if (config_.shape_range_info_collected()) {
-    StatisticShapeRangeInfo();
-    StatisticShapeTensorValueInfo();
+    StatisticShapeRangeInfo(shape_info_, config_.shape_range_info_path());
+    StatisticShapeRangeInfo(
+        shape_tensor_value_,
+        config_.shape_range_info_path() + shape_tensor_file_suffix_);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (predictor_stream_ != nullptr) {
