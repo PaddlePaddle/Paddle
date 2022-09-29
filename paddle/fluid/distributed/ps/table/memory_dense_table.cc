@@ -21,8 +21,8 @@ namespace distributed {
 
 int FLAGS_pslib_table_save_max_retry_dense = 3;
 
-void MemoryDenseTable::CreateInitializer(const std::string& attr,
-                                         const std::string& name) {
+void MemoryDenseTable::CreateInitializer(const std::string &attr,
+                                         const std::string &name) {
   auto slices = string::split_string<std::string>(attr, "&");
 
   if (slices[0] == "gaussian_random") {
@@ -60,14 +60,14 @@ int32_t MemoryDenseTable::InitializeValue() {
   values_.resize(size);
   total_dim_ = 0;
   for (int x = 0; x < size; ++x) {
-    auto& varname = common.params()[x];
-    auto& dim = common.dims()[x];
+    auto &varname = common.params()[x];
+    auto &dim = common.dims()[x];
     if (varname == "Param") {
       param_dim_ = dim;
       param_idx_ = x;
     }
 
-    auto& initializer = common.initializers()[x];
+    auto &initializer = common.initializers()[x];
     total_dim_ += dim;
 
     CreateInitializer(initializer, varname);
@@ -81,7 +81,7 @@ int32_t MemoryDenseTable::InitializeValue() {
 
   fixed_len_params_dim_ = 0;
   for (int x = 0; x < size; ++x) {
-    auto& dim = common.dims()[x];
+    auto &dim = common.dims()[x];
     if (static_cast<int>(dim) != param_dim_) {
       fixed_len_params_dim_ += dim;
     } else {
@@ -124,19 +124,19 @@ int32_t MemoryDenseTable::InitializeOptimizer() {
   return 0;
 }
 
-int32_t MemoryDenseTable::SetGlobalLR(float* lr) {
+int32_t MemoryDenseTable::SetGlobalLR(float *lr) {
   _global_lr = lr;
   optimizer_->SetGlobalLR(_global_lr);
   return 0;
 }
 
-int32_t MemoryDenseTable::Pull(TableContext& context) {
+int32_t MemoryDenseTable::Pull(TableContext &context) {
   CHECK(context.value_type == Dense);
-  float* pull_values = context.pull_context.values;
+  float *pull_values = context.pull_context.values;
   return PullDense(pull_values, context.num);
 }
 
-int32_t MemoryDenseTable::Push(TableContext& context) {
+int32_t MemoryDenseTable::Push(TableContext &context) {
   CHECK(context.value_type == Dense);
   if (context.push_context.values != nullptr) {
     if (!context.push_context.is_param) {
@@ -148,13 +148,13 @@ int32_t MemoryDenseTable::Push(TableContext& context) {
   return 0;
 }
 
-int32_t MemoryDenseTable::PullDense(float* pull_values, size_t num) {
+int32_t MemoryDenseTable::PullDense(float *pull_values, size_t num) {
   std::copy(
       values_[param_idx_].begin(), values_[param_idx_].end(), pull_values);
   return 0;
 }
 
-int32_t MemoryDenseTable::PushDenseParam(const float* values, size_t num) {
+int32_t MemoryDenseTable::PushDenseParam(const float *values, size_t num) {
   PADDLE_ENFORCE_GE(
       num,
       param_dim_,
@@ -171,7 +171,7 @@ int32_t MemoryDenseTable::Pour() {
   return 0;
 }
 
-int32_t MemoryDenseTable::PushDense(const float* values, size_t num) {
+int32_t MemoryDenseTable::PushDense(const float *values, size_t num) {
   if (sync) {
     std::future<int> task =
         _shards_task_pool[0]->enqueue([this, &values]() -> int {
@@ -185,7 +185,7 @@ int32_t MemoryDenseTable::PushDense(const float* values, size_t num) {
   return 0;
 }
 
-int32_t MemoryDenseTable::_PushDense(const float* values, size_t num) {
+int32_t MemoryDenseTable::_PushDense(const float *values, size_t num) {
   PADDLE_ENFORCE_GE(
       num,
       param_dim_,
@@ -212,8 +212,8 @@ int32_t MemoryDenseTable::_PushDense(const float* values, size_t num) {
   return 0;
 }
 
-int32_t MemoryDenseTable::Load(const std::string& path,
-                               const std::string& param) {
+int32_t MemoryDenseTable::Load(const std::string &path,
+                               const std::string &param) {
   if (param_dim_ <= 0) {
     return 0;
   }
@@ -249,7 +249,7 @@ int32_t MemoryDenseTable::Load(const std::string& path,
     try {
       int dim_idx = 0;
       float data_buffer[5];
-      float* data_buff_ptr = data_buffer;
+      float *data_buff_ptr = data_buffer;
       std::string line_data;
       auto common = _config.common();
 
@@ -319,8 +319,8 @@ int32_t MemoryDenseTable::Load(const std::string& path,
   return 0;
 }
 
-int32_t MemoryDenseTable::Save(const std::string& path,
-                               const std::string& param) {
+int32_t MemoryDenseTable::Save(const std::string &path,
+                               const std::string &param) {
   int save_param = atoi(param.c_str());
   uint32_t feasign_size;
   VLOG(0) << "MemoryDenseTable::save path " << path;
@@ -353,7 +353,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
       os.clear();
       os.str("");
       os << values_[param_col_ids_[0]][y] << " 0";
-      for (int x = 2; x < param_col_ids_.size(); ++x) {
+      for (int x = 2; x < static_cast<int>(param_col_ids_.size()); ++x) {
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }
@@ -365,7 +365,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
       os.clear();
       os.str("");
       os << values_[param_col_ids_[0]][y];
-      for (int x = 1; x < param_col_ids_.size(); ++x) {
+      for (int x = 1; x < static_cast<int>(param_col_ids_.size()); ++x) {
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }
@@ -383,7 +383,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     auto write_channel =
         _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
 
-    for (auto& t : result_buffer_param) {
+    for (auto &t : result_buffer_param) {
       if (0 != write_channel->write_line(t)) {
         ++retry_num;
         is_write_failed = true;
