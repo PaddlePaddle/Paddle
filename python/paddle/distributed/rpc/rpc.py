@@ -116,13 +116,13 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     logger.info("Trainer {}: Init RPC done!".format(rank))
 
 
-def rpc_sync(name, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
+def rpc_sync(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
     """
     Make a blocking RPC call to run function ``fn`` on server ``to``.
 
     Args:
         to (str): name of the destination server.
-        func (fn): a callable function, such as Python callables.
+        fn (fn): a callable function, such as Python callables.
         args (tuple): the argument tuple for the ``fn`` invocation.
         kwargs (dict): is a dictionary of keyword arguments for the ``fn``
                        invocation.
@@ -154,17 +154,17 @@ def rpc_sync(name, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
                         master_endpoint="127.0.0.1:8001")
                 rpc.shutdown()
     """
-    fut = _invoke_rpc(name, fn, args, kwargs, timeout_ms)
+    fut = _invoke_rpc(to, fn, args, kwargs, timeout_ms)
     return fut.wait()
 
 
-def rpc_async(name, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
+def rpc_async(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
     """
     Make a non-blocking RPC call to run function ``fn`` on server ``to``.
 
     Args:
         to (str): name of the destination server.
-        func (fn): a callable function, such as Python callables.
+        fn (fn): a callable function, such as Python callables.
         args (tuple): the argument tuple for the ``fn`` invocation.
         kwargs (dict): is a dictionary of keyword arguments for the ``fn``
                        invocation.
@@ -199,14 +199,14 @@ def rpc_async(name, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
                         master_endpoint="127.0.0.1:8001")
                 rpc.shutdown()
     """
-    return _invoke_rpc(name, fn, args, kwargs, timeout_ms)
+    return _invoke_rpc(to, fn, args, kwargs, timeout_ms)
 
 
-def _invoke_rpc(name, fn, args, kwargs, timeout_ms):
+def _invoke_rpc(to, fn, args, kwargs, timeout_ms):
     args = args if args else ()
     kwargs = kwargs if kwargs else {}
     serial_obj = _serialize(PythonFunc(fn, args, kwargs))
-    future = core.invoke_rpc(name, serial_obj, timeout_ms)
+    future = core.invoke_rpc(to, serial_obj, timeout_ms)
     return future
 
 
@@ -276,6 +276,9 @@ def get_service_info(name):
     """
     Get service information by service name.
 
+    Args:
+        name (str): name of the server.
+
     Returns:
         class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`
 
@@ -340,7 +343,7 @@ def get_current_service_info():
     """
     Get current service information.
 
-     Returns:
+    Returns:
         class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`
 
     Examples:
