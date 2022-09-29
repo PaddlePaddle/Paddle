@@ -16,19 +16,17 @@ limitations under the License. */
 #include <map>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #define INLINE_FOR2(sizei, sizej)     \
   for (int64_t i = 0; i < sizei; i++) \
     for (int64_t j = 0; j < sizej; j++)
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 // SelectedRows + SelectedRows will simplely concat value and rows.
 // The real computation happens in dealing with LoDTensor.
@@ -44,8 +42,8 @@ template <typename DeviceContext, typename T>
 struct SelectedRowsAddTensor {
   void operator()(const DeviceContext& context,
                   const phi::SelectedRows& input1,
-                  const framework::Tensor& input2,
-                  framework::Tensor* output);
+                  const phi::DenseTensor& input2,
+                  phi::DenseTensor* output);
 };
 
 // input2 = input1 + input2
@@ -73,7 +71,7 @@ template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {
   void operator()(const DeviceContext& context,
                   const phi::SelectedRows& input1,
-                  framework::Tensor* input2);
+                  phi::DenseTensor* input2);
 };
 
 namespace scatter {
@@ -115,10 +113,9 @@ struct UpdateToTensor {
   void operator()(const DeviceContext& context,
                   const ScatterOps& op,
                   const phi::SelectedRows& input1,
-                  framework::Tensor* input2);
+                  phi::DenseTensor* input2);
 };
 
 }  // namespace scatter
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

@@ -37,19 +37,19 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
 
-    auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    auto param = ctx.Input<framework::Tensor>("Param");
-    auto velocity = ctx.Input<framework::Tensor>("Velocity");
+    auto learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    auto param = ctx.Input<phi::DenseTensor>("Param");
+    auto velocity = ctx.Input<phi::DenseTensor>("Velocity");
 
-    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
-    auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
+    auto param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    auto velocity_out = ctx.Output<phi::DenseTensor>("VelocityOut");
 
     param_out->mutable_data<T>(ctx.GetPlace());
     velocity_out->mutable_data<T>(ctx.GetPlace());
 
     auto* grad_var = ctx.InputVar("Grad");
     if (grad_var->IsType<framework::LoDTensor>()) {
-      auto grad = ctx.Input<framework::Tensor>("Grad");
+      auto grad = ctx.Input<phi::DenseTensor>("Grad");
       Tensor mu_tensor =
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
       MLUCnnlTensorDesc mu_tensor_desc(mu_tensor);
