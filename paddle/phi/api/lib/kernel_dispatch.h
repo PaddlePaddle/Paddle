@@ -99,7 +99,9 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     key_set.backend_set =
         key_set.backend_set | detail::GetTensorBackendSet(tensor);
-    key_set.layout = tensor.layout();
+    phi::DataLayout tensor_layout = tensor.layout();
+    key_set.layout =
+        tensor_layout > key_set.layout ? tensor_layout : key_set.layout;
     key_set.dtype = tensor.dtype();
     dtype_set = dtype_set | DataTypeSet(key_set.dtype);
     auto promote_result = PromoteTypes(dtype_set);
@@ -116,12 +118,10 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   }
 
   void operator()(const std::vector<Tensor>& x) {
-    const phi::TensorBase& tensor = *x.at(0).impl();
-    key_set.backend_set =
-        key_set.backend_set | detail::GetTensorBackendSet(tensor);
-    // TODO(chenweihang): select multi layout and dtype
-    key_set.layout = tensor.layout();
-    key_set.dtype = tensor.dtype();
+    if (!x.empty()) {
+      const phi::TensorBase& tensor = *x.at(0).impl();
+      AssignKernelKeySet(tensor);
+    }
   }
 
   void operator()(const paddle::optional<Tensor>& x) {
