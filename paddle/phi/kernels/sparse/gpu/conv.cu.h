@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
+#include "paddle/phi/kernels/sparse/gpu/cudf/concurrent_unordered_map.cuh.h"
 
 namespace phi {
 namespace sparse {
@@ -298,18 +299,19 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
   }
 }
 
-template <typename IntT>
+template <typename IntT, typename Table>
 __global__ void GetOutIndexTable(const IntT* indices,
                                  const IntT non_zero_num,
                                  const Dims4D dims,
-                                 int* out_index_table) {
+                                 Table out_index_table) {
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT batch = indices[i];
     IntT in_z = indices[i + non_zero_num];
     IntT in_y = indices[i + 2 * non_zero_num];
     IntT in_x = indices[i + 3 * non_zero_num];
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
-    out_index_table[index] = i == 0 ? -1 : i;
+    int element = i == 0 ? -1 : i;
+    out_index_table.insert(index, element);
   }
 }
 
@@ -366,7 +368,7 @@ __global__ void CopyRuleBook(const int* counters,
   }
 }
 
-template <typename T>
+template <typename T, typename Table>
 __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                           const Dims4D x_dims,
                                           const Dims4D kernel_dims,
@@ -375,7 +377,7 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                           const Dims4D paddings,
                                           const Dims4D dilations,
                                           const Dims4D strides,
-                                          const int* out_index_table,
+                                          const Table out_index_table,
                                           T* rulebook,
                                           int* counter) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -417,7 +419,7 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
             T out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
                 batch, out_x, out_y, out_z, out_dims);
-            int real_out_index = out_index_table[out_index];
+            int real_out_index = out_index_table.find(out_index);
             if (real_out_index != 0) {
               real_out_index = real_out_index == -1 ? 0 : real_out_index;
               in_i = i;
@@ -515,6 +517,47 @@ inline void CallThrustScan(const GPUContext& dev_ctx,
                                      dev_ctx.stream());
 }
 
+template<typename Key, typename Element>
+struct FastTable{
+  concurrent_unordered_map<Key, Element, -1>* hash_table_ptr = nullptr;
+  int* table_ptr = nullptr;
+  const bool hash = false;
+  const Element ElementNotFound = 0;
+  FastTable(concurrent_unordered_map<Key, Element, -1>* hash_table_ptr,
+        int* table_ptr,
+        bool hash)
+      : hash_table_ptr(hash_table_ptr), table_ptr(table_ptr), hash(hash){};
+  __device__ void insert(Key key,Element element) {
+    if (hash)
+      hash_table_ptr->insert(thrust::pair<Key, Element>(key, element));
+    else
+      table_ptr[key] = element;
+  }
+  __device__ Element find(Key key) {
+    if(hash) {
+      auto it = hash_table_ptr->find(key);
+      if(hash_table_ptr->end().getter() != it.getter()) {
+        return it.getter()->second;
+      }
+      return ElementNotFound;
+    } else {
+      return table_ptr[key];
+    }
+  }
+
+  __device__ Element find(Key key) const {
+    if(hash) {
+      auto it = hash_table_ptr->find(key);
+      if(hash_table_ptr->end().getter() != it.getter()) {
+        return it.getter()->second;
+      }
+      return ElementNotFound;
+    } else {
+      return table_ptr[key];
+    }
+  }
+};
+
 // the basic algorithm can refer to convolution_kernel.cc or
 // the second paper
 // example:
@@ -583,6 +626,29 @@ int ProductRuleBook(const Context& dev_ctx,
   int* out_index_table_ptr = out_index_table.data<int>();
 
   if (subm) {
+    int* out_index_table_ptr = nullptr;
+    concurrent_unordered_map<int, int, -1>* out_index_hash_table_ptr = nullptr;
+    int max_non_zero_num = 136000;
+    int64_t min_dense_size = 41 * 1600 * 1408;
+    float min_sparsity = 1 - (float)max_non_zero_num / (float)min_dense_size;
+    int64_t dense_size = 1;
+    for (int i = 0; i < out_dims.size() - 1; i++) {
+      dense_size *= out_dims[i];
+    }
+    float sparsity = 1 - (float)non_zero_num/(float)dense_size;
+    bool hash = false;
+    DenseTensor out_index_table;
+    if(non_zero_num > max_non_zero_num || dense_size < min_dense_size || sparsity < min_dense_size) {
+      out_index_table = phi::Empty<int>(dev_ctx, {table_size});
+      out_index_table_ptr = out_index_table.data<int>();
+      phi::backends::gpu::GpuMemsetAsync(
+          out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
+    } else {
+      hash = true;
+      out_index_hash_table_ptr = new concurrent_unordered_map<int,int, -1>(non_zero_num*2.5, -1);
+    }
+
+    FastTable<int, int> out_index_fast_table(out_index_hash_table_ptr, out_index_table_ptr, hash);
     DenseTensor tmp_rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
     IntT* rulebook_ptr = tmp_rulebook.data<IntT>();
     DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
@@ -590,16 +656,13 @@ int ProductRuleBook(const Context& dev_ctx,
 
     phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &out_indices);
 
-    phi::backends::gpu::GpuMemsetAsync(
-        out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
-
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
     GetOutIndexTable<IntT><<<config.block_per_grid,
                              config.thread_per_block,
                              0,
                              dev_ctx.stream()>>>(
-        out_indices.data<IntT>(), non_zero_num, d_x_dims, out_index_table_ptr);
+        out_indices.data<IntT>(), non_zero_num, d_x_dims, out_index_fast_table);
 
     size_t cache_size =
         kernel_size * 2 * sizeof(int) +
@@ -625,7 +688,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                                           d_paddings,
                                                           d_dilations,
                                                           d_strides,
-                                                          out_index_table_ptr,
+                                                          out_index_fast_table,
                                                           rulebook_ptr,
                                                           counter_ptr);
 
@@ -652,6 +715,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                              non_zero_num,
                                              out_rulebook_ptr);
     *rulebook = out_rulebook;
+    delete out_index_hash_table_ptr;
 
     return rulebook_len;
 
