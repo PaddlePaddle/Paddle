@@ -80,7 +80,7 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
         .. code-block:: python
             import paddle.distributed.rpc as rpc
 
-            rpc.init_rpc("worker0", rank=0, world_size=2,
+            rpc.init_rpc("worker0", rank=0, world_size=1,
                         master_endpoint="127.0.0.1:8001")
             rpc.shutdown()
     """
