@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+
 os.environ['NVIDIA_TF32_OVERRIDE'] = "0"
 
 import unittest
