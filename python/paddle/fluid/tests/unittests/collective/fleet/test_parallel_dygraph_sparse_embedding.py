@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import sys
 import unittest
@@ -22,7 +20,6 @@ import paddle.fluid as fluid
 from test_dist_base import TestDistBase
 from spawn_runner_base import TestDistSpawnRunner
 from parallel_dygraph_sparse_embedding import TestSparseEmbedding
-from parallel_dygraph_sparse_embedding_fp64 import TestSparseEmbeddingFP64
 
 flag_name = os.path.splitext(__file__)[0]
 

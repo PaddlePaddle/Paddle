@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
 from ..layers.layer_function_generator import OpProtoHolder
@@ -389,36 +387,15 @@ def monkey_patch_math_varbase():
         ('ndim', _ndim_),
         ('size', _size_),
         ('T', _T_),
-        ('__mul__',
-         _binary_creator_('__mul__', 'multiply', False, _scalar_mul_, True)),
-        ('__rmul__',
-         _binary_creator_('__rmul__', 'multiply', False, _scalar_mul_, True)),
-        ('__div__',
-         _binary_creator_('__div__', 'divide', False, _scalar_div_, True)),
-        ('__truediv__',
-         _binary_creator_('__truediv__', 'divide', False, _scalar_div_, True)),
-        ('__rdiv__', _binary_creator_('__rdiv__', 'divide', True, None, True)),
-        ('__rtruediv__',
-         _binary_creator_('rtruediv__', 'divide', True, None, True)),
         ('__pow__', _binary_creator_('__pow__', 'pow', False, _C_ops.pow,
                                      True)),
         ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
                                       None)),
         ('__floordiv__',
          _binary_creator_('__floordiv__', 'floor_divide', False, None, True)),
-        ('__mod__', _binary_creator_('__mod__', 'remainder', False, None,
-                                     True)),
-        ('__matmul__',
-         _binary_creator_('__matmul__', "matmul", False, None, True)),
         # for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None, True)),
-        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None, True)),
-        ('__le__', _binary_creator_('__le__', 'less_equal', False, None, True)),
-        ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None,
-                                    True)),
-        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None,
-                                    True)),
         ('__array_ufunc__', None)
     ]
 
@@ -427,6 +404,18 @@ def monkey_patch_math_varbase():
         "__radd__",
         '__sub__',
         '__rsub__',
+        '__mul__',
+        '__rmul__',
+        '__div__',
+        '__truediv__',
+        '__rdiv__',
+        '__rtruediv__',
+        '__mod__',
+        '__matmul__',
+        '__gt__',
+        '__ge__',
+        '__lt__',
+        '__le__',
     ]
 
     global _already_patch_varbase

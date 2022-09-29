@@ -205,7 +205,8 @@ void TopkKernel(const Context& dev_ctx,
                                                         largest));
         default:
           PADDLE_THROW(
-              errors::Fatal("the input k has error in the topk cuda kernel."));
+              errors::Fatal("the input k has error when use getMaxLength "
+                            "function to get the maxLength."));
       });
 #endif
       default:
@@ -313,7 +314,8 @@ void TopkKernel(const Context& dev_ctx,
                             largest));
         default:
           PADDLE_THROW(
-              errors::Fatal("the input k has error in the topk cuda kernel."));
+              errors::Fatal("the input k has error when use getMaxLength "
+                            "function to get the maxLength."));
       });
 #endif
       default:

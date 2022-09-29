@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
@@ -48,8 +48,8 @@ class AdamMLUKernel : public framework::OpKernel<T> {
     auto* mom2 = ctx.Input<LoDTensor>("Moment2");
     auto* lr = ctx.Input<LoDTensor>("LearningRate");
 
-    auto* beta1_pow = ctx.Input<Tensor>("Beta1Pow");
-    auto* beta2_pow = ctx.Input<Tensor>("Beta2Pow");
+    auto* beta1_pow = ctx.Input<phi::DenseTensor>("Beta1Pow");
+    auto* beta2_pow = ctx.Input<phi::DenseTensor>("Beta2Pow");
 
     auto* param_out = ctx.Output<LoDTensor>("ParamOut");
     auto* mom1_out = ctx.Output<LoDTensor>("Moment1Out");
@@ -59,7 +59,7 @@ class AdamMLUKernel : public framework::OpKernel<T> {
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
-      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+      auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
       PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -153,16 +153,16 @@ class AdamMLUKernel : public framework::OpKernel<T> {
                           "value is:%d.",
                           beta2_pow_out->numel()));
 
-    const Tensor* beta1_tensor = nullptr;
-    const Tensor* beta2_tensor = nullptr;
-    const Tensor* epsilon_tensor = nullptr;
+    const phi::DenseTensor* beta1_tensor = nullptr;
+    const phi::DenseTensor* beta2_tensor = nullptr;
+    const phi::DenseTensor* epsilon_tensor = nullptr;
 
     Tensor beta1_tmp(experimental::DataType::FLOAT32);
     Tensor beta2_tmp(experimental::DataType::FLOAT32);
     Tensor epsilon_tmp(experimental::DataType::FLOAT32);
 
     if (ctx.HasInput("Beta1Tensor")) {
-      beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+      beta1_tensor = ctx.Input<phi::DenseTensor>("Beta1Tensor");
       PADDLE_ENFORCE_EQ(beta1_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -181,7 +181,7 @@ class AdamMLUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("Beta2Tensor")) {
-      beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+      beta2_tensor = ctx.Input<phi::DenseTensor>("Beta2Tensor");
       PADDLE_ENFORCE_EQ(beta2_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -200,7 +200,7 @@ class AdamMLUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("EpsilonTensor")) {
-      epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+      epsilon_tensor = ctx.Input<phi::DenseTensor>("EpsilonTensor");
       PADDLE_ENFORCE_EQ(epsilon_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -278,7 +278,7 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
       VLOG(3) << "Has SkipUpdate";
-      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+      auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
       PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -338,19 +338,19 @@ class MergedAdamMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Get inputs and outputs
-    auto params = ctx.MultiInput<framework::Tensor>("Param");
-    auto grads = ctx.MultiInput<framework::Tensor>("Grad");
-    auto lrs = ctx.MultiInput<framework::Tensor>("LearningRate");
-    auto mom1s = ctx.MultiInput<framework::Tensor>("Moment1");
-    auto mom2s = ctx.MultiInput<framework::Tensor>("Moment2");
-    auto beta1_pows = ctx.MultiInput<framework::Tensor>("Beta1Pow");
-    auto beta2_pows = ctx.MultiInput<framework::Tensor>("Beta2Pow");
-    auto master_params = ctx.MultiInput<framework::Tensor>("MasterParam");
-    auto param_outs = ctx.MultiOutput<framework::Tensor>("ParamOut");
-    auto mom1_outs = ctx.MultiOutput<framework::Tensor>("Moment1Out");
-    auto mom2_outs = ctx.MultiOutput<framework::Tensor>("Moment2Out");
-    auto beta1_pow_outs = ctx.MultiOutput<framework::Tensor>("Beta1PowOut");
-    auto beta2_pow_outs = ctx.MultiOutput<framework::Tensor>("Beta2PowOut");
+    auto params = ctx.MultiInput<phi::DenseTensor>("Param");
+    auto grads = ctx.MultiInput<phi::DenseTensor>("Grad");
+    auto lrs = ctx.MultiInput<phi::DenseTensor>("LearningRate");
+    auto mom1s = ctx.MultiInput<phi::DenseTensor>("Moment1");
+    auto mom2s = ctx.MultiInput<phi::DenseTensor>("Moment2");
+    auto beta1_pows = ctx.MultiInput<phi::DenseTensor>("Beta1Pow");
+    auto beta2_pows = ctx.MultiInput<phi::DenseTensor>("Beta2Pow");
+    auto master_params = ctx.MultiInput<phi::DenseTensor>("MasterParam");
+    auto param_outs = ctx.MultiOutput<phi::DenseTensor>("ParamOut");
+    auto mom1_outs = ctx.MultiOutput<phi::DenseTensor>("Moment1Out");
+    auto mom2_outs = ctx.MultiOutput<phi::DenseTensor>("Moment2Out");
+    auto beta1_pow_outs = ctx.MultiOutput<phi::DenseTensor>("Beta1PowOut");
+    auto beta2_pow_outs = ctx.MultiOutput<phi::DenseTensor>("Beta2PowOut");
 
     // Check validation of inputs and outputs
     size_t param_num = params.size();
@@ -365,7 +365,7 @@ class MergedAdamMLUKernel : public framework::OpKernel<T> {
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
-      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+      auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
       PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -416,9 +416,9 @@ class MergedAdamMLUKernel : public framework::OpKernel<T> {
     VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
     // Get beta1, beta2 and epsilon from attribute.
-    const Tensor* beta1_tensor = nullptr;
-    const Tensor* beta2_tensor = nullptr;
-    const Tensor* epsilon_tensor = nullptr;
+    const phi::DenseTensor* beta1_tensor = nullptr;
+    const phi::DenseTensor* beta2_tensor = nullptr;
+    const phi::DenseTensor* epsilon_tensor = nullptr;
 
     Tensor beta1_tmp(experimental::DataType::FLOAT32);
     Tensor beta2_tmp(experimental::DataType::FLOAT32);

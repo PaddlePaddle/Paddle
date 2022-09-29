@@ -36,7 +36,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ElementwiseOp");
@@ -170,7 +170,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
@@ -292,7 +292,7 @@ For example:
 class ElementwiseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
@@ -331,7 +331,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
@@ -349,7 +349,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
@@ -385,7 +385,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
@@ -404,7 +404,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
     : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("DDOut")) {
@@ -446,7 +446,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
@@ -464,7 +464,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
 class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("D_DDX")) {
@@ -507,7 +507,7 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input

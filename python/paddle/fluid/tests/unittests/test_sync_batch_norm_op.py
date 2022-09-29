@@ -16,8 +16,6 @@ test for sync bachnorm op.
 for both FP64 and FP16 input.
 """
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import os

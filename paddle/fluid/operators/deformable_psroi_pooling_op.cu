@@ -39,7 +39,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
@@ -184,12 +184,12 @@ template <typename DeviceContext, typename T>
 class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("Input");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
     const LoDTensor* rois = ctx.Input<LoDTensor>("ROIs");
-    const Tensor* trans = ctx.Input<Tensor>("Trans");
-    Tensor* out = ctx.Output<Tensor>("Output");
+    const phi::DenseTensor* trans = ctx.Input<phi::DenseTensor>("Trans");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Output");
     out->mutable_data<T>(ctx.GetPlace());
-    Tensor* top_count = ctx.Output<Tensor>("TopCount");
+    phi::DenseTensor* top_count = ctx.Output<phi::DenseTensor>("TopCount");
     top_count->mutable_data<T>(ctx.GetPlace());
 
     auto no_trans = ctx.Attr<bool>("no_trans");
@@ -236,7 +236,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     const T* bottom_rois = rois->data<T>();
     const T* bottom_trans = no_trans ? NULL : trans->data<T>();
 
-    framework::Tensor roi_batch_id_list;
+    phi::DenseTensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
@@ -489,14 +489,16 @@ template <typename DeviceContext, typename T>
 class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("Input");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
     const LoDTensor* rois = ctx.Input<LoDTensor>("ROIs");
-    const Tensor* trans = ctx.Input<Tensor>("Trans");
-    const Tensor* top_count = ctx.Input<Tensor>("TopCount");
-    const Tensor* output_grad =
-        ctx.Input<Tensor>(framework::GradVarName("Output"));
-    Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    Tensor* trans_grad = ctx.Output<Tensor>(framework::GradVarName("Trans"));
+    const phi::DenseTensor* trans = ctx.Input<phi::DenseTensor>("Trans");
+    const phi::DenseTensor* top_count = ctx.Input<phi::DenseTensor>("TopCount");
+    const phi::DenseTensor* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
+    phi::DenseTensor* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    phi::DenseTensor* trans_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Trans"));
 
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.cuda_device_context();
@@ -550,7 +552,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     }
 
     const T* top_count_data = top_count->data<T>();
-    framework::Tensor roi_batch_id_list;
+    phi::DenseTensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
