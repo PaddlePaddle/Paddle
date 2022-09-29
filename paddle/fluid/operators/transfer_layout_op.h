@@ -142,7 +142,7 @@ class TransferLayoutFunctor {
             in.dims()));
 
     auto src_dim = in.dims();
-    std::_tensorvector<int64_t> dst_dim;
+    std::vector<int64_t> dst_dim;
 
     auto axis = framework::GetAxis(in.layout(), out->layout());
     dst_dim.resize(axis.size());
