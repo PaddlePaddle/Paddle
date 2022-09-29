@@ -135,27 +135,17 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
         Returns the result of running ``fn`` with ``args`` and ``kwargs``.
 
     Examples:
-        run on server 0:
-            .. code-block:: python
+        .. code-block:: python
+            import paddle.distributed.rpc as rpc
 
-                # On server 0:
-                import paddle.distributed.rpc as rpc
+            def add(a, b):
+                return a + b
 
-                def add(a, b):
-                    return a + b
+            rpc.init_rpc("worker0", rank=0, world_size=1,
+                    master_endpoint="127.0.0.1:8001")
+            ret = rpc.rpc_sync("worker0", add, args=(2, 3))
+            rpc.shutdown()
 
-                rpc.init_rpc("worker0", rank=0, world_size=2,
-                        master_endpoint="127.0.0.1:8001")
-                ret = rpc.rpc_sync("worker1", add, args=(2, 3))
-                rpc.shutdown()
-
-        run on server 1:
-            .. code-block:: python
-                # On server 1:
-                import paddle.distributed.rpc as rpc
-                rpc.init_rpc("worker1", rank=1, world_size=2,
-                        master_endpoint="127.0.0.1:8001")
-                rpc.shutdown()
     """
     fut = _invoke_rpc(to, fn, args, kwargs, timeout_ms)
     return fut.wait()
@@ -179,28 +169,17 @@ def rpc_async(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
         ``kwargs`` can be got by `fut.wait()`.
 
     Examples:
-        run on server 0:
-            .. code-block:: python
+        .. code-block:: python
+            import paddle.distributed.rpc as rpc
 
-                # On server 0:
-                import paddle.distributed.rpc as rpc
+            def add(a, b):
+                return a + b
 
-                def add(a, b):
-                    return a + b
-
-                rpc.init_rpc("worker0", rank=0, world_size=2,
-                        master_endpoint="127.0.0.1:8001")
-                fut = rpc.rpc_async("worker1", add, args=(2, 3))
-                print(fut.wait())
-                rpc.shutdown()
-
-        run on server 1:
-            .. code-block:: python
-                # On server 1:
-                import paddle.distributed.rpc as rpc
-                rpc.init_rpc("worker1", rank=1, world_size=2,
-                        master_endpoint="127.0.0.1:8001")
-                rpc.shutdown()
+            rpc.init_rpc("worker0", rank=0, world_size=1,
+                    master_endpoint="127.0.0.1:8001")
+            fut = rpc.rpc_async("worker0", add, args=(2, 3))
+            print(fut.wait())
+            rpc.shutdown()
     """
     return _invoke_rpc(to, fn, args, kwargs, timeout_ms)
 
