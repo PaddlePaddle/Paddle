@@ -28,7 +28,7 @@ class LogNormal(TransformedDistribution):
         Y = exp(X) \sim LogNormal(\mu, \sigma)
 
 
-    :math:`Normal(\mu, \sigma)` is the underlying distribution of :math:`LogNormal(\mu, \sigma)`
+    Due to LogNormal distribution is based on the transformation of Normal distribution, we call that :math:`Normal(\mu, \sigma)` is the underlying distribution of :math:`LogNormal(\mu, \sigma)`
 
     Mathematical details
 
