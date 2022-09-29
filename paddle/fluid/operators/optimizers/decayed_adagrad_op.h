@@ -40,8 +40,8 @@ class DecayedAdagradOpKernel : public framework::OpKernel<T> {
                           ctx.InputNames("Grad").front(),
                           framework::ToTypeName(grad_var->Type())));
 
-    auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
-    auto moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");
+    auto param_out_tensor = ctx.Output<phi::DenseTensor>("ParamOut");
+    auto moment_out_tensor = ctx.Output<phi::DenseTensor>("MomentOut");
 
     param_out_tensor->mutable_data<T>(ctx.GetPlace());
     moment_out_tensor->mutable_data<T>(ctx.GetPlace());
@@ -50,13 +50,13 @@ class DecayedAdagradOpKernel : public framework::OpKernel<T> {
     float epsilon = ctx.Attr<float>("epsilon");
 
     auto param = framework::EigenVector<T>::Flatten(
-        *ctx.Input<framework::Tensor>("Param"));
+        *ctx.Input<phi::DenseTensor>("Param"));
     auto grad = framework::EigenVector<T>::Flatten(
-        *ctx.Input<framework::Tensor>("Grad"));
+        *ctx.Input<phi::DenseTensor>("Grad"));
     auto moment = framework::EigenVector<T>::Flatten(
-        *ctx.Input<framework::Tensor>("Moment"));
+        *ctx.Input<phi::DenseTensor>("Moment"));
     auto lr = framework::EigenVector<T>::Flatten(
-        *ctx.Input<framework::Tensor>("LearningRate"));
+        *ctx.Input<phi::DenseTensor>("LearningRate"));
 
     auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
     auto moment_out = framework::EigenVector<T>::Flatten(*moment_out_tensor);

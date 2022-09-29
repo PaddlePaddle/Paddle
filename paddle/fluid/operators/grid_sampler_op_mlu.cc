@@ -18,7 +18,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class GridSamplerMLUKernel : public framework::OpKernel<T> {
@@ -30,9 +30,9 @@ class GridSamplerMLUKernel : public framework::OpKernel<T> {
         platform::errors::Unavailable("This kernel only runs on MLU."));
 
     // input and output data
-    const Tensor* input = ctx.Input<Tensor>("X");
-    const Tensor* grid = ctx.Input<Tensor>("Grid");
-    Tensor* output = ctx.Output<Tensor>("Output");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* grid = ctx.Input<phi::DenseTensor>("Grid");
+    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
 
     int n = input->dims()[0];
     int c = input->dims()[1];

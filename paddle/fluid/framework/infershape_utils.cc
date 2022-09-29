@@ -152,7 +152,7 @@ int64_t CompatMetaTensor::numel() const {
   ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
-    return var->Get<Tensor>().numel();
+    return var->Get<phi::DenseTensor>().numel();
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
     return var->ElementSize();

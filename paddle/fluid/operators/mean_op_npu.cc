@@ -16,7 +16,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class MeanNPUKernel : public framework::OpKernel<T> {
@@ -49,7 +49,7 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto grad = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(grad->numel(),
                       1,
@@ -58,7 +58,7 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
                           "received Out@Grad's elements num is %d.",
                           grad->numel()));
 
-    auto IG = context.Output<Tensor>(framework::GradVarName("X"));
+    auto IG = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
 
     // ones

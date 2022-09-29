@@ -206,7 +206,7 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const int tensor_dim,
       cnnlSetTensorDescriptorPosition(raw_tensor_desc, position));
 }
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                                      const cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype) {
   auto dims = phi::vectorize<int>(tensor.dims());
@@ -227,11 +227,11 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
   }
 }
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor)
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor)
     : MLUCnnlTensorDesc(
           tensor, CNNL_LAYOUT_ARRAY, ToCnnlDataType(tensor.dtype())) {}
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                                      cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype,
                                      int position)
@@ -240,7 +240,7 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
       cnnlSetTensorDescriptorPosition(raw_tensor_desc, position));
 }
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                                      cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype,
                                      int position,

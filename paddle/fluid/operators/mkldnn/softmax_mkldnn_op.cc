@@ -16,7 +16,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
 using paddle::platform::MKLDNNDeviceContext;
 using paddle::platform::MKLDNNMemDesc;
 
@@ -36,8 +35,8 @@ class SoftmaxMKLDNNHandler
  public:
   SoftmaxMKLDNNHandler(const dnnl::engine mkldnn_engine,
                        platform::Place cpu_place,
-                       const Tensor* input,
-                       Tensor* output,
+                       const phi::DenseTensor* input,
+                       phi::DenseTensor* output,
                        const int axis)
       : platform::MKLDNNHandlerNoCachingT<T,
                                           dnnl::softmax_forward,
@@ -61,8 +60,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const Tensor* input = ctx.Input<Tensor>("X");
-    Tensor* output = ctx.Output<Tensor>("Out");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("X");
+    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Out");
     bool is_inplaced = input->IsSharedBufferWith(*output);
 
     const int axis =
