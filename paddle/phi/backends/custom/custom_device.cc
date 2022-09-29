@@ -27,6 +27,8 @@ static bool operator==(const C_Device_st& d1, const C_Device_st& d2) {
   return d1.id == d2.id;
 }
 
+static std::once_flag g_device_count_init_flag;
+
 namespace phi {
 
 #define INTERFACE_UNIMPLEMENT              \
@@ -53,11 +55,15 @@ class CustomDevice : public DeviceInterface {
   ~CustomDevice() override { Finalize(); }
 
   size_t GetDeviceCount() override {
-    size_t count;
-    if (pimpl_->get_device_count(&count) != C_SUCCESS) {
-      count = 0;
-    }
-    return count;
+    static size_t num_dev;
+    std::call_once(g_device_count_init_flag, [&] {
+      size_t count;
+      if (pimpl_->get_device_count(&count) != C_SUCCESS) {
+        count = 0;
+      }
+      num_dev = count;
+    });
+    return num_dev;
   }
 
   std::vector<size_t> GetDeviceList() override {
