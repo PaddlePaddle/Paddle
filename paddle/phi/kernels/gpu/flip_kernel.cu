@@ -58,17 +58,12 @@ void LaunchFlipCudaKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<int>& axis,
                           DenseTensor* out) {
-<<<<<<< HEAD
-
-  std::vector<int> flip_dims_v = axis;
-=======
   auto* in_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
   auto x_dims = x.dims();
   const int total_dims = x_dims.size();
   const int64_t numel = x.numel();
->>>>>>> fix extra flip_dims_v
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   auto x_stride = phi::stride(x_dims);
 
