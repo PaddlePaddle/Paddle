@@ -3477,8 +3477,7 @@ def multi_margin_loss(input,
                       reduction='mean',
                       name=None):
     r"""
-        Measures a multi-class classification hinge loss (margin-based loss) between input :math:`input` (a 2D mini-batch `Tensor`, in shape (N, C),
-        where C is number of classes) and label :math:`label` (which is a 1D tensor of target class indices,:math:`0 \leq label \leq \text{C}-1`):
+        Measures a multi-class classification hinge loss between input :math:`input` and label :math:`label`:
 
         For i-th mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
         output :math:`label_i` is:

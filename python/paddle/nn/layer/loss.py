@@ -1679,8 +1679,8 @@ class TripletMarginLoss(Layer):
 
 
 class MultiMarginLoss(Layer):
-    r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss) between input :math:`input` (a 2D mini-batch `Tensor`, in shape (N, C),
-        where C is number of classes) and label :math:`label` (which is a 1D tensor of target class indices,:math:`0 \leq label \leq \text{C}-1`):
+    r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss) between
+        input :math:`input` and label :math:`label`:
 
         For i-th mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
         output :math:`label_i` is:
@@ -1721,11 +1721,14 @@ class MultiMarginLoss(Layer):
 
         Call parameters:
             input (Tensor): Input tensor, the data type is float32 or float64.
+
             label (Tensor): Label tensor, 0<= label < input.shape[1], the data type is int32 or int64.
 
         Shape:
-            input: N-D Tensor, the shape is [N, C], N is batch size and `C` means number of classes.
-            label: N-D Tensor, the shape is [N,].
+            input: 2-D Tensor, the shape is [N, C], N is batch size and `C` means number of classes.
+
+            label: 1-D Tensor, the shape is [N,].
+
             output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
         Returns:
