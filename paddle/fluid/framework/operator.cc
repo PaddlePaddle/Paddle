@@ -1392,6 +1392,8 @@ bool OperatorWithKernel::SupportsKernelType(
   }
 #endif
 
+// NOTE(jiahy0825): If MKLDNN can be used, the function SupportsKernelType needs
+// to check whether current op supports MKLDNN kernel
 #ifdef PADDLE_WITH_MKLDNN
   if (!paddle::platform::in_mkldnn_white_list(type_)) {
     if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
@@ -1562,6 +1564,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     } else {
       phi_kernel_name = kernel_signature_->name;
 
+// NOTE(jiahy0825): The registered MKLDNN kernel have library_type =
+// LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
+// values are kPlain, so we need to modify the library_type and data_layout_
+// here, otherwise it cannot work.
 #ifdef PADDLE_WITH_MKLDNN
       if (!paddle::platform::in_mkldnn_white_list(type_)) {
         if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
@@ -1646,6 +1652,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       auto& all_op_kernels = AllOpKernels();
       auto kernels_iter = all_op_kernels.find(type_);
 
+// NOTE(jiahy0825): If we can't find heterogeneous kernel in phi, we need to
+// select the heterogeneous kernel in fluid, but the kernel registered in MKLDNN
+// use library_type[LibraryType::kMKLDNN] and data_layout_[DataLayout::kMKLDNN],
+// so modify it here.
 #ifdef PADDLE_WITH_MKLDNN
       if (!paddle::platform::in_mkldnn_white_list(type_)) {
         if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
@@ -1808,6 +1818,9 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
     const ExecutionContext& ctx) const {
   auto expected_kernel_key = this->GetExpectedKernelType(ctx);
 
+// NOTE(jiahy0825): PADDLE_WITH_MKLDNN codes are moved outside function
+// GetExpectedKernelType, so that if MKLDNN can be used, the library_type_ and
+// data_layout_ of expected_kernel_key need to be adjusted.
 #ifdef PADDLE_WITH_MKLDNN
   if (!paddle::platform::in_mkldnn_white_list(type_)) {
     if (this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
