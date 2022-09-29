@@ -1394,12 +1394,11 @@ bool OperatorWithKernel::SupportsKernelType(
 
 #ifdef PADDLE_WITH_MKLDNN
   if (!paddle::platform::in_mkldnn_white_list(type_)) {
-    auto input_data_type = IndicateVarDataType(exe_ctx, "X");
-    if (this->CanMKLDNNBeUsed(exe_ctx, input_data_type)) {
+    if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
       auto tmp_kernel_type = kernel_type;
       tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
       tmp_kernel_type.data_layout_ = framework::DataLayout::kMKLDNN;
-      return kernel_iter != kernels.end();
+      return kernels.find(tmp_kernel_type) != kernels.end();
     }
   }
 #endif
@@ -1565,8 +1564,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
 #ifdef PADDLE_WITH_MKLDNN
       if (!paddle::platform::in_mkldnn_white_list(type_)) {
-        auto input_data_type = IndicateVarDataType(exe_ctx, "X");
-        if (this->CanMKLDNNBeUsed(exe_ctx, input_data_type)) {
+        if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
           kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
           kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
         }
@@ -1650,8 +1648,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
 #ifdef PADDLE_WITH_MKLDNN
       if (!paddle::platform::in_mkldnn_white_list(type_)) {
-        auto input_data_type = IndicateVarDataType(exe_ctx, "X");
-        if (this->CanMKLDNNBeUsed(exe_ctx, input_data_type)) {
+        if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
           kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
           kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
         }
@@ -1813,8 +1810,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
 #ifdef PADDLE_WITH_MKLDNN
   if (!paddle::platform::in_mkldnn_white_list(type_)) {
-    auto input_data_type = IndicateVarDataType(ctx, "X");
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    if (this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
       expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
       expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
     }

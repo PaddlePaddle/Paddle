@@ -17,10 +17,80 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-static const std::unordered_set<std::string> mkldnn_white_list = {"abs"};
+static const std::unordered_set<std::string> mkldnn_white_list = {
+    "cast",
+    "transfer_dtype",
+    "concat_grad",
+    "conv2d_transpose",
+    "depthwise_conv2d_transpose",
+    "conv3d_transpose",
+    "layer_norm",
+    "mul",
+    "pad2d",
+    "pad3d",
+    "pool2d",
+    "pool2d_grad",
+    "pool2d_double_grad",
+    "pool3d",
+    "pool3d_grad",
+    "slice",
+    "slice_grad",
+    "softmax",
+    "softmax_grad",
+    "split",
+    "sum",
+    "transpose2_grad",
+    "sgd"};
+static const std::unordered_set<std::string> mkldnn_interp_white_list = {
+    "bilinear_interp",
+    "nearest_interp",
+    "trilinear_interp",
+    "bicubic_interp",
+    "linear_interp",
+    "bilinear_interp_v2",
+    "nearest_interp_v2",
+    "trilinear_interp_v2",
+    "bicubic_interp_v2",
+    "linear_interp_v2"};
+static const std::unordered_set<std::string> mkldnn_reduce_white_list = {
+    "frobenius_norm",
+    "reduce_amax",
+    "reduce_amin",
+    "reduce_max",
+    "reduce_mean",
+    "reduce_min",
+    "reduce_prod",
+    "reduce_sum",
+    "frobenius_norm_grad",
+    "reduce_amax_grad",
+    "reduce_amin_grad",
+    "reduce_max_grad",
+    "reduce_mean_grad",
+    "reduce_min_grad",
+    "reduce_prod_grad",
+    "reduce_sum_grad"};
+static const std::unordered_set<std::string> mkldnn_customized_type_value_list =
+    {"addmm",
+     "conv2d",
+     "conv2d_grad",
+     "depthwise_conv2d",
+     "depthwise_conv2d_grad",
+     "conv3d",
+     "conv3d_grad",
+     "prior_box",
+     "fc",
+     "mul",
+     "mul_grad",
+     "transpose2"};
 
 inline bool in_mkldnn_white_list(const std::string& op_name) {
-  return mkldnn_white_list.find(op_name) == mkldnn_white_list.end();
+  return mkldnn_white_list.find(op_name) != mkldnn_white_list.end() ||
+         mkldnn_interp_white_list.find(op_name) !=
+             mkldnn_interp_white_list.end() ||
+         mkldnn_reduce_white_list.find(op_name) !=
+             mkldnn_reduce_white_list.end() ||
+         mkldnn_customized_type_value_list.find(op_name) !=
+             mkldnn_customized_type_value_list.end();
 }
 
 }  // namespace platform
