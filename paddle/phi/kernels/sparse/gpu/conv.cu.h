@@ -528,10 +528,11 @@ struct FastTable{
         bool hash)
       : hash_table_ptr(hash_table_ptr), table_ptr(table_ptr), hash(hash){};
   __device__ void insert(Key key,Element element) {
-    if (hash)
+    if (hash) {
       hash_table_ptr->insert(thrust::pair<Key, Element>(key, element));
-    else
-      table_ptr[key] = element;
+      return;
+    }
+    table_ptr[key] = element;
   }
   __device__ Element find(Key key) {
     if(hash) {
@@ -540,21 +541,19 @@ struct FastTable{
         return it.getter()->second;
       }
       return ElementNotFound;
-    } else {
-      return table_ptr[key];
     }
+    return table_ptr[key];
   }
 
   __device__ Element find(Key key) const {
-    if(hash) {
+    if (hash) {
       auto it = hash_table_ptr->find(key);
-      if(hash_table_ptr->end().getter() != it.getter()) {
+      if (hash_table_ptr->end().getter() != it.getter()) {
         return it.getter()->second;
       }
       return ElementNotFound;
-    } else {
-      return table_ptr[key];
     }
+    return table_ptr[key];
   }
 };
 
@@ -622,8 +621,6 @@ int ProductRuleBook(const Context& dev_ctx,
   for (int i = 0; i < out_dims.size() - 1; i++) {
     table_size *= out_dims[i];
   }
-  DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
-  int* out_index_table_ptr = out_index_table.data<int>();
 
   if (subm) {
     int* out_index_table_ptr = nullptr;
@@ -720,6 +717,8 @@ int ProductRuleBook(const Context& dev_ctx,
     return rulebook_len;
 
   } else {
+    DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
+    int* out_index_table_ptr = out_index_table.data<int>();
     *rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
     IntT* rulebook_ptr = rulebook->data<IntT>();
     ProductRuleBookKernel<IntT><<<config.block_per_grid.x,
