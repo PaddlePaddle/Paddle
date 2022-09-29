@@ -22,12 +22,12 @@ namespace paddle {
 namespace operators {
 
 template <typename T = int32_t>
-inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
+inline std::vector<T> GetDataFromTensor(const phi::DenseTensor* x) {
   std::vector<T> vec_new_data;
   if (framework::TransToProtoVarType(x->dtype()) ==
       framework::proto::VarType::INT32) {
     auto* data = x->data<int>();
-    framework::Tensor cpu_attr_tensor;
+    phi::DenseTensor cpu_attr_tensor;
     if (!platform::is_cpu_place(x->place())) {
       paddle::framework::TensorCopySync(
           *x, platform::CPUPlace(), &cpu_attr_tensor);
@@ -37,7 +37,7 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
   } else if (framework::TransToProtoVarType(x->dtype()) ==
              framework::proto::VarType::INT64) {
     auto* data = x->data<int64_t>();
-    framework::Tensor cpu_attr_tensor;
+    phi::DenseTensor cpu_attr_tensor;
     if (!platform::is_cpu_place(x->place())) {
       paddle::framework::TensorCopySync(
           *x, platform::CPUPlace(), &cpu_attr_tensor);
@@ -55,7 +55,7 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
 
 template <typename T = int32_t>
 inline std::vector<T> GetDataFromTensorList(
-    const std::vector<const framework::Tensor*>& list_tensor) {
+    const std::vector<const phi::DenseTensor*>& list_tensor) {
   std::vector<T> vec_new_data;
   for (size_t i = 0; i < list_tensor.size(); ++i) {
     auto tensor = list_tensor[i];
@@ -70,7 +70,7 @@ inline std::vector<T> GetDataFromTensorList(
     if (framework::TransToProtoVarType(tensor->dtype()) ==
         framework::proto::VarType::INT32) {
       if (!platform::is_cpu_place(tensor->place())) {
-        framework::Tensor temp;
+        phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_data.push_back(static_cast<T>(*temp.data<int>()));
       } else {
@@ -79,7 +79,7 @@ inline std::vector<T> GetDataFromTensorList(
     } else if (framework::TransToProtoVarType(tensor->dtype()) ==
                framework::proto::VarType::INT64) {
       if (!platform::is_cpu_place(tensor->place())) {
-        framework::Tensor temp;
+        phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         // NOTE: Converting int64 to int32 may cause data overflow.
         vec_new_data.push_back(static_cast<T>(*temp.data<int64_t>()));
@@ -105,7 +105,7 @@ inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
   }
 
   // 2. shape is a list/tuple containing Tensor
-  auto shape_tensor_list = ctx.MultiInput<framework::Tensor>("ShapeTensorList");
+  auto shape_tensor_list = ctx.MultiInput<phi::DenseTensor>("ShapeTensorList");
   if (shape_tensor_list.size() > 0) {
     auto vec_shape = GetDataFromTensorList(shape_tensor_list);
     return phi::make_ddim(vec_shape);
@@ -117,10 +117,10 @@ inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
 }
 
 template <typename T>
-inline T GetValue(const framework::Tensor* x) {
+inline T GetValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
   if (!platform::is_cpu_place(x->place())) {
-    framework::Tensor cpu_x;
+    phi::DenseTensor cpu_x;
     framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
 #if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

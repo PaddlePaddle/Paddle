@@ -68,11 +68,11 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
                                           const std::vector<int>&,
                                           const std::vector<int>&)> func,
                         bool use_x_y_data) {
-  auto* x = ctx.Input<framework::Tensor>("X");
-  auto* y = ctx.Input<framework::Tensor>("Y");
-  auto* dz = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-  auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-  auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+  auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* y = ctx.Input<phi::DenseTensor>("Y");
+  auto* dz = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+  auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+  auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
   int axis = ctx.Attr<int>("axis");
 
   auto& dev_ctx =

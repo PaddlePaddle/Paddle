@@ -47,9 +47,9 @@ template <typename T>
 class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
-    auto* anchors = ctx.Output<paddle::framework::Tensor>("Anchors");
-    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* anchors = ctx.Output<phi::DenseTensor>("Anchors");
+    auto* vars = ctx.Output<phi::DenseTensor>("Variances");
 
     auto anchor_sizes = ctx.Attr<std::vector<float>>("anchor_sizes");
     auto aspect_ratios = ctx.Attr<std::vector<float>>("aspect_ratios");
@@ -106,7 +106,7 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    framework::Tensor var_t;
+    phi::DenseTensor var_t;
     var_t.mutable_data<T>(
         phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());

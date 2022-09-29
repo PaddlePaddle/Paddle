@@ -278,7 +278,7 @@ static bool IsEqualVar(const framework::Variable& var1,
     return false;
   }
 
-  framework::Tensor t1, t2;
+  phi::DenseTensor t1, t2;
 
   if (var1.IsType<framework::LoDTensor>()) {
     framework::TensorCopySync(
@@ -328,7 +328,7 @@ static framework::Variable RandomTensor(const framework::DDim& dims,
                                         const platform::Place& place,
                                         int low = -10,
                                         int high = 10) {
-  framework::Tensor cpu_tensor;
+  phi::DenseTensor cpu_tensor;
   cpu_tensor.Resize(dims);
   auto* ptr = cpu_tensor.mutable_data<T>(platform::CPUPlace());
   std::uniform_int_distribution<int> dist(low, high);

@@ -22,11 +22,11 @@ limitations under the License. */
 
 template <typename DeviceContext, typename Place>
 void testIm2col() {
-  paddle::framework::Tensor input_tmp;
-  paddle::framework::Tensor input;
-  paddle::framework::Tensor output_cfo;
-  paddle::framework::Tensor output_ocf;
-  paddle::framework::Tensor output_tmp;
+  phi::DenseTensor input_tmp;
+  phi::DenseTensor input;
+  phi::DenseTensor output_cfo;
+  phi::DenseTensor output_ocf;
+  phi::DenseTensor output_tmp;
 
   /**
    * input = [0, 1, 2,
@@ -180,11 +180,11 @@ void testIm2col() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 void testIm2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
-  paddle::framework::Tensor input_tmp;
-  paddle::framework::Tensor input;
-  paddle::framework::Tensor output_cfo;
-  paddle::framework::Tensor output_ocf;
-  paddle::framework::Tensor output_tmp;
+  phi::DenseTensor input_tmp;
+  phi::DenseTensor input;
+  phi::DenseTensor output_cfo;
+  phi::DenseTensor output_ocf;
+  phi::DenseTensor output_tmp;
 
   /**
    * input = [0, 1, 2,
@@ -349,9 +349,9 @@ TEST(math, im2col) {
 #define PREPARE_IM2COL_CPU                                                   \
   paddle::platform::CPUPlace place;                                          \
   phi::CPUContext context(place);                                            \
-  paddle::framework::Tensor input;                                           \
-  paddle::framework::Tensor out;                                             \
-  paddle::framework::Tensor ref;                                             \
+  phi::DenseTensor input;                                                    \
+  phi::DenseTensor out;                                                      \
+  phi::DenseTensor ref;                                                      \
   std::vector<int> padding({ph, pw});                                        \
   std::vector<int> stride({1, 1});                                           \
   std::vector<int> dilation({1, 1});                                         \

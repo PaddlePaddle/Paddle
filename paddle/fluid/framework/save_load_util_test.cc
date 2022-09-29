@@ -23,10 +23,10 @@ namespace framework {
 TEST(test_save_load_util, test_save_load) {
   srand(time(NULL));
   auto cpu_place = platform::CPUPlace();
-  Tensor tensor1;
+  phi::DenseTensor tensor1;
   tensor1.Resize({1000, 1000});
   auto src_data_1 = tensor1.mutable_data<float>(cpu_place);
-  Tensor tensor2;
+  phi::DenseTensor tensor2;
   tensor2.Resize({5000, 1000});
   auto src_data_2 = tensor2.mutable_data<float>(cpu_place);
 
@@ -42,13 +42,13 @@ TEST(test_save_load_util, test_save_load) {
     src_data_2[i] = temp;
   }
 
-  std::map<std::string, Tensor*> map_tensor;
+  std::map<std::string, phi::DenseTensor*> map_tensor;
   map_tensor["t1"] = &tensor1;
   map_tensor["t2"] = &tensor2;
 
   SaveTensorToDisk("test_1", map_tensor);
 
-  std::map<std::string, std::shared_ptr<Tensor>> load_map_tensor;
+  std::map<std::string, std::shared_ptr<phi::DenseTensor>> load_map_tensor;
 
   LoadTensorFromDisk("test_1", &load_map_tensor);
 
