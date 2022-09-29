@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -76,6 +78,48 @@ class TestLerpWithDim6(TestLerp):
 
     def init_shape(self):
         self.shape = [2, 1, 2, 5, 1, 5]
+
+
+class TestLerpBroadXY(TestLerp):
+
+    def setUp(self):
+        self.op_type = "lerp"
+        self.python_api = paddle.lerp
+        self.init_dtype()
+        self.init_shape()
+        x = np.arange(1., 101.).astype(self.dtype).reshape([2, 2, 25])
+        y = np.full(150, 10.).astype(self.dtype).reshape([3, 2, 1, 25])
+        w = np.asarray([0.5]).astype(self.dtype)
+        self.inputs = {'X': x, 'Y': y, 'Weight': w}
+        self.outputs = {'Out': x + w * (y - x)}
+
+
+class TestLerpBroadWToXY(TestLerp):
+
+    def setUp(self):
+        self.op_type = "lerp"
+        self.python_api = paddle.lerp
+        self.init_dtype()
+        self.init_shape()
+        x = np.arange(1., 201.).astype(self.dtype).reshape([2, 2, 50])
+        y = np.full(100, 7.5).astype(self.dtype).reshape([1, 2, 50])
+        w = np.asarray([0.5]).astype(self.dtype)
+        self.inputs = {'X': x, 'Y': y, 'Weight': w}
+        self.outputs = {'Out': x + w * (y - x)}
+
+
+# class TestLerpBroadXYToW(TestLerp):
+
+#     def setUp(self):
+#         self.op_type = "lerp"
+#         self.python_api = paddle.lerp
+#         self.init_dtype()
+#         self.init_shape()
+#         x = np.arange(1., 101.).astype(self.dtype).reshape([2, 50])
+#         y = np.full(200, 7.5).astype(self.dtype).reshape([2, 2, 50])
+#         w = np.full(400, 0.225).astype(self.dtype).reshape([2, 2, 2, 50])
+#         self.inputs = {'X': x, 'Y': y, 'Weight': w}
+#         self.outputs = {'Out': x + w * (y - x)}
 
 
 class TestLerpAPI(unittest.TestCase):
