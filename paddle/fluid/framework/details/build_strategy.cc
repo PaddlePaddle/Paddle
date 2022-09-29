@@ -176,27 +176,43 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(
         strategy_.enable_inference_pass_ && strategy_.use_mkldnn_,
         "mkldnn_placement_pass");
-    AppendPassWithCheck(
-        strategy_.enable_inference_pass_ && strategy_.depthwise_conv_mkldnn_,
-        "depthwise_conv_mkldnn_pass");
-    AppendPassWithCheck(
-        strategy_.enable_inference_pass_ && strategy_.fuse_conv_bias_,
-        "conv_bias_mkldnn_fuse_pass");
-    AppendPassWithCheck(
-        strategy_.enable_inference_pass_ && strategy_.fuse_conv_act_,
-        "conv_activation_mkldnn_fuse_pass");
-    AppendPassWithCheck(strategy_.enable_inference_pass_ &&
-                            strategy_.fuse_matmul_transpose_reshape,
-                        "matmul_transpose_reshape_mkldnn_fuse_pass");
-    AppendPassWithCheck(
-        strategy_.enable_inference_pass_ && strategy_.fuse_matmul_element_,
-        "matmul_elementwise_add_mkldnn_fuse_pass");
-    AppendPassWithCheck(
-        strategy_.enable_inference_pass_ && strategy_.fuse_matmul_act_,
-        "matmul_activation_mkldnn_fuse_pass");
-    AppendPassWithCheck(
-        strategy_.enable_inference_pass_ && strategy_.fuse_elementwise_act_,
-        "elt_act_mkldnn_fuse_pass");
+
+#ifdef PADDLE_WITH_MKLDNN
+    for (auto &pass : std::vector<std::string>({
+             "depthwise_conv_mkldnn_pass",    //
+             "conv_bn_fuse_pass",             // Execute BN passes again to
+             "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
+             "conv_affine_channel_mkldnn_fuse_pass",    //
+             "conv_transpose_bn_fuse_pass",             //
+             "conv_transpose_eltwiseadd_bn_fuse_pass",  //
+             "conv_bias_mkldnn_fuse_pass",              //
+             "conv_transpose_bias_mkldnn_fuse_pass",
+             // TODO(baoachun): Need to support 5-dimensional input.
+             // "conv3d_bias_mkldnn_fuse_pass",  //
+             "conv_elementwise_add_mkldnn_fuse_pass",
+             "conv_activation_mkldnn_fuse_pass",           //
+             "scale_matmul_fuse_pass",                     //
+             "reshape_transpose_matmul_mkldnn_fuse_pass",  //
+             "matmul_transpose_reshape_mkldnn_fuse_pass",  //
+             "matmul_elementwise_add_mkldnn_fuse_pass",    //
+             "matmul_activation_mkldnn_fuse_pass",         //
+             // Disabled due to topology-dependent speed-up
+             //  "fc_mkldnn_pass",
+             //  "fc_act_mkldnn_fuse_pass",
+             "fc_elementwise_add_mkldnn_fuse_pass",   //
+             "batch_norm_act_fuse_pass",              //
+             "softplus_activation_mkldnn_fuse_pass",  //
+             "shuffle_channel_mkldnn_detect_pass",    //
+             "elt_act_mkldnn_fuse_pass",              //
+             // TODO(intel): Please fix the bug on windows.
+             // https://github.com/PaddlePaddle/Paddle/issues/29710
+             // "mkldnn_inplace_pass",  // This pass should be activated after
+             // fuses. Disabled by default due to
+             // little gain and lots of problems
+         })) {
+      AppendPassWithCheck(strategy_.enable_inference_pass_, pass);
+    }
+#endif
 
     // 2. trainning pass
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,

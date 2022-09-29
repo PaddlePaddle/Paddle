@@ -17,10 +17,13 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/enforce.h"
+
+DECLARE_bool(convert_all_blocks);
 
 namespace paddle {
 namespace jit {
@@ -83,6 +86,17 @@ void PEEngine::CreateGraphAndPE() {
   int64_t end_op_index = static_cast<int64_t>(global_block.OpSize());
 
   graph_ = std::make_shared<Graph>(program_desc, start_op_index, end_op_index);
+
+  // some pass need kParamScopeAttr be set
+  if (FLAGS_convert_all_blocks) {
+    for (size_t i = 0; i < graph_->SubGraphsSize(); ++i) {
+      graph_->GetSubGraph(i)->SetNotOwned(
+          paddle::framework::ir::kParamScopeAttr, &scope_);
+    }
+  } else {
+    graph_->SetNotOwned(paddle::framework::ir::kParamScopeAttr, &scope_);
+  }
+
   inner_pe_ = std::make_shared<ParallelExecutor>(
       place_, &scope_, execution_strategy, build_strategy, graph_.get());
   inner_pe_->SkipMemoryReuse(/*scope_idx=*/0, info_->InputArgNames());
