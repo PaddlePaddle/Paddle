@@ -692,12 +692,19 @@ class SoftmaxOneDNNHandler
  public:
   SoftmaxOneDNNHandler(const dnnl::engine onednn_engine,
                        Place cpu_place,
+                       int axis,
                        const DenseTensor* x,
-                       int axis)
+                       DenseTensor* out)
       : OneDNNHandlerNoCachingT<T,
                                 dnnl::softmax_forward,
                                 dnnl::softmax_backward>(onednn_engine,
                                                         cpu_place) {
+    PADDLE_ENFORCE_EQ(
+        x->dims(),
+        out->dims(),
+        phi::errors::InvalidArgument(
+            "The shape of input and output tensor must be identical."));
+
     const int canonical_axis = funcs::CanonicalAxis(axis, x->dims().size());
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_scoring, x->mem_desc(), canonical_axis);
