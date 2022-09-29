@@ -96,29 +96,29 @@ inline dnnl::memory::format_tag GetPlainOneDNNFormat(int tensor_rank) {
 }
 
 template <typename Type>
-dnnl::memory::data_type oneDNNGetDataType() {
+dnnl::memory::data_type OneDNNGetDataType() {
   return dnnl::memory::data_type::undef;
 }
 
 template <>
-inline dnnl::memory::data_type oneDNNGetDataType<float>() {
+inline dnnl::memory::data_type OneDNNGetDataType<float>() {
   return dnnl::memory::data_type::f32;
 }
 template <>
-inline dnnl::memory::data_type oneDNNGetDataType<int32_t>() {
+inline dnnl::memory::data_type OneDNNGetDataType<int32_t>() {
   return dnnl::memory::data_type::s32;
 }
 template <>
-inline dnnl::memory::data_type oneDNNGetDataType<int8_t>() {
+inline dnnl::memory::data_type OneDNNGetDataType<int8_t>() {
   return dnnl::memory::data_type::s8;
 }
 template <>
-inline dnnl::memory::data_type oneDNNGetDataType<uint8_t>() {
+inline dnnl::memory::data_type OneDNNGetDataType<uint8_t>() {
   return dnnl::memory::data_type::u8;
 }
 
 template <>
-inline dnnl::memory::data_type oneDNNGetDataType<dtype::bfloat16>() {
+inline dnnl::memory::data_type OneDNNGetDataType<dtype::bfloat16>() {
   return dnnl::memory::data_type::bf16;
 }
 

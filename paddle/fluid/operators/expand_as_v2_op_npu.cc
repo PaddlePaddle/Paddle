@@ -21,7 +21,7 @@ template <typename DeviceContext, typename T>
 class ExpandAsV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto rank = context.Input<Tensor>("X")->dims().size();
+    auto rank = context.Input<phi::DenseTensor>("X")->dims().size();
     auto target_shape = context.Attr<std::vector<int>>("target_shape");
     auto target_rank = target_shape.size();
     PADDLE_ENFORCE_GE(target_rank,
@@ -50,7 +50,7 @@ class ExpandAsV2NPUKernel : public framework::OpKernel<T> {
 
  protected:
   void ExpandAs(const framework::ExecutionContext& context) const {
-    auto* in0 = context.Input<framework::Tensor>("X");
+    auto* in0 = context.Input<phi::DenseTensor>("X");
     auto in_dims = in0->dims();
     auto target_shape = context.Attr<std::vector<int>>("target_shape");
     auto vec_in_dims = phi::vectorize<int>(in_dims);
@@ -74,7 +74,7 @@ class ExpandAsV2NPUKernel : public framework::OpKernel<T> {
                 target_shape[i]));
       }
     }
-    auto* out0 = context.Output<framework::Tensor>("Out");
+    auto* out0 = context.Output<phi::DenseTensor>("Out");
 
     framework::DDim out_dims = phi::make_ddim(target_shape);
 

@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from .utils import calculate_density
 from .utils import check_mask_1d
 from .utils import get_mask_1d

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
+
+import paddle
 from paddle.fluid import core
 from .process_mesh import ProcessMesh
 from .process_mesh import get_current_process_mesh
@@ -31,11 +34,11 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
         x (Tensor): the tensor to be sharded.
         process_mesh (ProcessMesh, optional): An instance of ProcessMesh describes a mesh
             topology of the used logical processes where the tensor is sharded. If it is None,
-            the found current process mesh will be used. And an error will be raised if the 
+            the found current process mesh will be used. And an error will be raised if the
             current process mesh cannot be found. Default: None.
         shard_spec (list, optional): a list to describe the sharding mapping between `x` and `process_mesh`,
             which means the dimension `i` of `x` is split across the dimension `shard_spec[i]` of `process_mesh`,
-            where `None` means that tensor dimension is not split. For example, given a tensor wih 
+            where `None` means that tensor dimension is not split. For example, given a tensor wih
             the shape [6, 12] and a process mesh with the shape [2, 3] and the dimension names ["x", "y"]:
                 If `shard_spec=["x", "y"]`, each shard of the tensor will have a shape [3, 4];
                 If `shard_spec=["y", "x"]`, each shard of the tensor will have a shape [2, 6];
@@ -48,13 +51,13 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
         In the above example, the `shard_spec=None` is same as 'shard_spec=[None, None]'. Defaults: None.
 
     Returns:
-        Tensor: the tensor `x` annotated with sharding information. 
+        Tensor: the tensor `x` annotated with sharding information.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.distributed.auto_parallel as auto 
+            from paddle.distributed.fleet import auto
 
             mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
             x = paddle.ones([4, 6])
@@ -111,13 +114,13 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
         in_shard_specs (list of list, optional): a list of list to describe the sharding specifications
             for the inputs. Each item of `in_shard_specs` is a `shard_spec` between the correspoinding input
             and `process_mesh`. If one item is None, the cooresponding input is replicated across all processes
-            If it is None, all inputs are replicated accross all processes. Note that the lenght of the 
+            If it is None, all inputs are replicated accross all processes. Note that the lenght of the
             `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
             Default: None.
         out_shard_specs (list of list, optional): a list of list to describe the sharding specifications
             for the outputs. Each item of `out_shard_specs` is a `shard_spec` between the correspoinding output
             and `process_mesh`. If one item is None, the cooresponding output is replicated across all processes
-            If it is None, all outputs are replicated accross all processes. Note that the lenght of the 
+            If it is None, all outputs are replicated accross all processes. Note that the lenght of the
             `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
             Default: None. Default: None.
 
@@ -128,8 +131,8 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
         .. code-block:: python
 
             import paddle
-            import paddle.distributed.auto_parallel as auto 
-            
+            from paddle.distributed.fleet import auto
+
             x = paddle.ones([4, 6])
             y = paddle.zeros([4, 6])
             mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
@@ -195,15 +198,42 @@ def recompute(op):
     return RecomputeOperator(op)
 
 
-_g_fetched_tensors = {}
+# _g_fetched_tensors = {}
+
+# def fetch(tensor, name=None):
+#     if name is None:
+#         _g_fetched_tensors[tensor.name] = tensor
+#     else:
+#         _g_fetched_tensors[name] = tensor
+
+# def _get_fetches():
+#     return _g_fetched_tensors
+
+_g_collections = {}
+
+
+class CollectionNames(object):
+    FEEDS = "feeds"
+    FETCHES = "fetches"
+
+
+def get_collection(name):
+    collection = _g_collections.get(name, None)
+    if collection is None:
+        collection = []
+        _g_collections[name] = collection
+    return _g_collections[name]
+
+
+def add_to_collection(collection_name, value, value_name=None):
+    if collection_name not in _g_collections:
+        _g_collections[collection_name] = []
+    else:
+        if value_name is not None:
+            _g_collections[collection_name].append((value_name, value))
+        else:
+            _g_collections[collection_name].append((None, value))
 
 
 def fetch(tensor, name=None):
-    if name is None:
-        _g_fetched_tensors[tensor.name] = tensor
-    else:
-        _g_fetched_tensors[name] = tensor
-
-
-def _get_fetches():
-    return _g_fetched_tensors
+    add_to_collection(CollectionNames.FETCHES, tensor, name)

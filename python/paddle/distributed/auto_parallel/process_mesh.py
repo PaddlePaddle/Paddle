@@ -41,19 +41,19 @@ def reset_current_process_mesh():
 
 class ProcessMesh(object):
     """
-    The `Processmesh` object describes the topology of the used processes. 
+    The `Processmesh` object describes the topology of the used processes.
 
     Args:
         mesh (list|numpy.array): an n-dimensional array describes the toplogy
             of the processes.
         dim_names (list, optional): the i-th element of this list gives the name of the
             i-th dimension of the mesh.
-    
+
     Examples:
         .. code-block:: python
 
             import paddle
-            
+
             mesh = auto.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
             assert mesh.shape == [2, 3]
             assert mesh.processe_ids == [2, 4, 5, 0, 1, 3]
@@ -168,7 +168,10 @@ class ProcessMesh(object):
         else:
             new_mesh = self._mesh[index]
             new_dim_names = self._dim_names[1:]
-            return ProcessMesh(new_mesh, new_dim_names)
+            if new_mesh.shape:
+                return ProcessMesh(new_mesh, new_dim_names)
+            else:
+                return ProcessMesh([new_mesh])
 
     def __enter__(self):
         set_current_process_mesh(self)

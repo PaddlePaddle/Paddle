@@ -87,7 +87,7 @@ TEST(AssignOp, AssignSelectedRows) {
   int64_t height = 10;
 
   phi::SelectedRows input(rows, height);
-  paddle::framework::Tensor* input_tensor = input.mutable_value();
+  phi::DenseTensor* input_tensor = input.mutable_value();
 
   paddle::framework::DDim in_dims = phi::make_ddim({3, 4});
   int* in_data = input_tensor->mutable_data<int>(in_dims, cpu_place);
@@ -104,7 +104,7 @@ TEST(AssignOp, AssignSelectedRows) {
     EXPECT_EQ(rows[i], out_rows[i]);
   }
   EXPECT_EQ(height, out_selected_row.height());
-  const paddle::framework::Tensor& out_tensor = out_selected_row.value();
+  const phi::DenseTensor& out_tensor = out_selected_row.value();
   paddle::framework::DDim out_dims = out_tensor.dims();
   EXPECT_EQ(in_dims, out_dims);
   auto* out_data = out_tensor.data<int>();
