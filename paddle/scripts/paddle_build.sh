@@ -412,6 +412,8 @@ function build_base() {
         sleep 100h
     else
         make install -j ${parallel_number};build_error=$?
+
+        
         df -lh
         sleep 100h
     fi
