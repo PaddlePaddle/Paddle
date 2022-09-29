@@ -99,7 +99,6 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     key_set.backend_set =
         key_set.backend_set | detail::GetTensorBackendSet(tensor);
-    // TODO(chenweihang): select multi layout and dtype
     key_set.layout = tensor.layout();
     key_set.dtype = tensor.dtype();
     dtype_set = dtype_set | DataTypeSet(key_set.dtype);
