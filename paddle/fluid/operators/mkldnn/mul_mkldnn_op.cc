@@ -28,7 +28,6 @@ using framework::DataLayout;
 using framework::DDim;
 using framework::ExecutionContext;
 using framework::LoDTensor;
-using framework::Tensor;
 
 using platform::MatMulV2MKLDNNHandler;
 using platform::MKLDNNDeviceContext;
@@ -378,9 +377,9 @@ class MulMKLDNNINT8Kernel : public framework::OpKernel<XT> {
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     auto &mkldnn_engine = dev_ctx.GetEngine();
 
-    const Tensor *x = ctx.Input<Tensor>("X");
-    const Tensor *y = ctx.Input<Tensor>("Y");
-    Tensor *out = ctx.Output<Tensor>("Out");
+    const Tensor *x = ctx.Input<phi::DenseTensor>("X");
+    const Tensor *y = ctx.Input<phi::DenseTensor>("Y");
+    Tensor *out = ctx.Output<phi::DenseTensor>("Out");
     auto out_dims = out->dims();
 
     auto mul = GetMulPrimitive<XT, YT>(dev_ctx, ctx, x, y, out, mkldnn_engine);
@@ -451,9 +450,9 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
     const auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
 
-    const auto *x = ctx.Input<Tensor>("X");
-    const auto *y = ctx.Input<Tensor>("Y");
-    auto *out = ctx.Output<Tensor>("Out");
+    const auto *x = ctx.Input<phi::DenseTensor>("X");
+    const auto *y = ctx.Input<phi::DenseTensor>("Y");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
 
     int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
     int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
@@ -502,7 +501,8 @@ class MulGradMKLDNNKernel : public MulMKLDNNKernel<XT, YT> {
 
     const auto *x = ctx.Input<LoDTensor>("X");
     const auto *y = ctx.Input<LoDTensor>("Y");
-    const auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    const auto *dout =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto *dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     auto *dy = ctx.Output<LoDTensor>(framework::GradVarName("Y"));

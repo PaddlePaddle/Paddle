@@ -62,13 +62,13 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in_detect = ctx.Input<framework::LoDTensor>("DetectRes");
     auto* in_label = ctx.Input<framework::LoDTensor>("Label");
-    auto* out_map = ctx.Output<framework::Tensor>("MAP");
+    auto* out_map = ctx.Output<phi::DenseTensor>("MAP");
 
-    auto* in_pos_count = ctx.Input<framework::Tensor>("PosCount");
+    auto* in_pos_count = ctx.Input<phi::DenseTensor>("PosCount");
     auto* in_true_pos = ctx.Input<framework::LoDTensor>("TruePos");
     auto* in_false_pos = ctx.Input<framework::LoDTensor>("FalsePos");
 
-    auto* out_pos_count = ctx.Output<framework::Tensor>("AccumPosCount");
+    auto* out_pos_count = ctx.Output<phi::DenseTensor>("AccumPosCount");
     auto* out_true_pos = ctx.Output<framework::LoDTensor>("AccumTruePos");
     auto* out_false_pos = ctx.Output<framework::LoDTensor>("AccumFalsePos");
 
@@ -241,7 +241,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       const std::map<int, int>& label_pos_count,
       const std::map<int, std::vector<std::pair<T, int>>>& true_pos,
       const std::map<int, std::vector<std::pair<T, int>>>& false_pos,
-      framework::Tensor* output_pos_count,
+      phi::DenseTensor* output_pos_count,
       framework::LoDTensor* output_true_pos,
       framework::LoDTensor* output_false_pos,
       const int class_num) const {
@@ -307,7 +307,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     output_false_pos->set_lod(false_pos_lod);
   }
 
-  void GetInputPos(const framework::Tensor& input_pos_count,
+  void GetInputPos(const phi::DenseTensor& input_pos_count,
                    const framework::LoDTensor& input_true_pos,
                    const framework::LoDTensor& input_false_pos,
                    std::map<int, int>* label_pos_count,

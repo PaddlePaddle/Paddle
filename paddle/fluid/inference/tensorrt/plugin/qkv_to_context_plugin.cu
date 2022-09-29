@@ -301,7 +301,7 @@ void QkvToContextPluginDynamic::configurePlugin(
     } else if (in[0].desc.type == nvinfer1::DataType::kFLOAT) {
       fake_qk_bias_ = reinterpret_cast<float *>(
           tensor_.mutable_data<int32_t>(platform::CUDAPlace(device_id)));
-      long size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
+      int64_t size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
@@ -408,7 +408,7 @@ int QkvToContextPluginDynamic::enqueue(
   // input[0], (B, S, 3 * N * H, 1, 1)
   int batch = input_dims.d[0];
   int seq_len = input_dims.d[1];
-  framework::Tensor multihead_temp_tensor;
+  phi::DenseTensor multihead_temp_tensor;
   int scratch_size = batch * head_number_ * seq_len * seq_len * 1;
 
   int device_id;
@@ -425,7 +425,7 @@ int QkvToContextPluginDynamic::enqueue(
 
     const float *input0_data = static_cast<const float *>(inputs[0]);
     // fit to [batch, head_num, length, length] + [batch, 1, 1, length]
-    framework::Tensor temp_qk_bias_tensor;
+    phi::DenseTensor temp_qk_bias_tensor;
     float *qk_bias = const_cast<float *>(static_cast<const float *>(inputs[1]));
     if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
@@ -494,7 +494,7 @@ int QkvToContextPluginDynamic::enqueue(
 
     const half *input0_data = static_cast<const half *>(inputs[0]);
     // fit to [batch, head_num, length, length] + [batch, 1, 1, length]
-    framework::Tensor temp_qk_bias_tensor;
+    phi::DenseTensor temp_qk_bias_tensor;
     half *qk_bias = const_cast<half *>(static_cast<const half *>(inputs[1]));
     if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
