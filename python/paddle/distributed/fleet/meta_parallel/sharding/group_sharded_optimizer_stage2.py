@@ -24,6 +24,8 @@
 
 import copy
 import logging
+import warnings
+
 import numpy as np
 from collections import OrderedDict
 
@@ -108,6 +110,15 @@ class GroupShardedOptimizerStage2(Optimizer):
                 filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
                        self._local_params))) > 0
 
+        self._overlap_broadcast = False
+        self._forward_pre_hook_remove_helper = []
+        try:
+            self._broadcast_order_params = sorted(
+                self.local_params,
+                key=lambda x: int(x.name.split('.')[0].split('_')[-1]))
+        except ValueError:
+            self._broadcast_order_params = None
+
         self._group = new_group(
             _get_global_group().ranks) if group is None else group
 
@@ -172,6 +183,20 @@ class GroupShardedOptimizerStage2(Optimizer):
 
     def _set_comm_overlap(self, comm_overlap):
         self._comm_overlap = comm_overlap
+
+    def _set_overlap_broadcast(self, overlap_broadcast, layers):
+        self._overlap_broadcast = overlap_broadcast
+        if self._overlap_broadcast:
+            self._layers = layers
+            warnings.warn(
+                "Setting overlap broadcast means the `paddle.device.cuda.synchronize()` "
+                "must be called manually before calling `paddle.save()` and before and inference."
+            )
+            if self._broadcast_order_params is None:
+                warnings.warn(
+                    "The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
+                    "overlap broadcast may harm the performance.")
+                self._broadcast_order_params = self._local_params
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -382,6 +407,11 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
         # This method won't be called directly by opt.step()!
         # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
+        if self._overlap_broadcast:
+            for hook_remove in self._forward_pre_hook_remove_helper:
+                hook_remove.remove()
+            self._forward_pre_hook_remove_helper = []
+
         if self.offload:
             params_list = [self.offload_params.buffer]
 
@@ -425,9 +455,44 @@ class GroupShardedOptimizerStage2(Optimizer):
         """Broadcast the parameters of the current rank to each rank"""
 
         # Exchange all the shards with the other ranks
-        for dtype_per_rank in self.param_storages.values():
-            for dst_rank, internal_storage in dtype_per_rank.items():
-                broadcast(tensor=internal_storage.buffer,
-                          src=self._group.ranks[dst_rank],
-                          group=self._group,
-                          sync_op=True)
+        if self._overlap_broadcast:
+            self._broadcast_params_overlap_forward()
+        else:
+            for dtype_per_rank in self.param_storages.values():
+                for dst_rank, internal_storage in dtype_per_rank.items():
+                    broadcast(tensor=internal_storage.buffer,
+                              src=self._group.ranks[dst_rank],
+                              group=self._group,
+                              sync_op=True)
+
+    def _forward_pre_hook_function(self, tasks):
+        # since the layers will call pre hook by `forward_pre_hook(self, inputs)`, the lambda needs the x and y to take those params
+        def __impl__(x, y):
+            for task in tasks:
+                task.wait()
+
+        return __impl__
+
+    @paddle.autograd.no_grad()
+    def _broadcast_params_overlap_forward(self):
+        # Exchange all the shards with the other ranks, but overlap the broadcast with next batch's calculation.
+        param2task = {}
+        for x in self._broadcast_order_params:
+            if x.trainable:
+                task = broadcast(
+                    tensor=x,
+                    src=self._group.ranks[self._param2rank[x.name]],
+                    group=self._group,
+                    sync_op=False)
+                param2task[x.name] = task
+
+        for layer in self._layers.sublayers():
+            if len(layer.sublayers()) == 0:
+                # register forward pre hood for leaf layers
+                tasks = []
+                for param in layer.parameters():
+                    if param.trainable:
+                        tasks.append(param2task[param.name])
+                self._forward_pre_hook_remove_helper.append(
+                    layer.register_forward_pre_hook(
+                        self._forward_pre_hook_function(tasks)))
