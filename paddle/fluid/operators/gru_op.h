@@ -26,13 +26,13 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
-                             const framework::Tensor& src,
+                             const phi::DenseTensor& src,
                              framework::Vector<size_t> index_lod,
-                             framework::Tensor* dst,
+                             phi::DenseTensor* dst,
                              bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
@@ -44,8 +44,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
     bool origin_mode = context.Attr<bool>("origin_mode");
-    auto* h0 = context.Input<Tensor>("H0");
-    auto* weight = context.Input<Tensor>("Weight");
+    auto* h0 = context.Input<phi::DenseTensor>("H0");
+    auto* weight = context.Input<phi::DenseTensor>("Weight");
     const T* weight_data = weight->data<T>();
     auto* batch_gate = context.Input<LoDTensor>("BatchGate");
     auto* batch_reset_hidden_prev =
@@ -56,10 +56,12 @@ class GRUGradKernel : public framework::OpKernel<T> {
         context.Input<LoDTensor>(framework::GradVarName("Hidden"));
     auto* input_grad =
         context.Output<LoDTensor>(framework::GradVarName("Input"));
-    auto* h0_grad = context.Output<Tensor>(framework::GradVarName("H0"));
+    auto* h0_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("H0"));
     auto* weight_grad =
-        context.Output<Tensor>(framework::GradVarName("Weight"));
-    auto* bias_grad = context.Output<Tensor>(framework::GradVarName("Bias"));
+        context.Output<phi::DenseTensor>(framework::GradVarName("Weight"));
+    auto* bias_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     auto gate_dims = batch_gate->dims();
     auto hidden_dims = hidden->dims();

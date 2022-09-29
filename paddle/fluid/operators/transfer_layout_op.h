@@ -127,8 +127,8 @@ class TransferLayoutFunctor {
 
  private:
   void TransDataLayout(const platform::DeviceContext &dev_ctx,
-                       const framework::Tensor &in,
-                       framework::Tensor *out) const {
+                       const phi::DenseTensor &in,
+                       phi::DenseTensor *out) const {
     PADDLE_ENFORCE_EQ(
         phi::arity(in.dims()),
         4,

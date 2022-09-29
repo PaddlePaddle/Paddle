@@ -26,7 +26,7 @@ template <typename DeviceContext, typename T>
 class ExpandNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto rank = context.Input<Tensor>("X")->dims().size();
+    auto rank = context.Input<phi::DenseTensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
         rank,
         1,

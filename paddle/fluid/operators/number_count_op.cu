@@ -38,7 +38,7 @@ static inline int GET_BLOCKS(const int N) {
 }
 
 using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 __global__ void initialize_zero_kernel(T* data, const int length) {

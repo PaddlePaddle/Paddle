@@ -86,6 +86,11 @@ class GroupShardedOptimizerStage2(Optimizer):
         # Default information
         self._optim = optim
 
+        # sharing stage 2 comm overlap flag
+        self._comm_overlap = False
+        # record the last task used for comm overlap for sharding stage 2
+        self._comm_task = None
+
         assert hasattr(self._optim, "_master_weights"
                        ), "Must use optimizer with _master_weights attribute"
 
@@ -156,6 +161,17 @@ class GroupShardedOptimizerStage2(Optimizer):
                       src=self._global_root_rank,
                       group=self._group,
                       sync_op=True)
+
+    def _update_task(self, task):
+        if self._comm_overlap:
+            assert task is not None
+        # Only track of the last reduce task.
+        # Since all tasks are on the same stream, only need to wait the last one.
+        # After waiting for the last reduce task, all reduce tasks before have already finished.
+        self._comm_task = task
+
+    def _set_comm_overlap(self, comm_overlap):
+        self._comm_overlap = comm_overlap
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -364,7 +380,8 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
         A wrapper for Optimizer's step function to finish the update operation of the optimizer.
         """
-
+        # This method won't be called directly by opt.step()!
+        # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
         if self.offload:
             params_list = [self.offload_params.buffer]
 

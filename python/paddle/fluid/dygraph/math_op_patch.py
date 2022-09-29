@@ -393,19 +393,9 @@ def monkey_patch_math_varbase():
                                       None)),
         ('__floordiv__',
          _binary_creator_('__floordiv__', 'floor_divide', False, None, True)),
-        ('__mod__', _binary_creator_('__mod__', 'remainder', False, None,
-                                     True)),
-        ('__matmul__',
-         _binary_creator_('__matmul__', "matmul", False, None, True)),
         # for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None, True)),
-        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None, True)),
-        ('__le__', _binary_creator_('__le__', 'less_equal', False, None, True)),
-        ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None,
-                                    True)),
-        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None,
-                                    True)),
         ('__array_ufunc__', None)
     ]
 
@@ -420,6 +410,12 @@ def monkey_patch_math_varbase():
         '__truediv__',
         '__rdiv__',
         '__rtruediv__',
+        '__mod__',
+        '__matmul__',
+        '__gt__',
+        '__ge__',
+        '__lt__',
+        '__le__',
     ]
 
     global _already_patch_varbase

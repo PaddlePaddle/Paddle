@@ -29,7 +29,7 @@ TEST(TensorDescriptor, Empty) {
 }
 
 TEST(TensorDescriptor, Normal) {
-  framework::Tensor tt;
+  phi::DenseTensor tt;
   tt.Resize({2, 3, 4});
   tt.mutable_data<float>(platform::CPUPlace());
 

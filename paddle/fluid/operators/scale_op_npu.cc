@@ -19,9 +19,9 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
+static inline T GetAttrFromTensor(const phi::DenseTensor* tensor) {
   const auto* tensor_data = tensor->data<T>();
-  framework::Tensor cpu_tensor;
+  phi::DenseTensor cpu_tensor;
   if (platform::is_gpu_place(tensor->place()) ||
       platform::is_npu_place(tensor->place())) {
     paddle::framework::TensorCopySync(
@@ -35,8 +35,8 @@ template <typename T>
 class ScaleNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto scale = ctx.Attr<float>("scale");
     auto bias = ctx.Attr<float>("bias");
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
@@ -47,7 +47,7 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
     VLOG(4) << "scale:" << scale << ", bias:" << bias
             << " ,bias_after_scale:" << bias_after_scale;
     if (ctx.HasInput("ScaleTensor")) {
-      auto* scale_tensor = ctx.Input<framework::Tensor>("ScaleTensor");
+      auto* scale_tensor = ctx.Input<phi::DenseTensor>("ScaleTensor");
       scale = static_cast<float>(GetAttrFromTensor<T>(scale_tensor));
     }
     if (isinf(scale)) {

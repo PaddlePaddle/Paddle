@@ -38,9 +38,9 @@ class CopyMatrixRowsFunctor {
   // copy the input src to the indexed rows of output dst.
   // The indexed rows are based on the input index.
   void operator()(const DeviceContext& context,
-                  const paddle::framework::Tensor& src,
+                  const phi::DenseTensor& src,
                   paddle::framework::Vector<size_t> index_lod,
-                  paddle::framework::Tensor* dst,
+                  phi::DenseTensor* dst,
                   bool is_src_index);
 };
 
