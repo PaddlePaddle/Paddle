@@ -354,16 +354,11 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
     }
     if (--(*k) == 0) break;
 
-    if (MaxLength < 5) {
-      if (*beam >= MaxLength) break;
-    } else {
-      unsigned mask = 0u;
-      CREATE_SHFL_MASK(mask, true);
-      if (tid_max / 32 == wid) {
-        if (platform::CudaShuffleSync(mask, *beam, tid_max % 32, 32) ==
-            MaxLength)
-          break;
-      }
+    unsigned mask = 0u;
+    CREATE_SHFL_MASK(mask, true);
+    if (tid_max / 32 == wid) {
+      if (platform::CudaShuffleSync(mask, *beam, tid_max % 32, 32) == MaxLength)
+        break;
     }
   }
 }

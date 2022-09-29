@@ -14,10 +14,8 @@
 
 import os
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestParallelClassCenterSample(TestMultipleGpus):

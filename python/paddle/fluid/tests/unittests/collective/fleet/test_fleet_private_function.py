@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import unittest
-import os
-import paddle
 import socket
 import threading
 
