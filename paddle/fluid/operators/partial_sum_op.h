@@ -21,14 +21,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class PartialSumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<Tensor>("X");
-    Tensor* out = ctx.Output<Tensor>("Out");
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     PADDLE_ENFORCE_EQ(
         ins[0] != nullptr,
         true,
@@ -63,7 +63,7 @@ template <typename T>
 class PartialSumGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
     auto outs =
         ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));

@@ -13,8 +13,6 @@
 # limitations under the License.
 """Defination of device workers."""
 
-from __future__ import print_function
-
 __all__ = [
     'DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section', 'DownpourSGDOPT',
     'HeterSection'

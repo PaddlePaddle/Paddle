@@ -18,6 +18,8 @@ from paddle.fluid.framework import core, dygraph_only
 from paddle.fluid.framework import _current_expected_place, _get_paddle_place
 from paddle.tensor import to_tensor, max
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle import in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 import numpy as np
 
@@ -64,7 +66,6 @@ def _check_indices_dtype(dtype):
         )
 
 
-@dygraph_only
 def sparse_coo_tensor(indices,
                       values,
                       shape=None,
@@ -114,53 +115,68 @@ def sparse_coo_tensor(indices,
             #       values=[1., 2., 3.])
     """
 
-    place = _get_place(place)
+    if in_dynamic_mode():
+        place = _get_place(place)
 
-    if not isinstance(indices, core.eager.Tensor):
-        indices = to_tensor(indices,
-                            dtype=None,
-                            place=place,
-                            stop_gradient=True)
-    if not isinstance(values, core.eager.Tensor):
-        values = to_tensor(values, dtype, place, stop_gradient)
-    if len(indices.shape) != 2:
-        raise ValueError("'indices' must be 2-D.")
+        if not isinstance(indices, core.eager.Tensor):
+            indices = to_tensor(indices,
+                                dtype=None,
+                                place=place,
+                                stop_gradient=True)
+        if not isinstance(values, core.eager.Tensor):
+            values = to_tensor(values, dtype, place, stop_gradient)
+        if len(indices.shape) != 2:
+            raise ValueError("'indices' must be 2-D.")
 
-    nnz = indices.shape[1]
-    sparse_dim = indices.shape[0]
+        nnz = indices.shape[1]
+        sparse_dim = indices.shape[0]
 
-    _check_indices_dtype(indices.dtype)
+        _check_indices_dtype(indices.dtype)
 
-    if nnz != values.shape[0]:
-        raise ValueError(
-            "the indices and values must have same number of non-zero, but get {} and {}"
-            .format(nnz, values.shape[0]))
+        if nnz != values.shape[0]:
+            raise ValueError(
+                "the indices and values must have same number of non-zero, but get {} and {}"
+                .format(nnz, values.shape[0]))
 
-    dense_dim = len(values.shape) - 1
+        dense_dim = len(values.shape) - 1
 
-    if not indices.place._equals(place):
-        indices = indices._copy_to(place, False)
+        if not indices.place._equals(place):
+            indices = indices._copy_to(place, False)
 
-    if not values.place._equals(place):
-        values = values._copy_to(place, False)
-    values = _handle_dtype(values, dtype)
-    values.stop_gradient = stop_gradient
+        if not values.place._equals(place):
+            values = values._copy_to(place, False)
+        values = _handle_dtype(values, dtype)
+        values.stop_gradient = stop_gradient
 
-    min_shape = _infer_dense_shape(indices, values)
+        min_shape = _infer_dense_shape(indices, values)
 
-    if shape is None:
-        shape = min_shape
+        if shape is None:
+            shape = min_shape
+        else:
+            if shape < min_shape:
+                raise ValueError(
+                    "the minimun shape required is {}, but get {}".format(
+                        min_shape, shape))
+            if len(shape) != sparse_dim + dense_dim:
+                raise ValueError(
+                    "the number of dimensions(len(shape) must be sparse_dim({}) + dense_dim({}), but get {}"
+                    .format(sparse_dim, dense_dim, len(shape)))
+
+        return _C_ops.sparse_sparse_coo_tensor(values, indices, shape)
+
     else:
-        if shape < min_shape:
-            raise ValueError(
-                "the minimun shape required is {}, but get {}".format(
-                    min_shape, shape))
-        if len(shape) != sparse_dim + dense_dim:
-            raise ValueError(
-                "the number of dimensions(len(shape) must be sparse_dim({}) + dense_dim({}), but get {}"
-                .format(sparse_dim, dense_dim, len(shape)))
-
-    return _C_ops.sparse_sparse_coo_tensor(values, indices, shape)
+        op_type = 'sparse_sparse_coo_tensor'
+        inputs = {'values': values, 'indices': indices}
+        if shape[0] is None:
+            shape[0] = -1
+        attrs = {'dense_shape': shape}
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(dtype)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs={'out': out},
+                         attrs=attrs)
+        return out
 
 
 #TODO: need to support shape is None

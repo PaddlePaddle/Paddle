@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 from .layer_function_generator import templatedoc
 from ..framework import core, Variable, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, convert_np_dtype_to_dtype_

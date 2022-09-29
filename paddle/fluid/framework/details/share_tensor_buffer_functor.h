@@ -40,7 +40,7 @@ namespace framework {
 namespace details {
 
 // TODO(zjl): support SelectedRows
-static inline const Tensor &GetTensorFromVar(const Variable *var) {
+static inline const phi::DenseTensor &GetTensorFromVar(const Variable *var) {
   if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>();
   } else {
@@ -50,7 +50,7 @@ static inline const Tensor &GetTensorFromVar(const Variable *var) {
   }
 }
 
-static inline Tensor *GetMutableTensorFromVar(Variable *var) {
+static inline phi::DenseTensor *GetMutableTensorFromVar(Variable *var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else {

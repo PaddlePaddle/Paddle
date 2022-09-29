@@ -29,7 +29,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
