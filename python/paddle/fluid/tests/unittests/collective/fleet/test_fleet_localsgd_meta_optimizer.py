@@ -14,12 +14,9 @@
 
 import unittest
 import paddle
-import os
 
 import paddle
 import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 paddle.enable_static()
