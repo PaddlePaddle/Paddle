@@ -80,7 +80,8 @@ void ReshapeCooKernel(const Context& dev_ctx,
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz, 1);
   ReshapeCooCudaKernel<<<config.block_per_grid.x,
                          config.thread_per_block.x,
-                         0,
+                        //  0,
+                         1024, 
                          dev_ctx.stream()>>>(
       x_indices_data, 
       x_sparse_part_dims.size(), out_sparse_part_dims.size(), x_nnz,
