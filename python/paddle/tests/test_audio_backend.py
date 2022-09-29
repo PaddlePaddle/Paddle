@@ -87,6 +87,8 @@ class TestAudioDatasets(unittest.TestCase):
         current_backend = paddle.audio.backends.get_current_audio_backend()
         self.assertTrue(current_backend in ["wave_backend", "soundfile"])
 
+        paddle.audio.backends.set_backend("wave_backend")
+
         backends = paddle.audio.backends.list_available_backends()
         for backend in backends:
             self.assertTrue(backend in ["wave_backend", "soundfile"])

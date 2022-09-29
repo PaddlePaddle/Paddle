@@ -112,14 +112,14 @@ def load(filepath: Union[str, Path],
     audio_content = file_.readframes(frames)
     file_obj.close()
 
-    #default_subtype = "PCM_16" # only support PCM16 WAV
+    # default_subtype = "PCM_16", only support PCM16 WAV
     audio_as_np16 = np.frombuffer(audio_content, dtype=np.int16)
     audio_as_np32 = audio_as_np16.astype(np.float32)
     if normalize:
-        #dtype = "float32"
+        # dtype = "float32"
         audio_norm = audio_as_np32 / (2**15)
     else:
-        #dtype = "int16"
+        # dtype = "int16"
         audio_norm = audio_as_np32
 
     waveform = np.reshape(audio_norm, (frames, channels))

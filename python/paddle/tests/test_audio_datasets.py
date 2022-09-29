@@ -81,7 +81,15 @@ class TestAudioDatasets(unittest.TestCase):
             'url':
             'https://bj.bcebos.com/paddleaudio/datasets/ESC-50-master-lite.zip',
             'md5': '1e9ba53265143df5b2804a743f2d1956',
-        }  #small part of ESC50 dataset for test.
+        }  # small part of ESC50 dataset for test.
+        esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+                                                    feat_type='raw',
+                                                    archieve=archieve)
+        idx = np.random.randint(0, 6)
+        elem = esc50_dataset[idx]
+        self.assertTrue(elem[0].shape[0] == 220500)
+        self.assertTrue(0 <= elem[1] <= 2)
+
         esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
                                                     feat_type='mfcc',
                                                     n_mfcc=params,
