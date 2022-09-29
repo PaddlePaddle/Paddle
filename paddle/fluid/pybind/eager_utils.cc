@@ -428,10 +428,10 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   return place;
 }
 
-framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
+phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_IsInstance(
           obj, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
-    return ::pybind11::handle(obj).cast<framework::Tensor>();
+    return ::pybind11::handle(obj).cast<phi::DenseTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -441,8 +441,8 @@ framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
-std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
-                                                            ssize_t arg_pos) {
+std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
+                                                           ssize_t arg_pos) {
   std::vector<framework::LoDTensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
@@ -1300,6 +1300,9 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     return paddle::experimental::Scalar(value);
   } else if (type_name.find("numpy") != std::string::npos) {
     return CastNumpy2Scalar(obj, op_type, arg_pos);
+  } else if (PyComplex_Check(obj)) {
+    auto value = CastPyArg2Complex(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else if (PyObject_CheckLongOrToLong(&obj)) {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
@@ -1387,14 +1390,12 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   auto type_name = std::string(type->tp_name);
   if (type_name == "list" || type_name == "tuple" ||
       type_name == "numpy.ndarray") {
-    std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
+    std::vector<int64_t> value = CastPyArg2Longs(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
-
   } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);
-
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "

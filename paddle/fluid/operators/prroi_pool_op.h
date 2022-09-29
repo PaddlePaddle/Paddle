@@ -331,9 +331,9 @@ template <typename DeviceContext, typename T>
 class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -352,12 +352,12 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
 
     const T* input_data = in->data<T>();
 
-    framework::Tensor rois_batch_id_list;
+    phi::DenseTensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num});
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
     if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
-      auto* batchroinum = ctx.Input<framework::Tensor>("BatchRoINums");
+      auto* batchroinum = ctx.Input<phi::DenseTensor>("BatchRoINums");
       auto* batch_index = batchroinum->data<int64_t>();
       int rois_batch_size = batchroinum->dims()[0];
       size_t c = 0;
@@ -485,15 +485,15 @@ template <typename DeviceContext, typename T>
 class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Input<framework::Tensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Input<phi::DenseTensor>("Out");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
     auto* output_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* input_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* input_roi_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("ROIs"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("ROIs"));
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -511,12 +511,12 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       int rois_num = rois->dims()[0];
 
       // set roi batch id
-      framework::Tensor rois_batch_id_list;
+      phi::DenseTensor rois_batch_id_list;
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
       if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
-        auto* batchroinum = ctx.Input<framework::Tensor>("BatchRoINums");
+        auto* batchroinum = ctx.Input<phi::DenseTensor>("BatchRoINums");
         auto* batch_index = batchroinum->data<int64_t>();
         int rois_batch_size = batchroinum->dims()[0];
         size_t c = 0;

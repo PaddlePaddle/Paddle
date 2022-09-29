@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import os
 import paddle
 from paddle.distributed import fleet
 import paddle.nn as nn

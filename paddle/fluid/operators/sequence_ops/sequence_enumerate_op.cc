@@ -59,10 +59,10 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
 Sequence Enumerate Operator.
 
 Generate a new sequence for the input index sequence, which enumerates all the
-sub-sequences with length `win_size` of the input. 
+sub-sequences with length `win_size` of the input.
 The enumerated sequence has the same 1st dimension with variable `input`, and
 the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
-    
+
 Examples:
 Case 1:
   Input:

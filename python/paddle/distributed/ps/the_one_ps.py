@@ -192,6 +192,8 @@ class Accessor:
                     sgd_param.name = "SparseNaiveSGDRule"
                 if common_accessor.accessor_class == "adam":
                     sgd_param.name = "SparseAdamSGDRule"
+                else:  # for fl-ps, because geo accessor is 'sum'
+                    sgd_param.name = "SparseAdamSGDRule"
 
             if sgd_param.name == "SparseAdaGradSGDRule" or sgd_param.name == "StdAdaGradSGDRule":
                 if not sgd_param.adagrad.HasField("learning_rate"):
@@ -1090,8 +1092,9 @@ class TheOnePSRuntime(RuntimeBase):
         print("communicator config:", trainer_config.get_communicator_flags())
 
         self._worker.init_worker(worker_desc, self.string_hosts, self.role_id)
-        self.trainer_endpoint = get_trainer_endpoint(self.role_maker)
-        print("fl-ps > trainer_endpoint: {}".format(self.trainer_endpoint))
+        if not self.is_heter_ps_mode:
+            self.trainer_endpoint = get_trainer_endpoint(self.role_maker)
+            print("fl-ps > trainer_endpoint: {}".format(self.trainer_endpoint))
         print("fl-ps > with_coordinator? {}".format(self.with_coordinator))
         print("fl-ps > coordinator addr: {}".format(self.coordinator_hosts))
         if self.with_coordinator:

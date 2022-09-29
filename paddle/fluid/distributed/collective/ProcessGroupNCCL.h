@@ -60,7 +60,7 @@ class ProcessGroupNCCL : public ProcessGroupStream {
              int rank,
              CommType comm_type,
              const std::vector<phi::DenseTensor>& inputs,
-             bool is_sync,
+             bool sync_op,
              bool use_calc_stream);
 
     bool IsCompleted();
@@ -122,18 +122,46 @@ class ProcessGroupNCCL : public ProcessGroupStream {
   std::shared_ptr<ProcessGroup::Task> Send(
       std::vector<phi::DenseTensor>& tensors, int dst_rank) override;
 
+  std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>& tensors,
+      int dst_rank,
+      bool sync_op,
+      bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Recv(
       std::vector<phi::DenseTensor>& tensors, int src_rank) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>& tensors,
+      int src_rank,
+      bool sync_op,
+      bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor& tensors,
                                                    int dst_rank,
                                                    int offset,
                                                    int length) override;
 
+  std::shared_ptr<ProcessGroup::Task> Send_Partial(
+      phi::DenseTensor& tensors,
+      int dst_rank,
+      int offset,
+      int length,
+      bool sync_op,
+      bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Recv_Partial(phi::DenseTensor& tensors,
                                                    int src_rank,
                                                    int offset,
                                                    int length) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv_Partial(
+      phi::DenseTensor& tensors,
+      int src_rank,
+      int offset,
+      int length,
+      bool sync_op,
+      bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
@@ -180,8 +208,16 @@ class ProcessGroupNCCL : public ProcessGroupStream {
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
       std::vector<Place> places,
       int rank,
-      CommType opType,
+      CommType op_type,
       const std::vector<phi::DenseTensor>& inputs);
+
+  virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
+      const std::vector<Place>& places,
+      int rank,
+      CommType op_type,
+      const std::vector<phi::DenseTensor>& inputs,
+      bool sync_op,
+      bool use_calc_stream);
 
  protected:
   std::shared_ptr<Store> store_;
@@ -232,6 +268,15 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       Fn fn,
       int dst_rank,
       CommType op_type);
+
+  template <typename Fn>
+  std::shared_ptr<ProcessGroup::Task> PointToPoint(
+      std::vector<phi::DenseTensor>& tensors,  // NOLINT
+      Fn fn,
+      int dst_rank,
+      CommType op_type,
+      bool sync_op,
+      bool use_calc_stream);
 
   void CreateNCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);

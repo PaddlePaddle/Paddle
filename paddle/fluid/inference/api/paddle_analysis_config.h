@@ -536,6 +536,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
   ///
+  /// \brief A boolean state telling whether the tensorrt engine memory sharing
+  /// is activated.
+  ///
+  /// \return bool Whether the tensorrt engine memory sharing is activated.
+  ///
+  bool trt_engine_memory_sharing() const;
+  ///
   /// \brief  Get the TensorRT engine precision.
   ///
   /// \return Precision Get the TensorRT engine precision.
@@ -577,13 +584,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief A boolean state telling whether to use tuned tensorrt dynamic
   /// shape.
   ///
-  bool tuned_tensorrt_dynamic_shape();
+  bool tuned_tensorrt_dynamic_shape() const;
 
   ///
   /// \brief A boolean state telling whether to allow building trt engine at
   /// runtime.
   ///
-  bool trt_allow_build_at_runtime();
+  bool trt_allow_build_at_runtime() const;
 
   ///
   /// \brief Set execution stream. If not set a stream will be created
@@ -616,14 +623,14 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return the shape info path.
   ///
-  const std::string& shape_range_info_path();
+  const std::string& shape_range_info_path() const;
 
   ///
   /// \brief A boolean state telling whether to collect shape info.
   ///
   /// \return bool Whether to collect shape info.
   ///
-  bool shape_range_info_collected();
+  bool shape_range_info_collected() const;
 
   ///
   /// \brief Prevent ops running in Paddle-TRT
@@ -762,18 +769,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMkldnnQuantizer();
-
-  ///
-  /// \brief Set the calibration ranges file path of quantize model.
-  ///
-  ///
-  void SetCalibrationFilePath(const std::string& calibration_file_path = "");
-
-  ///
-  /// \brief Return the calibration ranges file path of quantize model.
-  ///
-  ///
-  std::string CalibrationFilePath() { return calibration_file_path_; }
 
   ///
   /// \brief Turn on MKLDNN int8.
@@ -953,7 +948,6 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;
-  mutable std::string calibration_file_path_;
 
   // Mixed precision.
   std::unordered_set<std::string> mixed_black_list_;
@@ -1037,6 +1031,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
+  bool trt_engine_memory_sharing_{false};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;

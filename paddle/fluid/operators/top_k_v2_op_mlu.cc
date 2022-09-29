@@ -38,7 +38,7 @@ class TopkV2MLUKernel : public framework::OpKernel<T> {
     }
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
-    auto* k_t = ctx.Input<Tensor>("K");
+    auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
       auto k_t_ptr = static_cast<const void*>(k_t->data<int>());
       auto size = k_t->numel() * sizeof(int);
@@ -59,7 +59,7 @@ class TopkV2MLUKernel : public framework::OpKernel<T> {
     indices->mutable_data<int64_t>(place);
 
     // cnnl only support int32/int16 type of indices
-    framework::Tensor indices_int32(framework::TransToPhiDataType(VT::INT32));
+    phi::DenseTensor indices_int32(framework::TransToPhiDataType(VT::INT32));
     indices_int32.Resize(indices->dims());
     indices_int32.mutable_data<int32_t>(place);
 

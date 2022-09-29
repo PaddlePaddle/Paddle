@@ -25,11 +25,11 @@ __all__ = ["decorate_bf16"]
 
 class OptimizerWithMixedPrecision(object):
     """
-    Optimizer with mixed-precision (MP) training. This is a wrapper of a common 
+    Optimizer with mixed-precision (MP) training. This is a wrapper of a common
     optimizer, plus the support of mixed-precision pre-training. The object
-    of this class almost has the same behavior as the common optimizer, with the 
-    methods `minimize()`, `backward()`, `apply_gradients()` implemented. 
-    Additionally, it enables the MP training automatically, i.e, the creation 
+    of this class almost has the same behavior as the common optimizer, with the
+    methods `minimize()`, `backward()`, `apply_gradients()` implemented.
+    Additionally, it enables the MP training automatically, i.e, the creation
     and maintenance of master parameters, scaling of loss, etc.
 
     Args:
@@ -77,7 +77,7 @@ class OptimizerWithMixedPrecision(object):
 
         Args:
             loss (Variable): The loss Variable to minimize.
-            startup_program (Program|None): The startup Program for initializing 
+            startup_program (Program|None): The startup Program for initializing
                                        parameters in `parameter_list`.
             parameter_list (list|None): A list of Variables to update.
             no_grad_set (set|None): A set of Variables should be ignored.
@@ -85,7 +85,7 @@ class OptimizerWithMixedPrecision(object):
                                    backward operator for one parameter.
 
         Returns:
-            A list of (param, grad), which is a tuple of a parameter and its 
+            A list of (param, grad), which is a tuple of a parameter and its
             gradient respectively, and the scaled loss.
         """
         train_program = loss.block.program
@@ -116,9 +116,9 @@ class OptimizerWithMixedPrecision(object):
                  use_bf16_test=False):
         """
         Init the amp training, such as cast fp32 parameters to bf16 type.
-  
+
         Args:
-            place(CPUPlace): place is used to initialize 
+            place(CPUPlace): place is used to initialize
                 bf16 parameters with fp32 values.
             scope(Scope): The scope is used to find fp32 parameters.
             test_program(Program): The program is used for testing.
@@ -145,7 +145,7 @@ class OptimizerWithMixedPrecision(object):
                         loss = paddle.mean(hidden)
                     # 2) Create the optimizer and set `multi_precision` to True.
                     # Setting `multi_precision` to True can avoid the poor accuracy
-                    # or the slow convergence in a way. 
+                    # or the slow convergence in a way.
                     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                     # 3) These ops in `custom_fp32_list` will keep in the float32 computation type.
                     amp_list = paddle.static.amp.CustomOpLists(
@@ -163,7 +163,7 @@ class OptimizerWithMixedPrecision(object):
                     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                     optimizer.amp_init(place, scope=paddle.static.global_scope())
-                    
+
         """
         assert self._train_program is not None, \
             "Please call the minimize method first."
@@ -181,10 +181,10 @@ class OptimizerWithMixedPrecision(object):
     def apply_gradients(self, params_grads):
         """
         Apply gradients.
-  
+
         Args:
             params_grads (list): A list of params.
-    
+
         Returns:
             A list of optimize operators.
         """
@@ -237,7 +237,7 @@ def decorate_bf16(optimizer,
                   amp_lists=None,
                   use_pure_bf16=False,
                   use_bf16_guard=None):
-    """ 
+    """
     Decorate the given optimizer to adapt to the mixed-precision training.
 
     Args:
@@ -248,7 +248,7 @@ def decorate_bf16(optimizer,
                            Default None, which means that its value equals to `use_pure_bf16`.
 
     Returns:
-        An optimizer acting like a normal one but with mixed-precision training 
+        An optimizer acting like a normal one but with mixed-precision training
         enabled.
 
     Examples 1:
@@ -290,7 +290,7 @@ def decorate_bf16(optimizer,
                     loss = paddle.mean(hidden)
                 # 2) Create the optimizer and set `multi_precision` to True.
                 # Setting `multi_precision` to True can avoid the poor accuracy
-                # or the slow convergence in a way. 
+                # or the slow convergence in a way.
                 optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                 # 3) These ops in `custom_fp32_list` will keep in the float32 computation type.
                 amp_list = paddle.static.amp.CustomOpLists(
@@ -308,7 +308,7 @@ def decorate_bf16(optimizer,
                 # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                 # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                 optimizer.amp_init(place, scope=paddle.static.global_scope())
-                
+
     """
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionListsBF16()

@@ -25,12 +25,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 const int kBoxDim = 4;
 
 template <typename T>
-void AppendMask(LoDTensor* out, int64_t offset, Tensor* to_add) {
+void AppendMask(LoDTensor* out, int64_t offset, phi::DenseTensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
@@ -123,11 +123,11 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
  */
 template <typename T>
 static inline void ExpandMaskTarget(const phi::CPUContext& ctx,
-                                    const Tensor& masks,
-                                    const Tensor& mask_class_labels,
+                                    const phi::DenseTensor& masks,
+                                    const phi::DenseTensor& mask_class_labels,
                                     const int resolution,
                                     const int num_classes,
-                                    Tensor* mask_targets) {
+                                    phi::DenseTensor* mask_targets) {
   const uint8_t* masks_data = masks.data<uint8_t>();
   int64_t num_mask = masks.dims()[0];
   const int* mask_class_labels_data = mask_class_labels.data<int>();
@@ -151,12 +151,12 @@ static inline void ExpandMaskTarget(const phi::CPUContext& ctx,
 
 template <typename T>
 std::vector<Tensor> SampleMaskForOneImage(const phi::CPUContext& ctx,
-                                          const Tensor& im_info,
-                                          const Tensor& gt_classes,
-                                          const Tensor& is_crowd,
-                                          const Tensor& gt_segms,
-                                          const Tensor& rois,
-                                          const Tensor& label_int32,
+                                          const phi::DenseTensor& im_info,
+                                          const phi::DenseTensor& gt_classes,
+                                          const phi::DenseTensor& is_crowd,
+                                          const phi::DenseTensor& gt_segms,
+                                          const phi::DenseTensor& rois,
+                                          const phi::DenseTensor& label_int32,
                                           const int num_classes,
                                           const int resolution,
                                           const framework::LoD& segm_length) {

@@ -64,7 +64,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     const std::string& var_name,
-    const framework::Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
@@ -80,9 +80,7 @@ framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     // op. Treat this as NCHW (default data_format value)
     if (dl != framework::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
-          expected_kernel_type.data_type_,
-          tensor.place(),
-          framework::StringToDataLayout(data_format));
+          expected_kernel_type.data_type_, tensor.place(), dl);
     }
   }
 #endif

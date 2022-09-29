@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 import subprocess
 import os
@@ -23,23 +22,23 @@ import unittest
 import paddle.fluid as fluid
 
 from argparse import ArgumentParser, REMAINDER
-from paddle.distributed.utils import _print_arguments, get_gpus, get_cluster_from_args
+from paddle.distributed.utils.launch_utils import _print_arguments, get_gpus, get_cluster_from_args
 from paddle.distributed.fleet.launch_utils import find_free_ports
 
 
 def _parse_args():
     parser = ArgumentParser(
-        description='''start paddle training using multi-process mode.	
-NOTE: your train program ***must*** run as distributed nccl2 mode,	
-see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/training/cluster_howto.html#permalink-8--nccl2-	
-And your train program must read environment variables below in order to let different	
-process init properly:	
-FLAGS_selected_gpus	
-PADDLE_TRAINER_ID	
-PADDLE_CURRENT_ENDPOINT	
-PADDLE_TRAINERS_NUM	
-PADDLE_TRAINER_ENDPOINTS	
-POD_IP (current node ip address, not needed for local training)	
+        description='''start paddle training using multi-process mode.
+NOTE: your train program ***must*** run as distributed nccl2 mode,
+see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/training/cluster_howto.html#permalink-8--nccl2-
+And your train program must read environment variables below in order to let different
+process init properly:
+FLAGS_selected_gpus
+PADDLE_TRAINER_ID
+PADDLE_CURRENT_ENDPOINT
+PADDLE_TRAINERS_NUM
+PADDLE_TRAINER_ENDPOINTS
+POD_IP (current node ip address, not needed for local training)
 ''')
 
     #Optional arguments for the launch helper
@@ -81,7 +80,7 @@ POD_IP (current node ip address, not needed for local training)
         "--log_level",
         type=int,
         default=
-        20,  # logging.INFO, details are here:https://docs.python.org/3/library/logging.html#levels	
+        20,  # logging.INFO, details are here:https://docs.python.org/3/library/logging.html#levels
         help="Logging level, default is logging.INFO")
 
     parser.add_argument(

@@ -15,7 +15,6 @@
 TestCases for Dataset consistency insepection of use_var_list and data_generator.
 """
 
-from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import paddle.compat as cpt

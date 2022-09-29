@@ -19,8 +19,6 @@
 #            'sampling_id',
 #            'Uniform']
 
-from __future__ import print_function
-
 import math
 import warnings
 
@@ -39,15 +37,15 @@ from paddle.tensor import arange, concat, gather_nd, multinomial
 
 class Distribution(object):
     """
-    The abstract base class for probability distributions. Functions are 
+    The abstract base class for probability distributions. Functions are
     implemented in specific distributions.
 
     Args:
-        batch_shape(Sequence[int], optional):  independent, not identically 
+        batch_shape(Sequence[int], optional):  independent, not identically
             distributed draws, aka a "collection" or "bunch" of distributions.
-        event_shape(Sequence[int], optional): the shape of a single 
-            draw from the distribution; it may be dependent across dimensions. 
-            For scalar distributions, the event shape is []. For n-dimension 
+        event_shape(Sequence[int], optional): the shape of a single
+            draw from the distribution; it may be dependent across dimensions.
+            For scalar distributions, the event shape is []. For n-dimension
             multivariate distribution, the event shape is [n].
     """
 
@@ -118,16 +116,16 @@ class Distribution(object):
 
     def probs(self, value):
         """Probability density/mass function.
-        
-        .. note:: 
-        
-            This method will be deprecated in the future, please use `prob` 
+
+        Note:
+
+            This method will be deprecated in the future, please use `prob`
             instead.
         """
         raise NotImplementedError
 
     def _extend_shape(self, sample_shape):
-        """compute shape of the sample 
+        """compute shape of the sample
 
         Args:
             sample_shape (Tensor): sample shape
@@ -239,9 +237,9 @@ class Distribution(object):
 
     def _probs_to_logits(self, probs, is_binary=False):
         r"""
-        Converts probabilities into logits. For the binary, probs denotes the 
-        probability of occurrence of the event indexed by `1`. For the 
-        multi-dimensional, values of last axis denote the probabilities of 
+        Converts probabilities into logits. For the binary, probs denotes the
+        probability of occurrence of the event indexed by `1`. For the
+        multi-dimensional, values of last axis denote the probabilities of
         occurrence of each of the events.
         """
         return (paddle.log(probs) - paddle.log1p(-probs)) \
@@ -249,8 +247,8 @@ class Distribution(object):
 
     def _logits_to_probs(self, logits, is_binary=False):
         r"""
-        Converts logits into probabilities. For the binary, each value denotes 
-        log odds, whereas for the multi-dimensional case, the values along the 
+        Converts logits into probabilities. For the binary, each value denotes
+        log odds, whereas for the multi-dimensional case, the values along the
         last dimension denote the log probabilities of the events.
         """
         return paddle.nn.functional.sigmoid(logits) \

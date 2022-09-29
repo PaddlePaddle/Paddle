@@ -206,7 +206,7 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const int tensor_dim,
       cnnlSetTensorDescriptorPosition(raw_tensor_desc, position));
 }
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                                      const cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype) {
   auto dims = phi::vectorize<int>(tensor.dims());
@@ -227,11 +227,11 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
   }
 }
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor)
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor)
     : MLUCnnlTensorDesc(
           tensor, CNNL_LAYOUT_ARRAY, ToCnnlDataType(tensor.dtype())) {}
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                                      cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype,
                                      int position)
@@ -240,7 +240,7 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
       cnnlSetTensorDescriptorPosition(raw_tensor_desc, position));
 }
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                                      cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype,
                                      int position,
@@ -253,6 +253,186 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
 MLUCnnlTensorDesc::~MLUCnnlTensorDesc() {
   if (raw_tensor_desc) {
     g_cnnl_tensor_desc_pool.Recycle(raw_tensor_desc);
+  }
+}
+
+class MLUOpTensorDescPool {
+ public:
+  mluOpTensorDescriptor_t Pop() {
+    mluOpTensorDescriptor_t raw_desc;
+    if (q_.try_dequeue(raw_desc)) {
+      return raw_desc;
+    } else {
+      mluOpCreateTensorDescriptor(&raw_desc);
+      return raw_desc;
+    }
+  }
+
+  void Recycle(mluOpTensorDescriptor_t desc) {
+    mluOpResetTensorDescriptor(desc);
+    q_.enqueue(desc);
+  }
+
+  ~MLUOpTensorDescPool() {
+    auto size = q_.size_approx();
+    if (size > 0) {
+      std::vector<mluOpTensorDescriptor_t> vec(size);
+      q_.try_dequeue_bulk(vec.data(), size);
+      for (auto desc : vec) {
+        mluOpDestroyTensorDescriptor(desc);
+      }
+    }
+  }
+
+ private:
+  moodycamel::ConcurrentQueue<mluOpTensorDescriptor_t> q_;
+};
+
+static MLUOpTensorDescPool g_mluop_tensor_desc_pool;
+
+MLUOpTensorDesc& MLUOpTensorDesc::operator=(MLUOpTensorDesc&& rhs) {
+  if (raw_tensor_desc) {
+    g_mluop_tensor_desc_pool.Recycle(raw_tensor_desc);
+  }
+  raw_tensor_desc = rhs.raw_tensor_desc;
+  rhs.raw_tensor_desc = nullptr;
+  return *this;
+}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const int tensor_dim,
+                                 const int dim_sizes[],
+                                 const mluOpDataType_t tensor_dtype) {
+  raw_tensor_desc = g_mluop_tensor_desc_pool.Pop();
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpSetTensorDescriptor(raw_tensor_desc,
+                                                      MLUOP_LAYOUT_ARRAY,
+                                                      tensor_dtype,
+                                                      tensor_dim,
+                                                      dim_sizes));
+}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const int tensor_dim,
+                                 const int dim_sizes[],
+                                 const mluOpDataType_t tensor_dtype,
+                                 const mluOpTensorLayout_t layout) {
+  raw_tensor_desc = g_mluop_tensor_desc_pool.Pop();
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpSetTensorDescriptor(
+      raw_tensor_desc, layout, tensor_dtype, tensor_dim, dim_sizes));
+}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const int tensor_dim,
+                                 const int dim_sizes[],
+                                 const mluOpDataType_t tensor_dtype,
+                                 int position)
+    : MLUOpTensorDesc(tensor_dim, dim_sizes, tensor_dtype) {
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      mluOpSetTensorDescriptorPosition(raw_tensor_desc, position));
+}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const int tensor_dim,
+                                 const int64_t dim_sizes[],
+                                 const mluOpDataType_t tensor_dtype) {
+  std::vector<int> dim_sizes_int32(tensor_dim);
+  std::vector<int64_t>::const_iterator int64_cbegin(dim_sizes);
+  std::vector<int64_t>::const_iterator int64_cend(dim_sizes + tensor_dim);
+  std::transform(int64_cbegin,
+                 int64_cend,
+                 dim_sizes_int32.begin(),
+                 &CheckedNarrowing<int64_t, int>);
+  raw_tensor_desc = g_mluop_tensor_desc_pool.Pop();
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpSetTensorDescriptor(raw_tensor_desc,
+                                                      MLUOP_LAYOUT_ARRAY,
+                                                      tensor_dtype,
+                                                      tensor_dim,
+                                                      dim_sizes_int32.data()));
+}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const int tensor_dim,
+                                 const int64_t dim_sizes[],
+                                 const mluOpDataType_t tensor_dtype,
+                                 const mluOpTensorLayout_t layout) {
+  std::vector<int> dim_sizes_int32(tensor_dim);
+  std::vector<int64_t>::const_iterator int64_cbegin(dim_sizes);
+  std::vector<int64_t>::const_iterator int64_cend(dim_sizes + tensor_dim);
+  std::transform(int64_cbegin,
+                 int64_cend,
+                 dim_sizes_int32.begin(),
+                 &CheckedNarrowing<int64_t, int>);
+  raw_tensor_desc = g_mluop_tensor_desc_pool.Pop();
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpSetTensorDescriptor(raw_tensor_desc,
+                                                      layout,
+                                                      tensor_dtype,
+                                                      tensor_dim,
+                                                      dim_sizes_int32.data()));
+}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const int tensor_dim,
+                                 const int64_t dim_sizes[],
+                                 const mluOpDataType_t tensor_dtype,
+                                 int position) {
+  std::vector<int> dim_sizes_int32(tensor_dim);
+  std::vector<int64_t>::const_iterator int64_cbegin(dim_sizes);
+  std::vector<int64_t>::const_iterator int64_cend(dim_sizes + tensor_dim);
+  std::transform(int64_cbegin,
+                 int64_cend,
+                 dim_sizes_int32.begin(),
+                 &CheckedNarrowing<int64_t, int>);
+  raw_tensor_desc = g_mluop_tensor_desc_pool.Pop();
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpSetTensorDescriptor(raw_tensor_desc,
+                                                      MLUOP_LAYOUT_ARRAY,
+                                                      tensor_dtype,
+                                                      tensor_dim,
+                                                      dim_sizes_int32.data()));
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      mluOpSetTensorDescriptorPosition(raw_tensor_desc, position));
+}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const Tensor& tensor,
+                                 const mluOpTensorLayout_t layout,
+                                 const mluOpDataType_t tensor_dtype) {
+  auto dims = phi::vectorize<int>(tensor.dims());
+  int tensor_dim = dims.size();
+  raw_tensor_desc = g_mluop_tensor_desc_pool.Pop();
+  if (tensor_dim == 0) {
+    int scalar_dims[1] = {1};
+    PADDLE_ENFORCE_MLU_SUCCESS(mluOpSetTensorDescriptor(
+        raw_tensor_desc, layout, tensor_dtype, 1, scalar_dims));
+  } else {
+    std::vector<int> tensor_dim_sizes_int(dims.begin(), dims.end());
+    PADDLE_ENFORCE_MLU_SUCCESS(
+        mluOpSetTensorDescriptor(raw_tensor_desc,
+                                 layout,
+                                 tensor_dtype,
+                                 tensor_dim,
+                                 tensor_dim_sizes_int.data()));
+  }
+}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const Tensor& tensor)
+    : MLUOpTensorDesc(
+          tensor, MLUOP_LAYOUT_ARRAY, ToMluOpDataType(tensor.dtype())) {}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const Tensor& tensor,
+                                 mluOpTensorLayout_t layout,
+                                 const mluOpDataType_t tensor_dtype,
+                                 int position)
+    : MLUOpTensorDesc(tensor, layout, tensor_dtype) {
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      mluOpSetTensorDescriptorPosition(raw_tensor_desc, position));
+}
+
+MLUOpTensorDesc::MLUOpTensorDesc(const Tensor& tensor,
+                                 mluOpTensorLayout_t layout,
+                                 const mluOpDataType_t tensor_dtype,
+                                 int position,
+                                 float scale)
+    : MLUOpTensorDesc(tensor, layout, tensor_dtype) {
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpSetTensorDescriptorPositionAndScale(
+      raw_tensor_desc, position, scale));
+}
+
+MLUOpTensorDesc::~MLUOpTensorDesc() {
+  if (raw_tensor_desc) {
+    g_mluop_tensor_desc_pool.Recycle(raw_tensor_desc);
   }
 }
 
@@ -1563,17 +1743,35 @@ MLURNNDesc::~MLURNNDesc() {
     void* indices_out) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlTopKTensor(handle,
-                                            input_desc,
-                                            input,
-                                            k,
-                                            dim,
-                                            largest,
-                                            sorted,
-                                            values_output_desc,
-                                            values_out,
-                                            indices_output_desc,
-                                            indices_out));
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetTopKTensorWorkspaceSize(handle,
+                                                            input_desc,
+                                                            k,
+                                                            dim,
+                                                            largest,
+                                                            values_output_desc,
+                                                            indices_output_desc,
+                                                            &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlTopKTensor_v3(handle,
+                                               input_desc,
+                                               input,
+                                               k,
+                                               dim,
+                                               largest,
+                                               sorted,
+                                               false /*lower_index_first*/,
+                                               workspace_ptr,
+                                               workspace_size,
+                                               values_output_desc,
+                                               values_out,
+                                               indices_output_desc,
+                                               indices_out));
 }
 
 /* static */ void MLUCnnl::StridedSlice(
@@ -4525,6 +4723,78 @@ MLURNNDesc::~MLURNNDesc() {
                                                  workspace_size,
                                                  output_desc,
                                                  output));
+}
+
+/* static */ void MLUCnnl::SmoothL1LossForward(
+    const ExecutionContext& ctx,
+    const cnnlTensorDescriptor_t x_desc,
+    const void* x,
+    const cnnlTensorDescriptor_t t_desc,
+    const void* target,
+    const float beta,
+    const cnnlSmoothL1LossAlgorithm_t algorithm,
+    const cnnlTensorDescriptor_t y_desc,
+    void* y) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetSmoothL1LossForwardWorkspaceSize(
+      handle, x_desc, algorithm, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSmoothL1LossForward_v2(handle,
+                                                        x_desc,
+                                                        x,
+                                                        t_desc,
+                                                        target,
+                                                        beta,
+                                                        algorithm,
+                                                        workspace_ptr,
+                                                        workspace_size,
+                                                        y_desc,
+                                                        y));
+}
+
+/* static */ void MLUCnnl::SmoothL1LossBackward(
+    const ExecutionContext& ctx,
+    const cnnlTensorDescriptor_t x_desc,
+    const void* x,
+    const cnnlTensorDescriptor_t target_desc,
+    const void* target,
+    const cnnlTensorDescriptor_t dy_desc,
+    const void* dy,
+    const float beta,
+    const cnnlSmoothL1LossAlgorithm_t algorithm,
+    const cnnlTensorDescriptor_t dx_desc,
+    void* dx) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetSmoothL1LossBackwardWorkspaceSize(
+      handle, x_desc, algorithm, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSmoothL1LossBackward_v2(handle,
+                                                         x_desc,
+                                                         x,
+                                                         target_desc,
+                                                         target,
+                                                         dy_desc,
+                                                         dy,
+                                                         beta,
+                                                         algorithm,
+                                                         workspace_ptr,
+                                                         workspace_size,
+                                                         dx_desc,
+                                                         dx));
 }
 
 /* static */ void MLUCnnl::EmbeddingForward(

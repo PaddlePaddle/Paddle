@@ -17,6 +17,7 @@
 #include <string>
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -37,7 +38,7 @@ class Scope;
 namespace {
 template <typename T1, typename T2>
 void ConvertTensorType(paddle::framework::LoDTensor* tensor) {
-  paddle::framework::Tensor tmp_tensor;
+  phi::DenseTensor tmp_tensor;
   tmp_tensor.set_type(paddle::experimental::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
   auto* tmp_data = tmp_tensor.mutable_data<T2>(paddle::platform::CPUPlace());
@@ -92,13 +93,13 @@ void recompute_bias_and_weights(const Scope* scope,
       Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
 
   // Re-compute bias of conv2d from BN
-  PADDLE_ENFORCE_EQ(
-      eltwise_y_in_tensor->dims(),
-      bn_bias_tensor.dims(),
-      platform::errors::InvalidArgument("Tensor elementwise y(%d) and batch "
-                                        "norm bias(%d) must have same dims.",
-                                        eltwise_y_in_tensor->dims().size(),
-                                        bn_bias_tensor.dims().size()));
+  PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(),
+                    bn_bias_tensor.dims(),
+                    platform::errors::InvalidArgument(
+                        "phi::DenseTensor elementwise y(%d) and batch "
+                        "norm bias(%d) must have same dims.",
+                        eltwise_y_in_tensor->dims().size(),
+                        bn_bias_tensor.dims().size()));
 
   auto* scale_tensor = scope->FindVar(bn_scale.Name())->GetMutable<LoDTensor>();
   auto* variance_tensor =
@@ -374,7 +375,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
             conv_bias_tensor->dims(),
             eltwise_y_in_tensor->dims(),
             platform::errors::InvalidArgument(
-                "Tensor convolution bias(%d) and elementwise y(%d) "
+                "phi::DenseTensor convolution bias(%d) and elementwise y(%d) "
                 "must have same dims.",
                 conv_bias_tensor->dims().size(),
                 eltwise_y_in_tensor->dims().size()));

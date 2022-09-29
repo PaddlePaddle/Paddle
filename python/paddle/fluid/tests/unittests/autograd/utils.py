@@ -15,11 +15,6 @@
 import typing
 import enum
 import sys
-import re
-import inspect
-import functools
-import contextlib
-import collections
 import numpy as np
 import paddle
 from paddle.incubate.autograd.utils import as_tensors
@@ -280,7 +275,7 @@ TEST_CASE_NAME = 'suffix'
 
 
 def place(devices, key='place'):
-    """A Decorator for a class which will make the class running on different 
+    """A Decorator for a class which will make the class running on different
     devices .
 
     Args:
@@ -308,7 +303,7 @@ def place(devices, key='place'):
 
 
 def parameterize(fields, values=None):
-    """Decorator for a unittest class which make the class running on different 
+    """Decorator for a unittest class which make the class running on different
     test cases.
 
     Args:
@@ -365,7 +360,7 @@ def _np_transpose_matrix_format(src, src_format, des_format):
 
 
 def _np_concat_matrix_sequence(src, src_format=MatrixFormat.NM):
-    """Convert a sequence of sequence of Jacobian/Hessian matrix into one huge 
+    """Convert a sequence of sequence of Jacobian/Hessian matrix into one huge
     matrix."""
 
     def concat_col(xs):

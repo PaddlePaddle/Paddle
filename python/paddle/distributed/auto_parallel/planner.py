@@ -22,7 +22,7 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from .cost_model import estimate_cost
 from .dist_op import DistributedOperator
 from .process_group import _g_process_group_map

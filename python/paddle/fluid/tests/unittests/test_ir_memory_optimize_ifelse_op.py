@@ -14,8 +14,6 @@
 
 # nlp model stack of op operate on lod. It's a classical test case in optimize pass.
 
-from __future__ import print_function
-
 import numpy as np
 
 import paddle

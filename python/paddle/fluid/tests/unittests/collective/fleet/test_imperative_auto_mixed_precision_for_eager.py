@@ -20,10 +20,8 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import numpy as np
-import six
-import cv2
 import tempfile
-from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
+from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
 import paddle.nn as nn
 from paddle.static import InputSpec
 from paddle.autograd import PyLayer
@@ -1290,13 +1288,17 @@ class TestLayerNormFp16(unittest.TestCase):
 
 class TestBf16(unittest.TestCase):
     '''
-    test amp for BF16 
+    test amp for BF16
     '''
 
     def train(self, enable_amp=True, amp_level='O1'):
         paddle.seed(100)
         input = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
         conv = paddle.nn.Conv2D(4, 6, (3, 3))
+        if amp_level == 'O2':
+            conv = paddle.amp.decorate(models=conv,
+                                       level=amp_level,
+                                       dtype='bfloat16')
         with paddle.amp.auto_cast(enable=enable_amp,
                                   level=amp_level,
                                   dtype='bfloat16'):

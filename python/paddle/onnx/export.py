@@ -26,20 +26,20 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
     Args:
         layer (Layer): The Layer to be exported.
         path (str): The path prefix to export model. The format is ``dirname/file_prefix`` or ``file_prefix`` ,
-            and the exported ONNX file suffix is ``.onnx`` . 
-        input_spec (list[InputSpec|Tensor], optional): Describes the input of the exported model's forward 
-            method, which can be described by InputSpec or example Tensor. If None, all input variables of 
+            and the exported ONNX file suffix is ``.onnx`` .
+        input_spec (list[InputSpec|Tensor], optional): Describes the input of the exported model's forward
+            method, which can be described by InputSpec or example Tensor. If None, all input variables of
             the original Layer's forward method would be the inputs of the exported ``ONNX`` model. Default: None.
         opset_version(int, optional): Opset version of exported ONNX model.
             Now, stable supported opset version include 9, 10, 11. Default: 9.
-        **configs (dict, optional): Other export configuration options for compatibility. We do not 
-            recommend using these configurations, they may be removed in the future. If not necessary, 
+        **configs (dict, optional): Other export configuration options for compatibility. We do not
+            recommend using these configurations, they may be removed in the future. If not necessary,
             DO NOT use them. Default None.
             The following options are currently supported:
             (1) output_spec (list[Tensor]): Selects the output targets of the exported model.
-            By default, all return variables of original Layer's forward method are kept as the 
-            output of the exported model. If the provided ``output_spec`` list is not all output variables, 
-            the exported model will be pruned according to the given ``output_spec`` list. 
+            By default, all return variables of original Layer's forward method are kept as the
+            output of the exported model. If the provided ``output_spec`` list is not all output variables,
+            the exported model will be pruned according to the given ``output_spec`` list.
     Returns:
         None
     Examples:

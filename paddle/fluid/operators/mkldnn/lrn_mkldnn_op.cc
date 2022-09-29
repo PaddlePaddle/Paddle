@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
 using paddle::platform::MKLDNNDeviceContext;
 
 template <typename T>
@@ -28,7 +27,7 @@ class LRNMKLDNNHandler
   LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
-                   const Tensor* input)
+                   const phi::DenseTensor* input)
 
       : platform::
             MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
@@ -59,9 +58,9 @@ class LRNMKLDNNHandler
   LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
-                   const Tensor* in_x,
-                   const Tensor* out_grad,
-                   Tensor* in_x_grad)
+                   const phi::DenseTensor* in_x,
+                   const phi::DenseTensor* out_grad,
+                   phi::DenseTensor* in_x_grad)
       : platform::
             MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
                 mkldnn_engine, cpu_place) {
@@ -95,7 +94,8 @@ class LRNMKLDNNHandler
         k);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(Tensor* workspace) {
+  std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(
+      phi::DenseTensor* workspace) {
     T* ptr = workspace->mutable_data<T>(
         this->place_, this->fwd_pd_->workspace_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->workspace_desc(),
@@ -103,7 +103,7 @@ class LRNMKLDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireBackwardWorkspaceMemory(
-      const Tensor* workspace) {
+      const phi::DenseTensor* workspace) {
     const T* workspace_data = workspace->data<T>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->workspace_desc(),
@@ -128,9 +128,9 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto x = ctx.Input<Tensor>("X");
-    auto out = ctx.Output<Tensor>("Out");
-    auto mid = ctx.Output<Tensor>("MidOut");
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
+    auto mid = ctx.Output<phi::DenseTensor>("MidOut");
 
     LRNMKLDNNHandler<T> handler(ctx, mkldnn_engine, ctx.GetPlace(), x);
 
@@ -173,11 +173,11 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL LRNGrad must use CPUPlace"));
 
-    auto in_x = ctx.Input<Tensor>("X");
-    auto mid = ctx.Input<Tensor>("MidOut");
+    auto in_x = ctx.Input<phi::DenseTensor>("X");
+    auto mid = ctx.Input<phi::DenseTensor>("MidOut");
 
-    auto out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto in_x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto in_x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();

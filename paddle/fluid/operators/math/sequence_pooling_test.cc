@@ -92,7 +92,7 @@ void TestSequencePoolingSum(const DeviceContext &context,
     for (size_t i = 0; i < in_grad.lod()[0].size() - 1; ++i) {
       int64_t begin = in_grad.lod()[0][i];
       int64_t end = in_grad.lod()[0][i + 1];
-      paddle::framework::Tensor tmp = in_grad.Slice(begin, end);
+      phi::DenseTensor tmp = in_grad.Slice(begin, end);
       for (int64_t j = 0; j != tmp.numel() / second_dim; ++j) {
         for (int64_t m = 0; m != second_dim; ++m) {
           EXPECT_EQ(tmp.data<T>()[m + j * second_dim],
@@ -104,7 +104,7 @@ void TestSequencePoolingSum(const DeviceContext &context,
     for (size_t i = 0; i < cpu_in_grad.lod()[0].size() - 1; ++i) {
       int64_t begin = cpu_in_grad.lod()[0][i];
       int64_t end = cpu_in_grad.lod()[0][i + 1];
-      paddle::framework::Tensor tmp = cpu_in_grad.Slice(begin, end);
+      phi::DenseTensor tmp = cpu_in_grad.Slice(begin, end);
       for (int64_t j = 0; j != tmp.numel() / second_dim; ++j) {
         for (int64_t m = 0; m != second_dim; ++m) {
           EXPECT_EQ(tmp.data<T>()[m + j * second_dim],

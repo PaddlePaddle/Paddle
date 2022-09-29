@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import errno
 import warnings
@@ -662,8 +660,8 @@ def _save_distributed_persistables(executor, dirname, main_program):
 @dygraph_not_support
 def save_persistables(executor, dirname, main_program=None, filename=None):
     """
-    Save all persistable variables from :code:`main_program` to 
-    the folder :code:`dirname` or file :code:`filename`. You can refer to 
+    Save all persistable variables from :code:`main_program` to
+    the folder :code:`dirname` or file :code:`filename`. You can refer to
     :ref:`api_guide_model_save_reader_en` for more details. And then
     saves these persistables variables to the folder :code:`dirname` or file
     :code:`filename`.
@@ -681,7 +679,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         dirname(str, optional): The saving directory path.
                             When you need to save the parameter to the memory, set it to None.
         main_program(Program, optional): The program whose persistbale variables will
-                                         be saved. You can refer to 
+                                         be saved. You can refer to
                                          :ref:`api_guide_Program_en` for more details.
                                          If it is None, the default main program will
                                          be used.
@@ -1232,7 +1230,7 @@ def save_inference_model(dirname,
                          params_filename=None,
                          export_for_deployment=True,
                          program_only=False,
-                         clip_extra=False):
+                         clip_extra=True):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` .
@@ -1458,7 +1456,7 @@ def load_inference_model(dirname,
           Default: ``None``.
         params_filename(str, optional): It is only used for the case that all
             parameters were saved in a single binary file. One of the following:
-          - The name of file to load all parameters.  
+          - The name of file to load all parameters.
           - When ``dirname`` is ``None``, it must be set to a string containing all the parameters.
           - If parameters were saved in separate files, set it as ``None``.
             Default: ``None``.
@@ -1809,7 +1807,7 @@ def _legacy_save(param_dict, model_path, protocol=2):
 @static_only
 def save(program, model_path, protocol=4, **configs):
     """
-    
+
     This function save parameters, optimizer information and network description to model_path.
 
     The parameters contains all the trainable Tensor, will save to a file with suffix ".pdparams".
@@ -1821,7 +1819,7 @@ def save(program, model_path, protocol=4, **configs):
         model_path(str): the file prefix to save the program. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
                                  Default: 4
-        configs(dict, optional) : optional keyword arguments.                        
+        configs(dict, optional) : optional keyword arguments.
 
     Returns:
         None
@@ -2131,7 +2129,7 @@ def load_program_state(model_path, var_list=None):
         state_dict(dict): the dict store Parameter and optimizer information
 
     Examples:
-    
+
         .. code-block:: python
 
             import paddle
