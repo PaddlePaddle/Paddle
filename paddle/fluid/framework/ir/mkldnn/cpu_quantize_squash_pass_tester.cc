@@ -302,7 +302,7 @@ ProgramDesc BuildConvMultiRequantProgramDesc(bool use_mkldnn,
 /* a->relu->b->Dequant(u8)->c->Quant(u8)->d-\
  * e->relu->f->Dequant(u8)->g->Quant(u8)->h--Concat1->i
  */
-ProgramDesc BuildU8U8U8ConcatProgramDesc(float scale_out, float scale) {
+ProgramDesc BuildU8U8ConcatProgramDesc(float scale_out, float scale) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
@@ -1175,9 +1175,8 @@ TEST(CpuQuantizeSquashPass, squash_all_u8_input_to_concat2) {
   auto remove_nodes = 8;
   std::unordered_map<std::string, int> expected_operators = {
       {"concat", 1}, {"quantize", 0}, {"dequantize", 0}, {"relu", 2}};
-  CheckNodesTest(BuildU8U8U8ConcatProgramDesc(1.2f, 1.2f),
-                 expected_operators,
-                 remove_nodes);
+  CheckNodesTest(
+      BuildU8U8ConcatProgramDesc(1.2f, 1.2f), expected_operators, remove_nodes);
 }
 
 }  // namespace ir

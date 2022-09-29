@@ -62,10 +62,7 @@ static void SaveInfoInTheFirstOp(ir::Graph* graph,
     op_node->Op()->SetAttr(flag, true);
     for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
       auto* data = iter->second.second.data<float>();
-      std::vector<float> data_v;
-      for (int i = 0; i < iter->second.second.numel(); i++) {
-        data_v.push_back(data[i]);
-      }
+      std::vector<float> data_v(data, data + iter->second.second.numel());
       op_node->Op()->SetAttr(iter->first + suffix + "_unsigned",
                              iter->second.first);
       op_node->Op()->SetAttr(iter->first + suffix, data_v);
@@ -140,14 +137,10 @@ static void GetInfoFromTheFirstOp(ir::Graph* graph,
               fake_name.erase(unsigned_pos, unsigned_flag.length());
           auto scales_vector = PADDLE_GET_CONST(std::vector<float>,
                                                 op_desc->GetAttr(vector_name));
-
           LoDTensor tensor;
           const int size = static_cast<int>(scales_vector.size());
-          auto* data =
-              tensor.mutable_data<double>({size}, platform::CPUPlace());
-          for (int i = 0; i < size; i++) {
-            data[i] = static_cast<double>(scales_vector[i]);
-          }
+          auto* data = tensor.mutable_data<float>({size}, platform::CPUPlace());
+          std::copy(scales_vector.begin(), scales_vector.end(), data);
           auto pair = std::make_pair(is_unsigned, tensor);
           info_map->insert(std::make_pair(var_name, pair));
           op_desc->RemoveAttr(unsigned_var_name);

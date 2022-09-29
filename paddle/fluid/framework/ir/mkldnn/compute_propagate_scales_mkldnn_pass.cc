@@ -442,8 +442,7 @@ void ComputePropagateScalesMkldnnPass::UpdateReluOutputScales(
       std::string output_var_name = op->Output(output_name)[0];
       auto out_iter = var_quant_scales->find(output_var_name);
       if (out_iter != var_quant_scales->end()) {
-        auto new_pair = std::make_pair(true, out_iter->second.second);
-        (*var_quant_scales)[output_var_name] = new_pair;
+        (*var_quant_scales)[output_var_name].first = true;
       }
     }
   }

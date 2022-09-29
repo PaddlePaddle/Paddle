@@ -106,7 +106,7 @@ void CPUQuantizeSquashPass::FindNodesToKeep(
 
 bool CPUQuantizeSquashPass::IsDequantizeQuantizeIncompatible(
     Node* quant_op, Node* dequant_op, Node* next_op) const {
-  bool is_concat_signed =
+  bool is_next_op_signed =
       quant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
   bool is_input_signed =
       dequant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
@@ -117,10 +117,10 @@ bool CPUQuantizeSquashPass::IsDequantizeQuantizeIncompatible(
       next_op->Op()->Type() == "concat" ||
       next_op->Op()->Type().find("elementwise") == 0;
   if (is_next_op_concat_or_elementwise &&
-      (is_concat_signed ^ is_input_signed)) {
+      (is_next_op_signed ^ is_input_signed)) {
     VLOG(4) << "Do not squash dequant-quant, because "
             << "next_op is: " << next_op->Op()->Type()
-            << ", is_concat_signed: " << is_concat_signed
+            << ", is_next_op_signed: " << is_next_op_signed
             << ", is_input_signed: " << is_input_signed << ".";
     return true;
   }
