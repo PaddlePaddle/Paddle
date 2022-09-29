@@ -83,30 +83,31 @@ std::vector<nvinfer1::PluginField>
 
 LookupTablePluginDynamic::LookupTablePluginDynamic(
     nvinfer1::DataType const type,
-    nvinfer1::Weights const& weight,
+    void* weight_dev,
+    int32_t weight_size,
     int32_t width)
-    : mType(type), mWeightWidth(width) {
-  // Assuming Weights.count is the number of elements and not bytes
-  mWeight.convertAndCopy(weight, mType);
-  copyToDevice(&mWeight, getWeightsSize(mWeight, mType), &mWeightDev);
-  mWeightSize = mWeight.count;
-}
+    : mType(type),
+      mWeightDev(weight_dev),
+      mWeightSize(weight_size),
+      mWeightWidth(width) {}
 
 LookupTablePluginDynamic::LookupTablePluginDynamic(void const* data,
-                                                   size_t length)
-    : mWeightDev(nullptr) {
+                                                   size_t length) {
   // Deserialize in the same order as serialization
   deserialize_value(&data, &length, &mType);
   deserialize_value(&data, &length, &mWeightSize);
   deserialize_value(&data, &length, &mWeightWidth);
   char const* d = static_cast<char const*>(data);
-  mWeight.convertAndCopy(&d, mWeightSize, mType);
+  cudaMalloc(&mWeightDev, mWeightSize * sizeof(mType));
+  cudaMemcpy(
+      mWeightDev, d, mWeightSize * sizeof(mType), cudaMemcpyHostToDevice);
 }
 
 // IPluginV2DynamicExt Methods
 nvinfer1::IPluginV2DynamicExt* LookupTablePluginDynamic::clone()
     const noexcept {
-  auto p = new LookupTablePluginDynamic(mType, mWeight, mWeightWidth);
+  auto p = new LookupTablePluginDynamic(
+      mType, mWeightDev, mWeightSize, mWeightWidth);
   p->setPluginNamespace(mNamespace.c_str());
   return p;
 }
@@ -138,8 +139,11 @@ bool LookupTablePluginDynamic::supportsFormatCombination(
     return desc.type == nvinfer1::DataType::kINT32;
   }
   if (pos == 1) {
-    return desc.type == nvinfer1::DataType::kHALF ||
-           desc.type == nvinfer1::DataType::kFLOAT;
+    if (mType == nvinfer1::DataType::kFLOAT) {
+      return desc.type == nvinfer1::DataType::kFLOAT;
+    } else {
+      return desc.type == nvinfer1::DataType::kHALF;
+    }
   }
 }
 
@@ -176,7 +180,7 @@ int32_t LookupTablePluginDynamic::enqueue(
   auto const inputIds = static_cast<int32_t const*>(inputs[0]);
   if (mType == nvinfer1::DataType::kFLOAT) {
     auto output = static_cast<float*>(outputs[0]);
-    auto const Weight = static_cast<const float*>(mWeightDev.get());
+    auto const Weight = static_cast<const float*>(mWeightDev);
     status = lookup_table<float>(stream,
                                  static_cast<int32_t>(mWeightWidth),
                                  batchSize,
@@ -187,7 +191,7 @@ int32_t LookupTablePluginDynamic::enqueue(
                                  output);
   } else if (mType == nvinfer1::DataType::kHALF) {
     auto output = static_cast<half*>(outputs[0]);
-    auto const Weight = static_cast<const half*>(mWeightDev.get());
+    auto const Weight = static_cast<const half*>(mWeightDev);
     status = lookup_table<half>(stream,
                                 static_cast<int32_t>(mWeightWidth),
                                 batchSize,
@@ -225,7 +229,7 @@ int32_t LookupTablePluginDynamic::getNbOutputs() const noexcept { return 1; }
 
 int32_t LookupTablePluginDynamic::initialize() noexcept { return 0; }
 
-void LookupTablePluginDynamic::terminate() noexcept {}
+void LookupTablePluginDynamic::terminate() noexcept { cudaFree(mWeightDev); }
 
 size_t LookupTablePluginDynamic::getSerializationSize() const noexcept {
   size_t const wordSize = getElementSize(mType);
@@ -241,12 +245,11 @@ void LookupTablePluginDynamic::serialize(void* buffer) const noexcept {
   serialize_value(&buffer, mWeightWidth);
   char* d = static_cast<char*>(buffer);
   size_t const wordSize = getElementSize(mType);
-  serFromDev(&d, static_cast<char*>(mWeightDev.get()), mWeightSize * wordSize);
+  serFromDev(&d, static_cast<char*>(mWeightDev), mWeightSize * wordSize);
 }
 
 void LookupTablePluginDynamic::destroy() noexcept {
   // This gets called when the network containing plugin is destroyed
-  mWeightDev.reset(nullptr);
   delete this;
 }
 
@@ -303,11 +306,22 @@ nvinfer1::IPluginV2* LookupTablePluginDynamicCreator::createPlugin(
   nvinfer1::Weights weight;
   int32_t mWeightWidth;
   bool output_fp16 = initializeFields(fc, &weight, mWeightWidth);
-  // output_fp16 = false;
-  LookupTablePluginDynamic* p = new LookupTablePluginDynamic(
-      output_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-      weight,
-      mWeightWidth);
+  nvinfer1::DataType type;
+  if (output_fp16) {
+    type = nvinfer1::DataType::kHALF;
+  } else {
+    type = nvinfer1::DataType::kFLOAT;
+  }
+  WeightsWithOwnership mWeight;
+  mWeight.convertAndCopy(weight, type);
+  void* cudaMem{nullptr};
+  cudaMalloc(&cudaMem, getWeightsSize(mWeight, type));
+  cudaMemcpy(cudaMem,
+             mWeight.values,
+             getWeightsSize(mWeight, type),
+             cudaMemcpyHostToDevice);
+  LookupTablePluginDynamic* p =
+      new LookupTablePluginDynamic(type, cudaMem, mWeight.count, mWeightWidth);
   return p;
 }
 

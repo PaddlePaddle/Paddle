@@ -29,8 +29,9 @@ namespace plugin {
 class LookupTablePluginDynamic : public nvinfer1::IPluginV2DynamicExt {
  public:
   LookupTablePluginDynamic(nvinfer1::DataType const type,
-                           nvinfer1::Weights const& weight,
-                           int32_t weight_width);
+                           void* weight_dev,
+                           int32_t weight_size,
+                           int32_t width);
 
   LookupTablePluginDynamic(void const* data, size_t length);
 
@@ -85,11 +86,10 @@ class LookupTablePluginDynamic : public nvinfer1::IPluginV2DynamicExt {
 
  protected:
   std::string mNamespace;
-  cuda_unique_ptr<void> mWeightDev;
-  WeightsWithOwnership mWeight;
+  nvinfer1::DataType mType;
+  void* mWeightDev{nullptr};
   int32_t mWeightSize;
   int32_t mWeightWidth;
-  nvinfer1::DataType mType;
 };
 
 class LookupTablePluginDynamicCreator : public nvinfer1::IPluginCreator {
