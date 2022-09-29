@@ -29,7 +29,10 @@ void TransDataDevice(const phi::DenseTensor &in,
                                     "supported between CPU and CUDA."));
 
   // NOTE(zhiqiu): Special case for CPU->NPU, avoid stream sync.
-  if (platform::is_cpu_place(in.place()) && platform::is_npu_place(dst_place)) {
+  if ((platform::is_cpu_place(in.place()) &&
+       platform::is_npu_place(dst_place)) ||
+      (platform::is_cpu_place(in.place()) &&
+       platform::is_gpu_place(dst_place))) {
     paddle::framework::TensorCopy(
         in,
         dst_place,
