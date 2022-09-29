@@ -334,6 +334,7 @@ class TestBoxCoderAPI(unittest.TestCase):
         boxes_dy_np = boxes_dy.numpy()
 
         self.assertTrue(np.array_equal(boxes_np[0], boxes_dy_np))
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

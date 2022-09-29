@@ -263,6 +263,7 @@ class TestPriorBoxAPI(unittest.TestCase):
 
         self.assertTrue(np.array_equal(box_np, box_dy_np))
         self.assertTrue(np.array_equal(var_np, var_dy_np))
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

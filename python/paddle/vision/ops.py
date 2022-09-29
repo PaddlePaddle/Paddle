@@ -24,10 +24,24 @@ from paddle.common_ops_import import *
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [  #noqa
-    'yolo_loss', 'yolo_box', 'prior_box', 'box_coder', 'deform_conv2d',
-    'DeformConv2D', 'distribute_fpn_proposals', 'generate_proposals',
-    'read_file', 'decode_jpeg', 'roi_pool', 'RoIPool', 'psroi_pool',
-    'PSRoIPool', 'roi_align', 'RoIAlign', 'nms', 'matrix_nms'
+    'yolo_loss',
+    'yolo_box',
+    'prior_box',
+    'box_coder',
+    'deform_conv2d',
+    'DeformConv2D',
+    'distribute_fpn_proposals',
+    'generate_proposals',
+    'read_file',
+    'decode_jpeg',
+    'roi_pool',
+    'RoIPool',
+    'psroi_pool',
+    'PSRoIPool',
+    'roi_align',
+    'RoIAlign',
+    'nms',
+    'matrix_nms',
 ]
 
 
@@ -424,222 +438,6 @@ def yolo_box(x,
     return boxes, scores
 
 
-def deform_conv2d(x,
-                  offset,
-                  weight,
-                  bias=None,
-                  stride=1,
-                  padding=0,
-                  dilation=1,
-                  deformable_groups=1,
-                  groups=1,
-                  mask=None,
-                  name=None):
-    r"""
-    Compute 2-D deformable convolution on 4-D input.
-    Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
-
-
-    Deformable Convolution v2:
-
-    .. math::
-
-        y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k) * \Delta m_k}
-
-    Deformable Convolution v1:
-
-    .. math::
-
-        y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k)}
-
-    Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location,
-    Which :math:`\Delta m_k` is one in deformable convolution v1. Please refer to `Deformable ConvNets v2: More Deformable, Better Results
-    <https://arxiv.org/abs/1811.11168v2>`_ and `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_.
-
-    Example:
-        - Input:
-
-          x shape: :math:`(N, C_{in}, H_{in}, W_{in})`
-
-          weight shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
-
-          offset shape: :math:`(N, 2 * H_f * W_f, H_{out}, W_{out})`
-
-          mask shape: :math:`(N, H_f * W_f, H_{out}, W_{out})`
-
-        - Output:
-
-          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
-
-        Where
-
-        .. math::
-
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
-
-    Args:
-        x (Tensor): The input image with [N, C, H, W] format. A Tensor with type
-            float32, float64.
-        offset (Tensor): The input coordinate offset of deformable convolution layer.
-            A Tensor with type float32, float64.
-        weight (Tensor): The convolution kernel with shape [M, C/g, kH, kW], where M is
-            the number of output channels, g is the number of groups, kH is the filter's
-            height, kW is the filter's width.
-        bias (Tensor, optional): The bias with shape [M,].
-        stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|list|tuple, optional): The padding size. If padding is a list/tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
-        deformable_groups (int): The number of deformable group partitions.
-            Default: deformable_groups = 1.
-        groups (int, optonal): The groups number of the deformable conv layer. According to
-            grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
-            the first half of the filters is only connected to the first half
-            of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1.
-        mask (Tensor, optional): The input mask of deformable convolution layer.
-            A Tensor with type float32, float64. It should be None when you use
-            deformable convolution v1.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`.
-                        Generally, no setting is required. Default: None.
-    Returns:
-        Tensor: The tensor variable storing the deformable convolution \
-                  result. A Tensor with type float32, float64.
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
-    Examples:
-        .. code-block:: python
-
-          #deformable conv v2:
-
-          import paddle
-          input = paddle.rand((8, 1, 28, 28))
-          kh, kw = 3, 3
-          weight = paddle.rand((16, 1, kh, kw))
-          # offset shape should be [bs, 2 * kh * kw, out_h, out_w]
-          # mask shape should be [bs, hw * hw, out_h, out_w]
-          # In this case, for an input of 28, stride of 1
-          # and kernel size of 3, without padding, the output size is 26
-          offset = paddle.rand((8, 2 * kh * kw, 26, 26))
-          mask = paddle.rand((8, kh * kw, 26, 26))
-          out = paddle.vision.ops.deform_conv2d(input, offset, weight, mask=mask)
-          print(out.shape)
-          # returns
-          [8, 16, 26, 26]
-
-          #deformable conv v1:
-
-          import paddle
-          input = paddle.rand((8, 1, 28, 28))
-          kh, kw = 3, 3
-          weight = paddle.rand((16, 1, kh, kw))
-          # offset shape should be [bs, 2 * kh * kw, out_h, out_w]
-          # In this case, for an input of 28, stride of 1
-          # and kernel size of 3, without padding, the output size is 26
-          offset = paddle.rand((8, 2 * kh * kw, 26, 26))
-          out = paddle.vision.ops.deform_conv2d(input, offset, weight)
-          print(out.shape)
-          # returns
-          [8, 16, 26, 26]
-    """
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    padding = utils.convert_to_list(padding, 2, 'padding')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
-
-    use_deform_conv2d_v1 = True if mask is None else False
-
-    if in_dygraph_mode():
-        pre_bias = _C_ops.deformable_conv(x, offset, weight, mask, stride,
-                                          padding, dilation, deformable_groups,
-                                          groups, 1)
-        if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=1)
-        else:
-            out = pre_bias
-    elif _in_legacy_dygraph():
-        attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
-                 'deformable_groups', deformable_groups, 'groups', groups,
-                 'im2col_step', 1)
-        if use_deform_conv2d_v1:
-            op_type = 'deformable_conv_v1'
-            pre_bias = getattr(_legacy_C_ops, op_type)(x, offset, weight,
-                                                       *attrs)
-        else:
-            op_type = 'deformable_conv'
-            pre_bias = getattr(_legacy_C_ops, op_type)(x, offset, mask, weight,
-                                                       *attrs)
-        if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=1)
-        else:
-            out = pre_bias
-    else:
-        check_variable_and_dtype(x, "x", ['float32', 'float64'],
-                                 'deform_conv2d')
-        check_variable_and_dtype(offset, "offset", ['float32', 'float64'],
-                                 'deform_conv2d')
-
-        num_channels = x.shape[1]
-
-        helper = LayerHelper('deformable_conv', **locals())
-        dtype = helper.input_dtype()
-
-        stride = utils.convert_to_list(stride, 2, 'stride')
-        padding = utils.convert_to_list(padding, 2, 'padding')
-        dilation = utils.convert_to_list(dilation, 2, 'dilation')
-
-        pre_bias = helper.create_variable_for_type_inference(dtype)
-
-        if use_deform_conv2d_v1:
-            op_type = 'deformable_conv_v1'
-            inputs = {
-                'Input': x,
-                'Filter': weight,
-                'Offset': offset,
-            }
-        else:
-            op_type = 'deformable_conv'
-            inputs = {
-                'Input': x,
-                'Filter': weight,
-                'Offset': offset,
-                'Mask': mask,
-            }
-
-        outputs = {"Output": pre_bias}
-        attrs = {
-            'strides': stride,
-            'paddings': padding,
-            'dilations': dilation,
-            'groups': groups,
-            'deformable_groups': deformable_groups,
-            'im2col_step': 1,
-        }
-        helper.append_op(type=op_type,
-                         inputs=inputs,
-                         outputs=outputs,
-                         attrs=attrs)
-
-        if bias is not None:
-            out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(type='elementwise_add',
-                             inputs={
-                                 'X': [pre_bias],
-                                 'Y': [bias]
-                             },
-                             outputs={'Out': [out]},
-                             attrs={'axis': 1})
-        else:
-            out = pre_bias
-    return out
-
-
 def prior_box(input,
               image,
               min_sizes,
@@ -946,6 +744,222 @@ def box_coder(prior_box,
                          attrs=attrs,
                          outputs={"OutputBox": output_box})
         return output_box
+
+
+def deform_conv2d(x,
+                  offset,
+                  weight,
+                  bias=None,
+                  stride=1,
+                  padding=0,
+                  dilation=1,
+                  deformable_groups=1,
+                  groups=1,
+                  mask=None,
+                  name=None):
+    r"""
+    Compute 2-D deformable convolution on 4-D input.
+    Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
+
+
+    Deformable Convolution v2:
+
+    .. math::
+
+        y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k) * \Delta m_k}
+
+    Deformable Convolution v1:
+
+    .. math::
+
+        y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k)}
+
+    Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location,
+    Which :math:`\Delta m_k` is one in deformable convolution v1. Please refer to `Deformable ConvNets v2: More Deformable, Better Results
+    <https://arxiv.org/abs/1811.11168v2>`_ and `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_.
+
+    Example:
+        - Input:
+
+          x shape: :math:`(N, C_{in}, H_{in}, W_{in})`
+
+          weight shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
+
+          offset shape: :math:`(N, 2 * H_f * W_f, H_{out}, W_{out})`
+
+          mask shape: :math:`(N, H_f * W_f, H_{out}, W_{out})`
+
+        - Output:
+
+          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
+
+        Where
+
+        .. math::
+
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+
+    Args:
+        x (Tensor): The input image with [N, C, H, W] format. A Tensor with type
+            float32, float64.
+        offset (Tensor): The input coordinate offset of deformable convolution layer.
+            A Tensor with type float32, float64.
+        weight (Tensor): The convolution kernel with shape [M, C/g, kH, kW], where M is
+            the number of output channels, g is the number of groups, kH is the filter's
+            height, kW is the filter's width.
+        bias (Tensor, optional): The bias with shape [M,].
+        stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+        padding (int|list|tuple, optional): The padding size. If padding is a list/tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the
+            padding_H = padding_W = padding. Default: padding = 0.
+        dilation (int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
+            contain two integers, (dilation_H, dilation_W). Otherwise, the
+            dilation_H = dilation_W = dilation. Default: dilation = 1.
+        deformable_groups (int): The number of deformable group partitions.
+            Default: deformable_groups = 1.
+        groups (int, optonal): The groups number of the deformable conv layer. According to
+            grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1.
+        mask (Tensor, optional): The input mask of deformable convolution layer.
+            A Tensor with type float32, float64. It should be None when you use
+            deformable convolution v1.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
+    Returns:
+        Tensor: The tensor variable storing the deformable convolution \
+                  result. A Tensor with type float32, float64.
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
+    Examples:
+        .. code-block:: python
+
+          #deformable conv v2:
+
+          import paddle
+          input = paddle.rand((8, 1, 28, 28))
+          kh, kw = 3, 3
+          weight = paddle.rand((16, 1, kh, kw))
+          # offset shape should be [bs, 2 * kh * kw, out_h, out_w]
+          # mask shape should be [bs, hw * hw, out_h, out_w]
+          # In this case, for an input of 28, stride of 1
+          # and kernel size of 3, without padding, the output size is 26
+          offset = paddle.rand((8, 2 * kh * kw, 26, 26))
+          mask = paddle.rand((8, kh * kw, 26, 26))
+          out = paddle.vision.ops.deform_conv2d(input, offset, weight, mask=mask)
+          print(out.shape)
+          # returns
+          [8, 16, 26, 26]
+
+          #deformable conv v1:
+
+          import paddle
+          input = paddle.rand((8, 1, 28, 28))
+          kh, kw = 3, 3
+          weight = paddle.rand((16, 1, kh, kw))
+          # offset shape should be [bs, 2 * kh * kw, out_h, out_w]
+          # In this case, for an input of 28, stride of 1
+          # and kernel size of 3, without padding, the output size is 26
+          offset = paddle.rand((8, 2 * kh * kw, 26, 26))
+          out = paddle.vision.ops.deform_conv2d(input, offset, weight)
+          print(out.shape)
+          # returns
+          [8, 16, 26, 26]
+    """
+    stride = utils.convert_to_list(stride, 2, 'stride')
+    padding = utils.convert_to_list(padding, 2, 'padding')
+    dilation = utils.convert_to_list(dilation, 2, 'dilation')
+
+    use_deform_conv2d_v1 = True if mask is None else False
+
+    if in_dygraph_mode():
+        pre_bias = _C_ops.deformable_conv(x, offset, weight, mask, stride,
+                                          padding, dilation, deformable_groups,
+                                          groups, 1)
+        if bias is not None:
+            out = nn.elementwise_add(pre_bias, bias, axis=1)
+        else:
+            out = pre_bias
+    elif _in_legacy_dygraph():
+        attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
+                 'deformable_groups', deformable_groups, 'groups', groups,
+                 'im2col_step', 1)
+        if use_deform_conv2d_v1:
+            op_type = 'deformable_conv_v1'
+            pre_bias = getattr(_legacy_C_ops, op_type)(x, offset, weight,
+                                                       *attrs)
+        else:
+            op_type = 'deformable_conv'
+            pre_bias = getattr(_legacy_C_ops, op_type)(x, offset, mask, weight,
+                                                       *attrs)
+        if bias is not None:
+            out = nn.elementwise_add(pre_bias, bias, axis=1)
+        else:
+            out = pre_bias
+    else:
+        check_variable_and_dtype(x, "x", ['float32', 'float64'],
+                                 'deform_conv2d')
+        check_variable_and_dtype(offset, "offset", ['float32', 'float64'],
+                                 'deform_conv2d')
+
+        num_channels = x.shape[1]
+
+        helper = LayerHelper('deformable_conv', **locals())
+        dtype = helper.input_dtype()
+
+        stride = utils.convert_to_list(stride, 2, 'stride')
+        padding = utils.convert_to_list(padding, 2, 'padding')
+        dilation = utils.convert_to_list(dilation, 2, 'dilation')
+
+        pre_bias = helper.create_variable_for_type_inference(dtype)
+
+        if use_deform_conv2d_v1:
+            op_type = 'deformable_conv_v1'
+            inputs = {
+                'Input': x,
+                'Filter': weight,
+                'Offset': offset,
+            }
+        else:
+            op_type = 'deformable_conv'
+            inputs = {
+                'Input': x,
+                'Filter': weight,
+                'Offset': offset,
+                'Mask': mask,
+            }
+
+        outputs = {"Output": pre_bias}
+        attrs = {
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'groups': groups,
+            'deformable_groups': deformable_groups,
+            'im2col_step': 1,
+        }
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
+
+        if bias is not None:
+            out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(type='elementwise_add',
+                             inputs={
+                                 'X': [pre_bias],
+                                 'Y': [bias]
+                             },
+                             outputs={'Out': [out]},
+                             attrs={'axis': 1})
+        else:
+            out = pre_bias
+    return out
 
 
 class DeformConv2D(Layer):
