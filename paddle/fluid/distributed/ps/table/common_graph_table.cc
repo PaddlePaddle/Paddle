@@ -311,8 +311,7 @@ int64_t GraphTable::load_graph_to_memory_from_ssd(int idx,
           std::string str;
           if (_db->get(i, ch, sizeof(int) * 2 + sizeof(uint64_t), str) == 0) {
             count[i] += (int64_t)str.size();
-            for (size_t j = 0; j < static_cast<int>(str.size());
-                 j += sizeof(uint64_t)) {
+            for (size_t j = 0; j < str.size(); j += sizeof(uint64_t)) {
               uint64_t id = *reinterpret_cast<uint64_t *>(str.c_str() + j);
               add_comm_edge(idx, v, id);
             }
@@ -383,8 +382,7 @@ void GraphTable::make_partitions(int idx, int64_t byte_size, int device_len) {
         score[i] = 0;
       }
     }
-    for (size_t j = 0; j < static_cast<int>(value.size());
-         j += sizeof(uint64_t)) {
+    for (size_t j = 0; j < value.size(); j += sizeof(uint64_t)) {
       uint64_t v = *(reinterpret_cast<uint64_t *>(value.c_str() + j));
       int index = -1;
       if (id_map.find(v) != id_map.end()) {
@@ -599,7 +597,7 @@ int32_t GraphTable::make_complementary_graph(int idx, int64_t byte_size) {
   while (iter != count_to_id.rend() && byte_size > 0) {
     for (auto x : iter->second) {
       buffer.push_back(x);
-      if (buffer.size() >= fixed_size) {
+      if (static_cast<int64_t>(buffer.size()) >= fixed_size) {
         int64_t res = load_graph_to_memory_from_ssd(idx, buffer);
         buffer.clear();
         byte_size -= res;
