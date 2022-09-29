@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
@@ -29,6 +30,7 @@ namespace cub = hipcub;
 #include <limits>
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/core/ddim.h"
 
 namespace phi {
@@ -36,6 +38,7 @@ namespace phi {
 namespace {  // NOLINT
 template <typename K, typename V>
 using KeyValuePair = cub::KeyValuePair<K, V>;
+using paddle::platform::FastDivMod;
 
 }  // end namespace
 
@@ -59,6 +62,7 @@ template <typename T, typename IndType, class Reducer, size_t BlockDim>
 __global__ void ArgCUDAKernel(const int64_t height,     // n * h
                               const int64_t width,      // c
                               const int64_t post_size,  // h
+                              const FastDivMod div_mod,
                               const Reducer reducer,
                               const T init,
                               const T* in,
@@ -68,8 +72,10 @@ __global__ void ArgCUDAKernel(const int64_t height,     // n * h
 
   for (int idx = blockIdx.x; idx < height; idx += gridDim.x) {
     KeyValuePair<int, T> kv_pair = {-1, init};
-    int h = idx / post_size;
-    int w = idx % post_size;
+    auto divmod = div_mod.Divmod(idx);
+    int h = divmod.val[0];
+    int w = divmod.val[1];
+
     for (int k = threadIdx.x; k < width; k += blockDim.x) {
       kv_pair =
           reducer({k, in[h * width * post_size + k * post_size + w]}, kv_pair);
@@ -90,27 +96,7 @@ void ComputeFullArg(const phi::GPUContext& dev_ctx,
                     const int64_t post,
                     const int64_t n) {
   auto cu_stream = dev_ctx.stream();
-  auto ComputeBlockSize = [](int64_t col) {
-    auto block_size = 8;
-    if (col > 512)
-      block_size = 1024;
-    else if (col > 256)
-      block_size = 512;
-    else if (col > 128)
-      block_size = 256;
-    else if (col > 64)
-      block_size = 128;
-    else if (col > 32)
-      block_size = 64;
-    else if (col > 16)
-      block_size = 32;
-    else if (col > 8)
-      block_size = 16;
-#ifdef __HIPCC__
-    block_size = std::min(block_size, 256);
-#endif
-    return block_size;
-  };
+  auto ComputeBlockSize = [](int64_t col) { return 512; };
 
   int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t height = pre * post;
@@ -120,30 +106,31 @@ void ComputeFullArg(const phi::GPUContext& dev_ctx,
   const T* in_data = input.data<T>();
   IndType* out_data = dev_ctx.template Alloc<IndType>(indices);
 
+  // post size==> divisor
+  FastDivMod post_divmod = paddle::platform::FastDivMod(post);
+  const size_t kBlockDim = 512;
   if (typeid(Reducer) == typeid(cub::ArgMax)) {
-    switch (ComputeBlockSize(width)) {
-      FIXED_BLOCK_DIM_CASE(ArgCUDAKernel<T, IndType, Reducer, kBlockDim>
-                           <<<grid_size, kBlockDim, 0, cu_stream>>>(
-                               height,
-                               width,
-                               post,
-                               Reducer(),
-                               std::numeric_limits<T>::lowest(),
-                               in_data,
-                               out_data));
-    }
+    ArgCUDAKernel<T, IndType, Reducer, kBlockDim>
+        <<<grid_size, kBlockDim, 0, cu_stream>>>(
+            height,
+            width,
+            post,
+            post_divmod,
+            Reducer(),
+            std::numeric_limits<T>::lowest(),
+            in_data,
+            out_data);
+
   } else {
-    switch (ComputeBlockSize(width)) {
-      FIXED_BLOCK_DIM_CASE(ArgCUDAKernel<T, IndType, Reducer, kBlockDim>
-                           <<<grid_size, kBlockDim, 0, cu_stream>>>(
-                               height,
-                               width,
-                               post,
-                               Reducer(),
-                               std::numeric_limits<T>::max(),
-                               in_data,
-                               out_data));
-    }
+    ArgCUDAKernel<T, IndType, Reducer, kBlockDim>
+        <<<grid_size, kBlockDim, 0, cu_stream>>>(height,
+                                                 width,
+                                                 post,
+                                                 post_divmod,
+                                                 Reducer(),
+                                                 std::numeric_limits<T>::max(),
+                                                 in_data,
+                                                 out_data);
   }
 }
 
@@ -171,6 +158,7 @@ struct VisitDataCudaArgMinMaxFunctor {
 
   template <typename IndType>
   void apply() const {
+    /*
     phi::DDim x_dims;
     int new_axis = axis;
     if (flatten) {
@@ -196,7 +184,10 @@ struct VisitDataCudaArgMinMaxFunctor {
       post *= x_dims[i];
     }
 
-    ComputeFullArg<T, IndType, Reducer>(dev_ctx, x, out, pre, post, n);
+    ComputeFullArg<T, IndType, Reducer>(dev_ctx, x, out, pre, post, n);*/
+
+    phi::funcs::ReduceKernel<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
+        dev_ctx, x, out, kps::IdentityFunctor<T>(), {axis.to<int>()});
   }
 };
 
@@ -230,7 +221,7 @@ void ArgMinKernel(const Context& dev_ctx,
                   bool flatten,
                   int dtype,
                   DenseTensor* out) {
-  ArgMinMaxOpCUDAKernel<Context, T, cub::ArgMin>(
+  ArgMinMaxOpCUDAKernel<Context, T, kps::ArgMinFunctor>
       dev_ctx, x, axis, keepdims, flatten, dtype, out);
 }
 

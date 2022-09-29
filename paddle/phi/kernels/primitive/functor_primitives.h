@@ -137,6 +137,21 @@ struct MinFunctor {
 };
 
 /**
+ * @brief Default binary arg min functor
+ */
+template <typename T>
+struct ArgMinFunctor {
+  inline int64_t initial() { return std::numeric_limits<int64_t>::max(); }
+
+  __device__ __forceinline__ int64_t operator()(const T a,
+                                                const T b,
+                                                const int64_t a_idx,
+                                                const int64_t b_idx) const {
+    return (b < a) ? b_idx : a_idx;
+  }
+};
+
+/**
  * @brief Default binary max functor
  */
 template <typename T>
@@ -147,6 +162,21 @@ struct MaxFunctor {
 
   __device__ __forceinline__ T operator()(const T a, const T b) const {
     return (b > a) ? b : a;
+  }
+};
+
+/**
+ * @brief Default binary arg max functor
+ */
+template <typename T>
+struct ArgMaxFunctor {
+  inline int64_t initial() { return std::numeric_limits<int64_t>::lowest(); }
+
+  __device__ __forceinline__ int64_t operator()(const T a,
+                                                const T b,
+                                                const int64_t a_idx,
+                                                const int64_t b_idx) const {
+    return (b > a) ? b_idx : a_idx;
   }
 };
 
