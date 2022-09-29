@@ -866,7 +866,7 @@ struct PermuteParams {
   IdxAndOffsetHelper<IndexT, Rank> dst_index_helper;
   int perm[Rank]{};
 
-  explicit PermuteParams(const std::vector<size_t>& dims,
+  explicit PermuteParams(const std::vector<int>& dims,
                          const std::vector<int>& perm_) {
     size_t dst_dims[Rank];
     for (size_t i = 0; i < Rank; ++i) {
@@ -966,7 +966,7 @@ template <typename T, typename IndexT, int VecSize, int Rank>
 inline void LaunchPermuteKernel(const phi::GPUContext& ctx,
                                 const IndexT count,
                                 const PermuteType perm_type,
-                                const std::vector<size_t>& dims,
+                                const std::vector<int>& dims,
                                 const std::vector<int>& perm,
                                 const T* src,
                                 T* dst) {
@@ -996,7 +996,7 @@ template <typename T, typename IndexT, int VecSize>
 inline void LaunchPermuteRankDispatch(const phi::GPUContext& ctx,
                                       const IndexT count,
                                       const PermuteType perm_type,
-                                      const std::vector<size_t>& dims,
+                                      const std::vector<int>& dims,
                                       const std::vector<int>& perm,
                                       const T* src,
                                       T* dst) {
@@ -1074,7 +1074,7 @@ template <typename T,
           int Size,
           int VecSize = (sizeof(T) > 8 ? 1 : Size)>
 inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
-                                  const std::vector<size_t>& dims,
+                                  const std::vector<int>& dims,
                                   const T* src,
                                   T* dst) {
   auto rank = dims.size();
@@ -1096,7 +1096,7 @@ template <typename T, typename IndexT>
 inline void LaunchWithDispatchVecSize(const phi::GPUContext& ctx,
                                       const int vec_size,
                                       const PermuteType perm_type,
-                                      const std::vector<size_t>& dims,
+                                      const std::vector<int>& dims,
                                       const std::vector<int>& perm,
                                       const T* src,
                                       T* dst,
@@ -1126,84 +1126,64 @@ inline void LaunchWithDispatchVecSize(const phi::GPUContext& ctx,
 }
 
 template <typename T>
-inline void LaunchWithDispatchIndex(const phi::GPUContext& ctx,
-                                    const size_t count,
-                                    const int vec_size,
-                                    const PermuteType perm_type,
-                                    const std::vector<size_t>& dims,
-                                    const std::vector<int>& perm,
-                                    const T* src,
-                                    T* dst) {
-  if (count < std::numeric_limits<int>::max()) {
-    LaunchWithDispatchVecSize<T, int>(ctx,
-                                      vec_size,
-                                      perm_type,
-                                      dims,
-                                      perm,
-                                      src,
-                                      dst,
-                                      static_cast<int>(count));
+inline void SimplifyThenLaunch(const phi::GPUContext& ctx,
+                               phi::DenseTensor* in,
+                               phi::DenseTensor* out,
+                               const DimsSimplifier<T> simplifier) {
+  if (simplifier.GetPermType() == PermuteType::kCopy) {
+    // If perm is [0,1,2,3], then just operate a DtoD copy.
+    phi::Copy(ctx, *in, ctx.GetPlace(), false, out);
   } else {
-    int64_t cnt = static_cast<int64_t>(count);
-    LaunchWithDispatchVecSize<T, int64_t>(ctx,
-                                          vec_size,
-                                          perm_type,
-                                          dims,
-                                          perm,
-                                          src,
-                                          dst,
-                                          static_cast<int64_t>(count));
+    auto count = simplifier.GetCount();
+    if (count < std::numeric_limits<int>::max()) {
+      LaunchWithDispatchVecSize<T, int>(ctx,
+                                        simplifier.GetVecSize(),
+                                        simplifier.GetPermType(),
+                                        simplifier.GetDims(),
+                                        simplifier.GetPerm(),
+                                        in->data<T>(),
+                                        out->data<T>(),
+                                        static_cast<int>(count));
+    } else {
+      int64_t cnt = static_cast<int64_t>(count);
+      LaunchWithDispatchVecSize<T, int64_t>(ctx,
+                                            simplifier.GetVecSize(),
+                                            simplifier.GetPermType(),
+                                            simplifier.GetDims(),
+                                            simplifier.GetPerm(),
+                                            in->data<T>(),
+                                            out->data<T>(),
+                                            static_cast<int64_t>(count));
+    }
   }
 }
 
 template <typename T>
-inline void SimplifyThenLaunch(const int rank,
-                               const DeviceContext& ctx,
-                               const phi::DenseTensor& in,
+inline void TransposeWithEigen(const DeviceContext& ctx,
+                               phi::DenseTensor* in,
                                phi::DenseTensor* out,
-                               const std::vector<int32_t>& perm) {
-  int sm_count = ctx.GetSMCount();
-  auto src_dims = phi::vectorize<size_t>(in.dims());
-  std::cout << "Before DimsSimplifier" << std::endl;
-
-  auto simplifier = DimsSimplifier<T>(
-      sm_count, rank, perm, src_dims, in.data<T>(), out->data<T>());
-
-  std::cout << "PermType: " << simplifier.GetPermType() << std::endl;
-  std::cout << "Vec_Size: " << simplifier.GetVecSize() << std::endl;
-  std::cout << "Dims : [";
-  for (auto i = 0; i < simplifier.GetDims().size(); ++i) {
-    std::cout << simplifier.GetDims()[i] << ", ";
-  }
-  std::cout << " ]" << std::endl;
-  std::cout << "Perm : [";
-  for (auto i = 0; i < simplifier.GetPerm().size(); ++i) {
-    std::cout << simplifier.GetPerm()[i] << ", ";
-  }
-  std::cout << " ]" << std::endl;
-
-  if (simplifier.GetPermType() == PermuteType::kCopy) {
-    // If perm is [0,1,2,3], then just operate a DtoD copy.
-    phi::Copy(ctx, in, ctx.GetPlace(), false, out);
-  } else {
-    LaunchWithDispatchIndex<T>(ctx,
-                               simplifier.GetCount(),
-                               simplifier.GetVecSize(),
-                               simplifier.GetPermType(),
-                               simplifier.GetDims(),
-                               simplifier.GetPerm(),
-                               in.data<T>(),
-                               out->data<T>());
-  }
+                               const DimsSimplifier<T> simplifier) {
+  auto origin_dims = in->dims();
+  in->ResizeAndAllocate(phi::make_ddim(simplifier.GetDims()));
+  TransCompute<phi::GPUContext, T>(
+      GetRank(), ctx, *in, out, simplifier.GetPerm());
+  in->ResizeAndAllocate(origin_dims);
 }
 
 template <typename T>
 void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
-                              const phi::DenseTensor& in,
-                              const std::vector<int32_t>& perm,
-                              phi::DenseTensor* out) {
-  const int rank = perm.size();
+                              phi::DenseTensor* in,
+                              phi::DenseTensor* out,
+                              const std::vector<int32_t>& perm, ) {
   int64_t numel = in.numel();
+  auto simplifier = DimsSimplifier<T>(ctx.GetSMCount(),
+                                      perm.size(),
+                                      perm,
+                                      numel,
+                                      phi::vectorize<size_t>(in.dims()),
+                                      in.data<T>(),
+                                      out->data<T>());
+
   bool ret{false};
   if (numel >= std::numeric_limits<int32_t>::max()) {
     ret = TransposeSimple<T, int64_t>::run(ctx, in, perm, out);
@@ -1211,9 +1191,8 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
     ret = TransposeSimple<T>::run(ctx, in, perm, out);
   }
   if (!ret) {
-    auto* tuner =
-        phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
-    tuner->AddCallBack(SimplifyThenLaunch<phi::GPUContext, T>);
+    auto* tuner = phi::autotune::MakeTransposeTuner<T>(TransposeWithEigen<T>);
+    tuner->AddCallBack(SimplifyThenLaunch<T>);
 
     size_t key = phi::autotune::TransposeKey(
         phi::vectorize(in.dims()),
@@ -1223,11 +1202,10 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
     tuner->Run(ctx,
                phi::autotune::AlgorithmType::kTranspose,
                key,
-               rank,
                ctx,
-               in,
+               const_cast<phi::DenseTensor*>(&in),
                out,
-               perm);
+               simplifier);
   }
 }
 

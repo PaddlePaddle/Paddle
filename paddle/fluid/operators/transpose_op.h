@@ -81,14 +81,13 @@ class DimsSimplifier {
  public:
   explicit DimsSimplifier(const int sm_count,
                           const int rank,
+                          const int64_t numel,
                           const std::vector<int32_t>& perm,
-                          const std::vector<size_t>& dims,
+                          const std::vector<int>& dims,
                           const T* src,
                           T* dst)
-      : perm_(rank), dims_(rank) {
+      : perm_(rank), dims_(rank), count_(numel) {
     SimplifyPermAndDims(rank, dims, perm);
-    count_ = std::accumulate(
-        dims.begin(), dims.end(), size_t{1}, std::multiplies<size_t>());
     if (rank_ > 1) {
       vec_size_ = GetPermVecSize(sm_count, src, dst);
       perm_.resize(rank_);
@@ -96,19 +95,20 @@ class DimsSimplifier {
     }
   }
 
-  size_t GetCount() const { return count_; }
+  int GetRank() const { return rank_; }
   int GetVecSize() const { return vec_size_; }
+  int64_t GetCount() const { return count_; }
   PermuteType GetPermType() const { return type_; }
 
   std::vector<int> GetPerm() const { return perm_; }
   std::vector<size_t> GetDims() const { return dims_; }
 
  private:
-  size_t rank_{1};
-  size_t count_{0};
+  int rank_{1};
+  int64_t count_{0};
   int vec_size_{1};
   std::vector<int> perm_;
-  std::vector<size_t> dims_;
+  std::vector<int> dims_;
   PermuteType type_{kCopy};
 
   void SimplifyPermAndDims(const size_t rank,
@@ -141,7 +141,7 @@ class DimsSimplifier {
     // for example, if combined dims is [32, 1, 10, 1],
     // valid_map is [0, -1, 1, -1] and generate simplified
     // dims as [32, 10]
-    size_t valid_dim_idx = 0;
+    int valid_dim_idx = 0;
     bool sequential_flag = false;
     for (size_t i = 0; i < rank; ++i) {
       const int src_dim = combined_dims[i];
