@@ -1756,7 +1756,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
                tensor->data<int>(),
                tensor->numel() * sizeof(int));
       } else if (tensor->place() == platform::CUDAPlace()) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
         cudaMemcpy(int32_host.data(),
                    tensor->data<int>(),
                    tensor->numel() * sizeof(int),

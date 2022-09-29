@@ -67,6 +67,9 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
                                  min_input_shape,
                                  max_input_shape,
                                  optim_input_shape,
+                                 std::map<std::string, std::vector<int>>(),
+                                 std::map<std::string, std::vector<int>>(),
+                                 std::map<std::string, std::vector<int>>(),
                                  false,
                                  phi::DataType::FLOAT32,
                                  NaiveLogger::Global());
@@ -241,6 +244,9 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
                                  min_input_shape,
                                  max_input_shape,
                                  optim_input_shape,
+                                 std::map<std::string, std::vector<int>>(),
+                                 std::map<std::string, std::vector<int>>(),
+                                 std::map<std::string, std::vector<int>>(),
                                  false,
                                  phi::DataType::FLOAT32,
                                  NaiveLogger::Global());
