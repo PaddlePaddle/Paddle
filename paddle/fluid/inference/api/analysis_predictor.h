@@ -416,7 +416,7 @@ class AnalysisPredictor : public PaddlePredictor {
   void StatisticShapeRangeInfo(
       const std::map<std::string, std::vector<std::vector<int32_t>>>
           &map_shape_range,
-      const std::string& file_path);
+      const std::string &file_path);
   void CollectShapeRangeInfo();
 
   void InitPlace();
