@@ -38,6 +38,11 @@ def _set_default_store(store):
     _default_store = store
 
 
+def _del_default_store():
+    global _default_store
+    del _default_store
+
+
 def _set_self_info(name, rank, ip, port):
     self_info = pickle.dumps(ServiceInfo(name, rank, ip, port))
     _default_store.set(str(rank), self_info)
@@ -254,6 +259,7 @@ def shutdown():
     # master will exit in the end
     _barrier_never_timeout(rank, world_size)
     core.rpc_stop_server()
+    _del_default_store()
     logger.info("Trainer {}: rpc shutdown!".format(rank))
 
 
