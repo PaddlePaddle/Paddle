@@ -1565,7 +1565,8 @@ int32_t GraphTable::random_sample_nodes(int type_id,
   int remain = sample_size, last_pos = -1, num;
   std::set<int> separator_set;
   for (int i = 0; i < range_num - 1; i++) {
-    while (separator_set.find(num = rand_r() % (sample_size - 1)) !=
+    unsigned int seed = time(0);
+    while (separator_set.find(num = rand_r(&seed) % (sample_size - 1)) !=
            separator_set.end()) {
       continue;
     }
@@ -1579,7 +1580,9 @@ int32_t GraphTable::random_sample_nodes(int type_id,
   remain = total_size - sample_size + range_num;
   separator_set.clear();
   for (int i = 0; i < range_num; i++) {
-    while (separator_set.find(num = rand_r() % remain) != separator_set.end()) {
+    unsigned int seed = time(0);
+    while (separator_set.find(num = rand_r(&seed) % remain) !=
+           separator_set.end()) {
       continue;
     }
     separator_set.insert(num);
@@ -1593,7 +1596,8 @@ int32_t GraphTable::random_sample_nodes(int type_id,
     used += ranges_len[index++];
   }
   std::vector<std::pair<int, int>> first_half, second_half;
-  int start_index = rand_r() % total_size;
+  unsigned int seed = time(0);
+  int start_index = rand_r(&seed) % total_size;
   for (size_t i = 0; i < ranges_len.size() && i < ranges_pos.size(); i++) {
     if (ranges_pos[i] + ranges_len[i] - 1 + start_index < total_size) {
       first_half.push_back({ranges_pos[i] + start_index,
