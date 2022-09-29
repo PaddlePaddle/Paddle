@@ -1,3 +1,8 @@
+# - op : rnn
+#   backward : rnn_grad
+#   extra :
+#     attrs : [bool is_test = false]
+
 - op : abs
   backward : abs_grad
   extra :
@@ -207,6 +212,10 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : distributed_push_sparse
+  extra :
+    attrs : ['int[] slots = {}']
 
 - op : divide (elementwise_div)
   backward : divide_grad (elementwise_div)
@@ -485,6 +494,12 @@
   outputs :
     out : Out
 
+- op : nce
+  backward : nce_grad
+  extra :
+    attrs : [int trainer_id = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
+             'str[] table_names = {}', 'int[] custom_neg_classes = {}']
+
 - op : nearest_interp (nearest_interp_v2)
   backward : nearest_interp_grad (nearest_interp_v2_grad)
   extra :
@@ -599,11 +614,6 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : rnn
-  backward : rnn_grad
-  extra :
-    attrs : [bool is_test = false]
-
 - op : round
   backward : round_grad
   extra :
@@ -621,6 +631,11 @@
 - op : seed
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- op : sequence_softmax
+  backward : sequence_softmax_grad
+  extra :
+    attrs : [str data_format = "AnyLayout"]
 
 - op : shape
   extra :

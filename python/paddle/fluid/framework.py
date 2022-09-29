@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 from collections import defaultdict
 from collections.abc import Iterable
@@ -181,9 +179,9 @@ def _fallback_legacy_dygraph():
     global _in_eager_mode_
     global _is_first_import_
     need_fallback = False
-    # Only enable eager on CPU/GPU
-    is_not_support = core.is_compiled_with_xpu() or core.is_compiled_with_npu(
-    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu()
+    # Only enable eager on CPU/GPU/XPU
+    is_not_support = core.is_compiled_with_npu() or core.is_compiled_with_ipu(
+    ) or core.is_compiled_with_mlu()
 
     if _in_eager_mode_ and is_not_support:
         # switch into legacy dygraph mode
@@ -245,8 +243,8 @@ def _non_static_mode():
 
 @signature_safe_contextmanager
 def _test_eager_guard(place=None):
-    # FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
-    # only GPU/CPU. Remove this after we improve this feature.
+    # FIXME(dev): We haven't fully verified eager mode on NPU et.al but
+    # only GPU/CPU/XPU. Remove this after we improve this feature.
     already_fallback = _fallback_legacy_dygraph()
     if not already_fallback:
         _disable_legacy_dygraph()
@@ -1377,6 +1375,9 @@ class Variable(object):
 
         if dtype == core.VarDesc.VarType.STRINGS:
             type = core.VarDesc.VarType.STRINGS
+            lod_level = None
+
+        if type == core.VarDesc.VarType.SPARSE_COO:
             lod_level = None
 
         self.belong_to_optimizer = belong_to_optimizer
@@ -5931,6 +5932,8 @@ class Program(object):
                     "activation_bits", "bit_length", "quantize_weight_bits",
                     "weight_quant_scale"
                 ]
+                for extra_attr_name in extra_attrs_map.keys():
+                    op.remove_attr(extra_attr_name)
                 remove_attr_list = []
                 for name in op.attr_names():
                     if quant:
@@ -5939,7 +5942,7 @@ class Program(object):
                         if name.endswith("_threshold"):
                             continue
                     if len(extra_attrs_map) > 0:
-                        if name in extra_attrs_map or name in common_clipped_attrs_list:
+                        if name in common_clipped_attrs_list:
                             op.remove_attr(name)
                         continue
                     find = False

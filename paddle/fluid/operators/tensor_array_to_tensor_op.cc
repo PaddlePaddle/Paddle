@@ -21,7 +21,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 void LodTensorArray2LodTensorVector(const framework::Scope &scope,
                                     const std::string &base_name,

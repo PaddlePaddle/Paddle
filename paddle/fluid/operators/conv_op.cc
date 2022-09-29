@@ -222,8 +222,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   if (input_data_type != framework::proto::VarType::INT8 &&
       input_data_type != framework::proto::VarType::UINT8 &&
       input_data_type != framework::proto::VarType::BF16) {
-    auto filter_data_type =
-        framework::TransToProtoVarType(ctx.Input<Tensor>("Filter")->dtype());
+    auto filter_data_type = framework::TransToProtoVarType(
+        ctx.Input<phi::DenseTensor>("Filter")->dtype());
     PADDLE_ENFORCE_EQ(
         input_data_type,
         filter_data_type,
@@ -260,7 +260,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 
 framework::OpKernelType ConvOp::GetKernelTypeForVar(
     const std::string& var_name,
-    const Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
@@ -532,7 +532,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 
 framework::OpKernelType ConvOpGrad::GetKernelTypeForVar(
     const std::string& var_name,
-    const Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and

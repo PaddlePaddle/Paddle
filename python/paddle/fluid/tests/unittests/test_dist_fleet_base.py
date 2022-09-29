@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from paddle.distributed.fleet.utils.ps_util import DistributedInfer
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 import paddle.distributed.fleet as fleet

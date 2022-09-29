@@ -549,8 +549,8 @@ class TestFeedForward {
   bool has_bias_;
   int size_src_, size_weight_, size_bias_, size_output_;
 
-  framework::Tensor src_, weight_, bias_, out_, bias_out_;
-  framework::Tensor dinput_, dweight_, dbias_, doutput_;
+  phi::DenseTensor src_, weight_, bias_, out_, bias_out_;
+  phi::DenseTensor dinput_, dweight_, dbias_, doutput_;
   std::vector<T> src_vec_, weight_vec_, bias_vec_, out_vec_, bias_out_vec_;
   std::vector<T> dinput_vec_, dweight_vec_, dbias_vec_, doutput_vec_;
 

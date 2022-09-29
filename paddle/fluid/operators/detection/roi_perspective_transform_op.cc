@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
@@ -249,12 +249,12 @@ template <typename T>
 class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    auto* mask = ctx.Output<framework::Tensor>("Mask");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* mask = ctx.Output<phi::DenseTensor>("Mask");
     auto* out_transform_matrix =
-        ctx.Output<framework::Tensor>("TransformMatrix");
+        ctx.Output<phi::DenseTensor>("TransformMatrix");
     auto transformed_height = ctx.Attr<int>("transformed_height");
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
@@ -268,7 +268,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     const T* input_data = in->data<T>();
     int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
 
-    framework::Tensor roi2image;
+    phi::DenseTensor roi2image;
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(ctx.GetPlace());
     auto lod = rois->lod().back();
@@ -397,11 +397,10 @@ template <typename T>
 class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto transformed_height = ctx.Attr<int>("transformed_height");
     auto transformed_width = ctx.Attr<int>("transformed_width");
@@ -418,7 +417,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     const T* out_grad_data = out_grad->data<T>();
     const T* rois_data = rois->data<T>();
 
-    framework::Tensor roi2image;
+    phi::DenseTensor roi2image;
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(ctx.GetPlace());
     auto lod = rois->lod().back();

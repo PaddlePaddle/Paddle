@@ -24,7 +24,7 @@ using paddle::platform::MKLDNNFormatForSize;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::to_void_cast;
 using phi::vectorize;
-using Tensor = paddle::framework::Tensor;
+using Tensor = phi::DenseTensor;
 using paddle::framework::GradVarName;
 using phi::make_ddim;
 
@@ -106,7 +106,7 @@ static paddle::framework::DDim ColumnMatrixDimsFromVector(
 phi::DDim GetDimForInput(const ExecutionContext &ctx, std::string input_name) {
   auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
   auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
-  auto input_dims = ctx.Input<Tensor>(input_name)->dims();
+  auto input_dims = ctx.Input<phi::DenseTensor>(input_name)->dims();
   if (!shape.empty() && !axis.empty()) {
     return input_dims.reshape(shape).transpose(axis);
   }
@@ -182,9 +182,9 @@ class MatMulMKLDNNHandler
   }
 
  public:
-  void Execute(const paddle::framework::Tensor *x,
-               const paddle::framework::Tensor *y,
-               paddle::framework::Tensor *out) {
+  void Execute(const phi::DenseTensor *x,
+               const phi::DenseTensor *y,
+               phi::DenseTensor *out) {
     const auto src_memory_p = this->AcquireSrcMemory(x);
     const auto weights_memory_p = this->AcquireWeightsMemory(y);
     const auto dst_memory_p = this->AcquireDstMemory(out);
@@ -217,8 +217,7 @@ class MatMulMKLDNNHandler
     out->set_mem_desc(dst_memory_p->get_desc().reshape(out->dims()));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      paddle::framework::Tensor *output) {
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor *output) {
     // We cannot use base AcquireDstMemory as it makes an allocation request
     // base on DST memory primitive size. This is fine in general, but in MatMul
     // we have primitive that covers only one batch of Data and then shift
@@ -241,7 +240,7 @@ class MatMulMKLDNNHandler
       const ExecutionContext &ctx, std::string input_name) {
     auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
     auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
-    auto input_dims = ctx.Input<Tensor>(input_name)->dims();
+    auto input_dims = ctx.Input<phi::DenseTensor>(input_name)->dims();
     auto new_dims = input_dims;
     if (!shape.empty() && !axis.empty()) {
       new_dims = input_dims.reshape(shape).transpose(axis);
@@ -478,9 +477,9 @@ static void ExecuteMatMul(const ExecutionContext &ctx) {
       ctx.HasAttr("fuse_activation")
           ? ctx.Attr<std::string>("fuse_activation") == "relu"
           : false;
-  auto *x = ctx.Input<Tensor>("X");
-  auto *y = ctx.Input<Tensor>("Y");
-  auto *out = ctx.Output<Tensor>("Out");
+  auto *x = ctx.Input<phi::DenseTensor>("X");
+  auto *y = ctx.Input<phi::DenseTensor>("Y");
+  auto *out = ctx.Output<phi::DenseTensor>("Out");
   const auto &dev_ctx =
       ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
   const auto &onednn_engine = dev_ctx.GetEngine();
@@ -551,7 +550,7 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext &ctx,
                                      const std::string input_name) {
   auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
   auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
-  auto input_dims = ctx.Input<Tensor>(input_name)->dims();
+  auto input_dims = ctx.Input<phi::DenseTensor>(input_name)->dims();
   auto new_dims = input_dims;
   if (!shape.empty() && !axis.empty()) {
     new_dims = input_dims.reshape(shape).transpose(axis);
@@ -639,7 +638,7 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
       {DNNL_ARG_DST, *dst_memory_p}};
 
   if (ctx.HasInput("ResidualData")) {
-    auto *residual_data = ctx.Input<Tensor>("ResidualData");
+    auto *residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
     const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
     matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});
@@ -746,9 +745,9 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
     const auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
 
-    auto *x = ctx.Input<Tensor>("X");
-    auto *y = ctx.Input<Tensor>("Y");
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *y = ctx.Input<phi::DenseTensor>("Y");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
     bool trans_x = ctx.HasAttr("trans_x") ? ctx.Attr<bool>("trans_x")
                                           : ctx.Attr<bool>("transpose_X");
     bool trans_y = ctx.HasAttr("trans_y") ? ctx.Attr<bool>("trans_y")
@@ -858,8 +857,8 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     const auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
 
-    auto *x = ctx.Input<Tensor>("X");
-    auto *y = ctx.Input<Tensor>("Y");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *y = ctx.Input<phi::DenseTensor>("Y");
 
     auto x_dims = vectorize(x->dims());
     auto y_dims = vectorize(y->dims());
@@ -882,9 +881,9 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    auto *dout = ctx.Input<Tensor>(GradVarName("Out"));
-    auto *dx = ctx.Output<Tensor>(GradVarName("X"));
-    auto *dy = ctx.Output<Tensor>(GradVarName("Y"));
+    auto *dout = ctx.Input<phi::DenseTensor>(GradVarName("Out"));
+    auto *dx = ctx.Output<phi::DenseTensor>(GradVarName("X"));
+    auto *dy = ctx.Output<phi::DenseTensor>(GradVarName("Y"));
 
     bool trans_x = ctx.HasAttr("trans_x") ? ctx.Attr<bool>("trans_x")
                                           : ctx.Attr<bool>("transpose_X");
@@ -1133,11 +1132,11 @@ void MatMulGradMKLDNNKernel<T>::RunKernel(const ExecutionContext &ctx) const {
       ctx.template device_context<platform::MKLDNNDeviceContext>();
   const auto &onednn_engine = dev_ctx.GetEngine();
 
-  auto x = *ctx.Input<Tensor>("X");
-  auto y = *ctx.Input<Tensor>("Y");
-  auto dout = *ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-  auto *dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+  auto x = *ctx.Input<phi::DenseTensor>("X");
+  auto y = *ctx.Input<phi::DenseTensor>("Y");
+  auto dout = *ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+  auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+  auto *dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
   bool transpose_x = ctx.HasAttr("transpose_X") ? ctx.Attr<bool>("transpose_X")
                                                 : ctx.Attr<bool>("trans_x");

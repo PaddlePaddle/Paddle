@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import os
 import sys
 import copy
 import subprocess
 import time
+import tempfile
 
 
 def start_local_trainers(cluster,
@@ -136,18 +135,29 @@ class TestProcessGroup(TestMultipleCustomCPU):
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        cmd = 'rm -rf PaddleCustomDevice \
+        self.temp_dir = tempfile.TemporaryDirectory()
+        cmd = 'cd {} \
             && git clone {} \
-            && cd PaddleCustomDevice/backends/custom_cpu \
+            && cd PaddleCustomDevice \
+            && git fetch origin \
             && git checkout {} -b dev \
+            && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8'.format(
-            os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG'))
+            self.temp_dir.name, os.getenv('PLUGIN_URL'),
+            os.getenv('PLUGIN_TAG'))
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
-            cur_dir, 'PaddleCustomDevice/backends/custom_cpu/build')
+            cur_dir, '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
+                self.temp_dir.name))
+        os.environ['FLAGS_selected_custom_cpus'] = '0,1'
+        os.environ['CUSTOM_CPU_VISIBLE_DEVICES'] = '0,1'
+        os.environ['PADDLE_XCCL_BACKEND'] = 'custom_cpu'
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_process_group_xccl(self):
         from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
