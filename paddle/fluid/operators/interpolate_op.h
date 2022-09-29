@@ -26,11 +26,11 @@ template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = framework::DataLayout;
 
 inline std::vector<int> get_new_shape(
-    const std::vector<const Tensor*>& list_new_shape_tensor) {
+    const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
   // get tensor from
   std::vector<int> vec_new_shape;
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
@@ -43,7 +43,7 @@ inline std::vector<int> get_new_shape(
                           tensor->dims()));
     if (platform::is_gpu_place(tensor->place()) ||
         platform::is_mlu_place(tensor->place())) {
-      framework::Tensor temp;
+      phi::DenseTensor temp;
       paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
@@ -55,10 +55,11 @@ inline std::vector<int> get_new_shape(
 }
 
 template <typename T>
-inline std::vector<T> get_new_data_from_tensor(const Tensor* new_data_tensor) {
+inline std::vector<T> get_new_data_from_tensor(
+    const phi::DenseTensor* new_data_tensor) {
   std::vector<T> vec_new_data;
   auto* new_data = new_data_tensor->data<T>();
-  framework::Tensor cpu_starts_tensor;
+  phi::DenseTensor cpu_starts_tensor;
   if (platform::is_gpu_place(new_data_tensor->place()) ||
       platform::is_mlu_place(new_data_tensor->place())) {
     paddle::framework::TensorCopySync(
@@ -97,8 +98,8 @@ inline void ExtractNCDWH(const framework::DDim& dims,
 }
 
 template <typename T>
-static void NearestNeighborInterpolate(const Tensor& input,
-                                       Tensor* output,
+static void NearestNeighborInterpolate(const phi::DenseTensor& input,
+                                       phi::DenseTensor* output,
                                        const float ratio_h,
                                        const float ratio_w,
                                        const int n,
@@ -131,8 +132,8 @@ static void NearestNeighborInterpolate(const Tensor& input,
 }
 
 template <typename T>
-static void LinearInterpolation(const Tensor& input,
-                                Tensor* output,
+static void LinearInterpolation(const phi::DenseTensor& input,
+                                phi::DenseTensor* output,
                                 const float ratio_w,
                                 const int in_w,
                                 const int n,
@@ -195,8 +196,8 @@ static void LinearInterpolation(const Tensor& input,
 }
 
 template <typename T>
-static void LinearInterpolationGrad(const Tensor& output_grad,
-                                    Tensor* input_grad,
+static void LinearInterpolationGrad(const phi::DenseTensor& output_grad,
+                                    phi::DenseTensor* input_grad,
                                     const float ratio_w,
                                     const int in_w,
                                     const int n,
@@ -237,8 +238,8 @@ static void LinearInterpolationGrad(const Tensor& output_grad,
 }
 
 template <typename T>
-static void BilinearInterpolation(const Tensor& input,
-                                  Tensor* output,
+static void BilinearInterpolation(const phi::DenseTensor& input,
+                                  phi::DenseTensor* output,
                                   const float ratio_h,
                                   const float ratio_w,
                                   const int in_h,
@@ -337,8 +338,8 @@ static void BilinearInterpolation(const Tensor& input,
 }
 
 template <typename T>
-static void TrilinearInterpolation(const Tensor& input,
-                                   Tensor* output,
+static void TrilinearInterpolation(const phi::DenseTensor& input,
+                                   phi::DenseTensor* output,
                                    const float ratio_d,
                                    const float ratio_h,
                                    const float ratio_w,
@@ -522,8 +523,8 @@ static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
 }
 
 template <typename T>
-static void BicubicInterpolation(const Tensor& input,
-                                 Tensor* output,
+static void BicubicInterpolation(const phi::DenseTensor& input,
+                                 phi::DenseTensor* output,
                                  const float ratio_h,
                                  const float ratio_w,
                                  const int in_h,
@@ -602,8 +603,8 @@ static void BicubicInterpolation(const Tensor& input,
 }
 
 template <typename T>
-static void NearestNeighborInterpolateGrad(const Tensor& output_grad,
-                                           Tensor* input_grad,
+static void NearestNeighborInterpolateGrad(const phi::DenseTensor& output_grad,
+                                           phi::DenseTensor* input_grad,
                                            const float ratio_h,
                                            const float ratio_w,
                                            const int n,
@@ -637,8 +638,8 @@ static void NearestNeighborInterpolateGrad(const Tensor& output_grad,
 }
 
 template <typename T>
-static void BilinearInterpolationGrad(const Tensor& output_grad,
-                                      Tensor* input_grad,
+static void BilinearInterpolationGrad(const phi::DenseTensor& output_grad,
+                                      phi::DenseTensor* input_grad,
                                       const float ratio_h,
                                       const float ratio_w,
                                       const int in_h,
@@ -696,8 +697,8 @@ static void BilinearInterpolationGrad(const Tensor& output_grad,
 }
 
 template <typename T>
-static void TrilinearInterpolationGrad(const Tensor& output_grad,
-                                       Tensor* input_grad,
+static void TrilinearInterpolationGrad(const phi::DenseTensor& output_grad,
+                                       phi::DenseTensor* input_grad,
                                        const float ratio_d,
                                        const float ratio_h,
                                        const float ratio_w,
@@ -793,8 +794,8 @@ static void TrilinearInterpolationGrad(const Tensor& output_grad,
 }
 
 template <typename T>
-static void BicubicInterpolationGrad(const Tensor& output_grad,
-                                     Tensor* input_grad,
+static void BicubicInterpolationGrad(const phi::DenseTensor& output_grad,
+                                     phi::DenseTensor* input_grad,
                                      const float ratio_h,
                                      const float ratio_w,
                                      const int in_h,
@@ -854,8 +855,8 @@ static void BicubicInterpolationGrad(const Tensor& output_grad,
 
 template <typename T>
 static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
-                                const Tensor& input,
-                                Tensor* output) {
+                                const phi::DenseTensor& input,
+                                phi::DenseTensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -866,14 +867,14 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
   int align_mode = ctx.Attr<int>("align_mode");
 
   int out_w = ctx.Attr<int>("out_w");
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
     out_w = new_size[0];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale = scale_data[0];
@@ -883,7 +884,7 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
     if (scale > 0) {
       out_w = static_cast<int>(in_w * scale);
     }
-    auto out_size = ctx.Input<Tensor>("OutSize");
+    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       auto out_size_data = get_new_data_from_tensor<int>(out_size);
       out_w = out_size_data[0];
@@ -928,8 +929,8 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
-                                const Tensor& input,
-                                Tensor* output) {
+                                const phi::DenseTensor& input,
+                                phi::DenseTensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -942,7 +943,7 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
 
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -950,7 +951,7 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
     out_w = new_size[1];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale = scale_data[0];
@@ -961,7 +962,7 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
       out_h = static_cast<int>(in_h * scale);
       out_w = static_cast<int>(in_w * scale);
     }
-    auto out_size = ctx.Input<Tensor>("OutSize");
+    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       auto out_size_data = get_new_data_from_tensor<int>(out_size);
       out_h = out_size_data[0];
@@ -1045,8 +1046,8 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
-                                const Tensor& input,
-                                Tensor* output) {
+                                const phi::DenseTensor& input,
+                                phi::DenseTensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1060,7 +1061,7 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
 
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -1069,7 +1070,7 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
     out_w = new_size[2];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale = scale_data[0];
@@ -1081,7 +1082,7 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
       out_h = static_cast<int>(in_h * scale);
       out_w = static_cast<int>(in_w * scale);
     }
-    auto out_size = ctx.Input<Tensor>("OutSize");
+    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       auto out_size_data = get_new_data_from_tensor<int>(out_size);
       out_d = out_size_data[0];
@@ -1157,9 +1158,9 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
-                                Tensor* input_grad,
-                                const Tensor& output_grad) {
-  auto* input = ctx.Input<Tensor>("X");
+                                phi::DenseTensor* input_grad,
+                                const phi::DenseTensor& output_grad) {
+  auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1171,7 +1172,7 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
 
   int out_w = ctx.Attr<int>("out_w");
   float scale;
-  auto scale_tensor = ctx.Input<Tensor>("Scale");
+  auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale = scale_data[0];
@@ -1181,12 +1182,12 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
   if (scale > 0) {
     out_w = static_cast<int>(in_w * scale);
   }
-  auto out_size = ctx.Input<Tensor>("OutSize");
+  auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
     auto out_size_data = get_new_data_from_tensor<int>(out_size);
     out_w = out_size_data[0];
   }
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -1231,9 +1232,9 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
-                                Tensor* input_grad,
-                                const Tensor& output_grad) {
-  auto* input = ctx.Input<Tensor>("X");
+                                phi::DenseTensor* input_grad,
+                                const phi::DenseTensor& output_grad) {
+  auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1246,7 +1247,7 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
   float scale;
-  auto scale_tensor = ctx.Input<Tensor>("Scale");
+  auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale = scale_data[0];
@@ -1257,13 +1258,13 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
     out_h = static_cast<int>(in_h * scale);
     out_w = static_cast<int>(in_w * scale);
   }
-  auto out_size = ctx.Input<Tensor>("OutSize");
+  auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
     auto out_size_data = get_new_data_from_tensor<int>(out_size);
     out_h = out_size_data[0];
     out_w = out_size_data[1];
   }
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -1342,9 +1343,9 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
-                                Tensor* input_grad,
+                                phi::DenseTensor* input_grad,
                                 const Tensor output_grad) {
-  auto* input = ctx.Input<Tensor>("X");
+  auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1358,7 +1359,7 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
   float scale;
-  auto scale_tensor = ctx.Input<Tensor>("Scale");
+  auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale = scale_data[0];
@@ -1370,14 +1371,14 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
     out_h = static_cast<int>(in_h * scale);
     out_w = static_cast<int>(in_w * scale);
   }
-  auto out_size = ctx.Input<Tensor>("OutSize");
+  auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
     auto out_size_data = get_new_data_from_tensor<int>(out_size);
     out_d = out_size_data[0];
     out_h = out_size_data[1];
     out_w = out_size_data[2];
   }
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -1442,8 +1443,8 @@ template <typename T>
 class InterpolateKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
 
     auto input_dims = input->dims();
     if (input_dims.size() == 3) {  // 1D interpolation
@@ -1460,8 +1461,10 @@ template <typename T>
 class InterpolateGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto output_grad_dims = output_grad->dims();
     if (output_grad_dims.size() == 3) {  // 1D interpolation grad

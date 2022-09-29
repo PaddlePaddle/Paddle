@@ -107,7 +107,7 @@ class StridedSliceOpConverter : public OpConverter {
 
       auto create_weights = [&](const std::vector<int>& data,
                                 const std::string& type) -> int* {
-        std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+        std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
         int data_size = data.size();
         tmp_tensor->Resize({data_size});
         auto* tmp_data = tmp_tensor->mutable_data<int>(platform::CPUPlace());

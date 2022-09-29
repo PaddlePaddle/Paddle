@@ -21,7 +21,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using framework::DataLayout;
 
 template <typename T>
@@ -50,7 +50,7 @@ class TransposeMKLDNNHandler {
     return std::make_shared<dnnl::memory>(src_md, engine_, ptr);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output,
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output,
                                                  platform::Place place) {
     auto dst_md = Axis2MemoryDesc(dims_, axis_);
     auto dst_data = output->mutable_data<T>(place, dst_md.get_size());
@@ -101,8 +101,8 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
     std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
     int ndims = axis.size();
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     const T* input_data = input->data<T>();
 
     if (ndims == 1) {
@@ -140,9 +140,8 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                       true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL TransposeGrad must use CPUPlace"));
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (!x_grad) return;
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();

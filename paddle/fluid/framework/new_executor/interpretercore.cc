@@ -366,10 +366,10 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
 }
 
 void InterpreterCore::BuildInplace() {
-  // NOTE(Ruibiao): coalesce_tensor_op outputs a FusedOutput Tensor and a list
-  // of Output Tensors which are sliced from the FusedOutput. These outputs
-  // sholud not be the outvar of the in-place var-pair since memory reuse
-  // between FusedOutput and Output Tensors is assumed. For the following
+  // NOTE(Ruibiao): coalesce_tensor_op outputs a FusedOutput phi::DenseTensor
+  // and a list of Output Tensors which are sliced from the FusedOutput. These
+  // outputs sholud not be the outvar of the in-place var-pair since memory
+  // reuse between FusedOutput and Output Tensors is assumed. For the following
   // example:
   // fused_var, var1, var2, var3 = coalesce_tensor(var1, var2, var3)
   // var1 = sum(var4, var5)
@@ -468,9 +468,9 @@ void InterpreterCore::BuildOperatorDependences() {
   }
 }
 
-// At the end of each step, the holder of Tensor in LoDTensorArray is null.
-// Clear these Tensors and leave LoDTensorArray empty, otherwise an exception
-// will occur in the next step
+// At the end of each step, the holder of phi::DenseTensor in LoDTensorArray is
+// null. Clear these Tensors and leave LoDTensorArray empty, otherwise an
+// exception will occur in the next step
 void InterpreterCore::ClearLoDTensorArrayInLocalScope() {
   auto vars = local_scope_->LocalVars();
   for (auto var : vars) {
@@ -1016,7 +1016,7 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
 
   gpuStream_t stream =
       reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext()).stream();
-  auto TensorRecordStream = [&stream](Tensor& tensor) {
+  auto TensorRecordStream = [&stream](phi::DenseTensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {
       return;
