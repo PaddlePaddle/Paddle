@@ -23,7 +23,7 @@ from collections import defaultdict
 import paddle
 import paddle.utils as utils
 
-from paddle import fluid, static
+from paddle import fluid, profiler, static
 from paddle.jit import to_static
 from paddle.metric import Metric
 from paddle.static import InputSpec
@@ -570,7 +570,8 @@ class Engine:
                    step=None,
                    lr=None,
                    fetch_new_names=None,
-                   fetch_sections=None):
+                   fetch_sections=None,
+                   profiler_log=""):
         prefix = "[{}] ".format(mode)
         logs = {}
         if epoch is not None:
@@ -596,7 +597,7 @@ class Engine:
                 else:
                     for i in range(section_start, section_end):
                         logs[fetch_new_names[i] + ": {} "] = outs[i]
-        string = prefix + ''.join(list(logs.keys()))
+        string = prefix + ''.join(list(logs.keys())) + profiler_log
         self._logger.info(string.format(*list(logs.values())))
 
     def fit(self,
@@ -695,29 +696,34 @@ class Engine:
             mode=self.mode)
         lr_scheduler = self._get_lr_scheduler(self.main_program)
 
-        for epoch in range(epochs):
-            for step, _ in enumerate(train_dataloader):
-                try:
-                    outs = self._executor.run(
-                        self.main_program,
-                        fetch_list=fetch_list,
-                        use_program_cache=self._strategy.use_cache,
-                        return_numpy=self._strategy.return_numpy)
-                except core.EOFException:
-                    break
-                if lr_scheduler and step % self._k_steps == 0:
-                    lr_scheduler.step()
-                lr = self._get_lr(self._lr_optimizer)
-                self._print_log(outs, self.mode, epoch, step, lr,
-                                fetch_new_names, fetch_sections)
+        with profiler.Profiler(timer_only=True) as prof:
+            for epoch in range(epochs):
+                for step, _ in enumerate(train_dataloader):
+                    try:
+                        outs = self._executor.run(
+                            self.main_program,
+                            fetch_list=fetch_list,
+                            use_program_cache=self._strategy.use_cache,
+                            return_numpy=self._strategy.return_numpy)
+                    except core.EOFException:
+                        break
+                    if lr_scheduler and step % self._k_steps == 0:
+                        lr_scheduler.step()
+                    lr = self._get_lr(self._lr_optimizer)
 
-            if valid_data and epoch % valid_freq == 0:
-                self.evaluate(valid_data, valid_sample_split, batch_size,
-                              valid_steps, collate_fn, callbacks)
-                self._switch_mode("train")
-            else:
-                self._reset_metrics()
-        return outs
+                    prof.step()
+
+                    self._print_log(outs, self.mode, epoch, step, lr,
+                                    fetch_new_names, fetch_sections,
+                                    prof.step_info())
+
+                if valid_data and epoch % valid_freq == 0:
+                    self.evaluate(valid_data, valid_sample_split, batch_size,
+                                  valid_steps, collate_fn, callbacks)
+                    self._switch_mode("train")
+                else:
+                    self._reset_metrics()
+            return outs
 
     def evaluate(self,
                  valid_data,

@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class EyeNPUKernel : public framework::OpKernel<T> {
@@ -36,7 +36,7 @@ class EyeNPUKernel : public framework::OpKernel<T> {
     framework::NPUAttributeMap attr_input = {
         {"num_rows", num_rows}, {"num_columns", num_columns}, {"dtype", dtype}};
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto& runner = NpuOpRunner("Eye", {}, {*out}, attr_input);

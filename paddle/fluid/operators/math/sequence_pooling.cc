@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
@@ -42,7 +42,7 @@ class MaxSeqPoolFunctor {
                   const framework::LoDTensor& input,
                   T pad_value,
                   framework::LoDTensor* output,
-                  framework::Tensor* index) {
+                  phi::DenseTensor* index) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto idx_dims = index->dims();
@@ -121,7 +121,7 @@ class MaxSeqPoolFunctor<T, true> {
                   const framework::LoDTensor& input,
                   T pad_value,
                   framework::LoDTensor* output,
-                  framework::Tensor* index) {
+                  phi::DenseTensor* index) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     PADDLE_ENFORCE_GT(in_dims.size(),
@@ -180,7 +180,7 @@ class MaxSeqPoolGradFunctor {
  public:
   void operator()(const phi::CPUContext& context,
                   const framework::LoDTensor& out_grad,
-                  const framework::Tensor& index,
+                  const phi::DenseTensor& index,
                   framework::LoDTensor* in_grad) {
     auto og_dims = out_grad.dims();
     auto ig_dims = in_grad->dims();
@@ -352,7 +352,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
                   const framework::LoDTensor& input,
                   framework::LoDTensor* output,
                   bool is_test,
-                  framework::Tensor* index = nullptr) {
+                  phi::DenseTensor* index = nullptr) {
     if (pooltype == "MAX") {
       if (is_test) {
         math::MaxSeqPoolFunctor<T, true> max_pool;
@@ -442,7 +442,7 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
                   /* max pool has index */
-                  const framework::Tensor* index = nullptr) {
+                  const phi::DenseTensor* index = nullptr) {
     if (pooltype == "MAX") {
       math::MaxSeqPoolGradFunctor<T> max_pool_grad;
       max_pool_grad(context, out_grad, *index, in_grad);

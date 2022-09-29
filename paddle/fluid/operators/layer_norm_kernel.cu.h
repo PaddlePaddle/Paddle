@@ -33,7 +33,7 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -938,12 +938,12 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     const int gridx = 2 * dev_ctx.GetSMCount();
 
     // get temp space for dscale and dbias.
-    framework::Tensor dscale_temp;
+    phi::DenseTensor dscale_temp;
     dscale_temp.Resize({gridx, cols});
     dscale_temp.mutable_data<U>(dev_ctx.GetPlace());
     U *dscale_temp_ptr = dscale_temp.data<U>();
 
-    framework::Tensor dbias_temp;
+    phi::DenseTensor dbias_temp;
     dbias_temp.Resize({gridx, cols});
     dbias_temp.mutable_data<U>(dev_ctx.GetPlace());
     U *dbias_temp_ptr = dbias_temp.data<U>();

@@ -68,7 +68,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     framework::DDim x_dims = x->dims();
     framework::DDim out_dims(x_dims);
-    framework::Tensor temp;
+    phi::DenseTensor temp;
     auto out_ptr = temp.mutable_data<T>(out_dims, place);
     if (root_id == comm->rank()) {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
@@ -79,10 +79,10 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
           comm->comm(),
           stream));
 
-      framework::TensorCopy(*static_cast<const framework::Tensor*>(x),
+      framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
                             place,
                             *platform::DeviceContextPool::Instance().Get(place),
-                            static_cast<framework::Tensor*>(&temp));
+                            static_cast<phi::DenseTensor*>(&temp));
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           out_ptr, numel, dtype, root_id, comm->comm(), stream));
@@ -94,9 +94,9 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     temp = temp.Slice(start_index, end_index);
     temp.Resize(out_dims);
     out->mutable_data<T>(out_dims, place);
-    framework::TensorCopySync(*static_cast<const framework::Tensor*>(&temp),
+    framework::TensorCopySync(*static_cast<const phi::DenseTensor*>(&temp),
                               place,
-                              static_cast<framework::Tensor*>(out));
+                              static_cast<phi::DenseTensor*>(out));
     out->Resize(out_dims);
 #else
     PADDLE_ENFORCE_EQ(

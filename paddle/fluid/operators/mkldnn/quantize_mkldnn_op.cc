@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dnnl.hpp"
+#include "paddle/fluid/operators/quantize_op.h"
+
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/quantize_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
@@ -26,7 +26,7 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
 using platform::to_void_cast;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using dnnl::stream;
 using framework::DataLayout;
 using platform::GetMKLDNNFormat;
@@ -35,8 +35,8 @@ template <typename T>
 class QuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("Input");
-    auto* out = ctx.Output<Tensor>("Output");
+    auto* x = ctx.Input<phi::DenseTensor>("Input");
+    auto* out = ctx.Output<phi::DenseTensor>("Output");
 
     const auto quantization_scale = ctx.Attr<float>("Scale");
     const auto quantization_shift = ctx.Attr<float>("Shift");

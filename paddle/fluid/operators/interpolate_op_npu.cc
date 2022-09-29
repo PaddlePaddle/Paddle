@@ -20,7 +20,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = framework::DataLayout;
 
 inline static void CheckArgument(const framework::ExecutionContext& ctx) {
@@ -68,7 +68,7 @@ static void CalcOutSize(const framework::ExecutionContext& ctx,
   *out_w = ctx.Attr<int>("out_w");
 
   auto dev_ctx = platform::DeviceContextPool::Instance().Get(ctx.GetPlace());
-  auto list_new_size_tensor = ctx.MultiInput<Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
 
   if (list_new_size_tensor.size() > 0) {
     std::vector<int32_t> new_size_h(1);
@@ -79,7 +79,7 @@ static void CalcOutSize(const framework::ExecutionContext& ctx,
     *out_w = new_size_w[0];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
     if (scale_tensor != nullptr) {
       std::vector<float> scale_data;
       framework::TensorToVector(*scale_tensor, *dev_ctx, &scale_data);
@@ -93,7 +93,7 @@ static void CalcOutSize(const framework::ExecutionContext& ctx,
       *out_w = static_cast<int32_t>(in_w * scale);
     }
 
-    auto out_size = ctx.Input<Tensor>("OutSize");
+    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       std::vector<int> out_size_data;
       framework::TensorToVector(*out_size, *dev_ctx, &out_size_data);
@@ -124,7 +124,7 @@ class InterpolateNPUKernel : public framework::OpKernel<T> {
     // when 'align_corners' is 'true' or data type is 'double'
     CheckArgument(ctx);
 
-    auto* input = ctx.Input<Tensor>("X");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
     framework::DDim input_dims = input->dims();
 
     const std::string data_layout_str =
@@ -141,7 +141,7 @@ class InterpolateNPUKernel : public framework::OpKernel<T> {
     input_x.ShareDataWith(*input);
     input_x.set_layout(data_layout);
 
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     framework::DDim output_dims;
     if (data_layout == DataLayout::kNCHW) {
       output_dims = {n, c, out_h, out_w};
@@ -175,7 +175,7 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
     // when 'align_corners' is 'true' or data type is 'double'
     CheckArgument(ctx);
 
-    auto* input = ctx.Input<Tensor>("X");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
     framework::DDim input_dims = input->dims();
 
     const std::string data_layout_str =
@@ -188,12 +188,14 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
     CalcOutSize(ctx, h, w, &out_h, &out_w);
 
     // the 'output_grad' tensor may has no set (or wrong set) of the layout
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     Tensor output_grad_tmp(output_grad->type());
     output_grad_tmp.ShareDataWith(*output_grad);
     output_grad_tmp.set_layout(data_layout);
 
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     input_grad->set_layout(data_layout);
     framework::DDim input_grad_dims;
     if (data_layout == DataLayout::kNCHW) {

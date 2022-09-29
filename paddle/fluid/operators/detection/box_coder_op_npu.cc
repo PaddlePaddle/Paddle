@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 struct BoxCoderFunction {
@@ -28,29 +28,29 @@ struct BoxCoderFunction {
     stream = ctx.template device_context<paddle::platform::NPUDeviceContext>()
                  .stream();
   }
-  Tensor Adds(const Tensor& x, float scalar) {
+  Tensor Adds(const phi::DenseTensor& x, float scalar) {
     Tensor y;
     y.mutable_data<T>(x.dims(), place);
     const auto& runner = NpuOpRunner("Adds", {x}, {y}, {{"value", scalar}});
     runner.Run(stream);
     return y;
   }
-  Tensor Muls(const Tensor& x, float scalar) {
+  Tensor Muls(const phi::DenseTensor& x, float scalar) {
     Tensor y;
     y.mutable_data<T>(x.dims(), place);
     const auto& runner = NpuOpRunner("Muls", {x}, {y}, {{"value", scalar}});
     runner.Run(stream);
     return y;
   }
-  Tensor Mul(const Tensor& x, const Tensor& y) {
+  Tensor Mul(const phi::DenseTensor& x, const phi::DenseTensor& y) {
     Tensor z;
     z.mutable_data<T>(x.dims(), place);
     const auto& runner = NpuOpRunner("Mul", {x, y}, {z}, {});
     runner.Run(stream);
     return z;
   }
-  Tensor SubWithBroadCast(const Tensor& x,
-                          const Tensor& y,
+  Tensor SubWithBroadCast(const phi::DenseTensor& x,
+                          const phi::DenseTensor& y,
                           const framework::DDim& shape) {
     Tensor z;
     z.mutable_data<T>(shape, place);
@@ -58,59 +58,59 @@ struct BoxCoderFunction {
     runner.Run(stream);
     return z;
   }
-  void DivWithBroadCastVoid(const Tensor& x,
-                            const Tensor& y,
+  void DivWithBroadCastVoid(const phi::DenseTensor& x,
+                            const phi::DenseTensor& y,
                             const framework::DDim& shape,
-                            Tensor* z) {
+                            phi::DenseTensor* z) {
     z->mutable_data<T>(shape, place);
     const auto& runner = NpuOpRunner("Div", {x, y}, {*z}, {});
     runner.Run(stream);
   }
-  Tensor DivWithBroadCast(const Tensor& x,
-                          const Tensor& y,
+  Tensor DivWithBroadCast(const phi::DenseTensor& x,
+                          const phi::DenseTensor& y,
                           const framework::DDim& shape) {
     Tensor z;
     DivWithBroadCastVoid(x, y, shape, &z);
     return z;
   }
-  void MulWithBroadCastVoid(const Tensor& x,
-                            const Tensor& y,
+  void MulWithBroadCastVoid(const phi::DenseTensor& x,
+                            const phi::DenseTensor& y,
                             const framework::DDim& shape,
-                            Tensor* z) {
+                            phi::DenseTensor* z) {
     z->mutable_data<T>(shape, place);
     const auto& runner = NpuOpRunner("Mul", {x, y}, {*z}, {});
     runner.Run(stream);
   }
-  Tensor MulWithBroadCast(const Tensor& x,
-                          const Tensor& y,
+  Tensor MulWithBroadCast(const phi::DenseTensor& x,
+                          const phi::DenseTensor& y,
                           const framework::DDim& shape) {
     Tensor z;
     MulWithBroadCastVoid(x, y, shape, &z);
     return z;
   }
-  void AddWithBroadCastVoid(const Tensor& x,
-                            const Tensor& y,
+  void AddWithBroadCastVoid(const phi::DenseTensor& x,
+                            const phi::DenseTensor& y,
                             const framework::DDim& shape,
-                            Tensor* z) {
+                            phi::DenseTensor* z) {
     z->mutable_data<T>(shape, place);
     const auto& runner = NpuOpRunner("AddV2", {x, y}, {*z}, {});
     runner.Run(stream);
   }
-  Tensor AddWithBroadCast(const Tensor& x,
-                          const Tensor& y,
+  Tensor AddWithBroadCast(const phi::DenseTensor& x,
+                          const phi::DenseTensor& y,
                           const framework::DDim& shape) {
     Tensor z;
     AddWithBroadCastVoid(x, y, shape, &z);
     return z;
   }
-  Tensor Abs(const Tensor& x) {
+  Tensor Abs(const phi::DenseTensor& x) {
     Tensor y;
     y.mutable_data<T>(x.dims(), place);
     const auto& runner = NpuOpRunner("Abs", {x}, {y}, {});
     runner.Run(stream);
     return y;
   }
-  Tensor Log(const Tensor& x) {
+  Tensor Log(const phi::DenseTensor& x) {
     Tensor t_x_m1 = Adds(x, -1);
     Tensor y;
     y.mutable_data<T>(x.dims(), place);
@@ -118,14 +118,14 @@ struct BoxCoderFunction {
     runner.Run(stream);
     return y;
   }
-  Tensor Exp(const Tensor& x) {
+  Tensor Exp(const phi::DenseTensor& x) {
     Tensor y;
     y.mutable_data<T>(x.dims(), place);
     const auto& runner = NpuOpRunner("Exp", {x}, {y}, {});
     runner.Run(stream);
     return y;
   }
-  Tensor Dot(const Tensor& x, const Tensor& y) {
+  Tensor Dot(const phi::DenseTensor& x, const phi::DenseTensor& y) {
     auto dim_x = x.dims();
     auto dim_y = y.dims();
     PADDLE_ENFORCE_EQ(
@@ -158,7 +158,7 @@ struct BoxCoderFunction {
   void ConcatVoid(const std::vector<Tensor>& inputs,
                   const framework::DDim& shape_out,
                   int axis,
-                  Tensor* output) {
+                  phi::DenseTensor* output) {
     output->mutable_data<T>(shape_out, place);
     std::vector<std::string> names;
     for (size_t i = 0; i < inputs.size(); i++) {
@@ -179,7 +179,7 @@ struct BoxCoderFunction {
     ConcatVoid(inputs, shape_out, axis, &output);
     return output;
   }
-  Tensor Slice(const Tensor& x,
+  Tensor Slice(const phi::DenseTensor& x,
                const std::vector<int>& offsets,
                const std::vector<int>& size,
                const framework::DDim& shape) {
@@ -201,7 +201,7 @@ template <typename T>
 void Vector2Tensor(const framework::ExecutionContext& ctx,
                    const std::vector<T>& vec,
                    const framework::DDim& ddim,
-                   Tensor* tsr) {
+                   phi::DenseTensor* tsr) {
   framework::TensorFromVector<T>(vec, ctx.device_context(), tsr);
   ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
   tsr->Resize(ddim);
@@ -209,12 +209,12 @@ void Vector2Tensor(const framework::ExecutionContext& ctx,
 
 template <typename T>
 void BoxCoderEnc(const framework::ExecutionContext& ctx,
-                 const Tensor* tb,
-                 const Tensor* pb,
-                 const Tensor* pbv,
+                 const phi::DenseTensor* tb,
+                 const phi::DenseTensor* pb,
+                 const phi::DenseTensor* pbv,
                  const bool norm,
                  const std::vector<float>& variance,
-                 Tensor* out) {
+                 phi::DenseTensor* out) {
   auto M = pb->dims()[0];
   auto N = tb->dims()[0];
   auto shape_0 = phi::make_ddim({4, 2});
@@ -273,13 +273,13 @@ void BoxCoderEnc(const framework::ExecutionContext& ctx,
 
 template <typename T>
 void BoxCoderDec(const framework::ExecutionContext& ctx,
-                 const Tensor* tb,
-                 const Tensor* pb,
-                 const Tensor* pbv,
+                 const phi::DenseTensor* tb,
+                 const phi::DenseTensor* pb,
+                 const phi::DenseTensor* pbv,
                  const bool norm,
                  const std::vector<float>& variance,
                  int axis,
-                 Tensor* out) {
+                 phi::DenseTensor* out) {
   auto shape_0 = phi::make_ddim({4, 2});
   Tensor m_diff;
   Tensor m_aver;
@@ -378,10 +378,10 @@ template <typename T>
 class BoxCoderNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* prior_box = ctx.Input<Tensor>("PriorBox");
-    auto* prior_box_var = ctx.Input<Tensor>("PriorBoxVar");
+    auto* prior_box = ctx.Input<phi::DenseTensor>("PriorBox");
+    auto* prior_box_var = ctx.Input<phi::DenseTensor>("PriorBoxVar");
     auto* target_box = ctx.Input<framework::LoDTensor>("TargetBox");
-    auto* output_box = ctx.Output<Tensor>("OutputBox");
+    auto* output_box = ctx.Output<phi::DenseTensor>("OutputBox");
     std::vector<float> variance = ctx.Attr<std::vector<float>>("variance");
     const int axis = ctx.Attr<int>("axis");
 
