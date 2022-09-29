@@ -408,8 +408,12 @@ function build_base() {
 
     if [ "$WITH_ARM" == "ON" ];then
         make TARGET=ARMV8 -j ${parallel_number};build_error=$?
+        df -lh
+        sleep 100h
     else
         make install -j ${parallel_number};build_error=$?
+        df -lh
+        sleep 100h
     fi
 
     # ci will collect ccache hit rate
@@ -2014,7 +2018,6 @@ set -x
     #precise_card_test_single "$exclusive_tests"
     ljd_testcases='^test_op_signature$|^variant_test$'
     precise_card_test_single "$ljd_testcases" 1
-    wait;
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
 
     get_failedUts_precise_map_file
