@@ -66,12 +66,15 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     """
     init rpc.
 
-    Arguments:
+    Args:
         name (str): worker name.
         rank (int): worker id.
         world_size (int): number of workers.
         master_endpoint (str): id address of master, other nodes communicate with the master to
             get the information of all service nodes.
+
+    Returns:
+        None.
 
     Examples:
         .. code-block:: python
@@ -173,7 +176,7 @@ def rpc_async(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
     Returns:
         Returns a :class:`FutureWrapper` object that can be waited
         on. When completed, the return value of ``fn`` on ``args`` and
-        ``kwargs`` can be got by `fut.wait()`
+        ``kwargs`` can be got by `fut.wait()`.
 
     Examples:
         run on server 0:
@@ -255,6 +258,9 @@ def shutdown():
     This will block until all local and remote RPC processes reach this method
     and wait for all outstanding work to complete.
 
+    Returns:
+        None.
+
     Examples:
         .. code-block:: python
             import paddle.distributed.rpc as rpc
@@ -280,7 +286,7 @@ def get_service_info(name):
         name (str): name of the server.
 
     Returns:
-        class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`
+        class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`.
 
     Examples:
         run on server `11.11.11.10`
@@ -305,7 +311,7 @@ def get_all_service_infos():
     Get all service informations.
 
     Returns:
-        List[ServiceInfo]
+        List[ServiceInfo].
 
     Examples:
         run on server `11.11.11.10`:
@@ -344,7 +350,7 @@ def get_current_service_info():
     Get current service information.
 
     Returns:
-        class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`
+        class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`.
 
     Examples:
         run on server `11.11.11.10`
