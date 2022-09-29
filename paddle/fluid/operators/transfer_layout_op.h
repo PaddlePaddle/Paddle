@@ -96,7 +96,7 @@ class TransferLayoutFunctor {
 
         auto out_tz = phi::vectorize<int64_t>(out_tensor.dims());
         dnnl::memory::data_type in_type =
-            ToMKLDNNDataType(framework::TransToProtoVarType(in_tensor.dtype()));
+            phi::funcs::ToOneDNNDataType(framework::TransToProtoVarType(in_tensor.dtype()));
 
         dnnl::memory::desc out_mem_desc(out_tz, in_type, out_format);
         out_tensor.set_mem_desc(out_mem_desc);
