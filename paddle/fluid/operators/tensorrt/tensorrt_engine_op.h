@@ -502,7 +502,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (!platform::is_gpu_place(t.place())) {
         phi::DenseTensor out;
         platform::CUDAPlace dst_place;
-        framework::TransDataDevice(t, dst_place, &out);
+        framework::TensorCopy(t, dst_place, dev_ctx, &out);
         t.ShareDataWith(out);
       }
       auto t_shape = phi::vectorize<int64_t>(t.dims());
