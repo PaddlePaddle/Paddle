@@ -20,28 +20,24 @@ import datetime
 
 import paddle
 import paddle.fluid.core as core
-import paddle.distributed as dist
+# import paddle.distributed as dist
 from paddle.distributed.utils.launch_utils import logger
 from paddle.distributed.rpc.internal import _serialize, PythonFunc
-from paddle.distributed.collective import (
-    _new_process_group_impl,
-    _default_group_name,
-    Group,
-)
+# from paddle.distributed.collective import (
+#     _new_process_group_impl,
+#     _default_group_name,
+#     Group,
+# )
 from paddle.distributed.launch.context import Node
 
 ServiceInfo = namedtuple("ServiceInfo", ["name", "rank", "ip", "port"])
 
-_DEFAULT_BACKEND = "gloo"
 _DEFAULT_TIMEOUT_MS = 500000
 _TIMEOUT_MAX_DAYS = 99999999
-_default_group = None
 _default_store = None
-
-
-def _set_default_group(group):
-    global _default_group
-    _default_group = group
+# count the number of `_barrier_nver_timeout` is called and
+# ensure that the barrier key is unique
+_barrier_count = 0
 
 
 def _set_default_store(store):
@@ -54,8 +50,7 @@ def _set_self_info(name, rank, ip, port):
     _default_store.set(str(rank), self_info)
 
 
-def _exchange_all_service_infos():
-    world_size = dist.get_world_size()
+def _exchange_all_service_infos(world_size):
     all_infos = []
     s = set()
     for rank in range(world_size):
@@ -93,16 +88,9 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
                         master_endpoint="127.0.0.1:8001")
             rpc.shutdown()
     """
-    if rank != None:
-        rank = rank
-        # set environment variable `PADDLE_TRAINER_ID` to reuse dist.get_rank() api
-        os.environ["PADDLE_TRAINER_ID"] = str(rank)
-    else:
+    if rank == None:
         rank = int(os.environ["PADDLE_TRAINER_ID"])
-    if world_size != None:
-        # set environment variable `PADDLE_TRAINERS_NUM` to reuse dist.get_world_size() api
-        os.environ["PADDLE_TRAINERS_NUM"] = str(world_size)
-    else:
+    if world_size == None:
         world_size = int(os.environ["PADDLE_TRAINERS_NUM"])
     server_endpoint = os.getenv("PADDLE_SERVER_ENDPOINT", None)
     if server_endpoint is None:
@@ -122,24 +110,7 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     ip, port = server_endpoint.split(":")
     port = int(port)
     _set_self_info(name, rank, ip, port)
-    pg = _new_process_group_impl(
-        _DEFAULT_BACKEND,
-        default_store,
-        rank,
-        world_size,
-        _default_group_name,
-        pg_options=None,
-    )
-    ranks = list(range(world_size))
-    group = Group(rank,
-                  world_size,
-                  id=0,
-                  ranks=ranks,
-                  pg=pg,
-                  name=_default_group_name)
-    _set_default_group(group)
-    paddle.distributed.barrier(group=group)
-    all_infos = _exchange_all_service_infos()
+    all_infos = _exchange_all_service_infos(world_size)
     c_infos = []
     for node_info in all_infos:
         info = core.ServiceInfo(node_info.name, node_info.rank, node_info.ip,
@@ -147,12 +118,12 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
         c_infos.append(info)
     core.init_and_set_agent_instance(name, c_infos)
     core.rpc_start_server()
-    paddle.distributed.barrier(group=group)
+    _barrier_never_timeout(rank, world_size)
     core.rpc_start_client()
-    logger.info("Trainer {}: Init RPC done!".format(dist.get_rank()))
+    logger.info("Trainer {}: Init RPC done!".format(rank))
 
 
-def rpc_sync(name, fn, timeout_ms=_DEFAULT_TIMEOUT_MS, args=None, kwargs=None):
+def rpc_sync(name, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
     """
     Make a blocking RPC call to run function ``fn`` on server ``to``.
 
@@ -190,11 +161,11 @@ def rpc_sync(name, fn, timeout_ms=_DEFAULT_TIMEOUT_MS, args=None, kwargs=None):
                         master_endpoint="127.0.0.1:8001")
                 rpc.shutdown()
     """
-    fut = _invoke_rpc(name, fn, timeout_ms, args, kwargs)
+    fut = _invoke_rpc(name, fn, args, kwargs, timeout_ms)
     return fut.wait()
 
 
-def rpc_async(name, fn, timeout_ms=_DEFAULT_TIMEOUT_MS, args=None, kwargs=None):
+def rpc_async(name, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
     """
     Make a non-blocking RPC call to run function ``fn`` on server ``to``.
 
@@ -235,10 +206,10 @@ def rpc_async(name, fn, timeout_ms=_DEFAULT_TIMEOUT_MS, args=None, kwargs=None):
                         master_endpoint="127.0.0.1:8001")
                 rpc.shutdown()
     """
-    return _invoke_rpc(name, fn, timeout_ms, args, kwargs)
+    return _invoke_rpc(name, fn, args, kwargs, timeout_ms)
 
 
-def _invoke_rpc(name, fn, timeout_ms, args, kwargs):
+def _invoke_rpc(name, fn, args, kwargs, timeout_ms):
     args = args if args else ()
     kwargs = kwargs if kwargs else {}
     serial_obj = _serialize(PythonFunc(fn, args, kwargs))
@@ -246,16 +217,16 @@ def _invoke_rpc(name, fn, timeout_ms, args, kwargs):
     return future
 
 
-def _barrier_never_timeout():
+def _barrier_never_timeout(global_rank, global_world_size):
     # max timeout
     timeout = datetime.timedelta(days=_TIMEOUT_MAX_DAYS)
-    global_rank = paddle.distributed.get_rank()
-    global_world_size = paddle.distributed.get_world_size()
 
     if global_world_size < 2:
         return
 
-    barrier_prefix = "Barrier/" + _default_group_name + "/"
+    global _barrier_count
+    barrier_prefix = "Barrier/" + str(_barrier_count) + "/"
+    _barrier_count += 1
     is_master = (global_rank == 0)
 
     def _check_keys_ready(wait_keys):
@@ -265,27 +236,24 @@ def _barrier_never_timeout():
             elapse_time = time.time() - start_time
             if datetime.timedelta(seconds=elapse_time) > timeout:
                 raise RuntimeError(
-                    "Timeout while initializing process group {}."
-                    "Keys {} are not ready sinck rank {} is waiting them."
-                    "Two reason may cause this error:\n 1. The create process group api should be called by all ranks.\n"
-                    " 2. Try to increase the waiting time.\n".format(
-                        _default_group_name, wait_keys, global_rank))
+                    "Keys {} are not ready sinck rank {} is waiting them.".
+                    format(wait_keys, global_rank))
             wait_keys = list(
                 filter(lambda key: int(_default_store.get(key)) != 1,
                        wait_keys))
 
-    # all the workers set their exiting key and exit
-    # the master will wait for all workers' exiting key, ensure to exit in the end
     if is_master:
+        # the master will add key, wait for all workers'exiting key and exit in the end.
+        # Note: the master must exit in the end to ensure that the TcpServer is destroyed in the end.
         wait_keys = [
             barrier_prefix + str(rank) for rank in range(1, global_world_size)
         ]
-        _check_keys_ready(wait_keys)
         _default_store.add(barrier_prefix + str(0), 1)
+        _check_keys_ready(wait_keys)
     else:
-        _default_store.add(barrier_prefix + str(global_rank), 1)
         wait_keys = [barrier_prefix + str(0)]
         _check_keys_ready(wait_keys)
+        _default_store.add(barrier_prefix + str(global_rank), 1)
 
 
 def shutdown():
@@ -302,17 +270,21 @@ def shutdown():
                         master_endpoint="127.0.0.1:8001")
             rpc.shutdown()
     """
-    # Prevent idle servers shutdown first
-    _barrier_never_timeout()
-    # Prevent master shutdown first, because master will exit from `_barrier_never_timeout()` first.
-    paddle.distributed.barrier(group=_default_group)
+    info = get_current_service_info()
+    rank = info.rank
+    world_size = len(get_all_service_infos())
+    # master will exit in the end
+    _barrier_never_timeout(rank, world_size)
     core.rpc_stop_server()
-    logger.info("Trainer {}: rpc shutdown!".format(dist.get_rank()))
+    logger.info("Trainer {}: rpc shutdown!".format(rank))
 
 
 def get_service_info(name):
     """
     Get service information by service name.
+
+    Returns:
+        class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`
 
     Examples:
         run on server `11.11.11.10`
@@ -335,6 +307,9 @@ def get_service_info(name):
 def get_all_service_infos():
     """
     Get all service informations.
+
+    Returns:
+        List[ServiceInfo]
 
     Examples:
         run on server `11.11.11.10`:
@@ -371,6 +346,9 @@ def get_all_service_infos():
 def get_current_service_info():
     """
     Get current service information.
+
+     Returns:
+        class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`
 
     Examples:
         run on server `11.11.11.10`
