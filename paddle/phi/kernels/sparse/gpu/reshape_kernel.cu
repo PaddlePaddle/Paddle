@@ -48,7 +48,7 @@ __global__ void ReshapeCooCudaKernel(const int64_t *x_indices_data,
 
 
 template <typename T, typename Context>
-void ReshapeCooKernel(const Context &dev_ctx,
+void ReshapeCooKernel(const Context& dev_ctx,
                       const SparseCooTensor &x,
                       const phi::IntArray& shape,
                       SparseCooTensor *out) {
