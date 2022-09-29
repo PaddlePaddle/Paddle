@@ -260,16 +260,16 @@ def launch():
             # Please Check the `IPU Parameters` for details
             python -m paddle.distributed.launch --devices 4 ipu --hosts=localhost --nproc_per_host=2 --ipus_per_replica=1 --ipu_partition=pod16 --vipu_server=127.0.0.1 train.py
 
-    Examples 11 (rpc, single node):
+    Examples 11 (rpc, cpu, single node):
         .. code-block:: bash
             :name: code-block-example-bash11
 
             # Training on single node with two local servers
             python -m paddle.distributed.launch --master 127.0.0.1:8765 --nnodes 1 --nproc_per_node 2 --rank 0 --run_mode rpc train.py
 
-    Examples 11 (rpc, multi node):
+    Examples 12 (rpc, cpu, multi node):
         .. code-block:: bash
-            :name: code-block-example-bash11
+            :name: code-block-example-bash12
 
             # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 where each node with 2 servers.
 
