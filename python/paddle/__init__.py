@@ -286,6 +286,7 @@ from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
+from .tensor.math import frexp  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -386,7 +387,6 @@ if is_compiled_with_cinn():
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
-
 __all__ = [  # noqa
     'iinfo',
     'dtype',
@@ -667,4 +667,5 @@ __all__ = [  # noqa
     'sgn',
     'triu_indices',
     'take',
+    'frexp',
 ]
