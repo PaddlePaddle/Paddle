@@ -1567,8 +1567,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (!paddle::platform::in_mkldnn_white_list(type_)) {
         auto input_data_type = IndicateVarDataType(exe_ctx, "X");
         if (this->CanMKLDNNBeUsed(exe_ctx, input_data_type)) {
-          kernel_type_.library_type_ = framework::LibraryType::kMKLDNN;
-          kernel_type_.data_layout_ = framework::DataLayout::kMKLDNN;
+          kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
+          kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
         }
       }
 #endif
@@ -1652,8 +1652,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (!paddle::platform::in_mkldnn_white_list(type_)) {
         auto input_data_type = IndicateVarDataType(exe_ctx, "X");
         if (this->CanMKLDNNBeUsed(exe_ctx, input_data_type)) {
-          kernel_type_.library_type_ = framework::LibraryType::kMKLDNN;
-          kernel_type_.data_layout_ = framework::DataLayout::kMKLDNN;
+          kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
+          kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
         }
       }
 #endif
