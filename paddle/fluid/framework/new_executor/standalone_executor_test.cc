@@ -142,12 +142,14 @@ ProgramDesc GetLmMainProgram() {
 
 TEST(StandaloneExecutor, run) {
   auto place = platform::CUDAPlace(0);
-  ProgramDesc test_prog = load_from_file("lm_startup_program");
+  ProgramDesc startup_prog = load_from_file("lm_startup_program");
   ProgramDesc main_prog = GetLmMainProgram();
 
   Scope scope;
-  StandaloneExecutor exec(place, test_prog, main_prog, &scope);
-  exec.Run({}, {}, {});
+  StandaloneExecutor startup_exec(place, startup_prog);
+  startup_exec.Run(&scope, {}, {});
+  StandaloneExecutor exec(place, main_prog);
+  exec.Run(&scope, {}, {});
   auto start = std::chrono::steady_clock::now();
 
   for (size_t i = 0; i < 10; ++i) {
@@ -155,7 +157,7 @@ TEST(StandaloneExecutor, run) {
       std::cout << i << std::endl;
     }
 
-    exec.Run({}, {}, {});
+    exec.Run(&scope, {}, {});
   }
 
   auto end = std::chrono::steady_clock::now();
