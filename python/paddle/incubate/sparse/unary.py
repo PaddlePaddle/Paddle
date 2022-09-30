@@ -120,6 +120,37 @@ def asin(x, name=None):
 
 
 @dygraph_only
+def transpose(x, perm, name=None):
+    """
+    Changes the perm order of ``x`` without changing its data, requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    .. math::
+
+        out = transpose(x, perm)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        perm (list|tuple): Permute the input according to the data of perm.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A transposed Sparse Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.transpose(sparse_x, [1, 0])
+
+    """
+    return _C_ops.sparse_transpose(x, perm)
+
+
+@dygraph_only
 def atan(x, name=None):
     """
     Calculate elementwise atan of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
