@@ -21,7 +21,6 @@ from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
 import numpy as np
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode
 
 
 def distributed_scaler(scaler):
@@ -77,16 +76,9 @@ def distributed_scaler(scaler):
         # TODO(shenliang03) Since dp allreduce in the optimizer is
         # after the gradscaler, check_finite needs to synchronize global
         # information. In the future, we should use check_group to speed.
-        if in_dygraph_mode():
-            paddle.distributed.stream.all_reduce(
-                is_found_inf,
-                op=paddle.distributed.ReduceOp.MAX,
-                group=None,
-                use_calc_stream=True)
-        else:
-            paddle.distributed.all_reduce(is_found_inf,
-                                          op=paddle.distributed.ReduceOp.MAX,
-                                          group=None)
+        paddle.distributed.all_reduce(is_found_inf,
+                                      op=paddle.distributed.ReduceOp.MAX,
+                                      group=None)
         self._found_inf = is_found_inf.numpy()[0]
 
     # Only data_parallel doesn't need to modify scaler

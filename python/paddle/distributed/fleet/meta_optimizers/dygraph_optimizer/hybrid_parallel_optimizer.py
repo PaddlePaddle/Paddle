@@ -121,40 +121,22 @@ class HybridParallelClipGrad:
 
         # add all reduce to get global norm of distributed params_and_grads
         if self._hcg.get_model_parallel_world_size() > 1:
-            if in_dygraph_mode():
-                paddle.distributed.stream.all_reduce(
-                    global_norm_var_dist,
-                    group=self._hcg.get_check_parallel_group(),
-                    use_calc_stream=True)
-            else:
-                paddle.distributed.all_reduce(
-                    global_norm_var_dist,
-                    group=self._hcg.get_check_parallel_group())
+            paddle.distributed.all_reduce(
+                global_norm_var_dist,
+                group=self._hcg.get_check_parallel_group())
 
         # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
         if self._hcg.get_pipe_parallel_world_size() > 1:
-            if in_dygraph_mode():
-                paddle.distributed.stream.all_reduce(
-                    global_norm_var_not_dist,
-                    group=self._hcg.get_pipe_parallel_group(),
-                    use_calc_stream=True)
-            else:
-                paddle.distributed.all_reduce(
-                    global_norm_var_not_dist,
-                    group=self._hcg.get_pipe_parallel_group())
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_pipe_parallel_group())
 
         # In Sharding mode, param and grad is mapping different rank in optimizer.
         # ClipGradByGlobalNorm need allreduce to get globol norm
         if self._hcg.get_sharding_parallel_world_size() > 1:
-            if in_dygraph_mode():
-                paddle.distributed.stream.all_reduce(
-                    global_norm_var_not_dist,
-                    group=self._hcg.get_sharding_parallel_group(),
-                    use_calc_stream=True)
-            else:
-                paddle.distributed.all_reduce(
-                    global_norm_var_not_dist,
-                    group=self._hcg.get_sharding_parallel_group())
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_sharding_parallel_group())
 
         global_norm_var_fp32 = layers.sqrt(global_norm_var_dist +
                                            global_norm_var_not_dist)

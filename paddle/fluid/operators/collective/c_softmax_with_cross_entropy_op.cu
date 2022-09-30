@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
-#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -265,8 +264,6 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     distributed::ProcessGroup* pg = map->get(rid);
-    auto pg_strm = static_cast<distributed::ProcessGroupStream*>(pg);
-    auto pg_nccl = static_cast<distributed::ProcessGroupNCCL*>(pg_strm);
     distributed::AllreduceOptions opts;
     opts.reduce_op = distributed::ReduceOp::MAX;
 
@@ -300,7 +297,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     std::vector<phi::DenseTensor> in_out;
     in_out.push_back(logits_max);
-    pg_nccl->AllReduce(in_out, in_out, opts, true, true)->Synchronize();
+    pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
     // step 2, obtain logit - logit_max
     Eigen::DSizes<int, 2> batch_by_one(N, 1);
@@ -352,7 +349,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     in_out.clear();
     in_out.push_back(predicted_logits);
     opts.reduce_op = distributed::ReduceOp::SUM;
-    pg_nccl->AllReduce(in_out, in_out, opts, true, true)->Synchronize();
+    pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
     // step 4, obtain exp(logit)
     eigen_softmax.device(*dev_ctx.eigen_device()) = eigen_softmax.exp();
@@ -369,7 +366,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     in_out.clear();
     in_out.push_back(sum_exp_logits);
     opts.reduce_op = distributed::ReduceOp::SUM;
-    pg_nccl->AllReduce(in_out, in_out, opts, true, true)->Synchronize();
+    pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
     auto eigen_loss = math::EigenMatrix<T>::From(loss_2d);
     auto eigen_predicted_logits = math::EigenMatrix<T>::From(predicted_logits);
