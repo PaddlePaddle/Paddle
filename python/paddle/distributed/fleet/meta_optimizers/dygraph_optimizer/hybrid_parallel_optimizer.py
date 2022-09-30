@@ -24,7 +24,6 @@ from paddle.fluid.framework import Variable
 from ...utils.log_util import logger
 from paddle.fluid import core
 from paddle.fluid import layers
-from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
 

@@ -458,9 +458,8 @@ class PipelineLayer(Layer):
             # need use trace_op to allreduce weight
             if in_dygraph_mode():
                 with paddle.framework.no_grad():
-                    paddle.distributed.stream.all_reduce(param.grad,
-                                                         group=comm['group'],
-                                                         use_calc_stream=True)
+                    paddle.distributed.all_reduce(param.grad,
+                                                  group=comm['group'])
             else:
                 with paddle.framework.no_grad():
                     paddle.fluid.framework._dygraph_tracer().trace_op(
