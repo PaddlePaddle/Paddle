@@ -164,8 +164,8 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
       expected_kernel_key.library_type_ == framework::LibraryType::kMKLDNN &&
       expected_kernel_key.data_layout_ == framework::DataLayout::kMKLDNN) {
     auto tmp_kernel_key = expected_kernel_key;
-    tmp_kernel_key.library_type_ == framework::LibraryType::kPlain;
-    tmp_kernel_key.data_layout_ == framework::DataLayout::kAnyLayout;
+    tmp_kernel_key.library_type_ = framework::LibraryType::kPlain;
+    tmp_kernel_key.data_layout_ = framework::DataLayout::kAnyLayout;
     return TransOpKernelTypeToPhiKernelKey(tmp_kernel_key);
   }
 #endif
