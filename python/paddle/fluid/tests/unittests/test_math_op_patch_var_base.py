@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -733,6 +731,22 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         with _test_eager_guard():
             self.func_test_complex_scalar()
         self.func_test_complex_scalar()
+
+    def func_test_matmul(self):
+        x_np = np.random.uniform(-1, 1, [2, 3]).astype(self.dtype)
+        y_np = np.random.uniform(-1, 1, [3, 2]).astype(self.dtype)
+        except_out = x_np @ y_np
+
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            out = x @ y
+            np.testing.assert_allclose(out.numpy(), except_out, atol=1e-03)
+
+    def test_matmul(self):
+        with _test_eager_guard():
+            self.func_test_matmul()
+        self.func_test_matmul()
 
 
 if __name__ == '__main__':

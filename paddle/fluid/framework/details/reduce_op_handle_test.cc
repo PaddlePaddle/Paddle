@@ -228,7 +228,7 @@ struct TestReduceOpHandle {
               out_select_rows.rows()[k]));
     }
 
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 
@@ -279,7 +279,7 @@ struct TestReduceOpHandle {
 
     auto &rt = out_var->Get<f::LoDTensor>();
 
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 

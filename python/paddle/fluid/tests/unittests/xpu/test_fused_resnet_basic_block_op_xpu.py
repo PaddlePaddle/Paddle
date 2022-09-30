@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -24,6 +22,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.fluid import core
+from paddle import _legacy_C_ops
 from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
 from paddle.fluid.framework import default_main_program
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper

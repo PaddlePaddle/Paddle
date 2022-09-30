@@ -36,7 +36,7 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
 
-    const auto *x = ctx.Input<Tensor>("X");
+    const auto *x = ctx.Input<phi::DenseTensor>("X");
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_EQ(
         (x_dims.size() == 4UL || x_dims.size() == 3UL),
@@ -47,12 +47,12 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
             x_dims.to_str(),
             x_dims.size()));
 
-    const auto *running_mean = ctx.Input<Tensor>("Mean");
-    const auto *running_var = ctx.Input<Tensor>("Variance");
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *bias = ctx.Input<Tensor>("Bias");
+    const auto *running_mean = ctx.Input<phi::DenseTensor>("Mean");
+    const auto *running_var = ctx.Input<phi::DenseTensor>("Variance");
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto *bias = ctx.Input<phi::DenseTensor>("Bias");
 
-    auto *y = ctx.Output<Tensor>("Y");
+    auto *y = ctx.Output<phi::DenseTensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<NPUDeviceContext>();
@@ -76,10 +76,10 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
                       {{"epsilon", epsilon}});
       runner_infer.Run(stream);
     } else {
-      auto *mean_out = ctx.Output<Tensor>("MeanOut");
-      auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-      auto *saved_mean = ctx.Output<Tensor>("SavedMean");
-      auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
+      auto *mean_out = ctx.Output<phi::DenseTensor>("MeanOut");
+      auto *variance_out = ctx.Output<phi::DenseTensor>("VarianceOut");
+      auto *saved_mean = ctx.Output<phi::DenseTensor>("SavedMean");
+      auto *saved_variance = ctx.Output<phi::DenseTensor>("SavedVariance");
       mean_out->mutable_data<float>(ctx.GetPlace());
       variance_out->mutable_data<float>(ctx.GetPlace());
       saved_mean->mutable_data<float>(ctx.GetPlace());
@@ -88,14 +88,14 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       // if MomentumTensor is set, use MomentumTensor value, momentum
       // is only used in this training branch
       if (ctx.HasInput("MomentumTensor")) {
-        const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+        const auto *mom_tensor = ctx.Input<phi::DenseTensor>("MomentumTensor");
         Tensor mom_cpu;
         paddle::framework::TensorCopySync(
             *mom_tensor, platform::CPUPlace(), &mom_cpu);
         momentum = mom_cpu.data<float>()[0];
       }
 
-      framework::Tensor sum, square_sum;
+      phi::DenseTensor sum, square_sum;
       sum.mutable_data<float>(running_mean->dims(), ctx.GetPlace());
       square_sum.mutable_data<float>(running_mean->dims(), ctx.GetPlace());
 
@@ -137,22 +137,24 @@ template <typename T>
 class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *x = ctx.Input<Tensor>("X");
-    const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *bias = ctx.Input<Tensor>("Bias");
-    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
+    const auto *x = ctx.Input<phi::DenseTensor>("X");
+    const auto *d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto *bias = ctx.Input<phi::DenseTensor>("Bias");
+    const auto *saved_mean = ctx.Input<phi::DenseTensor>("SavedMean");
     // SavedVariance have been reverted in forward operator
-    const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
+    const auto *saved_inv_variance =
+        ctx.Input<phi::DenseTensor>("SavedVariance");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
     DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
 
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     use_global_stats = is_test || use_global_stats;
 
@@ -184,8 +186,8 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
       d_scale->mutable_data<float>(ctx.GetPlace());
       d_bias->mutable_data<float>(ctx.GetPlace());
       if (use_global_stats) {
-        const auto *running_mean = ctx.Input<Tensor>("Mean");
-        const auto *running_variance = ctx.Input<Tensor>("Variance");
+        const auto *running_mean = ctx.Input<phi::DenseTensor>("Mean");
+        const auto *running_variance = ctx.Input<phi::DenseTensor>("Variance");
         const auto &runner_update =
             NpuOpRunner("BNTrainingUpdateGrad",
                         {dy_tensor, x_tensor, *running_mean, *running_variance},
@@ -223,7 +225,7 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
           dx_tensor.Resize(x_new_shape);
           dy_tensor.Resize(x_new_shape);
         }
-        const auto *running_var = ctx.Input<Tensor>("Variance");
+        const auto *running_var = ctx.Input<phi::DenseTensor>("Variance");
         const auto &runner_infer =
             NpuOpRunner("BNInferGrad",
                         {dy_tensor, *scale, *running_var},

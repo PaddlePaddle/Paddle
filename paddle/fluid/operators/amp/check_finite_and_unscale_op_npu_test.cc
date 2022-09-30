@@ -31,7 +31,7 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-using Tensor = paddle::framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 USE_OP_ITSELF(check_finite_and_unscale);
 USE_OP_DEVICE_KERNEL(check_finite_and_unscale, NPU);

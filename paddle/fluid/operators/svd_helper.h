@@ -36,9 +36,9 @@
 namespace paddle {
 namespace operators {
 namespace math {
-using Tensor = framework::Tensor;
-using InTensors = std::vector<const Tensor*>;
-using OutTensors = std::vector<Tensor*>;
+using Tensor = phi::DenseTensor;
+using InTensors = std::vector<const phi::DenseTensor*>;
+using OutTensors = std::vector<phi::DenseTensor*>;
 using OpName = std::string;
 template <typename T,
           int MajorType = Eigen::RowMajor,
@@ -279,15 +279,15 @@ struct DeviceIndependenceTensorOperations {
   // 5. The Reused Operator Kernel should only be considered as
   //    a wrap function
   using NameInTensorMap =
-      std::map<std::string, std::vector<const framework::Tensor*>>;
+      std::map<std::string, std::vector<const phi::DenseTensor*>>;
   using NameOutTensor = std::vector<std::string>;
 
   explicit DeviceIndependenceTensorOperations(
       const framework::ExecutionContext& context)
       : context(context) {}
 
-  framework::Tensor Pow(const framework::Tensor& x, T exp) {
-    framework::Tensor out;
+  phi::DenseTensor Pow(const phi::DenseTensor& x, T exp) {
+    phi::DenseTensor out;
     auto for_range = GetForRange(x.numel());
     int numel = x.numel();
     PowFunctor<T> functor(
@@ -295,11 +295,11 @@ struct DeviceIndependenceTensorOperations {
     for_range(functor);
     return out;
   }
-  framework::Tensor Matmul(const framework::Tensor& mat_a,
-                           const framework::Tensor& mat_b,
-                           bool trans_a = false,
-                           bool trans_b = false) {
-    framework::Tensor ret;
+  phi::DenseTensor Matmul(const phi::DenseTensor& mat_a,
+                          const phi::DenseTensor& mat_b,
+                          bool trans_a = false,
+                          bool trans_b = false) {
+    phi::DenseTensor ret;
     auto a_dim = mat_a.dims();
     auto b_dim = mat_b.dims();
     std::vector<int> x_vec = phi::vectorize<int>(a_dim);
@@ -315,9 +315,9 @@ struct DeviceIndependenceTensorOperations {
     return ret;
   }
 
-  framework::Tensor Transpose(const framework::Tensor& x) {
+  phi::DenseTensor Transpose(const phi::DenseTensor& x) {
     // transpose the last two dimision
-    framework::Tensor ret;
+    phi::DenseTensor ret;
     auto x_dim = x.dims();
     auto x_vec = phi::vectorize<int>(x_dim);
     int rank = x_vec.size();
@@ -345,10 +345,10 @@ struct DeviceIndependenceTensorOperations {
     }
     return ret;
   }
-  framework::Tensor Diag(const framework::Tensor& x,
-                         int offset = 0,
-                         // FIXME  link error
-                         int padding_value = 0) {
+  phi::DenseTensor Diag(const phi::DenseTensor& x,
+                        int offset = 0,
+                        // FIXME  link error
+                        int padding_value = 0) {
     PADDLE_ENFORCE_EQ(padding_value,
                       0,
                       platform::errors::InvalidArgument(
@@ -359,7 +359,7 @@ struct DeviceIndependenceTensorOperations {
                           "Current diag only support offset = 0,"
                           "you can use DiagOp instead(not recommend)"));
 
-    framework::Tensor ret;
+    phi::DenseTensor ret;
     int x_rank = x.dims().size();
     std::vector<int> out_shape;
     if (x_rank == 2) {
@@ -382,7 +382,7 @@ struct DeviceIndependenceTensorOperations {
   }
 
   // batch_diag for CPU only
-  Tensor BatchDiag(const Tensor& x, int batch) {
+  Tensor BatchDiag(const phi::DenseTensor& x, int batch) {
     Tensor out;
     auto* x_data = x.data<phi::dtype::Real<T>>();
     auto numel = x.numel();
@@ -411,8 +411,8 @@ struct DeviceIndependenceTensorOperations {
   }
 
   // a complex number x times a real number y, which is represented as (a+0j)
-  Tensor RealMulComplex(const Tensor& x, const Tensor& y) {
-    framework::Tensor ret;
+  Tensor RealMulComplex(const phi::DenseTensor& x, const phi::DenseTensor& y) {
+    phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(phi::make_ddim(out_shape));
     ElementwiseComputeEx<RealMulComplexFunctor<T>, DeviceContext, T>(
@@ -420,9 +420,8 @@ struct DeviceIndependenceTensorOperations {
     return ret;
   }
 
-  framework::Tensor Div(const framework::Tensor& x,
-                        const framework::Tensor& y) {
-    framework::Tensor ret;
+  phi::DenseTensor Div(const phi::DenseTensor& x, const phi::DenseTensor& y) {
+    phi::DenseTensor ret;
     if (x.type() != y.type()) {
       ret.mutable_data<T>(x.dims(), context.GetPlace());
       auto x_vector = EigenVector<T>::Flatten(x);
@@ -439,19 +438,17 @@ struct DeviceIndependenceTensorOperations {
     }
     return ret;
   }
-  framework::Tensor Add(const framework::Tensor& x,
-                        const framework::Tensor& y) {
+  phi::DenseTensor Add(const phi::DenseTensor& x, const phi::DenseTensor& y) {
     // element wise add, support numpy broadcast.
-    framework::Tensor ret;
+    phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(phi::make_ddim(out_shape));
     ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
         context, &x, &y, -1, AddFunctor<T>(), &ret);
     return ret;
   }
-  framework::Tensor Mul(const framework::Tensor& x,
-                        const framework::Tensor& y) {
-    framework::Tensor ret;
+  phi::DenseTensor Mul(const phi::DenseTensor& x, const phi::DenseTensor& y) {
+    phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(phi::make_ddim(out_shape));
     ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(
@@ -459,16 +456,16 @@ struct DeviceIndependenceTensorOperations {
     return ret;
   }
 
-  framework::Tensor ReduceSum(const framework::Tensor& x,
-                              std::vector<int> out_dim) {
+  phi::DenseTensor ReduceSum(const phi::DenseTensor& x,
+                             std::vector<int> out_dim) {
     framework::AttributeMap attrs;
     attrs["dim"] = std::vector<int>{-1};
     NameInTensorMap inputs({{"X", {&x}}});
     return CreateOpRunAndReturnTensor("reduce_sum", inputs, attrs, out_dim);
   }
 
-  framework::Tensor ReduceMax(const framework::Tensor& x,
-                              std::vector<int> out_dim) {
+  phi::DenseTensor ReduceMax(const phi::DenseTensor& x,
+                             std::vector<int> out_dim) {
     framework::AttributeMap attrs;
     attrs["dim"] = std::vector<int>{-1};
     NameInTensorMap inputs({{"X", {&x}}});
@@ -476,9 +473,8 @@ struct DeviceIndependenceTensorOperations {
   }
   // Support float and complex type subtraction，the default is T type
   template <typename InT = T>
-  framework::Tensor Sub(const framework::Tensor& x,
-                        const framework::Tensor& y) {
-    framework::Tensor ret;
+  phi::DenseTensor Sub(const phi::DenseTensor& x, const phi::DenseTensor& y) {
+    phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(phi::make_ddim(out_shape));
     if (platform::is_gpu_place(context.GetPlace())) {
@@ -501,9 +497,9 @@ struct DeviceIndependenceTensorOperations {
     }
     return ret;
   }
-  const framework::Tensor Unsqueeze(const framework::Tensor& x, int axis = 0) {
+  const phi::DenseTensor Unsqueeze(const phi::DenseTensor& x, int axis = 0) {
     // don't copy data, only change the dims
-    framework::Tensor out;
+    phi::DenseTensor out;
     out.ShareDataWith(x);
     std::vector<int> out_shape = phi::vectorize<int>(x.dims());
     if (axis >= 0) {
@@ -516,28 +512,28 @@ struct DeviceIndependenceTensorOperations {
     out.Resize(phi::make_ddim(out_shape));
     return out;
   }
-  framework::Tensor Fill(std::vector<int> shape, float fill_value) {
-    framework::Tensor ret;
+  phi::DenseTensor Fill(std::vector<int> shape, float fill_value) {
+    phi::DenseTensor ret;
     ret.Resize(phi::make_ddim(shape));
     ret.mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     phi::funcs::SetConstant<DeviceContext, T>()(dev_ctx, &ret, T(fill_value));
     return ret;
   }
-  framework::Tensor Infinits(std::vector<int> shape) {
+  phi::DenseTensor Infinits(std::vector<int> shape) {
     auto value = static_cast<T>(std::numeric_limits<double>::infinity());
     return Fill(shape, value);
   }
-  framework::Tensor Eye(int n) {
+  phi::DenseTensor Eye(int n) {
     auto output = Fill({n}, 1);
     auto ret = Diag(output);
     return ret;
   }
-  framework::Tensor Slice(const framework::Tensor& x,
-                          std::vector<int> axes,
-                          std::vector<int> starts,
-                          std::vector<int> ends) {
-    framework::Tensor ret;
+  phi::DenseTensor Slice(const phi::DenseTensor& x,
+                         std::vector<int> axes,
+                         std::vector<int> starts,
+                         std::vector<int> ends) {
+    phi::DenseTensor ret;
     std::vector<int> new_axes = axes;
     std::vector<int> out_shape = phi::vectorize<int>(x.dims());
     size_t rank = out_shape.size();
@@ -588,9 +584,9 @@ struct DeviceIndependenceTensorOperations {
     return ret;
   }
 
-  framework::Tensor TrilTriu(const framework::Tensor& x,
-                             int diagonal,
-                             bool lower) {
+  phi::DenseTensor TrilTriu(const phi::DenseTensor& x,
+                            int diagonal,
+                            bool lower) {
     framework::AttributeMap attrs;
     attrs["diagonal"] = diagonal;
     attrs["lower"] = lower;
@@ -604,11 +600,11 @@ struct DeviceIndependenceTensorOperations {
     return CreateOpRunAndReturnTensor("tril_triu", inputs, attrs, out_shape);
   }
 
-  framework::Tensor TriangularSolve(const framework::Tensor& x,
-                                    const framework::Tensor& y,
-                                    bool upper,
-                                    bool transpose,
-                                    bool unitriangular) {
+  phi::DenseTensor TriangularSolve(const phi::DenseTensor& x,
+                                   const phi::DenseTensor& y,
+                                   bool upper,
+                                   bool transpose,
+                                   bool unitriangular) {
     framework::AttributeMap attrs;
     attrs["upper"] = upper;
     attrs["transpose"] = transpose;
@@ -635,9 +631,9 @@ struct DeviceIndependenceTensorOperations {
         "triangular_solve", inputs, attrs, out_shape);
   }
 
-  framework::Tensor ConcatTwoTensors(const framework::Tensor& x,
-                                     const framework::Tensor& y,
-                                     int axis) {
+  phi::DenseTensor ConcatTwoTensors(const phi::DenseTensor& x,
+                                    const phi::DenseTensor& y,
+                                    int axis) {
     framework::AttributeMap attrs;
     attrs["axis"] = axis;
     std::vector<framework::DDim> inputs_dims({x.dims(), y.dims()});
@@ -654,7 +650,7 @@ struct DeviceIndependenceTensorOperations {
     return CreateOpRunAndReturnTensor("concat", inputs, attrs, out_shape);
   }
 
-  Tensor Conj(const Tensor& x) {
+  Tensor Conj(const phi::DenseTensor& x) {
     Tensor out;
     auto* out_data = out.mutable_data<T>(x.dims(), context.GetPlace());
     auto* x_data = x.data<T>();
@@ -664,7 +660,7 @@ struct DeviceIndependenceTensorOperations {
     return out;
   }
 
-  Tensor Real(const Tensor& x) {
+  Tensor Real(const phi::DenseTensor& x) {
     Tensor out;
     auto numel = x.numel();
     auto* out_data = out.mutable_data<phi::dtype::Real<T>>(
@@ -682,8 +678,8 @@ struct DeviceIndependenceTensorOperations {
                   const int n,
                   const int num_lower_diags,
                   const int num_upper_diags,
-                  const Tensor& scale,
-                  const Tensor& input) {
+                  const phi::DenseTensor& scale,
+                  const phi::DenseTensor& input) {
     Tensor out;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, input.numel());
@@ -709,10 +705,10 @@ struct DeviceIndependenceTensorOperations {
     return platform::ForRange<DeviceContext>(dev_ctx, numel);
   }
   template <size_t D>
-  void EigenSliceWrapper(const framework::Tensor* in,
+  void EigenSliceWrapper(const phi::DenseTensor* in,
                          const std::vector<int>& start,
                          const std::vector<int>& end,
-                         framework::Tensor* out) {
+                         phi::DenseTensor* out) {
     // Slice by call Eigen Tensor Function `.slice()`
     size_t rank = in->dims().size();
     PADDLE_ENFORCE_EQ(start.size(),
@@ -742,7 +738,7 @@ struct DeviceIndependenceTensorOperations {
         offsets_32bit,
         extents_32bit);
   }
-  framework::Tensor CreateOpRunAndReturnTensor(
+  phi::DenseTensor CreateOpRunAndReturnTensor(
       const std::string& type,
       const NameInTensorMap& inputs,
       const framework::AttributeMap& attrs,
@@ -781,7 +777,7 @@ struct DeviceIndependenceTensorOperations {
     auto op =
         framework::OpRegistry::CreateOp(type, op_inputs, op_outputs, attrs);
     op->Run(local_scope, context.GetPlace());
-    framework::Tensor out;
+    phi::DenseTensor out;
     out.ShareDataWith(*(out_var->GetMutable<framework::LoDTensor>()));
     out.Resize(phi::make_ddim(out_shape));
     context.scope().DeleteScope(&local_scope);

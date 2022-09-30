@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 import paddle
 import numpy as np
@@ -22,7 +19,6 @@ import random
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.fluid.dygraph.container import Sequential
 from paddle.distributed.fleet.meta_parallel import PipelineLayer
 from paddle.fluid.dygraph.layers import Layer
 import paddle.nn as nn

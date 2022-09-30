@@ -457,3 +457,15 @@
            mv_csr{sparse_csr, dense -> dense}
     layout : x
   backward: mv_grad
+
+- op : transpose
+  args : (Tensor x, int[] perm)
+  output : Tensor(out)
+  infer_meta :
+    func : TransposeInferMeta
+    param: [ x, perm ]
+  kernel :
+    func : transpose_coo{sparse_coo -> sparse_coo},
+           transpose_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : transpose_grad

@@ -17,6 +17,7 @@ import sys
 import site
 import unittest
 import numpy as np
+import tempfile
 
 
 class TestCustomCPUProfilerPlugin(unittest.TestCase):
@@ -24,18 +25,27 @@ class TestCustomCPUProfilerPlugin(unittest.TestCase):
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        cmd = 'rm -rf PaddleCustomDevice \
+        self.temp_dir = tempfile.TemporaryDirectory()
+        cmd = 'cd {} \
             && git clone {} \
-            && cd PaddleCustomDevice/backends/custom_cpu \
+            && cd PaddleCustomDevice \
+            && git fetch origin \
             && git checkout {} -b dev \
+            && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8'.format(
-            os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG'))
+            self.temp_dir.name, os.getenv('PLUGIN_URL'),
+            os.getenv('PLUGIN_TAG'))
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
-            cur_dir, 'PaddleCustomDevice/backends/custom_cpu/build')
+            cur_dir, '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
+                self.temp_dir.name))
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+        del os.environ['CUSTOM_DEVICE_ROOT']
 
     def test_custom_device(self):
         import paddle
@@ -58,9 +68,6 @@ class TestCustomCPUProfilerPlugin(unittest.TestCase):
             p.step()
         p.stop()
         p.summary()
-
-    def tearDown(self):
-        del os.environ['CUSTOM_DEVICE_ROOT']
 
 
 if __name__ == '__main__':

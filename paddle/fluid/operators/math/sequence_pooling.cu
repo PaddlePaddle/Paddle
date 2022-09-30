@@ -197,7 +197,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
                   const framework::LoDTensor& input,
                   framework::LoDTensor* output,
                   bool is_test,
-                  framework::Tensor* index = nullptr) {
+                  phi::DenseTensor* index = nullptr) {
     auto lod_level = input.lod().size();
     auto& lod = input.lod()[lod_level - 1];
     const size_t item_dim = output->numel() / output->dims()[0];
@@ -415,7 +415,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
                   /* max pool has index */
-                  const framework::Tensor* index = nullptr) {
+                  const phi::DenseTensor* index = nullptr) {
     auto lod_level = in_grad->lod().size();
     auto& lod = in_grad->lod()[lod_level - 1];
     const size_t item_dim = in_grad->numel() / in_grad->dims()[0];

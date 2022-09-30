@@ -27,8 +27,6 @@ images per class.
 
 """
 
-from __future__ import print_function
-
 import itertools
 import numpy
 import paddle.dataset.common
