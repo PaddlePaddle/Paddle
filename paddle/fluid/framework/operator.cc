@@ -1944,7 +1944,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
       expected_kernel_key.library_type_ = LibraryType::kKP;
       kernel_iter = kernels.find(expected_kernel_key);
       // if can't find corresponding kernel when is_xpu_kp_support is on
-      // if the fluid do not register related kernel, it can't work and hava
+      // if the fluid do not register related kernel, it can't work and have
       // error as before
       if (kernel_iter == kernels.end()) {
         expected_kernel_key.library_type_ =
